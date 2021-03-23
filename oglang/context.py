@@ -254,6 +254,8 @@ class Module:
                 for k in self.kernels:
                     k.hook(self.dll)
 
+                return
+
 
         # write cpp sources
         cpp_file = open(cpp_path, "w")
@@ -296,32 +298,6 @@ class Module:
 
         # just use minimum to ensure compatability
         cuda_flags = ['-gencode=arch=compute_35,code=compute_35']
-
-        # # release config
-        # if use_cuda:
-        #     module = torch.utils.cpp_extension.load_inline('kernels',
-        #                                                 cpp_sources=[cpp_source],
-        #                                                 cuda_sources=[cuda_source],
-        #                                                 functions=entry_points,
-        #                                                 extra_cflags=cpp_flags,
-        #                                                 extra_loglags=ld_flags,
-        #                                                 extra_cuda_cflags=cuda_flags,
-        #                                                 build_directory=build_path,
-        #                                                 extra_include_paths=[include_path],
-        #                                                 verbose=True,
-        #                                                 with_pytorch_error_handling=False)
-        # else:
-        #     module = torch.utils.cpp_extension.load_inline('kernels',
-        #                                                 cpp_sources=[cpp_source],
-        #                                                 cuda_sources=[],
-        #                                                 functions=entry_points,
-        #                                                 extra_cflags=cpp_flags,
-        #                                                 extra_loglags=ld_flags,
-        #                                                 extra_cuda_cflags=cuda_flags,
-        #                                                 build_directory=build_path,
-        #                                                 extra_include_paths=[include_path],
-        #                                                 verbose=True,
-        #                                                 with_pytorch_error_handling=False)
 
 
         with ScopedTimer("build"):
@@ -399,7 +375,9 @@ class Context:
 
             # delay load modules
             if (kernel.module.dll == None):
-                kernel.module.load()
+
+                with ScopedTimer("Module load"):
+                    kernel.module.load()
 
             # build params
             params = [dim]

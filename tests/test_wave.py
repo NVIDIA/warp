@@ -102,7 +102,7 @@ def wave_solve(hprevious: og.array(float),
 
     if (y < height):
         
-        og.store(hcurrent, tid, og.sin(t + x))
+        og.store(hcurrent, tid, og.sin(t))
         #hcurrent[tid] = og.sin(t)#hprevious[tid]
 
 

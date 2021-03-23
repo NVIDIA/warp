@@ -397,7 +397,7 @@ class AtomicSubFunc:
 
 
 @builtin("tid")
-class ThreadIogunc:
+class ThreadIdFunc:
     @staticmethod
     def value_type(args):
         return int
