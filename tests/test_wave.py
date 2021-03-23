@@ -9,7 +9,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import oglang as og
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+render = True
+if render:
+    from pxr import Usd, UsdGeom, Gf, Sdf
 
 
 # inline __device__ float Fetch(cudaTextureObject_t grid, int x, int y, int pitch)
@@ -121,45 +123,46 @@ sim_time = 0.0
 k_speed = 1.e+3
 k_damp = 1.0
 
-# set up grid for visualization
-stage = Usd.Stage.CreateNew("tests/outputs/wave.usd")
-stage.SetStartTimeCode(0.0)
-stage.SetEndTimeCode(sim_duration)
-stage.SetTimeCodesPerSecond(1.0)
+if render:
+    # set up grid for visualization
+    stage = Usd.Stage.CreateNew("tests/outputs/wave.usd")
+    stage.SetStartTimeCode(0.0)
+    stage.SetEndTimeCode(sim_duration)
+    stage.SetTimeCodesPerSecond(1.0)
 
-grid = UsdGeom.Mesh.Define(stage, "/root")
-grid_size = 0.1
+    grid = UsdGeom.Mesh.Define(stage, "/root")
+    grid_size = 0.1
 
-vertices = []
-indices = []
-counts = []
+    vertices = []
+    indices = []
+    counts = []
 
-def grid_index(x, y, stride):
-    return y*stride + x
+    def grid_index(x, y, stride):
+        return y*stride + x
 
-for z in range(sim_width):
-    for x in range(sim_height):
+    for z in range(sim_width):
+        for x in range(sim_height):
 
-        pos = Gf.Vec3f(float(x)*grid_size, 0.0, float(z)*grid_size) - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
+            pos = Gf.Vec3f(float(x)*grid_size, 0.0, float(z)*grid_size) - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
 
-        vertices.append(pos)
-            
-        if (x > 0 and z > 0):
-            
-            indices.append(grid_index(x-1, z-1, sim_width))
-            indices.append(grid_index(x, z, sim_width))
-            indices.append(grid_index(x, z-1, sim_width))
+            vertices.append(pos)
+                
+            if (x > 0 and z > 0):
+                
+                indices.append(grid_index(x-1, z-1, sim_width))
+                indices.append(grid_index(x, z, sim_width))
+                indices.append(grid_index(x, z-1, sim_width))
 
-            indices.append(grid_index(x-1, z-1, sim_width))
-            indices.append(grid_index(x-1, z, sim_width))
-            indices.append(grid_index(x, z, sim_width))
+                indices.append(grid_index(x-1, z-1, sim_width))
+                indices.append(grid_index(x-1, z, sim_width))
+                indices.append(grid_index(x, z, sim_width))
 
-            counts.append(3)
-            counts.append(3)
+                counts.append(3)
+                counts.append(3)
 
-grid.GetPointsAttr().Set(vertices, 0.0)
-grid.GetFaceVertexIndicesAttr().Set(indices, 0.0)
-grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
+    grid.GetPointsAttr().Set(vertices, 0.0)
+    grid.GetFaceVertexIndicesAttr().Set(indices, 0.0)
+    grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
 
 # simulation context
 context = og.Context("cpu")
@@ -185,16 +188,18 @@ for i in range(sim_frames):
 
         sim_time += sim_dt
 
+    if render:
 
-    # numpy view onto sim data
-    sim_view = sim_grid0.numpy()
+        # numpy view onto sim data
+        sim_view = sim_grid0.numpy()
 
-    # render
-    for v in range(sim_width*sim_height):
-        vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
+        # render
+        for v in range(sim_width*sim_height):
+            vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
         
 
-    grid.GetPointsAttr().Set(vertices, sim_time)
+        grid.GetPointsAttr().Set(vertices, sim_time)
 
 
-stage.Save()
+if render:
+    stage.Save()

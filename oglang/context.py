@@ -1,5 +1,6 @@
 import math
 import os
+import sys
 import imp
 import subprocess
 import timeit
@@ -115,7 +116,7 @@ def kernel(f):
 
             m.register_kernel(self)
 
-        # cache entry points based on name, called after compilation / module load
+        # cache dll entry points based on name, called after compilation / module load
         def hook(self, dll):
 
             try:
@@ -182,9 +183,6 @@ class Module:
             adj = oglang.codegen.Adjoint(func, device='cuda')
             cuda_source += oglang.codegen.codegen_func(adj, device='cuda')
 
-            # import pdb
-            # pdb.set_trace()
-
             import copy
 
             @rename(func.__name__ + "_cpu_func", adj.return_var.type)
@@ -232,8 +230,7 @@ class Module:
         cache_path = build_path + "/" + module_name + ".gen"
         
         cpp_path = build_path + "/" + module_name + ".cpp"
-        cu_path = build_path + "/" + module_name + ".ccu"
-        dll_path = build_path + "/" + module_name + ".dll"
+        cu_path = build_path + "/" + module_name + ".ccu"        
 
         if (os.path.exists(build_path) == False):
             os.mkdir(build_path)
@@ -266,49 +263,50 @@ class Module:
         cu_file.write(cu_source)
         cu_file.close()
 
-        # print("ignoring rebuild, using stale kernels")
-        # module = import_module("kernels", build_path)
-        # return module
-
         # cache stale, rebuild
         print("Rebuilding kernels")
 
         set_build_env()
 
-        # debug config
-        #module = torch.utils.cpp_extension.load_inline('kernels', [cpp_source], None, entry_points, extra_cflags=["/Zi", "/Od"], extra_loglags=["/DEBUG"], build_directory=build_path, extra_include_paths=[include_path], verbose=True)
-
         if os.name == 'nt':
-            cxx = "cl"
-            nvcc = "nvcc"
-            link = "link"
 
             cpp_flags = "/Ox -DNDEBUG /fp:fast"
             ld_flags = "-DNDEBUG"
 
+            dll_path = build_path + "/" + module_name + ".dll"
+
     #        cpp_flags = ["/Zi", "/Od", "/DEBUG"]
     #        ld_flags = ["/DEBUG"]
-        else:
-            cxx = "gcc"
-            nvcc = "nvcc"
-            link = "gcc"
+            # just use minimum to ensure compatability
+    #        cuda_flags = ['-gencode=arch=compute_35,code=compute_35']
 
-            cpp_flags = "-Z", "-O2", "-DNDEBUG"
+
+            with ScopedTimer("build"):
+                build_cmd = "cl.exe {cflags} -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
+                print(build_cmd)
+                subprocess.call(build_cmd)
+
+            with ScopedTimer("link"):
+                link_cmd = "link.exe {cpp_path}.obj /dll /out:{dll_path}".format(cpp_path=cpp_path, dll_path=dll_path)
+                print(link_cmd)
+                subprocess.call(link_cmd)
+                
+        else:
+
+            cpp_flags = "-Z -O2 -DNDEBUG --std=c++11"
             ld_flags = "-DNDEBUG"
 
-        # just use minimum to ensure compatability
-        cuda_flags = ['-gencode=arch=compute_35,code=compute_35']
+            dll_path = build_path + "/" + module_name + ".so"
 
+            with ScopedTimer("build"):
+                build_cmd = "g++ {cflags} -c -o {cpp_path}.o {cpp_path}".format(cflags=cpp_flags, cpp_path=cpp_path)
+                print(build_cmd)
+                subprocess.call(build_cmd, shell=True)
 
-        with ScopedTimer("build"):
-            build_cmd = "cl.exe {cflags} -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
-            print(build_cmd)
-            subprocess.call(build_cmd)
-
-        with ScopedTimer("link"):
-            link_cmd = "link.exe {cpp_path}.obj /dll /out:{dll_path}".format(cpp_path=cpp_path, dll_path=dll_path)
-            print(link_cmd)
-            subprocess.call(link_cmd)
+            with ScopedTimer("link"):
+                link_cmd = "g++ -shared -o {dll_path} {cpp_path}.o".format(cpp_path=cpp_path, dll_path=dll_path)
+                print(link_cmd)
+                subprocess.call(link_cmd, shell=True)
 
        
         self.dll = cdll.LoadLibrary(dll_path)
@@ -334,19 +332,26 @@ class Context:
         
         self.device = device
 
+        if (sys.platform.startswith("linux")):
+            self.crt = CDLL("libc.so.6")
+        elif (sys.platform.startswith("win32")):
+            self.crt = CDLL("msvcrt")
+        elif (sys.platform.startswith("darwin")):
+            self.crt = CDLL("libc.dylib")
+        else:
+            print("Unknown platform")
+
     def alloc(self, num_bytes):
-        dll = CDLL('msvcrt')
-        dll.malloc.restype = c_void_p
-        ptr = dll.malloc(num_bytes)
+        self.crt.malloc.restype = c_void_p
+        ptr = self.crt.malloc(num_bytes)
         
         # always clear
-        dll.memset(cast(ptr,POINTER(c_int)), 0, num_bytes)
+        self.crt.memset(cast(ptr,POINTER(c_int)), 0, num_bytes)
         
         return ptr
 
     def free(self, ptr):
-        dll = CDLL('msvcrt')
-        dll.free(cast(ptr,POINTER(c_int)))
+        self.crt.free(cast(ptr,POINTER(c_int)))
 
     def wrap(self, n, dtype, data_ptr):
         pass
@@ -399,4 +404,3 @@ class Context:
             elif self.device.startswith('cuda'):
                 kernel.forward_cuda(*params)
 
-        
