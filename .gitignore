@@ -1,0 +1,10 @@
+__pycache__
+.idea
+*.net
+*.prof
+oglang/kernels
+oglang.egg-info
+.vscode
+kernels
+archive
+_*/
