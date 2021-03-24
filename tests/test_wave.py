@@ -39,16 +39,6 @@ def laplacian(f: og.array(float),
 
     return (ddx + ddy)
 
-@og.func
-def smoothstep(x: float):
-    if x < 0.0:
-        return 0.0
-    
-    if x > 1.0:
-        return 1.0
-
-    return 3.0*x*x - 2.0*x*x*x
-
 @og.kernel
 def wave_displace(hcurrent: og.array(float),
                   hprevious: og.array(float),
@@ -72,7 +62,6 @@ def wave_displace(hcurrent: og.array(float),
 
     if (dist_sq < r*r):
 
-        #w = 1.0 - smoothstep(og.sqrt(dist_sq)/r)
         h = mag*og.sin(t)
 
         og.store(hcurrent, tid, h)
@@ -84,6 +73,7 @@ def wave_solve(hprevious: og.array(float),
                hcurrent: og.array(float),
                width: int,
                height: int,
+               inv_cell: float,
                k_speed: float,
                k_damp: float,
                dt: float):
@@ -93,13 +83,13 @@ def wave_solve(hprevious: og.array(float),
     x = tid%width
     y = tid//width
 
-    l = laplacian(hcurrent, x, y, width, height)
+    l = laplacian(hcurrent, x, y, width, height)*inv_cell*inv_cell
 
     # integrate 
     h1 = og.load(hcurrent, tid)
     h0 = og.load(hprevious, tid)
     
-    h = (2.0*h1 - h0 + k_speed*l - k_damp*(h1-h0))
+    h = 2.0*h1 - h0 + dt*dt*(k_speed*l - k_damp*(h1-h0))
 
     # buffers get swapped each iteration
     og.store(hprevious, tid, h)
@@ -117,8 +107,8 @@ sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
 
 # wave constants
-k_speed = 0.0001
-k_damp = 0.001
+k_speed = 1.0
+k_damp = 0.0
 
 # set up grid for visualization
 stage = Usd.Stage.CreateNew("tests/outputs/wave.usd")
@@ -128,6 +118,7 @@ stage.SetTimeCodesPerSecond(sim_fps)
 
 grid = UsdGeom.Mesh.Define(stage, "/root")
 grid_size = 0.1
+grid_displace = 0.5
 
 vertices = []
 indices = []
@@ -203,7 +194,7 @@ for i in range(sim_frames):
         context.launch(
             kernel=wave_displace, 
             dim=sim_width*sim_height, 
-            inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, 0.5, -math.pi*0.5],   #sim_time*0.0
+            inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],   #sim_time*0.0
             outputs=[])
 
 
@@ -211,7 +202,7 @@ for i in range(sim_frames):
         context.launch(
             kernel=wave_solve, 
             dim=sim_width*sim_height, 
-            inputs=[sim_grid0, sim_grid1, sim_width, sim_height, k_speed, k_damp, sim_time], 
+            inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
             outputs=[])
 
         # swap grids
