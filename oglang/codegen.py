@@ -11,624 +11,25 @@ import numpy as np
 
 import copy
 
-
-# -----
-
-operators = {}
-functions = {}
-cuda_functions = {}
-kernels = {}
-
-#----------------------
-# built-in types
-
-
-class float3:
-    def __init__(self):
-        x = 0.0
-        y = 0.0
-        z = 0.0
-
-
-class float4:
-    def __init__(self):
-        x = 0.0
-        y = 0.0
-        z = 0.0
-        w = 0.0
-
-
-class quat:
-    def __init__(self):
-        x = 0.0
-        y = 0.0
-        z = 0.0
-        w = 1.0
-
-
-class mat22:
-    def __init__(self):
-        pass
-
-
-class mat33:
-    def __init__(self):
-        pass
-
-
-class spatial_vector:
-    def __init__(self):
-        pass
-
-
-class spatial_matrix:
-    def __init__(self):
-        pass
-
-
-class spatial_transform:
-    def __init__(self):
-        pass
-    
-
-class void:
-    def __init__(self):
-        pass
-
-
-class array:
-
-    def __init__(self, type, length=None, data=None, context=None, owner=True):
-        self.length = length
-        self.type = type
-        self.data = data
-        self.context = context
-        self.owner = owner
-
-        self.__name__ = "array<" + type.__name__ + ">"
-
-    def __del__(self):
-        # todo: free data if owner
-        pass
-
-
-    def numpy(self):
-        if (self.context.device == "cpu"):
-            ptr_type = ctypes.POINTER(ctypes.c_float)
-            ptr = ctypes.cast(self.data, ptr_type)
-
-            view = np.ctypeslib.as_array(ptr,shape=(self.length,))
-            return view
-        else:
-            print("Cannot view CUDA array")
-
-
-#----------------------
-
-
-# register built-in function
-def builtin(key):
-    def insert(func):
-        func.key = key
-        func.prefix = "og::"
-        functions[key] = func
-        return func
-
-    return insert
-
-
-#---------------------------------
-# built-in operators +,-,*,/
-
-
-@builtin("add")
-class Adogunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("sub")
-class SubFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("mod")
-class Moogunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("mul")
-class MulFunc:
-    @staticmethod
-    def value_type(args):
-        # todo: encode type operator type globally
-        if (args[0].type == mat33 and args[1].type == float3):            
-            return float3
-        if (args[0].type == spatial_matrix and args[1].type == spatial_vector):
-            return spatial_vector
-        else:
-            return args[0].type
-
-
-@builtin("div")
-class DivFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-#----------------------
-# map operator nodes to builtin
-
-operators[ast.Add] = "add"
-operators[ast.Sub] = "sub"
-operators[ast.Mult] = "mul"
-operators[ast.Div] = "div"
-operators[ast.FloorDiv] = "div"
-operators[ast.Mod] = "mod"
-
-operators[ast.Gt] = ">"
-operators[ast.Lt] = "<"
-operators[ast.GtE] = ">="
-operators[ast.LtE] = "<="
-operators[ast.Eq] = "=="
-operators[ast.NotEq] = "!="
-
-#----------------------
-# built-in functions
-
-
-
-@builtin("min")
-class MinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("max")
-class MaxFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("leaky_max")
-class LeakyMaxFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("leaky_min")
-class LeakyMinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("clamp")
-class ClampFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("step")
-class StepFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("nonzero")
-class NonZeroFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("sign")
-class SignFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("abs")
-class AbsFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("sin")
-class SinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("cos")
-class CosFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("acos")
-class ACosFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("sin")
-class SinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("cos")
-class CosFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("sqrt")
-class SqrtFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-
-@builtin("dot")
-class DotFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("cross")
-class CrossFunc:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-@builtin("skew")
-class SkewFunc:
-    @staticmethod
-    def value_type(args):
-        return mat33
-
-
-@builtin("length")
-class LengthFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("normalize")
-class NormalizeFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("select")
-class SelectFunc:
-    @staticmethod
-    def value_type(args):
-        return args[1].type
-
-
-@builtin("rotate")
-class RotateFunc:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-
-@builtin("rotate_inv")
-class RotateInvFunc:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-
-@builtin("determinant")
-class DeterminantFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("transpose")
-class TransposeFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("load")
-class Loaogunc:
-    @staticmethod
-    def value_type(args):
-        if (type(args[0].type) != array):
-            raise Exception("Load input 0 must be a array")
-        if (args[1].type != int):
-            raise Exception("Load input 1 must be a int")
-
-        return args[0].type.type
-
-
-@builtin("store")
-class StoreFunc:
-    @staticmethod
-    def value_type(args):
-        if (type(args[0].type) != array):
-            raise Exception("Store input 0 must be a array")
-        if (args[1].type != int):
-            raise Exception("Store input 1 must be a int")
-        if (args[2].type != args[0].type.type):
-            raise Exception("Store input 2 must be of the same type as the array")
-
-        return None
-
-
-@builtin("atomic_add")
-class AtomicAdogunc:
-    @staticmethod
-    def value_type(args):
-        return None
-
-
-@builtin("atomic_sub")
-class AtomicSubFunc:
-    @staticmethod
-    def value_type(args):
-        return None
-
-
-@builtin("tid")
-class ThreadIdFunc:
-    @staticmethod
-    def value_type(args):
-        return int
-
-
-# type construtors
-
-@builtin("float")
-class floatFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("float3")
-class float3Func:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-
-@builtin("quat")
-class QuatFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("quat_identity")
-class QuatIdentityFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("quat_from_axis_angle")
-class QuatAxisAngleFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("mat22")
-class Mat22Func:
-    @staticmethod
-    def value_type(args):
-        return mat22
-
-
-@builtin("mat33")
-class Mat33Func:
-    @staticmethod
-    def value_type(args):
-        return mat33
-
-
-@builtin("spatial_vector")
-class SpatialVectorFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-
-# built-in spatial operators
-@builtin("spatial_transform")
-class TransformFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-
-@builtin("spatial_transform_identity")
-class TransformIdentity:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-@builtin("inverse")
-class Inverse:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-# @builtin("spatial_transform_inverse")
-# class TransformInverse:
-#     @staticmethod
-#     def value_type(args):
-#         return spatial_transform
-
-
-@builtin("spatial_transform_get_translation")
-class TransformGetTranslation:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-@builtin("spatial_transform_get_rotation")
-class TransformGetRotation:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-@builtin("spatial_transform_multiply")
-class TransformMulFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-# @builtin("spatial_transform_inertia")
-# class TransformInertiaFunc:
-#     @staticmethod
-#     def value_type(args):
-#         return spatial_matrix
-
-@builtin("spatial_adjoint")
-class SpatialAdjoint:
-    @staticmethod
-    def value_type(args):
-        return spatial_matrix
-
-@builtin("spatial_dot")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("spatial_cross")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-@builtin("spatial_cross_dual")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-@builtin("spatial_transform_point")
-class SpatialTransformPointFunc:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-@builtin("spatial_transform_vector")
-class SpatialTransformVectorFunc:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-@builtin("spatial_top")
-class SpatialTopFunc:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-@builtin("spatial_bottom")
-class SpatialBottomFunc:
-    @staticmethod
-    def value_type(args):
-        return float3
-
-@builtin("spatial_jacobian")
-class SpatialJacobian:
-    @staticmethod
-    def value_type(args):
-        return None
-    
-@builtin("spatial_mass")
-class SpatialMass:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_gemm")
-class DenseGemm:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_gemm_batched")
-class DenseGemmBatched:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-@builtin("dense_chol")
-class DenseChol:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_chol_batched")
-class DenseCholBatched:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-@builtin("dense_subs")
-class DenseSubs:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_solve")
-class DenseSolve:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_solve_batched")
-class DenseSolve:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-# helpers
-
-@builtin("index")
-class IndexFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("print")
-class PrintFunc:
-    @staticmethod
-    def value_type(args):
-        return None
+from oglang.types import *
+
+
+# map operator to function
+builtin_operators = {}
+
+builtin_operators[ast.Add] = "add"
+builtin_operators[ast.Sub] = "sub"
+builtin_operators[ast.Mult] = "mul"
+builtin_operators[ast.Div] = "div"
+builtin_operators[ast.FloorDiv] = "div"
+builtin_operators[ast.Mod] = "mod"
+
+builtin_operators[ast.Gt] = ">"
+builtin_operators[ast.Lt] = "<"
+builtin_operators[ast.GtE] = ">="
+builtin_operators[ast.LtE] = "<="
+builtin_operators[ast.Eq] = "=="
+builtin_operators[ast.NotEq] = "!="
 
 
 class Var:
@@ -675,10 +76,14 @@ class Stmt:
 
 
 class Adjoint:
-    def __init__(adj, func, device='cpu'):
+
+
+    def __init__(adj, func, builtin_fuctions, user_functions, device='cpu'):
 
         adj.func = func
         adj.device = device
+        adj.builtin_functions = builtin_fuctions
+        adj.user_functions = user_functions
 
         adj.symbols = {}     # map from symbols to adjoint variables
         adj.variables = []   # list of local variables (in order)
@@ -766,7 +171,7 @@ class Adjoint:
 
         output = adj.add_var(inputs[0].type)
 
-        transformer = operators[op.__class__]
+        transformer = builtin_operators[op.__class__]
 
         for t in transformer.forward():
             adj.add_forward(adj.format_template(t, inputs, output))
@@ -943,7 +348,7 @@ class Adjoint:
                     if var1 != var2:
                         # insert a phi function that
                         # selects var1, var2 based on cond
-                        out = adj.add_call(functions["select"], [cond, var1, var2])
+                        out = adj.add_call(adj.builtin_functions["select"], [cond, var1, var2])
                         adj.symbols[sym] = out
 
                 return None
@@ -954,7 +359,7 @@ class Adjoint:
 
                 left = adj.eval(node.left)
                 comps = [adj.eval(comp) for comp in node.comparators]
-                op_strings = [operators[type(op)] for op in node.ops]
+                op_strings = [builtin_operators[type(op)] for op in node.ops]
 
                 out = adj.add_comp(op_strings, left, comps)
 
@@ -1006,8 +411,8 @@ class Adjoint:
                 left = adj.eval(node.left)
                 right = adj.eval(node.right)
 
-                name = operators[type(node.op)]
-                func = functions[name]
+                name = builtin_operators[type(node.op)]
+                func = adj.builtin_functions[name]
 
                 out = adj.add_call(func, [left, right])
                 return out
@@ -1071,20 +476,22 @@ class Adjoint:
 
                 name = None
 
-                # determine if call is to a builtin (attribute), or to a user-func (name)
+                # determine if call is to a builtin (e.g.: og.cos(x)), or to a free-func, e.g.: my_func(x)
                 if (isinstance(node.func, ast.Attribute)):
                     name = node.func.attr
                 elif (isinstance(node.func, ast.Name)):
                     name = node.func.id
 
-                # check it exists
-                if name not in functions:
-                    raise KeyError("Could not find function {}".format(name))
+                # built in function
+                if name in adj.builtin_functions:
+                    func = adj.builtin_functions[name]
 
-                if adj.device == 'cuda' and name in cuda_functions:
-                    func = cuda_functions[name]
+                # user-defined function in this module
+                elif name in adj.user_functions:
+                    func = adj.user_functions[name]
+
                 else:
-                    func = functions[name]
+                    raise KeyError("Could not find function {}".format(name))
 
                 args = []
 
@@ -1094,7 +501,7 @@ class Adjoint:
                     args.append(var)
 
                 # add var with value type from the function
-                out = adj.add_call(func, args, prefix=func.prefix)
+                out = adj.add_call(func, args, prefix=func.namespace)
                 return out
 
             elif (isinstance(node, ast.Subscript)):
@@ -1112,7 +519,7 @@ class Adjoint:
                     var = adj.eval(node.slice.value)
                     indices.append(var)
 
-                out = adj.add_call(functions["index"], [target, *indices])
+                out = adj.add_call(adj.builtin_functions["index"], [target, *indices])
                 return out
 
             elif (isinstance(node, ast.Assign)):
@@ -1182,12 +589,12 @@ T cast(og::array addr)
 '''
 
 cpu_function_template = '''
-{return_type} {name}_cpu_func({forward_args})
+static {return_type} {name}({forward_args})
 {{
     {forward_body}
 }}
 
-void adj_{name}_cpu_func({forward_args}, {reverse_args})
+static void adj_{name}({forward_args}, {reverse_args})
 {{
     {reverse_body}
 }}
@@ -1195,12 +602,12 @@ void adj_{name}_cpu_func({forward_args}, {reverse_args})
 '''
 
 cuda_function_template = '''
-CUDA_CALLABLE {return_type} {name}_cuda_func({forward_args})
+static CUDA_CALLABLE {return_type} {name}({forward_args})
 {{
     {forward_body}
 }}
 
-CUDA_CALLABLE void adj_{name}_cuda_func({forward_args}, {reverse_args})
+static CUDA_CALLABLE void adj_{name}({forward_args}, {reverse_args})
 {{
     {reverse_body}
 }}

@@ -57,8 +57,19 @@
 #define FP_CHECK 0
 
 
+// avoid namespacing of float type for casting to float type, this is to avoid og::float(x), which is not valid in C++
+#define float(x) cast_float(x)
+#define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
+
 namespace og
 {
+
+template <typename T>
+float cast_float(T x) { return (float)(x); }
+
+template <typename T>
+void adj_cast_float(T x, T& adj_x, float adj_ret) { adj_x += adj_ret; }
+
 
 // 64bit address for an array
 typedef uint64_t array;
@@ -79,12 +90,19 @@ inline CUDA_CALLABLE int div(int a, int b) { return a/b; }
 inline CUDA_CALLABLE int add(int a, int b) { return a+b; }
 inline CUDA_CALLABLE int sub(int a, int b) { return a-b; }
 inline CUDA_CALLABLE int mod(int a, int b) { return a % b; }
+inline CUDA_CALLABLE int min(int a, int b) { return a<b?a:b; }
+inline CUDA_CALLABLE int max(int a, int b) { return a>b?a:b; }
+inline CUDA_CALLABLE int clamp(int x, int a, int b) { return min(max(a, x), b); }
 
 inline CUDA_CALLABLE void adj_mul(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_div(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_add(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_sub(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_mod(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
+inline CUDA_CALLABLE void adj_min(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
+inline CUDA_CALLABLE void adj_max(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
+inline CUDA_CALLABLE void adj_clamp(int x, int a, int b, int& adj_x, int& adj_a, int& adj_b, int adj_ret) { }
+
 
 // basic ops for float types
 inline CUDA_CALLABLE float mul(float a, float b) { return a*b; }
