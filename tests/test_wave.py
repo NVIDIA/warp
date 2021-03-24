@@ -7,82 +7,11 @@ import ctypes
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
-import oglang as og
-
 from pxr import Usd, UsdGeom, Gf, Sdf
 
 
-# inline __device__ float Fetch(cudaTextureObject_t grid, int x, int y, int pitch)
-# {
-# 	const int coord = y*pitch + x;
+import oglang as og
 
-# 	return tex1ogetch<float>(grid, coord);
-# }
-
-# inline __device__ float Laplacian(cudaTextureObject_t g, int x, int y, int pitch)
-# {
-# 	float ddx = Fetch(g, x+1, y, pitch) - 2.0f*Fetch(g, x,y, pitch) + Fetch(g, x-1, y, pitch);
-# 	float ddy = Fetch(g, x, y+1, pitch) - 2.0f*Fetch(g, x,y, pitch) + Fetch(g, x, y-1, pitch);
-	
-# 	return (ddx + ddy);
-# }
-
-# __global__ void RippleAdd(int width, int height, int cx, int cy, float amplitude, float spread, float* current, float* previous, const int* mask)
-# {
-# 	const int tid = threadIdx.x + blockIdx.x*blockDim.x;
-	
-# 	const int x = tid%width;
-# 	const int y = tid/width;
-
-# 	if (y < height)
-# 	{
-# 		// solid boundaries
-# 		if (mask[tid]&0x000000ff != 0)
-# 			return;
-
-# 		int dx = x-cx;
-# 		int dy = y-cy;
-		
-# 		float dSq = dx*dx + dy*dy;
-
-# 		if (dSq < spread*spread)
-# 		{
-# 			const float v0 = current[tid];
-
-# 			const float v = Lerp(v0, amplitude*SmoothStep(0.0f, 1.0f, 1.0f-sqrtf(dSq)/spread), 0.9f);
-			
-# 			current[tid] = v;
-# 			previous[tid] = v;
-# 		}
-# 	}
-# }
-
-# __global__ void RippleSolve(int width, int height, cudaTextureObject_t hcurrent, cudaTextureObject_t hprevious, const int* mask, float* hnew, float kspeed, float kdamp, float dt)
-# {
-# 	const int tid = threadIdx.x + blockIdx.x*blockDim.x;
-	
-# 	const int x = tid%width;
-# 	const int y = tid/width;
-
-# 	if (y < height)
-# 	{
-# 		// solid boundaries
-# 		if (mask[tid]&0x000000ff != 0)
-# 			return;
-
-# 		// calculate the laplacian of height for each cell
-# 		const float laplacian = Laplacian(hcurrent, x, y, width);
-
-# 		// integrate 
-# 		const float h1 = tex1ogetch<float>(hcurrent, tid);
-# 		const float h0 = tex1ogetch<float>(hprevious, tid);
-		
-# 		const float h = (2.0f*h1 - h0 + kspeed*laplacian - kdamp*(h1-h0));
-
-# 		hnew[tid] = h;
-# 	}
-# }
 
 @og.func
 def sample(f: og.array(float),
@@ -125,8 +54,8 @@ def wave_displace(hcurrent: og.array(float),
                   hprevious: og.array(float),
                   width: int,
                   height: int,
-                  center_x: int,
-                  center_y: int,
+                  center_x: float,
+                  center_y: float,
                   r: float,
                   mag: float,
                   t: float):
@@ -136,8 +65,8 @@ def wave_displace(hcurrent: og.array(float),
     x = tid%width
     y = tid//width
 
-    dx = x - center_x
-    dy = y - center_y
+    dx = float(x) - center_x
+    dy = float(y) - center_y
 
     dist_sq = float(dx*dx + dy*dy)
 
@@ -204,13 +133,36 @@ vertices = []
 indices = []
 counts = []
 
+def add_sphere(stage, pos: tuple, radius: float, time: float=0.0):
+    """Debug helper to add a sphere for visualization
+    
+    Args:
+        pos: The position of the sphere
+        radius: The radius of the sphere
+        name: A name for the USD prim on the stage
+    """
+
+    sphere_path = "/sphere"
+    sphere = UsdGeom.Sphere.Get(stage, sphere_path)
+    if not sphere:
+        sphere = UsdGeom.Sphere.Define(stage, sphere_path)
+    
+    sphere.GetRadiusAttr().Set(radius, time)
+
+    mat = Gf.Matrix4d()
+    mat.SetIdentity()
+    mat.SetTranslateOnly(Gf.Vec3d(pos))
+
+    op = sphere.MakeMatrixXform()
+    op.Set(mat, time)
+
 def grid_index(x, y, stride):
     return y*stride + x
 
 for z in range(sim_height):
     for x in range(sim_width):
 
-        pos = Gf.Vec3f(float(x)*grid_size, 0.0, float(z)*grid_size) - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
+        pos = Gf.Vec3f(float(x)*grid_size, 0.0, float(z)*grid_size)# - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
 
         vertices.append(pos)
             
@@ -251,7 +203,7 @@ for i in range(sim_frames):
         context.launch(
             kernel=wave_displace, 
             dim=sim_width*sim_height, 
-            inputs=[sim_grid0, sim_grid1, sim_width, sim_height, int(cx), int(cy), 10.0, 0.5, sim_time*2.0], 
+            inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, 0.5, -math.pi*0.5],   #sim_time*0.0
             outputs=[])
 
 
@@ -274,9 +226,11 @@ for i in range(sim_frames):
     # render
     for v in range(sim_width*sim_height):
         vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
-        
 
     grid.GetPointsAttr().Set(vertices, sim_time*sim_fps)
+
+    add_sphere(stage, (cx*grid_size, 0.0, cy*grid_size), 10.0*grid_size, sim_time*sim_fps)
+
 
 
 stage.Save()
