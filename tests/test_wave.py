@@ -95,6 +95,21 @@ def wave_solve(hprevious: og.array(float),
     og.store(hprevious, tid, h)
 
 
+# simple kernel to apply height deltas to a vertex array
+@og.kernel
+def grid_update(heights: og.array(float),
+                vertices: og.array(og.float3)):
+
+    tid = og.tid()
+
+    h = og.load(heights, tid)
+    v = og.load(vertices, tid)
+
+    v_new = og.float3(v[0], h, v[2])
+
+    og.store(vertices, tid, v_new)
+
+
 # params
 sim_width = 128
 sim_height = 128
@@ -120,7 +135,17 @@ grid = UsdGeom.Mesh.Define(stage, "/root")
 grid_size = 0.1
 grid_displace = 0.5
 
-vertices = []
+# simulation context
+context = og.Context("cuda")
+
+# simulation grids
+sim_grid0 = context.zeros(sim_width*sim_height, dtype=float, device="cuda")
+sim_grid1 = context.zeros(sim_width*sim_height, dtype=float, device="cuda")
+
+sim_host = context.zeros(sim_width*sim_height, dtype=float, device="cpu")
+verts_host = context.zeros(sim_width*sim_height, dtype=og.float3, device="cpu")
+
+vertices = verts_host.numpy().reshape((sim_width*sim_height, 3))
 indices = []
 counts = []
 
@@ -155,7 +180,7 @@ for z in range(sim_height):
 
         pos = Gf.Vec3f(float(x)*grid_size, 0.0, float(z)*grid_size)# - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
 
-        vertices.append(pos)
+        vertices[z*sim_width + x] = pos#append(pos)
             
         if (x > 0 and z > 0):
             
@@ -174,14 +199,7 @@ grid.GetPointsAttr().Set(vertices, 0.0)
 grid.GetFaceVertexIndicesAttr().Set(indices, 0.0)
 grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
 
-# simulation context
-context = og.Context("cuda")
 
-# simulation grids
-sim_grid0 = context.zeros(sim_width*sim_height, dtype=float, device="cuda")
-sim_grid1 = context.zeros(sim_width*sim_height, dtype=float, device="cuda")
-
-sim_host = context.zeros(sim_width*sim_height, dtype=float, device="cpu")
 
 for i in range(sim_frames):
 
@@ -191,7 +209,6 @@ for i in range(sim_frames):
         for s in range(sim_substeps):
 
             #create surface displacment around a point
-
             cx = sim_width/2 + math.sin(sim_time)*sim_width/3
             cy = sim_height/2 + math.cos(sim_time)*sim_height/3
 
@@ -199,7 +216,8 @@ for i in range(sim_frames):
                 kernel=wave_displace, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],  
-                outputs=[])
+                outputs=[],
+                device="cuda")
 
 
             # integrate wave equation
@@ -207,7 +225,8 @@ for i in range(sim_frames):
                 kernel=wave_solve, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
-                outputs=[])
+                outputs=[],
+                device="cuda")
 
             # swap grids
             (sim_grid0, sim_grid1) = (sim_grid1, sim_grid0)
@@ -222,14 +241,26 @@ for i in range(sim_frames):
     # render
     with tests.util.ScopedTimer("Render"):
 
-        sim_view = sim_host.numpy()
+        # update vertices (CPU)
+        with tests.util.ScopedTimer("Mesh"):
+            
+            context.launch(kernel=grid_update,
+                        dim=sim_width*sim_height,
+                        inputs=[sim_host, verts_host],
+                        outputs=[],
+                        device="cpu")
 
         # render
-        with tests.util.ScopedTimer("Mesh"):
-            for v in range(sim_width*sim_height):
-                vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
+        # sim_vew = sim_grid0.numpy()
+
+        # with tests.util.ScopedTimer("Mesh"):
+        #     for v in range(sim_width*sim_height):
+        #         vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
 
         with tests.util.ScopedTimer("Usd"):
+            
+            vertices = verts_host.numpy()
+
             grid.GetPointsAttr().Set(vertices, sim_time*sim_fps)
 
             add_sphere(stage, (cx*grid_size, 0.0, cy*grid_size), 10.0*grid_size, sim_time*sim_fps)

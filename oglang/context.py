@@ -1018,7 +1018,7 @@ class Context:
     def zeros(self, n, dtype=float, device="cpu"):
     
         # todo size-computation for concrete types
-        num_bytes = n*4
+        num_bytes = n*oglang.types.type_size_in_bytes(dtype)
 
         if (device == "cpu"):
             ptr = self.alloc_host(num_bytes) 
@@ -1039,7 +1039,7 @@ class Context:
                 print("CUDA error")
 
 
-    def launch(self, kernel, dim, inputs, outputs):
+    def launch(self, kernel, dim, inputs, outputs, device="cpu"):
 
         if (dim > 0):
 
@@ -1066,9 +1066,9 @@ class Context:
                     print("Unknown parameter type")
 
             # run kernel
-            if self.device == 'cpu':
+            if device == 'cpu':
                 kernel.forward_cpu(*params)
-            elif self.device.startswith('cuda'):
+            elif device.startswith('cuda'):
                 kernel.forward_cuda(*params)
 
         
