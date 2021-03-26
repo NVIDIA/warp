@@ -418,7 +418,7 @@ class ScopedTimer:
             for i in range(ScopedTimer.indent):
                 indent += "\t"
 
-            log("{}{} took {:.2f} ms".format(indent, self.name, elapsed))
+            print("{}{} took {:.2f} ms".format(indent, self.name, elapsed))
 
             ScopedTimer.indent -= 1
 

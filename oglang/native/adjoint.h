@@ -65,20 +65,20 @@ namespace og
 {
 
 template <typename T>
-float cast_float(T x) { return (float)(x); }
+CUDA_CALLABLE float cast_float(T x) { return (float)(x); }
 
 template <typename T>
-void adj_cast_float(T x, T& adj_x, float adj_ret) { adj_x += adj_ret; }
+CUDA_CALLABLE void adj_cast_float(T x, T& adj_x, float adj_ret) { adj_x += adj_ret; }
 
 
 // 64bit address for an array
 typedef uint64_t array;
 
 template <typename T>
-T cast(og::array addr)
-{{
+__host__ __device__ T cast(og::array addr)
+{
     return (T)(addr);
-}}
+}
 
 
 #define kEps 0.0f
@@ -119,7 +119,7 @@ inline CUDA_CALLABLE float sign(float x) { return x < 0.0 ? -1.0 : 1.0; }
 inline CUDA_CALLABLE float abs(float x) { return fabsf(x); }
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0 ? 0.0 : 1.0; }
 
-inline CUDA_CALLABLE float acos(float x) { return std::acos(std::min(std::max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float acos(float x) { return std::acos(min(max(x, -1.0f), 1.0f)); }
 inline CUDA_CALLABLE float sin(float x) { return std::sin(x); }
 inline CUDA_CALLABLE float cos(float x) { return std::cos(x); }
 inline CUDA_CALLABLE float sqrt(float x) { return std::sqrt(x); }

@@ -11,7 +11,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 
 import oglang as og
-
+import tests.util
 
 @og.func
 def sample(f: og.array(float),
@@ -175,52 +175,64 @@ grid.GetFaceVertexIndicesAttr().Set(indices, 0.0)
 grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
 
 # simulation context
-context = og.Context("cpu")
+context = og.Context("cuda")
 
 # simulation grids
-sim_grid0 = context.zeros(sim_width*sim_height, dtype=float)
-sim_grid1 = context.zeros(sim_width*sim_height, dtype=float)
+sim_grid0 = context.zeros(sim_width*sim_height, dtype=float, device="cuda")
+sim_grid1 = context.zeros(sim_width*sim_height, dtype=float, device="cuda")
+
+sim_host = context.zeros(sim_width*sim_height, dtype=float, device="cpu")
 
 for i in range(sim_frames):
 
     # simulate
-    for s in range(sim_substeps):
+    with tests.util.ScopedTimer("Simulate"):
 
-        #create surface displacment around a point
+        for s in range(sim_substeps):
 
-        cx = sim_width/2 + math.sin(sim_time)*sim_width/3
-        cy = sim_height/2 + math.cos(sim_time)*sim_height/3
+            #create surface displacment around a point
 
-        context.launch(
-            kernel=wave_displace, 
-            dim=sim_width*sim_height, 
-            inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],   #sim_time*0.0
-            outputs=[])
+            cx = sim_width/2 + math.sin(sim_time)*sim_width/3
+            cy = sim_height/2 + math.cos(sim_time)*sim_height/3
 
-
-        # integrate wave equation
-        context.launch(
-            kernel=wave_solve, 
-            dim=sim_width*sim_height, 
-            inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
-            outputs=[])
-
-        # swap grids
-        (sim_grid0, sim_grid1) = (sim_grid1, sim_grid0)
-
-        sim_time += sim_dt
+            context.launch(
+                kernel=wave_displace, 
+                dim=sim_width*sim_height, 
+                inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],  
+                outputs=[])
 
 
-    # numpy view onto sim data
-    sim_view = sim_grid0.numpy()
+            # integrate wave equation
+            context.launch(
+                kernel=wave_solve, 
+                dim=sim_width*sim_height, 
+                inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
+                outputs=[])
+
+            # swap grids
+            (sim_grid0, sim_grid1) = (sim_grid1, sim_grid0)
+
+            sim_time += sim_dt
+
+
+        # copy data back to host
+        context.copy(sim_grid0, sim_host)
+        context.synchronize()
 
     # render
-    for v in range(sim_width*sim_height):
-        vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
+    with tests.util.ScopedTimer("Render"):
 
-    grid.GetPointsAttr().Set(vertices, sim_time*sim_fps)
+        sim_view = sim_host.numpy()
 
-    add_sphere(stage, (cx*grid_size, 0.0, cy*grid_size), 10.0*grid_size, sim_time*sim_fps)
+        # render
+        with tests.util.ScopedTimer("Mesh"):
+            for v in range(sim_width*sim_height):
+                vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
+
+        with tests.util.ScopedTimer("Usd"):
+            grid.GetPointsAttr().Set(vertices, sim_time*sim_fps)
+
+            add_sphere(stage, (cx*grid_size, 0.0, cy*grid_size), 10.0*grid_size, sim_time*sim_fps)
 
 
 

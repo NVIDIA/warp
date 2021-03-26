@@ -61,10 +61,12 @@ class void:
 
 class array:
 
-    def __init__(self, type, length=None, data=None, context=None, owner=True):
+    def __init__(self, type, length=0, capacity=0, data=None, device=None, context=None, owner=True):
         self.length = length
+        self.capacity = capacity
         self.type = type
         self.data = data
+        self.device = device
         self.context = context
         self.owner = owner
 
@@ -76,11 +78,18 @@ class array:
 
 
     def numpy(self):
-        if (self.context.device == "cpu"):
+        if (self.device == "cpu"):
             ptr_type = ctypes.POINTER(ctypes.c_float)
             ptr = ctypes.cast(self.data, ptr_type)
 
             view = np.ctypeslib.as_array(ptr,shape=(self.length,))
             return view
         else:
-            print("Cannot view CUDA array")
+            print("Cannot convert CUDA array to numpy, copy to a device array")
+
+
+    def to(self, device):
+        if (self.device == device):
+            return self
+        else:
+            return self.context.copy(self, device)

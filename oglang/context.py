@@ -1,5 +1,6 @@
 import math
 import os
+import sys
 import imp
 import subprocess
 import timeit
@@ -11,7 +12,7 @@ from ctypes import*
 from oglang.types import *
 
 import oglang.codegen
-
+import oglang.cuda
 
 class ScopedTimer:
 
@@ -76,6 +77,15 @@ def set_build_env():
             if (len(pair) >= 2):
                 os.environ[pair[0]] = pair[1]
 
+
+
+# See PyTorch for reference on how to find nvcc.exe more robustly, https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
+def find_cuda():
+    
+    # Guess #1
+    cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
+    return cuda_home
+    
 
 
 
@@ -701,7 +711,7 @@ class Module:
 
     def load(self):
 
-        use_cuda = False
+        use_cuda = True
         if not use_cuda:
             print("[INFO] CUDA support not found. Disabling CUDA kernel compilation.")
 
@@ -777,8 +787,12 @@ class Module:
         cache_path = build_path + "/" + module_name + ".gen"
         
         cpp_path = build_path + "/" + module_name + ".cpp"
-        cu_path = build_path + "/" + module_name + ".ccu"
-        dll_path = build_path + "/" + module_name + ".dll"
+        cu_path = build_path + "/" + module_name + ".cu"
+
+        if (os.name == "nt"):
+            dll_path = build_path + "/" + module_name + ".dll"
+        else:
+            dll_path = build_path + "/" + module_name + ".so"
 
         if (os.path.exists(build_path) == False):
             os.mkdir(build_path)
@@ -820,40 +834,77 @@ class Module:
 
         set_build_env()
 
-        # debug config
-        #module = torch.utils.cpp_extension.load_inline('kernels', [cpp_source], None, entry_points, extra_cflags=["/Zi", "/Od"], extra_loglags=["/DEBUG"], build_directory=build_path, extra_include_paths=[include_path], verbose=True)
+        cuda_home = find_cuda()
+        cuda_cmd = None
 
-        if os.name == 'nt':
-            cxx = "cl"
-            nvcc = "nvcc"
-            link = "link"
+        if (cuda_home):
+            #cuda_cmd = "{cuda_home}/bin/nvcc -O0 -line-info -g -G -gencode=arch=compute_35,code=compute_35 -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+            cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
 
-            cpp_flags = "/Ox -DNDEBUG /fp:fast"
-            ld_flags = "-DNDEBUG"
+        try:
+            if os.name == 'nt':
 
-    #        cpp_flags = ["/Zi", "/Od", "/DEBUG"]
-    #        ld_flags = ["/DEBUG"]
-        else:
-            cxx = "gcc"
-            nvcc = "nvcc"
-            link = "gcc"
+                cpp_out = cpp_path + ".obj"
+                cu_out = cu_path + ".o"
 
-            cpp_flags = "-Z", "-O2", "-DNDEBUG"
-            ld_flags = "-DNDEBUG"
+                cpp_flags = "/Ox -DNDEBUG /fp:fast"
+                ld_flags = "-DNDEBUG /dll"
+                ld_inputs = []
 
-        # just use minimum to ensure compatability
-        cuda_flags = ['-gencode=arch=compute_35,code=compute_35']
+                # cpp_flags = "/Zi /Od /DEBUG"
+                # ld_flags = "/DEBUG /dll"
+
+                with ScopedTimer("build"):
+                    cpp_cmd = "cl.exe {cflags} -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
+                    print(cpp_cmd)
+                    err = subprocess.call(cpp_cmd)
+
+                    if (err == False):
+                        ld_inputs.append(cpp_out)
+                    else:
+                        raise RuntimeError("cpp build failed")
+
+                
+                if (cuda_cmd):
+                    with ScopedTimer("build_cuda"):
+                        print(cuda_cmd)
+                        err = subprocess.call(cuda_cmd)
+
+                        if (err == False):
+                            ld_inputs.append(cu_out)
+                        else:
+                            raise RuntimeError("cuda build failed")
 
 
-        with ScopedTimer("build"):
-            build_cmd = "cl.exe {cflags} -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
-            print(build_cmd)
-            subprocess.call(build_cmd)
+                with ScopedTimer("link"):
+                    link_cmd = 'link.exe {inputs} cudart.lib {flags} /LIBPATH:"{cuda_home}/lib/x64" /out:{dll_path}'.format(inputs=' '.join(ld_inputs), cuda_home=cuda_home, flags=ld_flags, dll_path=dll_path)
+                    print(link_cmd)
 
-        with ScopedTimer("link"):
-            link_cmd = "link.exe {cpp_path}.obj /dll /out:{dll_path}".format(cpp_path=cpp_path, dll_path=dll_path)
-            print(link_cmd)
-            subprocess.call(link_cmd)
+                    err = subprocess.call(link_cmd)
+                    if (err):
+                        raise RuntimeError("Link failed")                    
+
+                
+            else:
+
+                cpp_flags = "-Z -O2 -DNDEBUG --std=c++11"
+                ld_flags = "-DNDEBUG"           
+
+                with ScopedTimer("build"):
+                    build_cmd = "g++ {cflags} -c -o {cpp_path}.o {cpp_path}".format(cflags=cpp_flags, cpp_path=cpp_path)
+                    print(build_cmd)
+                    subprocess.call(build_cmd, shell=True)
+
+                with ScopedTimer("link"):
+                    link_cmd = "g++ -shared -o {dll_path} {cpp_path}.o".format(cpp_path=cpp_path, dll_path=dll_path)
+                    print(link_cmd)
+                    subprocess.call(link_cmd, shell=True)
+
+        except Exception as e:
+
+            # print error 
+            print("Build failed, using cached binaries (if available")
+            print(e)
 
        
         self.dll = cdll.LoadLibrary(dll_path)
@@ -879,39 +930,113 @@ class Context:
         
         self.device = device
 
-    def alloc(self, num_bytes):
-        dll = CDLL('msvcrt')
-        dll.malloc.restype = c_void_p
-        ptr = dll.malloc(num_bytes)
+        if (sys.platform.startswith("linux")):
+            self.crt = CDLL("libc.so.6")
+        elif (sys.platform.startswith("win32")):
+            self.crt = CDLL("msvcrt")
+        elif (sys.platform.startswith("darwin")):
+            self.crt = CDLL("libc.dylib")
+        else:
+            print("Unknown platform")
+
+        if (oglang.cuda.cuda):
+
+            oglang.cuda.cuInit(0)
+
+            self.cuda_device = c_long(0)
+            ret = oglang.cuda.cuDeviceGet(byref(self.cuda_device), 0)
+
+            self.cuda_context = c_void_p()
+            #ret = oglang.cuda.cuCtxCreate(byref(self.cuda_context), 0, self.cuda_device)
+            ret = oglang.cuda.cuDevicePrimaryCtxRetain(byref(self.cuda_context), self.cuda_device)
+            ret = oglang.cuda.cuCtxPushCurrent(self.cuda_context)
+            ret = oglang.cuda.cuCtxAttach(byref(self.cuda_context), 0)
+
+            flags = c_uint(0)
+            active = c_int(0)
+
+            ret = oglang.cuda.cuDevicePrimaryCtxGetState(self.cuda_device, byref(flags), byref(active))
+
+            current = c_void_p()
+            ret = oglang.cuda.cuCtxGetCurrent(byref(current))
+
+            ver = c_uint(0)
+            ret = oglang.cuda.cuCtxGetApiVersion(current, byref(ver))
+
+            ver0 = c_uint(0)
+            ret = oglang.cuda.cuCtxGetApiVersion(c_void_p(), byref(ver0))
+
+            print(ret)
+
+
+    # host functions
+    def alloc_host(self, num_bytes):
+        self.crt.malloc.restype = c_void_p
+        ptr = self.crt.malloc(num_bytes)
         
         # always clear
-        dll.memset(cast(ptr,POINTER(c_int)), 0, num_bytes)
-        
+        self.crt.memset(cast(ptr,POINTER(c_int)), 0, num_bytes)
         return ptr
 
-    def free(self, ptr):
-        dll = CDLL('msvcrt')
-        dll.free(cast(ptr,POINTER(c_int)))
+    def free_host(self, ptr):
+        self.crt.free(cast(ptr,POINTER(c_int)))
+
+
+    # device functions
+    def alloc_device(self, num_bytes):
+
+        current = c_void_p()
+        oglang.cuda.cuCtxGetCurrent(byref(current))
+
+        ptr = c_void_p(0)
+        ret = oglang.cuda.cuMemAlloc(byref(ptr), c_size_t(num_bytes))
+        ret = oglang.cuda.cuMemsetD32Async(byref(self.cuda_device), c_uint(0), c_size_t(num_bytes), c_void_p(0))
+
+        return ptr.value
+
+
+    def free_device(self, ptr):
+
+        ptr = c_void_p(0)
+        oglang.cuda.cuMemFree(ptr)
 
     def wrap(self, n, dtype, data_ptr):
         pass
 
-    def empty(self, n, dtype=float):
+    def copy(self, src, dest):
+
+        if (src.device == "cpu" and dest.device == "cuda"):
+            oglang.cuda.cuMemcpyHtoDAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
+
+        elif (src.device == "cuda" and dest.device == "cpu"):
+            oglang.cuda.cuMemcpyDtoHAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
+        
+ 
+    def empty(self, n, dtype=float, device="cpu"):
         pass
 
-    def zeros(self, n, dtype=float):
-
-        # todo concrete builtin types
-        ptr = self.alloc(n*4) 
-
-        return oglang.types.array(dtype, length=n, data=ptr, context=self, owner=True)
-
-
-    def empty_like(self, array):
-        pass
+    def zeros(self, n, dtype=float, device="cpu"):
     
-    def zeros_like(self, array):
-        pass
+        # todo size-computation for concrete types
+        num_bytes = n*4
+
+        if (device == "cpu"):
+            ptr = self.alloc_host(num_bytes) 
+        if( device == "cuda"):
+            ptr = self.alloc_device(num_bytes)
+
+        if (ptr == None):
+            raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
+        else:
+            return oglang.codegen.array(dtype, length=n, capacity=num_bytes, data=ptr, context=self, device=device, owner=True)
+
+
+    def synchronize(self):
+
+        if (oglang.cuda):
+            ret = oglang.cuda.cuCtxSynchronize(c_void_p(0))
+            if (ret != 0):
+                print("CUDA error")
 
 
     def launch(self, kernel, dim, inputs, outputs):

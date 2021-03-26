@@ -580,12 +580,6 @@ cuda_module_header = '''
 
 using namespace og;
 
-template <typename T>
-T cast(og::array addr)
-{{
-    return (T)(addr);
-}}
-
 '''
 
 cpu_function_template = '''
@@ -644,22 +638,26 @@ void {name}_cpu_kernel_backward({forward_args}, {reverse_args})
 
 cuda_module_template = '''
 
+extern "C" {{
+
 // Python entry points
 OG_API void {name}_cuda_forward(int dim, {forward_args})
 {{
     {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256>>>(dim, {forward_params});
 
-    //check_cuda(cudaPeekAtLastError());
-    //check_cuda(cudaDeviceSynchronize());
+    check_cuda(cudaPeekAtLastError());
+    check_cuda(cudaDeviceSynchronize());
 }}
 
 OG_API void {name}_cuda_backward(int dim, {forward_args}, {reverse_args})
 {{
     {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256>>>(dim, {forward_params}, {reverse_params});
 
-    //check_cuda(cudaPeekAtLastError());
-    //check_cuda(cudaDeviceSynchronize());
+    check_cuda(cudaPeekAtLastError());
+    check_cuda(cudaDeviceSynchronize());
 }}
+
+}} // extern C
 
 '''
 
