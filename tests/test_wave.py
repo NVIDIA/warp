@@ -11,7 +11,6 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 
 import oglang as og
-import tests.util
 
 @og.func
 def sample(f: og.array(float),
@@ -136,14 +135,14 @@ grid_size = 0.1
 grid_displace = 0.5
 
 # simulation context
-context = og.Context("cuda")
+#context = og.Context("cuda")
 
 # simulation grids
-sim_grid0 = context.zeros(sim_width*sim_height, dtype=float, device="cuda")
-sim_grid1 = context.zeros(sim_width*sim_height, dtype=float, device="cuda")
+sim_grid0 = og.zeros(sim_width*sim_height, dtype=float, device="cuda")
+sim_grid1 = og.zeros(sim_width*sim_height, dtype=float, device="cuda")
 
-sim_host = context.zeros(sim_width*sim_height, dtype=float, device="cpu")
-verts_host = context.zeros(sim_width*sim_height, dtype=og.float3, device="cpu")
+sim_host = og.zeros(sim_width*sim_height, dtype=float, device="cpu")
+verts_host = og.zeros(sim_width*sim_height, dtype=og.float3, device="cpu")
 
 vertices = verts_host.numpy().reshape((sim_width*sim_height, 3))
 indices = []
@@ -178,7 +177,7 @@ def grid_index(x, y, stride):
 for z in range(sim_height):
     for x in range(sim_width):
 
-        pos = Gf.Vec3f(float(x)*grid_size, 0.0, float(z)*grid_size)# - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
+        pos = (float(x)*grid_size, 0.0, float(z)*grid_size)# - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
 
         vertices[z*sim_width + x] = pos#append(pos)
             
@@ -204,7 +203,7 @@ grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
 for i in range(sim_frames):
 
     # simulate
-    with tests.util.ScopedTimer("Simulate"):
+    with og.ScopedTimer("Simulate"):
 
         for s in range(sim_substeps):
 
@@ -212,7 +211,7 @@ for i in range(sim_frames):
             cx = sim_width/2 + math.sin(sim_time)*sim_width/3
             cy = sim_height/2 + math.cos(sim_time)*sim_height/3
 
-            context.launch(
+            og.launch(
                 kernel=wave_displace, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],  
@@ -221,7 +220,7 @@ for i in range(sim_frames):
 
 
             # integrate wave equation
-            context.launch(
+            og.launch(
                 kernel=wave_solve, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
@@ -235,16 +234,16 @@ for i in range(sim_frames):
 
 
         # copy data back to host
-        context.copy(sim_grid0, sim_host)
-        context.synchronize()
+        og.copy(sim_grid0, sim_host)
+        og.synchronize()
 
     # render
-    with tests.util.ScopedTimer("Render"):
+    with og.ScopedTimer("Render"):
 
         # update vertices (CPU)
-        with tests.util.ScopedTimer("Mesh"):
-            
-            context.launch(kernel=grid_update,
+        with og.ScopedTimer("Mesh"):
+
+            og.launch(kernel=grid_update,
                         dim=sim_width*sim_height,
                         inputs=[sim_host, verts_host],
                         outputs=[],
@@ -257,7 +256,7 @@ for i in range(sim_frames):
         #     for v in range(sim_width*sim_height):
         #         vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
 
-        with tests.util.ScopedTimer("Usd"):
+        with og.ScopedTimer("Usd"):
             
             vertices = verts_host.numpy()
 

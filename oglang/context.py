@@ -106,16 +106,25 @@ class Function:
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
     
-    def __init__(self, func, module):
+    def __init__(self, func, key, module):
 
         self.func = func
         self.module = module
+        self.key = key
+
+        self.forward_cpu = None
+        self.backward_cpu = None
+        
+        self.forward_cuda = None
+        self.backward_cuda = None
 
         if (module):
             module.register_kernel(self)
 
     # cache entry points based on name, called after compilation / module load
-    def hook(self, dll):
+    def hook(self):
+
+        dll = self.module.dll
 
         try:
             self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
@@ -144,7 +153,7 @@ def func(f):
 def kernel(f):
 
     m = get_module(f.__module__)
-    k = Kernel(func=f, module=m)
+    k = Kernel(func=f, key=f.__name__, module=m)
 
     return k
 
@@ -698,13 +707,13 @@ class Module:
     def __init__(self, name):
 
         self.name = name
-        self.kernels = []
+        self.kernels = {}
         self.functions = {}
 
         self.dll = None
 
     def register_kernel(self, kernel):
-        self.kernels.append(kernel)
+        self.kernels[kernel.key] = kernel
 
     def register_function(self, func):
         self.functions[func.key] = func
@@ -758,7 +767,7 @@ class Module:
 
             # cuda_functions[func.__name__] = CUDAFunc
 
-        for kernel in self.kernels:
+        for kernel in self.kernels.values():
 
             if use_cuda:
                 # each kernel gets an entry point in the module
@@ -808,11 +817,6 @@ class Module:
             if (cache_string == cpp_source):
                 print("Using cached kernels")
                 self.dll = cdll.LoadLibrary(dll_path)
-
-                # register kernel methods
-                for k in self.kernels:
-                    k.hook(self.dll)
-
                 return
 
 
@@ -914,22 +918,16 @@ class Module:
         f.write(cpp_source)
         f.close()
 
-        # register kernel methods
-        for k in self.kernels:
-            k.hook(self.dll)
-
 
 #-------------------------------------------
 # exectution context
 from ctypes import *
 
 
-class Context:
+class Runtime:
 
-    def __init__(self, device="cpu"):
+    def __init__(self):
         
-        self.device = device
-
         if (sys.platform.startswith("linux")):
             self.crt = CDLL("libc.so.6")
         elif (sys.platform.startswith("win32")):
@@ -1000,75 +998,82 @@ class Context:
         ptr = c_void_p(0)
         oglang.cuda.cuMemFree(ptr)
 
-    def wrap(self, n, dtype, data_ptr):
-        pass
 
-    def copy(self, src, dest):
+runtime = Runtime()
 
-        if (src.device == "cpu" and dest.device == "cuda"):
-            oglang.cuda.cuMemcpyHtoDAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
 
-        elif (src.device == "cuda" and dest.device == "cpu"):
-            oglang.cuda.cuMemcpyDtoHAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
-        
- 
-    def empty(self, n, dtype=float, device="cpu"):
-        pass
+# global entry points methods
 
-    def zeros(self, n, dtype=float, device="cpu"):
+def copy(src, dest):
+
+    if (src.device == "cpu" and dest.device == "cuda"):
+        oglang.cuda.cuMemcpyHtoDAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
+
+    elif (src.device == "cuda" and dest.device == "cpu"):
+        oglang.cuda.cuMemcpyDtoHAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
     
-        # todo size-computation for concrete types
-        num_bytes = n*oglang.types.type_size_in_bytes(dtype)
 
-        if (device == "cpu"):
-            ptr = self.alloc_host(num_bytes) 
-        if( device == "cuda"):
-            ptr = self.alloc_device(num_bytes)
+def empty(n, dtype=float, device="cpu"):
+    pass
 
-        if (ptr == None):
-            raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
-        else:
-            return oglang.codegen.array(dtype, length=n, capacity=num_bytes, data=ptr, context=self, device=device, owner=True)
+def zeros(n, dtype=float, device="cpu"):
 
+    # todo size-computation for concrete types
+    num_bytes = n*oglang.types.type_size_in_bytes(dtype)
 
-    def synchronize(self):
+    if (device == "cpu"):
+        ptr = runtime.alloc_host(num_bytes) 
+    if( device == "cuda"):
+        ptr = runtime.alloc_device(num_bytes)
 
-        if (oglang.cuda):
-            ret = oglang.cuda.cuCtxSynchronize(c_void_p(0))
-            if (ret != 0):
-                print("CUDA error")
+    if (ptr == None):
+        raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
+    else:
+        return oglang.codegen.array(dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
 
 
-    def launch(self, kernel, dim, inputs, outputs, device="cpu"):
+def synchronize():
 
-        if (dim > 0):
+    if (oglang.cuda):
+        ret = oglang.cuda.cuCtxSynchronize(c_void_p(0))
+        if (ret != 0):
+            print("CUDA error")
 
-            # delay load modules
-            if (kernel.module.dll == None):
 
-                with ScopedTimer("Module load"):
-                    kernel.module.load()
+def launch(kernel, dim, inputs, outputs, device="cpu"):
 
-            # build params
-            params = [dim]
+    if (dim > 0):
 
-            # todo: verify argument types against the kernel definition, perform automatic conversion for simple types
+        # delay load modules
+        if (kernel.module.dll == None):
 
-            for i in inputs:
-                if type(i) is oglang.types.array:
-                    params.append(c_int64(i.data))
-                elif type(i) is int:
-                    params.append(c_int32(i))
-                elif type(i) is float:
-                    params.append(c_float(i))
-                else:
-                    # todo: add support for other built-types as kernel arguments (float3, quat, etc)
-                    print("Unknown parameter type")
+            with ScopedTimer("Module load"):
+                kernel.module.load()
 
-            # run kernel
-            if device == 'cpu':
-                kernel.forward_cpu(*params)
-            elif device.startswith('cuda'):
-                kernel.forward_cuda(*params)
+        # build params
+        params = [dim]
 
-        
+        # todo: verify argument types against the kernel definition, perform automatic conversion for simple types
+
+        for i in inputs:
+            if type(i) is oglang.types.array:
+                params.append(c_int64(i.data))
+            elif type(i) is int:
+                params.append(c_int32(i))
+            elif type(i) is float:
+                params.append(c_float(i))
+            else:
+                # todo: add support for other built-types as kernel arguments (float3, quat, etc)
+                print("Unknown parameter type")
+
+        # late bind
+        if (kernel.forward_cpu == None or kernel.forward_cuda == None):
+            kernel.hook()
+
+        # run kernel
+        if device == 'cpu':
+            kernel.forward_cpu(*params)
+        elif device.startswith('cuda'):
+            kernel.forward_cuda(*params)
+
+    
