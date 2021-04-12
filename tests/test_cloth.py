@@ -128,7 +128,7 @@ class Cloth:
 
 
 import tests.test_cloth_oglang
-#import test_cloth_numpy
+import tests.test_cloth_numpy
 
 # params
 sim_width = 32
@@ -169,7 +169,8 @@ grid.GetPointsAttr().Set(cloth.positions, 0.0)
 grid.GetFaceVertexIndicesAttr().Set(cloth.triangles, 0.0)
 grid.GetFaceVertexCountsAttr().Set([3]*cloth.num_tris, 0.0)
 
-integrator = tests.test_cloth_oglang.OgIntegrator(cloth)
+#integrator = tests.test_cloth_oglang.OgIntegrator(cloth)
+integrator = tests.test_cloth_numpy.NpIntegrator(cloth)
 
 for i in range(sim_frames):
 

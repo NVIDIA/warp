@@ -94,8 +94,6 @@ class OgIntegrator:
 
         sim_dt = dt/substeps
         
-        forces = og.zeros(self.cloth.num_particles, dtype=og.float3, device="cuda")
-        
         for s in range(substeps):
 
             og.launch(
