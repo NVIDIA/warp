@@ -1,0 +1,188 @@
+# include parent path
+import os
+import sys
+import numpy as np
+import math
+import ctypes
+
+from numpy.lib.twodim_base import mask_indices
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from pxr import Usd, UsdGeom, Gf, Sdf
+
+
+import oglang as og
+
+
+class Cloth:
+
+    def __init__(self, lower, dx, dy, radius, stretch_stiffness, bend_stiffness, shear_stiffness, mass, fix_corners=True):
+
+        self.triangles = []
+
+        self.positions = []
+        self.velocities = []
+        self.inv_masses = []
+
+        self.spring_indices = []
+        self.spring_lengths = []
+        self.spring_stiffness = []
+        self.spring_damping = []
+
+        def grid(x, y, stride):
+            return y*stride + x
+
+        def create_spring(i, j, stiffness, damp=10.0):
+            
+            length = np.linalg.norm(np.array(self.positions[i])-np.array(self.positions[j]))
+
+            self.spring_indices.append(i)
+            self.spring_indices.append(j)
+            self.spring_lengths.append(length)
+            self.spring_stiffness.append(stiffness)
+            self.spring_damping.append(damp)
+
+        for y in range(dy):
+
+            for x in range(dx):
+
+                p = np.array(lower) + radius*np.array((float(x), float(0.0), float(y)))
+
+                self.positions.append(p)
+                self.velocities.append(np.zeros(3))
+
+                if (x > 0 and y > 0):
+
+                    self.triangles.append(grid(x-1, y-1, dx))
+                    self.triangles.append(grid(x, y-1, dx))
+                    self.triangles.append(grid(x, y, dx))
+                    
+                    self.triangles.append(grid(x-1, y-1, dx))
+                    self.triangles.append(grid(x, y, dx))
+                    self.triangles.append(grid(x-1, y, dx))
+
+                
+                if (fix_corners and y == 0 and (x == 0 or x == dx-1)):
+                    w = 0.0
+                else:
+                    w = 1.0/mass
+
+                self.inv_masses.append(w)
+
+
+        # horizontal springs
+        for y in range(dy):
+
+            for x in range(dx):
+            
+                index0 = y*dx + x
+
+                if (x > 0):
+                    index1 = y*dx + x - 1
+                    create_spring(index0, index1, stretch_stiffness)
+
+                if (x > 1 and bend_stiffness > 0.0):
+                    index2 = y*dx + x - 2
+                    create_spring(index0, index2, bend_stiffness)
+
+                if (y > 0 and x < dx-1 and shear_stiffness > 0.0):
+                    
+                    indexDiag = (y-1)*dx + x + 1
+                    create_spring(index0, indexDiag, shear_stiffness)
+
+                if (y > 0 and x > 0 and shear_stiffness > 0.0):
+                    
+                    indexDiag = (y-1)*dx + x - 1
+                    create_spring(index0, indexDiag, shear_stiffness)
+
+        # vertical
+        for x in range(dx):
+
+            for y in range(dy):
+
+                index0 = y*dx + x
+
+                if (y > 0):
+                    
+                    index1 = (y-1)*dx + x
+                    create_spring(index0, index1, stretch_stiffness)
+
+                if (y > 1 and bend_stiffness > 0.0):
+
+                    index2 = (y-2)*dx + x
+                    create_spring(index0,  index2, bend_stiffness)
+
+        # harden to np arrays
+        self.positions = np.array(self.positions, dtype=np.float32)
+        self.velocities = np.array(self.velocities, dtype=np.float32)
+        self.inv_masses = np.array(self.inv_masses, dtype=np.float32)
+        self.spring_lengths = np.array(self.spring_lengths, dtype=np.float32)
+        self.spring_indices = np.array(self.spring_indices, dtype=np.int32)
+        self.spring_stiffness = np.array(self.spring_stiffness, dtype=np.float32)
+        self.spring_damping = np.array(self.spring_damping, dtype=np.float32)
+
+        self.num_particles = len(self.positions)
+        self.num_springs = len(self.spring_lengths)
+        self.num_tris = int(len(self.triangles)/3)
+
+
+import tests.test_cloth_oglang
+#import test_cloth_numpy
+
+# params
+sim_width = 32
+sim_height = 32
+
+sim_fps = 60.0
+sim_substeps = 16
+sim_duration = 5.0
+sim_frames = int(sim_duration*sim_fps)
+sim_dt = 1.0/sim_fps
+sim_time = 0.0
+
+# wave constants
+k_stretch = 1000.0
+k_shear = 1000.0
+k_bend = 1000.0
+k_damp = 0.0
+
+cloth = Cloth(
+    lower=(0.0, 0.0, 0.0), 
+    dx=sim_width, 
+    dy=sim_height, 
+    radius=0.1, 
+    stretch_stiffness=k_stretch, 
+    bend_stiffness=k_bend,
+    shear_stiffness=k_shear,
+    mass=0.1, 
+    fix_corners=True)
+
+# set up grid for visualization
+stage = Usd.Stage.CreateNew("tests/outputs/cloth.usd")
+stage.SetStartTimeCode(0.0)
+stage.SetEndTimeCode(sim_duration*sim_fps)
+stage.SetTimeCodesPerSecond(sim_fps)
+
+grid = UsdGeom.Mesh.Define(stage, "/root")
+grid.GetPointsAttr().Set(cloth.positions, 0.0)
+grid.GetFaceVertexIndicesAttr().Set(cloth.triangles, 0.0)
+grid.GetFaceVertexCountsAttr().Set([3]*cloth.num_tris, 0.0)
+
+integrator = tests.test_cloth_oglang.OgIntegrator(cloth)
+
+for i in range(sim_frames):
+
+    # simulate
+    with og.ScopedTimer("Simulate"):
+        positions = integrator.simulate(sim_dt, sim_substeps)
+
+    # render
+    with og.ScopedTimer("Render"):
+
+        grid.GetPointsAttr().Set(positions, sim_time*sim_fps)
+
+    sim_time += sim_dt
+
+
+stage.Save()

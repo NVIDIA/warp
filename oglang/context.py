@@ -1032,6 +1032,22 @@ def zeros(n, dtype=float, device="cpu"):
         return oglang.codegen.array(dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
 
 
+def from_numpy(arr, dtype, device="cpu"):
+
+    ptr = arr.__array_interface__["data"][0]
+    shape = arr.__array_interface__["shape"]
+    rows = shape[0]
+
+    if (arr.__array_interface__["typestr"] != "<i4" and arr.__array_interface__["typestr"] != "<f4"):
+        raise RuntimeError("Source numpy array must be either 32bit integer or floating point data")
+
+    src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=runtime, owner=False)
+    dest = zeros(rows, dtype=dtype, device=device)
+    
+    copy(src, dest)
+    return dest
+
+
 def synchronize():
 
     if (oglang.cuda):

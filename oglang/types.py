@@ -130,10 +130,10 @@ def type_size_in_bytes(dtype):
 
 class array:
 
-    def __init__(self, type, length=0, capacity=0, data=None, device=None, context=None, owner=True):
+    def __init__(self, dtype, length=0, capacity=0, data=None, device=None, context=None, owner=True):
         self.length = length
         self.capacity = capacity
-        self.type = type
+        self.type = dtype
         self.data = data
         self.device = device
         self.context = context
