@@ -72,20 +72,21 @@ def integrate_particles(x: og.array(og.float3),
 
 class OgIntegrator:
 
-    def __init__(self, cloth):
+    def __init__(self, cloth, device):
 
+        self.device = device
 
-        self.positions = og.from_numpy(cloth.positions, dtype=og.float3, device="cuda")
+        self.positions = og.from_numpy(cloth.positions, dtype=og.float3, device=device)
         self.positions_host = og.from_numpy(cloth.positions, dtype=og.float3, device="cpu")
-        self.invmass = og.from_numpy(cloth.inv_masses, dtype=float, device="cuda")
+        self.invmass = og.from_numpy(cloth.inv_masses, dtype=float, device=device)
 
-        self.velocities = og.zeros(cloth.num_particles, dtype=og.float3, device="cuda")
-        self.forces = og.zeros(cloth.num_particles, dtype=og.float3, device="cuda")
+        self.velocities = og.zeros(cloth.num_particles, dtype=og.float3, device=device)
+        self.forces = og.zeros(cloth.num_particles, dtype=og.float3, device=device)
 
-        self.spring_indices = og.from_numpy(cloth.spring_indices, dtype=int, device="cuda")
-        self.spring_lengths = og.from_numpy(cloth.spring_lengths, dtype=float, device="cuda")
-        self.spring_stiffness = og.from_numpy(cloth.spring_stiffness, dtype=float, device="cuda")
-        self.spring_damping = og.from_numpy(cloth.spring_damping, dtype=float, device="cuda")
+        self.spring_indices = og.from_numpy(cloth.spring_indices, dtype=int, device=device)
+        self.spring_lengths = og.from_numpy(cloth.spring_lengths, dtype=float, device=device)
+        self.spring_stiffness = og.from_numpy(cloth.spring_stiffness, dtype=float, device=device)
+        self.spring_damping = og.from_numpy(cloth.spring_damping, dtype=float, device=device)
 
         self.cloth = cloth
 
@@ -107,7 +108,7 @@ class OgIntegrator:
                         self.spring_damping,
                         self.forces], 
                 outputs=[],
-                device="cuda")
+                device=self.device)
 
             # integrate 
             og.launch(
@@ -119,11 +120,15 @@ class OgIntegrator:
                         self.invmass,
                         sim_dt], 
                 outputs=[],
-                device="cuda")
+                device=self.device)
 
 
         # copy data back to host
-        og.copy(self.positions, self.positions_host)
-        og.synchronize()
-
-        return self.positions_host.numpy()
+        if (self.device == "cuda"):
+            og.copy(self.positions, self.positions_host)
+            og.synchronize()
+    
+            return self.positions_host.numpy()
+        
+        else:
+            return self.positions.numpy()

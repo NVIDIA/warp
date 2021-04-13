@@ -1,11 +1,10 @@
-import cupy as cp
-import cupyx as cpx
+import torch
 
-# Notes
-#
-# * Pro: Good almost drop-in support for numpy
-# * Con: Requires CUDA install (toolkit) on local machine
-# * Con: Some unsupported parts, e.g.: np.add.at, but easy enough to work around with cupx
+print(torch.__version__)
+
+import torch_scatter
+
+
 
 def eval_springs(x,
                  v,
@@ -27,30 +26,33 @@ def eval_springs(x,
     xij = xi - xj
     vij = vi - vj
 
-    l = cp.linalg.norm(xij, axis=1)
+    l = torch.linalg.norm(xij, axis=1)
     l_inv = 1.0 / l
 
     # normalized spring direction
     dir = (xij.T * l_inv).T
 
     c = l - rest
-    dcdt = cp.sum(dir*vij, axis=1)
+    dcdt = torch.sum(dir*vij, axis=1)
 
     # damping based on relative velocity.
     fs = dir.T*(ke * c + kd * dcdt)
 
-    cpx.scatter_add(f, i, -fs.T)
-    cpx.scatter_add(f, j,  fs.T)
+    #torch.scatter_add(f, i, -fs.T)
+    #torch.scatter_add(f, j,  fs.T)
+    #edges[:,0]
+    torch_scatter.scatter_add(out=f, src=-fs.T, index=i, dim=0, dim_size=3)
+    torch_scatter.scatter_add(out=f, src=fs.T, index=j, dim=0, dim_size=3)
 
 
 
 def integrate_particles(x,
                         v,
                         f,
+                        g,
                         w,
                         dt):
 
-    g = cp.array((0.0, 0.0 - 9.8, 0.0))
     s = w > 0.0
 
     a_ext = g*s[:,None]
@@ -63,22 +65,24 @@ def integrate_particles(x,
     f *= 0.0
 
 
-class CpIntegrator:
+class TrIntegrator:
 
-    def __init__(self, cloth):
+    def __init__(self, cloth, device):
 
         self.cloth = cloth
 
-        self.positions = cp.array(self.cloth.positions)
-        self.velocities = cp.array(self.cloth.velocities)
-        self.inv_mass = cp.array(self.cloth.inv_masses)
+        self.positions = torch.tensor(self.cloth.positions, device=device)
+        self.velocities = torch.tensor(self.cloth.velocities, device=device)
+        self.inv_mass = torch.tensor(self.cloth.inv_masses, device=device)
 
-        self.spring_indices = cp.array(self.cloth.spring_indices)
-        self.spring_lengths = cp.array(self.cloth.spring_lengths)
-        self.spring_stiffness = cp.array(self.cloth.spring_stiffness)
-        self.spring_damping = cp.array(self.cloth.spring_damping)
+        self.spring_indices = torch.tensor(self.cloth.spring_indices, device=device, dtype=torch.long)
+        self.spring_lengths = torch.tensor(self.cloth.spring_lengths, device=device)
+        self.spring_stiffness = torch.tensor(self.cloth.spring_stiffness, device=device)
+        self.spring_damping = torch.tensor(self.cloth.spring_damping, device=device)
         
-        self.forces = cp.zeros((self.cloth.num_particles, 3), dtype=cp.float32)
+        self.forces = torch.zeros((self.cloth.num_particles, 3), dtype=torch.float32, device=device)
+        self.gravity = g = torch.tensor((0.0, 0.0 - 9.8, 0.0), dtype=torch.float32, device=device)
+
 
     def simulate(self, dt, substeps):
 
@@ -99,8 +103,8 @@ class CpIntegrator:
                 self.positions,
                 self.velocities,
                 self.forces,
+                self.gravity,
                 self.inv_mass,
                 sim_dt)
 
-        #return np.array(self.positions)        
-        return self.positions.get()
+        return self.positions.cpu().numpy()

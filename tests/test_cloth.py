@@ -1,6 +1,6 @@
 # include parent path
 import os
-import sys
+import sys, getopt
 import numpy as np
 import math
 import ctypes
@@ -125,10 +125,6 @@ class Cloth:
         self.num_tris = int(len(self.triangles)/3)
 
 
-import tests.test_cloth_oglang
-import tests.test_cloth_numpy
-import tests.test_cloth_cupy
-
 # params
 sim_width = 32
 sim_height = 32
@@ -168,22 +164,91 @@ grid.GetPointsAttr().Set(cloth.positions, 0.0)
 grid.GetFaceVertexIndicesAttr().Set(cloth.triangles, 0.0)
 grid.GetFaceVertexCountsAttr().Set([3]*cloth.num_tris, 0.0)
 
-#integrator = tests.test_cloth_oglang.OgIntegrator(cloth)
-#integrator = tests.test_cloth_numpy.NpIntegrator(cloth)
-integrator = tests.test_cloth_cupy.CpIntegrator(cloth)
+# record profiling information
+timers = {}
 
-for i in range(sim_frames):
+mode = "torch_gpu"
 
-    # simulate
-    with og.ScopedTimer("Simulate"):
-        positions = integrator.simulate(sim_dt, sim_substeps)
+with og.ScopedTimer("Initialization", dict=timers):
 
-    # render
-    with og.ScopedTimer("Render"):
+    if mode == "oglang_cpu":
+        import tests.test_cloth_oglang
+        integrator = tests.test_cloth_oglang.OgIntegrator(cloth, "cpu")
 
-        grid.GetPointsAttr().Set(positions, sim_time*sim_fps)
+    elif mode == "oglang_gpu":
+        import tests.test_cloth_oglang
+        integrator = tests.test_cloth_oglang.OgIntegrator(cloth, "cuda")
 
-    sim_time += sim_dt
+    elif mode == "taichi_cpu":
+        import tests.test_cloth_taichi
+        integrator = tests.test_cloth_taichi.TiIntegrator(cloth, "cpu")
 
+    elif mode == "taichi_gpu":
+        import tests.test_cloth_taichi
+        integrator = tests.test_cloth_taichi.TiIntegrator(cloth, "cuda")
+
+    elif mode == "numpy":
+        import tests.test_cloth_numpy
+        integrator = tests.test_cloth_numpy.NpIntegrator(cloth)
+
+    elif mode == "cupy":
+        import tests.test_cloth_cupy
+        integrator = tests.test_cloth_cupy.CpIntegrator(cloth)
+
+    elif mode == "numba":
+        import tests.test_cloth_numba
+        integrator = tests.test_cloth_numba.NbIntegrator(cloth)
+
+    elif mode == "torch_cpu":
+        import tests.test_cloth_pytorch
+        integrator = tests.test_cloth_pytorch.TrIntegrator(cloth, "cpu")
+
+    elif mode == "torch_gpu":
+        import tests.test_cloth_pytorch
+        integrator = tests.test_cloth_pytorch.TrIntegrator(cloth, "cuda")
+
+    else:
+        raise RuntimeError("Unknown simulation backend")
+
+
+    # run one warm-up iteration to accurately measure initialization time (some engines do lazy init)
+    positions = integrator.simulate(sim_dt, sim_substeps)
+
+
+# run simulation
+with og.ScopedTimer("Simulate", dict=timers):
+
+    for i in range(sim_frames):
+
+        # simulate
+        with og.ScopedTimer("Step", dict=timers):
+            positions = integrator.simulate(sim_dt, sim_substeps)
+
+        # render
+        with og.ScopedTimer("Render", dict=timers):
+
+            grid.GetPointsAttr().Set(positions, sim_time*sim_fps)
+
+        sim_time += sim_dt
 
 stage.Save()
+
+
+# write results
+import csv
+
+for k, v in timers.items():
+    print("{:16} min: {:8.2f} max: {:8.2f} avg: {:8.2f}".format(k, np.min(v), np.max(v), np.mean(v)))
+
+report = open('report.csv', 'a')
+writer = csv.writer(report,  delimiter=',')
+
+if (report.tell() == 0):
+    writer.writerow(["Name", "Init", "Step (Min)", "Step (Max)", "Step (Avg)"])
+
+writer.writerow([mode, np.max(timers["Initialization"]),
+                       np.min(timers["Step"]),
+                       np.max(timers["Step"]),
+                       np.mean(timers["Step"])])
+
+report.close()
