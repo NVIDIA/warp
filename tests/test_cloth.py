@@ -11,9 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-
 import oglang as og
-
 
 class Cloth:
 
@@ -129,6 +127,7 @@ class Cloth:
 
 import tests.test_cloth_oglang
 import tests.test_cloth_numpy
+import tests.test_cloth_cupy
 
 # params
 sim_width = 32
@@ -170,7 +169,8 @@ grid.GetFaceVertexIndicesAttr().Set(cloth.triangles, 0.0)
 grid.GetFaceVertexCountsAttr().Set([3]*cloth.num_tris, 0.0)
 
 #integrator = tests.test_cloth_oglang.OgIntegrator(cloth)
-integrator = tests.test_cloth_numpy.NpIntegrator(cloth)
+#integrator = tests.test_cloth_numpy.NpIntegrator(cloth)
+integrator = tests.test_cloth_cupy.CpIntegrator(cloth)
 
 for i in range(sim_frames):
 
