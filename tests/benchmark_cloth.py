@@ -133,7 +133,7 @@ def run_benchmark(mode, dim, timers, render=False):
 
     sim_fps = 60.0
     sim_substeps = 16
-    sim_duration = 1.0
+    sim_duration = 10.0
     sim_frames = int(sim_duration*sim_fps)
     sim_dt = 1.0/sim_fps
     sim_time = 0.0

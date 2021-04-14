@@ -66,9 +66,12 @@ class TiIntegrator:
             f0 = self.forces[tid]
             w = self.inv_mass[tid]
 
-            g = ti.Vector([0.0, -9.81, 0.0])
+            g = ti.Vector([0.0, 0.0, 0.0])
+            
+            if (w > 0.0):
+                g = ti.Vector([0.0, -9.81, 0.0])
 
-            v1 = v0 + (f0 * w + step(0.0 - w) * g) * dt
+            v1 = v0 + (f0 * w + g) * dt
             x1 = x0 + v1 * dt
 
             self.positions[tid] = x1
