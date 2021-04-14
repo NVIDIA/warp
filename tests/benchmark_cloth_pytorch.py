@@ -1,9 +1,9 @@
 import torch
-
-print(torch.__version__)
-
 import torch_scatter
 
+# Notes:
+# Pro: Good numpy support, mostly drop in replacement
+# Con: Weak scatter support, still have to use torch_scatter external repository 
 
 
 def eval_springs(x,
