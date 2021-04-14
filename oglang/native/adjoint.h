@@ -1,8 +1,8 @@
 #pragma once
 
-#include <algorithm>
-#include <cmath>
-#include <cassert>
+//#include <algorithm>
+#include <math.h>
+#include <assert.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -24,7 +24,11 @@
     #include <cuda.h>
     #include <cuda_runtime_api.h>
 
-    #define check_cuda(code) { check_cuda_impl(code, __FILE__, __LINE__); }
+    #if _DEBUG
+        #define check_cuda(code) { check_cuda_impl(code, __FILE__, __LINE__); }
+    #else
+        #define check_cuda(code)
+    #endif
 
     void check_cuda_impl(cudaError_t code, const char* file, int line)
     {
@@ -114,15 +118,15 @@ inline CUDA_CALLABLE float max(float a, float b) { return a>b?a:b; }
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
 inline CUDA_CALLABLE float clamp(float x, float a, float b) { return min(max(a, x), b); }
-inline CUDA_CALLABLE float step(float x) { return x < 0.0 ? 1.0 : 0.0; }
-inline CUDA_CALLABLE float sign(float x) { return x < 0.0 ? -1.0 : 1.0; }
+inline CUDA_CALLABLE float step(float x) { return x < 0.0f ? 1.0f : 0.0f; }
+inline CUDA_CALLABLE float sign(float x) { return x < 0.0f ? -1.0f : 1.0f; }
 inline CUDA_CALLABLE float abs(float x) { return fabsf(x); }
-inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0 ? 0.0 : 1.0; }
+inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
-inline CUDA_CALLABLE float acos(float x) { return std::acos(min(max(x, -1.0f), 1.0f)); }
-inline CUDA_CALLABLE float sin(float x) { return std::sin(x); }
-inline CUDA_CALLABLE float cos(float x) { return std::cos(x); }
-inline CUDA_CALLABLE float sqrt(float x) { return std::sqrt(x); }
+inline CUDA_CALLABLE float acos(float x) { return acosf(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float sin(float x) { return sinf(x); }
+inline CUDA_CALLABLE float cos(float x) { return cosf(x); }
+inline CUDA_CALLABLE float sqrt(float x) { return sqrtf(x); }
 
 inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
 inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret/b; adj_b -= adj_ret*(a/b)/b; }
@@ -209,7 +213,7 @@ inline CUDA_CALLABLE void adj_sign(float x, float& adj_x, float adj_ret)
 
 inline CUDA_CALLABLE void adj_abs(float x, float& adj_x, float adj_ret)
 {
-    if (x < 0.0)
+    if (x < 0.0f)
         adj_x += adj_ret;
     else
         adj_x -= adj_ret;                
@@ -217,24 +221,24 @@ inline CUDA_CALLABLE void adj_abs(float x, float& adj_x, float adj_ret)
 
 inline CUDA_CALLABLE void adj_acos(float x, float& adj_x, float adj_ret)
 {
-    float d = sqrt(1.0-x*x);
-    if (d > 0.0)
-        adj_x -= (1.0/d)*adj_ret;
+    float d = sqrtf(1.0f-x*x);
+    if (d > 0.0f)
+        adj_x -= (1.0f/d)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_sin(float x, float& adj_x, float adj_ret)
 {
-    adj_x += std::cos(x)*adj_ret;
+    adj_x += cosf(x)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_cos(float x, float& adj_x, float adj_ret)
 {
-    adj_x -= std::sin(x)*adj_ret;
+    adj_x -= sinf(x)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_sqrt(float x, float& adj_x, float adj_ret)
 {
-    adj_x += 0.5f*(1.0/std::sqrt(x))*adj_ret;
+    adj_x += 0.5f*(1.0f/sqrtf(x))*adj_ret;
 }
 
 

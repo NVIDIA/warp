@@ -106,7 +106,7 @@ inline CUDA_CALLABLE float3 normalize(float3 a)
 
 inline bool CUDA_CALLABLE isfinite(float3 x)
 {
-    return std::isfinite(x.x) && std::isfinite(x.y) && std::isfinite(x.z);
+    return isfinite(x.x) && isfinite(x.y) && isfinite(x.z);
 }
 
 // adjoint float3 constructor
