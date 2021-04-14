@@ -35,8 +35,11 @@ class TiIntegrator:
             kd = self.spring_damping[tid]
             rest = self.spring_lengths[tid]
 
-            xi, xj = self.positions[i], self.positions[j]
-            vi, vj = self.velocities[i], self.velocities[j]
+            xi = self.positions[i]
+            xj = self.positions[j]
+
+            vi = self.velocities[i]
+            vj = self.velocities[j]
 
             xij = xi - xj
             vij = vi - vj
@@ -63,7 +66,7 @@ class TiIntegrator:
             f0 = self.forces[tid]
             w = self.inv_mass[tid]
 
-            g = ti.Vector([0.0, -9.8, 0.0])
+            g = ti.Vector([0.0, -9.81, 0.0])
 
             v1 = v0 + (f0 * w + step(0.0 - w) * g) * dt
             x1 = x0 + v1 * dt

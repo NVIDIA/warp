@@ -5,7 +5,7 @@ import numpy as np
 import math
 import ctypes
 
-from numpy.lib.twodim_base import mask_indices
+#from numpy.lib.twodim_base import mask_indices
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -125,114 +125,120 @@ class Cloth:
         self.num_tris = int(len(self.triangles)/3)
 
 
-# params
-sim_width = 32
-sim_height = 32
+def run_benchmark(mode, dim, timers, render=False):
 
-sim_fps = 60.0
-sim_substeps = 16
-sim_duration = 5.0
-sim_frames = int(sim_duration*sim_fps)
-sim_dt = 1.0/sim_fps
-sim_time = 0.0
+    # params
+    sim_width = dim
+    sim_height = dim
 
-# wave constants
-k_stretch = 1000.0
-k_shear = 1000.0
-k_bend = 1000.0
-k_damp = 0.0
+    sim_fps = 60.0
+    sim_substeps = 16
+    sim_duration = 1.0
+    sim_frames = int(sim_duration*sim_fps)
+    sim_dt = 1.0/sim_fps
+    sim_time = 0.0
 
-cloth = Cloth(
-    lower=(0.0, 0.0, 0.0), 
-    dx=sim_width, 
-    dy=sim_height, 
-    radius=0.1, 
-    stretch_stiffness=k_stretch, 
-    bend_stiffness=k_bend,
-    shear_stiffness=k_shear,
-    mass=0.1, 
-    fix_corners=True)
+    # wave constants
+    k_stretch = 1000.0
+    k_shear = 1000.0
+    k_bend = 1000.0
+    k_damp = 0.0
 
-# set up grid for visualization
-stage = Usd.Stage.CreateNew("tests/outputs/cloth.usd")
-stage.SetStartTimeCode(0.0)
-stage.SetEndTimeCode(sim_duration*sim_fps)
-stage.SetTimeCodesPerSecond(sim_fps)
+    cloth = Cloth(
+        lower=(0.0, 0.0, 0.0), 
+        dx=sim_width, 
+        dy=sim_height, 
+        radius=0.1, 
+        stretch_stiffness=k_stretch, 
+        bend_stiffness=k_bend,
+        shear_stiffness=k_shear,
+        mass=0.1, 
+        fix_corners=True)
 
-grid = UsdGeom.Mesh.Define(stage, "/root")
-grid.GetPointsAttr().Set(cloth.positions, 0.0)
-grid.GetFaceVertexIndicesAttr().Set(cloth.triangles, 0.0)
-grid.GetFaceVertexCountsAttr().Set([3]*cloth.num_tris, 0.0)
+    if (render):
+        # set up grid for visualization
+        stage = Usd.Stage.CreateNew("cloth.usd")
+        stage.SetStartTimeCode(0.0)
+        stage.SetEndTimeCode(sim_duration*sim_fps)
+        stage.SetTimeCodesPerSecond(sim_fps)
 
-# record profiling information
-timers = {}
+        grid = UsdGeom.Mesh.Define(stage, "/root")
+        grid.GetPointsAttr().Set(cloth.positions, 0.0)
+        grid.GetFaceVertexIndicesAttr().Set(cloth.triangles, 0.0)
+        grid.GetFaceVertexCountsAttr().Set([3]*cloth.num_tris, 0.0)
 
-mode = "torch_gpu"
+    with og.ScopedTimer("Initialization", dict=timers):
 
-with og.ScopedTimer("Initialization", dict=timers):
+        if mode == "oglang_cpu":
+            import tests.benchmark_cloth_oglang
+            integrator = tests.benchmark_cloth_oglang.OgIntegrator(cloth, "cpu")
 
-    if mode == "oglang_cpu":
-        import tests.test_cloth_oglang
-        integrator = tests.test_cloth_oglang.OgIntegrator(cloth, "cpu")
+        elif mode == "oglang_gpu":
+            import tests.benchmark_cloth_oglang
+            integrator = tests.benchmark_cloth_oglang.OgIntegrator(cloth, "cuda")
 
-    elif mode == "oglang_gpu":
-        import tests.test_cloth_oglang
-        integrator = tests.test_cloth_oglang.OgIntegrator(cloth, "cuda")
+        elif mode == "taichi_cpu":
+            import tests.benchmark_cloth_taichi
+            integrator = tests.benchmark_cloth_taichi.TiIntegrator(cloth, "cpu")
 
-    elif mode == "taichi_cpu":
-        import tests.test_cloth_taichi
-        integrator = tests.test_cloth_taichi.TiIntegrator(cloth, "cpu")
+        elif mode == "taichi_gpu":
+            import tests.benchmark_cloth_taichi
+            integrator = tests.benchmark_cloth_taichi.TiIntegrator(cloth, "cuda")
 
-    elif mode == "taichi_gpu":
-        import tests.test_cloth_taichi
-        integrator = tests.test_cloth_taichi.TiIntegrator(cloth, "cuda")
+        elif mode == "numpy":
+            import tests.benchmark_cloth_numpy
+            integrator = tests.benchmark_cloth_numpy.NpIntegrator(cloth)
 
-    elif mode == "numpy":
-        import tests.test_cloth_numpy
-        integrator = tests.test_cloth_numpy.NpIntegrator(cloth)
+        elif mode == "cupy":
+            import tests.benchmark_cloth_cupy
+            integrator = tests.benchmark_cloth_cupy.CpIntegrator(cloth)
 
-    elif mode == "cupy":
-        import tests.test_cloth_cupy
-        integrator = tests.test_cloth_cupy.CpIntegrator(cloth)
+        elif mode == "numba":
+            import tests.benchmark_cloth_numba
+            integrator = tests.benchmark_cloth_numba.NbIntegrator(cloth)
 
-    elif mode == "numba":
-        import tests.test_cloth_numba
-        integrator = tests.test_cloth_numba.NbIntegrator(cloth)
+        elif mode == "torch_cpu":
+            import tests.benchmark_cloth_pytorch
+            integrator = tests.benchmark_cloth_pytorch.TrIntegrator(cloth, "cpu")
 
-    elif mode == "torch_cpu":
-        import tests.test_cloth_pytorch
-        integrator = tests.test_cloth_pytorch.TrIntegrator(cloth, "cpu")
+        elif mode == "torch_gpu":
+            import tests.benchmark_cloth_pytorch
+            integrator = tests.benchmark_cloth_pytorch.TrIntegrator(cloth, "cuda")
 
-    elif mode == "torch_gpu":
-        import tests.test_cloth_pytorch
-        integrator = tests.test_cloth_pytorch.TrIntegrator(cloth, "cuda")
-
-    else:
-        raise RuntimeError("Unknown simulation backend")
+        else:
+            raise RuntimeError("Unknown simulation backend")
 
 
-    # run one warm-up iteration to accurately measure initialization time (some engines do lazy init)
-    positions = integrator.simulate(sim_dt, sim_substeps)
+        # run one warm-up iteration to accurately measure initialization time (some engines do lazy init)
+        positions = integrator.simulate(sim_dt, sim_substeps)
 
+    label = "Dim ({}^2)".format(dim)
 
-# run simulation
-with og.ScopedTimer("Simulate", dict=timers):
-
+    # run simulation
     for i in range(sim_frames):
 
         # simulate
-        with og.ScopedTimer("Step", dict=timers):
+        with og.ScopedTimer(label, dict=timers):
             positions = integrator.simulate(sim_dt, sim_substeps)
 
-        # render
-        with og.ScopedTimer("Render", dict=timers):
-
+        if render:
             grid.GetPointsAttr().Set(positions, sim_time*sim_fps)
 
         sim_time += sim_dt
 
-stage.Save()
+    if render:
+        stage.Save()
 
+
+
+# record profiling information
+timers = {}
+
+mode = sys.argv[1]
+
+run_benchmark(mode, 16, timers, render=False)
+run_benchmark(mode, 32, timers, render=False)
+run_benchmark(mode, 64, timers, render=False)
 
 # write results
 import csv
@@ -240,15 +246,15 @@ import csv
 for k, v in timers.items():
     print("{:16} min: {:8.2f} max: {:8.2f} avg: {:8.2f}".format(k, np.min(v), np.max(v), np.mean(v)))
 
-report = open('report.csv', 'a')
+report = open("report.csv", 'a')
 writer = csv.writer(report,  delimiter=',')
 
 if (report.tell() == 0):
-    writer.writerow(["Name", "Init", "Step (Min)", "Step (Max)", "Step (Avg)"])
+    writer.writerow(["Name", "Init", "Dim (16^2)", "Dim (32^2)", "Dim (64^2)"])
 
 writer.writerow([mode, np.max(timers["Initialization"]),
-                       np.min(timers["Step"]),
-                       np.max(timers["Step"]),
-                       np.mean(timers["Step"])])
+                       np.mean(timers["Dim (16^2)"]),
+                       np.mean(timers["Dim (32^2)"]),
+                       np.mean(timers["Dim (64^2)"])])
 
 report.close()
