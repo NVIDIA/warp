@@ -57,11 +57,11 @@ def integrate_particles(x: og.array(og.float3),
     f0 = og.load(f, tid)
     inv_mass = og.load(w, tid)
 
-    g = og.float3(0.0, 0.0, 0.0)
+    g = og.float3(0.0, 0.0-9.8, 0.0)
 
     # treat particles with inv_mass == 0 as kinematic
     if (inv_mass > 0.0):
-        g = og.float3(0.0, 0.0 - 9.8, 0.0)
+        g = og.float3(0.0, 0.0 - 9.81, 0.0)
 
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
     v1 = v0 + (f0 * inv_mass + g) * dt

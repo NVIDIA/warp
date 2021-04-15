@@ -234,7 +234,10 @@ def run_benchmark(mode, dim, timers, render=False):
 # record profiling information
 timers = {}
 
-mode = sys.argv[1]
+if len(sys.argv) > 1:
+    mode = sys.argv[1]
+else:
+    mode = "oglang_gpu"
 
 run_benchmark(mode, 16, timers, render=False)
 run_benchmark(mode, 32, timers, render=False)

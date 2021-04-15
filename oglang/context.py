@@ -768,9 +768,6 @@ class Module:
         cuda_home = find_cuda()
         cuda_cmd = None
 
-        if (cuda_home):
-            #cuda_cmd = "{cuda_home}/bin/nvcc -O0 -line-info -g -G -gencode=arch=compute_35,code=compute_35 -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
-            cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
 
         try:
             if os.name == 'nt':
@@ -795,8 +792,9 @@ class Module:
                     else:
                         raise RuntimeError("cpp build failed")
 
-                
-                if (cuda_cmd):
+                if (cuda_home):
+                    cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+
                     with ScopedTimer("build_cuda"):
                         print(cuda_cmd)
                         err = subprocess.call(cuda_cmd)
@@ -818,7 +816,7 @@ class Module:
                 
             else:
 
-                cpp_flags = "-Z -O2 -DNDEBUG --std=c++11"
+                cpp_flags = "-Z -O3 -DNDEBUG -fPIC --std=c++11"
                 ld_flags = "-DNDEBUG"           
 
                 with ScopedTimer("build"):
@@ -826,8 +824,19 @@ class Module:
                     print(build_cmd)
                     subprocess.call(build_cmd, shell=True)
 
+                if (cuda_home):
+
+                    cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 --compiler-options -fPIC -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+
+                    with ScopedTimer("build_cuda"):
+                        print(cuda_cmd)
+                        err = subprocess.call(cuda_cmd, shell=True)
+
+                        if (err):
+                            raise RuntimeError("cuda build failed")
+
                 with ScopedTimer("link"):
-                    link_cmd = "g++ -shared -o {dll_path} {cpp_path}.o".format(cpp_path=cpp_path, dll_path=dll_path)
+                    link_cmd = "g++ -shared -L{cuda_home}/lib64 -o {dll_path} {cpp_path}.o {cu_path}.o -lcudart".format(cuda_home=cuda_home, cpp_path=cpp_path, cu_path=cu_path, dll_path=dll_path)
                     print(link_cmd)
                     subprocess.call(link_cmd, shell=True)
 
@@ -868,7 +877,7 @@ class Runtime:
 
             oglang.cuda.cuInit(0)
 
-            self.cuda_device = c_long(0)
+            self.cuda_device = c_int(0)
             ret = oglang.cuda.cuDeviceGet(byref(self.cuda_device), 0)
 
             self.cuda_context = c_void_p()
