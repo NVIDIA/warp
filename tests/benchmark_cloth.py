@@ -5,8 +5,6 @@ import numpy as np
 import math
 import ctypes
 
-#from numpy.lib.twodim_base import mask_indices
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pxr import Usd, UsdGeom, Gf, Sdf
@@ -133,7 +131,7 @@ def run_benchmark(mode, dim, timers, render=False):
 
     sim_fps = 60.0
     sim_substeps = 16
-    sim_duration = 10.0
+    sim_duration = 1.0
     sim_frames = int(sim_duration*sim_fps)
     sim_dt = 1.0/sim_fps
     sim_time = 0.0
@@ -205,6 +203,22 @@ def run_benchmark(mode, dim, timers, render=False):
             import tests.benchmark_cloth_pytorch
             integrator = tests.benchmark_cloth_pytorch.TrIntegrator(cloth, "cuda")
 
+        elif mode == "jax_cpu":
+
+            os.environ["JAX_PLATFORM_NAME"] = "cpu"
+
+            import tests.benchmark_cloth_jax
+
+            integrator = tests.benchmark_cloth_jax.JxIntegrator(cloth)
+
+        elif mode == "jax_gpu":
+
+            os.environ["JAX_PLATFORM_NAME"] = "gpu"
+
+            import tests.benchmark_cloth_jax
+            integrator = tests.benchmark_cloth_jax.JxIntegrator(cloth)
+
+
         else:
             raise RuntimeError("Unknown simulation backend")
 
@@ -237,9 +251,9 @@ timers = {}
 if len(sys.argv) > 1:
     mode = sys.argv[1]
 else:
-    mode = "oglang_gpu"
+    mode = "oglang_cpu"
 
-run_benchmark(mode, 16, timers, render=False)
+run_benchmark(mode, 16, timers, render=True)
 run_benchmark(mode, 32, timers, render=False)
 run_benchmark(mode, 64, timers, render=False)
 
