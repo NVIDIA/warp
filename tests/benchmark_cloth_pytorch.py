@@ -1,10 +1,7 @@
 import torch
-import torch_scatter
 
 # Notes:
 # Pro: Good numpy support, mostly drop in replacement
-# Con: Weak scatter support, still have to use torch_scatter external repository 
-
 
 def eval_springs(x,
                  v,
@@ -38,12 +35,9 @@ def eval_springs(x,
     # damping based on relative velocity.
     fs = dir.T*(ke * c + kd * dcdt)
 
-    #torch.scatter_add(f, i, -fs.T)
-    #torch.scatter_add(f, j,  fs.T)
-    #edges[:,0]
-    torch_scatter.scatter_add(out=f, src=-fs.T, index=i, dim=0, dim_size=3)
-    torch_scatter.scatter_add(out=f, src=fs.T, index=j, dim=0, dim_size=3)
-
+    f.index_add_(dim=0, index=i, source=-fs.T)
+    f.index_add_(dim=0, index=j, source=fs.T)
+    
 
 
 def integrate_particles(x,

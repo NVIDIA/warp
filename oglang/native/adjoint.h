@@ -84,9 +84,13 @@ __host__ __device__ T cast(og::array addr)
     return (T)(addr);
 }
 
+// numeric types
+typedef float float32;
+typedef double float64;
+typedef int64_t int64;
+typedef int32_t int32;
 
 #define kEps 0.0f
-
 
 // basic ops for integer types
 inline CUDA_CALLABLE int mul(int a, int b) { return a*b; }

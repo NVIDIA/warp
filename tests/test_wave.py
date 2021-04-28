@@ -234,7 +234,7 @@ for i in range(sim_frames):
 
 
         # copy data back to host
-        og.copy(sim_grid0, sim_host)
+        og.copy(sim_host, sim_grid0)
         og.synchronize()
 
     # render

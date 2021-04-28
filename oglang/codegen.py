@@ -45,10 +45,10 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            if self.type.type == float3:
-                return str("og::" + self.type.type.__name__) + "*"
+            if self.type.dtype == float3:
+                return str("og::" + self.type.dtype.__name__) + "*"
 
-            return str(self.type.type.__name__) + "*"
+            return str(self.type.dtype.__name__) + "*"
         elif self.type == float3:
             return "og::" + str(self.type.__name__)
         else:

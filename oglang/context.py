@@ -328,7 +328,7 @@ class LoadFunc:
         if (args[1].type != int):
             raise Exception("Load input 1 must be a int")
 
-        return args[0].type.type
+        return args[0].type.dtype
 
 
 @builtin("store")
@@ -339,7 +339,7 @@ class StoreFunc:
             raise Exception("Store input 0 must be a array")
         if (args[1].type != int):
             raise Exception("Store input 1 must be a int")
-        if (args[2].type != args[0].type.type):
+        if (args[2].type != args[0].type.dtype):
             raise Exception("Store input 2 must be of the same type as the array")
 
         return None
@@ -880,8 +880,7 @@ class Runtime:
             self.cuda_device = c_int(0)
             ret = oglang.cuda.cuDeviceGet(byref(self.cuda_device), 0)
 
-            self.cuda_context = c_void_p()
-            #ret = oglang.cuda.cuCtxCreate(byref(self.cuda_context), 0, self.cuda_device)
+            self.cuda_context = c_void_p()            
             ret = oglang.cuda.cuDevicePrimaryCtxRetain(byref(self.cuda_context), self.cuda_device)
             ret = oglang.cuda.cuCtxPushCurrent(self.cuda_context)
             ret = oglang.cuda.cuCtxAttach(byref(self.cuda_context), 0)
@@ -900,11 +899,10 @@ class Runtime:
             ver0 = c_uint(0)
             ret = oglang.cuda.cuCtxGetApiVersion(c_void_p(), byref(ver0))
 
-            print(ret)
-
 
     # host functions
     def alloc_host(self, num_bytes):
+
         self.crt.malloc.restype = c_void_p
         ptr = self.crt.malloc(num_bytes)
         
@@ -913,6 +911,7 @@ class Runtime:
         return ptr
 
     def free_host(self, ptr):
+
         self.crt.free(cast(ptr,POINTER(c_int)))
 
 
@@ -940,7 +939,7 @@ runtime = Runtime()
 
 # global entry points methods
 
-def copy(src, dest):
+def copy(dest, src):
 
     if (src.device == "cpu" and dest.device == "cuda"):
         oglang.cuda.cuMemcpyHtoDAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
@@ -951,10 +950,6 @@ def copy(src, dest):
     elif (src.device == "cpu" and dest.device == "cpu"):
         runtime.crt.memcpy(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity))
 
-    
-
-def empty(n, dtype=float, device="cpu"):
-    pass
 
 def zeros(n, dtype=float, device="cpu"):
 
@@ -972,6 +967,10 @@ def zeros(n, dtype=float, device="cpu"):
         return oglang.codegen.array(dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
 
 
+def empty(n, dtype=float, device="cpu"):
+    return zeros(n, dtype, device)  # todo: implement uninitialized allocation
+
+
 def from_numpy(arr, dtype, device="cpu"):
 
     ptr = arr.__array_interface__["data"][0]
@@ -982,9 +981,9 @@ def from_numpy(arr, dtype, device="cpu"):
         raise RuntimeError("Source numpy array must be either 32bit integer or floating point data")
 
     src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=runtime, owner=False)
-    dest = zeros(rows, dtype=dtype, device=device)
+    dest = empty(rows, dtype=dtype, device=device)
     
-    copy(src, dest)
+    copy(dest, src)
     return dest
 
 
@@ -1014,10 +1013,12 @@ def launch(kernel, dim, inputs, outputs, device="cpu"):
         for i in inputs:
             if type(i) is oglang.types.array:
                 params.append(c_int64(i.data))
+            elif type(i) is oglang.types.int64:
+                params.append(c_int64(i))
             elif type(i) is int:
                 params.append(c_int32(i))
             elif type(i) is float:
-                params.append(c_float(i))
+                params.append(c_float(i))           
             else:
                 # todo: add support for other built-types as kernel arguments (float3, quat, etc)
                 print("Unknown parameter type")

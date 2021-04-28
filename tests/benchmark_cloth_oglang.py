@@ -129,7 +129,7 @@ class OgIntegrator:
 
         # copy data back to host
         if (self.device == "cuda"):
-            og.copy(self.positions, self.positions_host)
+            og.copy(self.positions_host, self.positions)
             og.synchronize()
     
             return self.positions_host.numpy()
