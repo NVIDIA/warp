@@ -1,13 +1,13 @@
 import oglang as og
 
 @og.kernel
-def eval_springs(x: og.array(og.float3),
-                 v: og.array(og.float3),
+def eval_springs(x: og.array(og.vec3),
+                 v: og.array(og.vec3),
                  spring_indices: og.array(int),
                  spring_rest_lengths: og.array(float),
                  spring_stiffness: og.array(float),
                  spring_damping: og.array(float),
-                 f: og.array(og.float3)):
+                 f: og.array(og.vec3)):
 
     tid = og.tid()
 
@@ -44,9 +44,9 @@ def eval_springs(x: og.array(og.float3),
 
 
 @og.kernel
-def integrate_particles(x: og.array(og.float3),
-                        v: og.array(og.float3),
-                        f: og.array(og.float3),
+def integrate_particles(x: og.array(og.vec3),
+                        v: og.array(og.vec3),
+                        f: og.array(og.vec3),
                         w: og.array(float),
                         dt: float):
 
@@ -57,11 +57,11 @@ def integrate_particles(x: og.array(og.float3),
     f0 = og.load(f, tid)
     inv_mass = og.load(w, tid)
 
-    g = og.float3(0.0, 0.0, 0.0)
+    g = og.vec3(0.0, 0.0, 0.0)
 
     # treat particles with inv_mass == 0 as kinematic
     if (inv_mass > 0.0):
-        g = og.float3(0.0, 0.0 - 9.81, 0.0)
+        g = og.vec3(0.0, 0.0 - 9.81, 0.0)
 
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
     v1 = v0 + (f0 * inv_mass + g) * dt
@@ -71,7 +71,7 @@ def integrate_particles(x: og.array(og.float3),
     og.store(v, tid, v1)
 
     # clear forces
-    og.store(f, tid, og.float3(0.0, 0.0, 0.0))
+    og.store(f, tid, og.vec3(0.0, 0.0, 0.0))
 
 
 class OgIntegrator:
@@ -80,12 +80,12 @@ class OgIntegrator:
 
         self.device = device
 
-        self.positions = og.from_numpy(cloth.positions, dtype=og.float3, device=device)
-        self.positions_host = og.from_numpy(cloth.positions, dtype=og.float3, device="cpu")
+        self.positions = og.from_numpy(cloth.positions, dtype=og.vec3, device=device)
+        self.positions_host = og.from_numpy(cloth.positions, dtype=og.vec3, device="cpu")
         self.invmass = og.from_numpy(cloth.inv_masses, dtype=float, device=device)
 
-        self.velocities = og.zeros(cloth.num_particles, dtype=og.float3, device=device)
-        self.forces = og.zeros(cloth.num_particles, dtype=og.float3, device=device)
+        self.velocities = og.zeros(cloth.num_particles, dtype=og.vec3, device=device)
+        self.forces = og.zeros(cloth.num_particles, dtype=og.vec3, device=device)
 
         self.spring_indices = og.from_numpy(cloth.spring_indices, dtype=int, device=device)
         self.spring_lengths = og.from_numpy(cloth.spring_lengths, dtype=float, device=device)

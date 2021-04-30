@@ -1,59 +1,81 @@
 #pragma once
 
-struct float3
+struct vec3
 {
     float x;
     float y;
     float z;
 
-    inline CUDA_CALLABLE float3(float x=0.0f, float y=0.0f, float z=0.0f) : x(x), y(y), z(z) {}
-    explicit inline CUDA_CALLABLE float3(const float* p) : x(p[0]), y(p[1]), z(p[2]) {}
+    inline CUDA_CALLABLE vec3(float x=0.0f, float y=0.0f, float z=0.0f) : x(x), y(y), z(z) {}
+    explicit inline CUDA_CALLABLE vec3(const float* p) : x(p[0]), y(p[1]), z(p[2]) {}
+
+    CUDA_CALLABLE float operator[](int index) const
+    {
+        assert(index < 3);        
+        return (&x)[index];
+    }
+
+    CUDA_CALLABLE float& operator[](int index)
+    {
+        assert(index < 3);
+        return (&x)[index];
+    }    
 };
 
 
 //--------------
-// float3 methods
+// vec3 methods
 
-inline CUDA_CALLABLE float3 operator - (float3 a)
+inline CUDA_CALLABLE vec3 operator - (vec3 a)
 {
     return { -a.x, -a.y, -a.z };
 }
 
 
-inline CUDA_CALLABLE float3 mul(float3 a, float s)
+inline CUDA_CALLABLE vec3 mul(vec3 a, float s)
 {
     return { a.x*s, a.y*s, a.z*s };
 }
 
-inline CUDA_CALLABLE float3 div(float3 a, float s)
+inline CUDA_CALLABLE vec3 mul(float s, vec3 a)
+{
+    return mul(a, s);
+}
+
+inline CUDA_CALLABLE vec3 mul(vec3 a, vec3 b)
+{
+    return { a.x*b.x, a.y*b.y, a.z*b.z };
+}
+
+inline CUDA_CALLABLE vec3 div(vec3 a, float s)
 {
     return { a.x/s, a.y/s, a.z/s };
 }
 
-inline CUDA_CALLABLE float3 add(float3 a, float3 b)
+inline CUDA_CALLABLE vec3 add(vec3 a, vec3 b)
 {
     return { a.x+b.x, a.y+b.y, a.z+b.z };
 }
 
-inline CUDA_CALLABLE float3 add(float3 a, float s)
+inline CUDA_CALLABLE vec3 add(vec3 a, float s)
 {
     return { a.x + s, a.y + s, a.z + s };
 }
 
 
-inline CUDA_CALLABLE float3 sub(float3 a, float3 b)
+inline CUDA_CALLABLE vec3 sub(vec3 a, vec3 b)
 {
     return { a.x-b.x, a.y-b.y, a.z-b.z };
 }
 
-inline CUDA_CALLABLE float dot(float3 a, float3 b)
+inline CUDA_CALLABLE float dot(vec3 a, vec3 b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
-inline CUDA_CALLABLE float3 cross(float3 a, float3 b)
+inline CUDA_CALLABLE vec3 cross(vec3 a, vec3 b)
 {
-    float3 c;
+    vec3 c;
     c.x = a.y*b.z - a.z*b.y;
     c.y = a.z*b.x - a.x*b.z;
     c.z = a.x*b.y - a.y*b.x;
@@ -61,12 +83,22 @@ inline CUDA_CALLABLE float3 cross(float3 a, float3 b)
     return c;
 }
 
-inline CUDA_CALLABLE float index(const float3 & a, int idx)
+inline CUDA_CALLABLE vec3 min(vec3 a, vec3 b)
+{
+    return vec3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z));
+}
+
+inline CUDA_CALLABLE vec3 max(vec3 a, vec3 b)
+{
+    return vec3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+}
+
+inline CUDA_CALLABLE float index(const vec3 & a, int idx)
 {
 #if FP_CHECK
     if (idx < 0 || idx > 2)
     {
-        printf("float3 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        printf("vec3 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         exit(1);
     }
 #endif
@@ -75,12 +107,12 @@ inline CUDA_CALLABLE float index(const float3 & a, int idx)
         
 }
 
-inline CUDA_CALLABLE void adj_index(const float3 & a, int idx, float3 & adj_a, int & adj_idx, float & adj_ret)
+inline CUDA_CALLABLE void adj_index(const vec3 & a, int idx, vec3 & adj_a, int & adj_idx, float & adj_ret)
 {
 #if FP_CHECK
     if (idx < 0 || idx > 2)
     {
-        printf("float3 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        printf("vec3 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         exit(1);
     }
 #endif
@@ -88,36 +120,36 @@ inline CUDA_CALLABLE void adj_index(const float3 & a, int idx, float3 & adj_a, i
     (&adj_a.x)[idx] += adj_ret;
 }
 
-inline CUDA_CALLABLE float length(float3 a)
+inline CUDA_CALLABLE float length(vec3 a)
 {
     return sqrtf(dot(a, a));
 }
 
-inline CUDA_CALLABLE float3 normalize(float3 a)
+inline CUDA_CALLABLE vec3 normalize(vec3 a)
 {
     float l = length(a);
     if (l > kEps)
         return div(a,l);
     else
-        return float3();
+        return vec3();
 }
 
 
 
-inline bool CUDA_CALLABLE isfinite(float3 x)
+inline bool CUDA_CALLABLE isfinite(vec3 x)
 {
-    return isfinite(x.x) && isfinite(x.y) && isfinite(x.z);
+    return ::isfinite(x.x) && ::isfinite(x.y) && ::isfinite(x.z);
 }
 
-// adjoint float3 constructor
-inline CUDA_CALLABLE void adj_float3(float x, float y, float z, float& adj_x, float& adj_y, float& adj_z, const float3& adj_ret)
+// adjoint vec3 constructor
+inline CUDA_CALLABLE void adj_vec3(float x, float y, float z, float& adj_x, float& adj_y, float& adj_z, const vec3& adj_ret)
 {
     adj_x += adj_ret.x;
     adj_y += adj_ret.y;
     adj_z += adj_ret.z;
 }
 
-inline CUDA_CALLABLE void adj_mul(float3 a, float s, float3& adj_a, float& adj_s, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_mul(vec3 a, float s, vec3& adj_a, float& adj_s, const vec3& adj_ret)
 {
     adj_a.x += s*adj_ret.x;
     adj_a.y += s*adj_ret.y;
@@ -130,7 +162,7 @@ inline CUDA_CALLABLE void adj_mul(float3 a, float s, float3& adj_a, float& adj_s
 #endif
 }
 
-inline CUDA_CALLABLE void adj_div(float3 a, float s, float3& adj_a, float& adj_s, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_div(vec3 a, float s, vec3& adj_a, float& adj_s, const vec3& adj_ret)
 {
     adj_s += dot(- a / (s * s), adj_ret); // - a / s^2
 
@@ -144,25 +176,25 @@ inline CUDA_CALLABLE void adj_div(float3 a, float s, float3& adj_a, float& adj_s
 #endif
 }
 
-inline CUDA_CALLABLE void adj_add(float3 a, float3 b, float3& adj_a, float3& adj_b, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_add(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, const vec3& adj_ret)
 {
     adj_a += adj_ret;
     adj_b += adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_add(float3 a, float s, float3& adj_a, float& adj_s, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_add(vec3 a, float s, vec3& adj_a, float& adj_s, const vec3& adj_ret)
 {
     adj_a += adj_ret;
     adj_s += adj_ret.x + adj_ret.y + adj_ret.z;
 }
 
-inline CUDA_CALLABLE void adj_sub(float3 a, float3 b, float3& adj_a, float3& adj_b, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_sub(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, const vec3& adj_ret)
 {
     adj_a += adj_ret;
     adj_b -= adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_dot(float3 a, float3 b, float3& adj_a, float3& adj_b, const float adj_ret)
+inline CUDA_CALLABLE void adj_dot(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, const float adj_ret)
 {
     adj_a += b*adj_ret;
     adj_b += a*adj_ret;
@@ -174,7 +206,7 @@ inline CUDA_CALLABLE void adj_dot(float3 a, float3 b, float3& adj_a, float3& adj
 
 }
 
-inline CUDA_CALLABLE void adj_cross(float3 a, float3 b, float3& adj_a, float3& adj_b, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_cross(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, const vec3& adj_ret)
 {
     // todo: sign check
     adj_a += cross(b, adj_ret);
@@ -183,7 +215,7 @@ inline CUDA_CALLABLE void adj_cross(float3 a, float3 b, float3& adj_a, float3& a
 
 
 #ifdef CUDA
-inline __device__ void atomic_add(float3 * addr, float3 value) {
+inline __device__ void atomic_add(vec3 * addr, vec3 value) {
     // *addr += value;
     atomicAdd(&(addr -> x), value.x);
     atomicAdd(&(addr -> y), value.y);
@@ -191,7 +223,7 @@ inline __device__ void atomic_add(float3 * addr, float3 value) {
 }
 #endif
 
-inline CUDA_CALLABLE void adj_length(float3 a, float3& adj_a, const float adj_ret)
+inline CUDA_CALLABLE void adj_length(vec3 a, vec3& adj_a, const float adj_ret)
 {
     adj_a += normalize(a)*adj_ret;
 
@@ -201,7 +233,7 @@ inline CUDA_CALLABLE void adj_length(float3 a, float3& adj_a, const float adj_re
 #endif
 }
 
-inline CUDA_CALLABLE void adj_normalize(float3 a, float3& adj_a, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_normalize(vec3 a, vec3& adj_a, const vec3& adj_ret)
 {
     float d = length(a);
     
@@ -209,7 +241,7 @@ inline CUDA_CALLABLE void adj_normalize(float3 a, float3& adj_a, const float3& a
     {
         float invd = 1.0f/d;
 
-        float3 ahat = normalize(a);
+        vec3 ahat = normalize(a);
 
         adj_a += (adj_ret - ahat*(dot(ahat, adj_ret))*invd);
 
@@ -219,5 +251,14 @@ inline CUDA_CALLABLE void adj_normalize(float3 a, float3& adj_a, const float3& a
 
 #endif
     }
+}
+
+
+CUDA_CALLABLE inline int longest_axis(const vec3& v)
+{    
+	if (v.x > v.y && v.x > v.z)
+		return 0;
+	else
+		return (v.y > v.z) ? 1 : 2;
 }
 

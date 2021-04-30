@@ -397,22 +397,22 @@ inline CUDA_CALLABLE void adj_atomic_sub(T* buf, int index, T value, T* adj_buf,
 //-------------------------
 // Texture methods
 
-inline CUDA_CALLABLE float sog_sample(float3 x)
+inline CUDA_CALLABLE float sdf_sample(vec3 x)
 {
     return 0.0;
 }
 
-inline CUDA_CALLABLE float3 sog_grad(float3 x)
+inline CUDA_CALLABLE vec3 sdf_grad(vec3 x)
 {
-    return float3();
+    return vec3();
 }
 
-inline CUDA_CALLABLE void adj_sog_sample(float3 x, float3& adj_x, float adj_ret)
+inline CUDA_CALLABLE void adj_sdf_sample(vec3 x, vec3& adj_x, float adj_ret)
 {
 
 }
 
-inline CUDA_CALLABLE void adj_sog_grad(float3 x, float3& adj_x, float3& adj_ret)
+inline CUDA_CALLABLE void adj_sdf_grad(vec3 x, vec3& adj_x, vec3& adj_ret)
 {
 
 }
@@ -427,7 +427,7 @@ inline CUDA_CALLABLE void print(float i)
     printf("%f\n", i);
 }
 
-inline CUDA_CALLABLE void print(float3 i)
+inline CUDA_CALLABLE void print(vec3 i)
 {
     printf("%f %f %f\n", i.x, i.y, i.z);
 }
@@ -479,7 +479,7 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float i, float& adj_i) { printf("%f adj: %f\n", i, adj_i); }
-inline CUDA_CALLABLE void adj_print(float3 i, float3& adj_i) { printf("%f %f %f adj: %f %f %f \n", i.x, i.y, i.z, adj_i.x, adj_i.y, adj_i.z); }
+inline CUDA_CALLABLE void adj_print(vec3 i, vec3& adj_i) { printf("%f %f %f adj: %f %f %f \n", i.x, i.y, i.z, adj_i.x, adj_i.y, adj_i.z); }
 inline CUDA_CALLABLE void adj_print(quat i, quat& adj_i) { }
 inline CUDA_CALLABLE void adj_print(mat22 m, mat22& adj_m) { }
 inline CUDA_CALLABLE void adj_print(mat33 m, mat33& adj_m) { }

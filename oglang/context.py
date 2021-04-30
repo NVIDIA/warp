@@ -14,6 +14,7 @@ from oglang.utils import *
 
 import oglang.codegen
 import oglang.cuda
+import oglang.build
 
 
 # represents either a built-in or user-defined function
@@ -126,20 +127,62 @@ class ModFunc:
 class MulFunc:
     @staticmethod
     def value_type(args):
-        # todo: encode type operator type globally
-        if (args[0].type == mat33 and args[1].type == float3):            
-            return float3
+
+        # int x int
+        if (args[0].type == int and args[1].type == int):
+            return int
+
+        elif (args[0].type == float and args[1].type == int):
+            return float
+
+        # int x float
+        elif (args[0].type == int and args[1].type == float):
+            return float
+
+        # scalar x object
+        elif (args[0].type == float):
+            return args[1].type
+
+        # object x scalar
+        elif (args[1].type == float):
+            return args[0].type
+
+        # mat33 x vec3
+        elif (args[0].type == mat33 and args[1].type == vec3):
+            return vec3
+
+        # mat66 x vec6
         if (args[0].type == spatial_matrix and args[1].type == spatial_vector):
             return spatial_vector
+        
         else:
-            return args[0].type
+            raise Exception("Unrecognized types for multiply operator *, got {} and {}".format(args[0].type, args[1].type))
 
 
 @builtin("div")
 class DivFunc:
     @staticmethod
     def value_type(args):
-        return args[0].type
+        
+        # int / int
+        if (args[0].type == int and args[1].type == int):
+            return int
+
+        # float / int
+        elif (args[0].type == float and args[1].type == int):
+            return float
+
+        # int / float
+        elif (args[0].type == int and args[1].type == float):
+            return float
+
+        # object / float
+        elif (args[0].type == float):
+            return args[1].type
+
+        else:
+            raise Exception("Unrecognized types for division operator /, got {} and {}".format(args[0].type, args[1].type))
+
 
 
 #----------------------
@@ -261,7 +304,7 @@ class DotFunc:
 class CrossFunc:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 @builtin("skew")
 class SkewFunc:
@@ -295,14 +338,14 @@ class SelectFunc:
 class RotateFunc:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 
 @builtin("rotate_inv")
 class RotateInvFunc:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 
 @builtin("determinant")
@@ -375,11 +418,11 @@ class floatFunc:
         return float
 
 
-@builtin("float3")
-class float3Func:
+@builtin("vec3")
+class vec3Func:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 
 @builtin("quat")
@@ -456,7 +499,7 @@ class Inverse:
 class TransformGetTranslation:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 @builtin("spatial_transform_get_rotation")
 class TransformGetRotation:
@@ -504,25 +547,25 @@ class SpatialDotFunc:
 class SpatialTransformPointFunc:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 @builtin("spatial_transform_vector")
 class SpatialTransformVectorFunc:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 @builtin("spatial_top")
 class SpatialTopFunc:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 @builtin("spatial_bottom")
 class SpatialBottomFunc:
     @staticmethod
     def value_type(args):
-        return float3
+        return vec3
 
 @builtin("spatial_jacobian")
 class SpatialJacobian:
@@ -673,27 +716,6 @@ class Module:
             func.value_type = wrap(adj)
 
 
-            # import pdb
-            # pdb.set_trace()
-
-            # import copy
-
-            # @rename(func.__name__ + "_cpu_func", adj.return_var.type)
-            # class Func:
-            #     @classmethod
-            #     def value_type(cls, *args):
-            #         return cls.return_type
-
-            # functions[func.__name__] = Func
-
-            # @rename(func.__name__ + "_cuda_func", adj.return_var.type)
-            # class CUDAFunc:
-            #     @classmethod
-            #     def value_type(cls, *args):
-            #         return cls.return_type
-
-            # cuda_functions[func.__name__] = CUDAFunc
-
         for kernel in self.kernels.values():
 
             if use_cuda:
@@ -746,7 +768,6 @@ class Module:
                 self.dll = cdll.LoadLibrary(dll_path)
                 return
 
-
         # write cpp sources
         cpp_file = open(cpp_path, "w")
         cpp_file.write(cpp_source)
@@ -755,104 +776,22 @@ class Module:
         cu_file = open(cu_path, "w")
         cu_file.write(cu_source)
         cu_file.close()
-
-        # print("ignoring rebuild, using stale kernels")
-        # module = import_module("kernels", build_path)
-        # return module
-
-        # cache stale, rebuild
-        print("Rebuilding kernels")
-
-        set_build_env()
-
-        cuda_home = find_cuda()
-        cuda_cmd = None
-
-
+       
         try:
-            if os.name == 'nt':
+            oglang.build.build_module(cpp_path, cu_path, dll_path, config="release", load=True)
 
-                cpp_out = cpp_path + ".obj"
-                cu_out = cu_path + ".o"
-
-                cpp_flags = "/Ox -DNDEBUG /fp:fast"
-                ld_flags = "-DNDEBUG /dll"
-                ld_inputs = []
-
-                # cpp_flags = "/Zi /Od /DEBUG"
-                # ld_flags = "/DEBUG /dll"
-
-                with ScopedTimer("build"):
-                    cpp_cmd = "cl.exe {cflags} -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
-                    print(cpp_cmd)
-                    err = subprocess.call(cpp_cmd)
-
-                    if (err == False):
-                        ld_inputs.append(cpp_out)
-                    else:
-                        raise RuntimeError("cpp build failed")
-
-                if (cuda_home):
-                    cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
-
-                    with ScopedTimer("build_cuda"):
-                        print(cuda_cmd)
-                        err = subprocess.call(cuda_cmd)
-
-                        if (err == False):
-                            ld_inputs.append(cu_out)
-                        else:
-                            raise RuntimeError("cuda build failed")
-
-
-                with ScopedTimer("link"):
-                    link_cmd = 'link.exe {inputs} cudart.lib {flags} /LIBPATH:"{cuda_home}/lib/x64" /out:{dll_path}'.format(inputs=' '.join(ld_inputs), cuda_home=cuda_home, flags=ld_flags, dll_path=dll_path)
-                    print(link_cmd)
-
-                    err = subprocess.call(link_cmd)
-                    if (err):
-                        raise RuntimeError("Link failed")                    
-
-                
-            else:
-
-                cpp_flags = "-Z -O3 -DNDEBUG -fPIC --std=c++11"
-                ld_flags = "-DNDEBUG"           
-
-                with ScopedTimer("build"):
-                    build_cmd = "g++ {cflags} -c -o {cpp_path}.o {cpp_path}".format(cflags=cpp_flags, cpp_path=cpp_path)
-                    print(build_cmd)
-                    subprocess.call(build_cmd, shell=True)
-
-                if (cuda_home):
-
-                    cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 --compiler-options -fPIC -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
-
-                    with ScopedTimer("build_cuda"):
-                        print(cuda_cmd)
-                        err = subprocess.call(cuda_cmd, shell=True)
-
-                        if (err):
-                            raise RuntimeError("cuda build failed")
-
-                with ScopedTimer("link"):
-                    link_cmd = "g++ -shared -L{cuda_home}/lib64 -o {dll_path} {cpp_path}.o {cu_path}.o -lcudart".format(cuda_home=cuda_home, cpp_path=cpp_path, cu_path=cu_path, dll_path=dll_path)
-                    print(link_cmd)
-                    subprocess.call(link_cmd, shell=True)
+            # update cached output
+            f = open(cache_path, 'w')
+            f.write(cpp_source)
+            f.close()
 
         except Exception as e:
 
-            # print error 
-            print("Build failed, using cached binaries (if available")
             print(e)
+            print("Trying to load existing module")
 
-       
-        self.dll = cdll.LoadLibrary(dll_path)
 
-        # update cached output
-        f = open(cache_path, 'w')
-        f.write(cpp_source)
-        f.close()
+        self.dll = oglang.build.load_module(dll_path)
 
 
 #-------------------------------------------
@@ -864,111 +803,121 @@ class Runtime:
 
     def __init__(self):
         
-        if (sys.platform.startswith("linux")):
-            self.crt = CDLL("libc.so.6")
-        elif (sys.platform.startswith("win32")):
-            self.crt = CDLL("msvcrt")
-        elif (sys.platform.startswith("darwin")):
-            self.crt = CDLL("libc.dylib")
-        else:
-            print("Unknown platform")
+        # if (sys.platform.startswith("linux")):
+        #     self.crt = CDLL("libc.so.6")
+        # elif (sys.platform.startswith("win32")):
+        #     self.crt = CDLL("msvcrt")
+        # elif (sys.platform.startswith("darwin")):
+        #     self.crt = CDLL("libc.dylib")
+        # else:
+        #     print("Unknown platform")
 
-        if (oglang.cuda.cuda):
+        # if (oglang.cuda.cuda):
 
-            oglang.cuda.cuInit(0)
+        #     oglang.cuda.cuInit(0)
 
-            self.cuda_device = c_int(0)
-            ret = oglang.cuda.cuDeviceGet(byref(self.cuda_device), 0)
+        #     self.cuda_device = c_int(0)
+        #     ret = oglang.cuda.cuDeviceGet(byref(self.cuda_device), 0)
 
-            self.cuda_context = c_void_p()            
-            ret = oglang.cuda.cuDevicePrimaryCtxRetain(byref(self.cuda_context), self.cuda_device)
-            ret = oglang.cuda.cuCtxPushCurrent(self.cuda_context)
-            ret = oglang.cuda.cuCtxAttach(byref(self.cuda_context), 0)
+        #     self.cuda_context = c_void_p()            
+        #     ret = oglang.cuda.cuDevicePrimaryCtxRetain(byref(self.cuda_context), self.cuda_device)
+        #     ret = oglang.cuda.cuCtxPushCurrent(self.cuda_context)
+        #     ret = oglang.cuda.cuCtxAttach(byref(self.cuda_context), 0)
 
-            flags = c_uint(0)
-            active = c_int(0)
+        #     flags = c_uint(0)
+        #     active = c_int(0)
 
-            ret = oglang.cuda.cuDevicePrimaryCtxGetState(self.cuda_device, byref(flags), byref(active))
+        #     ret = oglang.cuda.cuDevicePrimaryCtxGetState(self.cuda_device, byref(flags), byref(active))
 
-            current = c_void_p()
-            ret = oglang.cuda.cuCtxGetCurrent(byref(current))
+        #     current = c_void_p()
+        #     ret = oglang.cuda.cuCtxGetCurrent(byref(current))
 
-            ver = c_uint(0)
-            ret = oglang.cuda.cuCtxGetApiVersion(current, byref(ver))
+        #     ver = c_uint(0)
+        #     ret = oglang.cuda.cuCtxGetApiVersion(current, byref(ver))
 
-            ver0 = c_uint(0)
-            ret = oglang.cuda.cuCtxGetApiVersion(c_void_p(), byref(ver0))
+        #     ver0 = c_uint(0)
+        #     ret = oglang.cuda.cuCtxGetApiVersion(c_void_p(), byref(ver0))
+
+
+        try:
+            build_path = os.path.dirname(os.path.realpath(__file__))
+
+            oglang.build.build_module(
+                            build_path + "/native/core.cpp", 
+                            build_path + "/native/core.cu", 
+                            build_path + "/kernels/core.dll")
+        except Exception as e:
+
+            print("Could not load core library")
+            raise e
+
+        self.core = oglang.build.load_module(build_path + "/kernels/core.dll")
+
+        self.core.alloc_host.restype = c_void_p
+        self.core.alloc_device.restype = c_void_p
+        
+        self.core.mesh_create_host.restype = c_uint64
+        self.core.mesh_create_device.restype = c_uint64
+
+        self.core.init()
 
 
     # host functions
     def alloc_host(self, num_bytes):
-
-        self.crt.malloc.restype = c_void_p
-        ptr = self.crt.malloc(num_bytes)
-        
-        # always clear
-        self.crt.memset(cast(ptr,POINTER(c_int)), 0, num_bytes)
+        ptr = self.core.alloc_host(num_bytes)       
         return ptr
 
     def free_host(self, ptr):
-
-        self.crt.free(cast(ptr,POINTER(c_int)))
+        self.core.free_host(cast(ptr,POINTER(c_int)))
 
 
     # device functions
     def alloc_device(self, num_bytes):
-
-        current = c_void_p()
-        oglang.cuda.cuCtxGetCurrent(byref(current))
-
-        ptr = c_void_p(0)
-        ret = oglang.cuda.cuMemAlloc(byref(ptr), c_size_t(num_bytes))
-        ret = oglang.cuda.cuMemsetD32Async(byref(self.cuda_device), c_uint(0), c_size_t(num_bytes), c_void_p(0))
-
-        return ptr.value
-
+        ptr = self.core.alloc_device(c_size_t(num_bytes))
+        return ptr
 
     def free_device(self, ptr):
-
-        ptr = c_void_p(0)
-        oglang.cuda.cuMemFree(ptr)
+        self.core.free_device(cast(ptr,POINTER(c_int)))
 
 
-runtime = Runtime()
 
-
-# global entry points methods
+# global entry points 
 
 def copy(dest, src):
 
     if (src.device == "cpu" and dest.device == "cuda"):
-        oglang.cuda.cuMemcpyHtoDAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
+        runtime.core.memcpy_h2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity))     # todo, just copy active region not full capacity
 
     elif (src.device == "cuda" and dest.device == "cpu"):
-        oglang.cuda.cuMemcpyDtoHAsync(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity), c_void_p(0))     # todo, just copy active region not full capacity
+        runtime.core.memcpy_d2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity))     # todo, just copy active region not full capacity
 
     elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.crt.memcpy(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity))
+        runtime.core.memcpy_h2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity))
 
 
 def zeros(n, dtype=float, device="cpu"):
 
-    # todo size-computation for concrete types
     num_bytes = n*oglang.types.type_size_in_bytes(dtype)
 
     if (device == "cpu"):
-        ptr = runtime.alloc_host(num_bytes) 
+        ptr = runtime.core.alloc_host(num_bytes) 
+        runtime.core.memset_host(cast(ptr,POINTER(c_int)), 0, num_bytes)
+
     if( device == "cuda"):
         ptr = runtime.alloc_device(num_bytes)
+        runtime.core.memset_device(cast(ptr,POINTER(c_int)), 0, num_bytes)
 
     if (ptr == None):
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
-        return oglang.codegen.array(dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
+        # construct array
+        return oglang.types.array(dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
 
 
 def empty(n, dtype=float, device="cpu"):
-    return zeros(n, dtype, device)  # todo: implement uninitialized allocation
+    
+    # todo: implement uninitialized allocation
+    return zeros(n, dtype, device)  
 
 
 def from_numpy(arr, dtype, device="cpu"):
@@ -988,11 +937,7 @@ def from_numpy(arr, dtype, device="cpu"):
 
 
 def synchronize():
-
-    if (oglang.cuda):
-        ret = oglang.cuda.cuCtxSynchronize(c_void_p(0))
-        if (ret != 0):
-            print("CUDA error")
+    runtime.core.synchronize(c_void_p(0))
 
 
 def launch(kernel, dim, inputs, outputs, device="cpu"):
@@ -1020,7 +965,7 @@ def launch(kernel, dim, inputs, outputs, device="cpu"):
             elif type(i) is float:
                 params.append(c_float(i))           
             else:
-                # todo: add support for other built-types as kernel arguments (float3, quat, etc)
+                # todo: add support for other built-types as kernel arguments (vec3, quat, etc)
                 print("Unknown parameter type")
 
         # late bind
@@ -1034,3 +979,6 @@ def launch(kernel, dim, inputs, outputs, device="cpu"):
             kernel.forward_cuda(*params)
 
     
+
+# initialize global runtime
+runtime = Runtime()

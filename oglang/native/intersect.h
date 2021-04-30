@@ -1,10 +1,12 @@
 #pragma once
 
+#include "core.h"
+#include "vec3.h"
 
 
-CUDA_CALLABLE inline float3 closest_point_to_aabb(const float3& p, const float3& lower, const float3& upper)
+CUDA_CALLABLE inline vec3 closest_point_to_aabb(const vec3& p, const vec3& lower, const vec3& upper)
 {
-	float3 c;
+	vec3 c;
 
 	for (int i=0; i < 3; ++i)
 	{
@@ -17,11 +19,11 @@ CUDA_CALLABLE inline float3 closest_point_to_aabb(const float3& p, const float3&
 	return c;
 }
 
-CUDA_CALLABLE inline float3 closest_point_to_triangle(const float3& a, const float3& b, const float3& c, const float3& p, float& v, float& w)
+CUDA_CALLABLE inline vec3 closest_point_to_triangle(const vec3& a, const vec3& b, const vec3& c, const vec3& p, float& v, float& w)
 {
-	float3 ab = b-a;
-	float3 ac = c-a;
-	float3 ap = p-a;
+	vec3 ab = b-a;
+	vec3 ac = c-a;
+	vec3 ap = p-a;
 	
 	float d1 = dot(ab, ap);
 	float d2 = dot(ac, ap);
@@ -32,7 +34,7 @@ CUDA_CALLABLE inline float3 closest_point_to_triangle(const float3& a, const flo
 		return a;
 	}
 
-	float3 bp = p-b;
+	vec3 bp = p-b;
 	float d3 = dot(ab, bp);
 	float d4 = dot(ac, bp);
 	if (d3 >= 0.0f && d4 <= d3)
@@ -50,7 +52,7 @@ CUDA_CALLABLE inline float3 closest_point_to_triangle(const float3& a, const flo
 		return a + v*ab;
 	}
 
-	float3 cp =p-c;
+	vec3 cp =p-c;
 	float d5 = dot(ab, cp);
 	float d6 = dot(ac, cp);
 	if (d6 >= 0.0f && d5 <= d6)
@@ -83,30 +85,32 @@ CUDA_CALLABLE inline float3 closest_point_to_triangle(const float3& a, const flo
 }
 
 
-CUDA_CALLABLE inline float distance_to_aabb(const float3& p, const float3& lower, const float3& upper)
+CUDA_CALLABLE inline float distance_to_aabb(const vec3& p, const vec3& lower, const vec3& upper)
 {
-	float3 cp = closest_point_to_aabb(p, lower, upper);
+	vec3 cp = closest_point_to_aabb(p, lower, upper);
 
 	return length(p-cp);
 }
 
 
-CUDA_CALLABLE inline bool intersect_ray_aabb(const float3& pos, const float3& rcp_dir, const float3& min, const float3& max, float& t)
+CUDA_CALLABLE inline bool intersect_ray_aabb(const vec3& pos, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t)
 {
-    float l1 = (min.x - pos.x) * rcp_dir.x;
-    float l2 = (max.x - pos.x) * rcp_dir.x;
-    float lmin = min(l1,l2);
-    float lmax = max(l1,l2);
+	float l1, l2, lmin, lmax;
 
-    float l1 = (min.y - pos.y) * rcp_dir.y;
-    float l2 = (max.y - pos.y) * rcp_dir.y;
-    float lmin = max(min(l1,l2), lmin);
-    float lmax = min(max(l1,l2), lmax);
+    l1 = (lower.x - pos.x) * rcp_dir.x;
+    l2 = (upper.x - pos.x) * rcp_dir.x;
+    lmin = min(l1,l2);
+    lmax = max(l1,l2);
 
-    float l1 = (min.z - pos.z) * rcp_dir.z;
-    float l2 = (max.z - pos.z) * rcp_dir.z;
-    float lmin = max(min(l1,l2), lmin);
-    float lmax = min(max(l1,l2), lmax);
+    l1 = (lower.y - pos.y) * rcp_dir.y;
+    l2 = (upper.y - pos.y) * rcp_dir.y;
+    lmin = max(min(l1,l2), lmin);
+    lmax = min(max(l1,l2), lmax);
+
+    l1 = (lower.z - pos.z) * rcp_dir.z;
+    l2 = (upper.z - pos.z) * rcp_dir.z;
+    lmin = max(min(l1,l2), lmin);
+    lmax = min(max(l1,l2), lmax);
 
     bool hit = ((lmax >= 0.f) & (lmax >= lmin));
     if (hit)
@@ -114,4 +118,3 @@ CUDA_CALLABLE inline bool intersect_ray_aabb(const float3& pos, const float3& rc
 
     return hit;
 }
-

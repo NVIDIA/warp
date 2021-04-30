@@ -6,7 +6,7 @@ import numpy as np
 # built-in types
 
 
-class float3:
+class vec3:
     def __init__(self):
         x = 0.0
         y = 0.0
@@ -20,7 +20,7 @@ class float3:
     def size():
         return 12
 
-class float4:
+class vec4:
     def __init__(self):
         x = 0.0
         y = 0.0
@@ -222,14 +222,35 @@ class array:
 
 
 
-class mesh:
+class Mesh:
 
-    def __init__(self, points, indices):
-        pass
+    def __init__(self, points, indices, device):
+        
+        self.points = points
+        self.indices = indices
+
+        self.id = runtime.mesh_create_host()
+
+    def __del__(self):
+
+        runtime.mesh_destroy_host(self.id)
 
     def refit(points, indices):
+        
+        self.points = points
+        self.indices = indices
+
+        runtime.mesh_update_host()
+
+    def bounds():
         pass
 
+
+
+class Volume:
+
+    def __init__(self, vdb):
+        pass
 
 
 

@@ -19,7 +19,7 @@ GEO_SPHERE = 0
 GEO_BOX = 1
 GEO_CAPSULE = 2
 GEO_MESH = 3
-GEO_Sog = 4
+GEO_SDF = 4
 GEO_PLANE = 5
 GEO_NONE = 6
 
@@ -550,7 +550,7 @@ class ModelBuilder:
 
         # geometry
         self.geo_meshes = []
-        self.geo_sogs = []
+        self.geo_sdfs = []
 
         # springs
         self.spring_indices = []
@@ -1834,7 +1834,7 @@ class ModelBuilder:
         
         # store refs to geometry
         m.geo_meshes = self.geo_meshes
-        m.geo_sogs = self.geo_sogs
+        m.geo_sdfs = self.geo_sdfs
 
         # enable ground plane
         m.ground = True

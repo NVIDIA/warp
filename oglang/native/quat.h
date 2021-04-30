@@ -11,7 +11,7 @@ struct quat
     float w;
 
     inline CUDA_CALLABLE quat(float x=0.0f, float y=0.0f, float z=0.0f, float w=0.0) : x(x), y(y), z(z), w(w) {}    
-    explicit inline CUDA_CALLABLE quat(const float3& v, float w=0.0f) : x(v.x), y(v.y), z(v.z), w(w) {}
+    explicit inline CUDA_CALLABLE quat(const vec3& v, float w=0.0f) : x(v.x), y(v.y), z(v.z), w(w) {}
 };
 
 #ifdef CUDA
@@ -31,7 +31,7 @@ inline CUDA_CALLABLE void adj_quat(float x, float y, float z, float w, float& ad
     adj_w += adj_ret.w;
 }
 
-inline CUDA_CALLABLE void adj_quat(const float3& v, float w, float3& adj_v, float& adj_w, quat adj_ret)
+inline CUDA_CALLABLE void adj_quat(const vec3& v, float w, vec3& adj_v, float& adj_w, quat adj_ret)
 {
     adj_v.x += adj_ret.x;
     adj_v.y += adj_ret.y;
@@ -41,13 +41,13 @@ inline CUDA_CALLABLE void adj_quat(const float3& v, float w, float3& adj_v, floa
 
 // foward methods
 
-inline CUDA_CALLABLE quat quat_from_axis_angle(const float3& axis, float angle)
+inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
 {
     float half = angle*0.5f;
     float w = cosf(half);
 
     float sin_theta_over_two = sinf(half);
-    float3 v = axis*sin_theta_over_two;
+    vec3 v = axis*sin_theta_over_two;
 
     return quat(v.x, v.y, v.z, w);
 }
@@ -110,14 +110,19 @@ inline CUDA_CALLABLE quat mul(const quat& a, float s)
     return quat(a.x*s, a.y*s, a.z*s, a.w*s);    
 }
 
-inline CUDA_CALLABLE float3 rotate(const quat& q, const float3& x)
+inline CUDA_CALLABLE quat mul(float s, const quat& a)
 {
-    return x*(2.0f*q.w*q.w-1.0f) + cross(float3(&q.x), x)*q.w*2.0f + float3(&q.x)*dot(float3(&q.x), x)*2.0f;
+    return mul(a, s);
 }
 
-inline CUDA_CALLABLE float3 rotate_inv(const quat& q, const float3& x)
+inline CUDA_CALLABLE vec3 rotate(const quat& q, const vec3& x)
 {
-    return x*(2.0f*q.w*q.w-1.0f) - cross(float3(&q.x), x)*q.w*2.0f + float3(&q.x)*dot(float3(&q.x), x)*2.0f;
+    return x*(2.0f*q.w*q.w-1.0f) + cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
+}
+
+inline CUDA_CALLABLE vec3 rotate_inv(const quat& q, const vec3& x)
+{
+    return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
 }
 
 
@@ -150,9 +155,9 @@ inline CUDA_CALLABLE void adj_index(const quat& a, int idx, quat& adj_a, int & a
 
 
 // backward methods
-inline CUDA_CALLABLE void adj_quat_from_axis_angle(const float3& axis, float angle, float3& adj_axis, float& adj_angle, const quat& adj_ret)
+inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle, vec3& adj_axis, float& adj_angle, const quat& adj_ret)
 {
-    float3 v = float3(adj_ret.x, adj_ret.y, adj_ret.z);
+    vec3 v = vec3(adj_ret.x, adj_ret.y, adj_ret.z);
 
     float s = sinf(angle*0.5f);
     float c = cosf(angle*0.5f);
@@ -253,9 +258,9 @@ inline CUDA_CALLABLE void adj_mul(const quat& a, float s, quat& adj_a, float& ad
 }
 
 
-inline CUDA_CALLABLE void adj_rotate(const quat& q, const float3& p, quat& adj_q, float3& adj_p, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_rotate(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
 {
-    const float3& r = adj_ret;
+    const vec3& r = adj_ret;
 
     {
         float t2 = p.z*q.z*2.0f;
@@ -287,9 +292,9 @@ inline CUDA_CALLABLE void adj_rotate(const quat& q, const float3& p, quat& adj_q
     }
 }
 
-inline CUDA_CALLABLE void adj_rotate_inv(const quat& q, const float3& p, quat& adj_q, float3& adj_p, const float3& adj_ret)
+inline CUDA_CALLABLE void adj_rotate_inv(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
 {
-    const float3& r = adj_ret;
+    const vec3& r = adj_ret;
 
     {
         float t2 = p.z*q.w*2.0f;

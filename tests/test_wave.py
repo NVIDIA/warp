@@ -97,14 +97,14 @@ def wave_solve(hprevious: og.array(float),
 # simple kernel to apply height deltas to a vertex array
 @og.kernel
 def grid_update(heights: og.array(float),
-                vertices: og.array(og.float3)):
+                vertices: og.array(og.vec3)):
 
     tid = og.tid()
 
     h = og.load(heights, tid)
     v = og.load(vertices, tid)
 
-    v_new = og.float3(v[0], h, v[2])
+    v_new = og.vec3(v[0], h, v[2])
 
     og.store(vertices, tid, v_new)
 
@@ -142,7 +142,7 @@ sim_grid0 = og.zeros(sim_width*sim_height, dtype=float, device="cuda")
 sim_grid1 = og.zeros(sim_width*sim_height, dtype=float, device="cuda")
 
 sim_host = og.zeros(sim_width*sim_height, dtype=float, device="cpu")
-verts_host = og.zeros(sim_width*sim_height, dtype=og.float3, device="cpu")
+verts_host = og.zeros(sim_width*sim_height, dtype=og.vec3, device="cpu")
 
 vertices = verts_host.numpy().reshape((sim_width*sim_height, 3))
 indices = []

@@ -45,11 +45,11 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            if self.type.dtype == float3:
+            if self.type.dtype == vec3:
                 return str("og::" + self.type.dtype.__name__) + "*"
 
             return str(self.type.dtype.__name__) + "*"
-        elif self.type == float3:
+        elif self.type == vec3:
             return "og::" + str(self.type.__name__)
         else:
             return str(self.type.__name__)
@@ -167,7 +167,7 @@ class Adjoint:
     def add_operator(adj, op, inputs):
 
         # todo: just using first input as the output type, would need some
-        # type inference here to support things like float3 = float*float3
+        # type inference here to support things like vec3 = float*vec3
 
         output = adj.add_var(inputs[0].type)
 
@@ -565,18 +565,22 @@ class Adjoint:
 # code generation
 
 cpu_module_header = '''
-#define CPU
+#include "../native/core.h"
 
-#include "../native/adjoint.h"
+// avoid namespacing of float type for casting to float type, this is to avoid og::float(x), which is not valid in C++
+#define float(x) cast_float(x)
+#define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
 
 using namespace og;
 
 '''
 
 cuda_module_header = '''
-#define CUDA
+#include "../native/core.h"
 
-#include "../native/adjoint.h"
+// avoid namespacing of float type for casting to float type, this is to avoid og::float(x), which is not valid in C++
+#define float(x) cast_float(x)
+#define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
 
 using namespace og;
 

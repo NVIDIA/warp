@@ -1,48 +1,119 @@
 #include "mesh.h"
+#include "bvh.h"
 
-struct Mesh
-{
+using namespace og;
 
-};
-
-
-uint64_t mesh_create(const float3* points, int* tris)
+uint64_t mesh_create_host(vec3* points, int* indices, int num_points, int num_tris)
 {
     Mesh* m = new Mesh();
 
     m->points = points;
-    m->tris = tris;
+    m->indices = indices;
 
-    m->bvh = bvh_create();
+    m->num_points = num_points;
+    m->num_tris = num_tris;
 
-    return (uint64_t)(m);
+    m->bounds = new bounds3[num_tris];
+
+    for (int i=0; i < num_tris; ++i)
+    {
+        m->bounds[i].add_point(points[indices[i*3+0]]);
+        m->bounds[i].add_point(points[indices[i*3+1]]);
+        m->bounds[i].add_point(points[indices[i*3+2]]);
+    }
+
+    m->bvh = bvh_create(m->bounds, num_tris);
+
+    return (uint64_t)m;
 }
 
-void mesh_destroy(uint64_t id)
+uint64_t mesh_create_device(vec3* points, int* indices, int num_points, int num_tris)
+{
+    Mesh mesh;
+
+    mesh.points = points;
+    mesh.indices = indices;
+
+    mesh.num_points = num_points;
+    mesh.num_tris = num_tris;
+
+    {
+        // todo: BVH creation only on CPU at the moment so temporarily bring all the data back to host
+        vec3* points_host = (vec3*)alloc_device(sizeof(vec3)*num_points);
+        int* indices_host = (int*)alloc_device(sizeof(int)*num_tris*3);
+        bounds3* bounds_host = (bounds3*)alloc_device(sizeof(bounds3)*num_tris);
+
+        memcpy_d2h(points_host, &points, sizeof(vec3)*num_points);
+        memcpy_d2h(indices_host, &indices, sizeof(int)*num_tris*3);
+        memcpy_d2h(bounds_host, &mesh, sizeof(bounds3)*num_tris);
+
+        mesh.bounds = new bounds3[num_tris];
+
+        for (int i=0; i < num_tris; ++i)
+        {
+            mesh.bounds[i].add_point(points[indices[i*3+0]]);
+            mesh.bounds[i].add_point(points[indices[i*3+1]]);
+            mesh.bounds[i].add_point(points[indices[i*3+2]]);
+        }
+
+        BVH bvh_host = bvh_create(bounds_host, num_tris);
+        BVH bvh_device = bvh_clone(bvh_host);
+
+        bvh_destroy_host(bvh_host);
+
+        free_host(points_host);
+        free_host(indices_host);
+        free_host(bounds_host);
+
+        mesh.bvh = bvh_device;
+    }
+
+    Mesh* mesh_device = (Mesh*)alloc_device(sizeof(Mesh));
+    memcpy_h2d(mesh_device, &mesh, sizeof(Mesh));
+    
+    return (uint64_t)mesh_device;
+}
+
+void mesh_destroy_host(uint64_t id)
 {
     Mesh* m = (Mesh*)(id);
 
-    bvh_destroy(m->bvh)
+    delete[] m->bounds;
+    bvh_destroy_host(m->bvh);
+
+    delete m;
 }
-void mesh_update(uint64_t m, const float3* points, int* tris, bool refit)
+
+void mesh_destroy_device(uint64_t id)
 {
+    Mesh* mesh_device = (Mesh*)(id);
+    Mesh mesh_host;
 
+    // bring descriptor back to main-memory
+    memcpy_d2h(&mesh_host, mesh_device, sizeof(Mesh));
+    synchronize();
+
+    bvh_destroy_device(mesh_host.bvh);
+
+    free_device(mesh_device);
 }
 
-
-
-
-float3 mesh_query_point(uint64_t id, float3 point, float max_dist)
+void mesh_update_host(uint64_t id, const vec3* points, int* indices, int num_points, int num_tris, bool refit)
 {
-    const Mesh& m = mesh_get(id)
+    Mesh* m = (Mesh*)(id);
 
-    
+    for (int i=0; i < m->num_tris; ++i)
+    {
+        m->bounds[i] = bounds3();
+        m->bounds[i].add_point(m->points[indices[i*3+0]]);
+        m->bounds[i].add_point(m->points[indices[i*3+1]]);
+        m->bounds[i].add_point(m->points[indices[i*3+2]]);
+    }
 
-    
-
+    bvh_refit_host(m->bvh, m->bounds);
 }
 
-float mesh_query_ray()
+void mesh_update_device(uint64_t id, const vec3* points, int* indices, int num_points, int num_tris, bool refit)
 {
 
 }

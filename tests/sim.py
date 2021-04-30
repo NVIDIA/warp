@@ -29,7 +29,7 @@ import time
 #     [x] Capsule
 #     [x] Box
 #     [ ] Convex
-#     [ ] Sog
+#     [ ] Sdf
 # [ ] Implicit solver
 # [x] USD import
 # [x] USD export
@@ -55,14 +55,14 @@ def kernel_init():
 
 
 @og.kernel
-def integrate_particles(x: og.tensor(og.float3),
-                        v: og.tensor(og.float3),
-                        f: og.tensor(og.float3),
+def integrate_particles(x: og.tensor(og.vec3),
+                        v: og.tensor(og.vec3),
+                        f: og.tensor(og.vec3),
                         w: og.tensor(float),
-                        gravity: og.tensor(og.float3),
+                        gravity: og.tensor(og.vec3),
                         dt: float,
-                        x_new: og.tensor(og.float3),
-                        v_new: og.tensor(og.float3)):
+                        x_new: og.tensor(og.vec3),
+                        v_new: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -83,20 +83,20 @@ def integrate_particles(x: og.tensor(og.float3),
 
 # semi-implicit Euler integration
 @og.kernel
-def integrate_rigids(rigid_x: og.tensor(og.float3),
+def integrate_rigids(rigid_x: og.tensor(og.vec3),
                      rigid_r: og.tensor(og.quat),
-                     rigid_v: og.tensor(og.float3),
-                     rigid_w: og.tensor(og.float3),
-                     rigid_f: og.tensor(og.float3),
-                     rigid_t: og.tensor(og.float3),
+                     rigid_v: og.tensor(og.vec3),
+                     rigid_w: og.tensor(og.vec3),
+                     rigid_f: og.tensor(og.vec3),
+                     rigid_t: og.tensor(og.vec3),
                      inv_m: og.tensor(float),
                      inv_I: og.tensor(og.mat33),
-                     gravity: og.tensor(og.float3),
+                     gravity: og.tensor(og.vec3),
                      dt: float,
-                     rigid_x_new: og.tensor(og.float3),
+                     rigid_x_new: og.tensor(og.vec3),
                      rigid_r_new: og.tensor(og.quat),
-                     rigid_v_new: og.tensor(og.float3),
-                     rigid_w_new: og.tensor(og.float3)):
+                     rigid_v_new: og.tensor(og.vec3),
+                     rigid_w_new: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -141,13 +141,13 @@ def integrate_rigids(rigid_x: og.tensor(og.float3),
 
 
 @og.kernel
-def eval_springs(x: og.tensor(og.float3),
-                 v: og.tensor(og.float3),
+def eval_springs(x: og.tensor(og.vec3),
+                 v: og.tensor(og.vec3),
                  spring_indices: og.tensor(int),
                  spring_rest_lengths: og.tensor(float),
                  spring_stiffness: og.tensor(float),
                  spring_damping: og.tensor(float),
-                 f: og.tensor(og.float3)):
+                 f: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -184,8 +184,8 @@ def eval_springs(x: og.tensor(og.float3),
 
 
 @og.kernel
-def eval_triangles(x: og.tensor(og.float3),
-                   v: og.tensor(og.float3),
+def eval_triangles(x: og.tensor(og.vec3),
+                   v: og.tensor(og.vec3),
                    indices: og.tensor(int),
                    pose: og.tensor(og.mat22),
                    activation: og.tensor(float),
@@ -194,7 +194,7 @@ def eval_triangles(x: og.tensor(og.float3),
                    k_damp: float,
                    k_drag: float,
                    k_lift: float,
-                   f: og.tensor(og.float3)):
+                   f: og.tensor(og.vec3)):
     tid = og.tid()
 
     i = og.load(indices, tid * 3 + 0)
@@ -314,7 +314,7 @@ def eval_triangles(x: og.tensor(og.float3),
     og.atomic_sub(f, k, fr)
 
 @og.func
-def triangle_closest_point_barycentric(a: og.float3, b: og.float3, c: og.float3, p: og.float3):
+def triangle_closest_point_barycentric(a: og.vec3, b: og.vec3, c: og.vec3, p: og.vec3):
     ab = b - a
     ac = c - a
     ap = p - a
@@ -323,45 +323,45 @@ def triangle_closest_point_barycentric(a: og.float3, b: og.float3, c: og.float3,
     d2 = og.dot(ac, ap)
 
     if (d1 <= 0.0 and d2 <= 0.0):
-        return float3(1.0, 0.0, 0.0)
+        return vec3(1.0, 0.0, 0.0)
 
     bp = p - b
     d3 = og.dot(ab, bp)
     d4 = og.dot(ac, bp)
 
     if (d3 >= 0.0 and d4 <= d3):
-        return float3(0.0, 1.0, 0.0)
+        return vec3(0.0, 1.0, 0.0)
 
     vc = d1 * d4 - d3 * d2
     v = d1 / (d1 - d3)
     if (vc <= 0.0 and d1 >= 0.0 and d3 <= 0.0):
-        return float3(1.0 - v, v, 0.0)
+        return vec3(1.0 - v, v, 0.0)
 
     cp = p - c
     d5 = dot(ab, cp)
     d6 = dot(ac, cp)
 
     if (d6 >= 0.0 and d5 <= d6):
-        return float3(0.0, 0.0, 1.0)
+        return vec3(0.0, 0.0, 1.0)
 
     vb = d5 * d2 - d1 * d6
     w = d2 / (d2 - d6)
     if (vb <= 0.0 and d2 >= 0.0 and d6 <= 0.0):
-        return float3(1.0 - w, 0.0, w)
+        return vec3(1.0 - w, 0.0, w)
 
     va = d3 * d6 - d5 * d4
     w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
     if (va <= 0.0 and (d4 - d3) >= 0.0 and (d5 - d6) >= 0.0):
-        return float3(0.0, w, 1.0 - w)
+        return vec3(0.0, w, 1.0 - w)
 
     denom = 1.0 / (va + vb + vc)
     v = vb * denom
     w = vc * denom
 
-    return float3(1.0 - v - w, v, w)
+    return vec3(1.0 - v - w, v, w)
 
 # @og.func
-# def triangle_closest_point(a: og.float3, b: og.float3, c: og.float3, p: og.float3):
+# def triangle_closest_point(a: og.vec3, b: og.vec3, c: og.vec3, p: og.vec3):
 #     ab = b - a
 #     ac = c - a
 #     ap = p - a
@@ -412,8 +412,8 @@ def triangle_closest_point_barycentric(a: og.float3, b: og.float3, c: og.float3,
 def eval_triangles_contact(
                                        # idx : og.tensor(int), # list of indices for colliding particles
     num_particles: int,                # size of particles
-    x: og.tensor(og.float3),
-    v: og.tensor(og.float3),
+    x: og.tensor(og.vec3),
+    v: og.tensor(og.vec3),
     indices: og.tensor(int),
     pose: og.tensor(og.mat22),
     activation: og.tensor(float),
@@ -422,7 +422,7 @@ def eval_triangles_contact(
     k_damp: float,
     k_drag: float,
     k_lift: float,
-    f: og.tensor(og.float3)):
+    f: og.tensor(og.vec3)):
 
     tid = og.tid()
     face_no = tid // num_particles     # which face
@@ -471,21 +471,21 @@ def eval_triangles_contact(
 @og.kernel
 def eval_triangles_rigid_contacts(
     num_particles: int,                          # number of particles (size of contact_point)
-    x: og.tensor(og.float3),                     # position of particles
-    v: og.tensor(og.float3),
+    x: og.tensor(og.vec3),                     # position of particles
+    v: og.tensor(og.vec3),
     indices: og.tensor(int),                     # triangle indices
-    rigid_x: og.tensor(og.float3),               # rigid body positions
+    rigid_x: og.tensor(og.vec3),               # rigid body positions
     rigid_r: og.tensor(og.quat),
-    rigid_v: og.tensor(og.float3),
-    rigid_w: og.tensor(og.float3),
+    rigid_v: og.tensor(og.vec3),
+    rigid_w: og.tensor(og.vec3),
     contact_body: og.tensor(int),
-    contact_point: og.tensor(og.float3),         # position of contact points relative to body
+    contact_point: og.tensor(og.vec3),         # position of contact points relative to body
     contact_dist: og.tensor(float),
     contact_mat: og.tensor(int),
     materials: og.tensor(float),
-                                                 #   rigid_f : og.tensor(og.float3),
-                                                 #   rigid_t : og.tensor(og.float3),
-    tri_f: og.tensor(og.float3)):
+                                                 #   rigid_f : og.tensor(og.vec3),
+                                                 #   rigid_t : og.tensor(og.vec3),
+    tri_f: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -567,13 +567,13 @@ def eval_triangles_rigid_contacts(
     lower = mu * (fn + fd)
     upper = 0.0 - lower      # workaround because no unary ops yet
 
-    nx = cross(n, float3(0.0, 0.0, 1.0))         # basis vectors for tangent
-    nz = cross(n, float3(1.0, 0.0, 0.0))
+    nx = cross(n, vec3(0.0, 0.0, 1.0))         # basis vectors for tangent
+    nz = cross(n, vec3(1.0, 0.0, 0.0))
 
     vx = og.clamp(dot(nx * kf, vt), lower, upper)
     vz = og.clamp(dot(nz * kf, vt), lower, upper)
 
-    ft = (nx * vx + nz * vz) * (0.0 - og.step(c))          # og.float3(vx, 0.0, vz)*og.step(c)
+    ft = (nx * vx + nz * vz) * (0.0 - og.step(c))          # og.vec3(vx, 0.0, vz)*og.step(c)
 
     # # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
     # #ft = og.normalize(vt)*og.min(kf*og.length(vt), 0.0 - mu*c*ke)
@@ -587,7 +587,7 @@ def eval_triangles_rigid_contacts(
 
 @og.kernel
 def eval_bending(
-    x: og.tensor(og.float3), v: og.tensor(og.float3), indices: og.tensor(int), rest: og.tensor(float), ke: float, kd: float, f: og.tensor(og.float3)):
+    x: og.tensor(og.vec3), v: og.tensor(og.vec3), indices: og.tensor(int), rest: og.tensor(float), ke: float, kd: float, f: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -650,13 +650,13 @@ def eval_bending(
 
 
 @og.kernel
-def eval_tetrahedra(x: og.tensor(og.float3),
-                    v: og.tensor(og.float3),
+def eval_tetrahedra(x: og.tensor(og.vec3),
+                    v: og.tensor(og.vec3),
                     indices: og.tensor(int),
                     pose: og.tensor(og.mat33),
                     activation: og.tensor(float),
                     materials: og.tensor(float),
-                    f: og.tensor(og.float3)):
+                    f: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -706,9 +706,9 @@ def eval_tetrahedra(x: og.tensor(og.float3),
     F = Ds * Dm
     ogdt = og.mat33(v10, v20, v30) * Dm
 
-    col1 = og.float3(F[0, 0], F[1, 0], F[2, 0])
-    col2 = og.float3(F[0, 1], F[1, 1], F[2, 1])
-    col3 = og.float3(F[0, 2], F[1, 2], F[2, 2])
+    col1 = og.vec3(F[0, 0], F[1, 0], F[2, 0])
+    col2 = og.vec3(F[0, 1], F[1, 1], F[2, 1])
+    col3 = og.vec3(F[0, 2], F[1, 2], F[2, 2])
 
     #-----------------------------
     # Neo-Hookean (with rest stability [Smith et al 2018])
@@ -719,9 +719,9 @@ def eval_tetrahedra(x: og.tensor(og.float3),
     P = F * k_mu * (1.0 - 1.0 / (Ic + 1.0)) + ogdt * k_damp
     H = P * og.transpose(Dm)
 
-    f1 = og.float3(H[0, 0], H[1, 0], H[2, 0])
-    f2 = og.float3(H[0, 1], H[1, 1], H[2, 1])
-    f3 = og.float3(H[0, 2], H[1, 2], H[2, 2])
+    f1 = og.vec3(H[0, 0], H[1, 0], H[2, 0])
+    f2 = og.vec3(H[0, 1], H[1, 1], H[2, 1])
+    f3 = og.vec3(H[0, 2], H[1, 2], H[2, 2])
 
     #-----------------------------
     # C_sqrt
@@ -730,9 +730,9 @@ def eval_tetrahedra(x: og.tensor(og.float3),
        
     # r_s = og.sqrt(og.abs(dot(col1, col1) + dot(col2, col2) + dot(col3, col3) - 3.0))
 
-    # f1 = og.float3(0.0, 0.0, 0.0)
-    # f2 = og.float3(0.0, 0.0, 0.0)
-    # f3 = og.float3(0.0, 0.0, 0.0)
+    # f1 = og.vec3(0.0, 0.0, 0.0)
+    # f2 = og.vec3(0.0, 0.0, 0.0)
+    # f3 = og.vec3(0.0, 0.0, 0.0)
 
     # if (r_s > 0.0):
     #     r_s_inv = 1.0/r_s
@@ -740,9 +740,9 @@ def eval_tetrahedra(x: og.tensor(og.float3),
     #     C = r_s 
     #     dCdx = F*og.transpose(Dm)*r_s_inv*og.sign(r_s)
 
-    #     grad1 = float3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
-    #     grad2 = float3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
-    #     grad3 = float3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
+    #     grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
+    #     grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
+    #     grad3 = vec3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
     
     #     f1 = grad1*C*k_mu
     #     f2 = grad2*C*k_mu
@@ -759,9 +759,9 @@ def eval_tetrahedra(x: og.tensor(og.float3),
     # C = r_s - og.sqrt(3.0) 
     # dCdx = F*og.transpose(Dm)*r_s_inv
 
-    # grad1 = float3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
-    # grad2 = float3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
-    # grad3 = float3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
+    # grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
+    # grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
+    # grad3 = vec3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
  
 
     # f1 = grad1*C*k_mu
@@ -778,9 +778,9 @@ def eval_tetrahedra(x: og.tensor(og.float3),
     # C = r_s*r_s - 3.0
     # dCdx = F*og.transpose(Dm)*2.0
 
-    # grad1 = float3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
-    # grad2 = float3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
-    # grad3 = float3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
+    # grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
+    # grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
+    # grad3 = vec3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
  
     # f1 = grad1*C*k_mu
     # f2 = grad2*C*k_mu
@@ -791,16 +791,16 @@ def eval_tetrahedra(x: og.tensor(og.float3),
      
     # alpha = 1.0
 
-    # I = og.mat33(og.float3(1.0, 0.0, 0.0),
-    #              og.float3(0.0, 1.0, 0.0),
-    #              og.float3(0.0, 0.0, 1.0))
+    # I = og.mat33(og.vec3(1.0, 0.0, 0.0),
+    #              og.vec3(0.0, 1.0, 0.0),
+    #              og.vec3(0.0, 0.0, 1.0))
 
     # P = (F + og.transpose(F) + I*(0.0-2.0))*k_mu
     # H = P * og.transpose(Dm)
 
-    # f1 = og.float3(H[0, 0], H[1, 0], H[2, 0])
-    # f2 = og.float3(H[0, 1], H[1, 1], H[2, 1])
-    # f3 = og.float3(H[0, 2], H[1, 2], H[2, 2])
+    # f1 = og.vec3(H[0, 0], H[1, 0], H[2, 0])
+    # f2 = og.vec3(H[0, 1], H[1, 1], H[2, 1])
+    # f3 = og.vec3(H[0, 2], H[1, 2], H[2, 2])
 
 
 
@@ -831,14 +831,14 @@ def eval_tetrahedra(x: og.tensor(og.float3),
 
 
 @og.kernel
-def eval_contacts(x: og.tensor(og.float3), v: og.tensor(og.float3), ke: float, kd: float, kf: float, mu: float, f: og.tensor(og.float3)):
+def eval_contacts(x: og.tensor(og.vec3), v: og.tensor(og.vec3), ke: float, kd: float, kf: float, mu: float, f: og.tensor(og.vec3)):
 
     tid = og.tid()           # this just handles contact of particles with the ground plane, nothing else.
 
     x0 = og.load(x, tid)
     v0 = og.load(v, tid)
 
-    n = float3(0.0, 1.0, 0.0)          # why is the normal always y? Ground is always (0, 1, 0) normal
+    n = vec3(0.0, 1.0, 0.0)          # why is the normal always y? Ground is always (0, 1, 0) normal
 
     c = og.min(dot(n, x0) - 0.01, 0.0)           # 0 unless within 0.01 of surface
                                                  #c = og.leaky_min(dot(n, x0)-0.01, 0.0, 0.0)
@@ -858,10 +858,10 @@ def eval_contacts(x: og.tensor(og.float3), v: og.tensor(og.float3), ke: float, k
     lower = mu * c * ke
     upper = 0.0 - lower
 
-    vx = clamp(dot(float3(kf, 0.0, 0.0), vt), lower, upper)
-    vz = clamp(dot(float3(0.0, 0.0, kf), vt), lower, upper)
+    vx = clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
+    vz = clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
 
-    ft = og.float3(vx, 0.0, vz)
+    ft = og.vec3(vx, 0.0, vz)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
     #ft = og.normalize(vt)*og.min(kf*og.length(vt), 0.0 - mu*c*ke)
@@ -872,30 +872,30 @@ def eval_contacts(x: og.tensor(og.float3), v: og.tensor(og.float3), ke: float, k
 
 
 @og.func
-def sphere_sog(center: og.float3, radius: float, p: og.float3):
+def sphere_sdf(center: og.vec3, radius: float, p: og.vec3):
 
     return og.length(p-center) - radius
 
 @og.func
-def sphere_sog_grad(center: og.float3, radius: float, p: og.float3):
+def sphere_sdf_grad(center: og.vec3, radius: float, p: og.vec3):
 
     return og.normalize(p-center)
 
 @og.func
-def box_sog(upper: og.float3, p: og.float3):
+def box_sdf(upper: og.vec3, p: og.vec3):
 
     # adapted from https://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
     qx = abs(p[0])-upper[0]
     qy = abs(p[1])-upper[1]
     qz = abs(p[2])-upper[2]
 
-    e = og.float3(og.max(qx, 0.0), og.max(qy, 0.0), og.max(qz, 0.0))
+    e = og.vec3(og.max(qx, 0.0), og.max(qy, 0.0), og.max(qz, 0.0))
     
     return og.length(e) + og.min(og.max(qx, og.max(qy, qz)), 0.0)
 
 
 @og.func
-def box_sog_grad(upper: og.float3, p: og.float3):
+def box_sdf_grad(upper: og.vec3, p: og.vec3):
 
     qx = abs(p[0])-upper[0]
     qy = abs(p[1])-upper[1]
@@ -908,7 +908,7 @@ def box_sog_grad(upper: og.float3, p: og.float3):
         y = og.clamp(p[1], 0.0-upper[1], upper[1])
         z = og.clamp(p[2], 0.0-upper[2], upper[2])
 
-        return og.normalize(p - og.float3(x, y, z))
+        return og.normalize(p - og.vec3(x, y, z))
 
     sx = og.sign(p[0])
     sy = og.sign(p[1])
@@ -916,58 +916,58 @@ def box_sog_grad(upper: og.float3, p: og.float3):
 
     # x projection
     if (qx > qy and qx > qz):
-        return og.float3(sx, 0.0, 0.0)
+        return og.vec3(sx, 0.0, 0.0)
     
     # y projection
     if (qy > qx and qy > qz):
-        return og.float3(0.0, sy, 0.0)
+        return og.vec3(0.0, sy, 0.0)
 
     # z projection
     if (qz > qx and qz > qy):
-        return og.float3(0.0, 0.0, sz)
+        return og.vec3(0.0, 0.0, sz)
 
 @og.func
-def capsule_sog(radius: float, half_width: float, p: og.float3):
+def capsule_sdf(radius: float, half_width: float, p: og.vec3):
 
     if (p[0] > half_width):
-        return length(og.float3(p[0] - half_width, p[1], p[2])) - radius
+        return length(og.vec3(p[0] - half_width, p[1], p[2])) - radius
 
     if (p[0] < 0.0 - half_width):
-        return length(og.float3(p[0] + half_width, p[1], p[2])) - radius
+        return length(og.vec3(p[0] + half_width, p[1], p[2])) - radius
 
-    return og.length(og.float3(0.0, p[1], p[2])) - radius
+    return og.length(og.vec3(0.0, p[1], p[2])) - radius
 
 @og.func
-def capsule_sog_grad(radius: float, half_width: float, p: og.float3):
+def capsule_sdf_grad(radius: float, half_width: float, p: og.vec3):
 
     if (p[0] > half_width):
-        return normalize(og.float3(p[0] - half_width, p[1], p[2]))
+        return normalize(og.vec3(p[0] - half_width, p[1], p[2]))
 
     if (p[0] < 0.0 - half_width):
-        return normalize(og.float3(p[0] + half_width, p[1], p[2]))
+        return normalize(og.vec3(p[0] + half_width, p[1], p[2]))
         
-    return normalize(og.float3(0.0, p[1], p[2]))
+    return normalize(og.vec3(0.0, p[1], p[2]))
 
 
 @og.kernel
 def eval_soft_contacts(
     num_particles: int,
-    particle_x: og.tensor(og.float3), 
-    particle_v: og.tensor(og.float3), 
+    particle_x: og.tensor(og.vec3), 
+    particle_v: og.tensor(og.vec3), 
     body_X_sc: og.tensor(og.spatial_transform),
     body_v_sc: og.tensor(og.spatial_vector),
     shape_X_co: og.tensor(og.spatial_transform),
     shape_body: og.tensor(int),
     shape_geo_type: og.tensor(int), 
     shape_geo_src: og.tensor(int),
-    shape_geo_scale: og.tensor(og.float3),
+    shape_geo_scale: og.tensor(og.vec3),
     shape_materials: og.tensor(float),
     ke: float,
     kd: float, 
     kf: float, 
     mu: float, 
     # outputs
-    particle_f: og.tensor(og.float3),
+    particle_f: og.tensor(og.vec3),
     body_f: og.tensor(og.spatial_vector)):
 
     tid = og.tid()           
@@ -979,17 +979,17 @@ def eval_soft_contacts(
     px = og.load(particle_x, particle_index)
     pv = og.load(particle_v, particle_index)
 
-    #center = float3(0.0, 0.5, 0.0)
+    #center = vec3(0.0, 0.5, 0.0)
     #radius = 0.25
     #margin = 0.01
 
     # sphere collider
-    # c = og.min(sphere_sog(center, radius, x0)-margin, 0.0)
-    # n = sphere_sog_grad(center, radius, x0)
+    # c = og.min(sphere_sdf(center, radius, x0)-margin, 0.0)
+    # n = sphere_sdf_grad(center, radius, x0)
 
     # box collider
-    #c = og.min(box_sog(og.float3(radius, radius, radius), x0-center)-margin, 0.0)
-    #n = box_sog_grad(og.float3(radius, radius, radius), x0-center)
+    #c = og.min(box_sdf(og.vec3(radius, radius, radius), x0-center)-margin, 0.0)
+    #n = box_sdf_grad(og.vec3(radius, radius, radius), x0-center)
 
     X_sc = og.spatial_transform_identity()
     if (rigid_index >= 0):
@@ -1009,24 +1009,24 @@ def eval_soft_contacts(
 
     margin = 0.01
 
-    # evaluate shape sog
+    # evaluate shape sdf
     c = 0.0
-    n = og.float3(0.0, 0.0, 0.0)
+    n = og.vec3(0.0, 0.0, 0.0)
 
     # GEO_SPHERE (0)
     if (geo_type == 0):
-        c = og.min(sphere_sog(og.float3(0.0, 0.0, 0.0), geo_scale[0], x_local)-margin, 0.0)
-        n = og.spatial_transform_vector(X_so, sphere_sog_grad(og.float3(0.0, 0.0, 0.0), geo_scale[0], x_local))
+        c = og.min(sphere_sdf(og.vec3(0.0, 0.0, 0.0), geo_scale[0], x_local)-margin, 0.0)
+        n = og.spatial_transform_vector(X_so, sphere_sdf_grad(og.vec3(0.0, 0.0, 0.0), geo_scale[0], x_local))
 
     # GEO_BOX (1)
     if (geo_type == 1):
-        c = og.min(box_sog(geo_scale, x_local)-margin, 0.0)
-        n = og.spatial_transform_vector(X_so, box_sog_grad(geo_scale, x_local))
+        c = og.min(box_sdf(geo_scale, x_local)-margin, 0.0)
+        n = og.spatial_transform_vector(X_so, box_sdf_grad(geo_scale, x_local))
     
     # GEO_CAPSULE (2)
     if (geo_type == 2):
-        c = og.min(capsule_sog(geo_scale[0], geo_scale[1], x_local)-margin, 0.0)
-        n = og.spatial_transform_vector(X_so, capsule_sog_grad(geo_scale[0], geo_scale[1], x_local))
+        c = og.min(capsule_sdf(geo_scale[0], geo_scale[1], x_local)-margin, 0.0)
+        n = og.spatial_transform_vector(X_so, capsule_sdf_grad(geo_scale[0], geo_scale[1], x_local))
         
     # rigid velocity
     rigid_v_s = og.spatial_vector()   
@@ -1059,10 +1059,10 @@ def eval_soft_contacts(
     lower = mu * c * ke
     upper = 0.0 - lower
 
-    vx = clamp(dot(float3(kf, 0.0, 0.0), vt), lower, upper)
-    vz = clamp(dot(float3(0.0, 0.0, kf), vt), lower, upper)
+    vx = clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
+    vz = clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
 
-    ft = og.float3(vx, 0.0, vz)
+    ft = og.vec3(vx, 0.0, vz)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
     #ft = og.normalize(vt)*og.min(kf*og.length(vt), 0.0 - mu*c*ke)
@@ -1078,17 +1078,17 @@ def eval_soft_contacts(
 
 
 @og.kernel
-def eval_rigid_contacts(rigid_x: og.tensor(og.float3),
+def eval_rigid_contacts(rigid_x: og.tensor(og.vec3),
                         rigid_r: og.tensor(og.quat),
-                        rigid_v: og.tensor(og.float3),
-                        rigid_w: og.tensor(og.float3),
+                        rigid_v: og.tensor(og.vec3),
+                        rigid_w: og.tensor(og.vec3),
                         contact_body: og.tensor(int),
-                        contact_point: og.tensor(og.float3),
+                        contact_point: og.tensor(og.vec3),
                         contact_dist: og.tensor(float),
                         contact_mat: og.tensor(int),
                         materials: og.tensor(float),
-                        rigid_f: og.tensor(og.float3),
-                        rigid_t: og.tensor(og.float3)):
+                        rigid_f: og.tensor(og.vec3),
+                        rigid_t: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -1109,7 +1109,7 @@ def eval_rigid_contacts(rigid_x: og.tensor(og.float3),
     v0 = og.load(rigid_v, c_body)
     w0 = og.load(rigid_w, c_body)
 
-    n = float3(0.0, 1.0, 0.0)
+    n = vec3(0.0, 1.0, 0.0)
 
     # transform point to world space
     p = x0 + og.rotate(r0, c_point) - n * c_dist           # add on 'thickness' of shape, e.g.: radius of sphere/capsule
@@ -1139,10 +1139,10 @@ def eval_rigid_contacts(rigid_x: og.tensor(og.float3),
     lower = mu * (fn + fd)   # negative
     upper = 0.0 - lower      # positive, workaround for no unary ops
 
-    vx = og.clamp(dot(float3(kf, 0.0, 0.0), vt), lower, upper)
-    vz = og.clamp(dot(float3(0.0, 0.0, kf), vt), lower, upper)
+    vx = og.clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
+    vz = og.clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
 
-    ft = og.float3(vx, 0.0, vz) * og.step(c)
+    ft = og.vec3(vx, 0.0, vz) * og.step(c)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
     #ft = og.normalize(vt)*og.min(kf*og.length(vt), 0.0 - mu*c*ke)
@@ -1203,9 +1203,9 @@ def spatial_transform_inertia(t: og.spatial_transform, I: og.spatial_matrix):
     q = spatial_transform_get_rotation(t_inv)
     p = spatial_transform_get_translation(t_inv)
 
-    r1 = rotate(q, float3(1.0, 0.0, 0.0))
-    r2 = rotate(q, float3(0.0, 1.0, 0.0))
-    r3 = rotate(q, float3(0.0, 0.0, 1.0))
+    r1 = rotate(q, vec3(1.0, 0.0, 0.0))
+    r2 = rotate(q, vec3(0.0, 1.0, 0.0))
+    r3 = rotate(q, vec3(0.0, 0.0, 1.0))
 
     R = mat33(r1, r2, r3)
     S = mul(skew(p), R)
@@ -1220,7 +1220,7 @@ def eval_rigid_contacts_art(
     body_X_s: og.tensor(og.spatial_transform),
     body_v_s: og.tensor(og.spatial_vector),
     contact_body: og.tensor(int),
-    contact_point: og.tensor(og.float3),
+    contact_point: og.tensor(og.vec3),
     contact_dist: og.tensor(float),
     contact_mat: og.tensor(int),
     materials: og.tensor(float),
@@ -1242,7 +1242,7 @@ def eval_rigid_contacts_art(
     X_s = og.load(body_X_s, c_body)              # position of colliding body
     v_s = og.load(body_v_s, c_body)              # orientation of colliding body
 
-    n = float3(0.0, 1.0, 0.0)
+    n = vec3(0.0, 1.0, 0.0)
 
     # transform point to world space
     p = og.spatial_transform_point(X_s, c_point) - n * c_dist  # add on 'thickness' of shape, e.g.: radius of sphere/capsule
@@ -1271,10 +1271,10 @@ def eval_rigid_contacts_art(
     lower = mu * (fn + fd)   # negative
     upper = 0.0 - lower      # positive, workaround for no unary ops
 
-    vx = og.clamp(dot(float3(kf, 0.0, 0.0), vt), lower, upper)
-    vz = og.clamp(dot(float3(0.0, 0.0, kf), vt), lower, upper)
+    vx = og.clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
+    vz = og.clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
 
-    ft = og.float3(vx, 0.0, vz) * og.step(c)
+    ft = og.vec3(vx, 0.0, vz) * og.step(c)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
     #ft = og.normalize(vt)*og.min(kf*og.length(vt), 0.0 - mu*c*ke)
@@ -1291,7 +1291,7 @@ def compute_muscle_force(
     body_X_s: og.tensor(og.spatial_transform),
     body_v_s: og.tensor(og.spatial_vector),    
     muscle_links: og.tensor(int),
-    muscle_points: og.tensor(og.float3),
+    muscle_points: og.tensor(og.vec3),
     muscle_activation: float,
     body_f_s: og.tensor(og.spatial_vector)):
 
@@ -1328,7 +1328,7 @@ def eval_muscles(
     muscle_start: og.tensor(int),
     muscle_params: og.tensor(float),
     muscle_links: og.tensor(int),
-    muscle_points: og.tensor(og.float3),
+    muscle_points: og.tensor(og.vec3),
     muscle_activation: og.tensor(float),
     # output
     body_f_s: og.tensor(og.spatial_vector)):
@@ -1346,7 +1346,7 @@ def eval_muscles(
 
 # compute transform across a joint
 @og.func
-def jcalc_transform(type: int, axis: og.float3, joint_q: og.tensor(float), start: int):
+def jcalc_transform(type: int, axis: og.vec3, joint_q: og.tensor(float), start: int):
 
     # prismatic
     if (type == 0):
@@ -1359,7 +1359,7 @@ def jcalc_transform(type: int, axis: og.float3, joint_q: og.tensor(float), start
     if (type == 1):
 
         q = og.load(joint_q, start)
-        X_jc = spatial_transform(float3(0.0, 0.0, 0.0), quat_from_axis_angle(axis, q))
+        X_jc = spatial_transform(vec3(0.0, 0.0, 0.0), quat_from_axis_angle(axis, q))
         return X_jc
 
     # ball
@@ -1370,7 +1370,7 @@ def jcalc_transform(type: int, axis: og.float3, joint_q: og.tensor(float), start
         qz = og.load(joint_q, start + 2)
         qw = og.load(joint_q, start + 3)
 
-        X_jc = spatial_transform(float3(0.0, 0.0, 0.0), quat(qx, qy, qz, qw))
+        X_jc = spatial_transform(vec3(0.0, 0.0, 0.0), quat(qx, qy, qz, qw))
         return X_jc
 
     # fixed
@@ -1391,7 +1391,7 @@ def jcalc_transform(type: int, axis: og.float3, joint_q: og.tensor(float), start
         qz = og.load(joint_q, start + 5)
         qw = og.load(joint_q, start + 6)
 
-        X_jc = spatial_transform(float3(px, py, pz), quat(qx, qy, qz, qw))
+        X_jc = spatial_transform(vec3(px, py, pz), quat(qx, qy, qz, qw))
         return X_jc
 
     # default case
@@ -1400,12 +1400,12 @@ def jcalc_transform(type: int, axis: og.float3, joint_q: og.tensor(float), start
 
 # compute motion subspace and velocity for a joint
 @og.func
-def jcalc_motion(type: int, axis: og.float3, X_sc: og.spatial_transform, joint_S_s: og.tensor(og.spatial_vector), joint_qd: og.tensor(float), joint_start: int):
+def jcalc_motion(type: int, axis: og.vec3, X_sc: og.spatial_transform, joint_S_s: og.tensor(og.spatial_vector), joint_qd: og.tensor(float), joint_start: int):
 
     # prismatic
     if (type == 0):
 
-        S_s = og.spatial_transform_twist(X_sc, spatial_vector(float3(0.0, 0.0, 0.0), axis))
+        S_s = og.spatial_transform_twist(X_sc, spatial_vector(vec3(0.0, 0.0, 0.0), axis))
         v_j_s = S_s * og.load(joint_qd, joint_start)
 
         og.store(joint_S_s, joint_start, S_s)
@@ -1414,7 +1414,7 @@ def jcalc_motion(type: int, axis: og.float3, X_sc: og.spatial_transform, joint_S
     # revolute
     if (type == 1):
 
-        S_s = og.spatial_transform_twist(X_sc, spatial_vector(axis, float3(0.0, 0.0, 0.0)))
+        S_s = og.spatial_transform_twist(X_sc, spatial_vector(axis, vec3(0.0, 0.0, 0.0)))
         v_j_s = S_s * og.load(joint_qd, joint_start)
 
         og.store(joint_S_s, joint_start, S_s)
@@ -1423,7 +1423,7 @@ def jcalc_motion(type: int, axis: og.float3, X_sc: og.spatial_transform, joint_S
     # ball
     if (type == 2):
 
-        w = float3(og.load(joint_qd, joint_start + 0),
+        w = vec3(og.load(joint_qd, joint_start + 0),
                    og.load(joint_qd, joint_start + 1),
                    og.load(joint_qd, joint_start + 2))
 
@@ -1547,12 +1547,12 @@ def jcalc_tau(
 
         # elastic term.. this is proportional to the 
         # imaginary part of the relative quaternion
-        r_j = float3(og.load(joint_q, coord_start + 0),  
+        r_j = vec3(og.load(joint_q, coord_start + 0),  
                      og.load(joint_q, coord_start + 1), 
                      og.load(joint_q, coord_start + 2))                     
 
         # angular velocity for damping
-        w_j = float3(og.load(joint_qd, dof_start + 0),  
+        w_j = vec3(og.load(joint_qd, dof_start + 0),  
                      og.load(joint_qd, dof_start + 1), 
                      og.load(joint_qd, dof_start + 2))
 
@@ -1606,11 +1606,11 @@ def jcalc_integrate(
     # ball
     if (type == 2):
 
-        m_j = float3(og.load(joint_qdd, dof_start + 0),
+        m_j = vec3(og.load(joint_qdd, dof_start + 0),
                      og.load(joint_qdd, dof_start + 1),
                      og.load(joint_qdd, dof_start + 2))
 
-        w_j = float3(og.load(joint_qd, dof_start + 0),  
+        w_j = vec3(og.load(joint_qd, dof_start + 0),  
                      og.load(joint_qd, dof_start + 1), 
                      og.load(joint_qd, dof_start + 2)) 
 
@@ -1649,20 +1649,20 @@ def jcalc_integrate(
         # coords: q = (trans_x, trans_y, trans_z, quat_x, quat_y, quat_z, quat_w)
 
         # angular and linear acceleration
-        m_s = float3(og.load(joint_qdd, dof_start + 0),
+        m_s = vec3(og.load(joint_qdd, dof_start + 0),
                      og.load(joint_qdd, dof_start + 1),
                      og.load(joint_qdd, dof_start + 2))
 
-        a_s = float3(og.load(joint_qdd, dof_start + 3), 
+        a_s = vec3(og.load(joint_qdd, dof_start + 3), 
                      og.load(joint_qdd, dof_start + 4), 
                      og.load(joint_qdd, dof_start + 5))
 
         # angular and linear velocity
-        w_s = float3(og.load(joint_qd, dof_start + 0),  
+        w_s = vec3(og.load(joint_qd, dof_start + 0),  
                      og.load(joint_qd, dof_start + 1), 
                      og.load(joint_qd, dof_start + 2))
         
-        v_s = float3(og.load(joint_qd, dof_start + 3),
+        v_s = vec3(og.load(joint_qd, dof_start + 3),
                      og.load(joint_qd, dof_start + 4),
                      og.load(joint_qd, dof_start + 5))
 
@@ -1671,7 +1671,7 @@ def jcalc_integrate(
         v_s = v_s + a_s*dt
         
         # translation of origin
-        p_s = float3(og.load(joint_q, coord_start + 0),
+        p_s = vec3(og.load(joint_q, coord_start + 0),
                      og.load(joint_q, coord_start + 1), 
                      og.load(joint_q, coord_start + 2))
 
@@ -1720,7 +1720,7 @@ def compute_link_transform(i: int,
                            joint_q: og.tensor(float),
                            joint_X_pj: og.tensor(og.spatial_transform),
                            joint_X_cm: og.tensor(og.spatial_transform),
-                           joint_axis: og.tensor(og.float3),
+                           joint_axis: og.tensor(og.vec3),
                            body_X_sc: og.tensor(og.spatial_transform),
                            body_X_sm: og.tensor(og.spatial_transform)):
 
@@ -1763,7 +1763,7 @@ def eval_rigid_fk(articulation_start: og.tensor(int),
                   joint_q: og.tensor(float),
                   joint_X_pj: og.tensor(og.spatial_transform),
                   joint_X_cm: og.tensor(og.spatial_transform),
-                  joint_axis: og.tensor(og.float3),
+                  joint_axis: og.tensor(og.vec3),
                   body_X_sc: og.tensor(og.spatial_transform),
                   body_X_sm: og.tensor(og.spatial_transform)):
 
@@ -1795,12 +1795,12 @@ def compute_link_velocity(i: int,
                           joint_parent: og.tensor(int),
                           joint_qd_start: og.tensor(int),
                           joint_qd: og.tensor(float),
-                          joint_axis: og.tensor(og.float3),
+                          joint_axis: og.tensor(og.vec3),
                           body_I_m: og.tensor(og.spatial_matrix),
                           body_X_sc: og.tensor(og.spatial_transform),
                           body_X_sm: og.tensor(og.spatial_transform),
                           joint_X_pj: og.tensor(og.spatial_transform),
-                          gravity: og.tensor(og.float3),
+                          gravity: og.tensor(og.vec3),
                           # outputs
                           joint_S_s: og.tensor(og.spatial_vector),
                           body_I_s: og.tensor(og.spatial_matrix),
@@ -1847,7 +1847,7 @@ def compute_link_velocity(i: int,
 
     m = I_m[3, 3]
 
-    f_g_m = spatial_vector(float3(), g) * m
+    f_g_m = spatial_vector(vec3(), g) * m
     f_g_s = spatial_transform_wrench(spatial_transform(spatial_transform_get_translation(X_sm), quat_identity()), f_g_m)
 
     #f_ext_s = og.load(body_f_s, i) + f_g_s
@@ -1926,14 +1926,14 @@ def eval_rigid_id(articulation_start: og.tensor(int),
                   joint_qd_start: og.tensor(int),
                   joint_q: og.tensor(float),
                   joint_qd: og.tensor(float),
-                  joint_axis: og.tensor(og.float3),
+                  joint_axis: og.tensor(og.vec3),
                   joint_target_ke: og.tensor(float),
                   joint_target_kd: og.tensor(float),             
                   body_I_m: og.tensor(og.spatial_matrix),
                   body_X_sc: og.tensor(og.spatial_transform),
                   body_X_sm: og.tensor(og.spatial_transform),
                   joint_X_pj: og.tensor(og.spatial_transform),
-                  gravity: og.tensor(og.float3),
+                  gravity: og.tensor(og.vec3),
                   # outputs
                   joint_S_s: og.tensor(og.spatial_vector),
                   body_I_s: og.tensor(og.spatial_matrix),
@@ -1985,7 +1985,7 @@ def eval_rigid_tau(articulation_start: og.tensor(int),
                   joint_limit_upper: og.tensor(float),
                   joint_limit_ke: og.tensor(float),
                   joint_limit_kd: og.tensor(float),
-                  joint_axis: og.tensor(og.float3),
+                  joint_axis: og.tensor(og.vec3),
                   joint_S_s: og.tensor(og.spatial_vector),
                   body_fb_s: og.tensor(og.spatial_vector),                  
                   # outputs
@@ -2698,15 +2698,15 @@ class SemiImplicitIntegrator:
 
 
 @og.kernel
-def solve_springs(x: og.tensor(og.float3),
-                 v: og.tensor(og.float3),
+def solve_springs(x: og.tensor(og.vec3),
+                 v: og.tensor(og.vec3),
                  invmass: og.tensor(float),
                  spring_indices: og.tensor(int),
                  spring_rest_lengths: og.tensor(float),
                  spring_stiffness: og.tensor(float),
                  spring_damping: og.tensor(float),
                  dt: float,
-                 delta: og.tensor(og.float3)):
+                 delta: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -2754,8 +2754,8 @@ def solve_springs(x: og.tensor(og.float3),
 
 
 @og.kernel
-def solve_tetrahedra(x: og.tensor(og.float3),
-                     v: og.tensor(og.float3),
+def solve_tetrahedra(x: og.tensor(og.vec3),
+                     v: og.tensor(og.vec3),
                      inv_mass: og.tensor(float),
                      indices: og.tensor(int),
                      pose: og.tensor(og.mat33),
@@ -2763,7 +2763,7 @@ def solve_tetrahedra(x: og.tensor(og.float3),
                      materials: og.tensor(float),
                      dt: float,
                      relaxation: float,
-                     delta: og.tensor(og.float3)):
+                     delta: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -2810,9 +2810,9 @@ def solve_tetrahedra(x: og.tensor(og.float3),
     # F = Xs*Xm^-1
     F = Ds * Dm
 
-    f1 = og.float3(F[0, 0], F[1, 0], F[2, 0])
-    f2 = og.float3(F[0, 1], F[1, 1], F[2, 1])
-    f3 = og.float3(F[0, 2], F[1, 2], F[2, 2])
+    f1 = og.vec3(F[0, 0], F[1, 0], F[2, 0])
+    f2 = og.vec3(F[0, 1], F[1, 1], F[2, 1])
+    f3 = og.vec3(F[0, 2], F[1, 2], F[2, 2])
 
     r_s = og.sqrt(dot(f1, f1) + dot(f2, f2) + dot(f3, f3))
     r_s_inv = 1.0/r_s
@@ -2820,9 +2820,9 @@ def solve_tetrahedra(x: og.tensor(og.float3),
     C = r_s - og.sqrt(3.0) 
     dCdx = F*og.transpose(Dm)*r_s_inv
 
-    grad1 = float3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
-    grad2 = float3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
-    grad3 = float3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
+    grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
+    grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
+    grad3 = vec3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
     grad0 = (grad1 + grad2 + grad3)*(0.0 - 1.0)
 
     denom = dot(grad0,grad0)*w0 + dot(grad1,grad1)*w1 + dot(grad2,grad2)*w2 + dot(grad3,grad3)*w3
@@ -2836,10 +2836,10 @@ def solve_tetrahedra(x: og.tensor(og.float3),
        
     # r_s = og.sqrt(og.abs(dot(f1, f1) + dot(f2, f2) + dot(f3, f3) - 3.0))
 
-    # grad0 = og.float3(0.0, 0.0, 0.0)
-    # grad1 = og.float3(0.0, 0.0, 0.0)
-    # grad2 = og.float3(0.0, 0.0, 0.0)
-    # grad3 = og.float3(0.0, 0.0, 0.0)
+    # grad0 = og.vec3(0.0, 0.0, 0.0)
+    # grad1 = og.vec3(0.0, 0.0, 0.0)
+    # grad2 = og.vec3(0.0, 0.0, 0.0)
+    # grad3 = og.vec3(0.0, 0.0, 0.0)
     # multiplier = 0.0
 
     # if (r_s > 0.0):
@@ -2848,9 +2848,9 @@ def solve_tetrahedra(x: og.tensor(og.float3),
     #     C = r_s 
     #     dCdx = F*og.transpose(Dm)*r_s_inv*og.sign(r_s)
 
-    #     grad1 = float3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
-    #     grad2 = float3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
-    #     grad3 = float3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
+    #     grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
+    #     grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
+    #     grad3 = vec3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
     #     grad0 = (grad1 + grad2 + grad3)*(0.0 - 1.0)
 
     #     denom = dot(grad0,grad0)*w0 + dot(grad1,grad1)*w1 + dot(grad2,grad2)*w2 + dot(grad3,grad3)*w3 
@@ -2867,9 +2867,9 @@ def solve_tetrahedra(x: og.tensor(og.float3),
     C_vol = J - 1.0
     # dCdx = og.mat33(cross(f2, f3), cross(f3, f1), cross(f1, f2))*og.transpose(Dm)
 
-    # grad1 = float3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
-    # grad2 = float3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
-    # grad3 = float3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
+    # grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
+    # grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
+    # grad3 = vec3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
     # grad0 = (grad1 + grad2 + grad3)*(0.0 - 1.0)
 
     s = inv_rest_volume / 6.0
@@ -2894,13 +2894,13 @@ def solve_tetrahedra(x: og.tensor(og.float3),
 
 
 @og.kernel
-def apply_deltas(x_orig: og.tensor(og.float3),
-                 v_orig: og.tensor(og.float3),
-                 x_pred: og.tensor(og.float3),
-                 delta: og.tensor(og.float3),
+def apply_deltas(x_orig: og.tensor(og.vec3),
+                 v_orig: og.tensor(og.vec3),
+                 x_pred: og.tensor(og.vec3),
+                 delta: og.tensor(og.vec3),
                  dt: float,
-                 x_out: og.tensor(og.float3),
-                 v_out: og.tensor(og.float3)):
+                 x_out: og.tensor(og.vec3),
+                 v_out: og.tensor(og.vec3)):
 
     tid = og.tid()
 
@@ -2917,7 +2917,7 @@ def apply_deltas(x_orig: og.tensor(og.float3),
     og.store(v_out, tid, v_new)
 
     # clear forces
-    og.store(delta, tid, float3(0.0, 0.0, 0.0))
+    og.store(delta, tid, vec3(0.0, 0.0, 0.0))
 
 
 class XPBDIntegrator:

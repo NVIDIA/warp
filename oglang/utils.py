@@ -54,35 +54,3 @@ class ScopedTimer:
 
         
 
-
-# runs vcvars and copies back the build environment
-def set_build_env():
-
-    def find_vcvars_path():
-        import glob
-        for edition in ['Enterprise', 'Professional', 'BuildTools', 'Community']:
-            paths = sorted(glob.glob(r"C:\Program Files (x86)\Microsoft Visual Studio\*\%s\VC\Auxiliary\Build\vcvars64.bat" % edition), reverse=True)
-            if paths:
-                return paths[0]
-
-    if os.name == 'nt':
-
-        vcvars_path = find_vcvars_path()
-
-        # merge vcvars with our env
-        s = '"{}" && set'.format(vcvars_path)
-        output = os.popen(s).read()
-        for line in output.splitlines():
-            pair = line.split("=", 1)
-            if (len(pair) >= 2):
-                os.environ[pair[0]] = pair[1]
-
-
-
-# See PyTorch for reference on how to find nvcc.exe more robustly, https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
-def find_cuda():
-    
-    # Guess #1
-    cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
-    return cuda_home
-    

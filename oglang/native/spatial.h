@@ -5,11 +5,11 @@
 
 struct spatial_vector
 {
-    float3 w;
-    float3 v;
+    vec3 w;
+    vec3 v;
 
     CUDA_CALLABLE inline spatial_vector(float a, float b, float c, float d, float e, float f) : w(a, b, c), v(d, e, f) {}
-    CUDA_CALLABLE inline spatial_vector(float3 w=float3(), float3 v=float3()) : w(w), v(v) {}
+    CUDA_CALLABLE inline spatial_vector(vec3 w=vec3(), vec3 v=vec3()) : w(w), v(v) {}
     CUDA_CALLABLE inline spatial_vector(float a) : w(a, a, a), v(a, a, a) {}
 
     CUDA_CALLABLE inline float operator[](int index) const
@@ -48,6 +48,11 @@ CUDA_CALLABLE inline spatial_vector mul(const spatial_vector& a, float s)
     return { a.w*s, a.v*s };
 }
 
+CUDA_CALLABLE inline spatial_vector mul(float s, const spatial_vector& a)
+{
+    return mul(a, s);
+}
+
 CUDA_CALLABLE inline float spatial_dot(const spatial_vector& a, const spatial_vector& b)
 {
     return dot(a.w, b.w) + dot(a.v, b.v);
@@ -55,26 +60,26 @@ CUDA_CALLABLE inline float spatial_dot(const spatial_vector& a, const spatial_ve
 
 CUDA_CALLABLE inline spatial_vector spatial_cross(const spatial_vector& a,  const spatial_vector& b)
 {
-    float3 w = cross(a.w, b.w);
-    float3 v = cross(a.v, b.w) + cross(a.w, b.v);
+    vec3 w = cross(a.w, b.w);
+    vec3 v = cross(a.v, b.w) + cross(a.w, b.v);
     
     return spatial_vector(w, v);
 }
 
 CUDA_CALLABLE inline spatial_vector spatial_cross_dual(const spatial_vector& a,  const spatial_vector& b)
 {
-    float3 w = cross(a.w, b.w) + cross(a.v, b.v);
-    float3 v = cross(a.w, b.v);
+    vec3 w = cross(a.w, b.w) + cross(a.v, b.v);
+    vec3 v = cross(a.w, b.v);
 
     return spatial_vector(w, v);
 }
 
-CUDA_CALLABLE inline float3 spatial_top(const spatial_vector& a)
+CUDA_CALLABLE inline vec3 spatial_top(const spatial_vector& a)
 {
     return a.w;
 }
 
-CUDA_CALLABLE inline float3 spatial_bottom(const spatial_vector& a)
+CUDA_CALLABLE inline vec3 spatial_bottom(const spatial_vector& a)
 {
     return a.v;
 }
@@ -96,7 +101,7 @@ CUDA_CALLABLE inline void adj_spatial_vector(
     adj_f += adj_ret.v.z;
 }
 
-CUDA_CALLABLE inline void adj_spatial_vector(const float3& w, const float3& v, float3& adj_w, float3& adj_v, const spatial_vector& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_vector(const vec3& w, const vec3& v, vec3& adj_w, vec3& adj_v, const spatial_vector& adj_ret)
 {
     adj_w += adj_ret.w;
     adj_v += adj_ret.v;
@@ -142,12 +147,12 @@ CUDA_CALLABLE inline void adj_spatial_cross_dual(const spatial_vector& a,  const
     adj_cross(a.w, b.v, adj_a.w, adj_b.v, adj_ret.v);
 }
 
-CUDA_CALLABLE inline void adj_spatial_top(const spatial_vector& a, spatial_vector& adj_a, const float3& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_top(const spatial_vector& a, spatial_vector& adj_a, const vec3& adj_ret)
 {
     adj_a.w += adj_ret;
 }
 
-CUDA_CALLABLE inline void adj_spatial_bottom(const spatial_vector& a, spatial_vector& adj_a, const float3& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_bottom(const spatial_vector& a, spatial_vector& adj_a, const vec3& adj_ret)
 {
     adj_a.v += adj_ret;
 }
@@ -165,19 +170,19 @@ inline __device__ void atomic_add(spatial_vector* addr, const spatial_vector& va
 
 struct spatial_transform
 {
-    float3 p;
+    vec3 p;
     quat q;
 
-    CUDA_CALLABLE inline spatial_transform(float3 p=float3(), quat q=quat()) : p(p), q(q) {}
+    CUDA_CALLABLE inline spatial_transform(vec3 p=vec3(), quat q=quat()) : p(p), q(q) {}
     CUDA_CALLABLE inline spatial_transform(float)  {}  // helps uniform initialization
 };
 
 CUDA_CALLABLE inline spatial_transform spatial_transform_identity()
 {
-    return spatial_transform(float3(), quat_identity());
+    return spatial_transform(vec3(), quat_identity());
 }
 
-CUDA_CALLABLE inline float3 spatial_transform_get_translation(const spatial_transform& t)
+CUDA_CALLABLE inline vec3 spatial_transform_get_translation(const spatial_transform& t)
 {
     return t.p;
 }
@@ -200,12 +205,12 @@ CUDA_CALLABLE inline spatial_transform spatial_transform_inverse(const spatial_t
 }
 */
     
-CUDA_CALLABLE inline float3 spatial_transform_vector(const spatial_transform& t, const float3& x)
+CUDA_CALLABLE inline vec3 spatial_transform_vector(const spatial_transform& t, const vec3& x)
 {
     return rotate(t.q, x);
 }
 
-CUDA_CALLABLE inline float3 spatial_transform_point(const spatial_transform& t, const float3& x)
+CUDA_CALLABLE inline vec3 spatial_transform_point(const spatial_transform& t, const vec3& x)
 {
     return t.p + rotate(t.q, x);
 }
@@ -213,16 +218,16 @@ CUDA_CALLABLE inline float3 spatial_transform_point(const spatial_transform& t, 
 // Frank & Park definition 3.20, pg 100
 CUDA_CALLABLE inline spatial_vector spatial_transform_twist(const spatial_transform& t, const spatial_vector& x)
 {
-    float3 w = rotate(t.q, x.w);
-    float3 v = rotate(t.q, x.v) + cross(t.p, w);
+    vec3 w = rotate(t.q, x.w);
+    vec3 v = rotate(t.q, x.v) + cross(t.p, w);
 
     return spatial_vector(w, v);
 }
 
 CUDA_CALLABLE inline spatial_vector spatial_transform_wrench(const spatial_transform& t, const spatial_vector& x)
 {
-    float3 v = rotate(t.q, x.v);
-    float3 w = rotate(t.q, x.w) + cross(t.p, v);
+    vec3 v = rotate(t.q, x.v);
+    vec3 w = rotate(t.q, x.w) + cross(t.p, v);
 
     return spatial_vector(w, v);
 }
@@ -271,7 +276,7 @@ inline __device__ void atomic_add(spatial_transform* addr, const spatial_transfo
 }
 #endif
 
-CUDA_CALLABLE inline void adj_spatial_transform(const float3& p, const quat& q, float3& adj_p, quat& adj_q, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_transform(const vec3& p, const quat& q, vec3& adj_p, quat& adj_q, const spatial_transform& adj_ret)
 {
     adj_p += adj_ret.p;
     adj_q += adj_ret.q;
@@ -283,7 +288,7 @@ CUDA_CALLABLE inline void adj_spatial_transform_identity(const spatial_transform
 }
 
 
-CUDA_CALLABLE inline void adj_spatial_transform_get_translation(const spatial_transform& t, spatial_transform& adj_t, const float3& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_transform_get_translation(const spatial_transform& t, spatial_transform& adj_t, const vec3& adj_ret)
 {
     adj_t.p += adj_ret;
 }
@@ -300,13 +305,13 @@ CUDA_CALLABLE inline void adj_spatial_transform_inverse(const spatial_transform&
     //return spatial_transform(-rotate(q_inv, t.p), q_inv);
 
     quat q_inv = inverse(t.q); 
-    float3 p = rotate(q_inv, t.p);
-    float3 np = -p;
+    vec3 p = rotate(q_inv, t.p);
+    vec3 np = -p;
 
     quat adj_q_inv = 0.0f;
     quat adj_q = 0.0f;
-    float3 adj_p = 0.0f;
-    float3 adj_np = 0.0f;
+    vec3 adj_p = 0.0f;
+    vec3 adj_np = 0.0f;
 
     adj_spatial_transform(np, q_inv, adj_np, adj_q_inv, adj_ret);
     adj_p = -adj_np;
@@ -326,12 +331,12 @@ CUDA_CALLABLE inline void adj_spatial_transform_multiply(const spatial_transform
     adj_mul(a.q, b.q, adj_a.q, adj_b.q, adj_ret.q);
 }
 
-CUDA_CALLABLE inline void adj_spatial_transform_vector(const spatial_transform& t, const float3& x, spatial_transform& adj_t, float3& adj_x, const float3& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_transform_vector(const spatial_transform& t, const vec3& x, spatial_transform& adj_t, vec3& adj_x, const vec3& adj_ret)
 {
     adj_rotate(t.q, x, adj_t.q, adj_x, adj_ret);
 }
 
-CUDA_CALLABLE inline void adj_spatial_transform_point(const spatial_transform& t, const float3& x, spatial_transform& adj_t, float3& adj_x, const float3& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_transform_point(const spatial_transform& t, const vec3& x, spatial_transform& adj_t, vec3& adj_x, const vec3& adj_ret)
 {
     adj_rotate(t.q, x, adj_t.q, adj_x, adj_ret);
     adj_t.p += adj_ret;
@@ -341,8 +346,8 @@ CUDA_CALLABLE inline void adj_spatial_transform_twist(const spatial_transform& a
 {
     printf("todo, %s, %d\n", __FILE__, __LINE__);
 
-    // float3 w = rotate(t.q, x.w);
-    // float3 v = rotate(t.q, x.v) + cross(t.p, w);
+    // vec3 w = rotate(t.q, x.w);
+    // vec3 v = rotate(t.q, x.v) + cross(t.p, w);
 
     // return spatial_vector(w, v);    
 }
@@ -350,8 +355,8 @@ CUDA_CALLABLE inline void adj_spatial_transform_twist(const spatial_transform& a
 CUDA_CALLABLE inline void adj_spatial_transform_wrench(const spatial_transform& t, const spatial_vector& x, spatial_transform& adj_t, spatial_vector& adj_x, const spatial_vector& adj_ret)
 {
     printf("todo, %s, %d\n", __FILE__, __LINE__);
-    // float3 v = rotate(t.q, x.v);
-    // float3 w = rotate(t.q, x.w) + cross(t.p, v);
+    // vec3 v = rotate(t.q, x.v);
+    // vec3 w = rotate(t.q, x.w) + cross(t.p, v);
 
     // return spatial_vector(w, v);
 }
@@ -365,12 +370,12 @@ CUDA_CALLABLE inline void adj_spatial_transform_wrench(const spatial_transform& 
 #define JOINT_FREE 3
 
 
-CUDA_CALLABLE inline spatial_transform spatial_jcalc(int type, float* joint_q, float3 axis, int start)
+CUDA_CALLABLE inline spatial_transform spatial_jcalc(int type, float* joint_q, vec3 axis, int start)
 {
     if (type == JOINT_REVOLUTE)
     {
         float q = joint_q[start];
-        spatial_transform X_jc = spatial_transform(float3(), quat_from_axis_angle(axis, q));
+        spatial_transform X_jc = spatial_transform(vec3(), quat_from_axis_angle(axis, q));
         return X_jc;
     }
     else if (type == JOINT_PRISMATIC)
@@ -390,15 +395,15 @@ CUDA_CALLABLE inline spatial_transform spatial_jcalc(int type, float* joint_q, f
         float qz = joint_q[start+5];
         float qw = joint_q[start+6];
         
-        spatial_transform X_jc = spatial_transform(float3(px, py, pz), quat(qx, qy, qz, qw));
+        spatial_transform X_jc = spatial_transform(vec3(px, py, pz), quat(qx, qy, qz, qw));
         return X_jc;
     }
 
     // JOINT_FIXED
-    return spatial_transform(float3(), quat_identity());
+    return spatial_transform(vec3(), quat_identity());
 }
 
-CUDA_CALLABLE inline void adj_spatial_jcalc(int type, float* q, float3 axis, int start, int& adj_type, float* adj_q, float3& adj_axis, int& adj_start, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_jcalc(int type, float* q, vec3 axis, int start, int& adj_type, float* adj_q, vec3& adj_axis, int& adj_start, const spatial_transform& adj_ret)
 {
     if (type == JOINT_REVOLUTE)
     {
@@ -613,9 +618,9 @@ inline CUDA_CALLABLE spatial_matrix spatial_transform_inertia(const spatial_tran
 {
     spatial_transform t_inv = spatial_transform_inverse(t);
 
-    float3 r1 = rotate(t_inv.q, float3(1.0, 0.0, 0.0));
-    float3 r2 = rotate(t_inv.q, float3(0.0, 1.0, 0.0));
-    float3 r3 = rotate(t_inv.q, float3(0.0, 0.0, 1.0));
+    vec3 r1 = rotate(t_inv.q, vec3(1.0, 0.0, 0.0));
+    vec3 r2 = rotate(t_inv.q, vec3(0.0, 1.0, 0.0));
+    vec3 r3 = rotate(t_inv.q, vec3(0.0, 0.0, 1.0));
 
     mat33 R(r1, r2, r3);    
     mat33 S = mul(skew(t_inv.p), R);
