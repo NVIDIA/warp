@@ -57,17 +57,17 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cpp_flags = "/Zi /Od /DEBUG -DCPU"
+                cpp_flags = "/Zi, /Od, /DEBUG"
                 ld_flags = "/DEBUG /dll"
                 ld_inputs = []
 
             if (config == "release"):
-                cpp_flags = "/Ox -DNDEBUG /fp:fast -DCPU"
-                ld_flags = "-DNDEBUG /dll"
+                cpp_flags = "/Ox, -DNDEBUG, /fp:fast"
+                ld_flags = "/dll"
                 ld_inputs = []
 
             with ScopedTimer("build"):
-                cpp_cmd = "cl.exe {cflags} -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
+                cpp_cmd = "cl.exe {cflags} -DCPU -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
                 print(cpp_cmd)
                 err = subprocess.call(cpp_cmd)
 
@@ -77,7 +77,8 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True):
                     raise RuntimeError("cpp build failed")
 
             if (cuda_home):
-                cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+                cuda_cmd = "{cuda_home}/bin/nvcc -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+                #cuda_cmd = "{cuda_home}/bin/nvcc --compiler-options=/Zi,/Od -g -G -O0 -line-info -gencode=arch=compute_35,code=compute_35 -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
 
                 with ScopedTimer("build_cuda"):
                     print(cuda_cmd)

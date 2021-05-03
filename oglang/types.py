@@ -138,6 +138,9 @@ class float64:
 
 class int32:
 
+    def __init__(self, x=0):
+        self.value = x
+
     @staticmethod
     def length():
         return 1
@@ -146,7 +149,37 @@ class int32:
     def size():
         return 4
 
+class uint32:
+
+    def __init__(self, x=0):
+        self.value = x
+
+    @staticmethod
+    def length():
+        return 1
+    
+    @staticmethod
+    def size():
+        return 4
+
+
 class int64:
+
+    def __init__(self, x=0):
+        self.value = x
+
+    @staticmethod
+    def length():
+        return 1
+    
+    @staticmethod
+    def size():
+        return 8
+
+class uint64:
+
+    def __init__(self, x=0):
+        self.value = x
 
     @staticmethod
     def length():
@@ -229,21 +262,32 @@ class Mesh:
         self.points = points
         self.indices = indices
 
-        self.id = runtime.mesh_create_host()
+        # inherit context from points, todo: find this globally
+        self.context = points.context
+        self.device = device
+
+        if (self.device == "cpu"):
+            self.id = uint64(self.context.core.mesh_create_host(points.data, indices.data, points.length, int(indices.length/3)))
+        else:
+            self.id = uint64(self.context.core.mesh_create_device(points.data, indices.data, points.length, int(indices.length/3)))
+
 
     def __del__(self):
 
-        runtime.mesh_destroy_host(self.id)
+        if (self.device == "cpu"):
+            self.context.core.mesh_destroy_host(self.id.value)
+        else:
+            self.context.core.mesh_destroy_device(self.id.value)
 
-    def refit(points, indices):
+    def refit(self, points, indices):
         
         self.points = points
         self.indices = indices
 
-        runtime.mesh_update_host()
-
-    def bounds():
-        pass
+        if (self.device == "cpu"):
+            self.context.core.mesh_update_host(self.id.value, points.data, indices.data, points.length, indices.length/3)
+        else:
+            self.context.core.mesh_update_device(self.id.value, points.data, indices.data, points.length, indices.length/3)
 
 
 

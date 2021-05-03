@@ -22,24 +22,36 @@ struct Mesh
 
 CUDA_CALLABLE inline Mesh mesh_get(uint64_t id)
 {
-    return *(Mesh*)(&id);
+    return *(Mesh*)(id);
 }
 
+
+CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower, const vec3& upper)
+{
+	vec3 cp = closest_point_to_aabb(p, lower, upper);
+
+	return length_sq(p-cp);
+}
+
+
+
 // these can be called inside kernels so need to be inline
-CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float max_dist)
+CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point)
 {
     Mesh mesh = mesh_get(id);
 
 	if (mesh.bvh.num_nodes == 0)
 		return vec3();
 
-	int stack[64];
+	int stack[32];
     stack[0] = mesh.bvh.root;
 
 	int count = 1;
 
-	float min_dist = FLT_MAX;
+	float min_dist_sq = FLT_MAX;
 	vec3 min_point;
+
+	int tests = 0;
 
 	while (count)
 	{
@@ -48,9 +60,9 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 		BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
 		BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
 
-		const float dist = distance_to_aabb(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
+		const float dist_sq = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
 
-		if (dist < min_dist)
+		if (dist_sq < min_dist_sq)
 		{
 			const int left_index = lower.i;
 			const int right_index = upper.i;
@@ -69,13 +81,15 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
                 float v, w;
                 vec3 c = closest_point_to_triangle(p, q, r, point, v, w);
 
-                float dist = length(c-point);
+                float dist_sq = length_sq(c-point);
 
-                if (dist < min_dist)
+                if (dist_sq < min_dist_sq)
 				{
-                    min_dist = dist;
+                    min_dist_sq = dist_sq;
 					min_point = c;
 				}
+
+				//tests++;
 			}
 			else
 			{
@@ -85,7 +99,102 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 		}
 	}
 
+	//printf("tests: %d, min_dist: %f\n", tests, min_dist);
+
 	return min_point;
+}
+
+CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point)
+{
+    Mesh mesh = mesh_get(id);
+
+	if (mesh.bvh.num_nodes == 0)
+		return vec3();
+
+	int stack[32];
+    stack[0] = mesh.bvh.root;
+
+	int count = 1;
+
+	float min_dist_sq = FLT_MAX;
+	vec3 min_point;
+
+	int tests = 0;
+
+	while (count)
+	{
+		const int nodeIndex = stack[--count];
+
+		BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
+		BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
+	
+		const int left_index = lower.i;
+		const int right_index = upper.i;
+
+		if (lower.b)
+		{	
+			// compute closest point on tri
+			int i = mesh.indices[left_index*3+0];
+			int j = mesh.indices[left_index*3+1];
+			int k = mesh.indices[left_index*3+2];
+
+			vec3 p = mesh.points[i];
+			vec3 q = mesh.points[j];
+			vec3 r = mesh.points[k];
+
+			float v, w;
+			vec3 c = closest_point_to_triangle(p, q, r, point, v, w);
+
+			float dist_sq = length_sq(c-point);
+
+			if (dist_sq < min_dist_sq)
+			{
+				min_dist_sq = dist_sq;
+				min_point = c;
+			}
+
+			//tests++;
+		}
+		else
+		{
+			BVHPackedNodeHalf left_lower = mesh.bvh.node_lowers[left_index];
+			BVHPackedNodeHalf left_upper = mesh.bvh.node_uppers[left_index];
+
+			BVHPackedNodeHalf right_lower = mesh.bvh.node_lowers[right_index];
+			BVHPackedNodeHalf right_upper = mesh.bvh.node_uppers[right_index];
+
+			float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
+			float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
+
+			if (left_dist_sq < right_dist_sq)
+			{
+				// put left on top of the stack
+				if (right_dist_sq < min_dist_sq)
+					stack[count++] = right_index;
+
+				if (left_dist_sq < min_dist_sq)
+					stack[count++] = left_index;
+			}
+			else
+			{
+				// put right on top of the stack
+				if (left_dist_sq < min_dist_sq)
+					stack[count++] = left_index;
+
+				if (right_dist_sq < min_dist_sq)
+					stack[count++] = right_index;
+			}
+		}
+	}
+
+	//printf("tests: %d, min_dist: %f\n", tests, min_dist);
+
+	return min_point;
+}
+
+CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, uint64_t& adj_id, vec3& adj_point, const vec3& adj_ret)
+{
+
 }
 
 

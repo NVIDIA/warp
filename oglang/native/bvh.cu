@@ -335,7 +335,7 @@ int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indi
         }
         else
         {
-            //int split = partition_midpoint(bounds, bvh.mIndices, start, end, bvh.mNodebounds3[nodeIndex]);
+            //int split = partition_midpoint(bounds, indices, start, end, b);
             int split = partition_median(bounds, indices, start, end, b);
         
             int leftChild = build_recursive(bvh, bounds, indices, start, split, depth+1);
@@ -963,14 +963,17 @@ void LinearBVHBuilderGPU::build(NvFlexLibrary* lib, BVH& bvh, const Vec4* itemLo
 
 
 // create only happens on host currently, use bvh_clone() to transfer BVH To device
-BVH bvh_create(bounds3* bounds3, int num_bounds)
+BVH bvh_create(bounds3* bounds, int num_bounds)
 {
     BVH bvh;
     memset(&bvh, 0, sizeof(bvh));
 
-    bvh.node_lowers = (BVHPackedNodeHalf*)alloc_host(sizeof(BVHPackedNodeHalf)*num_bounds*2);
-    bvh.node_uppers = (BVHPackedNodeHalf*)alloc_host(sizeof(BVHPackedNodeHalf)*num_bounds*2);
-    bvh.num_nodes = num_bounds;
+   // bvh.node_lowers = (BVHPackedNodeHalf*)alloc_host(sizeof(BVHPackedNodeHalf)*num_bounds*2);
+   // bvh.node_uppers = (BVHPackedNodeHalf*)alloc_host(sizeof(BVHPackedNodeHalf)*num_bounds*2);
+   // bvh.num_nodes = num_bounds;
+
+    MedianBVHBuilder builder;
+    builder.build(bvh, bounds, num_bounds);
 
     return bvh;
 }
@@ -995,12 +998,12 @@ void bvh_destroy_host(BVH& bvh)
 BVH bvh_clone(const BVH& bvh_host)
 {
     BVH bvh_device = bvh_host;
-    bvh_device.node_lowers = (BVHPackedNodeHalf*)alloc_device(sizeof(BVHPackedNodeHalf)*bvh_host.num_nodes*2);
-    bvh_device.node_uppers = (BVHPackedNodeHalf*)alloc_device(sizeof(BVHPackedNodeHalf)*bvh_host.num_nodes*2);
+    bvh_device.node_lowers = (BVHPackedNodeHalf*)alloc_device(sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    bvh_device.node_uppers = (BVHPackedNodeHalf*)alloc_device(sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
 
     // copy host data to device
-    memcpy_h2d(bvh_device.node_lowers, bvh_host.node_lowers, sizeof(BVHPackedNodeHalf)*bvh_host.num_nodes*2);
-    memcpy_h2d(bvh_device.node_uppers, bvh_host.node_uppers, sizeof(BVHPackedNodeHalf)*bvh_host.num_nodes*2);
+    memcpy_h2d(bvh_device.node_lowers, bvh_host.node_lowers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    memcpy_h2d(bvh_device.node_uppers, bvh_host.node_uppers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
 
     return bvh_device;
 }

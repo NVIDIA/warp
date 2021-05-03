@@ -83,8 +83,12 @@ CUDA_CALLABLE T cast(og::array addr)
 // numeric types
 typedef float float32;
 typedef double float64;
+
 typedef int64_t int64;
 typedef int32_t int32;
+
+typedef uint64_t uint64;
+typedef uint32_t uint32;
 
 #define kEps 0.0f
 

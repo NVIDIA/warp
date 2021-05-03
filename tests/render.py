@@ -133,7 +133,7 @@ class UsdRenderer:
         op = sphere.MakeMatrixXform()
         op.Set(mat, self.time)        
 
-    def render_ref(self, name: str, path: str, transform, scale):
+    def render_ref(self, name: str, path: str, pos, rot, scale):
 
         ref_path = "/root/" + name
 
@@ -145,7 +145,7 @@ class UsdRenderer:
             _usd_add_xform(ref)
 
         # update transform
-        _usd_set_xform(ref, transform, scale, self.time)
+        _usd_set_xform(ref, (pos, rot), scale, self.time)
 
 
     def render_mesh(self, name: str, points, indices):

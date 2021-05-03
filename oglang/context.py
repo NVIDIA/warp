@@ -11,6 +11,7 @@ from ctypes import*
 
 from oglang.types import *
 from oglang.utils import *
+from oglang.config import *
 
 import oglang.codegen
 import oglang.cuda
@@ -616,10 +617,17 @@ class DenseSolve:
         return None
 
 @builtin("dense_solve_batched")
-class DenseSolve:
+class DenseSolveBatched:
     @staticmethod
     def value_type(args):
         return None        
+
+@builtin("mesh_query_point")
+class MeshQueryPoint:
+    @staticmethod
+    def value_type(args):
+        return vec3
+
 
 # helpers
 
@@ -778,7 +786,8 @@ class Module:
         cu_file.close()
        
         try:
-            oglang.build.build_module(cpp_path, cu_path, dll_path, config="release", load=True)
+
+            oglang.build.build_module(cpp_path, cu_path, dll_path, config=oglang.config.mode, load=True)
 
             # update cached output
             f = open(cache_path, 'w')
@@ -838,14 +847,16 @@ class Runtime:
         #     ver0 = c_uint(0)
         #     ret = oglang.cuda.cuCtxGetApiVersion(c_void_p(), byref(ver0))
 
+        build_path = os.path.dirname(os.path.realpath(__file__))
 
         try:
-            build_path = os.path.dirname(os.path.realpath(__file__))
 
             oglang.build.build_module(
-                            build_path + "/native/core.cpp", 
-                            build_path + "/native/core.cu", 
-                            build_path + "/kernels/core.dll")
+                            cpp_path=build_path + "/native/core.cpp", 
+                            cu_path=build_path + "/native/core.cu", 
+                            dll_path=build_path + "/kernels/core.dll",
+                            config=oglang.config.mode)
+                            
         except Exception as e:
 
             print("Could not load core library")
@@ -857,7 +868,13 @@ class Runtime:
         self.core.alloc_device.restype = c_void_p
         
         self.core.mesh_create_host.restype = c_uint64
+        self.core.mesh_create_host.argtypes = [c_void_p, c_void_p, c_int, c_int]
+
         self.core.mesh_create_device.restype = c_uint64
+        self.core.mesh_create_device.argtypes = [c_void_p, c_void_p, c_int, c_int]
+
+        self.core.mesh_destroy_host.argtypes = [c_uint64]
+        self.core.mesh_destroy_device.argtypes = [c_uint64]
 
         self.core.init()
 
@@ -959,7 +976,9 @@ def launch(kernel, dim, inputs, outputs, device="cpu"):
             if type(i) is oglang.types.array:
                 params.append(c_int64(i.data))
             elif type(i) is oglang.types.int64:
-                params.append(c_int64(i))
+                params.append(c_int64(i.value))
+            elif type(i) is oglang.types.uint64:
+                params.append(c_uint64(i.value))
             elif type(i) is int:
                 params.append(c_int32(i))
             elif type(i) is float:

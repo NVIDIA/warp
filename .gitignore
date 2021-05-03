@@ -8,3 +8,8 @@ oglang.egg-info
 kernels
 archive
 _*/
+*.o
+*.exp
+*.dll
+*.lib
+*.cpp.obj

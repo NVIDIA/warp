@@ -68,7 +68,7 @@ void memset_device(void* dest, int value, size_t n)
 
 void synchronize()
 {
-    cudaDeviceSynchronize();
+    cudaStreamSynchronize(0);
 }
 
 // impl. files

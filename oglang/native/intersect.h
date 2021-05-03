@@ -8,12 +8,25 @@ CUDA_CALLABLE inline vec3 closest_point_to_aabb(const vec3& p, const vec3& lower
 {
 	vec3 c;
 
-	for (int i=0; i < 3; ++i)
 	{
-		float v = p[i];
-		if (v < lower[i]) v = lower[i];
-		if (v > upper[i]) v = upper[i];
-		c[i] = v;
+		float v = p[0];
+		if (v < lower[0]) v = lower[0];
+		if (v > upper[0]) v = upper[0];
+		c[0] = v;
+	}
+
+	{
+		float v = p[1];
+		if (v < lower[1]) v = lower[1];
+		if (v > upper[1]) v = upper[1];
+		c[1] = v;
+	}
+
+	{
+		float v = p[2];
+		if (v < lower[2]) v = lower[2];
+		if (v > upper[2]) v = upper[2];
+		c[2] = v;
 	}
 
 	return c;
@@ -82,14 +95,6 @@ CUDA_CALLABLE inline vec3 closest_point_to_triangle(const vec3& a, const vec3& b
 	v = vb * denom;
 	w = vc * denom;
 	return a + ab*v + ac*w;
-}
-
-
-CUDA_CALLABLE inline float distance_to_aabb(const vec3& p, const vec3& lower, const vec3& upper)
-{
-	vec3 cp = closest_point_to_aabb(p, lower, upper);
-
-	return length(p-cp);
 }
 
 

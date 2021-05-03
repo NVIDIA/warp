@@ -125,6 +125,11 @@ inline CUDA_CALLABLE float length(vec3 a)
     return sqrtf(dot(a, a));
 }
 
+inline CUDA_CALLABLE float length_sq(vec3 a)
+{
+    return dot(a, a);
+}
+
 inline CUDA_CALLABLE vec3 normalize(vec3 a)
 {
     float l = length(a);
