@@ -8,7 +8,7 @@ namespace og
 struct bounds3
 {
 	CUDA_CALLABLE inline bounds3() : lower( FLT_MAX)
-						        , upper(-FLT_MAX) {}
+						           , upper(-FLT_MAX) {}
 
 	CUDA_CALLABLE inline bounds3(const vec3& lower, const vec3& upper) : lower(lower), upper(upper) {}
 
@@ -109,6 +109,10 @@ struct BVH
     BVHPackedNodeHalf* node_lowers;
     BVHPackedNodeHalf* node_uppers;
 
+	// used for fast refits
+	int* node_parents;
+	int* node_counts;
+	
 	int max_depth;
 	int max_nodes;
     int num_nodes;
@@ -117,13 +121,13 @@ struct BVH
 };
 
 // create only happens on device currently
-BVH bvh_create(bounds3* bounds, int num_bounds);
+BVH bvh_create(const bounds3* bounds, int num_bounds);
 
 void bvh_destroy_host(BVH& bvh);
 void bvh_destroy_device(BVH& bvh);
 
-void bvh_refit_host(BVH& bvh, bounds3* bounds);
-void bvh_refit_device(BVH& bvh, bounds3* bounds);
+void bvh_refit_host(BVH& bvh, const bounds3* bounds);
+void bvh_refit_device(BVH& bvh, const bounds3* bounds);
 
 // copy host BVH to device
 BVH bvh_clone(const BVH& bvh_host);

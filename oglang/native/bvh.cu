@@ -15,61 +15,61 @@ g_sort_temp_size = 0;
 
 void sort_reset()
 {
-	check_cuda(cudaFree(g_sort_temp));
+    check_cuda(cudaFree(g_sort_temp));
 
-	g_sort_temp_size = 0;
-	g_sort_temp = 0;
+    g_sort_temp_size = 0;
+    g_sort_temp = 0;
 }
 
 void sort(int* keys, int* values, int n, int numBits)
 {
-	cub::DoubleBuffer<int> d_keys(keys, keys + n);
-	cub::DoubleBuffer<int> d_values(values, values + n);
+    cub::DoubleBuffer<int> d_keys(keys, keys + n);
+    cub::DoubleBuffer<int> d_values(values, values + n);
 
-	size_t sortTempSize;
-	cub::DeviceRadixSort::SortPairs(NULL, sortTempSize, d_keys, d_values, int(n), 0, numBits);
+    size_t sortTempSize;
+    cub::DeviceRadixSort::SortPairs(NULL, sortTempSize, d_keys, d_values, int(n), 0, numBits);
 
-	// first time initialization
-	if (sortTempSize > g_sort_temp_size)
-	{
-		sort_reset(lib);
+    // first time initialization
+    if (sortTempSize > g_sort_temp_size)
+    {
+        sort_reset(lib);
 
-		check_cuda(cudaMalloc(&g_sort_temp, sortTempSize));
+        check_cuda(cudaMalloc(&g_sort_temp, sortTempSize));
 
-		g_sort_temp_size = sortTempSize;
-	}
+        g_sort_temp_size = sortTempSize;
+    }
 
-	cub::DeviceRadixSort::SortPairs(g_sort_temp, sortTempSize, d_keys, d_values, n, 0, numBits);
+    cub::DeviceRadixSort::SortPairs(g_sort_temp, sortTempSize, d_keys, d_values, n, 0, numBits);
 
-	if (d_keys.Current() != keys)
-		check_cuda(cudaMemcpyAsync(keys, d_keys.Current(), sizeof(int)*n, cudaMemcpyDeviceToDevice));
+    if (d_keys.Current() != keys)
+        check_cuda(cudaMemcpyAsync(keys, d_keys.Current(), sizeof(int)*n, cudaMemcpyDeviceToDevice));
 
-	if (d_values.Current() != values)
-		check_cuda(cudaMemcpyAsync(values, d_values.Current(), sizeof(int)*n, cudaMemcpyDeviceToDevice));
+    if (d_values.Current() != values)
+        check_cuda(cudaMemcpyAsync(values, d_values.Current(), sizeof(int)*n, cudaMemcpyDeviceToDevice));
 
 }
 
 void inclusive_scan(const int* input, int* output, int n)
 {
-	// Declare, allocate, and initialize device-accessible pointers for input and output
-	
-	void* tempStorage = NULL;
-	size_t tempStorageSize = 0;
+    // Declare, allocate, and initialize device-accessible pointers for input and output
+    
+    void* tempStorage = NULL;
+    size_t tempStorageSize = 0;
 
-	cub::DeviceScan::InclusiveSum(tempStorage, tempStorageSize, input, output, n);
+    cub::DeviceScan::InclusiveSum(tempStorage, tempStorageSize, input, output, n);
 
-	// Determine temporary device storage requirements
-	if (tempStorageSize > g_sort_temp_size)
-	{
-		sort_reset(lib);
+    // Determine temporary device storage requirements
+    if (tempStorageSize > g_sort_temp_size)
+    {
+        sort_reset(lib);
 
-		check_cuda(cudaMalloc(&g_sort_temp, tempStorageSize));
+        check_cuda(cudaMalloc(&g_sort_temp, tempStorageSize));
 
-		g_sort_temp_size = tempStorageSize;
-	}
+        g_sort_temp_size = tempStorageSize;
+    }
 
-	// Run exclusive prefix sum
-	cub::DeviceScan::InclusiveSum(g_sort_temp, tempStorageSize, input, output, n);
+    // Run exclusive prefix sum
+    cub::DeviceScan::InclusiveSum(g_sort_temp, tempStorageSize, input, output, n);
 
 }
 
@@ -138,16 +138,16 @@ class MedianBVHBuilder
 {	
 public:
 
-	void build(BVH& bvh, const bounds3* items, int n);
+    void build(BVH& bvh, const bounds3* items, int n);
 
 private:
 
-	bounds3 calc_bounds(const bounds3* bounds, const int* indices, int start, int end);
+    bounds3 calc_bounds(const bounds3* bounds, const int* indices, int start, int end);
 
-	int partition_median(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds);
-	int partition_midpoint(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds);
+    int partition_median(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds);
+    int partition_midpoint(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds);
 
-	int build_recursive(BVH& bvh, const bounds3* bounds, int* indices, int start, int end, int depth);
+    int build_recursive(BVH& bvh, const bounds3* bounds, int* indices, int start, int end, int depth, int parent);
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -155,23 +155,23 @@ private:
 class LinearBVHBuilderCPU
 {
 public:
-	
-	void build(BVH& bvh, const bounds3* items, int n);
+    
+    void build(BVH& bvh, const bounds3* items, int n);
 
 private:
 
-	// calculate Morton codes
-	struct KeyIndexPair
-	{
-		uint32_t key;
-		int index;
+    // calculate Morton codes
+    struct KeyIndexPair
+    {
+        uint32_t key;
+        int index;
 
-		inline bool operator < (const KeyIndexPair& rhs) const { return key < rhs.key; }
-	};	
+        inline bool operator < (const KeyIndexPair& rhs) const { return key < rhs.key; }
+    };	
 
-	bounds3 calc_bounds(const bounds3* bounds, const KeyIndexPair* keys, int start, int end);
-	int find_split(const KeyIndexPair* pairs, int start, int end);
-	int build_recursive(BVH& bvh, const KeyIndexPair* keys, const bounds3* bounds, int start, int end, int depth);
+    bounds3 calc_bounds(const bounds3* bounds, const KeyIndexPair* keys, int start, int end);
+    int find_split(const KeyIndexPair* pairs, int start, int end);
+    int build_recursive(BVH& bvh, const KeyIndexPair* keys, const bounds3* bounds, int start, int end, int depth);
 
 };
 
@@ -185,30 +185,30 @@ class LinearBVHBuilderGPU
 {
 public:
 
-	LinearBVHBuilderGPU();
-	~LinearBVHBuilderGPU();
+    LinearBVHBuilderGPU();
+    ~LinearBVHBuilderGPU();
 
-	// takes a bvh (host ref), and pointers to the GPU lower and upper bounds for each triangle
-	// the priorities array allows specifying a 5-bit [0-31] value priority such that lower priority
-	// leaves will always be returned first
-	void build(NvFlexLibrary* lib, BVH& bvh, const Vec4* lowers, const Vec4* uppers, const int* priorities, int n, bounds3* total_bounds);
+    // takes a bvh (host ref), and pointers to the GPU lower and upper bounds for each triangle
+    // the priorities array allows specifying a 5-bit [0-31] value priority such that lower priority
+    // leaves will always be returned first
+    void build(NvFlexLibrary* lib, BVH& bvh, const Vec4* lowers, const Vec4* uppers, const int* priorities, int n, bounds3* total_bounds);
 
 private:
 
-	// temporary data used during building
-	int* mIndices;
-	int* mKeys;
-	int* mDeltas;
-	int* mRangeLefts;
-	int* mRangeRights;
-	int* mNumChildren;
+    // temporary data used during building
+    int* mIndices;
+    int* mKeys;
+    int* mDeltas;
+    int* mRangeLefts;
+    int* mRangeRights;
+    int* mNumChildren;
 
-	// bounds data when total item bounds built on GPU
-	vec3* mTotalLower;
-	vec3* mTotalUpper;
-	vec3* mTotalInvEdges;
+    // bounds data when total item bounds built on GPU
+    vec3* mTotalLower;
+    vec3* mTotalUpper;
+    vec3* mTotalInvEdges;
 
-	int mMaxItems;
+    int mMaxItems;
 
 };
 */
@@ -223,6 +223,8 @@ void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
 
     bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
     bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
+    bvh.node_parents = new int[bvh.max_nodes];
+
     bvh.num_nodes = 0;
 
     // root is always in first slot for top down builders
@@ -232,7 +234,7 @@ void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
     for (int i=0; i < n; ++i)
         indices[i] = i;
 
-    build_recursive(bvh, items, &indices[0], 0, n, 0);
+    build_recursive(bvh, items, &indices[0], 0, n, 0, -1);
 }
 
 
@@ -312,14 +314,14 @@ int MedianBVHBuilder::partition_midpoint(const bounds3* bounds, int* indices, in
     return k;
 }
 
-int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indices, int start, int end, int depth)
+int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indices, int start, int end, int depth, int parent)
     {
         assert(start < end);
 
         const int n = end-start;
-        const int nodeIndex = bvh.num_nodes++;
+        const int node_index = bvh.num_nodes++;
 
-        assert(nodeIndex < bvh.max_nodes);
+        assert(node_index < bvh.max_nodes);
 
         if (depth > bvh.max_depth)
             bvh.max_depth = depth;
@@ -330,22 +332,24 @@ int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indi
 
         if (n <= kMaxItemsPerLeaf)
         {
-            bvh.node_lowers[nodeIndex] = make_node(b.lower, indices[start], true);
-            bvh.node_uppers[nodeIndex] = make_node(b.upper, indices[start], false);
+            bvh.node_lowers[node_index] = make_node(b.lower, indices[start], true);
+            bvh.node_uppers[node_index] = make_node(b.upper, indices[start], false);
+            bvh.node_parents[node_index] = parent;
         }
         else
         {
             //int split = partition_midpoint(bounds, indices, start, end, b);
             int split = partition_median(bounds, indices, start, end, b);
         
-            int leftChild = build_recursive(bvh, bounds, indices, start, split, depth+1);
-            int rightChild = build_recursive(bvh,bounds, indices, split, end, depth+1);
+            int left_child = build_recursive(bvh, bounds, indices, start, split, depth+1, node_index);
+            int right_child = build_recursive(bvh,bounds, indices, split, end, depth+1, node_index);
             
-            bvh.node_lowers[nodeIndex] = make_node(b.lower, leftChild, false);
-            bvh.node_uppers[nodeIndex] = make_node(b.upper, rightChild, false);		
+            bvh.node_lowers[node_index] = make_node(b.lower, left_child, false);
+            bvh.node_uppers[node_index] = make_node(b.upper, right_child, false);		
+            bvh.node_parents[node_index] = parent;
         }
 
-        return nodeIndex;
+        return node_index;
     }
 
 
@@ -449,9 +453,9 @@ int LinearBVHBuilderCPU::build_recursive(BVH& bvh, const KeyIndexPair* keys, con
     assert(start < end);
 
     const int n = end-start;
-    const int nodeIndex = bvh.num_nodes++;
+    const int node_index = bvh.num_nodes++;
 
-    assert(nodeIndex < bvh.max_nodes);
+    assert(node_index < bvh.max_nodes);
 
     if (depth > bvh.max_depth)
         bvh.max_depth = depth;
@@ -462,21 +466,21 @@ int LinearBVHBuilderCPU::build_recursive(BVH& bvh, const KeyIndexPair* keys, con
 
     if (n <= kMaxItemsPerLeaf)
     {
-        bvh.node_lowers[nodeIndex] = make_node(b.lower, keys[start].index, true);
-        bvh.node_uppers[nodeIndex] = make_node(b.upper, keys[start].index, false);
+        bvh.node_lowers[node_index] = make_node(b.lower, keys[start].index, true);
+        bvh.node_uppers[node_index] = make_node(b.upper, keys[start].index, false);
     }
     else
     {
         int split = find_split(keys, start, end);
         
-        int leftChild = build_recursive(bvh, keys, bounds, start, split, depth+1);
-        int rightChild = build_recursive(bvh, keys, bounds, split, end, depth+1);
+        int left_child = build_recursive(bvh, keys, bounds, start, split, depth+1);
+        int right_child = build_recursive(bvh, keys, bounds, split, end, depth+1);
             
-        bvh.node_lowers[nodeIndex] = make_node(b.lower, leftChild, false);
-        bvh.node_uppers[nodeIndex] = make_node(b.upper, rightChild, false);		
+        bvh.node_lowers[node_index] = make_node(b.lower, left_child, false);
+        bvh.node_uppers[node_index] = make_node(b.upper, right_child, false);		
     }
 
-    return nodeIndex;
+    return node_index;
 }
 
 
@@ -488,21 +492,21 @@ int LinearBVHBuilderCPU::build_recursive(BVH& bvh, const KeyIndexPair* keys, con
 // build kernels
 __global__ void CalculateTrianglebounds3(const vec3* __restrict__ vertices, const int* __restrict__ indices, int numTris, Vec4* __restrict__ lowers, Vec4* __restrict__ uppers)
 {
-	const int index = blockIdx.x*blockDim.x + threadIdx.x;
+    const int index = blockIdx.x*blockDim.x + threadIdx.x;
 
-	if (index < numTris)
-	{
-		vec3 p = vec3(vertices[indices[index * 3 + 0]]);
-		vec3 q = vec3(vertices[indices[index * 3 + 1]]);
-		vec3 r = vec3(vertices[indices[index * 3 + 2]]);
+    if (index < numTris)
+    {
+        vec3 p = vec3(vertices[indices[index * 3 + 0]]);
+        vec3 q = vec3(vertices[indices[index * 3 + 1]]);
+        vec3 r = vec3(vertices[indices[index * 3 + 2]]);
 
-		vec3 lower = min(p, min(q, r));
-		vec3 upper = max(p, max(q, r));
+        vec3 lower = min(p, min(q, r));
+        vec3 upper = max(p, max(q, r));
 
-		// use vec4 type for 16-byte stores
-		((vec4*)lowers)[index] = make_vec4(lower.x, lower.y, lower.z, 0.0f);
-		((vec4*)uppers)[index] = make_vec4(upper.x, upper.y, upper.z, 0.0f);
-	}
+        // use vec4 type for 16-byte stores
+        ((vec4*)lowers)[index] = make_vec4(lower.x, lower.y, lower.z, 0.0f);
+        ((vec4*)uppers)[index] = make_vec4(upper.x, upper.y, upper.z, 0.0f);
+    }
 }
 
 
@@ -628,33 +632,33 @@ __global__ void BuildHierarchy(int n, int* root, const int* __restrict__ deltas,
             // then update its bounds and move onto the the next parent in the hierarchy
             if (childCount == 1)
             {
-                const int leftChild = lowers[parent].i;
-                const int rightChild = uppers[parent].i;
+                const int left_child = lowers[parent].i;
+                const int right_child = uppers[parent].i;
 
-                vec3 leftLower = vec3(lowers[leftChild].x,
-                                      lowers[leftChild].y, 
-                                      lowers[leftChild].z);
+                vec3 left_lower = vec3(lowers[left_child].x,
+                                      lowers[left_child].y, 
+                                      lowers[left_child].z);
 
-                vec3 leftUpper = vec3(uppers[leftChild].x,
-                                      uppers[leftChild].y, 
-                                      uppers[leftChild].z);
+                vec3 left_upper = vec3(uppers[left_child].x,
+                                      uppers[left_child].y, 
+                                      uppers[left_child].z);
 
-                vec3 rightLower = vec3(lowers[rightChild].x,
-                                       lowers[rightChild].y,
-                                       lowers[rightChild].z);
+                vec3 right_lower = vec3(lowers[right_child].x,
+                                       lowers[right_child].y,
+                                       lowers[right_child].z);
 
 
-                vec3 rightUpper = vec3(uppers[rightChild].x, 
-                                       uppers[rightChild].y, 
-                                       uppers[rightChild].z);
+                vec3 right_upper = vec3(uppers[right_child].x, 
+                                       uppers[right_child].y, 
+                                       uppers[right_child].z);
 
                 // bounds_union of child bounds
-                vec3 lower = Min(leftLower, rightLower);
-                vec3 upper = Max(leftUpper, rightUpper);
+                vec3 lower = Min(left_lower, right_lower);
+                vec3 upper = Max(left_upper, right_upper);
                 
                 // write new BVH nodes
-                make_node(lowers+parent, lower, leftChild, false);
-                make_node(uppers+parent, upper, rightChild, false);
+                make_node(lowers+parent, lower, left_child, false);
+                make_node(uppers+parent, upper, right_child, false);
 
                 // move onto processing the parent
                 index = parent;
@@ -916,14 +920,14 @@ void LinearBVHBuilderGPU::build(NvFlexLibrary* lib, BVH& bvh, const Vec4* itemLo
             // assign bounds to parent
             if (numChildren[parent] == 2)
             {
-                const int leftChild = lowers[parent].i;
-                const int rightChild = uppers[parent].i;
+                const int left_child = lowers[parent].i;
+                const int right_child = uppers[parent].i;
 
-                vec3 lower = Min(vec3(&lowers[leftChild].x), vec3(&lowers[rightChild].x));
-                vec3 upper = Max(vec3(&uppers[leftChild].x), vec3(&uppers[rightChild].x));
+                vec3 lower = Min(vec3(&lowers[left_child].x), vec3(&lowers[right_child].x));
+                vec3 upper = Max(vec3(&uppers[left_child].x), vec3(&uppers[right_child].x));
                 
-                lowers[parent] = { lower.x, lower.y, lower.z, (unsigned int)leftChild, 0 };
-                uppers[parent] = { upper.x, upper.y, upper.z, (unsigned int)rightChild, 0 };
+                lowers[parent] = { lower.x, lower.y, lower.z, (unsigned int)left_child, 0 };
+                uppers[parent] = { upper.x, upper.y, upper.z, (unsigned int)right_child, 0 };
 
                 // store index of root node
                 if (rangeLefts[parent] == 0 && rangeRights[parent] == numItems-1 && numChildren[parent] == 2)
@@ -963,7 +967,7 @@ void LinearBVHBuilderGPU::build(NvFlexLibrary* lib, BVH& bvh, const Vec4* itemLo
 
 
 // create only happens on host currently, use bvh_clone() to transfer BVH To device
-BVH bvh_create(bounds3* bounds, int num_bounds)
+BVH bvh_create(const bounds3* bounds, int num_bounds)
 {
     BVH bvh;
     memset(&bvh, 0, sizeof(bvh));
@@ -978,16 +982,11 @@ BVH bvh_create(bounds3* bounds, int num_bounds)
     return bvh;
 }
 
-void bvh_destroy_device(BVH& bvh)
-{
-    free_device(bvh.node_lowers); bvh.node_lowers = NULL;
-    free_device(bvh.node_uppers); bvh.node_uppers = NULL;
-}
-
 void bvh_destroy_host(BVH& bvh)
 {
     delete[] bvh.node_lowers;
     delete[] bvh.node_uppers;
+    delete[] bvh.node_parents;
 
     bvh.node_lowers = 0;
     bvh.node_uppers = 0;
@@ -995,28 +994,167 @@ void bvh_destroy_host(BVH& bvh)
     bvh.num_nodes = 0;
 }
 
+void bvh_destroy_device(BVH& bvh)
+{
+    free_device(bvh.node_lowers); bvh.node_lowers = NULL;
+    free_device(bvh.node_uppers); bvh.node_uppers = NULL;
+    free_device(bvh.node_parents); bvh.node_parents = NULL;
+    free_device(bvh.node_counts); bvh.node_counts = NULL;
+}
+
+
 BVH bvh_clone(const BVH& bvh_host)
 {
     BVH bvh_device = bvh_host;
+
     bvh_device.node_lowers = (BVHPackedNodeHalf*)alloc_device(sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
     bvh_device.node_uppers = (BVHPackedNodeHalf*)alloc_device(sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    bvh_device.node_parents = (int*)alloc_device(sizeof(int)*bvh_host.max_nodes);
+    bvh_device.node_counts = (int*)alloc_device(sizeof(int)*bvh_host.max_nodes);
 
     // copy host data to device
     memcpy_h2d(bvh_device.node_lowers, bvh_host.node_lowers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
     memcpy_h2d(bvh_device.node_uppers, bvh_host.node_uppers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    memcpy_h2d(bvh_device.node_parents, bvh_host.node_parents, sizeof(int)*bvh_host.max_nodes);
 
     return bvh_device;
 }
 
-
-void bvh_refit_host(BVH& bvh, bounds3* bounds3)
+void bvh_refit_recursive(BVH& bvh, int index, const bounds3* bounds)
 {
+    BVHPackedNodeHalf& lower = bvh.node_lowers[index];
+    BVHPackedNodeHalf& upper = bvh.node_uppers[index];
 
+    if (lower.b)
+    {
+        const int leaf_index = lower.i;
+
+        (vec3&)lower = bounds[leaf_index].lower;
+        (vec3&)upper = bounds[leaf_index].upper;
+    }
+    else
+    {
+        int left_index = lower.i;
+        int right_index = upper.i;
+
+        bvh_refit_recursive(bvh, left_index, bounds);
+        bvh_refit_recursive(bvh, right_index, bounds);
+
+        // compute union of children
+        const vec3& left_lower = (vec3&)bvh.node_lowers[left_index];
+        const vec3& left_upper = (vec3&)bvh.node_uppers[left_index];
+
+        const vec3& right_lower = (vec3&)bvh.node_lowers[right_index];
+        const vec3& right_upper = (vec3&)bvh.node_uppers[right_index];
+
+        // union of child bounds
+        vec3 new_lower = min(left_lower, right_lower);
+        vec3 new_upper = max(left_upper, right_upper);
+        
+        // write new BVH nodes
+        (vec3&)lower = new_lower;
+        (vec3&)upper = new_upper;
+    }
 }
 
-void bvh_refit_device(BVH& bvh, bounds3* bounds3)
+void bvh_refit_host(BVH& bvh, const bounds3* b)
 {
+    bvh_refit_recursive(bvh, 0, b);
+}
 
+
+//__global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, volatile int* __restrict__ child_count, volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers, const bounds3* bounds)
+__global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers, const bounds3* bounds)
+{
+    int index = blockDim.x*blockIdx.x + threadIdx.x;
+
+    if (index < n)
+    {
+        bool leaf = lowers[index].b;
+
+        if (leaf)
+        {
+            // update the leaf node
+            const int leaf_index = lowers[index].i;
+            const bounds3& b = bounds[leaf_index];
+
+            make_node(lowers+index, b.lower, leaf_index, true);
+            make_node(uppers+index, b.upper, 0, false);
+        }
+        else
+        {
+            // only keep leaf threads
+            return;
+        }
+
+        // update hierarchy
+        for (;;)
+        {
+            int parent = parents[index];
+            
+            // reached root
+            if (parent == -1)
+                return;
+
+            // ensure all writes are visible
+            __threadfence();
+         
+            int finished = atomicAdd(&child_count[parent], 1);
+
+            // if we have are the last thread (such that the parent node is now complete)
+            // then update its bounds and move onto the the next parent in the hierarchy
+            if (finished == 1)
+            {
+                const int left_child = lowers[parent].i;
+                const int right_child = uppers[parent].i;
+
+                vec3 left_lower = vec3(lowers[left_child].x,
+                                       lowers[left_child].y, 
+                                       lowers[left_child].z);
+
+                vec3 left_upper = vec3(uppers[left_child].x,
+                                       uppers[left_child].y, 
+                                       uppers[left_child].z);
+
+                vec3 right_lower = vec3(lowers[right_child].x,
+                                       lowers[right_child].y,
+                                       lowers[right_child].z);
+
+
+                vec3 right_upper = vec3(uppers[right_child].x, 
+                                       uppers[right_child].y, 
+                                       uppers[right_child].z);
+
+                // union of child bounds
+                vec3 lower = min(left_lower, right_lower);
+                vec3 upper = max(left_upper, right_upper);
+                
+                // write new BVH nodes
+                make_node(lowers+parent, lower, left_child, false);
+                make_node(uppers+parent, upper, right_child, false);
+
+                // move onto processing the parent
+                index = parent;
+            }
+            else
+            {
+                // parent not ready (we are the first child), terminate thread
+                break;
+            }
+        }		
+    }
+}
+
+
+void bvh_refit_device(BVH& bvh, const bounds3* b)
+{
+    // clear child counters
+    memset_device(bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
+
+    const int num_threads_per_block = 256;
+    const int num_blocks = (bvh.max_nodes + num_threads_per_block - 1)/num_threads_per_block;
+  
+    bvh_refit_kernel<<<num_blocks, num_threads_per_block>>>(bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b);
 }
 
 

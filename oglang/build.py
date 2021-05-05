@@ -77,8 +77,12 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True):
                     raise RuntimeError("cpp build failed")
 
             if (cuda_home):
-                cuda_cmd = "{cuda_home}/bin/nvcc -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
-                #cuda_cmd = "{cuda_home}/bin/nvcc --compiler-options=/Zi,/Od -g -G -O0 -line-info -gencode=arch=compute_35,code=compute_35 -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+
+                if (config == "debug"):
+                    cuda_cmd = "{cuda_home}/bin/nvcc --compiler-options=/Zi,/Od -g -G -O0 -line-info -gencode=arch=compute_35,code=compute_35 -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+
+                elif (config == "release"):
+                    cuda_cmd = "{cuda_home}/bin/nvcc -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
 
                 with ScopedTimer("build_cuda"):
                     print(cuda_cmd)
@@ -134,8 +138,8 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True):
     except Exception as e:
 
         # print error 
-        print("Build failed, using cached binaries (if available")
         print(e)
+        raise(e)
 
     
 def load_module(dll_path):

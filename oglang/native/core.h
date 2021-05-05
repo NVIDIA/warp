@@ -526,11 +526,11 @@ extern "C"
     // users reponsibility to keep-alive the points/tris data for the duration of the mesh lifetime
 	OG_API uint64_t mesh_create_host(og::vec3* points, int* tris, int num_points, int num_tris);
 	OG_API void mesh_destroy_host(uint64_t id);
-    OG_API void mesh_update_host(uint64_t id, og::vec3* points, int* tris, bool refit);
+    OG_API void mesh_refit_host(uint64_t id);
 
 	OG_API uint64_t mesh_create_device(og::vec3* points, int* tris, int num_points, int num_tris);
 	OG_API void mesh_destroy_device(uint64_t id);
-    OG_API void mesh_update_device(uint64_t id, og::vec3* points, int* tris, bool refit);
+    OG_API void mesh_refit_device(uint64_t id);
 
     // ensures all device side operations have completed
     OG_API void synchronize();

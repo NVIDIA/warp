@@ -864,6 +864,7 @@ class Runtime:
 
         self.core = oglang.build.load_module(build_path + "/kernels/core.dll")
 
+        # setup c-types for core.dll
         self.core.alloc_host.restype = c_void_p
         self.core.alloc_device.restype = c_void_p
         
@@ -875,6 +876,9 @@ class Runtime:
 
         self.core.mesh_destroy_host.argtypes = [c_uint64]
         self.core.mesh_destroy_device.argtypes = [c_uint64]
+
+        self.core.mesh_refit_host.argtypes = [c_uint64]
+        self.core.mesh_refit_device.argtypes = [c_uint64]
 
         self.core.init()
 
@@ -902,14 +906,16 @@ class Runtime:
 
 def copy(dest, src):
 
+    num_bytes = src.length*type_size_in_bytes(src.dtype)
+
     if (src.device == "cpu" and dest.device == "cuda"):
-        runtime.core.memcpy_h2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity))     # todo, just copy active region not full capacity
+        runtime.core.memcpy_h2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
 
     elif (src.device == "cuda" and dest.device == "cpu"):
-        runtime.core.memcpy_d2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity))     # todo, just copy active region not full capacity
+        runtime.core.memcpy_d2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
 
     elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.core.memcpy_h2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(src.capacity))
+        runtime.core.memcpy_h2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
 
 
 def zeros(n, dtype=float, device="cpu"):
