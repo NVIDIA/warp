@@ -797,7 +797,7 @@ class Module:
         except Exception as e:
 
             print(e)
-            print("Trying to load existing module")
+            raise(e)
 
 
         self.dll = oglang.build.load_module(dll_path)

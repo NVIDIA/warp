@@ -32,6 +32,8 @@ def deform(positions: og.array(og.vec3), t: float):
 def simulate(positions: og.array(og.vec3),
             velocities: og.array(og.vec3),
             mesh: og.uint64,
+            restitution: float,
+            margin: float,
             dt: float):
     
     tid = og.tid()
@@ -39,36 +41,50 @@ def simulate(positions: og.array(og.vec3),
     x = og.load(positions, tid)
     v = og.load(velocities, tid)
 
-    # v = v + og.vec3(0.0, 0.0-9.8, 0.0)*dt
-    # xpred = x + v*dt
+    v = v + og.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
+    xpred = x + v*dt
 
-    # if (xpred[1] < 0.0):
-    #     v = og.vec3(v[0], 0.0 - v[1]*0.5, v[2])
+    sign = float(0.0)
+    p = og.mesh_query_point(mesh, xpred, sign)
+    delta = xpred-p
+    
+    dist = og.length(delta)*sign
+    err = dist - margin
 
-    p = og.mesh_query_point(mesh, x)
-    f = (p-x)*1.0# - v*0.1
+    # mesh collision
+    if (err < 0.0):
+        n = og.normalize(delta)*sign
+        xpred = xpred - n*err
 
-    #v = v + f*dt
-    x = x + v*dt + f*dt
+    # # ground collision
+    # if (xpred[1] < margin):
+    #     xpred = og.vec3(xpred[0], margin, xpred[2])
 
-    og.store(positions, tid, p)    
+    # pbd update
+    v = (xpred - x)*(1.0/dt)
+    x = xpred
+
+    og.store(positions, tid, x)
     og.store(velocities, tid, v)
 
 
 device = "cuda"
 num_particles = 10000
 
-sim_steps = 200
+sim_steps = 100
 sim_dt = 1.0/60.0
 
 sim_time = 0.0
 sim_timers = {}
 sim_render = False
 
+sim_restitution = 0.0
+sim_margin = 0.1
+
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-torus = Usd.Stage.Open("./tests/assets/torus.usda")
-torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/torus_obj/torus_obj"))
+torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
+torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
 
 points = torus_geom.GetPointsAttr().Get()
 indices = torus_geom.GetFaceVertexIndicesAttr().Get()
@@ -79,7 +95,7 @@ mesh = og.Mesh(
     og.from_numpy(np.array(indices), dtype=int, device=device), 
     device=device)
 
-init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, 0.5, 0.5]))*10.0
+init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -0.2, 0.5]))*10.0
 init_vel = np.random.rand(num_particles, 3)*0.0
 
 positions = og.from_numpy(init_pos.astype(np.float32), dtype=og.vec3, device=device)
@@ -105,7 +121,7 @@ for i in range(sim_steps):
         og.launch(
             kernel=simulate, 
             dim=num_particles, 
-            inputs=[positions, velocities, mesh.id, sim_dt], 
+            inputs=[positions, velocities, mesh.id, sim_restitution, sim_margin, sim_dt], 
             outputs=[], 
             device=device)
 
@@ -120,11 +136,11 @@ for i in range(sim_steps):
 
             stage.begin_frame(sim_time)
             
-            stage.render_ground()
+            #stage.render_ground()
 
             #stage.render_ref(name="mesh", path="../assets/torus.usda", pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0))
             stage.render_mesh(name="mesh", points=mesh.points.to("cpu").numpy(), indices=mesh.indices.to("cpu").numpy())
-            stage.render_points(name="points", points=positions_host.numpy(), radius=0.1)
+            stage.render_points(name="points", points=positions_host.numpy(), radius=sim_margin)
 
             stage.end_frame()
 

@@ -51,7 +51,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point)
 	float min_dist_sq = FLT_MAX;
 	vec3 min_point;
 
-	int tests = 0;
+	//int tests = 0;
 
 	while (count)
 	{
@@ -104,7 +104,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point)
 	return min_point;
 }
 
-CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point)
+CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float& inside)
 {
     Mesh mesh = mesh_get(id);
 
@@ -118,8 +118,9 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point)
 
 	float min_dist_sq = FLT_MAX;
 	vec3 min_point;
-
-	int tests = 0;
+	inside = 1.0f;
+	
+	//int tests = 0;
 
 	while (count)
 	{
@@ -151,6 +152,18 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point)
 			{
 				min_dist_sq = dist_sq;
 				min_point = c;
+
+				// if this is a 'new point', i.e.: strictly closer than previous best then update sign
+				vec3 normal = cross(q-p, r-p);
+				inside = sign(dot(normal, point-c));
+			}
+			else if (dist_sq == min_dist_sq)
+			{
+				// if the test point is equal, then test if inside should be updated
+				// point considered inside if *any* of the incident faces enclose the point
+				vec3 normal = cross(q-p, r-p);
+				if (dot(normal, point-c) < 0.0f)
+					inside = -1.0f;
 			}
 
 			//tests++;
@@ -192,7 +205,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point)
 	return min_point;
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, uint64_t& adj_id, vec3& adj_point, const vec3& adj_ret)
+CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float sign, uint64_t& adj_id, vec3& adj_point, float& adj_sign, const vec3& adj_ret)
 {
 
 }

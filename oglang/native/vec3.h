@@ -167,6 +167,8 @@ inline CUDA_CALLABLE void adj_mul(vec3 a, float s, vec3& adj_a, float& adj_s, co
 #endif
 }
 
+
+
 inline CUDA_CALLABLE void adj_div(vec3 a, float s, vec3& adj_a, float& adj_s, const vec3& adj_ret)
 {
     adj_s += dot(- a / (s * s), adj_ret); // - a / s^2
