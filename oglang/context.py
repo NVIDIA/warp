@@ -963,7 +963,7 @@ def synchronize():
     runtime.core.synchronize(c_void_p(0))
 
 
-def launch(kernel, dim, inputs, outputs, device="cpu"):
+def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
     if (dim > 0):
 

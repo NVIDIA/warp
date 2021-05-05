@@ -86,13 +86,13 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
 torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
 
-points = torus_geom.GetPointsAttr().Get()
-indices = torus_geom.GetFaceVertexIndicesAttr().Get()
+points = np.array(torus_geom.GetPointsAttr().Get())
+indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
 
 # create og mesh
 mesh = og.Mesh(
-    og.from_numpy(np.array(points), dtype=og.vec3, device=device),  
-    og.from_numpy(np.array(indices), dtype=int, device=device), 
+    og.from_numpy(points, dtype=og.vec3, device=device),  
+    og.from_numpy(indices, dtype=int, device=device), 
     device=device)
 
 init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -0.2, 0.5]))*10.0
