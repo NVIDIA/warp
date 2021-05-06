@@ -17,10 +17,9 @@ To install in your local Python environment use:
 To install in the Omniverse Python environment, use:
 
 ```python
+import omni.kit.pipapi as pip
 
-    import omni.kit.pipapi as pip
-
-    pip.install(package="F:\gitlab\oglang", module="oglang")
+pip.install(package="F:\gitlab\oglang", module="oglang")
 ```
 
 Where the package path is where the oglang package lives on your local machine. See the following FAQ for more details on custom Python packages in Kit:
