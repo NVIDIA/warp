@@ -306,7 +306,7 @@ class array:
         if (device == "cpu"):
 
             self.__array_interface__ = { 
-                "data": (data, True), 
+                "data": (data, False), 
                 "shape": (self.length, type_length(self.dtype)),  
                 "typestr": type_typestr(type_ctype(dtype)), 
                 "version": 3 
@@ -337,7 +337,7 @@ class array:
 
             # view = np.ctypeslib.as_array(ptr, shape=(self.length, type_length(self.dtype)))
             # return view
-            return np.array(self)
+            return np.array(self, copy=False)
         
         else:
             raise RuntimeError("Cannot convert CUDA array to numpy, copy to a host array first")

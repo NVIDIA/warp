@@ -134,9 +134,6 @@ grid = UsdGeom.Mesh.Define(stage, "/root")
 grid_size = 0.1
 grid_displace = 0.5
 
-# simulation context
-#context = og.Context("cuda")
-
 # simulation grids
 sim_grid0 = og.zeros(sim_width*sim_height, dtype=float, device="cuda")
 sim_grid1 = og.zeros(sim_width*sim_height, dtype=float, device="cuda")
@@ -179,7 +176,8 @@ for z in range(sim_height):
 
         pos = (float(x)*grid_size, 0.0, float(z)*grid_size)# - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
 
-        vertices[z*sim_width + x] = pos#append(pos)
+        # directly modifies verts_host memory since this is a numpy alias of the same buffer
+        vertices[z*sim_width + x] = pos
             
         if (x > 0 and z > 0):
             
@@ -199,7 +197,6 @@ grid.GetFaceVertexIndicesAttr().Set(indices, 0.0)
 grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
 
 
-
 for i in range(sim_frames):
 
     # simulate
@@ -215,7 +212,6 @@ for i in range(sim_frames):
                 kernel=wave_displace, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],  
-                outputs=[],
                 device="cuda")
 
 
@@ -224,7 +220,6 @@ for i in range(sim_frames):
                 kernel=wave_solve, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
-                outputs=[],
                 device="cuda")
 
             # swap grids
@@ -240,21 +235,13 @@ for i in range(sim_frames):
     # render
     with og.ScopedTimer("Render"):
 
-        # update vertices (CPU)
+        # update grid vertices from heights (CPU)
         with og.ScopedTimer("Mesh"):
 
             og.launch(kernel=grid_update,
                         dim=sim_width*sim_height,
                         inputs=[sim_host, verts_host],
-                        outputs=[],
                         device="cpu")
-
-        # render
-        # sim_vew = sim_grid0.numpy()
-
-        # with tests.util.ScopedTimer("Mesh"):
-        #     for v in range(sim_width*sim_height):
-        #         vertices[v] = Gf.Vec3f(vertices[v][0], float(sim_view[v]), vertices[v][2])
 
         with og.ScopedTimer("Usd"):
             
@@ -263,7 +250,6 @@ for i in range(sim_frames):
             grid.GetPointsAttr().Set(vertices, sim_time*sim_fps)
 
             add_sphere(stage, (cx*grid_size, 0.0, cy*grid_size), 10.0*grid_size, sim_time*sim_fps)
-
 
 
 stage.Save()
