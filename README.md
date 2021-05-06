@@ -102,6 +102,7 @@ Where the package path is where the oglang package lives on your local machine. 
 
 http://omnidocs-internal.nvidia.com/py/docs/guide/faq.html#can-i-use-packages-from-pip
 
+
 ## Requirements
 
 For developers writing their own kernels the following are required:
@@ -111,6 +112,8 @@ For developers writing their own kernels the following are required:
     * CUDA 11.0 upwards
 
 To build CUDA kernels either `CUDA_HOME` or `CUDA_PATH` should be set as environment variables pointing to the CUDA installation directory.
+
+To run built-in tests you should install the USD Core library to your Python environment using `pip install usd-core`.
 
 ## Source
 
