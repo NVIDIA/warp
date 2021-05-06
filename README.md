@@ -47,7 +47,7 @@ To define a computational kernel use the following syntax with the `@og.kernel` 
 @og.kernel
 def simple_kernel(a: og.array(vec3),
                   b: og.array(vec3),
-                  c: og.array(float):
+                  c: og.array(float)):
 
     # get thread index
     tid = og.tid()
