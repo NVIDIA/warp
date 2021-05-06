@@ -158,7 +158,7 @@ class UsdRenderer:
 
         mesh.GetPointsAttr().Set(points, self.time)
         mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
-        mesh.GetFaceVertexCountsAttr().Set([3] * len(indices)/3, self.time)
+        mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
 
 
     def render_line_list(self, vertices, color, time, name, radius):
