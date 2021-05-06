@@ -41,10 +41,10 @@ To run built-in tests you should install the USD Core library to your Python env
 
 ## Example Usage
 
-A simple example is the following:
+To define a computational kernel use the following syntax with the `@og.kernel` decorator. Note that all input arguments must be typed, and that the function can not access any global state.
 
 ```python
-og.kernel
+@og.kernel
 def simple_kernel(a: og.array(vec3),
                   b: og.array(vec3),
                   c: og.array(float):

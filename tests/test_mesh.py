@@ -110,10 +110,10 @@ for i in range(sim_steps):
 
     with og.ScopedTimer("simulate", detailed=False, dict=sim_timers):
 
-        og.launch(kernel=deform,
+        og.launch(
+            kernel=deform,
             dim=len(mesh.points),
             inputs=[mesh.points, sim_time],
-            outputs=[],
             device=device)
 
         mesh.refit()
@@ -122,7 +122,6 @@ for i in range(sim_steps):
             kernel=simulate, 
             dim=num_particles, 
             inputs=[positions, velocities, mesh.id, sim_restitution, sim_margin, sim_dt], 
-            outputs=[], 
             device=device)
 
         og.synchronize()

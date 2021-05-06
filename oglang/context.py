@@ -973,14 +973,19 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
             with ScopedTimer("Module load"):
                 kernel.module.load()
 
-        # build params
+        # first param is the number of threads
         params = [dim]
 
         # todo: verify argument types against the kernel definition, perform automatic conversion for simple types
 
         for i in inputs:
             if type(i) is oglang.types.array:
+                
+                if (i.device != device):
+                    raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
+
                 params.append(c_int64(i.data))
+
             elif type(i) is oglang.types.int64:
                 params.append(c_int64(i.value))
             elif type(i) is oglang.types.uint64:
