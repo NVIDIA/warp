@@ -2,6 +2,46 @@
 
 OgLang is a Python DSL and framework for writing high-performance code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
+##  Installation
+
+### Local Python
+
+
+To install in your local Python environment use:
+
+    pip install -e .
+
+
+### Omniverse
+
+To install in the Omniverse Python environment, use:
+
+```python
+
+    import omni.kit.pipapi as pip
+
+    pip.install(package="F:\gitlab\oglang", module="oglang")
+```
+
+Where the package path is where the oglang package lives on your local machine. See the following FAQ for more details on custom Python packages in Kit:
+
+http://omnidocs-internal.nvidia.com/py/docs/guide/faq.html#can-i-use-packages-from-pip
+
+
+## Requirements
+
+For developers writing their own kernels the following are required:
+
+    * Microsoft Visual Studio 2015 upwards (Windows)
+    * GCC 4.0 upwards (Linux)
+    * CUDA 11.0 upwards
+
+To build CUDA kernels either `CUDA_HOME` or `CUDA_PATH` should be set as environment variables pointing to the CUDA installation directory.
+
+To run built-in tests you should install the USD Core library to your Python environment using `pip install usd-core`.
+
+## Example Usage
+
 A simple example is the following:
 
 ```python
@@ -76,44 +116,6 @@ All copy operations are performed asynchronously and must be synchronized explic
     og.copy(dest=host_array_2, src=device_array_2)
     og.synchronize()
 ```
-
-##  Installation
-
-### Local Python
-
-
-To install in your local Python environment use:
-
-    pip install -e .
-
-
-### Omniverse
-
-To install in the Omniverse Python environment, use:
-
-```python
-
-    import omni.kit.pipapi as pip
-
-    pip.install(package="F:\gitlab\oglang", module="oglang")
-```
-
-Where the package path is where the oglang package lives on your local machine. See the following FAQ for more details on custom Python packages in Kit:
-
-http://omnidocs-internal.nvidia.com/py/docs/guide/faq.html#can-i-use-packages-from-pip
-
-
-## Requirements
-
-For developers writing their own kernels the following are required:
-
-    * Microsoft Visual Studio 2015 upwards (Windows)
-    * GCC 4.0 upwards (Linux)
-    * CUDA 11.0 upwards
-
-To build CUDA kernels either `CUDA_HOME` or `CUDA_PATH` should be set as environment variables pointing to the CUDA installation directory.
-
-To run built-in tests you should install the USD Core library to your Python environment using `pip install usd-core`.
 
 ## Source
 
