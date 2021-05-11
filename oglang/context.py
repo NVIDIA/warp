@@ -15,7 +15,6 @@ from oglang.utils import *
 from oglang.config import *
 
 import oglang.codegen
-import oglang.cuda
 import oglang.build
 
 
@@ -60,13 +59,15 @@ class Kernel:
             self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
             self.backward_cpu = eval("dll." + self.func.__name__ + "_cpu_backward")
         except:
-            print("Could not find load CPU methods for kernel {}".format(self.func.__name__))
+            print("Could not load CPU methods for kernel {}".format(self.func.__name__))
 
-        try:
-            self.forward_cuda = eval("dll." + self.func.__name__ + "_cuda_forward")
-            self.backward_cuda = eval("dll." + self.func.__name__ + "_cuda_backward")
-        except:
-            print("Could not find load CUDA methods for kernel {}".format(self.func.__name__))
+        if (oglang.build.find_cuda()):
+            
+            try:
+                self.forward_cuda = eval("dll." + self.func.__name__ + "_cuda_forward")
+                self.backward_cuda = eval("dll." + self.func.__name__ + "_cuda_backward")
+            except:
+                print("Could not load CUDA methods for kernel {}".format(self.func.__name__))
 
 
 #----------------------

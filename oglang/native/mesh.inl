@@ -5,6 +5,8 @@ using namespace og;
 
 #include <map>
 
+#ifndef __CUDACC__
+
 namespace
 {
     // host-side copy of mesh descriptors, maps GPU mesh address (id) to a CPU desc
@@ -35,7 +37,7 @@ namespace
 } // anonymous namespace
 
 
-
+#ifndef __CUDACC__
 
 uint64_t mesh_create_host(vec3* points, int* indices, int num_points, int num_tris)
 {
@@ -152,6 +154,7 @@ void mesh_refit_host(uint64_t id)
     bvh_refit_host(m->bvh, m->bounds);
 }
 
+#else // __CUDACC__
 
 __global__ void compute_triangle_bounds(int n, const vec3* points, const int* indices, bounds3* b)
 {
@@ -175,9 +178,13 @@ __global__ void compute_triangle_bounds(int n, const vec3* points, const int* in
     }
 }
 
+#endif
 
 void mesh_refit_device(uint64_t id)
 {
+
+#if __CUDACC__
+
     // recompute triangle bounds
     Mesh m;
     if (get_descriptor(id, m))
@@ -189,4 +196,9 @@ void mesh_refit_device(uint64_t id)
 
         bvh_refit_device(m.bvh, m.bounds);
     }
+
+#endif // __CUDACC__
+
 }
+
+#endif // __CUDACC__

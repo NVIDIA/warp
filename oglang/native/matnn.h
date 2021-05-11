@@ -16,7 +16,7 @@ CUDA_CALLABLE inline int dense_index(int rows, int cols, int i, int j)
 }
 
 
-#ifdef CPU
+#ifndef __CUDACC__
 
 const int kNumThreadsPerBlock = 1;
 

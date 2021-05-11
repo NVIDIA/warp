@@ -120,7 +120,6 @@ struct BVH
 	int root;
 };
 
-// create only happens on device currently
 BVH bvh_create(const bounds3* bounds, int num_bounds);
 
 void bvh_destroy_host(BVH& bvh);

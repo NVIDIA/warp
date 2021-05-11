@@ -84,10 +84,10 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             print(cpp_cmd)
             err = subprocess.call(cpp_cmd)
 
-            if (err == False):
-                ld_inputs.append(cpp_out)
-            else:
+            if (err):
                 raise RuntimeError("cpp build failed")
+
+            ld_inputs.append(cpp_out)
 
         if (cuda_home):
 
@@ -101,11 +101,10 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
                 print(cuda_cmd)
                 err = subprocess.call(cuda_cmd)
 
-                if (err == False):
-                    ld_inputs.append(cu_out)
-                else:
+                if (err):
                     raise RuntimeError("cuda build failed")
 
+                ld_inputs.append(cu_out)
 
         with ScopedTimer("link"):
             link_cmd = 'link.exe {inputs} cudart.lib {flags} /LIBPATH:"{cuda_home}/lib/x64" /out:{dll_path}'.format(inputs=' '.join(ld_inputs), cuda_home=cuda_home, flags=ld_flags, dll_path=dll_path)
@@ -113,28 +112,40 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
             err = subprocess.call(link_cmd)
             if (err):
-                raise RuntimeError("Link failed")                    
+                raise RuntimeError("Link failed")
 
         
     else:
 
+        cpp_out = cpp_path + ".o"
+        cu_out = cu_path + ".o"
+
         if (config == "debug"):
-            cpp_flags = "-Z -O0 -g -D_DEBUG -fPIC --std=c++11 -DCPU"
+            cpp_flags = "-O0 -g -D_DEBUG -fPIC --std=c++11"
             ld_flags = "-D_DEBUG"
+            ld_inputs = []
 
         if (config == "release"):
-            cpp_flags = "-Z -O3 -DNDEBUG -fPIC --std=c++11 -DCPU"
+            cpp_flags = "-O3 -DNDEBUG -fPIC --std=c++11"
             ld_flags = "-DNDEBUG"
+            ld_inputs = []
 
+        if (cuda_home):
+            cpp_flags += " -I{} -DCUDA".format(cuda_home)
 
         with ScopedTimer("build"):
             build_cmd = "g++ {cflags} -c -o {cpp_path}.o {cpp_path}".format(cflags=cpp_flags, cpp_path=cpp_path)
             print(build_cmd)
-            subprocess.call(build_cmd, shell=True)
+            err = subprocess.call(build_cmd, shell=True)
+
+            if (err):
+                raise RuntimeError("C++ build failed")
+
+            ld_inputs.append(cpp_out)
 
         if (cuda_home):
 
-            cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 --compiler-options -fPIC -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+            cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 --compiler-options -fPIC -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
 
             with ScopedTimer("build_cuda"):
                 print(cuda_cmd)
@@ -143,10 +154,16 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
                 if (err):
                     raise RuntimeError("cuda build failed")
 
+                ld_inputs.append(cu_out)
+                ld_inputs.append("-L{cuda_home}/lib64 -lcudart")
+
         with ScopedTimer("link"):
-            link_cmd = "g++ -shared -L{cuda_home}/lib64 -o {dll_path} {cpp_path}.o {cu_path}.o -lcudart".format(cuda_home=cuda_home, cpp_path=cpp_path, cu_path=cu_path, dll_path=dll_path)
+            link_cmd = "g++ -shared -o {dll_path} {inputs}".format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)
             print(link_cmd)
-            subprocess.call(link_cmd, shell=True)
+            err = subprocess.call(link_cmd, shell=True)
+
+            if (err):
+                raise RuntimeError("link failed")
 
 
     

@@ -1,10 +1,12 @@
 #include "bvh.h"
 
+#include <vector>
+
+#ifdef CUDA
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <cub/cub.cuh>
-
-#include <vector>
+#endif
 
 namespace og
 {
@@ -964,7 +966,7 @@ void LinearBVHBuilderGPU::build(NvFlexLibrary* lib, BVH& bvh, const Vec4* itemLo
 }
 */
 
-
+#ifndef __CUDACC__
 
 // create only happens on host currently, use bvh_clone() to transfer BVH To device
 BVH bvh_create(const bounds3* bounds, int num_bounds)
@@ -1062,8 +1064,8 @@ void bvh_refit_host(BVH& bvh, const bounds3* b)
     bvh_refit_recursive(bvh, 0, b);
 }
 
+#else // __CUDACC__
 
-//__global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, volatile int* __restrict__ child_count, volatile BVHPackedNodeHalf* __restrict__ lowers, volatile BVHPackedNodeHalf* __restrict__ uppers, const bounds3* bounds)
 __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers, const bounds3* bounds)
 {
     int index = blockDim.x*blockIdx.x + threadIdx.x;
@@ -1145,9 +1147,13 @@ __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __
     }
 }
 
+#endif // __CUDACC__
 
 void bvh_refit_device(BVH& bvh, const bounds3* b)
 {
+
+#if __CUDACC__
+
     // clear child counters
     memset_device(bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
 
@@ -1155,7 +1161,12 @@ void bvh_refit_device(BVH& bvh, const bounds3* b)
     const int num_blocks = (bvh.max_nodes + num_threads_per_block - 1)/num_threads_per_block;
   
     bvh_refit_kernel<<<num_blocks, num_threads_per_block>>>(bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b);
+
+#endif // __CUDACC__
+
 }
+
+
 
 
 } // namespace og
