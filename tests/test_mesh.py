@@ -68,7 +68,7 @@ def simulate(positions: og.array(dtype=og.vec3),
     og.store(velocities, tid, v)
 
 
-device = "cpu"
+device = "cuda"
 num_particles = 1000
 
 sim_steps = 100
@@ -133,10 +133,7 @@ for i in range(sim_steps):
             og.copy(positions_host, positions)
 
             stage.begin_frame(sim_time)
-            
-            #stage.render_ground()
 
-            #stage.render_ref(name="mesh", path="../assets/torus.usda", pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0))
             stage.render_mesh(name="mesh", points=mesh.points.to("cpu").numpy(), indices=mesh.indices.to("cpu").numpy())
             stage.render_points(name="points", points=positions_host.numpy(), radius=sim_margin)
 

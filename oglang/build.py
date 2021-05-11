@@ -79,6 +79,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             ld_flags = "/dll"
             ld_inputs = []
 
+
         with ScopedTimer("build"):
             cpp_cmd = "cl.exe {cflags} -DCPU -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
             print(cpp_cmd)
@@ -130,8 +131,6 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
-        if (cuda_home):
-            cpp_flags += " -I{} -DCUDA".format(cuda_home)
 
         with ScopedTimer("build"):
             build_cmd = "g++ {cflags} -c -o {cpp_path}.o {cpp_path}".format(cflags=cpp_flags, cpp_path=cpp_path)
@@ -145,7 +144,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
         if (cuda_home):
 
-            cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 --compiler-options -fPIC -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+            cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 -DCUDA --compiler-options -fPIC -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
 
             with ScopedTimer("build_cuda"):
                 print(cuda_cmd)

@@ -5,39 +5,39 @@ using namespace og;
 
 #include <map>
 
-#ifndef __CUDACC__
-
-namespace
+namespace 
 {
     // host-side copy of mesh descriptors, maps GPU mesh address (id) to a CPU desc
     std::map<uint64_t, Mesh> g_mesh_descriptors;
 
-
-    bool get_descriptor(uint64_t id, Mesh& mesh)
-    {
-        const auto& iter = g_mesh_descriptors.find(id);
-        if (iter == g_mesh_descriptors.end())
-            return false;
-        else
-            mesh = iter->second;
-            return true;
-    }
-
-    void add_descriptor(uint64_t id, const Mesh& mesh)
-    {
-        g_mesh_descriptors[id] = mesh;
-    }
-
-    void rem_descriptor(uint64_t id)
-    {
-        g_mesh_descriptors.erase(id);
-
-    }
-
 } // anonymous namespace
 
 
-#ifndef __CUDACC__
+namespace og
+{
+
+bool mesh_get_descriptor(uint64_t id, Mesh& mesh)
+{
+    const auto& iter = g_mesh_descriptors.find(id);
+    if (iter == g_mesh_descriptors.end())
+        return false;
+    else
+        mesh = iter->second;
+        return true;
+}
+
+void mesh_add_descriptor(uint64_t id, const Mesh& mesh)
+{
+    g_mesh_descriptors[id] = mesh;
+}
+
+void mesh_rem_descriptor(uint64_t id)
+{
+    g_mesh_descriptors.erase(id);
+
+}
+
+} // namespace og
 
 uint64_t mesh_create_host(vec3* points, int* indices, int num_points, int num_tris)
 {
@@ -111,7 +111,7 @@ uint64_t mesh_create_device(vec3* points, int* indices, int num_points, int num_
     
     // save descriptor
     uint64_t mesh_id = (uint64_t)mesh_device;
-    add_descriptor(mesh_id, mesh);
+    mesh_add_descriptor(mesh_id, mesh);
 
     return mesh_id;
 }
@@ -129,13 +129,13 @@ void mesh_destroy_host(uint64_t id)
 void mesh_destroy_device(uint64_t id)
 {
     Mesh mesh;
-    if (get_descriptor(id, mesh))
+    if (mesh_get_descriptor(id, mesh))
     {    
         bvh_destroy_device(mesh.bvh);
         free_device(mesh.bounds);
         free_device((Mesh*)id);
 
-        rem_descriptor(id);
+        mesh_rem_descriptor(id);
     }
 }
 
@@ -154,51 +154,4 @@ void mesh_refit_host(uint64_t id)
     bvh_refit_host(m->bvh, m->bounds);
 }
 
-#else // __CUDACC__
 
-__global__ void compute_triangle_bounds(int n, const vec3* points, const int* indices, bounds3* b)
-{
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
-
-    if (tid < n)
-    {
-        // if leaf then update bounds
-        int i = indices[tid*3+0];
-        int j = indices[tid*3+1];
-        int k = indices[tid*3+2];
-
-        vec3 p = points[i];
-        vec3 q = points[j];
-        vec3 r = points[k];
-
-        vec3 lower = min(min(p, q), r);
-        vec3 upper = max(max(p, q), r);
-
-        b[tid] = bounds3(lower, upper);
-    }
-}
-
-#endif
-
-void mesh_refit_device(uint64_t id)
-{
-
-#if __CUDACC__
-
-    // recompute triangle bounds
-    Mesh m;
-    if (get_descriptor(id, m))
-    {
-        const int num_threads_per_block = 256;
-        const int num_blocks = (m.num_tris + num_threads_per_block - 1)/num_threads_per_block;
-
-        compute_triangle_bounds<<<num_blocks, num_threads_per_block>>>(m.num_tris, m.points, m.indices, m.bounds);
-
-        bvh_refit_device(m.bvh, m.bounds);
-    }
-
-#endif // __CUDACC__
-
-}
-
-#endif // __CUDACC__

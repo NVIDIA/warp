@@ -288,5 +288,9 @@ CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
         return 1.0f;
 }
 
+bool mesh_get_descriptor(uint64_t id, Mesh& mesh);
+void mesh_add_descriptor(uint64_t id, const Mesh& mesh);
+void mesh_rem_descriptor(uint64_t id);
+
 
 } // namespace og
