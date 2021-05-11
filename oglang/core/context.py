@@ -3,7 +3,6 @@ import os
 import sys
 import imp
 import subprocess
-import typing
 import timeit
 import cProfile
 
@@ -134,42 +133,29 @@ class MulFunc:
         if (args[0].type == int and args[1].type == int):
             return int
 
-        # float x int
-        elif (oglang.types.type_is_float(args[1].type) and oglang.types.type_is_int(args[0].type)):
+        elif (args[0].type == float and args[1].type == int):
             return float
 
         # int x float
-        elif (oglang.types.type_is_int(args[0].type) and oglang.types.type_is_float(args[1].type)):
+        elif (args[0].type == int and args[1].type == float):
             return float
 
         # scalar x object
-        elif (oglang.types.type_is_float(args[0].type)):
+        elif (args[0].type == float):
             return args[1].type
 
         # object x scalar
-        elif (oglang.types.type_is_float(args[1].type)):
+        elif (args[1].type == float):
             return args[0].type
 
         # mat33 x vec3
         elif (args[0].type == mat33 and args[1].type == vec3):
             return vec3
 
-        # mat33 x mat33
-        elif(args[0].type == mat33 and args[1].type == mat33):
-            return mat33
-
         # mat66 x vec6
         if (args[0].type == spatial_matrix and args[1].type == spatial_vector):
             return spatial_vector
-
-        # mat66 x mat66        
-        if (args[0].type == spatial_matrix and args[1].type == spatial_matrix):
-            return spatial_matrix
-
-        # quat x quat
-        if (args[0].type == quat and args[1].type == quat):
-            return quat
-
+        
         else:
             raise Exception("Unrecognized types for multiply operator *, got {} and {}".format(args[0].type, args[1].type))
 
@@ -190,10 +176,6 @@ class DivFunc:
         # int / float
         elif (args[0].type == int and args[1].type == float):
             return float
-
-        # vec3 / float
-        elif (args[0].type == vec3 and args[1].type == float):
-            return vec3
 
         # object / float
         elif (args[0].type == float):
@@ -386,9 +368,9 @@ class LoadFunc:
     @staticmethod
     def value_type(args):
         if (type(args[0].type) != oglang.types.array):
-            raise Exception("load() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != oglang.types.int32 and args[1].type != oglang.types.int64 and args[1].type != oglang.types.uint64):
-            raise Exception("load() argument input 1 must be a int")
+            raise Exception("Load input 0 must be a array")
+        if (args[1].type != int):
+            raise Exception("Load input 1 must be a int")
 
         return args[0].type.dtype
 
@@ -398,11 +380,11 @@ class StoreFunc:
     @staticmethod
     def value_type(args):
         if (type(args[0].type) != oglang.types.array):
-            raise Exception("store() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != oglang.types.int32 and args[1].type != oglang.types.int64 and args[1].type != oglang.types.uint64):
-            raise Exception("store() argument input 1 must be a int")
+            raise Exception("Store input 0 must be a array")
+        if (args[1].type != int):
+            raise Exception("Store input 1 must be a int")
         if (args[2].type != args[0].type.dtype):
-            raise Exception("store() argument input 2 must be of the same type as the array")
+            raise Exception("Store input 2 must be of the same type as the array")
 
         return None
 
@@ -738,11 +720,10 @@ class Module:
             adj = oglang.codegen.Adjoint(func.func, builtin_functions, self.functions, device='cuda')
             cu_source += oglang.codegen.codegen_func(adj, device='cuda')
 
-            # complete the function return type after we have analyzed it (infered from return statement in ast)
+            # complete the function return type after we have analyzed it (infered from return statement in ast)            
             func.value_type = wrap(adj)
 
 
-        # kernels
         for kernel in self.kernels.values():
 
             if use_cuda:
@@ -764,9 +745,6 @@ class Module:
             cpp_source += oglang.codegen.codegen_module_decl(adj, device='cpu')
             cpp_source += oglang.codegen.codegen_kernel(adj, device='cpu')
             cpp_source += oglang.codegen.codegen_module(adj, device='cpu')
-
-            # save the arg types for type-checking at launch time
-            kernel.args = adj.args
 
         module_name = "og_" + self.name
 
@@ -926,7 +904,7 @@ class Runtime:
 
 # global entry points 
 
-def copy(dest, src, requires_grad=False):
+def copy(dest, src):
 
     num_bytes = src.length*type_size_in_bytes(src.dtype)
 
@@ -939,14 +917,8 @@ def copy(dest, src, requires_grad=False):
     elif (src.device == "cpu" and dest.device == "cpu"):
         runtime.core.memcpy_h2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
 
-    elif (src.device == "cuda" and dest.device == "cuda"):
-        runtime.core.memcpy_d2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
-    
-    else:
-        raise RuntimeError("Unexpected source and destination combination")
 
-
-def zeros(n, dtype=float, device="cpu", requires_grad=False):
+def zeros(n, dtype=float, device="cpu"):
 
     num_bytes = n*oglang.types.type_size_in_bytes(dtype)
 
@@ -958,38 +930,33 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
         ptr = runtime.alloc_device(num_bytes)
         runtime.core.memset_device(cast(ptr,POINTER(c_int)), 0, num_bytes)
 
-    if (ptr == None and num_bytes > 0):
+    if (ptr == None):
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
         # construct array
-        return oglang.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
+        return oglang.types.array(dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
 
 
-def clone(src):
-    dest = empty(len(src), dtype=src.dtype, device=src.device)
-    copy(dest, src)
-
-    return dest
-
-def zeros_like(src, requires_grad=False):
-
-    arr = zeros(len(src), dtype=src.dtype, device=src.device)
-    return arr
-
-def empty(n, dtype=float, device="cpu", requires_grad=False):
-
+def empty(n, dtype=float, device="cpu"):
+    
     # todo: implement uninitialized allocation
     return zeros(n, dtype, device)  
 
-def empty_like(src, requires_grad=False):
 
-    arr = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=False)
-    return arr
+def from_numpy(arr, dtype, device="cpu"):
 
+    ptr = arr.__array_interface__["data"][0]
+    shape = arr.__array_interface__["shape"]
+    rows = shape[0]
 
-def from_numpy(arr, dtype, device="cpu", requires_grad=False):
+    if (arr.__array_interface__["typestr"] != "<i4" and arr.__array_interface__["typestr"] != "<f4"):
+        raise RuntimeError("Source numpy array must be either 32bit integer or floating point data")
 
-    return oglang.array(data=arr, dtype=dtype, device=device)
+    src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=runtime, owner=False)
+    dest = empty(rows, dtype=dtype, device=device)
+    
+    copy(dest, src)
+    return dest
 
 
 def synchronize():
@@ -1010,40 +977,26 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
         params = [dim]
 
         # todo: verify argument types against the kernel definition, perform automatic conversion for simple types
-        args = inputs + outputs
 
-        for i, a in enumerate(args):
-
-            arg_type = kernel.args[i].type
-
-            if (isinstance(arg_type, oglang.types.array)):
-
-                # check subtype
-                if (a.dtype != arg_type.dtype):
-                    raise RuntimeError("Array dtype {} does not match kernel signature {}".format(a.dtype, arg_type.dtype))
-
-                # check device
-                if (a.device != device):
+        for i in inputs:
+            if type(i) is oglang.types.array:
+                
+                if (i.device != device):
                     raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
-    
-                params.append(c_int64(a.data))
 
-            # try and convert arg to correct type
-            elif (arg_type == float):
-                params.append(c_float(a))
+                params.append(c_int64(i.data))
 
-            elif (arg_type == int):
+            elif type(i) is oglang.types.int64:
+                params.append(c_int64(i.value))
+            elif type(i) is oglang.types.uint64:
+                params.append(c_uint64(i.value))
+            elif type(i) is int:
                 params.append(c_int32(i))
-
-            elif (arg_type == oglang.types.int64):
-                params.append(c_int64(a))
-
-            elif (arg_type ==  oglang.types.uint64):
-                params.append(c_uint64(a))
-
+            elif type(i) is float:
+                params.append(c_float(i))           
             else:
                 # todo: add support for other built-types as kernel arguments (vec3, quat, etc)
-                raise RuntimeError("Unknown parameter type {}".format(arg_type))
+                print("Unknown parameter type")
 
         # late bind
         if (kernel.forward_cpu == None or kernel.forward_cuda == None):

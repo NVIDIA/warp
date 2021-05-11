@@ -1,13 +1,13 @@
 import oglang as og
 
 @og.kernel
-def eval_springs(x: og.array(og.vec3),
-                 v: og.array(og.vec3),
-                 spring_indices: og.array(int),
-                 spring_rest_lengths: og.array(float),
-                 spring_stiffness: og.array(float),
-                 spring_damping: og.array(float),
-                 f: og.array(og.vec3)):
+def eval_springs(x: og.array(dtype=og.vec3),
+                 v: og.array(dtype=og.vec3),
+                 spring_indices: og.array(dtype=int),
+                 spring_rest_lengths: og.array(dtype=float),
+                 spring_stiffness: og.array(dtype=float),
+                 spring_damping: og.array(dtype=float),
+                 f: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -44,10 +44,10 @@ def eval_springs(x: og.array(og.vec3),
 
 
 @og.kernel
-def integrate_particles(x: og.array(og.vec3),
-                        v: og.array(og.vec3),
-                        f: og.array(og.vec3),
-                        w: og.array(float),
+def integrate_particles(x: og.array(dtype=og.vec3),
+                        v: og.array(dtype=og.vec3),
+                        f: og.array(dtype=og.vec3),
+                        w: og.array(dtype=float),
                         dt: float):
 
     tid = og.tid()

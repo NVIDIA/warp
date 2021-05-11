@@ -5,13 +5,10 @@ models + state forward in time.
 
 import math
 import numpy as np
-
-import og.util
-import og.adjoint as og
-import og.config
-
-from og.model import *
 import time
+
+import oglang as og
+
 
 # Todo
 #-----
@@ -35,9 +32,6 @@ import time
 # [x] USD export
 # -----
 
-# externally compiled kernels module (C++/CUDA code with PyBind entry points)
-kernels = None
-
 @og.func
 def test(c: float):
 
@@ -55,14 +49,14 @@ def kernel_init():
 
 
 @og.kernel
-def integrate_particles(x: og.tensor(og.vec3),
-                        v: og.tensor(og.vec3),
-                        f: og.tensor(og.vec3),
-                        w: og.tensor(float),
-                        gravity: og.tensor(og.vec3),
+def integrate_particles(x: og.array(dtype=og.vec3),
+                        v: og.array(dtype=og.vec3),
+                        f: og.array(dtype=og.vec3),
+                        w: og.array(dtype=float),
+                        gravity: og.array(dtype=og.vec3),
                         dt: float,
-                        x_new: og.tensor(og.vec3),
-                        v_new: og.tensor(og.vec3)):
+                        x_new: og.array(dtype=og.vec3),
+                        v_new: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -83,20 +77,20 @@ def integrate_particles(x: og.tensor(og.vec3),
 
 # semi-implicit Euler integration
 @og.kernel
-def integrate_rigids(rigid_x: og.tensor(og.vec3),
-                     rigid_r: og.tensor(og.quat),
-                     rigid_v: og.tensor(og.vec3),
-                     rigid_w: og.tensor(og.vec3),
-                     rigid_f: og.tensor(og.vec3),
-                     rigid_t: og.tensor(og.vec3),
-                     inv_m: og.tensor(float),
-                     inv_I: og.tensor(og.mat33),
-                     gravity: og.tensor(og.vec3),
+def integrate_rigids(rigid_x: og.array(dtype=og.vec3),
+                     rigid_r: og.array(dtype=og.quat),
+                     rigid_v: og.array(dtype=og.vec3),
+                     rigid_w: og.array(dtype=og.vec3),
+                     rigid_f: og.array(dtype=og.vec3),
+                     rigid_t: og.array(dtype=og.vec3),
+                     inv_m: og.array(dtype=float),
+                     inv_I: og.array(dtype=og.mat33),
+                     gravity: og.array(dtype=og.vec3),
                      dt: float,
-                     rigid_x_new: og.tensor(og.vec3),
-                     rigid_r_new: og.tensor(og.quat),
-                     rigid_v_new: og.tensor(og.vec3),
-                     rigid_w_new: og.tensor(og.vec3)):
+                     rigid_x_new: og.array(dtype=og.vec3),
+                     rigid_r_new: og.array(dtype=og.quat),
+                     rigid_v_new: og.array(dtype=og.vec3),
+                     rigid_w_new: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -141,13 +135,13 @@ def integrate_rigids(rigid_x: og.tensor(og.vec3),
 
 
 @og.kernel
-def eval_springs(x: og.tensor(og.vec3),
-                 v: og.tensor(og.vec3),
-                 spring_indices: og.tensor(int),
-                 spring_rest_lengths: og.tensor(float),
-                 spring_stiffness: og.tensor(float),
-                 spring_damping: og.tensor(float),
-                 f: og.tensor(og.vec3)):
+def eval_springs(x: og.array(dtype=og.vec3),
+                 v: og.array(dtype=og.vec3),
+                 spring_indices: og.array(dtype=int),
+                 spring_rest_lengths: og.array(dtype=float),
+                 spring_stiffness: og.array(dtype=float),
+                 spring_damping: og.array(dtype=float),
+                 f: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -184,17 +178,17 @@ def eval_springs(x: og.tensor(og.vec3),
 
 
 @og.kernel
-def eval_triangles(x: og.tensor(og.vec3),
-                   v: og.tensor(og.vec3),
-                   indices: og.tensor(int),
-                   pose: og.tensor(og.mat22),
-                   activation: og.tensor(float),
+def eval_triangles(x: og.array(dtype=og.vec3),
+                   v: og.array(dtype=og.vec3),
+                   indices: og.array(dtype=int),
+                   pose: og.array(dtype=og.mat22),
+                   activation: og.array(dtype=float),
                    k_mu: float,
                    k_lambda: float,
                    k_damp: float,
                    k_drag: float,
                    k_lift: float,
-                   f: og.tensor(og.vec3)):
+                   f: og.array(dtype=og.vec3)):
     tid = og.tid()
 
     i = og.load(indices, tid * 3 + 0)
@@ -410,19 +404,19 @@ def triangle_closest_point_barycentric(a: og.vec3, b: og.vec3, c: og.vec3, p: og
 
 @og.kernel
 def eval_triangles_contact(
-                                       # idx : og.tensor(int), # list of indices for colliding particles
+                                       # idx : og.array(dtype=int), # list of indices for colliding particles
     num_particles: int,                # size of particles
-    x: og.tensor(og.vec3),
-    v: og.tensor(og.vec3),
-    indices: og.tensor(int),
-    pose: og.tensor(og.mat22),
-    activation: og.tensor(float),
+    x: og.array(dtype=og.vec3),
+    v: og.array(dtype=og.vec3),
+    indices: og.array(dtype=int),
+    pose: og.array(dtype=og.mat22),
+    activation: og.array(dtype=float),
     k_mu: float,
     k_lambda: float,
     k_damp: float,
     k_drag: float,
     k_lift: float,
-    f: og.tensor(og.vec3)):
+    f: og.array(dtype=og.vec3)):
 
     tid = og.tid()
     face_no = tid // num_particles     # which face
@@ -471,21 +465,21 @@ def eval_triangles_contact(
 @og.kernel
 def eval_triangles_rigid_contacts(
     num_particles: int,                          # number of particles (size of contact_point)
-    x: og.tensor(og.vec3),                     # position of particles
-    v: og.tensor(og.vec3),
-    indices: og.tensor(int),                     # triangle indices
-    rigid_x: og.tensor(og.vec3),               # rigid body positions
-    rigid_r: og.tensor(og.quat),
-    rigid_v: og.tensor(og.vec3),
-    rigid_w: og.tensor(og.vec3),
-    contact_body: og.tensor(int),
-    contact_point: og.tensor(og.vec3),         # position of contact points relative to body
-    contact_dist: og.tensor(float),
-    contact_mat: og.tensor(int),
-    materials: og.tensor(float),
-                                                 #   rigid_f : og.tensor(og.vec3),
-                                                 #   rigid_t : og.tensor(og.vec3),
-    tri_f: og.tensor(og.vec3)):
+    x: og.array(dtype=og.vec3),                     # position of particles
+    v: og.array(dtype=og.vec3),
+    indices: og.array(dtype=int),                     # triangle indices
+    rigid_x: og.array(dtype=og.vec3),               # rigid body positions
+    rigid_r: og.array(dtype=og.quat),
+    rigid_v: og.array(dtype=og.vec3),
+    rigid_w: og.array(dtype=og.vec3),
+    contact_body: og.array(dtype=int),
+    contact_point: og.array(dtype=og.vec3),         # position of contact points relative to body
+    contact_dist: og.array(dtype=float),
+    contact_mat: og.array(dtype=int),
+    materials: og.array(dtype=float),
+                                                 #   rigid_f : og.array(dtype=og.vec3),
+                                                 #   rigid_t : og.array(dtype=og.vec3),
+    tri_f: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -587,7 +581,7 @@ def eval_triangles_rigid_contacts(
 
 @og.kernel
 def eval_bending(
-    x: og.tensor(og.vec3), v: og.tensor(og.vec3), indices: og.tensor(int), rest: og.tensor(float), ke: float, kd: float, f: og.tensor(og.vec3)):
+    x: og.array(dtype=og.vec3), v: og.array(dtype=og.vec3), indices: og.array(dtype=int), rest: og.array(dtype=float), ke: float, kd: float, f: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -650,13 +644,13 @@ def eval_bending(
 
 
 @og.kernel
-def eval_tetrahedra(x: og.tensor(og.vec3),
-                    v: og.tensor(og.vec3),
-                    indices: og.tensor(int),
-                    pose: og.tensor(og.mat33),
-                    activation: og.tensor(float),
-                    materials: og.tensor(float),
-                    f: og.tensor(og.vec3)):
+def eval_tetrahedra(x: og.array(dtype=og.vec3),
+                    v: og.array(dtype=og.vec3),
+                    indices: og.array(dtype=int),
+                    pose: og.array(dtype=og.mat33),
+                    activation: og.array(dtype=float),
+                    materials: og.array(dtype=float),
+                    f: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -831,7 +825,7 @@ def eval_tetrahedra(x: og.tensor(og.vec3),
 
 
 @og.kernel
-def eval_contacts(x: og.tensor(og.vec3), v: og.tensor(og.vec3), ke: float, kd: float, kf: float, mu: float, f: og.tensor(og.vec3)):
+def eval_contacts(x: og.array(dtype=og.vec3), v: og.array(dtype=og.vec3), ke: float, kd: float, kf: float, mu: float, f: og.array(dtype=og.vec3)):
 
     tid = og.tid()           # this just handles contact of particles with the ground plane, nothing else.
 
@@ -952,23 +946,23 @@ def capsule_sdf_grad(radius: float, half_width: float, p: og.vec3):
 @og.kernel
 def eval_soft_contacts(
     num_particles: int,
-    particle_x: og.tensor(og.vec3), 
-    particle_v: og.tensor(og.vec3), 
-    body_X_sc: og.tensor(og.spatial_transform),
-    body_v_sc: og.tensor(og.spatial_vector),
-    shape_X_co: og.tensor(og.spatial_transform),
-    shape_body: og.tensor(int),
-    shape_geo_type: og.tensor(int), 
-    shape_geo_src: og.tensor(int),
-    shape_geo_scale: og.tensor(og.vec3),
-    shape_materials: og.tensor(float),
+    particle_x: og.array(dtype=og.vec3), 
+    particle_v: og.array(dtype=og.vec3), 
+    body_X_sc: og.array(dtype=og.spatial_transform),
+    body_v_sc: og.array(dtype=og.spatial_vector),
+    shape_X_co: og.array(dtype=og.spatial_transform),
+    shape_body: og.array(dtype=int),
+    shape_geo_type: og.array(dtype=int), 
+    shape_geo_id: og.array(dtype=og.uint64),
+    shape_geo_scale: og.array(dtype=og.vec3),
+    shape_materials: og.array(dtype=float),
     ke: float,
     kd: float, 
     kf: float, 
     mu: float, 
     # outputs
-    particle_f: og.tensor(og.vec3),
-    body_f: og.tensor(og.spatial_vector)):
+    particle_f: og.array(dtype=og.vec3),
+    body_f: og.array(dtype=og.spatial_vector)):
 
     tid = og.tid()           
 
@@ -1027,9 +1021,21 @@ def eval_soft_contacts(
     if (geo_type == 2):
         c = og.min(capsule_sdf(geo_scale[0], geo_scale[1], x_local)-margin, 0.0)
         n = og.spatial_transform_vector(X_so, capsule_sdf_grad(geo_scale[0], geo_scale[1], x_local))
+
+    # GEO_MESH (3)
+    if (geo_type == 3):
+        mesh = og.load(shape_geo_id, shape_index)
+
+        sign = float(0.0)
+        p = og.mesh_query_point(mesh, x_local, sign)
+
+        delta = x_local-p
+        c = og.length(delta)*sign - margin
+        n = og.normalize(delta)*sign
+
         
     # rigid velocity
-    rigid_v_s = og.spatial_vector()   
+    rigid_v_s = og.spatial_vector()
     if (rigid_index >= 0):
         rigid_v_s = og.load(body_v_sc, rigid_index)
     
@@ -1078,17 +1084,17 @@ def eval_soft_contacts(
 
 
 @og.kernel
-def eval_rigid_contacts(rigid_x: og.tensor(og.vec3),
-                        rigid_r: og.tensor(og.quat),
-                        rigid_v: og.tensor(og.vec3),
-                        rigid_w: og.tensor(og.vec3),
-                        contact_body: og.tensor(int),
-                        contact_point: og.tensor(og.vec3),
-                        contact_dist: og.tensor(float),
-                        contact_mat: og.tensor(int),
-                        materials: og.tensor(float),
-                        rigid_f: og.tensor(og.vec3),
-                        rigid_t: og.tensor(og.vec3)):
+def eval_rigid_contacts(rigid_x: og.array(dtype=og.vec3),
+                        rigid_r: og.array(dtype=og.quat),
+                        rigid_v: og.array(dtype=og.vec3),
+                        rigid_w: og.array(dtype=og.vec3),
+                        contact_body: og.array(dtype=int),
+                        contact_point: og.array(dtype=og.vec3),
+                        contact_dist: og.array(dtype=float),
+                        contact_mat: og.array(dtype=int),
+                        materials: og.array(dtype=float),
+                        rigid_f: og.array(dtype=og.vec3),
+                        rigid_t: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -1166,7 +1172,7 @@ def spatial_transform_twist(t: og.spatial_transform, x: og.spatial_vector):
     w = rotate(q, w)
     v = rotate(q, v) + cross(p, w)
 
-    return spatial_vector(w, v)
+    return og.spatial_vector(w, v)
 
 
 @og.func
@@ -1181,7 +1187,7 @@ def spatial_transform_wrench(t: og.spatial_transform, x: og.spatial_vector):
     v = rotate(q, v)
     w = rotate(q, w) + cross(p, v)
 
-    return spatial_vector(w, v)
+    return og.spatial_vector(w, v)
 
 @og.func
 def spatial_transform_inverse(t: og.spatial_transform):
@@ -1190,7 +1196,7 @@ def spatial_transform_inverse(t: og.spatial_transform):
     q = spatial_transform_get_rotation(t)
 
     q_inv = inverse(q)
-    return spatial_transform(rotate(q_inv, p)*(0.0 - 1.0), q_inv);
+    return spatial_transform(rotate(q_inv, p)*(0.0 - 1.0), q_inv)
 
 
 
@@ -1217,14 +1223,14 @@ def spatial_transform_inertia(t: og.spatial_transform, I: og.spatial_matrix):
 
 @og.kernel
 def eval_rigid_contacts_art(
-    body_X_s: og.tensor(og.spatial_transform),
-    body_v_s: og.tensor(og.spatial_vector),
-    contact_body: og.tensor(int),
-    contact_point: og.tensor(og.vec3),
-    contact_dist: og.tensor(float),
-    contact_mat: og.tensor(int),
-    materials: og.tensor(float),
-    body_f_s: og.tensor(og.spatial_vector)):
+    body_X_s: og.array(dtype=og.spatial_transform),
+    body_v_s: og.array(dtype=og.spatial_vector),
+    contact_body: og.array(dtype=int),
+    contact_point: og.array(dtype=og.vec3),
+    contact_dist: og.array(dtype=float),
+    contact_mat: og.array(dtype=int),
+    materials: og.array(dtype=float),
+    body_f_s: og.array(dtype=og.spatial_vector)):
 
     tid = og.tid()
 
@@ -1288,12 +1294,12 @@ def eval_rigid_contacts_art(
 @og.func
 def compute_muscle_force(
     i: int,
-    body_X_s: og.tensor(og.spatial_transform),
-    body_v_s: og.tensor(og.spatial_vector),    
-    muscle_links: og.tensor(int),
-    muscle_points: og.tensor(og.vec3),
+    body_X_s: og.array(dtype=og.spatial_transform),
+    body_v_s: og.array(dtype=og.spatial_vector),    
+    muscle_links: og.array(dtype=int),
+    muscle_points: og.array(dtype=og.vec3),
     muscle_activation: float,
-    body_f_s: og.tensor(og.spatial_vector)):
+    body_f_s: og.array(dtype=og.spatial_vector)):
 
     link_0 = og.load(muscle_links, i)
     link_1 = og.load(muscle_links, i+1)
@@ -1323,15 +1329,15 @@ def compute_muscle_force(
 
 @og.kernel
 def eval_muscles(
-    body_X_s: og.tensor(og.spatial_transform),
-    body_v_s: og.tensor(og.spatial_vector),
-    muscle_start: og.tensor(int),
-    muscle_params: og.tensor(float),
-    muscle_links: og.tensor(int),
-    muscle_points: og.tensor(og.vec3),
-    muscle_activation: og.tensor(float),
+    body_X_s: og.array(dtype=og.spatial_transform),
+    body_v_s: og.array(dtype=og.spatial_vector),
+    muscle_start: og.array(dtype=int),
+    muscle_params: og.array(dtype=float),
+    muscle_links: og.array(dtype=int),
+    muscle_points: og.array(dtype=og.vec3),
+    muscle_activation: og.array(dtype=float),
     # output
-    body_f_s: og.tensor(og.spatial_vector)):
+    body_f_s: og.array(dtype=og.spatial_vector)):
 
     tid = og.tid()
 
@@ -1346,7 +1352,7 @@ def eval_muscles(
 
 # compute transform across a joint
 @og.func
-def jcalc_transform(type: int, axis: og.vec3, joint_q: og.tensor(float), start: int):
+def jcalc_transform(type: int, axis: og.vec3, joint_q: og.array(dtype=float), start: int):
 
     # prismatic
     if (type == 0):
@@ -1400,12 +1406,12 @@ def jcalc_transform(type: int, axis: og.vec3, joint_q: og.tensor(float), start: 
 
 # compute motion subspace and velocity for a joint
 @og.func
-def jcalc_motion(type: int, axis: og.vec3, X_sc: og.spatial_transform, joint_S_s: og.tensor(og.spatial_vector), joint_qd: og.tensor(float), joint_start: int):
+def jcalc_motion(type: int, axis: og.vec3, X_sc: og.spatial_transform, joint_S_s: og.array(dtype=og.spatial_vector), joint_qd: og.array(dtype=float), joint_start: int):
 
     # prismatic
     if (type == 0):
 
-        S_s = og.spatial_transform_twist(X_sc, spatial_vector(vec3(0.0, 0.0, 0.0), axis))
+        S_s = og.spatial_transform_twist(X_sc, og.spatial_vector(vec3(0.0, 0.0, 0.0), axis))
         v_j_s = S_s * og.load(joint_qd, joint_start)
 
         og.store(joint_S_s, joint_start, S_s)
@@ -1414,7 +1420,7 @@ def jcalc_motion(type: int, axis: og.vec3, X_sc: og.spatial_transform, joint_S_s
     # revolute
     if (type == 1):
 
-        S_s = og.spatial_transform_twist(X_sc, spatial_vector(axis, vec3(0.0, 0.0, 0.0)))
+        S_s = og.spatial_transform_twist(X_sc, og.spatial_vector(axis, vec3(0.0, 0.0, 0.0)))
         v_j_s = S_s * og.load(joint_qd, joint_start)
 
         og.store(joint_S_s, joint_start, S_s)
@@ -1427,9 +1433,9 @@ def jcalc_motion(type: int, axis: og.vec3, X_sc: og.spatial_transform, joint_S_s
                    og.load(joint_qd, joint_start + 1),
                    og.load(joint_qd, joint_start + 2))
 
-        S_0 = og.spatial_transform_twist(X_sc, spatial_vector(1.0, 0.0, 0.0, 0.0, 0.0, 0.0))
-        S_1 = og.spatial_transform_twist(X_sc, spatial_vector(0.0, 1.0, 0.0, 0.0, 0.0, 0.0))
-        S_2 = og.spatial_transform_twist(X_sc, spatial_vector(0.0, 0.0, 1.0, 0.0, 0.0, 0.0))
+        S_0 = og.spatial_transform_twist(X_sc, og.spatial_vector(1.0, 0.0, 0.0, 0.0, 0.0, 0.0))
+        S_1 = og.spatial_transform_twist(X_sc, og.spatial_vector(0.0, 1.0, 0.0, 0.0, 0.0, 0.0))
+        S_2 = og.spatial_transform_twist(X_sc, og.spatial_vector(0.0, 0.0, 1.0, 0.0, 0.0, 0.0))
 
         # write motion subspace
         og.store(joint_S_s, joint_start + 0, S_0)
@@ -1440,12 +1446,12 @@ def jcalc_motion(type: int, axis: og.vec3, X_sc: og.spatial_transform, joint_S_s
 
     # fixed
     if (type == 3):
-        return spatial_vector()
+        return og.spatial_vector()
 
     # free
     if (type == 4):
 
-        v_j_s = spatial_vector(og.load(joint_qd, joint_start + 0),
+        v_j_s = og.spatial_vector(og.load(joint_qd, joint_start + 0),
                                og.load(joint_qd, joint_start + 1),
                                og.load(joint_qd, joint_start + 2),
                                og.load(joint_qd, joint_start + 3),
@@ -1453,17 +1459,17 @@ def jcalc_motion(type: int, axis: og.vec3, X_sc: og.spatial_transform, joint_S_s
                                og.load(joint_qd, joint_start + 5))
 
         # write motion subspace
-        og.store(joint_S_s, joint_start + 0, spatial_vector(1.0, 0.0, 0.0, 0.0, 0.0, 0.0))
-        og.store(joint_S_s, joint_start + 1, spatial_vector(0.0, 1.0, 0.0, 0.0, 0.0, 0.0))
-        og.store(joint_S_s, joint_start + 2, spatial_vector(0.0, 0.0, 1.0, 0.0, 0.0, 0.0))
-        og.store(joint_S_s, joint_start + 3, spatial_vector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0))
-        og.store(joint_S_s, joint_start + 4, spatial_vector(0.0, 0.0, 0.0, 0.0, 1.0, 0.0))
-        og.store(joint_S_s, joint_start + 5, spatial_vector(0.0, 0.0, 0.0, 0.0, 0.0, 1.0))
+        og.store(joint_S_s, joint_start + 0, og.spatial_vector(1.0, 0.0, 0.0, 0.0, 0.0, 0.0))
+        og.store(joint_S_s, joint_start + 1, og.spatial_vector(0.0, 1.0, 0.0, 0.0, 0.0, 0.0))
+        og.store(joint_S_s, joint_start + 2, og.spatial_vector(0.0, 0.0, 1.0, 0.0, 0.0, 0.0))
+        og.store(joint_S_s, joint_start + 3, og.spatial_vector(0.0, 0.0, 0.0, 1.0, 0.0, 0.0))
+        og.store(joint_S_s, joint_start + 4, og.spatial_vector(0.0, 0.0, 0.0, 0.0, 1.0, 0.0))
+        og.store(joint_S_s, joint_start + 5, og.spatial_vector(0.0, 0.0, 0.0, 0.0, 0.0, 1.0))
 
         return v_j_s
 
     # default case
-    return spatial_vector()
+    return og.spatial_vector()
 
 
 # # compute the velocity across a joint
@@ -1482,7 +1488,7 @@ def jcalc_motion(type: int, axis: og.vec3, X_sc: og.spatial_transform, joint_S_s
 
 #     # fixed
 #     if (type == 2):
-#         v_j_s = spatial_vector()
+#         v_j_s = og.spatial_vector()
 #         return v_j_s
 
 #     # free
@@ -1504,17 +1510,17 @@ def jcalc_tau(
     target_k_d: float,
     limit_k_e: float,
     limit_k_d: float,
-    joint_S_s: og.tensor(spatial_vector), 
-    joint_q: og.tensor(float),
-    joint_qd: og.tensor(float),
-    joint_act: og.tensor(float),
-    joint_target: og.tensor(float),
-    joint_limit_lower: og.tensor(float),
-    joint_limit_upper: og.tensor(float),
+    joint_S_s: og.array(dtype=og.spatial_vector), 
+    joint_q: og.array(dtype=float),
+    joint_qd: og.array(dtype=float),
+    joint_act: og.array(dtype=float),
+    joint_target: og.array(dtype=float),
+    joint_limit_lower: og.array(dtype=float),
+    joint_limit_upper: og.array(dtype=float),
     coord_start: int,
     dof_start: int, 
-    body_f_s: spatial_vector, 
-    tau: og.tensor(float)):
+    body_f_s: og.spatial_vector, 
+    tau: og.array(dtype=float)):
 
     # prismatic / revolute
     if (type == 0 or type == 1):
@@ -1581,14 +1587,14 @@ def jcalc_tau(
 @og.func
 def jcalc_integrate(
     type: int,
-    joint_q: og.tensor(float),
-    joint_qd: og.tensor(float),
-    joint_qdd: og.tensor(float),
+    joint_q: og.array(dtype=float),
+    joint_qd: og.array(dtype=float),
+    joint_qdd: og.array(dtype=float),
     coord_start: int,
     dof_start: int,
     dt: float,
-    joint_q_new: og.tensor(float),
-    joint_qd_new: og.tensor(float)):
+    joint_q_new: og.array(dtype=float),
+    joint_qd_new: og.array(dtype=float)):
 
     # prismatic / revolute
     if (type == 0 or type == 1):
@@ -1713,16 +1719,16 @@ def jcalc_integrate(
 
 @og.func
 def compute_link_transform(i: int,
-                           joint_type: og.tensor(int),
-                           joint_parent: og.tensor(int),
-                           joint_q_start: og.tensor(int),
-                           joint_qd_start: og.tensor(int),
-                           joint_q: og.tensor(float),
-                           joint_X_pj: og.tensor(og.spatial_transform),
-                           joint_X_cm: og.tensor(og.spatial_transform),
-                           joint_axis: og.tensor(og.vec3),
-                           body_X_sc: og.tensor(og.spatial_transform),
-                           body_X_sm: og.tensor(og.spatial_transform)):
+                           joint_type: og.array(dtype=int),
+                           joint_parent: og.array(dtype=int),
+                           joint_q_start: og.array(dtype=int),
+                           joint_qd_start: og.array(dtype=int),
+                           joint_q: og.array(dtype=float),
+                           joint_X_pj: og.array(dtype=og.spatial_transform),
+                           joint_X_cm: og.array(dtype=og.spatial_transform),
+                           joint_axis: og.array(dtype=og.vec3),
+                           body_X_sc: og.array(dtype=og.spatial_transform),
+                           body_X_sm: og.array(dtype=og.spatial_transform)):
 
     # parent transform
     parent = load(joint_parent, i)
@@ -1755,17 +1761,17 @@ def compute_link_transform(i: int,
 
 
 @og.kernel
-def eval_rigid_fk(articulation_start: og.tensor(int),
-                  joint_type: og.tensor(int),
-                  joint_parent: og.tensor(int),
-                  joint_q_start: og.tensor(int),
-                  joint_qd_start: og.tensor(int),
-                  joint_q: og.tensor(float),
-                  joint_X_pj: og.tensor(og.spatial_transform),
-                  joint_X_cm: og.tensor(og.spatial_transform),
-                  joint_axis: og.tensor(og.vec3),
-                  body_X_sc: og.tensor(og.spatial_transform),
-                  body_X_sm: og.tensor(og.spatial_transform)):
+def eval_rigid_fk(articulation_start: og.array(dtype=int),
+                  joint_type: og.array(dtype=int),
+                  joint_parent: og.array(dtype=int),
+                  joint_q_start: og.array(dtype=int),
+                  joint_qd_start: og.array(dtype=int),
+                  joint_q: og.array(dtype=float),
+                  joint_X_pj: og.array(dtype=og.spatial_transform),
+                  joint_X_cm: og.array(dtype=og.spatial_transform),
+                  joint_axis: og.array(dtype=og.vec3),
+                  body_X_sc: og.array(dtype=og.spatial_transform),
+                  body_X_sm: og.array(dtype=og.spatial_transform)):
 
     # one thread per-articulation
     index = tid()
@@ -1791,22 +1797,22 @@ def eval_rigid_fk(articulation_start: og.tensor(int),
 
 @og.func
 def compute_link_velocity(i: int,
-                          joint_type: og.tensor(int),
-                          joint_parent: og.tensor(int),
-                          joint_qd_start: og.tensor(int),
-                          joint_qd: og.tensor(float),
-                          joint_axis: og.tensor(og.vec3),
-                          body_I_m: og.tensor(og.spatial_matrix),
-                          body_X_sc: og.tensor(og.spatial_transform),
-                          body_X_sm: og.tensor(og.spatial_transform),
-                          joint_X_pj: og.tensor(og.spatial_transform),
-                          gravity: og.tensor(og.vec3),
+                          joint_type: og.array(dtype=int),
+                          joint_parent: og.array(dtype=int),
+                          joint_qd_start: og.array(dtype=int),
+                          joint_qd: og.array(dtype=float),
+                          joint_axis: og.array(dtype=og.vec3),
+                          body_I_m: og.array(dtype=og.spatial_matrix),
+                          body_X_sc: og.array(dtype=og.spatial_transform),
+                          body_X_sm: og.array(dtype=og.spatial_transform),
+                          joint_X_pj: og.array(dtype=og.spatial_transform),
+                          gravity: og.array(dtype=og.vec3),
                           # outputs
-                          joint_S_s: og.tensor(og.spatial_vector),
-                          body_I_s: og.tensor(og.spatial_matrix),
-                          body_v_s: og.tensor(og.spatial_vector),
-                          body_f_s: og.tensor(og.spatial_vector),
-                          body_a_s: og.tensor(og.spatial_vector)):
+                          joint_S_s: og.array(dtype=og.spatial_vector),
+                          body_I_s: og.array(dtype=og.spatial_matrix),
+                          body_v_s: og.array(dtype=og.spatial_vector),
+                          body_f_s: og.array(dtype=og.spatial_vector),
+                          body_a_s: og.array(dtype=og.spatial_vector)):
 
     type = og.load(joint_type, i)
     axis = og.load(joint_axis, i)
@@ -1827,8 +1833,8 @@ def compute_link_velocity(i: int,
     v_j_s = jcalc_motion(type, axis, X_sj, joint_S_s, joint_qd, dof_start)
 
     # parent velocity
-    v_parent_s = spatial_vector()
-    a_parent_s = spatial_vector()
+    v_parent_s = og.spatial_vector()
+    a_parent_s = og.spatial_vector()
 
     if (parent >= 0):
         v_parent_s = og.load(body_v_s, parent)
@@ -1847,7 +1853,7 @@ def compute_link_velocity(i: int,
 
     m = I_m[3, 3]
 
-    f_g_m = spatial_vector(vec3(), g) * m
+    f_g_m = og.spatial_vector(vec3(), g) * m
     f_g_s = spatial_transform_wrench(spatial_transform(spatial_transform_get_translation(X_sm), quat_identity()), f_g_m)
 
     #f_ext_s = og.load(body_f_s, i) + f_g_s
@@ -1868,25 +1874,25 @@ def compute_link_velocity(i: int,
 @og.func
 def compute_link_tau(offset: int,
                      joint_end: int,
-                     joint_type: og.tensor(int),
-                     joint_parent: og.tensor(int),
-                     joint_q_start: og.tensor(int),
-                     joint_qd_start: og.tensor(int),
-                     joint_q: og.tensor(float),
-                     joint_qd: og.tensor(float),
-                     joint_act: og.tensor(float),
-                     joint_target: og.tensor(float),
-                     joint_target_ke: og.tensor(float),
-                     joint_target_kd: og.tensor(float),
-                     joint_limit_lower: og.tensor(float),
-                     joint_limit_upper: og.tensor(float),
-                     joint_limit_ke: og.tensor(float),
-                     joint_limit_kd: og.tensor(float),
-                     joint_S_s: og.tensor(og.spatial_vector),
-                     body_fb_s: og.tensor(og.spatial_vector),
+                     joint_type: og.array(dtype=int),
+                     joint_parent: og.array(dtype=int),
+                     joint_q_start: og.array(dtype=int),
+                     joint_qd_start: og.array(dtype=int),
+                     joint_q: og.array(dtype=float),
+                     joint_qd: og.array(dtype=float),
+                     joint_act: og.array(dtype=float),
+                     joint_target: og.array(dtype=float),
+                     joint_target_ke: og.array(dtype=float),
+                     joint_target_kd: og.array(dtype=float),
+                     joint_limit_lower: og.array(dtype=float),
+                     joint_limit_upper: og.array(dtype=float),
+                     joint_limit_ke: og.array(dtype=float),
+                     joint_limit_kd: og.array(dtype=float),
+                     joint_S_s: og.array(dtype=og.spatial_vector),
+                     body_fb_s: og.array(dtype=og.spatial_vector),
                      # outputs
-                     body_ft_s: og.tensor(og.spatial_vector),
-                     tau: og.tensor(float)):
+                     body_ft_s: og.array(dtype=og.spatial_vector),
+                     tau: og.array(dtype=float)):
 
     # for backwards traversal
     i = joint_end-offset-1
@@ -1919,27 +1925,27 @@ def compute_link_tau(offset: int,
 
 
 @og.kernel
-def eval_rigid_id(articulation_start: og.tensor(int),
-                  joint_type: og.tensor(int),
-                  joint_parent: og.tensor(int),
-                  joint_q_start: og.tensor(int),
-                  joint_qd_start: og.tensor(int),
-                  joint_q: og.tensor(float),
-                  joint_qd: og.tensor(float),
-                  joint_axis: og.tensor(og.vec3),
-                  joint_target_ke: og.tensor(float),
-                  joint_target_kd: og.tensor(float),             
-                  body_I_m: og.tensor(og.spatial_matrix),
-                  body_X_sc: og.tensor(og.spatial_transform),
-                  body_X_sm: og.tensor(og.spatial_transform),
-                  joint_X_pj: og.tensor(og.spatial_transform),
-                  gravity: og.tensor(og.vec3),
+def eval_rigid_id(articulation_start: og.array(dtype=int),
+                  joint_type: og.array(dtype=int),
+                  joint_parent: og.array(dtype=int),
+                  joint_q_start: og.array(dtype=int),
+                  joint_qd_start: og.array(dtype=int),
+                  joint_q: og.array(dtype=float),
+                  joint_qd: og.array(dtype=float),
+                  joint_axis: og.array(dtype=og.vec3),
+                  joint_target_ke: og.array(dtype=float),
+                  joint_target_kd: og.array(dtype=float),             
+                  body_I_m: og.array(dtype=og.spatial_matrix),
+                  body_X_sc: og.array(dtype=og.spatial_transform),
+                  body_X_sm: og.array(dtype=og.spatial_transform),
+                  joint_X_pj: og.array(dtype=og.spatial_transform),
+                  gravity: og.array(dtype=og.vec3),
                   # outputs
-                  joint_S_s: og.tensor(og.spatial_vector),
-                  body_I_s: og.tensor(og.spatial_matrix),
-                  body_v_s: og.tensor(og.spatial_vector),
-                  body_f_s: og.tensor(og.spatial_vector),
-                  body_a_s: og.tensor(og.spatial_vector)):
+                  joint_S_s: og.array(dtype=og.spatial_vector),
+                  body_I_s: og.array(dtype=og.spatial_matrix),
+                  body_v_s: og.array(dtype=og.spatial_vector),
+                  body_f_s: og.array(dtype=og.spatial_vector),
+                  body_a_s: og.array(dtype=og.spatial_vector)):
 
     # one thread per-articulation
     index = tid()
@@ -1970,27 +1976,27 @@ def eval_rigid_id(articulation_start: og.tensor(int),
 
 
 @og.kernel
-def eval_rigid_tau(articulation_start: og.tensor(int),
-                  joint_type: og.tensor(int),
-                  joint_parent: og.tensor(int),
-                  joint_q_start: og.tensor(int),
-                  joint_qd_start: og.tensor(int),
-                  joint_q: og.tensor(float),
-                  joint_qd: og.tensor(float),
-                  joint_act: og.tensor(float),
-                  joint_target: og.tensor(float),
-                  joint_target_ke: og.tensor(float),
-                  joint_target_kd: og.tensor(float),
-                  joint_limit_lower: og.tensor(float),
-                  joint_limit_upper: og.tensor(float),
-                  joint_limit_ke: og.tensor(float),
-                  joint_limit_kd: og.tensor(float),
-                  joint_axis: og.tensor(og.vec3),
-                  joint_S_s: og.tensor(og.spatial_vector),
-                  body_fb_s: og.tensor(og.spatial_vector),                  
+def eval_rigid_tau(articulation_start: og.array(dtype=int),
+                  joint_type: og.array(dtype=int),
+                  joint_parent: og.array(dtype=int),
+                  joint_q_start: og.array(dtype=int),
+                  joint_qd_start: og.array(dtype=int),
+                  joint_q: og.array(dtype=float),
+                  joint_qd: og.array(dtype=float),
+                  joint_act: og.array(dtype=float),
+                  joint_target: og.array(dtype=float),
+                  joint_target_ke: og.array(dtype=float),
+                  joint_target_kd: og.array(dtype=float),
+                  joint_limit_lower: og.array(dtype=float),
+                  joint_limit_upper: og.array(dtype=float),
+                  joint_limit_ke: og.array(dtype=float),
+                  joint_limit_kd: og.array(dtype=float),
+                  joint_axis: og.array(dtype=og.vec3),
+                  joint_S_s: og.array(dtype=og.spatial_vector),
+                  body_fb_s: og.array(dtype=og.spatial_vector),                  
                   # outputs
-                  body_ft_s: og.tensor(og.spatial_vector),
-                  tau: og.tensor(float)):
+                  body_ft_s: og.array(dtype=og.spatial_vector),
+                  tau: og.array(dtype=float)):
 
     # one thread per-articulation
     index = tid()
@@ -2025,13 +2031,13 @@ def eval_rigid_tau(articulation_start: og.tensor(int),
 
 @og.kernel
 def eval_rigid_jacobian(
-    articulation_start: og.tensor(int),
-    articulation_J_start: og.tensor(int),
-    joint_parent: og.tensor(int),
-    joint_qd_start: og.tensor(int),
-    joint_S_s: og.tensor(spatial_vector),
+    articulation_start: og.array(dtype=int),
+    articulation_J_start: og.array(dtype=int),
+    joint_parent: og.array(dtype=int),
+    joint_qd_start: og.array(dtype=int),
+    joint_S_s: og.array(dtype=og.spatial_vector),
     # outputs
-    J: og.tensor(float)):
+    J: og.array(dtype=float)):
 
     # one thread per-articulation
     index = tid()
@@ -2048,13 +2054,13 @@ def eval_rigid_jacobian(
 
 # @og.kernel
 # def eval_rigid_jacobian(
-#     articulation_start: og.tensor(int),
-#     articulation_J_start: og.tensor(int),    
-#     joint_parent: og.tensor(int),
-#     joint_qd_start: og.tensor(int),
-#     joint_S_s: og.tensor(spatial_vector),
+#     articulation_start: og.array(dtype=int),
+#     articulation_J_start: og.array(dtype=int),    
+#     joint_parent: og.array(dtype=int),
+#     joint_qd_start: og.array(dtype=int),
+#     joint_S_s: og.array(dtype=og.spatial_vector),
 #     # outputs
-#     J: og.tensor(float)):
+#     J: og.array(dtype=float)):
 
 #     # one thread per-articulation
 #     index = tid()
@@ -2067,18 +2073,18 @@ def eval_rigid_jacobian(
 #     dof_end = og.load(joint_qd_start, joint_end)
 #     dof_count = dof_end-dof_start
 
-#     #(const spatial_vector* S, const int* joint_parents, const int* joint_qd_start, int num_links, int num_dofs, float* J)
+#     #(const og.spatial_vector* S, const int* joint_parents, const int* joint_qd_start, int num_links, int num_dofs, float* J)
 #     spatial_jacobian(joint_S_s, joint_parent, joint_qd_start, joint_count, dof_count, J)
 
 
 
 @og.kernel
 def eval_rigid_mass(
-    articulation_start: og.tensor(int),
-    articulation_M_start: og.tensor(int),    
-    body_I_s: og.tensor(spatial_matrix),
+    articulation_start: og.array(dtype=int),
+    articulation_M_start: og.array(dtype=int),    
+    body_I_s: og.array(dtype=og.spatial_matrix),
     # outputs
-    M: og.tensor(float)):
+    M: og.array(dtype=float)):
 
     # one thread per-articulation
     index = tid()
@@ -2093,50 +2099,50 @@ def eval_rigid_mass(
     spatial_mass(body_I_s, joint_start, joint_count, M_offset, M)
 
 @og.kernel
-def eval_dense_gemm(m: int, n: int, p: int, t1: int, t2: int, A: og.tensor(float), B: og.tensor(float), C: og.tensor(float)):
+def eval_dense_gemm(m: int, n: int, p: int, t1: int, t2: int, A: og.array(dtype=float), B: og.array(dtype=float), C: og.array(dtype=float)):
     dense_gemm(m, n, p, t1, t2, A, B, C)
 
 @og.kernel
-def eval_dense_gemm_batched(m: og.tensor(int), n: og.tensor(int), p: og.tensor(int), t1: int, t2: int, A_start: og.tensor(int), B_start: og.tensor(int), C_start: og.tensor(int), A: og.tensor(float), B: og.tensor(float), C: og.tensor(float)):
+def eval_dense_gemm_batched(m: og.array(dtype=int), n: og.array(dtype=int), p: og.array(dtype=int), t1: int, t2: int, A_start: og.array(dtype=int), B_start: og.array(dtype=int), C_start: og.array(dtype=int), A: og.array(dtype=float), B: og.array(dtype=float), C: og.array(dtype=float)):
     dense_gemm_batched(m, n, p, t1, t2, A_start, B_start, C_start, A, B, C)
 
 @og.kernel
-def eval_dense_cholesky(n: int, A: og.tensor(float), regularization: float, L: og.tensor(float)):
+def eval_dense_cholesky(n: int, A: og.array(dtype=float), regularization: float, L: og.array(dtype=float)):
     dense_chol(n, A, regularization, L)
 
 @og.kernel
-def eval_dense_cholesky_batched(A_start: og.tensor(int), A_dim: og.tensor(int), A: og.tensor(float), regularization: float, L: og.tensor(float)):
+def eval_dense_cholesky_batched(A_start: og.array(dtype=int), A_dim: og.array(dtype=int), A: og.array(dtype=float), regularization: float, L: og.array(dtype=float)):
     dense_chol_batched(A_start, A_dim, A, regularization, L)
 
 @og.kernel
-def eval_dense_subs(n: int, L: og.tensor(float), b: og.tensor(float), x: og.tensor(float)):
+def eval_dense_subs(n: int, L: og.array(dtype=float), b: og.array(dtype=float), x: og.array(dtype=float)):
     dense_subs(n, L, b, x)
 
 # helper that propagates gradients back to A, treating L as a constant / temporary variable
 # allows us to reuse the Cholesky decomposition from the forward pass
 @og.kernel
-def eval_dense_solve(n: int, A: og.tensor(float), L: og.tensor(float), b: og.tensor(float), x: og.tensor(float)):
+def eval_dense_solve(n: int, A: og.array(dtype=float), L: og.array(dtype=float), b: og.array(dtype=float), x: og.array(dtype=float)):
     dense_solve(n, A, L, b, x)
 
 # helper that propagates gradients back to A, treating L as a constant / temporary variable
 # allows us to reuse the Cholesky decomposition from the forward pass
 @og.kernel
-def eval_dense_solve_batched(b_start: og.tensor(int), A_start: og.tensor(int), A_dim: og.tensor(int), A: og.tensor(float), L: og.tensor(float), b: og.tensor(float), x: og.tensor(float)):
+def eval_dense_solve_batched(b_start: og.array(dtype=int), A_start: og.array(dtype=int), A_dim: og.array(dtype=int), A: og.array(dtype=float), L: og.array(dtype=float), b: og.array(dtype=float), x: og.array(dtype=float)):
     dense_solve_batched(b_start, A_start, A_dim, A, L, b, x)
 
 
 @og.kernel
 def eval_rigid_integrate(
-    joint_type: og.tensor(int),
-    joint_q_start: og.tensor(int),
-    joint_qd_start: og.tensor(int),
-    joint_q: og.tensor(float),
-    joint_qd: og.tensor(float),
-    joint_qdd: og.tensor(float),
+    joint_type: og.array(dtype=int),
+    joint_q_start: og.array(dtype=int),
+    joint_qd_start: og.array(dtype=int),
+    joint_q: og.array(dtype=float),
+    joint_qd: og.array(dtype=float),
+    joint_qdd: og.array(dtype=float),
     dt: float,
     # outputs
-    joint_q_new: og.tensor(float),
-    joint_qd_new: og.tensor(float)):
+    joint_q_new: og.array(dtype=float),
+    joint_qd_new: og.array(dtype=float)):
 
     # one thread per-articulation
     index = tid()
@@ -2156,60 +2162,6 @@ def eval_rigid_integrate(
         joint_q_new,
         joint_qd_new)
 
-
-# define PyTorch autograd op to wrap simulate func
-class SimulateFunc(torch.autograd.Function):
-    """PyTorch autograd function representing a simulation stpe
-    
-    Note:
-    
-        This node will be inserted into the computation graph whenever
-        `forward()` is called on an integrator object. It should not be called
-        directly by the user.        
-    """
-
-    @staticmethod
-    def forward(ctx, integrator, model, state_in, state_out, dt, *tensors):
-
-        # record launches
-        ctx.tape = og.Tape()
-        ctx.inputs = tensors
-        ctx.outputs = og.to_weak_list(state_out.flatten())
-
-        # simulate
-        integrator._simulate(ctx.tape, model, state_in, state_out, dt)
-
-        return tuple(state_out.flatten())
-
-    @staticmethod
-    def backward(ctx, *grads):
-
-        # ensure grads are contiguous in memory
-        adj_outputs = og.make_contiguous(grads)
-
-        # register outputs with tape
-        outputs = og.to_strong_list(ctx.outputs)        
-        for o in range(len(outputs)):
-            ctx.tape.adjoints[outputs[o]] = adj_outputs[o]
-
-        # replay launches backwards
-        ctx.tape.replay()
-
-        # find adjoint of inputs
-        adj_inputs = []
-        for i in ctx.inputs:
-
-            if i in ctx.tape.adjoints:
-                adj_inputs.append(ctx.tape.adjoints[i])
-            else:
-                adj_inputs.append(None)
-
-
-        # free the tape
-        ctx.tape.reset()
-
-        # filter grads to replace empty tensors / no grad / constant params with None
-        return (None, None, None, None, None, *og.filter_grads(adj_inputs))
 
 
 class SemiImplicitIntegrator:
@@ -2238,72 +2190,38 @@ class SemiImplicitIntegrator:
         pass
 
 
-    def forward(self, model: Model, state_in: State, dt: float) -> State:
-        """Performs a single integration step forward in time
-        
-        This method inserts a node into the PyTorch computational graph with
-        references to all model and state tensors such that gradients
-        can be propagrated back through the simulation step.
+    def simulate(self, model, state_in, state_out, dt):
 
-        Args:
-
-            model: Simulation model
-            state: Simulation state at the start the time-step
-            dt: The simulation time-step (usually in seconds)
-
-        Returns:
-
-            The state of the system at the end of the time-step
-
-        """
-
-
-        if og.config.no_grad:
-
-            # if no gradient required then do inplace update
-            self._simulate(og.Tape(), model, state_in, state_in, dt)
-            return state_in
-
-        else:
-
-            # get list of inputs and outputs for PyTorch tensor tracking            
-            inputs = [*state_in.flatten(), *model.flatten()]
-
-            # allocate new output
-            state_out = model.state()
-
-            # run sim as a PyTorch op
-            tensors = SimulateFunc.apply(self, model, state_in, state_out, dt, *inputs)
-
-            return state_out
-            
-
-
-    def _simulate(self, tape, model, state_in, state_out, dt):
-
-        with og.util.ScopedTimer("simulate", False):
+        with og.ScopedTimer("simulate", False):
 
             # alloc particle force buffer
             if (model.particle_count):
                 state_out.particle_f.zero_()
 
             if (model.link_count):
-                state_out.body_ft_s = torch.zeros((model.link_count, 6), dtype=torch.float32, device=model.adapter, requires_grad=True)
-                state_out.body_f_ext_s = torch.zeros((model.link_count, 6), dtype=torch.float32, device=model.adapter, requires_grad=True)
+                state_out.body_ft_s = og.zeros((model.link_count, 6), dtype=og.spatial_vector, device=model.adapter, requires_grad=True)
+                state_out.body_f_ext_s = og.zeros((model.link_count, 6), dtype=og.spatial_vector, device=model.adapter, requires_grad=True)
 
             # damped springs
             if (model.spring_count):
 
-                tape.launch(func=eval_springs,
+                og.launch(kernel=eval_springs,
                             dim=model.spring_count,
-                            inputs=[state_in.particle_q, state_in.particle_qd, model.spring_indices, model.spring_rest_length, model.spring_stiffness, model.spring_damping],
+                            inputs=[
+                                state_in.particle_q, 
+                                state_in.particle_qd, 
+                                model.spring_indices, 
+                                model.spring_rest_length, 
+                                model.spring_stiffness, 
+                                model.spring_damping
+                            ],
                             outputs=[state_out.particle_f],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
             # triangle elastic and lift/drag forces
             if (model.tri_count and model.tri_ke > 0.0):
 
-                tape.launch(func=eval_triangles,
+                og.launch(kernel=eval_triangles,
                             dim=model.tri_count,
                             inputs=[
                                 state_in.particle_q,
@@ -2318,11 +2236,12 @@ class SemiImplicitIntegrator:
                                 model.tri_lift
                             ],
                             outputs=[state_out.particle_f],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
             # triangle/triangle contacts
             if (model.enable_tri_collisions and model.tri_count and model.tri_ke > 0.0):
-                tape.launch(func=eval_triangles_contact,
+
+                og.launch(kernel=eval_triangles_contact,
                             dim=model.tri_count * model.particle_count,
                             inputs=[
                                 model.particle_count,
@@ -2338,34 +2257,34 @@ class SemiImplicitIntegrator:
                                 model.tri_lift
                             ],
                             outputs=[state_out.particle_f],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
             # triangle bending
             if (model.edge_count):
 
-                tape.launch(func=eval_bending,
+                og.launch(kernel=eval_bending,
                             dim=model.edge_count,
                             inputs=[state_in.particle_q, state_in.particle_qd, model.edge_indices, model.edge_rest_angle, model.edge_ke, model.edge_kd],
                             outputs=[state_out.particle_f],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
             # particle ground contact
             if (model.ground and model.particle_count):
 
-                tape.launch(func=eval_contacts,
+                og.launch(kernel=eval_contacts,
                             dim=model.particle_count,
                             inputs=[state_in.particle_q, state_in.particle_qd, model.contact_ke, model.contact_kd, model.contact_kf, model.contact_mu],
                             outputs=[state_out.particle_f],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
             # tetrahedral FEM
             if (model.tet_count):
 
-                tape.launch(func=eval_tetrahedra,
+                og.launch(kernel=eval_tetrahedra,
                             dim=model.tet_count,
                             inputs=[state_in.particle_q, state_in.particle_qd, model.tet_indices, model.tet_poses, model.tet_activations, model.tet_materials],
                             outputs=[state_out.particle_f],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
 
             #----------------------------
@@ -2374,8 +2293,8 @@ class SemiImplicitIntegrator:
             if (model.link_count):
 
                 # evaluate body transforms
-                tape.launch(
-                    func=eval_rigid_fk,
+                og.launch(
+                    kernel=eval_rigid_fk,
                     dim=model.articulation_count,
                     inputs=[
                         model.articulation_joint_start,
@@ -2392,12 +2311,12 @@ class SemiImplicitIntegrator:
                         state_out.body_X_sc,
                         state_out.body_X_sm
                     ],
-                    adapter=model.adapter,
+                    device=model.adapter,
                     preserve_output=True)
 
                 # evaluate joint inertias, motion vectors, and forces
-                tape.launch(
-                    func=eval_rigid_id,
+                og.launch(
+                    kernel=eval_rigid_id,
                     dim=model.articulation_count,                       
                     inputs=[
                         model.articulation_joint_start,
@@ -2423,14 +2342,14 @@ class SemiImplicitIntegrator:
                         state_out.body_f_s,
                         state_out.body_a_s,
                     ],
-                    adapter=model.adapter,
+                    device=model.adapter,
                     preserve_output=True)
 
                 if (model.ground and model.contact_count > 0):
                     
                     # evaluate contact forces
-                    tape.launch(
-                        func=eval_rigid_contacts_art,
+                    og.launch(
+                        kernel=eval_rigid_contacts_art,
                         dim=model.contact_count,
                         inputs=[
                             state_out.body_X_sc,
@@ -2444,7 +2363,7 @@ class SemiImplicitIntegrator:
                         outputs=[
                             state_out.body_f_s
                         ],
-                        adapter=model.adapter,
+                        device=model.adapter,
                         preserve_output=True)
 
 
@@ -2454,19 +2373,21 @@ class SemiImplicitIntegrator:
 
                 if (model.link_count == 0):
 
+                    print(model.shape_geo_id)
+                    
                     # if no links then just pass empty tensors for the body properties
-                    tape.launch(func=eval_soft_contacts,
+                    og.launch(kernel=eval_soft_contacts,
                                 dim=model.particle_count*model.shape_count,
                                 inputs=[
                                     model.particle_count,
                                     state_in.particle_q, 
                                     state_in.particle_qd,
-                                    torch.Tensor(),
-                                    torch.Tensor(),
+                                    0,
+                                    0,
                                     model.shape_transform,
                                     model.shape_body,
                                     model.shape_geo_type, 
-                                    torch.Tensor(),
+                                    model.shape_geo_id,
                                     model.shape_geo_scale,
                                     model.shape_materials,
                                     model.contact_ke,
@@ -2476,11 +2397,11 @@ class SemiImplicitIntegrator:
                                     # outputs
                                 outputs=[
                                     state_out.particle_f,
-                                    torch.Tensor()],
-                                adapter=model.adapter)
+                                    0],
+                                device=model.adapter)
                 else:
 
-                    tape.launch(func=eval_soft_contacts,
+                    og.launch(kernel=eval_soft_contacts,
                                 dim=model.particle_count*model.shape_count,
                                 inputs=[
                                     model.particle_count,
@@ -2491,7 +2412,7 @@ class SemiImplicitIntegrator:
                                     model.shape_transform,
                                     model.shape_body,
                                     model.shape_geo_type, 
-                                    torch.Tensor(),
+                                    model.shape_geo_id,
                                     model.shape_geo_scale,
                                     model.shape_materials,
                                     model.contact_ke,
@@ -2502,13 +2423,13 @@ class SemiImplicitIntegrator:
                                 outputs=[
                                     state_out.particle_f,
                                     state_out.body_f_s],
-                                adapter=model.adapter)
+                                device=model.adapter)
 
             # evaluate muscle actuation
             if (model.muscle_count):
                 
-                tape.launch(
-                    func=eval_muscles,
+                og.launch(
+                    kernel=eval_muscles,
                     dim=model.muscle_count,
                     inputs=[
                         state_out.body_X_sc,
@@ -2522,15 +2443,15 @@ class SemiImplicitIntegrator:
                     outputs=[
                         state_out.body_f_s
                     ],
-                    adapter=model.adapter,
+                    device=model.adapter,
                     preserve_output=True)
 
 
             if (model.articulation_count):
                 
                 # evaluate joint torques
-                tape.launch(
-                    func=eval_rigid_tau,
+                og.launch(
+                    kernel=eval_rigid_tau,
                     dim=model.articulation_count,
                     inputs=[
                         model.articulation_joint_start,
@@ -2556,12 +2477,12 @@ class SemiImplicitIntegrator:
                         state_out.body_ft_s,
                         state_out.joint_tau
                     ],
-                    adapter=model.adapter,
+                    device=model.adapter,
                     preserve_output=True)
 
                 # build J
-                tape.launch(
-                    func=eval_rigid_jacobian,
+                og.launch(
+                    kernel=eval_rigid_jacobian,
                     dim=model.articulation_count,
                     inputs=[
                         # inputs
@@ -2574,12 +2495,12 @@ class SemiImplicitIntegrator:
                     outputs=[
                         state_out.J
                     ],
-                    adapter=model.adapter,
+                    device=model.adapter,
                     preserve_output=True)
 
                 # build M
-                tape.launch(
-                    func=eval_rigid_mass,
+                og.launch(
+                    kernel=eval_rigid_mass,
                     dim=model.articulation_count,                       
                     inputs=[
                         # inputs
@@ -2590,12 +2511,12 @@ class SemiImplicitIntegrator:
                     outputs=[
                         state_out.M
                     ],
-                    adapter=model.adapter,
+                    device=model.adapter,
                     preserve_output=True)
 
                 # form P = M*J
                 og.matmul_batched(
-                    tape,
+                    og,
                     model.articulation_count,
                     model.articulation_M_rows,
                     model.articulation_J_cols,
@@ -2608,7 +2529,7 @@ class SemiImplicitIntegrator:
                     state_out.M,
                     state_out.J,
                     state_out.P,
-                    adapter=model.adapter)
+                    device=model.adapter)
                 
                 #    model.joint_dof_count,
                 #     model.joint_dof_count,
@@ -2616,7 +2537,7 @@ class SemiImplicitIntegrator:
 
                 # form H = J^T*P
                 og.matmul_batched(
-                    tape,
+                    og,
                     model.articulation_count,
                     model.articulation_J_cols,
                     model.articulation_J_cols,
@@ -2629,11 +2550,11 @@ class SemiImplicitIntegrator:
                     state_out.J,
                     state_out.P,
                     state_out.H,
-                    adapter=model.adapter)
+                    device=model.adapter)
 
                 # compute decomposition
-                tape.launch(
-                    func=eval_dense_cholesky_batched,
+                og.launch(
+                    kernel=eval_dense_cholesky_batched,
                     dim=model.articulation_count,
                     inputs=[
                         model.articulation_H_start,
@@ -2644,12 +2565,12 @@ class SemiImplicitIntegrator:
                     outputs=[
                         state_out.L
                     ],
-                    adapter=model.adapter,
+                    device=model.adapter,
                     skip_check_grad=True)
 
                 # solve for qdd
-                tape.launch(
-                    func=eval_dense_solve_batched,
+                og.launch(
+                    kernel=eval_dense_solve_batched,
                     dim=model.articulation_count,
                     inputs=[
                         model.articulation_dof_start, 
@@ -2662,12 +2583,12 @@ class SemiImplicitIntegrator:
                     outputs=[
                         state_out.joint_qdd
                     ],
-                    adapter=model.adapter,
+                    device=model.adapter,
                     skip_check_grad=True)
 
                 # integrate joint dofs -> joint coords
-                tape.launch(
-                    func=eval_rigid_integrate,
+                og.launch(
+                    kernel=eval_rigid_integrate,
                     dim=model.link_count,
                     inputs=[
                         model.joint_type,
@@ -2682,31 +2603,31 @@ class SemiImplicitIntegrator:
                         state_out.joint_q,
                         state_out.joint_qd
                     ],
-                    adapter=model.adapter)
+                    device=model.adapter)
 
             #----------------------------
             # integrate particles
 
             if (model.particle_count):
-                tape.launch(func=integrate_particles,
+                og.launch(kernel=integrate_particles,
                             dim=model.particle_count,
                             inputs=[state_in.particle_q, state_in.particle_qd, state_out.particle_f, model.particle_inv_mass, model.gravity, dt],
                             outputs=[state_out.particle_q, state_out.particle_qd],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
             return state_out
 
 
 @og.kernel
-def solve_springs(x: og.tensor(og.vec3),
-                 v: og.tensor(og.vec3),
-                 invmass: og.tensor(float),
-                 spring_indices: og.tensor(int),
-                 spring_rest_lengths: og.tensor(float),
-                 spring_stiffness: og.tensor(float),
-                 spring_damping: og.tensor(float),
+def solve_springs(x: og.array(dtype=og.vec3),
+                 v: og.array(dtype=og.vec3),
+                 invmass: og.array(dtype=float),
+                 spring_indices: og.array(dtype=int),
+                 spring_rest_lengths: og.array(dtype=float),
+                 spring_stiffness: og.array(dtype=float),
+                 spring_damping: og.array(dtype=float),
                  dt: float,
-                 delta: og.tensor(og.vec3)):
+                 delta: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -2754,16 +2675,16 @@ def solve_springs(x: og.tensor(og.vec3),
 
 
 @og.kernel
-def solve_tetrahedra(x: og.tensor(og.vec3),
-                     v: og.tensor(og.vec3),
-                     inv_mass: og.tensor(float),
-                     indices: og.tensor(int),
-                     pose: og.tensor(og.mat33),
-                     activation: og.tensor(float),
-                     materials: og.tensor(float),
+def solve_tetrahedra(x: og.array(dtype=og.vec3),
+                     v: og.array(dtype=og.vec3),
+                     inv_mass: og.array(dtype=float),
+                     indices: og.array(dtype=int),
+                     pose: og.array(dtype=og.mat33),
+                     activation: og.array(dtype=float),
+                     materials: og.array(dtype=float),
                      dt: float,
                      relaxation: float,
-                     delta: og.tensor(og.vec3)):
+                     delta: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -2894,13 +2815,13 @@ def solve_tetrahedra(x: og.tensor(og.vec3),
 
 
 @og.kernel
-def apply_deltas(x_orig: og.tensor(og.vec3),
-                 v_orig: og.tensor(og.vec3),
-                 x_pred: og.tensor(og.vec3),
-                 delta: og.tensor(og.vec3),
+def apply_deltas(x_orig: og.array(dtype=og.vec3),
+                 v_orig: og.array(dtype=og.vec3),
+                 x_pred: og.array(dtype=og.vec3),
+                 delta: og.array(dtype=og.vec3),
                  dt: float,
-                 x_out: og.tensor(og.vec3),
-                 v_out: og.tensor(og.vec3)):
+                 x_out: og.array(dtype=og.vec3),
+                 v_out: og.array(dtype=og.vec3)):
 
     tid = og.tid()
 
@@ -2947,48 +2868,7 @@ class XPBDIntegrator:
         self.iterations = iterations
 
 
-    def forward(self, model: Model, state_in: State, dt: float) -> State:
-        """Performs a single integration step forward in time
-        
-        This method inserts a node into the PyTorch computational graph with
-        references to all model and state tensors such that gradients
-        can be propagrated back through the simulation step.
-
-        Args:
-
-            model: Simulation model
-            state: Simulation state at the start the time-step
-            dt: The simulation time-step (usually in seconds)
-
-        Returns:
-
-            The state of the system at the end of the time-step
-
-        """
-
-
-        if og.config.no_grad:
-
-            # if no gradient required then do inplace update
-            self._simulate(og.Tape(), model, state_in, state_in, dt)
-            return state_in
-
-        else:
-
-            # get list of inputs and outputs for PyTorch tensor tracking            
-            inputs = [*state_in.flatten(), *model.flatten()]
-
-            # allocate new output
-            state_out = model.state()
-
-            # run sim as a PyTorch op
-            tensors = SimulateFunc.apply(self, model, state_in, state_out, dt, *inputs)
-
-            return state_out
-            
-
-
-    def _simulate(self, tape, model, state_in, state_out, dt):
+    def simulate(self, model, state_in, state_out, dt):
 
         with og.util.ScopedTimer("simulate", False):
 
@@ -3004,11 +2884,11 @@ class XPBDIntegrator:
             # integrate particles
 
             if (model.particle_count):
-                tape.launch(func=integrate_particles,
+                og.launch(kernel=integrate_particles,
                             dim=model.particle_count,
                             inputs=[state_in.particle_q, state_in.particle_qd, state_out.particle_f, model.particle_inv_mass, model.gravity, dt],
                             outputs=[q_pred, qd_pred],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
 
             for i in range(self.iterations):
@@ -3016,23 +2896,23 @@ class XPBDIntegrator:
                 # damped springs
                 if (model.spring_count):
 
-                    tape.launch(func=solve_springs,
+                    og.launch(kernel=solve_springs,
                                 dim=model.spring_count,
                                 inputs=[state_in.particle_q, state_in.particle_qd, model.particle_inv_mass, model.spring_indices, model.spring_rest_length, model.spring_stiffness, model.spring_damping, dt],
                                 outputs=[state_out.particle_f],
-                                adapter=model.adapter)
+                                device=model.adapter)
                
                 # tetrahedral FEM
                 if (model.tet_count):
 
-                    tape.launch(func=solve_tetrahedra,
+                    og.launch(kernel=solve_tetrahedra,
                                 dim=model.tet_count,
                                 inputs=[q_pred, qd_pred, model.particle_inv_mass, model.tet_indices, model.tet_poses, model.tet_activations, model.tet_materials, dt, model.relaxation],
                                 outputs=[state_out.particle_f],
-                                adapter=model.adapter)
+                                device=model.adapter)
 
                 # apply updates
-                tape.launch(func=apply_deltas,
+                og.launch(kernel=apply_deltas,
                             dim=model.particle_count,
                             inputs=[state_in.particle_q,
                                     state_in.particle_qd,
@@ -3041,7 +2921,7 @@ class XPBDIntegrator:
                                     dt],
                             outputs=[q_pred,
                                      qd_pred],
-                            adapter=model.adapter)
+                            device=model.adapter)
 
             state_out.particle_q = q_pred
             state_out.particle_qd = qd_pred

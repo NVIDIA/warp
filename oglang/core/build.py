@@ -40,29 +40,15 @@ def find_cuda():
     
 
 
-def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force=False):
+def build_module(cpp_path, cu_path, dll_path, config="release", load=True):
+
+    # cache stale, rebuild
+    print("Building {}".format(dll_path))
 
     set_build_env()
 
     cuda_home = find_cuda()
     cuda_cmd = None
-    
-    if(force == False):
-
-        if (os.path.exists(dll_path) == True):
-
-            # check if output exists and is newer than source
-            cu_time = os.path.getmtime(cu_path)
-            cpp_time = os.path.getmtime(cpp_path)
-            dll_time = os.path.getmtime(dll_path)
-
-            if (cu_time < dll_time and cpp_time < dll_time):
-                # output valid, skip build
-                print("Skipping build of {} since outputs newer than inputs".format(dll_path))
-                return True
-
-    # output stale, rebuild
-    print("Building {}".format(dll_path))
 
     if os.name == 'nt':
 
