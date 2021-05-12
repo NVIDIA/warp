@@ -1027,10 +1027,11 @@ def eval_soft_contacts(
         mesh = og.load(shape_geo_id, shape_index)
 
         sign = float(0.0)
-        p = og.mesh_query_point(mesh, x_local, sign)
+        max_dist = 0.5
+        p = og.mesh_query_point(mesh, x_local, max_dist, sign)
 
         delta = x_local-p
-        c = og.length(delta)*sign - margin
+        c = og.min(og.length(delta)*sign - margin, 0.0)
         n = og.normalize(delta)*sign
 
         
@@ -2373,8 +2374,6 @@ class SemiImplicitIntegrator:
 
                 if (model.link_count == 0):
 
-                    print(model.shape_geo_id)
-                    
                     # if no links then just pass empty tensors for the body properties
                     og.launch(kernel=eval_soft_contacts,
                                 dim=model.particle_count*model.shape_count,
@@ -2382,8 +2381,8 @@ class SemiImplicitIntegrator:
                                     model.particle_count,
                                     state_in.particle_q, 
                                     state_in.particle_qd,
-                                    0,
-                                    0,
+                                    None,
+                                    None,
                                     model.shape_transform,
                                     model.shape_body,
                                     model.shape_geo_type, 
@@ -2397,7 +2396,7 @@ class SemiImplicitIntegrator:
                                     # outputs
                                 outputs=[
                                     state_out.particle_f,
-                                    0],
+                                    None],
                                 device=model.adapter)
                 else:
 

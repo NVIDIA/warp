@@ -69,6 +69,11 @@ struct bounds3
 		upper = og::max(upper, p);
 	}
 
+	CUDA_CALLABLE inline float area() const
+	{
+		vec3 e = upper-lower;
+		return 2.0f*(e.x*e.y + e.x*e.z + e.y*e.z);
+	}
 
 	vec3 lower;
 	vec3 upper;
@@ -89,11 +94,6 @@ CUDA_CALLABLE inline bounds3 bounds_intersection(const bounds3& a, const bounds3
 	return bounds3(max(a.lower, b.lower), min(a.upper, b.upper));
 }
 
-CUDA_CALLABLE inline float bounds_surface_area(const bounds3& b)
-{
-	vec3 e = b.upper-b.lower;
-	return 2.0f*(e.x*e.y + e.x*e.z + e.y*e.z);
-}
 
 struct BVHPackedNodeHalf
 {

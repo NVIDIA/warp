@@ -36,7 +36,7 @@ CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower,
 
 
 // these can be called inside kernels so need to be inline
-CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point)
+CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, float& inside)
 {
     Mesh mesh = mesh_get(id);
 
@@ -50,6 +50,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point)
 
 	float min_dist_sq = FLT_MAX;
 	vec3 min_point;
+	inside = 1.0f;
 
 	//int tests = 0;
 
@@ -70,23 +71,35 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point)
 			if (lower.b)
 			{	
                 // compute closest point on tri
-                int i = mesh.indices[left_index*3+0];
-                int j = mesh.indices[left_index*3+1];
-                int k = mesh.indices[left_index*3+2];
+				int i = mesh.indices[left_index*3+0];
+				int j = mesh.indices[left_index*3+1];
+				int k = mesh.indices[left_index*3+2];
 
-                vec3 p = mesh.points[i];
-                vec3 q = mesh.points[j];
-                vec3 r = mesh.points[k];
+				vec3 p = mesh.points[i];
+				vec3 q = mesh.points[j];
+				vec3 r = mesh.points[k];
 
-                float v, w;
-                vec3 c = closest_point_to_triangle(p, q, r, point, v, w);
+				float v, w;
+				vec3 c = closest_point_to_triangle(p, q, r, point, v, w);
 
-                float dist_sq = length_sq(c-point);
+				float dist_sq = length_sq(c-point);
 
-                if (dist_sq < min_dist_sq)
+				if (dist_sq < min_dist_sq)
 				{
-                    min_dist_sq = dist_sq;
+					min_dist_sq = dist_sq;
 					min_point = c;
+
+					// if this is a 'new point', i.e.: strictly closer than previous best then update sign
+					vec3 normal = cross(q-p, r-p);
+					inside = sign(dot(normal, point-c));
+				}
+				else if (dist_sq == min_dist_sq)
+				{
+					// if the test point is equal, then test if inside should be updated
+					// point considered inside if *any* of the incident faces enclose the point
+					vec3 normal = cross(q-p, r-p);
+					if (dot(normal, point-c) < 0.0f)
+						inside = -1.0f;
 				}
 
 				//tests++;
@@ -104,7 +117,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point)
 	return min_point;
 }
 
-CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float& inside)
+CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside)
 {
     Mesh mesh = mesh_get(id);
 
@@ -116,7 +129,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 
 	int count = 1;
 
-	float min_dist_sq = FLT_MAX;
+	float min_dist_sq = max_dist*max_dist;
 	vec3 min_point;
 	inside = 1.0f;
 	
@@ -205,7 +218,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 	return min_point;
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float sign, uint64_t& adj_id, vec3& adj_point, float& adj_sign, const vec3& adj_ret)
+CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, float sign, uint64_t& adj_id, vec3& adj_point, float& adj_max_dist, float& adj_sign, const vec3& adj_ret)
 {
 
 }

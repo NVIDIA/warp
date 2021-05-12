@@ -132,7 +132,7 @@ class MulFunc:
     def value_type(args):
 
         # int x int
-        if (args[0].type == int and args[1].type == int):
+        if (oglang.types.type_is_int(args[0].type) and oglang.types.type_is_int(args[1].type)):
             return int
 
         # float x int
@@ -181,23 +181,23 @@ class DivFunc:
     def value_type(args):
         
         # int / int
-        if (args[0].type == int and args[1].type == int):
+        if (oglang.types.type_is_int(args[0].type) and oglang.types.type_is_int(args[1].type)):
             return int
 
         # float / int
-        elif (args[0].type == float and args[1].type == int):
+        elif (oglang.types.type_is_float(args[0].type) and oglang.types.type_is_int(args[1].type)):
             return float
 
         # int / float
-        elif (args[0].type == int and args[1].type == float):
+        elif (oglang.types.type_is_int(args[0].type) and oglang.types.type_is_float(args[1].type)):
             return float
 
         # vec3 / float
-        elif (args[0].type == vec3 and args[1].type == float):
+        elif (args[0].type == vec3 and oglang.types.type_is_float(args[1].type)):
             return vec3
 
         # object / float
-        elif (args[0].type == float):
+        elif (oglang.types.type_is_float(args[0].type)):
             return args[1].type
 
         else:
@@ -1019,22 +1019,29 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
             if (isinstance(arg_type, oglang.types.array)):
 
-                # check subtype
-                if (a.dtype != arg_type.dtype):
-                    raise RuntimeError("Array dtype {} does not match kernel signature {}".format(a.dtype, arg_type.dtype))
+                if (a == None):
+                    
+                    # allow for NULL arrays
+                    params.append(c_int64(0))
 
-                # check device
-                if (a.device != device):
-                    raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
-    
-                params.append(c_int64(a.data))
+                else:
+
+                    # check subtype
+                    if (a.dtype != arg_type.dtype):
+                        raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.args[i].label))
+
+                    # check device
+                    if (a.device != device):
+                        raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
+        
+                    params.append(c_int64(a.data))
 
             # try and convert arg to correct type
-            elif (arg_type == float):
+            elif (arg_type == oglang.types.float32):
                 params.append(c_float(a))
 
-            elif (arg_type == int):
-                params.append(c_int32(i))
+            elif (arg_type == oglang.types.int32):
+                params.append(c_int32(a))
 
             elif (arg_type == oglang.types.int64):
                 params.append(c_int64(a))

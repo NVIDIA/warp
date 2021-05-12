@@ -35,6 +35,12 @@ builtin_operators[ast.NotEq] = "!="
 class Var:
     def __init__(adj, label, type, requires_grad=False, constant=None):
 
+        # convert built-in types to og types
+        if (type == float):
+            type = float32
+        elif (type == int):
+            type = int32
+
         adj.label = label
         adj.type = type
         adj.requires_grad = requires_grad
@@ -143,6 +149,7 @@ class Adjoint:
     def add_var(adj, type=None, constant=None):
         index = len(adj.variables)
 
+        # allocate new variable
         v = Var(str(index), type=type, constant=constant)
         adj.variables.append(v)
 

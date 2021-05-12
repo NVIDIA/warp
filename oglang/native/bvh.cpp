@@ -21,6 +21,7 @@ private:
 
     int partition_median(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds);
     int partition_midpoint(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds);
+    int partition_sah(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds);
 
     int build_recursive(BVH& bvh, const bounds3* bounds, int* indices, int start, int end, int depth, int parent);
 };
@@ -72,6 +73,8 @@ void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
         indices[i] = i;
 
     build_recursive(bvh, items, &indices[0], 0, n, 0, -1);
+
+    print(bvh.max_depth);
 }
 
 
@@ -151,6 +154,59 @@ int MedianBVHBuilder::partition_midpoint(const bounds3* bounds, int* indices, in
     return k;
 }
 
+int MedianBVHBuilder::partition_sah(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds)
+{
+    assert(end-start >= 2);
+
+    int n = end-start;
+    vec3 edges = range_bounds.edges();
+
+    int longestAxis = longest_axis(edges);
+
+    // sort along longest axis
+    std::sort(&indices[0]+start, &indices[0]+end, PartitionPredicateMedian(&bounds[0], longestAxis));
+
+    // total area for range from [0, split]
+    std::vector<float> left_areas(n);
+    // total area for range from (split, end]
+    std::vector<float> right_areas(n);
+
+    bounds3 left;
+    bounds3 right;
+
+    // build cumulative bounds and area from left and right
+    for (int i=0; i < n; ++i)
+    {
+        left = bounds_union(left, bounds[indices[start+i]]);
+        right = bounds_union(right, bounds[indices[end-i-1]]);
+
+        left_areas[i] = left.area();
+        right_areas[n-i-1] = right.area();
+    }
+
+    float invTotalArea = 1.0f/range_bounds.area();
+
+    // find split point i that minimizes area(left[i]) + area(right[i])
+    int minSplit = 0;
+    float minCost = FLT_MAX;
+
+    for (int i=0; i < n; ++i)
+    {
+        float pBelow = left_areas[i]*invTotalArea;
+        float pAbove = right_areas[i]*invTotalArea;
+
+        float cost = pBelow*i + pAbove*(n-i);
+
+        if (cost < minCost)
+        {
+            minCost = cost;
+            minSplit = i;
+        }
+    }
+
+    return start + minSplit + 1;
+}
+
 int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indices, int start, int end, int depth, int parent)
 {
     assert(start < end);
@@ -177,18 +233,24 @@ int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indi
     {
         //int split = partition_midpoint(bounds, indices, start, end, b);
         int split = partition_median(bounds, indices, start, end, b);
+        //int split = partition_sah(bounds, indices, start, end, b);
+
+        if (split == start || split == end)
+        {
+            // partitioning failed, split down the middle
+            split = (start+end)/2;
+        }
     
         int left_child = build_recursive(bvh, bounds, indices, start, split, depth+1, node_index);
-        int right_child = build_recursive(bvh,bounds, indices, split, end, depth+1, node_index);
+        int right_child = build_recursive(bvh, bounds, indices, split, end, depth+1, node_index);
         
         bvh.node_lowers[node_index] = make_node(b.lower, left_child, false);
-        bvh.node_uppers[node_index] = make_node(b.upper, right_child, false);		
+        bvh.node_uppers[node_index] = make_node(b.upper, right_child, false);
         bvh.node_parents[node_index] = parent;
     }
 
     return node_index;
 }
-
 
 
 // create only happens on host currently, use bvh_clone() to transfer BVH To device

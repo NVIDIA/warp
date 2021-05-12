@@ -107,8 +107,8 @@ class Mesh:
     # construct simulation ready buffers from points
     def finalize(self, device):
 
-        self.mesh = og.Mesh(og.array(self.vertices, device=device), 
-                            og.array(self.indices, device=device))
+        self.mesh = og.Mesh(og.array(self.vertices, dtype=og.vec3, device=device), 
+                            og.array(self.indices, dtype=og.int32, device=device))
 
         return self.mesh.id
 
@@ -1676,7 +1676,7 @@ class ModelBuilder:
 
         m.shape_geo_id = og.array(shape_geo_id, dtype=og.uint64, device=adapter)
         m.shape_geo_scale = og.array(self.shape_geo_scale, dtype=og.vec3, device=adapter)
-        m.shape_materials = og.array(self.shape_materials, dtype=og.vec4, device=adapter)
+        m.shape_materials = og.array(self.shape_materials, dtype=og.float32, device=adapter)
 
         #---------------------
         # springs

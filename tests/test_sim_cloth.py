@@ -15,17 +15,18 @@ import oglang.sim as ogsim
 import render
 
 # params
-sim_width = 128
-sim_height = 128
+sim_width = 64
+sim_height = 8
 
 sim_fps = 60.0
 sim_substeps = 32
-sim_duration = 5.0
+sim_duration = 2.0
 sim_frames = int(sim_duration*sim_fps)
 sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
+sim_render = True
 
-device = "cpu"
+device = "cuda"
 
 integrator = ogsim.SemiImplicitIntegrator()
 
@@ -35,12 +36,13 @@ builder.add_cloth_grid(
     pos=(0.0, 3.0, 0.0), 
     rot=og.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
     vel=(0.0, 0.0, 0.0), 
-    dim_x=30, 
-    dim_y=30, 
+    dim_x=sim_width, 
+    dim_y=sim_height, 
     cell_x=0.1, 
     cell_y=0.1, 
     mass=0.1, 
     fix_left=True)
+
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
@@ -57,15 +59,22 @@ builder.add_shape_mesh(
     mesh=mesh,
     pos=(0.0, 0.0, 0.0),
     rot=og.quat_identity(),
-    ke=1.e+3,
-    kd=1.e+2,
-    kf=1.e+2)
+    ke=1.e+1,
+    kd=1.e+1,
+    kf=1.e+1)
 
+#builder.add_shape_sphere(body=-1,)
+#builder.add_shape_box(body=-1)
 
 model = builder.finalize(adapter=device)
 model.ground = False
 model.tri_ke = 1.e+4
-model.tri_kb = 1.e+1
+model.tri_ka = 1.e+4
+model.tri_kb = 0.0
+
+# disable cloth
+#model.edge_count = 0
+#model.tri_count = 0
 
 state = model.state()
 
@@ -81,12 +90,24 @@ for i in range(sim_frames):
             integrator.simulate(model, state, state, sim_dt)
             sim_time += sim_dt
 
-    with og.ScopedTimer("render"):
+            og.synchronize()
 
-        stage.begin_frame(sim_time)
-        stage.render_mesh(name="cloth", points=state.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
-        stage.render_mesh(name="mesh", points=points, indices=indices)
-        stage.end_frame()
+    if (sim_render):
+
+        with og.ScopedTimer("render"):
+
+            stage.begin_frame(sim_time)
+            #stage.render_mesh(name="cloth", points=state.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
+            stage.render_points(name="points", points=state.particle_q.to("cpu").numpy(), radius=0.1)
+            
+            # render static geometry once
+            if (i == 0):
+                #stage.render_box(name="box", pos=(0.0, 0.0, 0.0), extents=(0.5, 0.5, 0.5))
+                #stage.render_sphere(name="sphere", pos=(0.0, 0.0, 0.0), radius=1.0)
+                stage.render_mesh(name="mesh", points=points, indices=indices)
+
+            stage.end_frame()
+
 
 
 stage.save()

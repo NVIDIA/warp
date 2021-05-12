@@ -45,7 +45,8 @@ def simulate(positions: og.array(dtype=og.vec3),
     xpred = x + v*dt
 
     sign = float(0.0)
-    p = og.mesh_query_point(mesh, xpred, sign)
+    max_dist = 1.e+3
+    p = og.mesh_query_point(mesh, xpred, max_dist, sign)
     delta = xpred-p
     
     dist = og.length(delta)*sign
@@ -69,7 +70,7 @@ def simulate(positions: og.array(dtype=og.vec3),
 
 
 device = "cuda"
-num_particles = 1000
+num_particles = 10000
 
 sim_steps = 100
 sim_dt = 1.0/60.0
