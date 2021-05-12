@@ -133,7 +133,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 	vec3 min_point;
 	inside = 1.0f;
 	
-	//int tests = 0;
+	int tests = 0;
 
 	while (count)
 	{
@@ -179,7 +179,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 					inside = -1.0f;
 			}
 
-			//tests++;
+			tests++;
 		}
 		else
 		{
@@ -213,8 +213,13 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 		}
 	}
 
-	//printf("tests: %d, min_dist: %f\n", tests, min_dist);
+    
+    static int max_tests = 0;
+    if (tests > max_tests)
+        max_tests = tests;
 
+	printf("tests: %d, min_dist: %f max: %d\n", tests, sqrtf(min_dist_sq), max_tests);
+    
 	return min_point;
 }
 

@@ -26,7 +26,7 @@ sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
 sim_render = True
 
-device = "cuda"
+device = "cpu"
 
 integrator = ogsim.SemiImplicitIntegrator()
 
@@ -46,8 +46,9 @@ builder.add_cloth_grid(
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
-torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+torus = Usd.Stage.Open("./tests/assets/suzanne_small.usda")
+#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Suzanne/Suzanne"))
 
 points = np.array(torus_geom.GetPointsAttr().Get())
 indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())

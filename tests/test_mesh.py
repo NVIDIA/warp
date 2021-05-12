@@ -45,7 +45,7 @@ def simulate(positions: og.array(dtype=og.vec3),
     xpred = x + v*dt
 
     sign = float(0.0)
-    max_dist = 1.e+3
+    max_dist = 1.51
     p = og.mesh_query_point(mesh, xpred, max_dist, sign)
     delta = xpred-p
     
@@ -69,8 +69,8 @@ def simulate(positions: og.array(dtype=og.vec3),
     og.store(velocities, tid, v)
 
 
-device = "cuda"
-num_particles = 10000
+device = "cpu"
+num_particles = 64*8
 
 sim_steps = 100
 sim_dt = 1.0/60.0
@@ -84,8 +84,9 @@ sim_margin = 0.1
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
-torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+torus = Usd.Stage.Open("./tests/assets/suzanne_small.usda")
+#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Suzanne/Suzanne"))
 
 points = np.array(torus_geom.GetPointsAttr().Get())
 indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
@@ -110,13 +111,13 @@ for i in range(sim_steps):
 
     with og.ScopedTimer("simulate", detailed=False, dict=sim_timers):
 
-        og.launch(
-            kernel=deform,
-            dim=len(mesh.points),
-            inputs=[mesh.points, sim_time],
-            device=device)
+        # og.launch(
+        #     kernel=deform,
+        #     dim=len(mesh.points),
+        #     inputs=[mesh.points, sim_time],
+        #     device=device)
 
-        mesh.refit()
+        # mesh.refit()
 
         og.launch(
             kernel=simulate, 

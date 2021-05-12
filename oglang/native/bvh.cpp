@@ -229,7 +229,7 @@ int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indi
         bvh.node_uppers[node_index] = make_node(b.upper, indices[start], false);
         bvh.node_parents[node_index] = parent;
     }
-    else
+    else    
     {
         //int split = partition_midpoint(bounds, indices, start, end, b);
         int split = partition_median(bounds, indices, start, end, b);
