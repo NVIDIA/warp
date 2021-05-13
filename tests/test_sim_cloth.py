@@ -26,7 +26,7 @@ sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
 sim_render = True
 
-device = "cpu"
+device = "cuda"
 
 integrator = ogsim.SemiImplicitIntegrator()
 
@@ -46,9 +46,17 @@ builder.add_cloth_grid(
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-torus = Usd.Stage.Open("./tests/assets/suzanne_small.usda")
-#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
-torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Suzanne/Suzanne"))
+#torus = Usd.Stage.Open("./tests/assets/suzanne_small.usda")
+#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Suzanne/Suzanne"))
+
+torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
+torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+
+#torus = Usd.Stage.Open("./tests/assets/bunny.usda")
+#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/bunny/bunny"))
+
+#torus = Usd.Stage.Open("./tests/assets/sphere_high.usda")
+#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Icosphere/Icosphere"))
 
 points = np.array(torus_geom.GetPointsAttr().Get())
 indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
@@ -79,7 +87,6 @@ model.tri_kb = 0.0
 
 state = model.state()
 
-
 stage = render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
 
 for i in range(sim_frames):
@@ -91,7 +98,7 @@ for i in range(sim_frames):
             integrator.simulate(model, state, state, sim_dt)
             sim_time += sim_dt
 
-            og.synchronize()
+        og.synchronize()
 
     if (sim_render):
 
@@ -108,6 +115,35 @@ for i in range(sim_frames):
                 stage.render_mesh(name="mesh", points=points, indices=indices)
 
             stage.end_frame()
+
+
+# history = np.genfromtxt("test_history.txt", delimiter=",")
+# history_indices = []
+
+# stage.begin_frame(sim_time)
+
+# i = 0
+# for line in history:
+#     tri = int(line[0])
+
+#     i = indices[tri*3+0]
+#     j = indices[tri*3+1]
+#     k = indices[tri*3+2]
+
+#     history_indices.append(int(i))
+#     history_indices.append(int(j))
+#     history_indices.append(int(k))
+
+#     p = (line[1], line[2], line[3])
+#     e = (line[4]*0.5, line[5]*0.5, line[6]*0.5)
+
+#     stage.render_box(name="box_" + str(i), pos=p, extents=e)
+
+#     i += 1
+
+# stage.render_mesh(name="history", points=points, indices=history_indices)
+# stage.render_sphere(name="worst", pos=(0.307443, -0.668166, 0.270352), radius=0.2)
+# stage.end_frame()
 
 
 

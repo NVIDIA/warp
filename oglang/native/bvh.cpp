@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 
+
 namespace og
 {
 
@@ -24,31 +25,6 @@ private:
     int partition_sah(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds);
 
     int build_recursive(BVH& bvh, const bounds3* bounds, int* indices, int start, int end, int depth, int parent);
-};
-
-/////////////////////////////////////////////////////////////////////////////////////////////
-
-class LinearBVHBuilderCPU
-{
-public:
-    
-    void build(BVH& bvh, const bounds3* items, int n);
-
-private:
-
-    // calculate Morton codes
-    struct KeyIndexPair
-    {
-        uint32_t key;
-        int index;
-
-        inline bool operator < (const KeyIndexPair& rhs) const { return key < rhs.key; }
-    };	
-
-    bounds3 calc_bounds(const bounds3* bounds, const KeyIndexPair* keys, int start, int end);
-    int find_split(const KeyIndexPair* pairs, int start, int end);
-    int build_recursive(BVH& bvh, const KeyIndexPair* keys, const bounds3* bounds, int start, int end, int depth);
-
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -252,6 +228,153 @@ int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indi
     return node_index;
 }
 
+class LinearBVHBuilderCPU
+{
+public:
+    
+    void build(BVH& bvh, const bounds3* items, int n);
+
+private:
+
+    // calculate Morton codes
+    struct KeyIndexPair
+    {
+        uint32_t key;
+        int index;
+
+        inline bool operator < (const KeyIndexPair& rhs) const { return key < rhs.key; }
+    };	
+
+    bounds3 calc_bounds(const bounds3* bounds, const KeyIndexPair* keys, int start, int end);
+    int find_split(const KeyIndexPair* pairs, int start, int end);
+    int build_recursive(BVH& bvh, const KeyIndexPair* keys, const bounds3* bounds, int start, int end, int depth);
+
+};
+
+
+void LinearBVHBuilderCPU::build(BVH& bvh, const bounds3* items, int n)
+{
+	memset(&bvh, 0, sizeof(BVH));
+
+	bvh.max_nodes = 2*n;
+
+	bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
+	bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
+	bvh.num_nodes = 0;
+
+	// root is always in first slot for top down builders
+	bvh.root = 0;
+
+	std::vector<KeyIndexPair> keys;
+	keys.reserve(n);
+
+	bounds3 totalbounds3;
+	for (int i=0; i < n; ++i)
+		totalbounds3 = bounds_union(totalbounds3, items[i]);
+
+	// ensure non-zero edge length in all dimensions
+	totalbounds3.expand(0.001f);
+
+	vec3 edges = totalbounds3.edges();
+	vec3 invEdges = vec3(1.0f)/edges;
+
+	for (int i=0; i < n; ++i)
+	{
+		vec3 center = items[i].center();
+		vec3 local = (center-totalbounds3.lower)*invEdges;
+
+		KeyIndexPair l;
+		l.key = morton3<1024>(local.x, local.y, local.z);
+		l.index = i;
+
+		keys.push_back(l);
+	}
+
+	// sort by key
+	std::sort(keys.begin(), keys.end());
+
+	build_recursive(bvh, &keys[0], items,  0, n, 0);
+
+	printf("Created BVH for %d items with %d nodes, max depth of %d\n", n, bvh.num_nodes, bvh.max_depth);
+}
+
+
+inline bounds3 LinearBVHBuilderCPU::calc_bounds(const bounds3* bounds, const KeyIndexPair* keys, int start, int end)
+{
+	bounds3 u;
+
+	for (int i=start; i < end; ++i)
+		u = bounds_union(u, bounds[keys[i].index]);
+
+	return u;
+}
+
+inline int LinearBVHBuilderCPU::find_split(const KeyIndexPair* pairs, int start, int end)
+{
+	if (pairs[start].key == pairs[end-1].key)
+		return (start+end)/2;
+
+	// find split point between keys, xor here means all bits 
+	// of the result are zero up until the first differing bit
+	int common_prefix = clz(pairs[start].key ^ pairs[end-1].key);
+
+	// use binary search to find the point at which this bit changes
+	// from zero to a 1		
+	const int mask = 1 << (31-common_prefix);
+
+	while (end-start > 0)
+	{
+		int index = (start+end)/2;
+
+		if (pairs[index].key&mask)
+		{
+			end = index;
+		}
+		else
+			start = index+1;
+	}
+
+	assert(start == end);
+
+	return start;
+}
+
+int LinearBVHBuilderCPU::build_recursive(BVH& bvh, const KeyIndexPair* keys, const bounds3* bounds, int start, int end, int depth)
+{
+	assert(start < end);
+
+	const int n = end-start;
+	const int nodeIndex = bvh.num_nodes++;
+
+	assert(nodeIndex < bvh.max_nodes);
+
+	if (depth > bvh.max_depth)
+		bvh.max_depth = depth;
+
+	bounds3 b = calc_bounds(bounds, keys, start, end);
+		
+	const int kMaxItemsPerLeaf = 1;
+
+	if (n <= kMaxItemsPerLeaf)
+	{
+		bvh.node_lowers[nodeIndex] = make_node(b.lower, keys[start].index, true);
+		bvh.node_uppers[nodeIndex] = make_node(b.upper, keys[start].index, false);
+	}
+	else
+	{
+		int split = find_split(keys, start, end);
+		
+		int leftChild = build_recursive(bvh, keys, bounds, start, split, depth+1);
+		int rightChild = build_recursive(bvh, keys, bounds, split, end, depth+1);
+			
+		bvh.node_lowers[nodeIndex] = make_node(b.lower, leftChild, false);
+		bvh.node_uppers[nodeIndex] = make_node(b.upper, rightChild, false);		
+	}
+
+	return nodeIndex;
+}
+
+
 
 // create only happens on host currently, use bvh_clone() to transfer BVH To device
 BVH bvh_create(const bounds3* bounds, int num_bounds)
@@ -260,6 +383,7 @@ BVH bvh_create(const bounds3* bounds, int num_bounds)
     memset(&bvh, 0, sizeof(bvh));
 
     MedianBVHBuilder builder;
+    //LinearBVHBuilderCPU builder;
     builder.build(bvh, bounds, num_bounds);
 
     return bvh;

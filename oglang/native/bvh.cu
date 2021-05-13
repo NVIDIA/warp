@@ -10,34 +10,6 @@
 namespace og
 {
 
-CUDA_CALLABLE inline int clz(int x)
-{
-    int n;
-    if (x == 0) return 32;
-    for (n = 0; ((x & 0x80000000) == 0); n++, x <<= 1);
-    return n;
-}
-
-CUDA_CALLABLE inline uint32_t part1by2(uint32_t n)
-{
-    n = (n ^ (n << 16)) & 0xff0000ff;
-    n = (n ^ (n <<  8)) & 0x0300f00f;
-    n = (n ^ (n <<  4)) & 0x030c30c3;
-    n = (n ^ (n <<  2)) & 0x09249249;
-
-    return n;
-}
-
-// Takes values in the range [0, 1] and assigns an index based Morton codes of length 3*log2(dim) bits 
-template <int dim>
-CUDA_CALLABLE inline uint32_t morton3(float x, float y, float z)
-{
-    uint32_t ux = clamp(int(x*dim), 0, dim-1);
-    uint32_t uy = clamp(int(y*dim), 0, dim-1);
-    uint32_t uz = clamp(int(z*dim), 0, dim-1);
-
-    return (part1by2(uz) << 2) | (part1by2(uy) << 1) | part1by2(ux);
-}
 
 
 __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers, const bounds3* bounds)

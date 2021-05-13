@@ -281,6 +281,9 @@ template <typename T>
 CUDA_CALLABLE T operator/(const T& a, float s) { return div(a, s); }
 
 template <typename T>
+CUDA_CALLABLE T operator/(const T& a, const T& b) { return div(a, b); }
+
+template <typename T>
 CUDA_CALLABLE T operator+(const T& a, const T& b) { return add(a, b); }
 
 template <typename T>

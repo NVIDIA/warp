@@ -4,6 +4,8 @@
 #include "bvh.h"
 #include "intersect.h"
 
+#define BVH_DEBUG 0
+
 namespace og
 {
 
@@ -36,7 +38,7 @@ CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower,
 
 
 // these can be called inside kernels so need to be inline
-CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, float& inside)
+CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, float max_dist, float& inside)
 {
     Mesh mesh = mesh_get(id);
 
@@ -48,11 +50,13 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, f
 
 	int count = 1;
 
-	float min_dist_sq = FLT_MAX;
+	float min_dist_sq = max_dist*max_dist;
 	vec3 min_point;
 	inside = 1.0f;
 
-	//int tests = 0;
+#if BVH_DEBUG
+	int tests = 0;
+#endif
 
 	while (count)
 	{
@@ -101,8 +105,9 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, f
 					if (dot(normal, point-c) < 0.0f)
 						inside = -1.0f;
 				}
-
-				//tests++;
+#if BVH_DEBUG
+				tests++;
+#endif 				
 			}
 			else
 			{
@@ -112,10 +117,25 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, f
 		}
 	}
 
-	//printf("tests: %d, min_dist: %f\n", tests, min_dist);
+
+#if BVH_DEBUG
+    static int max_tests = 0;
+	static vec3 max_point;
+	static float max_point_dist = 0.0f;
+
+    if (tests > max_tests)
+	{
+        max_tests = tests;
+		max_point = point;
+		max_point_dist = sqrtf(min_dist_sq);
+
+		printf("max_tests: %d max_point: %f %f %f max_point_dist: %f\n", max_tests, max_point.x, max_point.y, max_point.z, max_point_dist);
+	}
+#endif
 
 	return min_point;
 }
+
 
 CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside)
 {
@@ -135,6 +155,15 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 	
 	int tests = 0;
 
+#if BVH_DEBUG
+	
+	int secondary_culls = 0;
+
+	std::vector<int> test_history;
+	std::vector<vec3> test_centers;
+	std::vector<vec3> test_extents;
+#endif
+
 	while (count)
 	{
 		const int nodeIndex = stack[--count];
@@ -142,6 +171,16 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 		BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
 		BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
 	
+		// re-test distance
+		float node_dist_sq = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
+		if (node_dist_sq > min_dist_sq)
+		{
+#if BVH_DEBUG			
+			secondary_culls++;
+#endif			
+			continue;
+		}
+
 		const int left_index = lower.i;
 		const int right_index = upper.i;
 
@@ -180,6 +219,23 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 			}
 
 			tests++;
+
+#if BVH_DEBUG
+
+			bounds3 b;
+			b = bounds_union(b, p);
+			b = bounds_union(b, q);
+			b = bounds_union(b, r);
+
+			if (distance_to_aabb_sq(point, b.lower, b.upper) < max_dist*max_dist)
+			{
+				//if (dist_sq < max_dist*max_dist)
+				test_history.push_back(left_index);
+				test_centers.push_back(b.center());
+				test_extents.push_back(b.edges());
+			}
+#endif
+
 		}
 		else
 		{
@@ -192,7 +248,24 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 			float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
 			float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
 
-			if (left_dist_sq < right_dist_sq)
+			//float left_score = bounds3(vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z)).area();
+			//float right_score = bounds3(vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z)).area();
+
+			float left_score = left_dist_sq;
+			float right_score = right_dist_sq;
+
+			// if (left_score == right_score)
+			// {
+			// 	// use distance from box centroid to order children
+			// 	//left_score = -length_sq(point-bounds3(vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z)).center());
+			// 	//right_score = -length_sq(point-bounds3(vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z)).center());
+			// 	left_score = bounds3(vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z)).area();
+			// 	right_score = bounds3(vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z)).area();
+
+			// }
+
+			//if (left_dist_sq < right_dist_sq)
+			if (left_score < right_score)
 			{
 				// put left on top of the stack
 				if (right_dist_sq < min_dist_sq)
@@ -213,13 +286,39 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 		}
 	}
 
-    
-    static int max_tests = 0;
-    if (tests > max_tests)
-        max_tests = tests;
 
-	printf("tests: %d, min_dist: %f max: %d\n", tests, sqrtf(min_dist_sq), max_tests);
-    
+#if BVH_DEBUG
+printf("%d\n", tests);
+
+    static int max_tests = 0;
+	static vec3 max_point;
+	static float max_point_dist = 0.0f;
+	static int max_secondary_culls = 0;
+
+	if (secondary_culls > max_secondary_culls)
+		max_secondary_culls = secondary_culls;
+
+    if (tests > max_tests)
+	{
+        max_tests = tests;
+		max_point = point;
+		max_point_dist = sqrtf(min_dist_sq);
+
+		printf("max_tests: %d max_point: %f %f %f max_point_dist: %f max_second_culls: %d\n", max_tests, max_point.x, max_point.y, max_point.z, max_point_dist, max_secondary_culls);
+
+		FILE* f = fopen("test_history.txt", "w");
+		for (int i=0; i < test_history.size(); ++i)
+		{
+			fprintf(f, "%d, %f, %f, %f, %f, %f, %f\n", 
+			test_history[i], 
+			test_centers[i].x, test_centers[i].y, test_centers[i].z,
+			test_extents[i].x, test_extents[i].y, test_extents[i].z);
+		}
+
+		fclose(f);
+	}
+#endif
+
 	return min_point;
 }
 

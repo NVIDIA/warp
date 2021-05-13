@@ -109,7 +109,7 @@ class UsdRenderer:
         op.Set(mat, self.time)
 
 
-    def render_box(self, pos: tuple, extents: float, name: str):
+    def render_box(self, pos: tuple, extents: tuple, name: str):
         """Debug helper to add a box for visualization
         
         Args:
@@ -118,19 +118,19 @@ class UsdRenderer:
             name: A name for the USD prim on the stage
         """
 
-        sphere_path = self.root.GetPath().AppendChild(name)
-        sphere = UsdGeom.Cube.Get(self.stage, sphere_path)
-        if not sphere:
-            sphere = UsdGeom.Cube.Define(self.stage, sphere_path)
+        box_path = self.root.GetPath().AppendChild(name)
+        box = UsdGeom.Cube.Get(self.stage, box_path)
+        if not box:
+            box = UsdGeom.Cube.Define(self.stage, box_path)
         
         #sphere.GetSizeAttr().Set((extents[0]*2.0, extents[1]*2.0, extents[2]*2.0), time)
 
         mat = Gf.Matrix4d()
         mat.SetIdentity()
-        mat.SetScale(extents)
+        mat.SetScale(Gf.Vec3d(extents))
         mat.SetTranslateOnly(Gf.Vec3d(pos))
 
-        op = sphere.MakeMatrixXform()
+        op = box.MakeMatrixXform()
         op.Set(mat, self.time)        
 
     def render_ref(self, name: str, path: str, pos, rot, scale):

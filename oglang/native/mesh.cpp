@@ -85,6 +85,7 @@ uint64_t mesh_create_device(vec3* points, int* indices, int num_points, int num_
 
         for (int i=0; i < num_tris; ++i)
         {
+            bounds_host[i] = bounds3();
             bounds_host[i].add_point(points_host[indices_host[i*3+0]]);
             bounds_host[i].add_point(points_host[indices_host[i*3+1]]);
             bounds_host[i].add_point(points_host[indices_host[i*3+2]]);
