@@ -1,6 +1,8 @@
 """A module for building simulation models and state.
 """
 
+import oglang as og
+
 import math
 import numpy as np
 
@@ -12,7 +14,6 @@ Quat = List[float]
 Mat33 = List[float]
 Transform = Tuple[Vec3, Quat]
 
-from og.util import *
 
 # shape geometry types
 GEO_SPHERE = 0
@@ -96,12 +97,20 @@ class Mesh:
                 # displacement of quadrature point from COM
                 d = quads[j] - com
 
-                I += weight * volume * (length_sq(d) * np.eye(3, 3) - np.outer(d, d))
+                I += weight * volume * (og.length_sq(d) * np.eye(3, 3) - np.outer(d, d))
                 mass += weight * volume
 
         self.I = I
         self.mass = mass
         self.com = com
+
+    # construct simulation ready buffers from points
+    def finalize(self, device):
+
+        self.mesh = og.Mesh(og.array(self.vertices, dtype=og.vec3, device=device), 
+                            og.array(self.indices, dtype=og.int32, device=device))
+
+        return self.mesh.id
 
 
 class State:
@@ -115,12 +124,12 @@ class State:
 
     Attributes:
 
-        particle_q (torch.Tensor): Tensor of particle positions
-        particle_qd (torch.Tensor): Tensor of particle velocities
+        particle_q (og.array): Tensor of particle positions
+        particle_qd (og.array): Tensor of particle velocities
 
-        joint_q (torch.Tensor): Tensor of joint coordinates
-        joint_qd (torch.Tensor): Tensor of joint velocities
-        joint_act (torch.Tensor): Tensor of joint actuation values
+        joint_q (og.array): Tensor of joint coordinates
+        joint_qd (og.array): Tensor of joint velocities
+        joint_act (og.array): Tensor of joint actuation values
 
     """
 
@@ -163,7 +172,7 @@ class State:
 
         # build a list of all tensor attributes
         for attr, value in self.__dict__.items():
-            if (torch.is_tensor(value)):
+            if (og.is_tensor(value)):
                 tensors.append(value)
 
         return tensors
@@ -176,55 +185,55 @@ class Model:
     all geometry, constraints, and parameters used to describe the simulation.
 
     Attributes:
-        particle_q (torch.Tensor): Particle positions, shape [particle_count, 3], float
-        particle_qd (torch.Tensor): Particle velocities, shape [particle_count, 3], float
-        particle_mass (torch.Tensor): Particle mass, shape [particle_count], float
-        particle_inv_mass (torch.Tensor): Particle inverse mass, shape [particle_count], float
+        particle_q (og.array): Particle positions, shape [particle_count, 3], float
+        particle_qd (og.array): Particle velocities, shape [particle_count, 3], float
+        particle_mass (og.array): Particle mass, shape [particle_count], float
+        particle_inv_mass (og.array): Particle inverse mass, shape [particle_count], float
 
-        shape_transform (torch.Tensor): Rigid shape transforms, shape [shape_count, 7], float
-        shape_body (torch.Tensor): Rigid shape body index, shape [shape_count], int
-        shape_geo_type (torch.Tensor): Rigid shape geometry type, [shape_count], int
-        shape_geo_src (torch.Tensor): Rigid shape geometry source, shape [shape_count], int
-        shape_geo_scale (torch.Tensor): Rigid shape geometry scale, shape [shape_count, 3], float
-        shape_materials (torch.Tensor): Rigid shape contact materials, shape [shape_count, 4], float
+        shape_transform (og.array): Rigid shape transforms, shape [shape_count, 7], float
+        shape_body (og.array): Rigid shape body index, shape [shape_count], int
+        shape_geo_type (og.array): Rigid shape geometry type, [shape_count], int
+        shape_geo_src (og.array): Rigid shape geometry source, shape [shape_count], int
+        shape_geo_scale (og.array): Rigid shape geometry scale, shape [shape_count, 3], float
+        shape_materials (og.array): Rigid shape contact materials, shape [shape_count, 4], float
 
-        spring_indices (torch.Tensor): Particle spring indices, shape [spring_count*2], int
-        spring_rest_length (torch.Tensor): Particle spring rest length, shape [spring_count], float
-        spring_stiffness (torch.Tensor): Particle spring stiffness, shape [spring_count], float
-        spring_damping (torch.Tensor): Particle spring damping, shape [spring_count], float
-        spring_control (torch.Tensor): Particle spring activation, shape [spring_count], float
+        spring_indices (og.array): Particle spring indices, shape [spring_count*2], int
+        spring_rest_length (og.array): Particle spring rest length, shape [spring_count], float
+        spring_stiffness (og.array): Particle spring stiffness, shape [spring_count], float
+        spring_damping (og.array): Particle spring damping, shape [spring_count], float
+        spring_control (og.array): Particle spring activation, shape [spring_count], float
 
-        tri_indices (torch.Tensor): Triangle element indices, shape [tri_count*3], int
-        tri_poses (torch.Tensor): Triangle element rest pose, shape [tri_count, 2, 2], float
-        tri_activations (torch.Tensor): Triangle element activations, shape [tri_count], float
+        tri_indices (og.array): Triangle element indices, shape [tri_count*3], int
+        tri_poses (og.array): Triangle element rest pose, shape [tri_count, 2, 2], float
+        tri_activations (og.array): Triangle element activations, shape [tri_count], float
 
-        edge_indices (torch.Tensor): Bending edge indices, shape [edge_count*2], int
-        edge_rest_angle (torch.Tensor): Bending edge rest angle, shape [edge_count], float
+        edge_indices (og.array): Bending edge indices, shape [edge_count*2], int
+        edge_rest_angle (og.array): Bending edge rest angle, shape [edge_count], float
 
-        tet_indices (torch.Tensor): Tetrahedral element indices, shape [tet_count*4], int
-        tet_poses (torch.Tensor): Tetrahedral rest poses, shape [tet_count, 3, 3], float
-        tet_activations (torch.Tensor): Tetrahedral volumetric activations, shape [tet_count], float
-        tet_materials (torch.Tensor): Tetrahedral elastic parameters in form :math:`k_{mu}, k_{lambda}, k_{damp}`, shape [tet_count, 3]
+        tet_indices (og.array): Tetrahedral element indices, shape [tet_count*4], int
+        tet_poses (og.array): Tetrahedral rest poses, shape [tet_count, 3, 3], float
+        tet_activations (og.array): Tetrahedral volumetric activations, shape [tet_count], float
+        tet_materials (og.array): Tetrahedral elastic parameters in form :math:`k_{mu}, k_{lambda}, k_{damp}`, shape [tet_count, 3]
         
-        body_X_cm (torch.Tensor): Rigid body center of mass (in local frame), shape [link_count, 7], float
-        body_I_m (torch.Tensor): Rigid body inertia tensor (relative to COM), shape [link_count, 3, 3], float
+        body_X_cm (og.array): Rigid body center of mass (in local frame), shape [link_count, 7], float
+        body_I_m (og.array): Rigid body inertia tensor (relative to COM), shape [link_count, 3, 3], float
 
-        articulation_start (torch.Tensor): Articulation start offset, shape [num_articulations], int
+        articulation_start (og.array): Articulation start offset, shape [num_articulations], int
 
-        joint_q (torch.Tensor): Joint coordinate, shape [joint_coord_count], float
-        joint_qd (torch.Tensor): Joint velocity, shape [joint_dof_count], float
-        joint_type (torch.Tensor): Joint type, shape [joint_count], int
-        joint_parent (torch.Tensor): Joint parent, shape [joint_count], int
-        joint_X_pj (torch.Tensor): Joint transform in parent frame, shape [joint_count, 7], float
-        joint_X_cm (torch.Tensor): Joint mass frame in child frame, shape [joint_count, 7], float
-        joint_axis (torch.Tensor): Joint axis in child frame, shape [joint_count, 3], float
-        joint_q_start (torch.Tensor): Joint coordinate offset, shape [joint_count], int
-        joint_qd_start (torch.Tensor): Joint velocity offset, shape [joint_count], int
+        joint_q (og.array): Joint coordinate, shape [joint_coord_count], float
+        joint_qd (og.array): Joint velocity, shape [joint_dof_count], float
+        joint_type (og.array): Joint type, shape [joint_count], int
+        joint_parent (og.array): Joint parent, shape [joint_count], int
+        joint_X_pj (og.array): Joint transform in parent frame, shape [joint_count, 7], float
+        joint_X_cm (og.array): Joint mass frame in child frame, shape [joint_count, 7], float
+        joint_axis (og.array): Joint axis in child frame, shape [joint_count, 3], float
+        joint_q_start (og.array): Joint coordinate offset, shape [joint_count], int
+        joint_qd_start (og.array): Joint velocity offset, shape [joint_count], int
 
-        joint_armature (torch.Tensor): Armature for each joint, shape [joint_count], float
-        joint_target_ke (torch.Tensor): Joint stiffness, shape [joint_count], float
-        joint_target_kd (torch.Tensor): Joint damping, shape [joint_count], float
-        joint_target (torch.Tensor): Joint target, shape [joint_count], float
+        joint_armature (og.array): Armature for each joint, shape [joint_count], float
+        joint_target_ke (og.array): Joint stiffness, shape [joint_count], float
+        joint_target_kd (og.array): Joint damping, shape [joint_count], float
+        joint_target (og.array): Joint target, shape [joint_count], float
 
         particle_count (int): Total number of particles in the system
         joint_coord_count (int): Total number of joint coordinates in the system
@@ -306,7 +315,7 @@ class Model:
         self.spring_count = 0
         self.contact_count = 0
 
-        self.gravity = torch.tensor((0.0, -9.8, 0.0), dtype=torch.float32, device=adapter)
+        self.gravity = og.array((0.0, -9.8, 0.0), dtype=og.float32, device=adapter)
 
         self.contact_distance = 0.1
         self.contact_ke = 1.e+3
@@ -344,46 +353,46 @@ class Model:
           
         # particles
         if (self.particle_count):
-            s.particle_q = torch.clone(self.particle_q)
-            s.particle_qd = torch.clone(self.particle_qd)
+            s.particle_q = og.clone(self.particle_q)
+            s.particle_qd = og.clone(self.particle_qd)
 
         # articulations
         if (self.link_count):
-            s.joint_q = torch.clone(self.joint_q)
-            s.joint_qd = torch.clone(self.joint_qd)
-            s.joint_act = torch.zeros_like(self.joint_qd)
+            s.joint_q = og.clone(self.joint_q)
+            s.joint_qd = og.clone(self.joint_qd)
+            s.joint_act = og.zeros_like(self.joint_qd)
 
         #--------------------------------
         # derived state (output only)
         
         if (self.particle_count):
-            s.particle_f = torch.empty_like(self.particle_qd, requires_grad=True)
+            s.particle_f = og.empty_like(self.particle_qd, requires_grad=True)
 
         if (self.link_count):
 
             # joints
-            s.joint_qdd = torch.empty_like(self.joint_qd, requires_grad=True)
-            s.joint_tau = torch.empty_like(self.joint_qd, requires_grad=True)
-            s.joint_S_s = torch.empty((self.joint_dof_count, 6), dtype=torch.float32, device=self.adapter, requires_grad=True)            
+            s.joint_qdd = og.empty_like(self.joint_qd, requires_grad=True)
+            s.joint_tau = og.empty_like(self.joint_qd, requires_grad=True)
+            s.joint_S_s = og.empty((self.joint_dof_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)            
 
             # rigids
-            s.body_X_sc = torch.empty((self.link_count, 7), dtype=torch.float32, device=self.adapter, requires_grad=True)
-            s.body_X_sm = torch.empty((self.link_count, 7), dtype=torch.float32, device=self.adapter, requires_grad=True)
-            s.body_I_s = torch.empty((self.link_count, 6, 6), dtype=torch.float32, device=self.adapter, requires_grad=True)
-            s.body_v_s = torch.empty((self.link_count, 6), dtype=torch.float32, device=self.adapter, requires_grad=True)
-            s.body_a_s = torch.empty((self.link_count, 6), dtype=torch.float32, device=self.adapter, requires_grad=True)
-            s.body_f_s = torch.zeros((self.link_count, 6), dtype=torch.float32, device=self.adapter, requires_grad=True)
-            #s.body_ft_s = torch.zeros((self.link_count, 6), dtype=torch.float32, device=self.adapter, requires_grad=True)
-            #s.body_f_ext_s = torch.zeros((self.link_count, 6), dtype=torch.float32, device=self.adapter, requires_grad=True)
+            s.body_X_sc = og.empty((self.link_count, 7), dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.body_X_sm = og.empty((self.link_count, 7), dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.body_I_s = og.empty((self.link_count, 6, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.body_v_s = og.empty((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.body_a_s = og.empty((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.body_f_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
+            #s.body_ft_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
+            #s.body_f_ext_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
 
             # system matrices
-            s.M = torch.zeros(self.M_size, dtype=torch.float32, device=self.adapter, requires_grad=True)
-            s.J = torch.zeros(self.J_size, dtype=torch.float32, device=self.adapter, requires_grad=True)
-            s.P = torch.empty(self.J_size, dtype=torch.float32, device=self.adapter, requires_grad=True)
-            s.H = torch.empty(self.H_size, dtype=torch.float32, device=self.adapter, requires_grad=True)
+            s.M = og.zeros(self.M_size, dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.J = og.zeros(self.J_size, dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.P = og.empty(self.J_size, dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.H = og.empty(self.H_size, dtype=og.float32, device=self.adapter, requires_grad=True)
             
             # zero since only upper triangle is set which can trigger NaN detection
-            s.L = torch.zeros(self.H_size, dtype=torch.float32, device=self.adapter, requires_grad=True)
+            s.L = og.zeros(self.H_size, dtype=og.float32, device=self.adapter, requires_grad=True)
 
         return s
 
@@ -398,7 +407,7 @@ class Model:
 
         # build a list of all tensor attributes
         for attr, value in self.__dict__.items():
-            if (torch.is_tensor(value)):
+            if (og.is_tensor(value)):
                 tensors.append(value)
 
         return tensors
@@ -488,12 +497,12 @@ class Model:
 
                     add_contact(self.shape_body[i], -1, X_bs, p, 0.0, i)
 
-        # send to torch
-        self.contact_body0 = torch.tensor(body0, dtype=torch.int32, device=self.adapter)
-        self.contact_body1 = torch.tensor(body1, dtype=torch.int32, device=self.adapter)
-        self.contact_point0 = torch.tensor(point, dtype=torch.float32, device=self.adapter)
-        self.contact_dist = torch.tensor(dist, dtype=torch.float32, device=self.adapter)
-        self.contact_material = torch.tensor(mat, dtype=torch.int32, device=self.adapter)
+        # send to og
+        self.contact_body0 = og.array(body0, dtype=og.int32, device=self.adapter)
+        self.contact_body1 = og.array(body1, dtype=og.int32, device=self.adapter)
+        self.contact_point0 = og.array(point, dtype=og.float32, device=self.adapter)
+        self.contact_dist = og.array(dist, dtype=og.float32, device=self.adapter)
+        self.contact_material = og.array(mat, dtype=og.int32, device=self.adapter)
 
         self.contact_count = len(body0)
 
@@ -505,9 +514,9 @@ class ModelBuilder:
     """A helper class for building simulation models at runtime.
 
     Use the ModelBuilder to construct a simulation scene. The ModelBuilder
-    is independent of PyTorch and builds the scene representation using
+    is independent of Pyog and builds the scene representation using
     standard Python data structures, this means it is not differentiable. Once :func:`finalize()` 
-    has been called the ModelBuilder transfers all data to Torch tensors and returns 
+    has been called the ModelBuilder transfers all data to og tensors and returns 
     an object that may be used for simulation.
 
     Example:
@@ -926,7 +935,7 @@ class ModelBuilder:
 
     def _add_shape(self, body , pos, rot, type, scale, src, density, ke, kd, kf, mu):
         self.shape_body.append(body)
-        self.shape_transform.append(transform(pos, rot))
+        self.shape_transform.append(og.transform(pos, rot))
         self.shape_geo_type.append(type)
         self.shape_geo_scale.append((scale[0], scale[1], scale[2]))
         self.shape_geo_src.append(src)
@@ -1018,9 +1027,9 @@ class ModelBuilder:
         rp = r - p
 
         # construct basis aligned with the triangle
-        n = normalize(np.cross(qp, rp))
-        e1 = normalize(qp)
-        e2 = normalize(np.cross(n, e1))
+        n = og.normalize(np.cross(qp, rp))
+        e1 = og.normalize(qp)
+        e2 = og.normalize(np.cross(n, e1))
 
         R = np.matrix((e1, e2))
         M = np.matrix((qp, rp))
@@ -1115,9 +1124,9 @@ class ModelBuilder:
             x3 = np.array(self.particle_q[k])
             x4 = np.array(self.particle_q[l])
 
-            n1 = normalize(np.cross(x3 - x1, x4 - x1))
-            n2 = normalize(np.cross(x4 - x2, x3 - x2))
-            e = normalize(x4 - x3)
+            n1 = og.normalize(np.cross(x3 - x1, x4 - x1))
+            n2 = og.normalize(np.cross(x4 - x2, x3 - x2))
+            e = og.normalize(x4 - x3)
 
             d = np.clip(np.dot(n2, n1), -1.0, 1.0)
 
@@ -1177,7 +1186,7 @@ class ModelBuilder:
             for x in range(0, dim_x + 1):
 
                 g = np.array((x * cell_x, y * cell_y, 0.0))
-                p = quat_rotate(rot, g) + pos
+                p = og.quat_rotate(rot, g) + pos
                 m = mass
 
                 if (x == 0 and fix_left):
@@ -1223,7 +1232,7 @@ class ModelBuilder:
 
         # bending constraints, could create these explicitly for a grid but this
         # is a good test of the adjacency structure
-        adj = MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
+        adj = og.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
         for k, e in adj.edges.items():
 
@@ -1262,7 +1271,7 @@ class ModelBuilder:
         # particles
         for i, v in enumerate(vertices):
 
-            p = quat_rotate(rot, v * scale) + pos
+            p = og.quat_rotate(rot, v * scale) + pos
 
             self.add_particle(p, vel, 0.0)
 
@@ -1369,7 +1378,7 @@ class ModelBuilder:
                     if (fix_bottom and y == 0):
                         m = 0.0
 
-                    p = quat_rotate(rot, v) + pos
+                    p = og.quat_rotate(rot, v) + pos
 
                     self.add_particle(p, vel, m)
 
@@ -1461,7 +1470,7 @@ class ModelBuilder:
         # add particles
         for v in vertices:
 
-            p = quat_rotate(rot, v * scale) + pos
+            p = og.quat_rotate(rot, v * scale) + pos
 
             self.add_particle(p, vel, 0.0)
 
@@ -1616,7 +1625,7 @@ class ModelBuilder:
         """Convert this builder object to a concrete model for simulation.
 
         After building simulation elements this method should be called to transfer
-        all data to PyTorch tensors ready for simulation.
+        all data to Pyog tensors ready for simulation.
 
         Args:
             adapter: The simulation adapter to use, e.g.: 'cpu', 'cuda'
@@ -1643,52 +1652,61 @@ class ModelBuilder:
         # particles
 
         # state (initial)
-        m.particle_q = torch.tensor(self.particle_q, dtype=torch.float32, device=adapter)
-        m.particle_qd = torch.tensor(self.particle_qd, dtype=torch.float32, device=adapter)
+        m.particle_q = og.array(self.particle_q, dtype=og.vec3, device=adapter)
+        m.particle_qd = og.array(self.particle_qd, dtype=og.vec3, device=adapter)
 
         # model 
-        m.particle_mass = torch.tensor(self.particle_mass, dtype=torch.float32, device=adapter)
-        m.particle_inv_mass = torch.tensor(particle_inv_mass, dtype=torch.float32, device=adapter)
+        m.particle_mass = og.array(self.particle_mass, dtype=og.float32, device=adapter)
+        m.particle_inv_mass = og.array(particle_inv_mass, dtype=og.float32, device=adapter)
 
         #---------------------
         # collision geometry
-
-        m.shape_transform = torch.tensor(transform_flatten_list(self.shape_transform), dtype=torch.float32, device=adapter)
-        m.shape_body = torch.tensor(self.shape_body, dtype=torch.int32, device=adapter)
-        m.shape_geo_type = torch.tensor(self.shape_geo_type, dtype=torch.int32, device=adapter)
+        m.shape_transform = og.array(og.transform_flatten_list(self.shape_transform), dtype=og.spatial_transform, device=adapter)
+        m.shape_body = og.array(self.shape_body, dtype=og.int32, device=adapter)
+        m.shape_geo_type = og.array(self.shape_geo_type, dtype=og.int32, device=adapter)
         m.shape_geo_src = self.shape_geo_src
-        m.shape_geo_scale = torch.tensor(self.shape_geo_scale, dtype=torch.float32, device=adapter)
-        m.shape_materials = torch.tensor(self.shape_materials, dtype=torch.float32, device=adapter)
+
+        # build list of ids for geometry sources (meshes, sdfs)
+        shape_geo_id = []
+        for geo in self.shape_geo_src:
+            if (geo):
+                shape_geo_id.append(geo.finalize(device=adapter))
+            else:
+                shape_geo_id.append(-1)
+
+        m.shape_geo_id = og.array(shape_geo_id, dtype=og.uint64, device=adapter)
+        m.shape_geo_scale = og.array(self.shape_geo_scale, dtype=og.vec3, device=adapter)
+        m.shape_materials = og.array(self.shape_materials, dtype=og.float32, device=adapter)
 
         #---------------------
         # springs
 
-        m.spring_indices = torch.tensor(self.spring_indices, dtype=torch.int32, device=adapter)
-        m.spring_rest_length = torch.tensor(self.spring_rest_length, dtype=torch.float32, device=adapter)
-        m.spring_stiffness = torch.tensor(self.spring_stiffness, dtype=torch.float32, device=adapter)
-        m.spring_damping = torch.tensor(self.spring_damping, dtype=torch.float32, device=adapter)
-        m.spring_control = torch.tensor(self.spring_control, dtype=torch.float32, device=adapter)
+        m.spring_indices = og.array(self.spring_indices, dtype=og.int32, device=adapter)
+        m.spring_rest_length = og.array(self.spring_rest_length, dtype=og.float32, device=adapter)
+        m.spring_stiffness = og.array(self.spring_stiffness, dtype=og.float32, device=adapter)
+        m.spring_damping = og.array(self.spring_damping, dtype=og.float32, device=adapter)
+        m.spring_control = og.array(self.spring_control, dtype=og.float32, device=adapter)
 
         #---------------------
         # triangles
 
-        m.tri_indices = torch.tensor(self.tri_indices, dtype=torch.int32, device=adapter)
-        m.tri_poses = torch.tensor(self.tri_poses, dtype=torch.float32, device=adapter)
-        m.tri_activations = torch.tensor(self.tri_activations, dtype=torch.float32, device=adapter)
+        m.tri_indices = og.array(self.tri_indices, dtype=og.int32, device=adapter)
+        m.tri_poses = og.array(self.tri_poses, dtype=og.mat22, device=adapter)
+        m.tri_activations = og.array(self.tri_activations, dtype=og.float32, device=adapter)
 
         #---------------------
         # edges
 
-        m.edge_indices = torch.tensor(self.edge_indices, dtype=torch.int32, device=adapter)
-        m.edge_rest_angle = torch.tensor(self.edge_rest_angle, dtype=torch.float32, device=adapter)
+        m.edge_indices = og.array(self.edge_indices, dtype=og.int32, device=adapter)
+        m.edge_rest_angle = og.array(self.edge_rest_angle, dtype=og.float32, device=adapter)
 
         #---------------------
         # tetrahedra
 
-        m.tet_indices = torch.tensor(self.tet_indices, dtype=torch.int32, device=adapter)
-        m.tet_poses = torch.tensor(self.tet_poses, dtype=torch.float32, device=adapter)
-        m.tet_activations = torch.tensor(self.tet_activations, dtype=torch.float32, device=adapter)
-        m.tet_materials = torch.tensor(self.tet_materials, dtype=torch.float32, device=adapter)
+        m.tet_indices = og.array(self.tet_indices, dtype=og.int32, device=adapter)
+        m.tet_poses = og.array(self.tet_poses, dtype=og.mat33, device=adapter)
+        m.tet_activations = og.array(self.tet_activations, dtype=og.float32, device=adapter)
+        m.tet_materials = og.array(self.tet_materials, dtype=og.float32, device=adapter)
 
         #-----------------------
         # muscles
@@ -1698,11 +1716,11 @@ class ModelBuilder:
         # close the muscle waypoint indices
         self.muscle_start.append(len(self.muscle_links))
 
-        m.muscle_start = torch.tensor(self.muscle_start, dtype=torch.int32, device=adapter)
-        m.muscle_params = torch.tensor(self.muscle_params, dtype=torch.float32, device=adapter)
-        m.muscle_links = torch.tensor(self.muscle_links, dtype=torch.int32, device=adapter)
-        m.muscle_points = torch.tensor(self.muscle_points, dtype=torch.float32, device=adapter)
-        m.muscle_activation = torch.tensor(self.muscle_activation, dtype=torch.float32, device=adapter)
+        m.muscle_start = og.array(self.muscle_start, dtype=og.int32, device=adapter)
+        m.muscle_params = og.array(self.muscle_params, dtype=og.float32, device=adapter)
+        m.muscle_links = og.array(self.muscle_links, dtype=og.int32, device=adapter)
+        m.muscle_points = og.array(self.muscle_points, dtype=og.float32, device=adapter)
+        m.muscle_activation = og.array(self.muscle_activation, dtype=og.float32, device=adapter)
 
         #--------------------------------------
         # articulations
@@ -1712,10 +1730,10 @@ class ModelBuilder:
         body_I_m = [] 
 
         for i in range(len(self.body_inertia)):
-            body_I_m.append(spatial_matrix_from_inertia(self.body_inertia[i], self.body_mass[i]))
-            body_X_cm.append(transform(self.body_com[i], quat_identity()))
+            body_I_m.append(og.spatial_matrix_from_inertia(self.body_inertia[i], self.body_mass[i]))
+            body_X_cm.append(og.transform(self.body_com[i], og.quat_identity()))
         
-        m.body_I_m = torch.tensor(body_I_m, dtype=torch.float32, device=adapter)
+        m.body_I_m = og.array(body_I_m, dtype=og.float32, device=adapter)
 
 
         articulation_count = len(self.articulation_start)
@@ -1776,45 +1794,45 @@ class ModelBuilder:
             m.H_size += dof_count*dof_count
             
 
-        m.articulation_joint_start = torch.tensor(self.articulation_start, dtype=torch.int32, device=adapter)
+        m.articulation_joint_start = og.array(self.articulation_start, dtype=og.int32, device=adapter)
 
         # matrix offsets for batched gemm
-        m.articulation_J_start = torch.tensor(articulation_J_start, dtype=torch.int32, device=adapter)
-        m.articulation_M_start = torch.tensor(articulation_M_start, dtype=torch.int32, device=adapter)
-        m.articulation_H_start = torch.tensor(articulation_H_start, dtype=torch.int32, device=adapter)
+        m.articulation_J_start = og.array(articulation_J_start, dtype=og.int32, device=adapter)
+        m.articulation_M_start = og.array(articulation_M_start, dtype=og.int32, device=adapter)
+        m.articulation_H_start = og.array(articulation_H_start, dtype=og.int32, device=adapter)
         
-        m.articulation_M_rows = torch.tensor(articulation_M_rows, dtype=torch.int32, device=adapter)
-        m.articulation_H_rows = torch.tensor(articulation_H_rows, dtype=torch.int32, device=adapter)
-        m.articulation_J_rows = torch.tensor(articulation_J_rows, dtype=torch.int32, device=adapter)
-        m.articulation_J_cols = torch.tensor(articulation_J_cols, dtype=torch.int32, device=adapter)
+        m.articulation_M_rows = og.array(articulation_M_rows, dtype=og.int32, device=adapter)
+        m.articulation_H_rows = og.array(articulation_H_rows, dtype=og.int32, device=adapter)
+        m.articulation_J_rows = og.array(articulation_J_rows, dtype=og.int32, device=adapter)
+        m.articulation_J_cols = og.array(articulation_J_cols, dtype=og.int32, device=adapter)
 
-        m.articulation_dof_start = torch.tensor(articulation_dof_start, dtype=torch.int32, device=adapter)
-        m.articulation_coord_start = torch.tensor(articulation_coord_start, dtype=torch.int32, device=adapter)
+        m.articulation_dof_start = og.array(articulation_dof_start, dtype=og.int32, device=adapter)
+        m.articulation_coord_start = og.array(articulation_coord_start, dtype=og.int32, device=adapter)
 
         # state (initial)
-        m.joint_q = torch.tensor(self.joint_q, dtype=torch.float32, device=adapter)
-        m.joint_qd = torch.tensor(self.joint_qd, dtype=torch.float32, device=adapter)
+        m.joint_q = og.array(self.joint_q, dtype=og.float32, device=adapter)
+        m.joint_qd = og.array(self.joint_qd, dtype=og.float32, device=adapter)
 
         # model
-        m.joint_type = torch.tensor(self.joint_type, dtype=torch.int32, device=adapter)
-        m.joint_parent = torch.tensor(self.joint_parent, dtype=torch.int32, device=adapter)
-        m.joint_X_pj = torch.tensor(transform_flatten_list(self.joint_X_pj), dtype=torch.float32, device=adapter)
-        m.joint_X_cm = torch.tensor(transform_flatten_list(body_X_cm), dtype=torch.float32, device=adapter)
-        m.joint_axis = torch.tensor(self.joint_axis, dtype=torch.float32, device=adapter)
-        m.joint_q_start = torch.tensor(self.joint_q_start, dtype=torch.int32, device=adapter) 
-        m.joint_qd_start = torch.tensor(self.joint_qd_start, dtype=torch.int32, device=adapter)
+        m.joint_type = og.array(self.joint_type, dtype=og.int32, device=adapter)
+        m.joint_parent = og.array(self.joint_parent, dtype=og.int32, device=adapter)
+        m.joint_X_pj = og.array(og.transform_flatten_list(self.joint_X_pj), dtype=og.float32, device=adapter)
+        m.joint_X_cm = og.array(og.transform_flatten_list(body_X_cm), dtype=og.float32, device=adapter)
+        m.joint_axis = og.array(self.joint_axis, dtype=og.float32, device=adapter)
+        m.joint_q_start = og.array(self.joint_q_start, dtype=og.int32, device=adapter) 
+        m.joint_qd_start = og.array(self.joint_qd_start, dtype=og.int32, device=adapter)
 
         # dynamics properties
-        m.joint_armature = torch.tensor(self.joint_armature, dtype=torch.float32, device=adapter)
+        m.joint_armature = og.array(self.joint_armature, dtype=og.float32, device=adapter)
         
-        m.joint_target = torch.tensor(self.joint_target, dtype=torch.float32, device=adapter)
-        m.joint_target_ke = torch.tensor(self.joint_target_ke, dtype=torch.float32, device=adapter)
-        m.joint_target_kd = torch.tensor(self.joint_target_kd, dtype=torch.float32, device=adapter)
+        m.joint_target = og.array(self.joint_target, dtype=og.float32, device=adapter)
+        m.joint_target_ke = og.array(self.joint_target_ke, dtype=og.float32, device=adapter)
+        m.joint_target_kd = og.array(self.joint_target_kd, dtype=og.float32, device=adapter)
 
-        m.joint_limit_lower = torch.tensor(self.joint_limit_lower, dtype=torch.float32, device=adapter)
-        m.joint_limit_upper = torch.tensor(self.joint_limit_upper, dtype=torch.float32, device=adapter)
-        m.joint_limit_ke = torch.tensor(self.joint_limit_ke, dtype=torch.float32, device=adapter)
-        m.joint_limit_kd = torch.tensor(self.joint_limit_kd, dtype=torch.float32, device=adapter)
+        m.joint_limit_lower = og.array(self.joint_limit_lower, dtype=og.float32, device=adapter)
+        m.joint_limit_upper = og.array(self.joint_limit_upper, dtype=og.float32, device=adapter)
+        m.joint_limit_ke = og.array(self.joint_limit_ke, dtype=og.float32, device=adapter)
+        m.joint_limit_kd = og.array(self.joint_limit_kd, dtype=og.float32, device=adapter)
 
         # counts
         m.particle_count = len(self.particle_q)
@@ -1840,7 +1858,7 @@ class ModelBuilder:
         m.ground = True
         m.enable_tri_collisions = False
 
-        m.gravity = torch.tensor((0.0, -9.8, 0.0), dtype=torch.float32, device=adapter)
+        m.gravity = og.array((0.0, -9.8, 0.0), dtype=og.vec3, device=adapter)
 
         #-------------------------------------
         # construct generalized State (time-varying) vector

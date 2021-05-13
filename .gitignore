@@ -13,3 +13,4 @@ _*/
 *.dll
 *.lib
 *.cpp.obj
+tests/outputs/.thumbs

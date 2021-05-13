@@ -6,7 +6,10 @@ struct vec3
     float y;
     float z;
 
-    inline CUDA_CALLABLE vec3(float x=0.0f, float y=0.0f, float z=0.0f) : x(x), y(y), z(z) {}
+    inline CUDA_CALLABLE vec3() : x(0.0f), y(0.0f), z(0.0f) {}
+    inline CUDA_CALLABLE vec3(float x, float y, float z) : x(x), y(y), z(z) {}
+    inline CUDA_CALLABLE vec3(float s) : x(s), y(s), z(s) {}
+
     explicit inline CUDA_CALLABLE vec3(const float* p) : x(p[0]), y(p[1]), z(p[2]) {}
 
     CUDA_CALLABLE float operator[](int index) const
@@ -50,6 +53,11 @@ inline CUDA_CALLABLE vec3 mul(vec3 a, vec3 b)
 inline CUDA_CALLABLE vec3 div(vec3 a, float s)
 {
     return { a.x/s, a.y/s, a.z/s };
+}
+
+inline CUDA_CALLABLE vec3 div(vec3 a, vec3 b)
+{
+    return { a.x/b.x, a.y/b.y, a.z/b.z };
 }
 
 inline CUDA_CALLABLE vec3 add(vec3 a, vec3 b)

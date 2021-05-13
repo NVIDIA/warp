@@ -69,6 +69,11 @@ struct bounds3
 		upper = og::max(upper, p);
 	}
 
+	CUDA_CALLABLE inline float area() const
+	{
+		vec3 e = upper-lower;
+		return 2.0f*(e.x*e.y + e.x*e.z + e.y*e.z);
+	}
 
 	vec3 lower;
 	vec3 upper;
@@ -89,11 +94,6 @@ CUDA_CALLABLE inline bounds3 bounds_intersection(const bounds3& a, const bounds3
 	return bounds3(max(a.lower, b.lower), min(a.upper, b.upper));
 }
 
-CUDA_CALLABLE inline float bounds_surface_area(const bounds3& b)
-{
-	vec3 e = b.upper-b.lower;
-	return 2.0f*(e.x*e.y + e.x*e.z + e.y*e.z);
-}
 
 struct BVHPackedNodeHalf
 {
@@ -120,7 +120,6 @@ struct BVH
 	int root;
 };
 
-// create only happens on device currently
 BVH bvh_create(const bounds3* bounds, int num_bounds);
 
 void bvh_destroy_host(BVH& bvh);
@@ -134,4 +133,57 @@ BVH bvh_clone(const BVH& bvh_host);
 
 
 
+CUDA_CALLABLE inline BVHPackedNodeHalf make_node(const vec3& bound, int child, bool leaf)
+{
+    BVHPackedNodeHalf n;
+    n.x = bound.x;
+    n.y = bound.y;
+    n.z = bound.z;
+    n.i = (unsigned int)child;
+    n.b = (unsigned int)(leaf?1:0);
+
+    return n;
+}
+
+// variation of make_node through volatile pointers used in BuildHierarchy
+CUDA_CALLABLE inline void make_node(volatile BVHPackedNodeHalf* n, const vec3& bound, int child, bool leaf)
+{
+    n->x = bound.x;
+    n->y = bound.y;
+    n->z = bound.z;
+    n->i = (unsigned int)child;
+    n->b = (unsigned int)(leaf?1:0);
+}
+
+CUDA_CALLABLE inline int clz(int x)
+{
+    int n;
+    if (x == 0) return 32;
+    for (n = 0; ((x & 0x80000000) == 0); n++, x <<= 1);
+    return n;
+}
+
+CUDA_CALLABLE inline uint32_t part1by2(uint32_t n)
+{
+    n = (n ^ (n << 16)) & 0xff0000ff;
+    n = (n ^ (n <<  8)) & 0x0300f00f;
+    n = (n ^ (n <<  4)) & 0x030c30c3;
+    n = (n ^ (n <<  2)) & 0x09249249;
+
+    return n;
+}
+
+// Takes values in the range [0, 1] and assigns an index based Morton codes of length 3*log2(dim) bits 
+template <int dim>
+CUDA_CALLABLE inline uint32_t morton3(float x, float y, float z)
+{
+    uint32_t ux = clamp(int(x*dim), 0, dim-1);
+    uint32_t uy = clamp(int(y*dim), 0, dim-1);
+    uint32_t uz = clamp(int(z*dim), 0, dim-1);
+
+    return (part1by2(uz) << 2) | (part1by2(uy) << 1) | part1by2(ux);
+}
+
+
 } // namespace og
+

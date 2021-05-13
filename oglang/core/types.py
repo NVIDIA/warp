@@ -1,7 +1,6 @@
 
-import ctypes 
+import ctypes
 import numpy as np
-from copy import copy as shallowcopy
 
 #----------------------
 # built-in types
@@ -289,93 +288,30 @@ def type_typestr(ctype):
     else:
         raise Exception("Unknown ctype")
 
-def type_is_int(t):
-    if (t == int or t == int32 or t == int64 or t == uint32 or t == uint64):
-        return True
-    else:
-        return False
-
-def type_is_float(t):
-    if (t == float or t == float32):
-        return True
-    else:
-        return False
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, owner=True):
-        
-        # convert built-in numeric type to og type
-        if (dtype == int):
-            dtype = int32
+    def __init__(self, dtype, length=0, capacity=0, data=None, device=None, context=None, owner=True):
+        self.length = length
+        self.capacity = capacity
+        self.dtype = dtype
+        self.data = data
+        self.device = device
+        self.context = context
+        self.owner = owner
 
-        elif (dtype == float):
-            dtype = float32
+        self.__name__ = "array<" + type.__name__ + ">"
 
+        # set up array interface access so we can treat this object a read-only numpy array
+        if (device == "cpu"):
 
-        # if src is a list, tuple try to convert to numpy array and construct from that (data will be copied)
-        if (isinstance(data, np.ndarray) or 
-            isinstance(data, list) or 
-            isinstance(data, tuple)):
-
-            from oglang.context import empty, copy, synchronize
-
-            arr = np.array(data)
-
-            # attempt to convert from double to float precision
-            if (arr.dtype == np.float64):
-                arr = arr.astype(np.float32)
-
-            # if array is multi-dimensional, but data type is scalar, then flatten
-            if (len(arr.shape) > 1 and type_length(dtype) == 1):
-                arr = arr.flatten()
-
-            ptr = arr.__array_interface__["data"][0]
-            shape = arr.__array_interface__["shape"]
-            rows = shape[0]
-
-            #if (arr.__array_interface__["typestr"] != "<i4" and arr.__array_interface__["typestr"] != "<f4"):
-            #if (arr.__array_interface__["typestr"] != "<i4" and arr.__array_interface__["typestr"] != "<f4"):
-                #raise RuntimeError("Source numpy array must be either 32bit integer or floating point data")
-
-            if (arr.__array_interface__["typestr"] == "<f8"):
-                raise RuntimeError("64bit floating point (double) data type not supported")
-
-            src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, owner=False)
-            dest = empty(rows, dtype=dtype, device=device)
-            dest.owner = False
-
-            # data copy
-            copy(dest, src)
-
-            # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
-            self.__dict__ = shallowcopy(dest.__dict__)
-            self.owner = True
-           
+            self.__array_interface__ = { 
+                "data": (data, False), 
+                "shape": (self.length, type_length(self.dtype)),  
+                "typestr": type_typestr(type_ctype(dtype)), 
+                "version": 3 
+            }
             
-        else:
-            
-            # explicit construction, data is interpreted as the address for raw memory 
-            self.length = length
-            self.capacity = capacity
-            self.dtype = dtype
-            self.data = data
-            self.device = device
-            self.context = context
-            self.owner = owner
-
-            self.__name__ = "array<" + type.__name__ + ">"
-
-            # set up array interface access so we can treat this object as a read-only numpy array
-            if (device == "cpu"):
-
-                self.__array_interface__ = { 
-                    "data": (data, False), 
-                    "shape": (self.length, type_length(self.dtype)),  
-                    "typestr": type_typestr(type_ctype(dtype)), 
-                    "version": 3 
-                }
-
 
     def __del__(self):
         
@@ -390,18 +326,6 @@ class array:
     def __len__(self):
 
         return self.length
-
-    def __str__(self):
-
-        return str(self.to("cpu").numpy())
-
-    def zero_(self):
-
-        if (self.device == "cpu"):
-            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.capacity)
-
-        if(self.device == "cuda"):
-            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.capacity)
 
     def numpy(self):
 
@@ -429,7 +353,7 @@ class array:
             dest = empty(n=self.length, dtype=self.dtype, device=device)
             copy(dest, self)
             
-            # todo: only synchronize when there is a device->host transfer outstanding
+            # todo: only synchronize  when there is a device->host transfer outstanding
             synchronize()
 
             return dest
@@ -438,37 +362,34 @@ class array:
 
 class Mesh:
 
-    def __init__(self, points, indices):
+    def __init__(self, points, indices, device):
         
         self.points = points
         self.indices = indices
 
-        if (points.device != indices.device):
-            raise RuntimeError("Points and indices must live on the same device")
-
         # inherit context from points, todo: find this globally
         self.context = points.context
-        self.device = points.device
+        self.device = device
 
         if (self.device == "cpu"):
-            self.id = self.context.core.mesh_create_host(points.data, indices.data, points.length, int(indices.length/3))
+            self.id = uint64(self.context.core.mesh_create_host(points.data, indices.data, points.length, int(indices.length/3)))
         else:
-            self.id = self.context.core.mesh_create_device(points.data, indices.data, points.length, int(indices.length/3))
+            self.id = uint64(self.context.core.mesh_create_device(points.data, indices.data, points.length, int(indices.length/3)))
 
 
     def __del__(self):
 
         if (self.device == "cpu"):
-            self.context.core.mesh_destroy_host(self.id)
+            self.context.core.mesh_destroy_host(self.id.value)
         else:
-            self.context.core.mesh_destroy_device(self.id)
+            self.context.core.mesh_destroy_device(self.id.value)
 
     def refit(self):
         
         if (self.device == "cpu"):
-            self.context.core.mesh_refit_host(self.id)
+            self.context.core.mesh_refit_host(self.id.value)
         else:
-            self.context.core.mesh_refit_device(self.id)
+            self.context.core.mesh_refit_device(self.id.value)
 
 
 

@@ -214,7 +214,7 @@ CUDA_CALLABLE inline vec3 spatial_transform_point(const spatial_transform& t, co
 {
     return t.p + rotate(t.q, x);
 }
-
+/*
 // Frank & Park definition 3.20, pg 100
 CUDA_CALLABLE inline spatial_vector spatial_transform_twist(const spatial_transform& t, const spatial_vector& x)
 {
@@ -231,7 +231,7 @@ CUDA_CALLABLE inline spatial_vector spatial_transform_wrench(const spatial_trans
 
     return spatial_vector(w, v);
 }
-
+*/
 
 CUDA_CALLABLE inline spatial_transform add(const spatial_transform& a, const spatial_transform& b)
 {
@@ -342,6 +342,7 @@ CUDA_CALLABLE inline void adj_spatial_transform_point(const spatial_transform& t
     adj_t.p += adj_ret;
 }
 
+/*
 CUDA_CALLABLE inline void adj_spatial_transform_twist(const spatial_transform& a, const spatial_vector& s, spatial_transform& adj_a, spatial_vector& adj_s, const spatial_vector& adj_ret)
 {
     printf("todo, %s, %d\n", __FILE__, __LINE__);
@@ -360,7 +361,7 @@ CUDA_CALLABLE inline void adj_spatial_transform_wrench(const spatial_transform& 
 
     // return spatial_vector(w, v);
 }
-
+*/
 
 /*
 // should match model.py

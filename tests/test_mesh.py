@@ -14,7 +14,7 @@ np.random.seed(42)
 
 
 @og.kernel
-def deform(positions: og.array(og.vec3), t: float):
+def deform(positions: og.array(dtype=og.vec3), t: float):
     
     tid = og.tid()
 
@@ -29,8 +29,8 @@ def deform(positions: og.array(og.vec3), t: float):
 
 
 @og.kernel
-def simulate(positions: og.array(og.vec3),
-            velocities: og.array(og.vec3),
+def simulate(positions: og.array(dtype=og.vec3),
+            velocities: og.array(dtype=og.vec3),
             mesh: og.uint64,
             restitution: float,
             margin: float,
@@ -45,7 +45,9 @@ def simulate(positions: og.array(og.vec3),
     xpred = x + v*dt
 
     sign = float(0.0)
-    p = og.mesh_query_point(mesh, xpred, sign)
+    max_dist = 1.5
+    p = og.mesh_query_point(mesh, xpred, max_dist, sign)
+    
     delta = xpred-p
     
     dist = og.length(delta)*sign
@@ -69,14 +71,14 @@ def simulate(positions: og.array(og.vec3),
 
 
 device = "cuda"
-num_particles = 10000
+num_particles = 100000
 
-sim_steps = 100
+sim_steps = 500
 sim_dt = 1.0/60.0
 
 sim_time = 0.0
 sim_timers = {}
-sim_render = False
+sim_render = True
 
 sim_restitution = 0.0
 sim_margin = 0.1
@@ -91,9 +93,8 @@ indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
 
 # create og mesh
 mesh = og.Mesh(
-    og.from_numpy(points, dtype=og.vec3, device=device),  
-    og.from_numpy(indices, dtype=int, device=device), 
-    device=device)
+    og.array(points, dtype=og.vec3, device=device),
+    og.array(indices, dtype=int, device=device))
 
 init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -0.2, 0.5]))*10.0
 init_vel = np.random.rand(num_particles, 3)*0.0
@@ -134,10 +135,7 @@ for i in range(sim_steps):
             og.copy(positions_host, positions)
 
             stage.begin_frame(sim_time)
-            
-            #stage.render_ground()
 
-            #stage.render_ref(name="mesh", path="../assets/torus.usda", pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0))
             stage.render_mesh(name="mesh", points=mesh.points.to("cpu").numpy(), indices=mesh.indices.to("cpu").numpy())
             stage.render_points(name="points", points=positions_host.numpy(), radius=sim_margin)
 

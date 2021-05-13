@@ -13,10 +13,10 @@
 #define OG_API
 #endif
 
-#if defined(CPU)
+#if !defined(__CUDACC__)
     #define CUDA_CALLABLE
 
-#elif defined(CUDA)
+#else
     #define CUDA_CALLABLE __host__ __device__ 
 
     #include <cuda.h>
@@ -281,6 +281,9 @@ template <typename T>
 CUDA_CALLABLE T operator/(const T& a, float s) { return div(a, s); }
 
 template <typename T>
+CUDA_CALLABLE T operator/(const T& a, const T& b) { return div(a, b); }
+
+template <typename T>
 CUDA_CALLABLE T operator+(const T& a, const T& b) { return add(a, b); }
 
 template <typename T>
@@ -292,10 +295,10 @@ static int s_threadIdx;
 
 inline CUDA_CALLABLE int tid()
 {
-#ifdef CPU
-    return s_threadIdx;
-#elif defined(CUDA)
+#ifdef __CUDACC__
     return blockDim.x * blockIdx.x + threadIdx.x;
+#else
+    return s_threadIdx;
 #endif
 }
 
