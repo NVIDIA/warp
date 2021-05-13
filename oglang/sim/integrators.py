@@ -195,16 +195,19 @@ def eval_triangles(x: og.array(dtype=og.vec3),
     j = og.load(indices, tid * 3 + 1)
     k = og.load(indices, tid * 3 + 2)
 
-    p = og.load(x, i)        # point zero
-    q = og.load(x, j)        # point one
-    r = og.load(x, k)        # point two
+    x0 = og.load(x, i)        # point zero
+    x1 = og.load(x, j)        # point one
+    x2 = og.load(x, k)        # point two
 
-    vp = og.load(v, i)       # vel zero
-    vq = og.load(v, j)       # vel one
-    vr = og.load(v, k)       # vel two
+    v0 = og.load(v, i)       # vel zero
+    v1 = og.load(v, j)       # vel one
+    v2 = og.load(v, k)       # vel two
 
-    qp = q - p     # barycentric coordinates (centered at p)
-    rp = r - p
+    x10 = x1 - x0     # barycentric coordinates (centered at p)
+    x20 = x2 - x0
+
+    v10 = v1 - v0
+    v20 = v2 - v0
 
     Dm = og.load(pose, tid)
 
@@ -217,8 +220,16 @@ def eval_triangles(x: og.array(dtype=og.vec3),
     k_damp = k_damp * rest_area
 
     # F = Xs*Xm^-1
-    f1 = qp * Dm[0, 0] + rp * Dm[1, 0]
-    f2 = qp * Dm[0, 1] + rp * Dm[1, 1]
+    F1 = x10 * Dm[0, 0] + x20 * Dm[1, 0]
+    F2 = x10 * Dm[0, 1] + x20 * Dm[1, 1]
+
+    # dFdt = Vs*Xm^-1
+    dFdt1 = v10*Dm[0, 0] + v20*Dm[1, 0]
+    dFdt2 = v10*Dm[0 ,1] + v20*Dm[1, 1]
+
+    # deviatoric PK1 + damping term
+    P1 = F1*k_mu + dFdt1*k_damp
+    P2 = F2*k_mu + dFdt2*k_damp
 
     #-----------------------------
     # St. Venant-Kirchoff
@@ -254,15 +265,15 @@ def eval_triangles(x: og.array(dtype=og.vec3),
     #-----------------------------
     # Neo-Hookean (with rest stability)
 
-    # force = mu*F*Dm'
-    fq = (f1 * Dm[0, 0] + f2 * Dm[0, 1]) * k_mu
-    fr = (f1 * Dm[1, 0] + f2 * Dm[1, 1]) * k_mu
+    # force = P*Dm'
+    f1 = (P1 * Dm[0, 0] + P2 * Dm[0, 1])
+    f2 = (P1 * Dm[1, 0] + P2 * Dm[1, 1])
     alpha = 1.0 + k_mu / k_lambda
 
     #-----------------------------
     # Area Preservation
 
-    n = og.cross(qp, rp)
+    n = og.cross(x10, x20)
     area = og.length(n) * 0.5
 
     # actuation
@@ -273,39 +284,39 @@ def eval_triangles(x: og.array(dtype=og.vec3),
 
     # dJdx
     n = og.normalize(n)
-    dcdq = og.cross(rp, n) * inv_rest_area * 0.5
-    dcdr = og.cross(n, qp) * inv_rest_area * 0.5
+    dcdq = og.cross(x20, n) * inv_rest_area * 0.5
+    dcdr = og.cross(n, x10) * inv_rest_area * 0.5
 
     f_area = k_lambda * c
 
     #-----------------------------
     # Area Damping
 
-    dcdt = dot(dcdq, vq) + dot(dcdr, vr) - dot(dcdq + dcdr, vp)
+    dcdt = dot(dcdq, v1) + dot(dcdr, v2) - dot(dcdq + dcdr, v0)
     f_damp = k_damp * dcdt
 
-    fq = fq + dcdq * (f_area + f_damp)
-    fr = fr + dcdr * (f_area + f_damp)
-    fp = fq + fr
+    f1 = f1 + dcdq * (f_area + f_damp)
+    f2 = f2 + dcdr * (f_area + f_damp)
+    f0 = f1 + f2
 
     #-----------------------------
     # Lift + Drag
 
-    vmid = (vp + vr + vq) * 0.3333
+    vmid = (v0 + v1 + v2) * 0.3333
     vdir = og.normalize(vmid)
 
     f_drag = vmid * (k_drag * area * og.abs(og.dot(n, vmid)))
     f_lift = n * (k_lift * area * (1.57079 - og.acos(og.dot(n, vdir)))) * dot(vmid, vmid)
 
     # note reversed sign due to atomic_add below.. need to write the unary op -
-    fp = fp - f_drag - f_lift
-    fq = fq + f_drag + f_lift
-    fr = fr + f_drag + f_lift
+    f0 = f0 - f_drag - f_lift
+    f1 = f1 + f_drag + f_lift
+    f2 = f2 + f_drag + f_lift
 
     # apply forces
-    og.atomic_add(f, i, fp)
-    og.atomic_sub(f, j, fq)
-    og.atomic_sub(f, k, fr)
+    og.atomic_add(f, i, f0)
+    og.atomic_sub(f, j, f1)
+    og.atomic_sub(f, k, f2)
 
 @og.func
 def triangle_closest_point_barycentric(a: og.vec3, b: og.vec3, c: og.vec3, p: og.vec3):
@@ -698,7 +709,7 @@ def eval_tetrahedra(x: og.array(dtype=og.vec3),
 
     # F = Xs*Xm^-1
     F = Ds * Dm
-    ogdt = og.mat33(v10, v20, v30) * Dm
+    dFdt = og.mat33(v10, v20, v30) * Dm
 
     col1 = og.vec3(F[0, 0], F[1, 0], F[2, 0])
     col2 = og.vec3(F[0, 1], F[1, 1], F[2, 1])
@@ -710,7 +721,7 @@ def eval_tetrahedra(x: og.array(dtype=og.vec3),
     Ic = dot(col1, col1) + dot(col2, col2) + dot(col3, col3)
 
     # deviatoric part
-    P = F * k_mu * (1.0 - 1.0 / (Ic + 1.0)) + ogdt * k_damp
+    P = F * k_mu * (1.0 - 1.0 / (Ic + 1.0)) + dFdt * k_damp
     H = P * og.transpose(Dm)
 
     f1 = og.vec3(H[0, 0], H[1, 0], H[2, 0])

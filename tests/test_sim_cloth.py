@@ -16,11 +16,11 @@ import render
 
 # params
 sim_width = 64
-sim_height = 8
+sim_height = 32
 
 sim_fps = 60.0
 sim_substeps = 32
-sim_duration = 2.0
+sim_duration = 5.0
 sim_frames = int(sim_duration*sim_fps)
 sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
@@ -68,8 +68,8 @@ builder.add_shape_mesh(
     mesh=mesh,
     pos=(0.0, 0.0, 0.0),
     rot=og.quat_identity(),
-    ke=1.e+1,
-    kd=1.e+1,
+    ke=1.e+2,
+    kd=1.e+2,
     kf=1.e+1)
 
 #builder.add_shape_sphere(body=-1,)
@@ -77,9 +77,12 @@ builder.add_shape_mesh(
 
 model = builder.finalize(adapter=device)
 model.ground = False
-model.tri_ke = 1.e+4
-model.tri_ka = 1.e+4
-model.tri_kb = 0.0
+model.tri_ke = 1.e+3
+model.tri_ka = 1.e+3
+model.tri_kb = 1.0
+model.tri_kd = 1.e+1
+
+model.contact_kd = 1.e+2
 
 # disable cloth
 #model.edge_count = 0
