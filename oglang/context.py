@@ -403,7 +403,7 @@ class StoreFunc:
         if (args[1].type != int and args[1].type != oglang.types.int32 and args[1].type != oglang.types.int64 and args[1].type != oglang.types.uint64):
             raise Exception("store() argument input 1 must be a int")
         if (args[2].type != args[0].type.dtype):
-            raise Exception("store() argument input 2 must be of the same type as the array")
+            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
 
         return None
 
@@ -675,6 +675,15 @@ def rename(name, return_type):
 
     return func
 
+def wrap(adj):
+    def value_type(args):
+        if (adj.return_var):
+            return adj.return_var.type
+        else:
+            return None
+
+    return value_type
+
 
 # global dictionary of modules
 user_modules = {}
@@ -690,15 +699,6 @@ def get_module(m):
 #---------------------------------------------
 # stores all functions and kernels for a module
 
-def wrap(adj):
-    def value_type(args):
-        if (adj.return_var):
-            return adj.return_var.type
-        else:
-            return None
-
-    return value_type
-
 class Module:
 
     def __init__(self, name):
@@ -710,7 +710,18 @@ class Module:
         self.dll = None
 
     def register_kernel(self, kernel):
+
+        if kernel.key in self.kernels:
+            
+            # if kernel is replacing an old one then assume it has changed and 
+            # force a rebuild / reload of the dynamic libary 
+            if (self.dll):
+                oglang.build.unload_module(self.dll)
+                self.dll = None
+
+        # register new kernel
         self.kernels[kernel.key] = kernel
+
 
     def register_function(self, func):
         self.functions[func.key] = func
