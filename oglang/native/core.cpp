@@ -3,8 +3,12 @@
 #include "stdlib.h"
 #include "string.h"
 
+
+bool cuda_init();
+
 void init()
 {
+    cuda_init();
 }
 
 void shutdown()

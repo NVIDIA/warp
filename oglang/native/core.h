@@ -25,7 +25,7 @@
     #if _DEBUG
         #define check_cuda(code) { check_cuda_impl(code, __FILE__, __LINE__); }
     #else
-        #define check_cuda(code)
+        #define check_cuda(code) code;
     #endif
 
     void check_cuda_impl(cudaError_t code, const char* file, int line)
@@ -507,7 +507,7 @@ inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
 extern "C"
 {
     OG_API void init();
-    OG_API void shutdown();
+    //OG_API void shutdown();
 
     OG_API void* alloc_host(size_t s);
     OG_API void* alloc_device(size_t s);
@@ -538,7 +538,16 @@ extern "C"
     // ensures all device side operations have completed
     OG_API void synchronize();
 
+    // return cudaError_t code
+    OG_API uint64_t cuda_check_device();
+    
+    OG_API void cuda_acquire_context();
+    OG_API void cuda_restore_context();
+    OG_API void* cuda_get_context();
+    OG_API void cuda_set_context(void* ctx);
+
 }
+
 
 
 #include "mesh.h"

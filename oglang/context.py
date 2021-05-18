@@ -914,7 +914,14 @@ class Runtime:
         self.core.mesh_refit_host.argtypes = [c_uint64]
         self.core.mesh_refit_device.argtypes = [c_uint64]
 
+        self.core.cuda_check_device.restype = c_uint64
+        self.core.cuda_get_context.restype = c_void_p
+
         self.core.init()
+
+        # save context
+        self.cuda_device = self.core.cuda_get_context()
+        pass
 
 
     # host functions
@@ -925,7 +932,6 @@ class Runtime:
     def free_host(self, ptr):
         self.core.free_host(cast(ptr,POINTER(c_int)))
 
-
     # device functions
     def alloc_device(self, num_bytes):
         ptr = self.core.alloc_device(c_size_t(num_bytes))
@@ -933,6 +939,18 @@ class Runtime:
 
     def free_device(self, ptr):
         self.core.free_device(cast(ptr,POINTER(c_int)))
+
+    def verify_device(self):
+
+        if oglang.config.verify_cuda:
+
+            context = self.core.cuda_get_context()
+            if (context != self.cuda_device):
+                raise RuntimeError("Unexpected CUDA device, original {} current: {}".format(self.cuda_device, context))
+
+            err = self.core.cuda_check_device()
+            if (err != 0):
+                raise RuntimeError("CUDA error detected: {}".format(err))
 
 
 
@@ -964,11 +982,11 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
 
     if (device == "cpu"):
         ptr = runtime.core.alloc_host(num_bytes) 
-        runtime.core.memset_host(cast(ptr,POINTER(c_int)), 0, num_bytes)
+        runtime.core.memset_host(cast(ptr,POINTER(c_int)), c_int(0), c_size_t(num_bytes))
 
     if( device == "cuda"):
         ptr = runtime.alloc_device(num_bytes)
-        runtime.core.memset_device(cast(ptr,POINTER(c_int)), 0, num_bytes)
+        runtime.core.memset_device(cast(ptr,POINTER(c_int)), c_int(0), c_size_t(num_bytes))
 
     if (ptr == None and num_bytes > 0):
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
@@ -1074,7 +1092,22 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
         elif device.startswith('cuda'):
             kernel.forward_cuda(*params)
 
-    
+        runtime.verify_device()
+
+
+# ensures that correct CUDA is set for the guards lifetime
+# restores the previous CUDA context on exit
+class ScopedCudaGuard:
+
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        runtime.core.cuda_acquire_context()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        runtime.core.cuda_restore_context()
+
 
 # initialize global runtime
 runtime = Runtime()

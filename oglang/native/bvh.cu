@@ -5,7 +5,6 @@
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-#include <cub/cub.cuh>
 
 namespace og
 {

@@ -655,17 +655,11 @@ extern "C" {{
 OG_API void {name}_cuda_forward(int dim, {forward_args})
 {{
     {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256>>>(dim, {forward_params});
-
-    check_cuda(cudaPeekAtLastError());
-    check_cuda(cudaDeviceSynchronize());
 }}
 
 OG_API void {name}_cuda_backward(int dim, {forward_args}, {reverse_args})
 {{
     {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256>>>(dim, {forward_params}, {reverse_params});
-
-    check_cuda(cudaPeekAtLastError());
-    check_cuda(cudaDeviceSynchronize());
 }}
 
 }} // extern C

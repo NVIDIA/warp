@@ -90,10 +90,13 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             ld_flags = "/DEBUG /dll"
             ld_inputs = []
 
-        if (config == "release"):
+        elif (config == "release"):
             cpp_flags = "/Ox, -DNDEBUG, /fp:fast"
             ld_flags = "/dll"
             ld_inputs = []
+
+        else:
+            raise RuntimeError("Unrecognized build configuration (debug, release), got: {}".format(config))
 
 
         with ScopedTimer("build"):
