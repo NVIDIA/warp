@@ -1039,7 +1039,9 @@ def eval_soft_contacts(
 
         sign = float(0.0)
         max_dist = 0.2
-        p = og.mesh_query_point(mesh, x_local, max_dist, sign)
+        
+        p = og.mesh_query_point(mesh, x_local/geo_scale[0], max_dist, sign)
+        p = p*geo_scale[0]
 
         delta = x_local-p
         c = og.min(og.length(delta)*sign - margin, 0.0)

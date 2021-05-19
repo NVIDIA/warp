@@ -308,6 +308,7 @@ inline CUDA_CALLABLE int tid()
 #include "vec4.h"
 #include "mat22.h"
 #include "mat33.h"
+#include "mat44.h"
 #include "matnn.h"
 #include "quat.h"
 #include "spatial.h"

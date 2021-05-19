@@ -43,6 +43,9 @@ void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
 
     // root is always in first slot for top down builders
     bvh.root = 0;
+
+    if (n == 0)
+        return;
     
     std::vector<int> indices(n);
     for (int i=0; i < n; ++i)

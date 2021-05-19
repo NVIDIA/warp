@@ -52,6 +52,8 @@ def find_cuda():
     return cuda_home
     
 
+def quote(path):
+    return "\"" + path + "\""
 
 def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force=False):
 
@@ -100,25 +102,25 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
 
         with ScopedTimer("build"):
-            cpp_cmd = "cl.exe {cflags} -DCPU -c {cpp_path} /Fo{cpp_path}.obj ".format(cflags=cpp_flags, cpp_path=cpp_path)
+            cpp_cmd = 'cl.exe {cflags} -DCPU -c "{cpp_path}" /Fo"{cpp_out}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
             run_cmd(cpp_cmd)
 
-            ld_inputs.append(cpp_out)
+            ld_inputs.append(quote(cpp_out))
 
         if (cuda_home):
 
             if (config == "debug"):
-                cuda_cmd = "\"{cuda_home}/bin/nvcc\" --compiler-options=/Zi,/Od -g -G -O0 -line-info -gencode=arch=compute_35,code=compute_35 -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/Zi,/Od -g -G -O0 -line-info -gencode=arch=compute_35,code=compute_35 -DCUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
             elif (config == "release"):
-                cuda_cmd = "\"{cuda_home}/bin/nvcc\" -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DCUDA -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DCUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
             with ScopedTimer("build_cuda"):
                 run_cmd(cuda_cmd)
-                ld_inputs.append(cu_out)
+                ld_inputs.append(quote(cu_out))
 
         with ScopedTimer("link"):
-            link_cmd = 'link.exe {inputs} cudart.lib {flags} /LIBPATH:"{cuda_home}/lib/x64" /out:{dll_path}'.format(inputs=' '.join(ld_inputs), cuda_home=cuda_home, flags=ld_flags, dll_path=dll_path)
+            link_cmd = 'link.exe {inputs} cudart.lib {flags} /LIBPATH:"{cuda_home}/lib/x64" /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), cuda_home=cuda_home, flags=ld_flags, dll_path=dll_path)
             run_cmd(link_cmd)
         
     else:
@@ -138,23 +140,23 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
 
         with ScopedTimer("build"):
-            build_cmd = "g++ {cflags} -c -o {cpp_path}.o {cpp_path}".format(cflags=cpp_flags, cpp_path=cpp_path)
+            build_cmd = 'g++ {cflags} -c -o "{cpp_out}" "{cpp_path}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
             run_cmd(build_cmd)
 
-            ld_inputs.append(cpp_out)
+            ld_inputs.append(quote(cpp_out))
 
         if (cuda_home):
 
-            cuda_cmd = "{cuda_home}/bin/nvcc -gencode=arch=compute_35,code=compute_35 -DCUDA --compiler-options -fPIC -o {cu_path}.o -c {cu_path}".format(cuda_home=cuda_home, cu_path=cu_path)
+            cuda_cmd = '"{cuda_home}/bin/nvcc" -gencode=arch=compute_35,code=compute_35 -DCUDA --compiler-options -fPIC -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
             with ScopedTimer("build_cuda"):
                 run_cmd(cuda_cmd)
 
-                ld_inputs.append(cu_out)
-                ld_inputs.append("-L{cuda_home}/lib64 -lcudart")
+                ld_inputs.append(quote(cu_out))
+                ld_inputs.append('-L"{cuda_home}/lib64" -lcudart')
 
         with ScopedTimer("link"):
-            link_cmd = "g++ -shared -o {dll_path} {inputs}".format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)
+            link_cmd = 'g++ -shared -o "{dll_path}" {inputs}'.format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=quote(dll_path))
             run_cmd(link_cmd)
 
     

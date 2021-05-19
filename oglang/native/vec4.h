@@ -7,7 +7,8 @@ struct vec4
     float z;
     float w;
 
-    inline CUDA_CALLABLE vec4(float x=0.0f, float y=0.0f, float z=0.0f, float w=0.0f) : x(x), y(y), z(z), w(w) {}
+    inline CUDA_CALLABLE vec4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
+    inline CUDA_CALLABLE vec4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
     explicit inline CUDA_CALLABLE vec4(const float* p) : x(p[0]), y(p[1]), z(p[2]), w(p[3]) {}
 
     float operator[](int index) const

@@ -7,11 +7,12 @@ from copy import copy as shallowcopy
 # built-in types
 
 
-class vec3:
+class vec3(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*3)]
+    
     def __init__(self):
-        x = 0.0
-        y = 0.0
-        z = 0.0
+        pass        
 
     @staticmethod
     def length():
@@ -23,51 +24,13 @@ class vec3:
 
     @staticmethod
     def ctype():
-        return ctypes.c_float        
+        return ctypes.c_float
 
 
+class vec4(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*4)]
 
-class vec4:
-    def __init__(self):
-        x = 0.0
-        y = 0.0
-        z = 0.0
-        w = 0.0
-
-    @staticmethod
-    def length():
-        return 4
-
-
-    @staticmethod
-    def size():
-        return 16
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
-
-class quat:
-    def __init__(self):
-        x = 0.0
-        y = 0.0
-        z = 0.0
-        w = 1.0
-
-    @staticmethod
-    def length():
-        return 4
-
-    @staticmethod
-    def size():
-        return 16
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
-
-
-class mat22:
     def __init__(self):
         pass
 
@@ -81,12 +44,54 @@ class mat22:
 
     @staticmethod
     def ctype():
-        return ctypes.c_float        
+        return ctypes.c_float
 
-class mat33:
+class quat(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*4)]
+
     def __init__(self):
         pass
+    
+    @staticmethod
+    def length():
+        return 4
 
+    @staticmethod
+    def size():
+        return 16
+
+    @staticmethod
+    def ctype():
+        return ctypes.c_float        
+
+
+class mat22(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*4)]
+    
+    def __init__(self):
+        pass
+    
+    @staticmethod
+    def length():
+        return 4
+
+    @staticmethod
+    def size():
+        return 16
+
+    @staticmethod
+    def ctype():
+        return ctypes.c_float        
+
+class mat33(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*9)]
+    
+    def __init__(self):
+        pass
+    
     @staticmethod
     def length():
         return 9
@@ -97,12 +102,35 @@ class mat33:
 
     @staticmethod
     def ctype():
-        return ctypes.c_float        
+        return ctypes.c_float
 
-class spatial_vector:
+class mat44(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*16)]
+    
     def __init__(self):
         pass
+    
+    @staticmethod
+    def length():
+        return 16
 
+    @staticmethod
+    def size():
+        return 64
+
+    @staticmethod
+    def ctype():
+        return ctypes.c_float
+
+
+class spatial_vector(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*6)]
+
+    def __init__(self):
+        pass
+    
     @staticmethod
     def length():
         return 6
@@ -115,10 +143,13 @@ class spatial_vector:
     def ctype():
         return ctypes.c_float        
 
-class spatial_matrix:
+class spatial_matrix(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*36)]
+    
     def __init__(self):
         pass
-
+    
     @staticmethod
     def length():
         return 36
@@ -131,10 +162,13 @@ class spatial_matrix:
     def ctype():
         return ctypes.c_float
 
-class spatial_transform:
+class spatial_transform(ctypes.Structure):
+    
+    _fields_ = [("value", ctypes.c_float*7)]
+    
     def __init__(self):
         pass
-
+    
     @staticmethod
     def length():
         return 7
@@ -148,6 +182,7 @@ class spatial_transform:
         return ctypes.c_float        
 
 class void:
+
     def __init__(self):
         pass
 

@@ -43,7 +43,7 @@ class Mesh:
         com (Vec3): The center of mass of the body
     """
 
-    def __init__(self, vertices: List[Vec3], indices: List[int]):
+    def __init__(self, vertices: List[Vec3], indices: List[int], compute_inertia=True):
         """Construct a Mesh object from a triangle mesh
 
         The mesh center of mass and inertia tensor will automatically be 
@@ -58,51 +58,61 @@ class Mesh:
         self.vertices = vertices
         self.indices = indices
 
-        # compute com and inertia (using density=1.0)
-        com = np.mean(vertices, 0)
+        if compute_inertia:
 
-        num_tris = int(len(indices) / 3)
+            # compute com and inertia (using density=1.0)
+            com = np.mean(vertices, 0)
 
-        # compute signed inertia for each tetrahedron
-        # formed with the interior point, using an order-2
-        # quadrature: https://www.sciencedirect.com/science/article/pii/S0377042712001604#br000040
+            num_tris = int(len(indices) / 3)
 
-        weight = 0.25
-        alpha = math.sqrt(5.0) / 5.0
+            # compute signed inertia for each tetrahedron
+            # formed with the interior point, using an order-2
+            # quadrature: https://www.sciencedirect.com/science/article/pii/S0377042712001604#br000040
 
-        I = np.zeros((3, 3))
-        mass = 0.0
+            weight = 0.25
+            alpha = math.sqrt(5.0) / 5.0
 
-        for i in range(num_tris):
+            I = np.zeros((3, 3))
+            mass = 0.0
 
-            p = np.array(vertices[indices[i * 3 + 0]])
-            q = np.array(vertices[indices[i * 3 + 1]])
-            r = np.array(vertices[indices[i * 3 + 2]])
+            for i in range(num_tris):
 
-            mid = (com + p + q + r) / 4.0
+                p = np.array(vertices[indices[i * 3 + 0]])
+                q = np.array(vertices[indices[i * 3 + 1]])
+                r = np.array(vertices[indices[i * 3 + 2]])
 
-            pcom = p - com
-            qcom = q - com
-            rcom = r - com
+                mid = (com + p + q + r) / 4.0
 
-            Dm = np.matrix((pcom, qcom, rcom)).T
-            volume = np.linalg.det(Dm) / 6.0
+                pcom = p - com
+                qcom = q - com
+                rcom = r - com
 
-            # quadrature points lie on the line between the
-            # centroid and each vertex of the tetrahedron
-            quads = (mid + (p - mid) * alpha, mid + (q - mid) * alpha, mid + (r - mid) * alpha, mid + (com - mid) * alpha)
+                Dm = np.matrix((pcom, qcom, rcom)).T
+                volume = np.linalg.det(Dm) / 6.0
 
-            for j in range(4):
+                # quadrature points lie on the line between the
+                # centroid and each vertex of the tetrahedron
+                quads = (mid + (p - mid) * alpha, mid + (q - mid) * alpha, mid + (r - mid) * alpha, mid + (com - mid) * alpha)
 
-                # displacement of quadrature point from COM
-                d = quads[j] - com
+                for j in range(4):
 
-                I += weight * volume * (og.length_sq(d) * np.eye(3, 3) - np.outer(d, d))
-                mass += weight * volume
+                    # displacement of quadrature point from COM
+                    d = quads[j] - com
 
-        self.I = I
-        self.mass = mass
-        self.com = com
+                    I += weight * volume * (og.length_sq(d) * np.eye(3, 3) - np.outer(d, d))
+                    mass += weight * volume
+
+            self.I = I
+            self.mass = mass
+            self.com = com
+
+        else:
+            
+            self.I = np.eye(3, dtype=np.float32)
+            self.mass = 1.0
+            self.com = np.array((0.0, 0.0, 0.0))
+
+
 
     # construct simulation ready buffers from points
     def finalize(self, device):
@@ -1027,9 +1037,9 @@ class ModelBuilder:
         rp = r - p
 
         # construct basis aligned with the triangle
-        n = og.normalize(np.cross(qp, rp))
+        n = og.normalize(og.cross(qp, rp))
         e1 = og.normalize(qp)
-        e2 = og.normalize(np.cross(n, e1))
+        e2 = og.normalize(og.cross(n, e1))
 
         R = np.matrix((e1, e2))
         M = np.matrix((qp, rp))

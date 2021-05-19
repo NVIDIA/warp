@@ -479,6 +479,12 @@ class Mat33Func:
     def value_type(args):
         return mat33
 
+@builtin("mat44")
+class Mat44Func:
+    @staticmethod
+    def value_type(args):
+        return mat44
+
 
 @builtin("spatial_vector")
 class SpatialVectorFunc:
@@ -640,6 +646,20 @@ class DenseSolveBatched:
     @staticmethod
     def value_type(args):
         return None        
+
+
+# mat44 point/vec transforms
+@builtin("transform_point")
+class TransformPointFunc:
+    @staticmethod
+    def value_type(args):
+        return vec3
+
+@builtin("transform_vector")
+class TransformVectorFunc:
+    @staticmethod
+    def value_type(args):
+        return vec3
 
 @builtin("mesh_query_point")
 class MeshQueryPoint:
@@ -1023,7 +1043,7 @@ def from_numpy(arr, dtype, device="cpu", requires_grad=False):
 
 
 def synchronize():
-    runtime.core.synchronize(c_void_p(0))
+    runtime.core.synchronize()
 
 
 def launch(kernel, dim, inputs, outputs=[], device="cpu"):
@@ -1077,10 +1097,26 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
             elif (arg_type ==  oglang.types.uint64):
                 params.append(c_uint64(a))
+            
+            elif isinstance(a, np.ndarray):
 
-            else:
-                # todo: add support for other built-types as kernel arguments (vec3, quat, etc)
-                raise RuntimeError("Unknown parameter type {}".format(arg_type))
+                try:
+                    # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
+                    v = a.flatten()
+                    if (len(v) != arg_type.length()):
+                        raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.args[i].label, len(v), arg_type.length()))
+
+                    x = arg_type()
+                    for i in range(arg_type.length()):
+                        x.value[i] = v[i]
+
+                    params.append(x)
+
+                except Exception as e:
+                    
+                    print(e)
+                    # todo: add support for other built-types as kernel arguments (vec3, quat, etc)
+                    raise RuntimeError("Unknown parameter type {} for param {}".format(arg_type, kernel.args[i].label))
 
         # late bind
         if (kernel.forward_cpu == None or kernel.forward_cuda == None):

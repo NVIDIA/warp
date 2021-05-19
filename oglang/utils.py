@@ -22,6 +22,12 @@ def length_sq(a):
     return np.dot(a, a)
 
 
+def cross(a, b):
+    return np.array((a[1]*b[2] - a[2]*b[1], 
+                     a[2]*b[0] - a[0]*b[2],
+                     a[0]*b[1] - a[1]*b[0]), dtype=np.float32)
+
+
 # NumPy has no normalize() method..
 def normalize(v):
     norm = np.linalg.norm(v)
