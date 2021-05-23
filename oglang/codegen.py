@@ -533,11 +533,18 @@ class Adjoint:
                 # if adj.cond is not None:
                 #     raise SyntaxError("error, cannot assign variables in a conditional branch")
 
+                # symbol name
+                name = node.targets[0].id 
+
                 # evaluate rhs
                 out = adj.eval(node.value)
 
+                # check type matches if symbol already defined
+                if (name in adj.symbols and out.type != adj.symbols[name].type):
+                    raise TypeError("error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, out.type))
+
                 # update symbol map (assumes lhs is a Name node)
-                adj.symbols[node.targets[0].id] = out
+                adj.symbols[name] = out
                 return out
 
             elif (isinstance(node, ast.Return)):
@@ -578,6 +585,10 @@ cpu_module_header = '''
 #define float(x) cast_float(x)
 #define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
 
+#define int(x) cast_int(x)
+#define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
+
+
 using namespace og;
 
 '''
@@ -588,6 +599,10 @@ cuda_module_header = '''
 // avoid namespacing of float type for casting to float type, this is to avoid og::float(x), which is not valid in C++
 #define float(x) cast_float(x)
 #define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
+
+#define int(x) cast_int(x)
+#define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
+
 
 using namespace og;
 

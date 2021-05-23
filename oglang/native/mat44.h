@@ -199,7 +199,7 @@ inline CUDA_CALLABLE vec3 transform_point(const mat44& m, const vec3& v)
     return vec3(out.x, out.y, out.z);
 }
 
-inline CUDA_CALLABLE vec3 transform_dir(const mat44& m, const vec3& v)
+inline CUDA_CALLABLE vec3 transform_vector(const mat44& m, const vec3& v)
 {
     vec4 out = mul(m, vec4(v.x, v.y, v.z, 0.0));
     return vec3(out.x, out.y, out.z);
@@ -215,7 +215,7 @@ inline CUDA_CALLABLE void adj_transform_point(const mat44& m, const vec3& v, mat
 {
     printf("todo\n");
 }
-inline CUDA_CALLABLE void adj_transform_dir(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
+inline CUDA_CALLABLE void adj_transform_vector(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
 {
     printf("todo\n");
 }

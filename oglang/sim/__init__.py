@@ -1,2 +1,4 @@
 from . model import *
-from . integrators import *
+
+from . integrator_euler import SemiImplicitIntegrator
+from . integrator_xpbd import XPBDIntegrator

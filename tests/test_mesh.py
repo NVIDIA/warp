@@ -13,6 +13,7 @@ import render
 np.random.seed(42)
 
 
+
 @og.kernel
 def deform(positions: og.array(dtype=og.vec3), t: float):
     
@@ -44,34 +45,41 @@ def simulate(positions: og.array(dtype=og.vec3),
     v = v + og.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
     xpred = x + v*dt
 
+    face_index = int(0)
+    face_v = float(0.0)
+    face_w = float(0.0)
     sign = float(0.0)
+
     max_dist = 1.5
-    p = og.mesh_query_point(mesh, xpred, max_dist, sign)
     
-    delta = xpred-p
-    
-    dist = og.length(delta)*sign
-    err = dist - margin
+    if (og.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_v, face_w)):
+        
+        p = og.mesh_eval_position(mesh, face_index, face_v, face_w)
 
-    # mesh collision
-    if (err < 0.0):
-        n = og.normalize(delta)*sign
-        xpred = xpred - n*err
+        delta = xpred-p
+        
+        dist = og.length(delta)*sign
+        err = dist - margin
 
-    # # ground collision
-    # if (xpred[1] < margin):
-    #     xpred = og.vec3(xpred[0], margin, xpred[2])
+        # mesh collision
+        if (err < 0.0):
+            n = og.normalize(delta)*sign
+            xpred = xpred - n*err
 
-    # pbd update
-    v = (xpred - x)*(1.0/dt)
-    x = xpred
+        # # ground collision
+        # if (xpred[1] < margin):
+        #     xpred = og.vec3(xpred[0], margin, xpred[2])
 
-    og.store(positions, tid, x)
-    og.store(velocities, tid, v)
+        # pbd update
+        v = (xpred - x)*(1.0/dt)
+        x = xpred
+
+        og.store(positions, tid, x)
+        og.store(velocities, tid, v)
 
 
 device = "cuda"
-num_particles = 100000
+num_particles = 10000
 
 sim_steps = 500
 sim_dt = 1.0/60.0
@@ -93,8 +101,9 @@ indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
 
 # create og mesh
 mesh = og.Mesh(
-    og.array(points, dtype=og.vec3, device=device),
-    og.array(indices, dtype=int, device=device))
+    points=og.array(points, dtype=og.vec3, device=device),
+    velocities=None,
+    indices=og.array(indices, dtype=int, device=device))
 
 init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -0.2, 0.5]))*10.0
 init_vel = np.random.rand(num_particles, 3)*0.0

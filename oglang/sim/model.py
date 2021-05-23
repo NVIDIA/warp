@@ -1,6 +1,7 @@
 """A module for building simulation models and state.
 """
 
+from operator import pos
 import oglang as og
 
 import math
@@ -117,9 +118,11 @@ class Mesh:
     # construct simulation ready buffers from points
     def finalize(self, device):
 
-        self.mesh = og.Mesh(og.array(self.vertices, dtype=og.vec3, device=device), 
-                            og.array(self.indices, dtype=og.int32, device=device))
+        pos = og.array(self.vertices, dtype=og.vec3, device=device)
+        vel = og.zeros_like(pos)
+        indices = og.array(self.indices, dtype=og.int32, device=device)
 
+        self.mesh = og.Mesh(pos, vel, indices)
         return self.mesh.id
 
 
@@ -325,9 +328,10 @@ class Model:
         self.spring_count = 0
         self.contact_count = 0
 
-        self.gravity = og.array((0.0, -9.8, 0.0), dtype=og.float32, device=adapter)
+        self.gravity = np.array((0.0, -9.8, 0.0))
 
         self.contact_distance = 0.1
+        self.contact_margin = 0.2
         self.contact_ke = 1.e+3
         self.contact_kd = 0.0
         self.contact_kf = 1.e+3
@@ -1307,7 +1311,7 @@ class ModelBuilder:
         end_vertex = len(self.particle_q)
         end_tri = len(self.tri_indices)
 
-        adj = MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
+        adj = og.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
         # bend constraints
         for k, e in adj.edges.items():
@@ -1866,9 +1870,9 @@ class ModelBuilder:
 
         # enable ground plane
         m.ground = True
-        m.enable_tri_collisions = False
+        m.ground_plane = np.array((0.0, 1.0, 0.0, 0.0))
 
-        m.gravity = og.array((0.0, -9.8, 0.0), dtype=og.vec3, device=adapter)
+        m.enable_tri_collisions = False
 
         #-------------------------------------
         # construct generalized State (time-varying) vector

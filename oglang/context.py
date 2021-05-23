@@ -432,11 +432,16 @@ class ThreadIdFunc:
 # type construtors
 
 @builtin("float")
-class floatFunc:
+class FloatFunc:
     @staticmethod
     def value_type(args):
         return float
 
+@builtin("int")
+class IntFunc:
+    @staticmethod
+    def value_type(args):
+        return int
 
 @builtin("vec3")
 class vec3Func:
@@ -665,8 +670,20 @@ class TransformVectorFunc:
 class MeshQueryPoint:
     @staticmethod
     def value_type(args):
+        return bool
+
+
+@builtin("mesh_eval_position")
+class MeshEvalPosition:
+    @staticmethod
+    def value_type(args):
         return vec3
 
+@builtin("mesh_eval_velocity")
+class MeshEvalVelocity:
+    @staticmethod
+    def value_type(args):
+        return vec3
 
 # helpers
 
@@ -923,10 +940,10 @@ class Runtime:
         self.core.alloc_device.restype = c_void_p
         
         self.core.mesh_create_host.restype = c_uint64
-        self.core.mesh_create_host.argtypes = [c_void_p, c_void_p, c_int, c_int]
+        self.core.mesh_create_host.argtypes = [c_void_p, c_void_p, c_void_p, c_int, c_int]
 
         self.core.mesh_create_device.restype = c_uint64
-        self.core.mesh_create_device.argtypes = [c_void_p, c_void_p, c_int, c_int]
+        self.core.mesh_create_device.argtypes = [c_void_p, c_void_p, c_void_p, c_int, c_int]
 
         self.core.mesh_destroy_host.argtypes = [c_uint64]
         self.core.mesh_destroy_device.argtypes = [c_uint64]
@@ -1100,23 +1117,19 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
             
             elif isinstance(a, np.ndarray):
 
-                try:
-                    # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
-                    v = a.flatten()
-                    if (len(v) != arg_type.length()):
-                        raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.args[i].label, len(v), arg_type.length()))
+                # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
+                v = a.flatten()
+                if (len(v) != arg_type.length()):
+                    raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.args[i].label, len(v), arg_type.length()))
 
-                    x = arg_type()
-                    for i in range(arg_type.length()):
-                        x.value[i] = v[i]
+                x = arg_type()
+                for i in range(arg_type.length()):
+                    x.value[i] = v[i]
 
-                    params.append(x)
+                params.append(x)
 
-                except Exception as e:
-                    
-                    print(e)
-                    # todo: add support for other built-types as kernel arguments (vec3, quat, etc)
-                    raise RuntimeError("Unknown parameter type {} for param {}".format(arg_type, kernel.args[i].label))
+            else:
+                raise RuntimeError("Unknown parameter type {} for param {}".format(arg_type, kernel.args[i].label))
 
         # late bind
         if (kernel.forward_cpu == None or kernel.forward_cuda == None):

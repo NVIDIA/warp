@@ -49,8 +49,12 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 #torus = Usd.Stage.Open("./tests/assets/suzanne_small.usda")
 #torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Suzanne/Suzanne"))
 
-torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
+# torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
+# torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+
+torus = Usd.Stage.Open("./tests/assets/suzanne_two.usda")
 torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+
 
 #torus = Usd.Stage.Open("./tests/assets/bunny.usda")
 #torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/bunny/bunny"))
@@ -68,6 +72,7 @@ builder.add_shape_mesh(
     mesh=mesh,
     pos=(0.0, 0.0, 0.0),
     rot=og.quat_identity(),
+    scale=(1.0, 1.0, 1.0),
     ke=1.e+2,
     kd=1.e+2,
     kf=1.e+1)
@@ -76,7 +81,7 @@ builder.add_shape_mesh(
 #builder.add_shape_box(body=-1)
 
 model = builder.finalize(adapter=device)
-model.ground = False
+model.ground = True
 model.tri_ke = 1.e+3
 model.tri_ka = 1.e+3
 model.tri_kb = 1.0

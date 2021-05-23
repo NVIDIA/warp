@@ -39,11 +39,12 @@ void mesh_rem_descriptor(uint64_t id)
 
 } // namespace og
 
-uint64_t mesh_create_host(vec3* points, int* indices, int num_points, int num_tris)
+uint64_t mesh_create_host(vec3* points, vec3* velocities, int* indices, int num_points, int num_tris)
 {
     Mesh* m = new Mesh();
 
     m->points = points;
+    m->velocities = velocities;
     m->indices = indices;
 
     m->num_points = num_points;
@@ -63,11 +64,12 @@ uint64_t mesh_create_host(vec3* points, int* indices, int num_points, int num_tr
     return (uint64_t)m;
 }
 
-uint64_t mesh_create_device(vec3* points, int* indices, int num_points, int num_tris)
+uint64_t mesh_create_device(vec3* points, vec3* velocities, int* indices, int num_points, int num_tris)
 {
     Mesh mesh;
 
     mesh.points = points;
+    mesh.velocities = velocities;
     mesh.indices = indices;
 
     mesh.num_points = num_points;

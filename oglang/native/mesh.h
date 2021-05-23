@@ -12,6 +12,8 @@ namespace og
 struct Mesh
 {
     vec3* points;
+	vec3* velocities;
+
     int* indices;
 
 	bounds3* bounds;
@@ -136,13 +138,13 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, f
 	return min_point;
 }
 
-
-CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside)
+// returns true if there is a point (strictly) < distance max_dist
+CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& v, float& w)
 {
     Mesh mesh = mesh_get(id);
 
 	if (mesh.bvh.num_nodes == 0)
-		return vec3();
+		return false;
 
 	int stack[32];
     stack[0] = mesh.bvh.root;
@@ -150,9 +152,11 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 	int count = 1;
 
 	float min_dist_sq = max_dist*max_dist;
-	vec3 min_point;
-	inside = 1.0f;
-	
+	int min_face;
+	float min_v;
+	float min_w;
+	float min_inside = 1.0f;
+
 	int tests = 0;
 
 #if BVH_DEBUG
@@ -203,19 +207,21 @@ CUDA_CALLABLE inline vec3 mesh_query_point(uint64_t id, const vec3& point, float
 			if (dist_sq < min_dist_sq)
 			{
 				min_dist_sq = dist_sq;
-				min_point = c;
-
+				min_v = v;
+				min_w = w;
+				min_face = left_index;
+				
 				// if this is a 'new point', i.e.: strictly closer than previous best then update sign
 				vec3 normal = cross(q-p, r-p);
-				inside = sign(dot(normal, point-c));
+				min_inside = sign(dot(normal, point-c));
 			}
-			else if (dist_sq == min_dist_sq)
+			else if (dist_sq == min_dist_sq)	// todo: should probably use fuzzy equality here
 			{
 				// if the test point is equal, then test if inside should be updated
 				// point considered inside if *any* of the incident faces enclose the point
 				vec3 normal = cross(q-p, r-p);
 				if (dot(normal, point-c) < 0.0f)
-					inside = -1.0f;
+					min_inside = -1.0f;
 			}
 
 			tests++;
@@ -319,10 +325,25 @@ printf("%d\n", tests);
 	}
 #endif
 
-	return min_point;
+	// check if we found a point, and write outputs
+	if (min_dist_sq < max_dist*max_dist)
+	{
+		v = min_v;
+		w = min_w;
+		face = min_face;
+		inside = min_inside;
+		
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, float sign, uint64_t& adj_id, vec3& adj_point, float& adj_max_dist, float& adj_sign, const vec3& adj_ret)
+//CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, float sign, uint64_t& adj_id, vec3& adj_point, float& adj_max_dist, float& adj_sign, const vec3& adj_ret)
+CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& v, float& w,
+											   uint64_t, vec3&, float&, float&, int&, float&, float&, bool&)
 {
 
 }
@@ -404,6 +425,55 @@ CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
     else
         return 1.0f;
 }
+
+
+CUDA_CALLABLE inline vec3 mesh_eval_position(uint64_t id, int tri, float v, float w)
+{
+	Mesh mesh = mesh_get(id);
+
+	if (!mesh.points)
+		return vec3();
+
+	assert(tri < mesh.num_tris);
+
+	int i = mesh.indices[tri*3+0];
+	int j = mesh.indices[tri*3+1];
+	int k = mesh.indices[tri*3+2];
+
+	vec3 p = mesh.points[i];
+	vec3 q = mesh.points[j];
+	vec3 r = mesh.points[k];
+
+	return p*(1.0f-v-w) + q*v + r*w;
+}
+
+CUDA_CALLABLE inline vec3 mesh_eval_velocity(uint64_t id, int tri, float v, float w)
+{
+	Mesh mesh = mesh_get(id);
+
+	if (!mesh.velocities)
+		return vec3();
+
+	assert(tri < mesh.num_tris);
+
+	int i = mesh.indices[tri*3+0];
+	int j = mesh.indices[tri*3+1];
+	int k = mesh.indices[tri*3+2];
+
+	vec3 vp = mesh.velocities[i];
+	vec3 vq = mesh.velocities[j];
+	vec3 vr = mesh.velocities[k];
+
+	return vp*(1.0f-v-w) + vq*v + vr*w;
+}
+
+
+CUDA_CALLABLE inline void adj_mesh_eval_position(uint64_t id, int tri, float v, float w,
+												 uint64_t&, int&, float&, float&, const vec3&) {}
+
+CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float v, float w,
+												 uint64_t&, int&, float&, float&, const vec3&) {}
+
 
 bool mesh_get_descriptor(uint64_t id, Mesh& mesh);
 void mesh_add_descriptor(uint64_t id, const Mesh& mesh);

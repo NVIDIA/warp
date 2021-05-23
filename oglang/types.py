@@ -483,13 +483,18 @@ class array:
     #      # re-instate our __dict__ state from the pickled state
     #      self.__dict__.update(newstate)
 
-
+def get_data(array):
+    if (array):
+        return ctypes.c_void_p(array.data)
+    else:
+        return ctypes.c_void_p(0)
 
 class Mesh:
 
-    def __init__(self, points, indices):
+    def __init__(self, points, velocities, indices):
         
         self.points = points
+        self.velocities = velocities
         self.indices = indices
 
         if (points.device != indices.device):
@@ -499,10 +504,22 @@ class Mesh:
         self.context = points.context
         self.device = points.device
 
+        
+
         if (self.device == "cpu"):
-            self.id = self.context.core.mesh_create_host(points.data, indices.data, points.length, int(indices.length/3))
+            self.id = self.context.core.mesh_create_host(
+                get_data(points), 
+                get_data(velocities), 
+                get_data(indices), 
+                int(points.length), 
+                int(indices.length/3))
         else:
-            self.id = self.context.core.mesh_create_device(points.data, indices.data, points.length, int(indices.length/3))
+            self.id = self.context.core.mesh_create_device(
+                get_data(points), 
+                get_data(velocities), 
+                get_data(indices), 
+                int(points.length), 
+                int(indices.length/3))
 
 
     def __del__(self):
