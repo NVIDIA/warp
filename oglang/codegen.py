@@ -1096,9 +1096,9 @@ def codegen_module_decl(adj, device='cpu'):
 
 
 
-# def matmul(tape, m, n, k, t1, t2, A, B, C, adapter):
+# def matmul(tape, m, n, k, t1, t2, A, B, C, device):
     
-#     if (adapter == 'cpu'):
+#     if (device == 'cpu'):
 #         threads = 1
 #     else:
 #         threads = 256   # should match the threadblock size
@@ -1118,13 +1118,13 @@ def codegen_module_decl(adj, device='cpu'):
 #         outputs=[
 #             C
 #         ],
-#         adapter=adapter,
+#         device=device,
 #         preserve_output=False)
 
 
-# def matmul_batched(tape, batch_count, m, n, k, t1, t2, A_start, B_start, C_start, A, B, C, adapter):
+# def matmul_batched(tape, batch_count, m, n, k, t1, t2, A_start, B_start, C_start, A, B, C, device):
     
-#     if (adapter == 'cpu'):
+#     if (device == 'cpu'):
 #         threads = batch_count
 #     else:
 #         threads = 256*batch_count   # must match the threadblock size used in adjoint.py
@@ -1147,5 +1147,5 @@ def codegen_module_decl(adj, device='cpu'):
 #         outputs=[
 #             C
 #         ],
-#         adapter=adapter,
+#         device=device,
 #         preserve_output=False)
