@@ -1031,17 +1031,16 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
         # construct array
         return oglang.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
 
+def zeros_like(src, requires_grad=False):
+
+    arr = zeros(len(src), dtype=src.dtype, device=src.device)
+    return arr
 
 def clone(src):
     dest = empty(len(src), dtype=src.dtype, device=src.device)
     copy(dest, src)
 
     return dest
-
-def zeros_like(src, requires_grad=False):
-
-    arr = zeros(len(src), dtype=src.dtype, device=src.device)
-    return arr
 
 def empty(n, dtype=float, device="cpu", requires_grad=False):
 

@@ -361,6 +361,11 @@ class array:
             if (arr.dtype == np.float64):
                 arr = arr.astype(np.float32)
 
+            # todo: need a more robust way to convert types
+            if (arr.dtype == np.int64 and dtype==int32):
+                arr = arr.astype(np.int32)
+
+
             # if array is multi-dimensional, but data type is scalar, then flatten
             if (len(arr.shape) > 1 and type_length(dtype) == 1):
                 arr = arr.flatten()

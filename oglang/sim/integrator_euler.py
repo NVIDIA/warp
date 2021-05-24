@@ -2637,14 +2637,11 @@ class VariationalImplicitIntegrator:
 
                     self.particle_f.zero_()
 
-                    # note: implicit assumption that x.data is an alias of state_out.particle_qd.data
-                    assert(x.data == state_out.particle_qd.data)
-
                     update_state(model, state_in, state_out, x.astype(og.vec3), dt)
                     compute_forces(model, state_out, self.particle_f, None)
                     compute_residual(model, state_in, state_out, self.particle_f, dfdx, dt)
 
-                
+
                 # initialize oututput state using the input velocity to create 'predicted state'
                 init_state(model, state_in, state_out, dt)
 

@@ -15,10 +15,11 @@ import oglang.sim as ogsim
 import render
 
 np.random.seed(42)
+np.set_printoptions(threshold=sys.maxsize)
 
 # params
-sim_width = 64
-sim_height = 32
+sim_width = 8
+sim_height = 8
 
 sim_fps = 60.0
 sim_substeps = 1
@@ -28,7 +29,7 @@ sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
 sim_render = True
 
-device = "cuda"
+device = "cpu"
 
 builder = ogsim.ModelBuilder()
 
@@ -51,25 +52,16 @@ for i in range(len(builder.particle_q)):
         builder.particle_q[i] += np.array((-1.0, 0.0, 0.0))
 
 
-from pxr import Usd, UsdGeom, Gf, Sdf
-
-
 model = builder.finalize(device=device)
 model.ground = True
 model.tri_ke = 1.e+3
 model.tri_ka = 1.e+3
 model.tri_kb = 1.0
 model.tri_kd = 1.e+1
-
 model.contact_kd = 1.e+2
 
-# disable cloth
-#model.edge_count = 0
-#model.tri_count = 0
-
 #integrator = ogsim.SemiImplicitIntegrator()
-integrator = ogsim.VariationalImplicitIntegrator(model, max_iters=32, alpha=0.01, report=True)
-
+integrator = ogsim.VariationalImplicitIntegrator(model, solver="nesterov", max_iters=64, alpha=0.01, report=True)
 
 state_0 = model.state()
 state_1 = model.state()
@@ -78,6 +70,17 @@ stage = render.UsdRenderer("tests/outputs/test_sim_solver.usd")
 
 for i in range(sim_frames):
     
+    if (sim_render):
+    
+        with og.ScopedTimer("render"):
+
+            stage.begin_frame(sim_time)
+            stage.render_mesh(name="cloth", points=state_0.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
+            #stage.render_points(name="points", points=state_0.particle_q.to("cpu").numpy(), radius=0.1)
+            #stage.render_
+
+            stage.end_frame()
+
     with og.ScopedTimer("simulate"):
 
         for s in range(sim_substeps):
@@ -91,15 +94,6 @@ for i in range(sim_frames):
         og.synchronize()
 
 
-    if (sim_render):
 
-        with og.ScopedTimer("render"):
-
-            stage.begin_frame(sim_time)
-            stage.render_mesh(name="cloth", points=state_0.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
-            #stage.render_points(name="points", points=state_0.particle_q.to("cpu").numpy(), radius=0.1)
-            #stage.render_
-
-            stage.end_frame()
 
 stage.save()

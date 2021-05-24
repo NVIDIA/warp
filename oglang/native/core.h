@@ -542,6 +542,12 @@ extern "C"
 	OG_API void mesh_destroy_device(uint64_t id);
     OG_API void mesh_refit_device(uint64_t id);
 
+    OG_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
+    OG_API void array_sum_host(uint64_t a, uint64_t out, int len);
+
+    OG_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
+    OG_API void array_sum_device(uint64_t a, uint64_t out, int len);
+
     // ensures all device side operations have completed
     OG_API void synchronize();
 
