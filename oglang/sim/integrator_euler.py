@@ -2610,11 +2610,17 @@ def update_state(model, state_in, state_out, x, dt):
 
 class VariationalImplicitIntegrator:
 
-    def __init__(self, model):
-        
-        self.particle_f = og.zeros(model.particle_count, dtype=og.vec3, device=model.device)
+    def __init__(self, model, solver="gd", alpha=0.1, max_iters=32, report=False):
 
-        self.opt = Optimizer(model.particle_count*3, mode="gd", device=model.device)
+        self.solver = solver
+        self.alpha = alpha
+        self.max_iters = max_iters
+        self.report = report
+
+        self.opt = Optimizer(model.particle_count*3, mode=self.solver, device=model.device)
+
+        # allocate temporary space for evaluating particle forces
+        self.particle_f = og.zeros(model.particle_count, dtype=og.vec3, device=model.device)
 
     def simulate(self, model, state_in, state_out, dt): 
 
@@ -2648,8 +2654,9 @@ class VariationalImplicitIntegrator:
                 self.opt.solve(
                     x=x, 
                     grad_func=residual_func,
-                    max_iters=16,
-                    alpha=0.5)
+                    max_iters=self.max_iters,
+                    alpha=self.alpha,
+                    report=self.report)
 
                 # final update to output state with solved velocity
                 update_state(model, state_in, state_out, x.astype(og.vec3), dt)
