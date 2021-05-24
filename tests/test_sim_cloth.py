@@ -19,16 +19,14 @@ sim_width = 64
 sim_height = 32
 
 sim_fps = 60.0
-sim_substeps = 32
+sim_substeps = 2
 sim_duration = 5.0
 sim_frames = int(sim_duration*sim_fps)
 sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
 sim_render = True
 
-device = "cuda"
-
-integrator = ogsim.SemiImplicitIntegrator()
+device = "cpu"
 
 builder = ogsim.ModelBuilder()
 
@@ -46,14 +44,14 @@ builder.add_cloth_grid(
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-#torus = Usd.Stage.Open("./tests/assets/suzanne_small.usda")
-#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Suzanne/Suzanne"))
+torus = Usd.Stage.Open("./tests/assets/suzanne_small.usda")
+torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Suzanne/Suzanne"))
 
 # torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
 # torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
 
-torus = Usd.Stage.Open("./tests/assets/suzanne_two.usda")
-torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+# torus = Usd.Stage.Open("./tests/assets/suzanne_two.usda")
+# torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
 
 
 #torus = Usd.Stage.Open("./tests/assets/bunny.usda")
@@ -80,7 +78,7 @@ builder.add_shape_mesh(
 #builder.add_shape_sphere(body=-1,)
 #builder.add_shape_box(body=-1)
 
-model = builder.finalize(adapter=device)
+model = builder.finalize(device=device)
 model.ground = True
 model.tri_ke = 1.e+3
 model.tri_ka = 1.e+3
@@ -93,7 +91,12 @@ model.contact_kd = 1.e+2
 #model.edge_count = 0
 #model.tri_count = 0
 
-state = model.state()
+#integrator = ogsim.SemiImplicitIntegrator()
+integrator = ogsim.VariationalImplicitIntegrator(model)
+
+
+state_0 = model.state()
+state_1 = model.state()
 
 stage = render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
 
@@ -103,8 +106,11 @@ for i in range(sim_frames):
 
         for s in range(sim_substeps):
 
-            integrator.simulate(model, state, state, sim_dt)
+            integrator.simulate(model, state_0, state_1, sim_dt)
             sim_time += sim_dt
+
+            # swap states
+            (state_0, state_1) = (state_1, state_0)
 
         og.synchronize()
 
@@ -114,7 +120,7 @@ for i in range(sim_frames):
 
             stage.begin_frame(sim_time)
             #stage.render_mesh(name="cloth", points=state.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
-            stage.render_points(name="points", points=state.particle_q.to("cpu").numpy(), radius=0.1)
+            stage.render_points(name="points", points=state_0.particle_q.to("cpu").numpy(), radius=0.1)
             
             # render static geometry once
             if (i == 0):

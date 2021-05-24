@@ -78,8 +78,8 @@ def simulate(positions: og.array(dtype=og.vec3),
         og.store(velocities, tid, v)
 
 
-device = "cuda"
-num_particles = 10000
+device = "cpu"
+num_particles = 100000
 
 sim_steps = 500
 sim_dt = 1.0/60.0

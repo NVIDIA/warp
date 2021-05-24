@@ -4,11 +4,13 @@ models + state forward in time.
 """
 
 import math
+from oglang.types import vec3
 import numpy as np
 import time
 
 import oglang as og
 
+from . optimizer import Optimizer
 
 # Todo
 #-----
@@ -2203,7 +2205,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                         model.spring_damping
                     ],
                     outputs=[particle_f],
-                    device=model.adapter)
+                    device=model.device)
 
     # triangle elastic and lift/drag forces
     if (model.tri_count and model.tri_ke > 0.0):
@@ -2223,7 +2225,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                         model.tri_lift
                     ],
                     outputs=[particle_f],
-                    device=model.adapter)
+                    device=model.device)
 
     # triangle/triangle contacts
     if (model.enable_tri_collisions and model.tri_count and model.tri_ke > 0.0):
@@ -2244,7 +2246,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                         model.tri_lift
                     ],
                     outputs=[particle_f],
-                    device=model.adapter)
+                    device=model.device)
 
     # triangle bending
     if (model.edge_count):
@@ -2253,7 +2255,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                     dim=model.edge_count,
                     inputs=[state.particle_q, state.particle_qd, model.edge_indices, model.edge_rest_angle, model.edge_ke, model.edge_kd],
                     outputs=[particle_f],
-                    device=model.adapter)
+                    device=model.device)
 
     # particle ground contact
     if (model.ground and model.particle_count):
@@ -2262,7 +2264,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                     dim=model.particle_count,
                     inputs=[state.particle_q, state.particle_qd, model.contact_ke, model.contact_kd, model.contact_kf, model.contact_mu, model.contact_distance, model.ground_plane],
                     outputs=[particle_f],
-                    device=model.adapter)
+                    device=model.device)
 
     # tetrahedral FEM
     if (model.tet_count):
@@ -2271,7 +2273,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                     dim=model.tet_count,
                     inputs=[state.particle_q, state.particle_qd, model.tet_indices, model.tet_poses, model.tet_activations, model.tet_materials],
                     outputs=[particle_f],
-                    device=model.adapter)
+                    device=model.device)
 
 
     if (model.articulation_count):
@@ -2294,7 +2296,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                 outputs=[
                     rigid_f
                 ],
-                device=model.adapter,
+                device=model.device,
                 preserve_output=True)
 
 
@@ -2328,7 +2330,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                         outputs=[
                             particle_f,
                             None],
-                        device=model.adapter)
+                        device=model.device)
         else:
 
             og.launch(kernel=eval_soft_contacts,
@@ -2355,7 +2357,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                         outputs=[
                             particle_f,
                             rigid_f],
-                        device=model.adapter)
+                        device=model.device)
 
     # evaluate muscle actuation
     if (model.muscle_count):
@@ -2375,7 +2377,7 @@ def compute_forces(model, state, particle_f, rigid_f):
             outputs=[
                 rigid_f
             ],
-            device=model.adapter,
+            device=model.device,
             preserve_output=True)
 
 
@@ -2409,7 +2411,7 @@ def compute_forces(model, state, particle_f, rigid_f):
                 state.body_ft_s,
                 state.joint_tau
             ],
-            device=model.adapter,
+            device=model.device,
             preserve_output=True)
 
 
@@ -2451,11 +2453,9 @@ class SemiImplicitIntegrator:
                 state_out.particle_f.zero_()
 
             if (model.link_count):
-                state_out.rigid_f = og.zeros((model.link_count, 6), dtype=og.spatial_vector, device=model.adapter, requires_grad=True)
-                state_out.body_f_ext_s = og.zeros((model.link_count, 6), dtype=og.spatial_vector, device=model.adapter, requires_grad=True)
+                state_out.rigid_f = og.zeros((model.link_count, 6), dtype=og.spatial_vector, device=model.device, requires_grad=True)
+                state_out.body_f_ext_s = og.zeros((model.link_count, 6), dtype=og.spatial_vector, device=model.device, requires_grad=True)
 
-            #----------------------------
-            # articulations
 
             compute_forces(model, state, state_out.particle_f, None)
 
@@ -2480,7 +2480,7 @@ class SemiImplicitIntegrator:
                         state_out.joint_q,
                         state_out.joint_qd
                     ],
-                    device=model.adapter)
+                    device=model.device)
 
             #----------------------------
             # integrate particles
@@ -2502,7 +2502,161 @@ class SemiImplicitIntegrator:
                         state_out.particle_q, 
                         state_out.particle_qd
                         ],
-                    device=model.adapter)
+                    device=model.device)
 
             return state_out
 
+
+@og.kernel
+def compute_particle_residual(particle_qd_0: og.array(dtype=og.vec3),
+                            particle_qd_1: og.array(dtype=og.vec3),
+                            particle_f: og.array(dtype=og.vec3),
+                            particle_m: og.array(dtype=float),
+                            gravity: og.vec3,
+                            dt: float,
+                            residual: og.array(dtype=og.vec3)):
+
+    tid = og.tid()
+
+    m = og.load(particle_m, tid)
+    v1 = og.load(particle_qd_1, tid)
+    v0 = og.load(particle_qd_0, tid)
+    f = og.load(particle_f, tid)
+
+    err = og.vec3()
+
+    if (m > 0.0):
+        #err = (v1-v0)*m - f*dt - gravity*dt*m   
+        #invm = 1.0/(m + 1.e+3*dt*dt*16.0)
+        #err = (v1-v0)*m - f*dt - gravity*dt*m
+        #err = err*invm
+        err = (v1-v0)*m - f*dt - gravity*dt*m
+
+    og.store(residual, tid, err)
+ 
+
+@og.kernel
+def update_particle_position(
+    particle_q_0: og.array(dtype=og.vec3),
+    particle_q_1: og.array(dtype=og.vec3),
+    particle_qd_1: og.array(dtype=og.vec3),
+    x: og.array(dtype=og.vec3),
+    dt: float):
+
+    tid = og.tid()
+
+    qd_1 = og.load(x, tid)
+    
+    q_0 = og.load(particle_q_0, tid)
+    q_1 = q_0 + qd_1*dt
+
+    og.store(particle_q_1, tid, q_1)
+    og.store(particle_qd_1, tid, qd_1)
+
+
+
+def compute_residual(model, state_in, state_out, particle_f, residual, dt):
+
+    og.launch(
+        kernel=compute_particle_residual,
+        dim=model.particle_count,
+        inputs=[
+            state_in.particle_qd,
+            state_out.particle_qd,
+            particle_f,
+            model.particle_mass,
+            model.gravity,
+            dt,
+            residual.astype(dtype=og.vec3)
+        ], 
+        device=model.device)
+
+def init_state(model, state_in, state_out, dt):
+
+    og.launch(
+        kernel=integrate_particles,
+        dim=model.particle_count,
+        inputs=[
+            state_in.particle_q, 
+            state_in.particle_qd, 
+            state_in.particle_f, 
+            model.particle_inv_mass, 
+            model.gravity, 
+            dt
+        ],
+        outputs=[
+            state_out.particle_q, 
+            state_out.particle_qd
+            ],
+        device=model.device)
+
+
+# compute the final positions given output velocity (x)
+def update_state(model, state_in, state_out, x, dt):
+
+    og.launch(
+        kernel=update_particle_position,
+        dim=model.particle_count,
+        inputs=[
+            state_in.particle_q,
+            state_out.particle_q,
+            state_out.particle_qd,
+            x,
+            dt
+        ],
+        device=model.device)
+
+
+
+class VariationalImplicitIntegrator:
+
+    def __init__(self, model, solver="gd", alpha=0.1, max_iters=32, report=False):
+
+        self.solver = solver
+        self.alpha = alpha
+        self.max_iters = max_iters
+        self.report = report
+
+        self.opt = Optimizer(model.particle_count*3, mode=self.solver, device=model.device)
+
+        # allocate temporary space for evaluating particle forces
+        self.particle_f = og.zeros(model.particle_count, dtype=og.vec3, device=model.device)
+
+    def simulate(self, model, state_in, state_out, dt): 
+
+        if (state_in is state_out):
+            raise RuntimeError("Implicit integrators require state objects to not alias each other")
+
+
+        with og.ScopedTimer("simulate", False):
+
+            # alloc particle force buffer
+            if (model.particle_count):
+                
+                def residual_func(x, dfdx):
+
+                    self.particle_f.zero_()
+
+                    update_state(model, state_in, state_out, x.astype(og.vec3), dt)
+                    compute_forces(model, state_out, self.particle_f, None)
+                    compute_residual(model, state_in, state_out, self.particle_f, dfdx, dt)
+
+
+                # initialize oututput state using the input velocity to create 'predicted state'
+                init_state(model, state_in, state_out, dt)
+
+                # our optimization variable
+                x = state_out.particle_qd.astype(dtype=float)
+
+                self.opt.solve(
+                    x=x, 
+                    grad_func=residual_func,
+                    max_iters=self.max_iters,
+                    alpha=self.alpha,
+                    report=self.report)
+
+                # final update to output state with solved velocity
+                update_state(model, state_in, state_out, x.astype(og.vec3), dt)
+  
+
+            return state_out

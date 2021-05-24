@@ -209,7 +209,7 @@ class Adjoint:
         return output
 
     def add_call(adj, func, inputs, prefix='og::'):
-        # expression (zero output), e.g.: tid()
+        # expression (zero output), e.g.: void do_something();
         if (func.value_type(inputs) == None):
 
             forward_call = prefix + "{}({});".format(func.key, adj.format_args("var_", inputs))
@@ -512,40 +512,65 @@ class Adjoint:
                 return out
 
             elif (isinstance(node, ast.Subscript)):
+
                 target = adj.eval(node.value)
 
-                indices = []
+                if isinstance(target.type, array):
+                    
+                    # handles the case where we are indexing into an array, e.g.: x = arr[i]
+                    index = adj.eval(node.slice.value)
+                    out = adj.add_call(adj.builtin_functions["load"], [target, index])
+                    return out
 
-                if isinstance(node.slice.value, ast.Tuple):
-                    # handles the M[i, j] case
-                    for arg in node.slice.value.elts:
-                        var = adj.eval(arg)
-                        indices.append(var)
                 else:
-                    # simple expression
-                    var = adj.eval(node.slice.value)
-                    indices.append(var)
 
-                out = adj.add_call(adj.builtin_functions["index"], [target, *indices])
-                return out
+                    # handles non-array types, e.g: vec3, mat33, etc
+                    indices = []
+
+                    if isinstance(node.slice.value, ast.Tuple):
+                        # handles the M[i, j] case
+                        for arg in node.slice.value.elts:
+                            var = adj.eval(arg)
+                            indices.append(var)
+                    else:
+                        # simple expression
+                        var = adj.eval(node.slice.value)
+                        indices.append(var)
+
+                    out = adj.add_call(adj.builtin_functions["index"], [target, *indices])
+                    return out
 
             elif (isinstance(node, ast.Assign)):
-                # if adj.cond is not None:
-                #     raise SyntaxError("error, cannot assign variables in a conditional branch")
 
-                # symbol name
-                name = node.targets[0].id 
+                # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
+                if (isinstance(node.targets[0], ast.Subscript)):
+                    
+                    target = adj.eval(node.targets[0].value)
+                    index = adj.eval(node.targets[0].slice.value)
+                    value = adj.eval(node.value)
 
-                # evaluate rhs
-                out = adj.eval(node.value)
+                    if (isinstance(target.type, array)):
+                        adj.add_call(adj.builtin_functions["store"], [target, index, value])
+                    else:
+                        raise RuntimeError("Can only subscript assign array types")
 
-                # check type matches if symbol already defined
-                if (name in adj.symbols and out.type != adj.symbols[name].type):
-                    raise TypeError("error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, out.type))
+                    return None
 
-                # update symbol map (assumes lhs is a Name node)
-                adj.symbols[name] = out
-                return out
+                elif (isinstance(node.targets[0], ast.Name)):
+
+                    # symbol name
+                    name = node.targets[0].id 
+
+                    # evaluate rhs
+                    out = adj.eval(node.value)
+
+                    # check type matches if symbol already defined
+                    if (name in adj.symbols and out.type != adj.symbols[name].type):
+                        raise TypeError("error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, out.type))
+
+                    # update symbol map (assumes lhs is a Name node)
+                    adj.symbols[name] = out
+                    return out
 
             elif (isinstance(node, ast.Return)):
                 cond = adj.cond  # None if not in branch, else branch boolean
@@ -1096,9 +1121,9 @@ def codegen_module_decl(adj, device='cpu'):
 
 
 
-# def matmul(tape, m, n, k, t1, t2, A, B, C, adapter):
+# def matmul(tape, m, n, k, t1, t2, A, B, C, device):
     
-#     if (adapter == 'cpu'):
+#     if (device == 'cpu'):
 #         threads = 1
 #     else:
 #         threads = 256   # should match the threadblock size
@@ -1118,13 +1143,13 @@ def codegen_module_decl(adj, device='cpu'):
 #         outputs=[
 #             C
 #         ],
-#         adapter=adapter,
+#         device=device,
 #         preserve_output=False)
 
 
-# def matmul_batched(tape, batch_count, m, n, k, t1, t2, A_start, B_start, C_start, A, B, C, adapter):
+# def matmul_batched(tape, batch_count, m, n, k, t1, t2, A_start, B_start, C_start, A, B, C, device):
     
-#     if (adapter == 'cpu'):
+#     if (device == 'cpu'):
 #         threads = batch_count
 #     else:
 #         threads = 256*batch_count   # must match the threadblock size used in adjoint.py
@@ -1147,5 +1172,5 @@ def codegen_module_decl(adj, device='cpu'):
 #         outputs=[
 #             C
 #         ],
-#         adapter=adapter,
+#         device=device,
 #         preserve_output=False)

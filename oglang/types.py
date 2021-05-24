@@ -361,6 +361,11 @@ class array:
             if (arr.dtype == np.float64):
                 arr = arr.astype(np.float32)
 
+            # todo: need a more robust way to convert types
+            if (arr.dtype == np.int64 and dtype==int32):
+                arr = arr.astype(np.int32)
+
+
             # if array is multi-dimensional, but data type is scalar, then flatten
             if (len(arr.shape) > 1 and type_length(dtype) == 1):
                 arr = arr.flatten()
@@ -468,6 +473,29 @@ class array:
             synchronize()
 
             return dest
+
+    def astype(self, dtype):
+
+        # return an alias of the array memory with different type information
+        src_length = self.length*type_length(self.dtype)
+        src_capacity = self.capacity*type_length(self.dtype)
+
+        dst_length = src_length/type_length(dtype)
+        dst_capacity = src_capacity/type_length(dtype)
+
+        if ((src_length % type_length(dtype)) > 0):
+            raise RuntimeError("Dimensions are incompatible for type cast")
+
+        arr = array(
+            data=self.data, 
+            dtype=dtype,
+            length=int(dst_length),
+            capacity=int(dst_capacity),
+            device=self.device,
+            context=self.context,
+            owner=False)
+
+        return arr
 
     #  def __getstate__(self):
     #      # capture what is normally pickled

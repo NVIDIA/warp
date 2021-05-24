@@ -296,7 +296,7 @@ class XPBDIntegrator:
                             dim=model.particle_count,
                             inputs=[state_in.particle_q, state_in.particle_qd, state_out.particle_f, model.particle_inv_mass, model.gravity, dt],
                             outputs=[q_pred, qd_pred],
-                            device=model.adapter)
+                            device=model.device)
 
 
             for i in range(self.iterations):
@@ -308,7 +308,7 @@ class XPBDIntegrator:
                                 dim=model.spring_count,
                                 inputs=[state_in.particle_q, state_in.particle_qd, model.particle_inv_mass, model.spring_indices, model.spring_rest_length, model.spring_stiffness, model.spring_damping, dt],
                                 outputs=[state_out.particle_f],
-                                device=model.adapter)
+                                device=model.device)
                
                 # tetrahedral FEM
                 if (model.tet_count):
@@ -317,7 +317,7 @@ class XPBDIntegrator:
                                 dim=model.tet_count,
                                 inputs=[q_pred, qd_pred, model.particle_inv_mass, model.tet_indices, model.tet_poses, model.tet_activations, model.tet_materials, dt, model.relaxation],
                                 outputs=[state_out.particle_f],
-                                device=model.adapter)
+                                device=model.device)
 
                 # apply updates
                 og.launch(kernel=apply_deltas,
@@ -329,7 +329,7 @@ class XPBDIntegrator:
                                     dt],
                             outputs=[q_pred,
                                      qd_pred],
-                            device=model.adapter)
+                            device=model.device)
 
             state_out.particle_q = q_pred
             state_out.particle_qd = qd_pred

@@ -41,6 +41,17 @@ void synchronize()
     check_cuda(cudaStreamSynchronize(0));
 }
 
+void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len)
+{
+
+}
+
+void array_sum_device(uint64_t a, uint64_t out, int len)
+{
+    
+}
+
+
 uint64_t cuda_check_device()
 {
     cudaDeviceSynchronize();

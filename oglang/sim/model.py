@@ -265,7 +265,7 @@ class Model:
         desired.
     """
 
-    def __init__(self, adapter):
+    def __init__(self, device):
 
         self.particle_q = None
         self.particle_qd = None
@@ -348,7 +348,7 @@ class Model:
         self.edge_kd = 0.0
 
         self.particle_radius = 0.1
-        self.adapter = adapter
+        self.device = device
 
     def state(self) -> State:
         """Returns a state object for the model
@@ -387,26 +387,26 @@ class Model:
             # joints
             s.joint_qdd = og.empty_like(self.joint_qd, requires_grad=True)
             s.joint_tau = og.empty_like(self.joint_qd, requires_grad=True)
-            s.joint_S_s = og.empty((self.joint_dof_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)            
+            s.joint_S_s = og.empty((self.joint_dof_count, 6), dtype=og.float32, device=self.device, requires_grad=True)            
 
             # rigids
-            s.body_X_sc = og.empty((self.link_count, 7), dtype=og.float32, device=self.adapter, requires_grad=True)
-            s.body_X_sm = og.empty((self.link_count, 7), dtype=og.float32, device=self.adapter, requires_grad=True)
-            s.body_I_s = og.empty((self.link_count, 6, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
-            s.body_v_s = og.empty((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
-            s.body_a_s = og.empty((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
-            s.body_f_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
-            #s.body_ft_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
-            #s.body_f_ext_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.body_X_sc = og.empty((self.link_count, 7), dtype=og.float32, device=self.device, requires_grad=True)
+            s.body_X_sm = og.empty((self.link_count, 7), dtype=og.float32, device=self.device, requires_grad=True)
+            s.body_I_s = og.empty((self.link_count, 6, 6), dtype=og.float32, device=self.device, requires_grad=True)
+            s.body_v_s = og.empty((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
+            s.body_a_s = og.empty((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
+            s.body_f_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
+            #s.body_ft_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
+            #s.body_f_ext_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
 
             # system matrices
-            s.M = og.zeros(self.M_size, dtype=og.float32, device=self.adapter, requires_grad=True)
-            s.J = og.zeros(self.J_size, dtype=og.float32, device=self.adapter, requires_grad=True)
-            s.P = og.empty(self.J_size, dtype=og.float32, device=self.adapter, requires_grad=True)
-            s.H = og.empty(self.H_size, dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.M = og.zeros(self.M_size, dtype=og.float32, device=self.device, requires_grad=True)
+            s.J = og.zeros(self.J_size, dtype=og.float32, device=self.device, requires_grad=True)
+            s.P = og.empty(self.J_size, dtype=og.float32, device=self.device, requires_grad=True)
+            s.H = og.empty(self.H_size, dtype=og.float32, device=self.device, requires_grad=True)
             
             # zero since only upper triangle is set which can trigger NaN detection
-            s.L = og.zeros(self.H_size, dtype=og.float32, device=self.adapter, requires_grad=True)
+            s.L = og.zeros(self.H_size, dtype=og.float32, device=self.device, requires_grad=True)
 
         return s
 
@@ -512,11 +512,11 @@ class Model:
                     add_contact(self.shape_body[i], -1, X_bs, p, 0.0, i)
 
         # send to og
-        self.contact_body0 = og.array(body0, dtype=og.int32, device=self.adapter)
-        self.contact_body1 = og.array(body1, dtype=og.int32, device=self.adapter)
-        self.contact_point0 = og.array(point, dtype=og.float32, device=self.adapter)
-        self.contact_dist = og.array(dist, dtype=og.float32, device=self.adapter)
-        self.contact_material = og.array(mat, dtype=og.int32, device=self.adapter)
+        self.contact_body0 = og.array(body0, dtype=og.int32, device=self.device)
+        self.contact_body1 = og.array(body1, dtype=og.int32, device=self.device)
+        self.contact_point0 = og.array(point, dtype=og.float32, device=self.device)
+        self.contact_dist = og.array(dist, dtype=og.float32, device=self.device)
+        self.contact_material = og.array(mat, dtype=og.int32, device=self.device)
 
         self.contact_count = len(body0)
 
@@ -1635,14 +1635,14 @@ class ModelBuilder:
         self.body_com[i] = new_com
 
     # returns a (model, state) pair given the description
-    def finalize(self, adapter: str) -> Model:
+    def finalize(self, device: str) -> Model:
         """Convert this builder object to a concrete model for simulation.
 
         After building simulation elements this method should be called to transfer
         all data to Pyog tensors ready for simulation.
 
         Args:
-            adapter: The simulation adapter to use, e.g.: 'cpu', 'cuda'
+            device: The simulation device to use, e.g.: 'cpu', 'cuda'
 
         Returns:
 
@@ -1660,67 +1660,67 @@ class ModelBuilder:
         #-------------------------------------
         # construct Model (non-time varying) data
 
-        m = Model(adapter)
+        m = Model(device)
 
         #---------------------        
         # particles
 
         # state (initial)
-        m.particle_q = og.array(self.particle_q, dtype=og.vec3, device=adapter)
-        m.particle_qd = og.array(self.particle_qd, dtype=og.vec3, device=adapter)
+        m.particle_q = og.array(self.particle_q, dtype=og.vec3, device=device)
+        m.particle_qd = og.array(self.particle_qd, dtype=og.vec3, device=device)
 
         # model 
-        m.particle_mass = og.array(self.particle_mass, dtype=og.float32, device=adapter)
-        m.particle_inv_mass = og.array(particle_inv_mass, dtype=og.float32, device=adapter)
+        m.particle_mass = og.array(self.particle_mass, dtype=og.float32, device=device)
+        m.particle_inv_mass = og.array(particle_inv_mass, dtype=og.float32, device=device)
 
         #---------------------
         # collision geometry
-        m.shape_transform = og.array(og.transform_flatten_list(self.shape_transform), dtype=og.spatial_transform, device=adapter)
-        m.shape_body = og.array(self.shape_body, dtype=og.int32, device=adapter)
-        m.shape_geo_type = og.array(self.shape_geo_type, dtype=og.int32, device=adapter)
+        m.shape_transform = og.array(og.transform_flatten_list(self.shape_transform), dtype=og.spatial_transform, device=device)
+        m.shape_body = og.array(self.shape_body, dtype=og.int32, device=device)
+        m.shape_geo_type = og.array(self.shape_geo_type, dtype=og.int32, device=device)
         m.shape_geo_src = self.shape_geo_src
 
         # build list of ids for geometry sources (meshes, sdfs)
         shape_geo_id = []
         for geo in self.shape_geo_src:
             if (geo):
-                shape_geo_id.append(geo.finalize(device=adapter))
+                shape_geo_id.append(geo.finalize(device=device))
             else:
                 shape_geo_id.append(-1)
 
-        m.shape_geo_id = og.array(shape_geo_id, dtype=og.uint64, device=adapter)
-        m.shape_geo_scale = og.array(self.shape_geo_scale, dtype=og.vec3, device=adapter)
-        m.shape_materials = og.array(self.shape_materials, dtype=og.float32, device=adapter)
+        m.shape_geo_id = og.array(shape_geo_id, dtype=og.uint64, device=device)
+        m.shape_geo_scale = og.array(self.shape_geo_scale, dtype=og.vec3, device=device)
+        m.shape_materials = og.array(self.shape_materials, dtype=og.float32, device=device)
 
         #---------------------
         # springs
 
-        m.spring_indices = og.array(self.spring_indices, dtype=og.int32, device=adapter)
-        m.spring_rest_length = og.array(self.spring_rest_length, dtype=og.float32, device=adapter)
-        m.spring_stiffness = og.array(self.spring_stiffness, dtype=og.float32, device=adapter)
-        m.spring_damping = og.array(self.spring_damping, dtype=og.float32, device=adapter)
-        m.spring_control = og.array(self.spring_control, dtype=og.float32, device=adapter)
+        m.spring_indices = og.array(self.spring_indices, dtype=og.int32, device=device)
+        m.spring_rest_length = og.array(self.spring_rest_length, dtype=og.float32, device=device)
+        m.spring_stiffness = og.array(self.spring_stiffness, dtype=og.float32, device=device)
+        m.spring_damping = og.array(self.spring_damping, dtype=og.float32, device=device)
+        m.spring_control = og.array(self.spring_control, dtype=og.float32, device=device)
 
         #---------------------
         # triangles
 
-        m.tri_indices = og.array(self.tri_indices, dtype=og.int32, device=adapter)
-        m.tri_poses = og.array(self.tri_poses, dtype=og.mat22, device=adapter)
-        m.tri_activations = og.array(self.tri_activations, dtype=og.float32, device=adapter)
+        m.tri_indices = og.array(self.tri_indices, dtype=og.int32, device=device)
+        m.tri_poses = og.array(self.tri_poses, dtype=og.mat22, device=device)
+        m.tri_activations = og.array(self.tri_activations, dtype=og.float32, device=device)
 
         #---------------------
         # edges
 
-        m.edge_indices = og.array(self.edge_indices, dtype=og.int32, device=adapter)
-        m.edge_rest_angle = og.array(self.edge_rest_angle, dtype=og.float32, device=adapter)
+        m.edge_indices = og.array(self.edge_indices, dtype=og.int32, device=device)
+        m.edge_rest_angle = og.array(self.edge_rest_angle, dtype=og.float32, device=device)
 
         #---------------------
         # tetrahedra
 
-        m.tet_indices = og.array(self.tet_indices, dtype=og.int32, device=adapter)
-        m.tet_poses = og.array(self.tet_poses, dtype=og.mat33, device=adapter)
-        m.tet_activations = og.array(self.tet_activations, dtype=og.float32, device=adapter)
-        m.tet_materials = og.array(self.tet_materials, dtype=og.float32, device=adapter)
+        m.tet_indices = og.array(self.tet_indices, dtype=og.int32, device=device)
+        m.tet_poses = og.array(self.tet_poses, dtype=og.mat33, device=device)
+        m.tet_activations = og.array(self.tet_activations, dtype=og.float32, device=device)
+        m.tet_materials = og.array(self.tet_materials, dtype=og.float32, device=device)
 
         #-----------------------
         # muscles
@@ -1730,11 +1730,11 @@ class ModelBuilder:
         # close the muscle waypoint indices
         self.muscle_start.append(len(self.muscle_links))
 
-        m.muscle_start = og.array(self.muscle_start, dtype=og.int32, device=adapter)
-        m.muscle_params = og.array(self.muscle_params, dtype=og.float32, device=adapter)
-        m.muscle_links = og.array(self.muscle_links, dtype=og.int32, device=adapter)
-        m.muscle_points = og.array(self.muscle_points, dtype=og.float32, device=adapter)
-        m.muscle_activation = og.array(self.muscle_activation, dtype=og.float32, device=adapter)
+        m.muscle_start = og.array(self.muscle_start, dtype=og.int32, device=device)
+        m.muscle_params = og.array(self.muscle_params, dtype=og.float32, device=device)
+        m.muscle_links = og.array(self.muscle_links, dtype=og.int32, device=device)
+        m.muscle_points = og.array(self.muscle_points, dtype=og.float32, device=device)
+        m.muscle_activation = og.array(self.muscle_activation, dtype=og.float32, device=device)
 
         #--------------------------------------
         # articulations
@@ -1747,7 +1747,7 @@ class ModelBuilder:
             body_I_m.append(og.spatial_matrix_from_inertia(self.body_inertia[i], self.body_mass[i]))
             body_X_cm.append(og.transform(self.body_com[i], og.quat_identity()))
         
-        m.body_I_m = og.array(body_I_m, dtype=og.float32, device=adapter)
+        m.body_I_m = og.array(body_I_m, dtype=og.float32, device=device)
 
 
         articulation_count = len(self.articulation_start)
@@ -1808,45 +1808,45 @@ class ModelBuilder:
             m.H_size += dof_count*dof_count
             
 
-        m.articulation_joint_start = og.array(self.articulation_start, dtype=og.int32, device=adapter)
+        m.articulation_joint_start = og.array(self.articulation_start, dtype=og.int32, device=device)
 
         # matrix offsets for batched gemm
-        m.articulation_J_start = og.array(articulation_J_start, dtype=og.int32, device=adapter)
-        m.articulation_M_start = og.array(articulation_M_start, dtype=og.int32, device=adapter)
-        m.articulation_H_start = og.array(articulation_H_start, dtype=og.int32, device=adapter)
+        m.articulation_J_start = og.array(articulation_J_start, dtype=og.int32, device=device)
+        m.articulation_M_start = og.array(articulation_M_start, dtype=og.int32, device=device)
+        m.articulation_H_start = og.array(articulation_H_start, dtype=og.int32, device=device)
         
-        m.articulation_M_rows = og.array(articulation_M_rows, dtype=og.int32, device=adapter)
-        m.articulation_H_rows = og.array(articulation_H_rows, dtype=og.int32, device=adapter)
-        m.articulation_J_rows = og.array(articulation_J_rows, dtype=og.int32, device=adapter)
-        m.articulation_J_cols = og.array(articulation_J_cols, dtype=og.int32, device=adapter)
+        m.articulation_M_rows = og.array(articulation_M_rows, dtype=og.int32, device=device)
+        m.articulation_H_rows = og.array(articulation_H_rows, dtype=og.int32, device=device)
+        m.articulation_J_rows = og.array(articulation_J_rows, dtype=og.int32, device=device)
+        m.articulation_J_cols = og.array(articulation_J_cols, dtype=og.int32, device=device)
 
-        m.articulation_dof_start = og.array(articulation_dof_start, dtype=og.int32, device=adapter)
-        m.articulation_coord_start = og.array(articulation_coord_start, dtype=og.int32, device=adapter)
+        m.articulation_dof_start = og.array(articulation_dof_start, dtype=og.int32, device=device)
+        m.articulation_coord_start = og.array(articulation_coord_start, dtype=og.int32, device=device)
 
         # state (initial)
-        m.joint_q = og.array(self.joint_q, dtype=og.float32, device=adapter)
-        m.joint_qd = og.array(self.joint_qd, dtype=og.float32, device=adapter)
+        m.joint_q = og.array(self.joint_q, dtype=og.float32, device=device)
+        m.joint_qd = og.array(self.joint_qd, dtype=og.float32, device=device)
 
         # model
-        m.joint_type = og.array(self.joint_type, dtype=og.int32, device=adapter)
-        m.joint_parent = og.array(self.joint_parent, dtype=og.int32, device=adapter)
-        m.joint_X_pj = og.array(og.transform_flatten_list(self.joint_X_pj), dtype=og.float32, device=adapter)
-        m.joint_X_cm = og.array(og.transform_flatten_list(body_X_cm), dtype=og.float32, device=adapter)
-        m.joint_axis = og.array(self.joint_axis, dtype=og.float32, device=adapter)
-        m.joint_q_start = og.array(self.joint_q_start, dtype=og.int32, device=adapter) 
-        m.joint_qd_start = og.array(self.joint_qd_start, dtype=og.int32, device=adapter)
+        m.joint_type = og.array(self.joint_type, dtype=og.int32, device=device)
+        m.joint_parent = og.array(self.joint_parent, dtype=og.int32, device=device)
+        m.joint_X_pj = og.array(og.transform_flatten_list(self.joint_X_pj), dtype=og.float32, device=device)
+        m.joint_X_cm = og.array(og.transform_flatten_list(body_X_cm), dtype=og.float32, device=device)
+        m.joint_axis = og.array(self.joint_axis, dtype=og.float32, device=device)
+        m.joint_q_start = og.array(self.joint_q_start, dtype=og.int32, device=device) 
+        m.joint_qd_start = og.array(self.joint_qd_start, dtype=og.int32, device=device)
 
         # dynamics properties
-        m.joint_armature = og.array(self.joint_armature, dtype=og.float32, device=adapter)
+        m.joint_armature = og.array(self.joint_armature, dtype=og.float32, device=device)
         
-        m.joint_target = og.array(self.joint_target, dtype=og.float32, device=adapter)
-        m.joint_target_ke = og.array(self.joint_target_ke, dtype=og.float32, device=adapter)
-        m.joint_target_kd = og.array(self.joint_target_kd, dtype=og.float32, device=adapter)
+        m.joint_target = og.array(self.joint_target, dtype=og.float32, device=device)
+        m.joint_target_ke = og.array(self.joint_target_ke, dtype=og.float32, device=device)
+        m.joint_target_kd = og.array(self.joint_target_kd, dtype=og.float32, device=device)
 
-        m.joint_limit_lower = og.array(self.joint_limit_lower, dtype=og.float32, device=adapter)
-        m.joint_limit_upper = og.array(self.joint_limit_upper, dtype=og.float32, device=adapter)
-        m.joint_limit_ke = og.array(self.joint_limit_ke, dtype=og.float32, device=adapter)
-        m.joint_limit_kd = og.array(self.joint_limit_kd, dtype=og.float32, device=adapter)
+        m.joint_limit_lower = og.array(self.joint_limit_lower, dtype=og.float32, device=device)
+        m.joint_limit_upper = og.array(self.joint_limit_upper, dtype=og.float32, device=device)
+        m.joint_limit_ke = og.array(self.joint_limit_ke, dtype=og.float32, device=device)
+        m.joint_limit_kd = og.array(self.joint_limit_kd, dtype=og.float32, device=device)
 
         # counts
         m.particle_count = len(self.particle_q)

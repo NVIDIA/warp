@@ -88,12 +88,12 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
         cu_out = cu_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = "/Zi, /Od, /DEBUG"
+            cpp_flags = "/Zi, /Od, /DEBUG, -DCPU"
             ld_flags = "/DEBUG /dll"
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = "/Ox, -DNDEBUG, /fp:fast"
+            cpp_flags = "/Ox, -DNDEBUG, -DCPU, /fp:fast"
             ld_flags = "/dll"
             ld_inputs = []
 
@@ -102,7 +102,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
 
         with ScopedTimer("build"):
-            cpp_cmd = 'cl.exe {cflags} -DCPU -c "{cpp_path}" /Fo"{cpp_out}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
+            cpp_cmd = 'cl.exe {cflags} -c "{cpp_path}" /Fo"{cpp_out}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
             run_cmd(cpp_cmd)
 
             ld_inputs.append(quote(cpp_out))
@@ -129,12 +129,12 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
         cu_out = cu_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = "-O0 -g -D_DEBUG -fPIC --std=c++11"
+            cpp_flags = "-O0 -g -D_DEBUG -DCPU -fPIC --std=c++11"
             ld_flags = "-D_DEBUG"
             ld_inputs = []
 
         if (config == "release"):
-            cpp_flags = "-O3 -DNDEBUG -fPIC --std=c++11"
+            cpp_flags = "-O3 -DNDEBUG -DCPU  -fPIC --std=c++11"
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
@@ -156,7 +156,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
                 ld_inputs.append('-L"{cuda_home}/lib64" -lcudart')
 
         with ScopedTimer("link"):
-            link_cmd = 'g++ -shared -o "{dll_path}" {inputs}'.format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=quote(dll_path))
+            link_cmd = 'g++ -shared -o "{dll_path}" {inputs}'.format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)
             run_cmd(link_cmd)
 
     
