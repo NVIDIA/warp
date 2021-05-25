@@ -3,61 +3,6 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-void* alloc_device(size_t s)
-{
-    void* ptr;
-    check_cuda(cudaMalloc(&ptr, s));
-
-    return ptr;
-}
-
-void free_device(void* ptr)
-{
-    check_cuda(cudaFree(ptr));
-}
-
-void memcpy_h2d(void* dest, void* src, size_t n)
-{
-    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyHostToDevice));
-}
-
-void memcpy_d2h(void* dest, void* src, size_t n)
-{
-    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToHost));
-}
-
-void memcpy_d2d(void* dest, void* src, size_t n)
-{
-    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice));
-}
-
-void memset_device(void* dest, int value, size_t n)
-{
-    check_cuda(cudaMemsetAsync(dest, value, n));
-}
-
-void synchronize()
-{
-    check_cuda(cudaStreamSynchronize(0));
-}
-
-void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len)
-{
-
-}
-
-void array_sum_device(uint64_t a, uint64_t out, int len)
-{
-    
-}
-
-
-uint64_t cuda_check_device()
-{
-    cudaDeviceSynchronize();
-    return cudaPeekAtLastError(); 
-}
-
 
 #if defined(__linux__)
 #include <dlfcn.h>
@@ -84,6 +29,8 @@ static cuCtxSetCurrent_t* cuCtxSetCurrent_f;
 
 static CUcontext g_cuda_context;
 static CUcontext g_save_context;
+
+static cudaStream_t g_cuda_stream;
 
 bool cuda_init()
 {
@@ -121,7 +68,100 @@ bool cuda_init()
     
     g_cuda_context = ctx;
     
+    check_cuda(cudaStreamCreate(&g_cuda_stream));
+    
     return true;
+}
+
+void* alloc_device(size_t s)
+{
+    void* ptr;
+    check_cuda(cudaMalloc(&ptr, s));
+
+    return ptr;
+}
+
+void free_device(void* ptr)
+{
+    check_cuda(cudaFree(ptr));
+}
+
+void memcpy_h2d(void* dest, void* src, size_t n)
+{
+    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyHostToDevice, g_cuda_stream));
+}
+
+void memcpy_d2h(void* dest, void* src, size_t n)
+{
+    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToHost, g_cuda_stream));
+}
+
+void memcpy_d2d(void* dest, void* src, size_t n)
+{
+    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice, g_cuda_stream));
+}
+
+void memset_device(void* dest, int value, size_t n)
+{
+    check_cuda(cudaMemsetAsync(dest, value, n, g_cuda_stream));
+}
+
+void synchronize()
+{
+    check_cuda(cudaStreamSynchronize(g_cuda_stream));
+}
+
+void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len)
+{
+
+}
+
+void array_sum_device(uint64_t a, uint64_t out, int len)
+{
+    
+}
+
+
+uint64_t cuda_check_device()
+{
+    cudaDeviceSynchronize();
+    return cudaPeekAtLastError(); 
+}
+
+
+
+void* cuda_get_stream()
+{
+    return g_cuda_stream;
+}
+
+void cuda_graph_begin_capture()
+{
+    check_cuda(cudaStreamBeginCapture(g_cuda_stream, cudaStreamCaptureModeGlobal));
+}
+
+void* cuda_graph_end_capture()
+{
+    cudaGraph_t graph;
+    check_cuda(cudaStreamEndCapture(g_cuda_stream, &graph));
+
+    cudaGraphExec_t graph_exec;
+    check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0))
+
+    // free source graph
+    check_cuda(cudaGraphDestroy(graph));
+
+    return graph_exec;
+}
+
+void cuda_graph_launch(void* graph_exec)
+{
+    check_cuda(cudaGraphLaunch((cudaGraphExec_t)graph_exec, g_cuda_stream));
+}
+
+void cuda_graph_destroy(void* graph_exec)
+{
+    check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
 }
 
 void cuda_acquire_context()

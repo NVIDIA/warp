@@ -692,14 +692,14 @@ cuda_module_template = '''
 extern "C" {{
 
 // Python entry points
-OG_API void {name}_cuda_forward(int dim, {forward_args})
+OG_API void {name}_cuda_forward(void* stream, int dim, {forward_args})
 {{
-    {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256>>>(dim, {forward_params});
+    {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(dim, {forward_params});
 }}
 
-OG_API void {name}_cuda_backward(int dim, {forward_args}, {reverse_args})
+OG_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse_args})
 {{
-    {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256>>>(dim, {forward_params}, {reverse_params});
+    {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(dim, {forward_params}, {reverse_params});
 }}
 
 }} // extern C
@@ -736,9 +736,9 @@ cuda_module_header_template = '''
 extern "C" {{
 
 // Python CUDA entry points
-OG_API void {name}_cuda_forward(int dim, {forward_args});
+OG_API void {name}_cuda_forward(void* stream, int dim, {forward_args});
 
-OG_API void {name}_cuda_backward(int dim, {forward_args}, {reverse_args});
+OG_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse_args});
 
 }} // extern C
 '''

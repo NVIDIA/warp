@@ -97,22 +97,29 @@ state_1 = model.state()
 
 stage = render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
 
+# create update graph
+og.capture_begin()
+
+og.sim.collide(model, state_0)
+
+for s in range(sim_substeps):
+
+    integrator.simulate(model, state_0, state_1, sim_dt)
+    sim_time += sim_dt
+
+    # swap states
+    (state_0, state_1) = (state_1, state_0)
+
+graph = og.capture_end()
+
+
+# launch simulation
 for i in range(sim_frames):
     
     with og.ScopedTimer("simulate", active=True):
 
-
-        og.sim.collide(model, state_0)
-
-        for s in range(sim_substeps):
-
-            integrator.simulate(model, state_0, state_1, sim_dt)
-            sim_time += sim_dt
-
-            # swap states
-            (state_0, state_1) = (state_1, state_0)
-
-        og.synchronize()
+        og.capture_launch(graph)
+        sim_time += 1.0/60.0
 
     if (sim_render):
 

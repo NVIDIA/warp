@@ -953,11 +953,16 @@ class Runtime:
 
         self.core.cuda_check_device.restype = c_uint64
         self.core.cuda_get_context.restype = c_void_p
+        self.core.cuda_get_stream.restype = c_void_p
+        self.core.cuda_graph_end_capture.restype = c_void_p
 
         self.core.init()
 
         # save context
         self.cuda_device = self.core.cuda_get_context()
+        self.cuda_stream = self.core.cuda_get_stream()
+
+
         pass
 
 
@@ -992,6 +997,16 @@ class Runtime:
 
 
 # global entry points 
+
+def capture_begin():
+    runtime.core.cuda_graph_begin_capture()
+
+def capture_end():
+    return runtime.core.cuda_graph_end_capture()
+
+def capture_launch(graph):
+    runtime.core.cuda_graph_launch(c_void_p(graph))
+
 
 def copy(dest, src, requires_grad=False):
 
@@ -1073,7 +1088,12 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
                 kernel.module.load()
 
         # first param is the number of threads
-        params = [dim]
+        params = []
+
+        if (device == "cuda"):
+            params.append(c_void_p(runtime.cuda_stream))
+
+        params.append(dim)
 
         # todo: verify argument types against the kernel definition, perform automatic conversion for simple types
         args = inputs + outputs
@@ -1111,7 +1131,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
             elif (arg_type == oglang.types.int64):
                 params.append(c_int64(a))
 
-            elif (arg_type ==  oglang.types.uint64):
+            elif (arg_type == oglang.types.uint64):
                 params.append(c_uint64(a))
             
             elif isinstance(a, np.ndarray):
@@ -1137,7 +1157,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
         # run kernel
         if device == 'cpu':
             kernel.forward_cpu(*params)
-        elif device.startswith('cuda'):
+        elif device.startswith("cuda"):
             kernel.forward_cuda(*params)
 
         runtime.verify_device()

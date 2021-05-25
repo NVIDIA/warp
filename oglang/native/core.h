@@ -544,6 +544,12 @@ extern "C"
     OG_API void cuda_restore_context();
     OG_API void* cuda_get_context();
     OG_API void cuda_set_context(void* ctx);
+    OG_API void* cuda_get_stream();
+
+    OG_API void cuda_graph_begin_capture();
+    OG_API void* cuda_graph_end_capture();
+    OG_API void cuda_graph_launch(void* graph);
+    OG_API void cuda_graph_destroy(void* graph);
 
 }
 
