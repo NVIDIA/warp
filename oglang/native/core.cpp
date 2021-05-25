@@ -15,15 +15,15 @@ void shutdown()
 {
 }
 
-void* alloc_host(size_t s)
-{
-    return malloc(s);
-}
+// void* alloc_host(size_t s)
+// {
+//     return malloc(s);
+// }
 
-void free_host(void* ptr)
-{
-    free(ptr);
-}
+// void free_host(void* ptr)
+// {
+//     free(ptr);
+// }
 
 void memcpy_h2h(void* dest, void* src, size_t n)
 {

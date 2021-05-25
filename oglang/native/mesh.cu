@@ -36,7 +36,7 @@ void mesh_refit_device(uint64_t id)
         const int num_threads_per_block = 256;
         const int num_blocks = (m.num_tris + num_threads_per_block - 1)/num_threads_per_block;
 
-        compute_triangle_bounds<<<num_blocks, num_threads_per_block>>>(m.num_tris, m.points, m.indices, m.bounds);
+        compute_triangle_bounds<<<num_blocks, num_threads_per_block, 0, (cudaStream_t)cuda_get_stream()>>>(m.num_tris, m.points, m.indices, m.bounds);
 
         bvh_refit_device(m.bvh, m.bounds);
     }

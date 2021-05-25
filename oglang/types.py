@@ -355,7 +355,7 @@ class array:
 
             from oglang.context import empty, copy, synchronize
 
-            arr = np.array(data)
+            arr = np.array(data, copy=False)
 
             # attempt to convert from double to float precision
             if (arr.dtype == np.float64):
@@ -381,16 +381,33 @@ class array:
             if (arr.__array_interface__["typestr"] == "<f8"):
                 raise RuntimeError("64bit floating point (double) data type not supported")
 
-            src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, owner=False)
-            dest = empty(rows, dtype=dtype, device=device)
-            dest.owner = False
+            if (device == "cpu"):
 
-            # data copy
-            copy(dest, src)
+                # ref numpy memory directly
+                self.data = ptr
+                self.dtype=dtype
+                self.length=rows
+                self.capacity=rows*type_size_in_bytes(dtype)
+                self.device = device
+                self.context = context
+                self.owner = False
 
-            # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
-            self.__dict__ = shallowcopy(dest.__dict__)
-            self.owner = True
+                # keep a ref to source array to keep allocation alive
+                self.ref = arr
+
+            else:
+
+                # otherwise, copy to device memory
+                src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, owner=False)
+                dest = empty(rows, dtype=dtype, device=device)
+                dest.owner = False
+                
+                # data copy
+                copy(dest, src)
+
+                # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
+                self.__dict__ = shallowcopy(dest.__dict__)
+                self.owner = True
            
             
         else:
@@ -406,15 +423,16 @@ class array:
 
             self.__name__ = "array<" + type.__name__ + ">"
 
-            # set up array interface access so we can treat this object as a read-only numpy array
-            if (device == "cpu"):
 
-                self.__array_interface__ = { 
-                    "data": (data, False), 
-                    "shape": (self.length, type_length(self.dtype)),  
-                    "typestr": type_typestr(type_ctype(dtype)), 
-                    "version": 3 
-                }
+        # set up array interface access so we can treat this object as a read-only numpy array
+        if (device == "cpu"):
+
+            self.__array_interface__ = { 
+                "data": (data, False), 
+                "shape": (self.length, type_length(self.dtype)),  
+                "typestr": type_typestr(type_ctype(dtype)), 
+                "version": 3 
+            }
 
 
     def __del__(self):

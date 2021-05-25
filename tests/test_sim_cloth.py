@@ -25,6 +25,7 @@ sim_frames = int(sim_duration*sim_fps)
 sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
 sim_render = True
+sim_use_graph = False
 
 device = "cuda"
 
@@ -97,20 +98,21 @@ state_1 = model.state()
 
 stage = render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
 
-# create update graph
-og.capture_begin()
+if (sim_use_graph):
+    # create update graph
+    og.capture_begin()
 
-og.sim.collide(model, state_0)
+    og.sim.collide(model, state_0)
 
-for s in range(sim_substeps):
+    for s in range(sim_substeps):
 
-    integrator.simulate(model, state_0, state_1, sim_dt)
-    sim_time += sim_dt
+        integrator.simulate(model, state_0, state_1, sim_dt)
+        sim_time += sim_dt
 
-    # swap states
-    (state_0, state_1) = (state_1, state_0)
+        # swap states
+        (state_0, state_1) = (state_1, state_0)
 
-graph = og.capture_end()
+    graph = og.capture_end()
 
 
 # launch simulation
@@ -118,8 +120,20 @@ for i in range(sim_frames):
     
     with og.ScopedTimer("simulate", active=True):
 
-        og.capture_launch(graph)
-        sim_time += 1.0/60.0
+        if (sim_use_graph):
+            og.capture_launch(graph)
+            sim_time += 1.0/60.0
+        else:
+
+            og.sim.collide(model, state_0)
+
+            for s in range(sim_substeps):
+
+                integrator.simulate(model, state_0, state_1, sim_dt)
+                sim_time += sim_dt
+
+                # swap states
+                (state_0, state_1) = (state_1, state_0)
 
     if (sim_render):
 
