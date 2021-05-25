@@ -428,9 +428,9 @@ class array:
         if (device == "cpu"):
 
             self.__array_interface__ = { 
-                "data": (data, False), 
+                "data": (self.data, False), 
                 "shape": (self.length, type_length(self.dtype)),  
-                "typestr": type_typestr(type_ctype(dtype)), 
+                "typestr": type_typestr(type_ctype(self.dtype)), 
                 "version": 3 
             }
 
@@ -569,6 +569,9 @@ class Mesh:
 
 
     def __del__(self):
+
+        # we need to make sure correct CUDA device is set even during GC
+        self.context.verify_device()
 
         if (self.device == "cpu"):
             self.context.core.mesh_destroy_host(self.id)

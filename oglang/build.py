@@ -61,6 +61,9 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
     cuda_home = find_cuda()
     cuda_cmd = None
+
+    if (cuda_home == None):
+        print("CUDA toolchain not found, skipping CUDA build")
     
     if(force == False):
 
@@ -118,9 +121,10 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             with ScopedTimer("build_cuda"):
                 run_cmd(cuda_cmd)
                 ld_inputs.append(quote(cu_out))
+                ld_inputs.append("cudart.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
 
         with ScopedTimer("link"):
-            link_cmd = 'link.exe {inputs} cudart.lib {flags} /LIBPATH:"{cuda_home}/lib/x64" /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), cuda_home=cuda_home, flags=ld_flags, dll_path=dll_path)
+            link_cmd = 'link.exe {inputs} {flags} /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), flags=ld_flags, dll_path=dll_path)
             run_cmd(link_cmd)
         
     else:

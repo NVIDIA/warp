@@ -820,7 +820,8 @@ class Module:
         module_name = "og_" + self.name
 
         include_path = os.path.dirname(os.path.realpath(__file__))
-        build_path = os.path.dirname(os.path.realpath(__file__)) + "/kernels"
+        build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
+
         cache_path = build_path + "/" + module_name + ".gen"
         
         cpp_path = build_path + "/" + module_name + ".cpp"
@@ -925,7 +926,7 @@ class Runtime:
             oglang.build.build_module(
                             cpp_path=build_path + "/native/core.cpp", 
                             cu_path=build_path + "/native/core.cu", 
-                            dll_path=build_path + "/kernels/core.dll",
+                            dll_path=build_path + "/bin/oglang.dll",
                             config=oglang.config.mode)
                             
         except Exception as e:
@@ -933,7 +934,7 @@ class Runtime:
             print("Could not load core library")
             raise e
 
-        self.core = oglang.build.load_module(build_path + "/kernels/core.dll")
+        self.core = oglang.build.load_module(build_path + "/bin/oglang.dll")
 
         # setup c-types for core.dll
         self.core.alloc_host.restype = c_void_p
@@ -1178,4 +1179,13 @@ class ScopedCudaGuard:
 
 
 # initialize global runtime
-runtime = Runtime()
+runtime = None
+
+def init():
+    global runtime
+
+    if (runtime == None):
+        runtime = Runtime()
+        print("Initialized oglang")
+    else:
+        print("Calling oglang.init() after initialization, this call will be ignored")
