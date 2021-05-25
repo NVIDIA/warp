@@ -70,16 +70,16 @@ def simulate(positions: og.array(dtype=og.vec3),
         # if (xpred[1] < margin):
         #     xpred = og.vec3(xpred[0], margin, xpred[2])
 
-        # pbd update
-        v = (xpred - x)*(1.0/dt)
-        x = xpred
+    # pbd update
+    v = (xpred - x)*(1.0/dt)
+    x = xpred
 
-        og.store(positions, tid, x)
-        og.store(velocities, tid, v)
+    og.store(positions, tid, x)
+    og.store(velocities, tid, v)
 
 
-device = "cpu"
-num_particles = 100000
+device = "cuda"
+num_particles = 1000
 
 sim_steps = 500
 sim_dt = 1.0/60.0

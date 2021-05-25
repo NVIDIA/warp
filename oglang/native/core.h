@@ -58,8 +58,6 @@
 
 #define FP_CHECK 0
 
-#define OG_DEVICE_CPU -1
-#define OG_DEVICE_CUDA = 0
 
 namespace og
 {
@@ -342,39 +340,27 @@ inline CUDA_CALLABLE void store(T* buf, int index, T value)
 
 
 template<typename T>
-inline CUDA_CALLABLE void atomic_add(T* buf, T value)
+inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 {
-#if defined(CPU)
-    buf[0] += value;
-#elif defined(CUDA)
-    atomicAdd(buf, value);
-#endif
-}
-
-template<typename T>
-inline CUDA_CALLABLE void atomic_add(T* buf, int index, T value)
-{
-    if (buf)
-    {        
-#if defined(CPU)
-        buf[index] += value;        // does not need to be atomic if single-threaded
-#elif defined(CUDA)
-        atomic_add(buf + index, value);
-#endif
-    }
-}
-
-template<typename T>
-inline CUDA_CALLABLE void atomic_sub(T* buf, int index, T value)
-{
-    if (buf)
-    {
 #ifdef CPU
-        buf[index] -= value;        // does not need to be atomic if single-threaded
+    T old = buf[0];
+    buf[0] += value;
+    return old;
 #elif defined(CUDA)
-        atomic_add(buf + index, -value);
+    return atomicAdd(buf, value);
 #endif
-    }
+}
+
+template<typename T>
+inline CUDA_CALLABLE T atomic_add(T* buf, int index, T value)
+{
+    return atomic_add(buf + index, value);
+}
+
+template<typename T>
+inline CUDA_CALLABLE T atomic_sub(T* buf, int index, T value)
+{
+    return atomic_add(buf + index, -value);
 }
 
 template <typename T>
@@ -398,7 +384,7 @@ inline CUDA_CALLABLE void adj_store(T* buf, int index, T value, T* adj_buf, int&
 }
 
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_add(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value)
+inline CUDA_CALLABLE void adj_atomic_add(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value, const T& adj_ret)
 {
     if (adj_buf) {  // cannot be atomic because used locally
         adj_value += adj_buf[index];
@@ -406,7 +392,7 @@ inline CUDA_CALLABLE void adj_atomic_add(T* buf, int index, T value, T* adj_buf,
 }
 
 template<typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value)
+inline CUDA_CALLABLE void adj_atomic_sub(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value, const T& adj_ret)
 {
     if (adj_buf) { // cannot be atomic because used locally
         adj_value -= adj_buf[index];

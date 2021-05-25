@@ -230,11 +230,13 @@ inline CUDA_CALLABLE void adj_cross(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, co
 
 
 #ifdef CUDA
-inline __device__ void atomic_add(vec3 * addr, vec3 value) {
+inline __device__ vec3 atomic_add(vec3 * addr, vec3 value) {
     // *addr += value;
-    atomicAdd(&(addr -> x), value.x);
-    atomicAdd(&(addr -> y), value.y);
-    atomicAdd(&(addr -> z), value.z);
+    float x = atomicAdd(&(addr -> x), value.x);
+    float y = atomicAdd(&(addr -> y), value.y);
+    float z = atomicAdd(&(addr -> z), value.z);
+
+    return vec3(x, y, z);
 }
 #endif
 

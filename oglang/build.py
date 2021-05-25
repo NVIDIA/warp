@@ -88,13 +88,13 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
         cu_out = cu_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = "/Zi, /Od, /DEBUG, -DCPU"
-            ld_flags = "/DEBUG /dll"
+            cpp_flags = '/Zi /Od /D "_DEBUG" /D "CPU"'
+            ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = "/Ox, -DNDEBUG, -DCPU, /fp:fast"
-            ld_flags = "/dll"
+            cpp_flags = '/Ox /D "NDEBUG" /D "CPU" /fp:fast'
+            ld_flags = '/dll'
             ld_inputs = []
 
         else:

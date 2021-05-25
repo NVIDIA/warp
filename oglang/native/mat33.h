@@ -64,16 +64,21 @@ struct mat33
 };
 
 #ifdef CUDA
-inline __device__ void atomic_add(mat33 * addr, mat33 value) {
-    atomicAdd(&((addr -> data)[0][0]), value.data[0][0]);
-    atomicAdd(&((addr -> data)[1][0]), value.data[1][0]);
-    atomicAdd(&((addr -> data)[2][0]), value.data[2][0]);
-    atomicAdd(&((addr -> data)[0][1]), value.data[0][1]);
-    atomicAdd(&((addr -> data)[1][1]), value.data[1][1]);
-    atomicAdd(&((addr -> data)[2][1]), value.data[2][1]);
-    atomicAdd(&((addr -> data)[0][2]), value.data[0][2]);
-    atomicAdd(&((addr -> data)[1][2]), value.data[1][2]);
-    atomicAdd(&((addr -> data)[2][2]), value.data[2][2]);
+inline __device__ mat33 atomic_add(mat33 * addr, mat33 value) 
+{
+    mat33 m;
+
+    m.data[0][0] = atomicAdd(&((addr -> data)[0][0]), value.data[0][0]);
+    m.data[1][0] = atomicAdd(&((addr -> data)[1][0]), value.data[1][0]);
+    m.data[2][0] = atomicAdd(&((addr -> data)[2][0]), value.data[2][0]);
+    m.data[0][1] = atomicAdd(&((addr -> data)[0][1]), value.data[0][1]);
+    m.data[1][1] = atomicAdd(&((addr -> data)[1][1]), value.data[1][1]);
+    m.data[2][1] = atomicAdd(&((addr -> data)[2][1]), value.data[2][1]);
+    m.data[0][2] = atomicAdd(&((addr -> data)[0][2]), value.data[0][2]);
+    m.data[1][2] = atomicAdd(&((addr -> data)[1][2]), value.data[1][2]);
+    m.data[2][2] = atomicAdd(&((addr -> data)[2][2]), value.data[2][2]);
+
+    return m;
 }
 #endif
 

@@ -412,14 +412,14 @@ class StoreFunc:
 class AtomicAddFunc:
     @staticmethod
     def value_type(args):
-        return None
+        return args[0].type.dtype
 
 
 @builtin("atomic_sub")
 class AtomicSubFunc:
     @staticmethod
     def value_type(args):
-        return None
+        return args[0].type.dtype
 
 
 @builtin("tid")

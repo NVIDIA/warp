@@ -330,12 +330,12 @@ class Model:
 
         self.gravity = np.array((0.0, -9.8, 0.0))
 
-        self.contact_distance = 0.1
-        self.contact_margin = 0.2
-        self.contact_ke = 1.e+3
-        self.contact_kd = 0.0
-        self.contact_kf = 1.e+3
-        self.contact_mu = 0.5
+        self.soft_contact_distance = 0.1
+        self.soft_contact_margin = 0.2
+        self.soft_contact_ke = 1.e+3
+        self.soft_contact_kd = 0.0
+        self.soft_contact_kf = 1.e+3
+        self.soft_contact_mu = 0.5
 
         self.tri_ke = 100.0
         self.tri_ka = 100.0
@@ -407,6 +407,11 @@ class Model:
             
             # zero since only upper triangle is set which can trigger NaN detection
             s.L = og.zeros(self.H_size, dtype=og.float32, device=self.device, requires_grad=True)
+
+        else:
+
+            s.body_X_sc = None
+            s.body_v_s = None
 
         return s
 
@@ -1847,6 +1852,16 @@ class ModelBuilder:
         m.joint_limit_upper = og.array(self.joint_limit_upper, dtype=og.float32, device=device)
         m.joint_limit_ke = og.array(self.joint_limit_ke, dtype=og.float32, device=device)
         m.joint_limit_kd = og.array(self.joint_limit_kd, dtype=og.float32, device=device)
+
+        # contacts
+        m.soft_contact_max = 64*1024
+
+        m.soft_contact_count = og.zeros(1, dtype=og.int32, device=device)
+        m.soft_contact_particle = og.zeros(m.soft_contact_max, dtype=int, device=device)
+        m.soft_contact_body = og.zeros(m.soft_contact_max, dtype=int, device=device)
+        m.soft_contact_body_pos = og.zeros(m.soft_contact_max, dtype=og.vec3, device=device)
+        m.soft_contact_body_vel = og.zeros(m.soft_contact_max, dtype=og.vec3, device=device)
+        m.soft_contact_normal = og.zeros(m.soft_contact_max, dtype=og.vec3, device=device)
 
         # counts
         m.particle_count = len(self.particle_q)

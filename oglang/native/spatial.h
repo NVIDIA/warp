@@ -158,10 +158,12 @@ CUDA_CALLABLE inline void adj_spatial_bottom(const spatial_vector& a, spatial_ve
 }
 
 #ifdef CUDA
-inline __device__ void atomic_add(spatial_vector* addr, const spatial_vector& value) {
+inline __device__ spatial_vector atomic_add(spatial_vector* addr, const spatial_vector& value) {
     
-    atomic_add(&addr->w, value.w);
-    atomic_add(&addr->v, value.v);
+    vec3 w = atomic_add(&addr->w, value.w);
+    vec3 v = atomic_add(&addr->v, value.v);
+
+    return spatial_vector(w, v);
 }
 #endif
 
@@ -269,10 +271,12 @@ CUDA_CALLABLE inline void adj_mul(const spatial_transform& a, float s, spatial_t
 }
 
 #ifdef CUDA
-inline __device__ void atomic_add(spatial_transform* addr, const spatial_transform& value) {
+inline __device__ spatial_transform atomic_add(spatial_transform* addr, const spatial_transform& value) {
     
-    atomic_add(&addr->p, value.p);
-    atomic_add(&addr->q, value.q);
+    vec3 p = atomic_add(&addr->p, value.p);
+    quat q = atomic_add(&addr->q, value.q);
+
+    return spatial_transform(p, q);
 }
 #endif
 
@@ -675,15 +679,19 @@ inline void CUDA_CALLABLE adj_index(const spatial_matrix& m, int row, int col, s
 }
 
 #ifdef CUDA
-inline __device__ void atomic_add(spatial_matrix* addr, const spatial_matrix& value) 
+inline __device__ spatial_matrix atomic_add(spatial_matrix* addr, const spatial_matrix& value) 
 {
+    spatial_matrix m;
+
     for (int i=0; i < 6; ++i)
     {
         for (int j=0; j < 6; ++j)
         {
-            atomicAdd(&addr->data[i][j], value.data[i][j]);
+            m.data[i][j] = atomicAdd(&addr->data[i][j], value.data[i][j]);
         }
-    }
+    }   
+
+    return m;
 }
 #endif
 

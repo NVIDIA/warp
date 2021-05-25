@@ -178,12 +178,14 @@ inline CUDA_CALLABLE void adj_dot(vec4 a, vec4 b, vec4& adj_a, vec4& adj_b, cons
 }
 
 #ifdef CUDA
-inline __device__ void atomic_add(vec4 * addr, vec4 value) {
+inline __device__ vec4 atomic_add(vec4 * addr, vec4 value) {
     // *addr += value;
-    atomicAdd(&(addr -> x), value.x);
-    atomicAdd(&(addr -> y), value.y);
-    atomicAdd(&(addr -> z), value.z);
-    atomicAdd(&(addr -> w), value.w);
+    float x = atomicAdd(&(addr -> x), value.x);
+    float y = atomicAdd(&(addr -> y), value.y);
+    float z = atomicAdd(&(addr -> z), value.z);
+    float w = atomicAdd(&(addr -> w), value.w);
+
+    return vec4(x, y, z, w);
 }
 #endif
 

@@ -15,11 +15,14 @@ struct quat
 };
 
 #ifdef CUDA
-inline __device__ void atomic_add(quat * addr, quat value) {
-    atomicAdd(&(addr -> x), value.x);
-    atomicAdd(&(addr -> y), value.y);
-    atomicAdd(&(addr -> z), value.z);
-    atomicAdd(&(addr -> w), value.w);
+inline __device__ quat atomic_add(quat * addr, quat value) 
+{
+    float x = atomicAdd(&(addr -> x), value.x);
+    float y = atomicAdd(&(addr -> y), value.y);
+    float z = atomicAdd(&(addr -> z), value.z);
+    float w = atomicAdd(&(addr -> w), value.w);
+
+    return quat(x, y, z, w);
 }
 #endif
 

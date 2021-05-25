@@ -148,17 +148,21 @@ class UsdRenderer:
         _usd_set_xform(ref, (pos, rot), scale, self.time)
 
 
-    def render_mesh(self, name: str, points, indices):
+    def render_mesh(self, name: str, points, indices, pos, rot, scale):
         
         mesh_path = self.root.GetPath().AppendChild(name)
         mesh = UsdGeom.Mesh.Get(self.stage, mesh_path)
         if not mesh:
             
             mesh = UsdGeom.Mesh.Define(self.stage, mesh_path)
+            
+            _usd_add_xform(mesh)
 
         mesh.GetPointsAttr().Set(points, self.time)
         mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
         mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
+
+        _usd_set_xform(mesh, (pos, rot), scale, self.time)
 
 
     def render_line_list(self, vertices, color, time, name, radius):

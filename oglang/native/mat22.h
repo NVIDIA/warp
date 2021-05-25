@@ -18,12 +18,15 @@ struct mat22
 };
 
 #ifdef CUDA
-inline __device__ void atomic_add(mat22 * addr, mat22 value) {
+inline __device__ mat22 atomic_add(mat22 * addr, mat22 value) {
     // *addr += value;
-    atomicAdd(&((addr -> data)[0][0]), value.data[0][0]);
-    atomicAdd(&((addr -> data)[0][1]), value.data[0][1]);
-    atomicAdd(&((addr -> data)[1][0]), value.data[1][0]);
-    atomicAdd(&((addr -> data)[1][1]), value.data[1][1]);
+    mat22 m;
+    m.data[0][0] = atomicAdd(&((addr -> data)[0][0]), value.data[0][0]);
+    m.data[0][1] = atomicAdd(&((addr -> data)[0][1]), value.data[0][1]);
+    m.data[1][0] = atomicAdd(&((addr -> data)[1][0]), value.data[1][0]);
+    m.data[1][1] = atomicAdd(&((addr -> data)[1][1]), value.data[1][1]);
+
+    return m;
 }
 #endif
 
