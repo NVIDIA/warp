@@ -383,13 +383,16 @@ class array:
 
             if (device == "cpu"):
 
+                # todo: if runtime is global do we really need to store it per-array?
+                from oglang.context import runtime
+                
                 # ref numpy memory directly
                 self.data = ptr
                 self.dtype=dtype
                 self.length=rows
                 self.capacity=rows*type_size_in_bytes(dtype)
                 self.device = device
-                self.context = context
+                self.context = runtime
                 self.owner = False
 
                 # keep a ref to source array to keep allocation alive

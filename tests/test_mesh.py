@@ -12,7 +12,7 @@ import render
 
 np.random.seed(42)
 
-
+og.init()
 
 @og.kernel
 def deform(positions: og.array(dtype=og.vec3), t: float):
@@ -78,7 +78,7 @@ def simulate(positions: og.array(dtype=og.vec3),
     og.store(velocities, tid, v)
 
 
-device = "cuda"
+device = "cpu"
 num_particles = 1000
 
 sim_steps = 500

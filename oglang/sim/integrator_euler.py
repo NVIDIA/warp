@@ -950,16 +950,16 @@ def eval_soft_contacts(
     #ft = vt*kf
 
     # Coulomb friction (box)
-    lower = mu * c * ke
-    upper = 0.0 - lower
+    # lower = mu * c * ke
+    # upper = 0.0 - lower
 
-    vx = clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
-    vz = clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
+    # vx = clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
+    # vz = clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
 
-    ft = og.vec3(vx, 0.0, vz)
+    #ft = og.vec3(vx, 0.0, vz)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
-    #ft = og.normalize(vt)*og.min(kf*og.length(vt), 0.0 - mu*c*ke)
+    ft = og.normalize(vt)*og.min(kf*og.length(vt), 0.0 - mu*c*ke)
 
     f_total = fn + (fd + ft) * og.step(c)
     t_total = og.cross(px, f_total)

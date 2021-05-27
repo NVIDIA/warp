@@ -148,7 +148,7 @@ class UsdRenderer:
         _usd_set_xform(ref, (pos, rot), scale, self.time)
 
 
-    def render_mesh(self, name: str, points, indices, pos, rot, scale):
+    def render_mesh(self, name: str, points, indices, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0)):
         
         mesh_path = self.root.GetPath().AppendChild(name)
         mesh = UsdGeom.Mesh.Get(self.stage, mesh_path)
