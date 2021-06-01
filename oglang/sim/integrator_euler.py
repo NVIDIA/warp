@@ -12,43 +12,6 @@ import oglang as og
 
 from . optimizer import Optimizer
 
-# Todo
-#-----
-#
-# [x] Spring model
-# [x] 2D FEM model
-# [x] 3D FEM model
-# [x] Cloth
-#     [x] Wind/Drag model
-#     [x] Bending model
-#     [x] Triangle collision
-# [x] Rigid body model
-# [x] Rigid shape contact
-#     [x] Sphere
-#     [x] Capsule
-#     [x] Box
-#     [ ] Convex
-#     [ ] Sdf
-# [ ] Implicit solver
-# [x] USD import
-# [x] USD export
-# -----
-
-@og.func
-def test(c: float):
-
-    x = 1.0
-
-    if (c < 3.0):
-        x = 2.0
-
-    return x*6.0
-
-
-def kernel_init():
-    global kernels
-    kernels = og.compile()
-
 
 @og.kernel
 def integrate_particles(x: og.array(dtype=og.vec3),
@@ -617,7 +580,7 @@ def eval_bending(
     n1_length = og.length(n1)
     n2_length = og.length(n2)
 
-    if (n1_length < 1.e-3 or n2_length < 1.e-3):
+    if (n1_length < 1.e-6 or n2_length < 1.e-6):
         return
 
     rcp_n1 = 1.0 / n1_length

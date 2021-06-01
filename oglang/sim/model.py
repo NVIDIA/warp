@@ -1054,18 +1054,21 @@ class ModelBuilder:
         M = np.matrix((qp, rp))
 
         D = R * M.T
-        inv_D = np.linalg.inv(D)
 
         area = np.linalg.det(D) / 2.0
 
-        if (area < 0.0):
-            print("inverted triangle element")
+        if (area <= 0.0):
 
-        self.tri_indices.append((i, j, k))
-        self.tri_poses.append(inv_D.tolist())
-        self.tri_activations.append(0.0)
+            print("inverted or degenerate triangle element")
+            return 0.0
+        else:
+    
+            inv_D = np.linalg.inv(D)
 
-        return area
+            self.tri_indices.append((i, j, k))
+            self.tri_poses.append(inv_D.tolist())
+            self.tri_activations.append(0.0)
+            return area
 
     def add_tetrahedron(self, i: int, j: int, k: int, l: int, k_mu: float=1.e+3, k_lambda: float=1.e+3, k_damp: float=0.0) -> float:
         """Adds a tetrahedral FEM element between four particles in the system. 

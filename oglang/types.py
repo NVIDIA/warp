@@ -338,7 +338,7 @@ def type_is_float(t):
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, owner=True):
+    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True):
         
         # convert built-in numeric type to og type
         if (dtype == int):
@@ -381,7 +381,7 @@ class array:
             if (arr.__array_interface__["typestr"] == "<f8"):
                 raise RuntimeError("64bit floating point (double) data type not supported")
 
-            if (device == "cpu"):
+            if (device == "cpu" and copy == False):
 
                 # todo: if runtime is global do we really need to store it per-array?
                 from oglang.context import runtime
@@ -401,7 +401,7 @@ class array:
             else:
 
                 # otherwise, copy to device memory
-                src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, owner=False)
+                src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
                 dest = empty(rows, dtype=dtype, device=device)
                 dest.owner = False
                 
