@@ -212,9 +212,14 @@ class DivFunc:
             raise Exception("Unrecognized types for division operator /, got {} and {}".format(args[0].type, args[1].type))
 
 
+@builtin("neg")
+class NegFunc:
+    @staticmethod
+    def value_type(args):
+        return args[0].type
 
 #----------------------
-# built-in builtin_functions
+# built-in functions
 
 
 

@@ -293,6 +293,13 @@ CUDA_CALLABLE T operator+(const T& a, const T& b) { return add(a, b); }
 template <typename T>
 CUDA_CALLABLE T operator-(const T& a, const T& b) { return sub(a, b); }
 
+// unary negation implementated as negative multiply, not sure the fp implications of this
+// may be better as 0.0 - x?
+template <typename T>
+CUDA_CALLABLE T neg(const T& x) { return x*T(-1); }
+
+template <typename T>
+CUDA_CALLABLE void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(-1); }
 
 // for single thread CPU only
 static int s_threadIdx;

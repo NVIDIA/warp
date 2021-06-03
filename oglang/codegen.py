@@ -14,7 +14,7 @@ import copy
 from oglang.types import *
 
 
-# map operator to function
+# map operator to function name
 builtin_operators = {}
 
 builtin_operators[ast.Add] = "add"
@@ -23,6 +23,7 @@ builtin_operators[ast.Mult] = "mul"
 builtin_operators[ast.Div] = "div"
 builtin_operators[ast.FloorDiv] = "div"
 builtin_operators[ast.Mod] = "mod"
+builtin_operators[ast.USub] = "neg"
 
 builtin_operators[ast.Gt] = ">"
 builtin_operators[ast.Lt] = "<"
@@ -157,23 +158,6 @@ class Adjoint:
 
         adj.add_forward("var_{} = {};".format(output, input))
         adj.add_reverse("adj_{} += adj_{};".format(input, output))
-
-        return output
-
-    def add_operator(adj, op, inputs):
-
-        # todo: just using first input as the output type, would need some
-        # type inference here to support things like vec3 = float*vec3
-
-        output = adj.add_var(inputs[0].type)
-
-        transformer = builtin_operators[op.__class__]
-
-        for t in transformer.forward():
-            adj.add_forward(adj.format_template(t, inputs, output))
-
-        for t in transformer.reverse():
-            adj.add_reverse(adj.format_template(t, inputs, output))
 
         return output
 
@@ -416,7 +400,10 @@ class Adjoint:
                 # evaluate unary op arguments
                 arg = adj.eval(node.operand)
 
-                out = adj.add_operator(node.op, [arg])
+                name = builtin_operators[type(node.op)]
+                func = adj.builtin_functions[name]
+
+                out = adj.add_call(func, [arg])
                 return out
 
             elif (isinstance(node, ast.For)):
