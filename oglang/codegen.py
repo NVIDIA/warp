@@ -61,21 +61,6 @@ class Var:
             return str(self.type.__name__)
 
 
-#--------------------
-# Storage class for partial AST up to a return statement.
-
-
-class Stmt:
-    def __init__(self, cond, forward, forward_replay, reverse, ret_forward, ret_line):
-        self.cond = cond               # condition, can be None
-        self.forward = forward         # all forward code outside of conditional branch *since last return*
-        self.forward_replay = forward_replay
-        self.reverse = reverse         # all reverse code including the reverse of any code in ret_forward
-
-        self.ret_forward = ret_forward           # all forward commands in the return statement except the actual return statement
-        self.ret_line = ret_line                 # actual return statement
-
-
 #------------------------------------------------------------------------
 # Source code transformer, this class takes a Python function and
 # computes its adjoint using single-pass translation of the function's AST
@@ -84,12 +69,9 @@ class Stmt:
 class Adjoint:
 
 
-    def __init__(adj, func, builtin_fuctions, user_functions, device='cpu'):
+    def __init__(adj, func):
 
         adj.func = func
-        adj.device = device
-        adj.builtin_functions = builtin_fuctions
-        adj.user_functions = user_functions
 
         adj.symbols = {}     # map from symbols to adjoint variables
         adj.variables = []   # list of local variables (in order)
@@ -123,8 +105,15 @@ class Adjoint:
         adj.indent_count = 0
         adj.label_count = 0
 
+    # generate function ssa form and adjoint
+    def build(adj, builtin_fuctions, user_functions):
+
+        adj.builtin_functions = builtin_fuctions
+        adj.user_functions = user_functions
+
         # recursively evaluate function body
         adj.eval(adj.tree.body[0])
+
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -307,6 +296,7 @@ class Adjoint:
 
         try:
 
+            # top level entry point for a function
             if (isinstance(node, ast.FunctionDef)):
 
                 out = None
@@ -315,15 +305,13 @@ class Adjoint:
 
                 if 'return' in adj.symbols and adj.symbols['return'] is not None:
                     out = adj.symbols['return']
-                    stmt = Stmt(None, adj.body_forward, adj.body_forward_replay, reversed(adj.body_reverse), [], "")
-                    adj.output.append(stmt)
                 else:
-                    stmt = Stmt(None, adj.body_forward, adj.body_forward_replay, reversed(adj.body_reverse), [], "")
-                    adj.output.append(stmt)
-
+                    out = None
+                    
                 return out
 
-            elif (isinstance(node, ast.If)):         # if statement
+            # if statement
+            elif (isinstance(node, ast.If)):         
 
                 if len(node.orelse) != 0:
                     raise SyntaxError("Else statements not currently supported")
@@ -768,24 +756,8 @@ def codegen_func_forward_body(adj, device='cpu', indent=4):
     body = []
     indent_block = " " * indent
 
-    for stmt in adj.output:
-        for f in stmt.forward:
-            body += [f + "\n"]
-
-        if stmt.cond is not None:
-            body += ["if (" + str(stmt.cond) + ") {\n"]
-            for l in stmt.ret_forward:
-                body += [indent_block + l + "\n"]
-
-            body += [indent_block + stmt.ret_line + "\n"]
-            body += ["}\n"]
-        else:
-            for l in stmt.ret_forward:
-                body += [l + "\n"]
-
-            body += [stmt.ret_line + "\n"]
-
-            break  # break once unconditional return is encountered
+    for f in adj.body_forward:
+        body += [f + "\n"]
 
     return "".join([indent_block + l for l in body])
 
@@ -829,41 +801,21 @@ def codegen_func_reverse_body(adj, device='cpu', indent=4):
     body = []
     indent_block = " " * indent
 
-    for stmt in adj.output:
-        # forward pass
-        body += ["//---------\n"]
-        body += ["// forward\n"]
+    # forward pass
+    body += ["//---------\n"]
+    body += ["// forward\n"]
 
-        for f in stmt.forward_replay:
-            body += [f + "\n"]
+    for f in adj.body_forward_replay:
+        body += [f + "\n"]
 
-        if stmt.cond is not None:
-            body += ["if (" + str(stmt.cond) + ") {\n"]
-            for l in stmt.ret_forward:
-                body += [indent_block + l + "\n"]
+    # reverse pass
+    body += ["//---------\n"]
+    body += ["// reverse\n"]
 
-            # reverse pass
-            body += [indent_block + "//---------\n"]
-            body += [indent_block + "// reverse\n"]
+    for l in reversed(adj.body_reverse):
+        body += [l + "\n"]
 
-            for l in stmt.reverse:
-                body += [indent_block + l + "\n"]
-
-            body += [indent_block + "return;\n"]
-            body += ["}\n"]
-        else:
-            for l in stmt.ret_forward:
-                body += [l + "\n"]
-
-            # reverse pass
-            body += ["//---------\n"]
-            body += ["// reverse\n"]
-
-            for l in stmt.reverse:
-                body += [l + "\n"]
-
-            body += ["return;\n"]
-            break  # break once unconditional return is encountered
+    body += ["return;\n"]
 
     return "".join([indent_block + l for l in body])
 

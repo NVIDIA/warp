@@ -91,12 +91,12 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
         cu_out = cu_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = '/Zi /Od /D "_DEBUG" /D "CPU"'
+            cpp_flags = '/MTd /Zi /Od /D "_DEBUG" /D "CPU" /D "_ITERATOR_DEBUG_LEVEL=0" '
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = '/Ox /D "NDEBUG" /D "CPU" /fp:fast'
+            cpp_flags = '/Ox /D "NDEBUG" /D "CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -113,7 +113,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
         if (cuda_home):
 
             if (config == "debug"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/Zi,/Od -g -G -O0 -line-info -gencode=arch=compute_35,code=compute_35 -DCUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_35,code=compute_35 -DCUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
             elif (config == "release"):
                 cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DCUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
@@ -160,7 +160,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
                 ld_inputs.append('-L"{cuda_home}/lib64" -lcudart')
 
         with ScopedTimer("link"):
-            link_cmd = 'g++ -shared -o "{dll_path}" {inputs}'.format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)
+            link_cmd = 'g++ -shared -o "{dll_path}" {inputs}'.format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)            
             run_cmd(link_cmd)
 
     

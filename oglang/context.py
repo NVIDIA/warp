@@ -1,3 +1,4 @@
+from copy import deepcopy
 import math
 import os
 import sys
@@ -6,6 +7,8 @@ import subprocess
 import typing
 import timeit
 import cProfile
+import inspect
+import hashlib
 
 from ctypes import*
 
@@ -29,6 +32,9 @@ class Function:
         self.value_type = value_type
         self.module = module
 
+        if (func):
+            self.adj = oglang.codegen.Adjoint(func)
+
         if (module):
             module.register_function(self)
 
@@ -46,6 +52,8 @@ class Kernel:
         
         self.forward_cuda = None
         self.backward_cuda = None
+
+        self.adj = oglang.codegen.Adjoint(func)
 
         if (module):
             module.register_kernel(self)
@@ -72,7 +80,7 @@ class Kernel:
 
 #----------------------
 
-# register function, @func
+# decorator to register function, @func
 def func(f):
 
     m = get_module(f.__module__)
@@ -80,7 +88,7 @@ def func(f):
 
     return f
 
-# register kernel, @kernel
+# decorator to register kernel, @kernel
 def kernel(f):
 
     m = get_module(f.__module__)
@@ -91,7 +99,7 @@ def kernel(f):
 
 builtin_functions = {}
 
-# register built-in function @builtin
+# decorator to register a built-in function @builtin
 def builtin(key):
     def insert(c):
         
@@ -735,6 +743,7 @@ def get_module(m):
 
 #---------------------------------------------
 # stores all functions and kernels for a module
+# create a hash of the function to use for checking build cache
 
 class Module:
 
@@ -763,11 +772,60 @@ class Module:
     def register_function(self, func):
         self.functions[func.key] = func
 
+    def hash_module(self):
+        
+        h = hashlib.sha256()
+
+        for func in self.functions.values():
+            s = func.adj.source
+            h.update(bytes(s, 'utf-8'))
+            
+        for kernel in self.kernels.values():       
+            s = kernel.adj.source
+            h.update(bytes(s, 'utf-8'))
+
+        # append any configuration parameters
+        h.update(bytes(oglang.config.mode, 'utf-8'))
+        
+        return h.digest()
+
     def load(self):
 
         use_cuda = True
         if not use_cuda:
             print("[INFO] CUDA support not found. Disabling CUDA kernel compilation.")
+
+        module_name = "og_" + self.name
+
+        include_path = os.path.dirname(os.path.realpath(__file__))
+        build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
+        cache_path = build_path + "/" + module_name + ".hash"
+
+        if (os.name == "nt"):
+            dll_path = build_path + "/" + module_name + ".dll"
+        else:
+            dll_path = build_path + "/" + module_name + ".so"
+
+        if (os.path.exists(build_path) == False):
+            os.mkdir(build_path)
+
+        # test cache
+        module_hash = self.hash_module()
+
+        if (os.path.exists(cache_path)):
+
+            f = open(cache_path, 'rb')
+            cache_hash = f.read()
+            f.close()
+
+            if (cache_hash == module_hash):
+                print("Using cached kernels")
+                self.dll = cdll.LoadLibrary(dll_path)
+                return
+
+        # otherwise rebuid
+        cpp_path = build_path + "/" + module_name + ".cpp"
+        cu_path = build_path + "/" + module_name + ".cu"
 
         cpp_source = ""
         cu_source = ""
@@ -780,73 +838,38 @@ class Module:
 
         # functions
         for name, func in self.functions.items():
-
-            adj = oglang.codegen.Adjoint(func.func, builtin_functions, self.functions, device='cpu')
-            cpp_source += oglang.codegen.codegen_func(adj, device='cpu')
-
-            adj = oglang.codegen.Adjoint(func.func, builtin_functions, self.functions, device='cuda')
-            cu_source += oglang.codegen.codegen_func(adj, device='cuda')
+           
+            func.adj.build(builtin_functions, self.functions)
+            
+            cpp_source += oglang.codegen.codegen_func(func.adj, device="cpu")
+            cu_source += oglang.codegen.codegen_func(func.adj, device="cuda")
 
             # complete the function return type after we have analyzed it (infered from return statement in ast)
-            func.value_type = wrap(adj)
+            func.value_type = wrap(func.adj)
 
 
         # kernels
         for kernel in self.kernels.values():
 
-            if use_cuda:
-                # each kernel gets an entry point in the module
-                entry_points.append(kernel.func.__name__ + "_cuda_forward")
-                entry_points.append(kernel.func.__name__ + "_cuda_backward")
+            kernel.adj.build(builtin_functions, self.functions)
 
             # each kernel gets an entry point in the module
             entry_points.append(kernel.func.__name__ + "_cpu_forward")
             entry_points.append(kernel.func.__name__ + "_cpu_backward")
 
+            cpp_source += oglang.codegen.codegen_module_decl(kernel.adj, device="cpu")
+            cpp_source += oglang.codegen.codegen_kernel(kernel.adj, device="cpu")
+            cpp_source += oglang.codegen.codegen_module(kernel.adj, device="cpu")
+
             if use_cuda:
-                adj = oglang.codegen.Adjoint(kernel.func, builtin_functions, self.functions, device='cuda')
-                cpp_source += oglang.codegen.codegen_module_decl(adj, device='cuda')
-                cu_source += oglang.codegen.codegen_kernel(adj, device='cuda')
-                cu_source += oglang.codegen.codegen_module(adj, device='cuda')
+                
+                entry_points.append(kernel.func.__name__ + "_cuda_forward")
+                entry_points.append(kernel.func.__name__ + "_cuda_backward")
 
-            adj = oglang.codegen.Adjoint(kernel.func, builtin_functions, self.functions, device='cpu')
-            cpp_source += oglang.codegen.codegen_module_decl(adj, device='cpu')
-            cpp_source += oglang.codegen.codegen_kernel(adj, device='cpu')
-            cpp_source += oglang.codegen.codegen_module(adj, device='cpu')
+                cpp_source += oglang.codegen.codegen_module_decl(kernel.adj, device="cuda")
+                cu_source += oglang.codegen.codegen_kernel(kernel.adj, device="cuda")
+                cu_source += oglang.codegen.codegen_module(kernel.adj, device="cuda")
 
-            # save the arg types for type-checking at launch time
-            kernel.args = adj.args
-
-        module_name = "og_" + self.name
-
-        include_path = os.path.dirname(os.path.realpath(__file__))
-        build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
-
-        cache_path = build_path + "/" + module_name + ".gen"
-        
-        cpp_path = build_path + "/" + module_name + ".cpp"
-        cu_path = build_path + "/" + module_name + ".cu"
-
-        if (os.name == "nt"):
-            dll_path = build_path + "/" + module_name + ".dll"
-        else:
-            dll_path = build_path + "/" + module_name + ".so"
-
-        if (os.path.exists(build_path) == False):
-            os.mkdir(build_path)
-
-        # test cache
-        if (os.path.exists(cache_path)):
-
-            f = open(cache_path, 'r')
-
-            cache_string = f.read()
-            f.close()
-
-            if (cache_string == cpp_source):
-                print("Using cached kernels")
-                self.dll = cdll.LoadLibrary(dll_path)
-                return
 
         # write cpp sources
         cpp_file = open(cpp_path, "w")
@@ -862,8 +885,8 @@ class Module:
             oglang.build.build_module(cpp_path, cu_path, dll_path, config=oglang.config.mode, load=True)
 
             # update cached output
-            f = open(cache_path, 'w')
-            f.write(cpp_source)
+            f = open(cache_path, 'wb')
+            f.write(module_hash)
             f.close()
 
         except Exception as e:
@@ -1101,7 +1124,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
         for i, a in enumerate(args):
 
-            arg_type = kernel.args[i].type
+            arg_type = kernel.adj.args[i].type
 
             if (isinstance(arg_type, oglang.types.array)):
 
@@ -1114,7 +1137,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
                     # check subtype
                     if (a.dtype != arg_type.dtype):
-                        raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.args[i].label))
+                        raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.adj.args[i].label))
 
                     # check device
                     if (a.device != device):
@@ -1140,7 +1163,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
                 # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
                 v = a.flatten()
                 if (len(v) != arg_type.length()):
-                    raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.args[i].label, len(v), arg_type.length()))
+                    raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.adj.args[i].label, len(v), arg_type.length()))
 
                 x = arg_type()
                 for i in range(arg_type.length()):
@@ -1149,7 +1172,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
                 params.append(x)
 
             else:
-                raise RuntimeError("Unknown parameter type {} for param {}".format(arg_type, kernel.args[i].label))
+                raise RuntimeError("Unknown parameter type {} for param {}".format(arg_type, kernel.adj.args[i].label))
 
         # late bind
         if (kernel.forward_cpu == None or kernel.forward_cuda == None):
