@@ -799,6 +799,8 @@ class Module:
 
         include_path = os.path.dirname(os.path.realpath(__file__))
         build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
+        gen_path = os.path.dirname(os.path.realpath(__file__)) + "/gen"
+
         cache_path = build_path + "/" + module_name + ".hash"
 
         if (os.name == "nt"):
@@ -824,8 +826,8 @@ class Module:
                 return
 
         # otherwise rebuid
-        cpp_path = build_path + "/" + module_name + ".cpp"
-        cu_path = build_path + "/" + module_name + ".cu"
+        cpp_path = gen_path + "/" + module_name + ".cpp"
+        cu_path = gen_path + "/" + module_name + ".cu"
 
         cpp_source = ""
         cu_source = ""
