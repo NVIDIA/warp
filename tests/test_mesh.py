@@ -21,7 +21,9 @@ def deform(positions: og.array(dtype=og.vec3), t: float):
 
     x = og.load(positions, tid)
     
-    offset = sin(x[0])*0.01
+#    a = 2.0 + 3.0
+
+    offset = -sin(x[0])*0.01
     scale = sin(t)
 
     x = x + og.vec3(0.0, offset*scale, 0.0)
