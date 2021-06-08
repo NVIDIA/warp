@@ -1647,7 +1647,7 @@ class ModelBuilder:
         """Convert this builder object to a concrete model for simulation.
 
         After building simulation elements this method should be called to transfer
-        all data to Pyog tensors ready for simulation.
+        all data to device memory ready for simulation.
 
         Args:
             device: The simulation device to use, e.g.: 'cpu', 'cuda'
