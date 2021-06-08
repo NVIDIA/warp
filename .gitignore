@@ -13,3 +13,4 @@ _*/
 *.lib
 *.cpp.obj
 tests/outputs/.thumbs
+*.pdb
