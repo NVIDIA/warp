@@ -262,6 +262,17 @@ CUDA_CALLABLE inline void adj_select(bool cond, const T& a, const T& b, bool& ad
         adj_a += adj_ret;
 }
 
+template <typename T>
+CUDA_CALLABLE inline void copy(T& dest, const T& src)
+{
+    dest = src;
+}
+
+template <typename T>
+CUDA_CALLABLE inline void adj_copy(T& dest, const T& src, T& adj_dest, T& adj_src)
+{
+    // nop, this is non-differentiable operation since it violates SSA
+}
 
 
 // some helpful operator overloads (just for C++ use, these are not adjointed)
@@ -498,6 +509,25 @@ inline CUDA_CALLABLE void adj_print(mat33 m, mat33& adj_m) { }
 inline CUDA_CALLABLE void adj_print(spatial_transform t, spatial_transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
+
+
+template <typename T>
+inline CUDA_CALLABLE void expect_eq(const T& a, const T& b)
+{
+    if (a != b)
+    {
+        printf("Error, expected equal failed:\n");
+        printf("\t Expected: "); print(b); 
+        printf("\t Actual: "); print(a);
+    }
+}
+
+template <typename T>
+inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj_b)
+{
+    // nop
+}
+
 
 } // namespace og
 

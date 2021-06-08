@@ -17,6 +17,9 @@ from oglang.types import *
 # map operator to function name
 builtin_operators = {}
 
+# see https://www.ics.uci.edu/~pattis/ICS-31/lectures/opexp.pdf for a 
+# nice overview of python operators
+
 builtin_operators[ast.Add] = "add"
 builtin_operators[ast.Sub] = "sub"
 builtin_operators[ast.Mult] = "mul"
@@ -148,8 +151,6 @@ class Adjoint:
     def add_constant(adj, n):
 
         output = adj.add_var(type=type(n), constant=n)
-
-        #adj.add_forward("var_{} = {};".format(output, n))
         return output
 
     def add_load(adj, input):
@@ -443,11 +444,31 @@ class Adjoint:
                     iter = adj.add_var(int)
                     adj.symbols[node.target.id] = iter
 
+                    # save symbol table
+                    symbols_prev = adj.symbols.copy()
+
                     adj.begin_for(iter, start, end)
 
                     # eval body
                     for s in node.body:
                         adj.eval(s)
+
+                    # detect symbols with conflicting definitions (assigned inside the for loop)
+                    for items in symbols_prev.items():
+
+                        sym = items[0]
+                        var1 = items[1]
+                        var2 = adj.symbols[sym]
+
+                        if var1 != var2:
+
+                            print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
+
+                            if (var2.constant is not None):
+                                raise Exception("Error mutating a constant {}, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
+                            
+                            # overwrite the old variable value (violates SSA)
+                            adj.add_call(adj.builtin_functions["copy"], [var1, var2])
 
                     adj.end_for(iter, start, end)
 
@@ -556,16 +577,32 @@ class Adjoint:
                 if out is not None:        # set return type of function
                     return_var = out
                     if adj.return_var is not None and adj.return_var.ctype() != return_var.ctype():
-                        raise TypeError("error, function returned different types")
+                        raise TypeError("Error, function returned different types")
                     adj.return_var = return_var
 
                 adj.add_return(out)
 
                 return out
+
+            elif (isinstance(node, ast.AugAssign)):
+                
+                # convert inplace operations (+=, -=, etc) to ssa form, e.g.: c = a + b
+                left = adj.eval(node.target)
+                right = adj.eval(node.value)
+
+                # lookup 
+                name = builtin_operators[type(node.op)]
+                func = adj.builtin_functions[name]
+
+                out = adj.add_call(func, [left, right])
+
+                # update symbol map
+                adj.symbols[node.target.id] = out
+
             elif node is None:
                 return None
             else:
-                print("[WARNING] ast node of type {} not supported".format(type(node)))
+                raise Exception("Error, ast node of type {} not supported".format(type(node)))
 
         except Exception as e:
 

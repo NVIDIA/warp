@@ -352,6 +352,11 @@ class SelectFunc:
     def value_type(args):
         return args[1].type
 
+@builtin("copy")
+class CopyFunc:
+    @staticmethod
+    def value_type(args):
+        return None
 
 @builtin("rotate")
 class RotateFunc:
@@ -699,6 +704,11 @@ class PrintFunc:
     def value_type(args):
         return None
 
+@builtin("expect_eq")
+class ExpectEqFunc:
+    @staticmethod
+    def value_type(args):
+        return None
 
 
 def rename(name, return_type):
