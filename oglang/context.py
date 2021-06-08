@@ -304,20 +304,6 @@ class ACosFunc:
     def value_type(args):
         return float
 
-
-@builtin("sin")
-class SinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("cos")
-class CosFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
 @builtin("sqrt")
 class SqrtFunc:
     @staticmethod
