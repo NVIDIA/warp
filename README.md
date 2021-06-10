@@ -163,7 +163,7 @@ dot, cross, skew, length, normalize, rotate, rotate_inv, determinant, transpose,
 
 #### Spatial Functions
 
-Spatial vectors are often used in the implementation of rigid body dynamics. The following methods are available to operate on `spatial_vector` and `spatial_matrix` types.
+Rigid body transformations can be represented with the `spatial_transform` type. In addition, `spatial_vector` and `spatial_matrix` types are useful for representing rigid body velocities, forces, and inertias.
 
 ```python
 spatial_vector, spatial_transform, spatial_transform_identity, spatial_transform_get_translation, spatial_transform_get_rotation, spatial_transform_multiply, spatial_adjoint, spatial_dot, spatial_cross, spatial_cross_dual, spatial_transform_point, spatial_transform_vector, spatial_top, spatial_bottom, spatial_jacobian, spatial_mass
