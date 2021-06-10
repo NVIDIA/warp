@@ -676,6 +676,11 @@ class MeshQueryPoint:
     def value_type(args):
         return bool
 
+@builtin("mesh_query_ray")
+class MeshQueryRay:
+    @staticmethod
+    def value_type(args):
+        return bool
 
 @builtin("mesh_eval_position")
 class MeshEvalPosition:

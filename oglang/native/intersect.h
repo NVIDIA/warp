@@ -123,3 +123,36 @@ CUDA_CALLABLE inline bool intersect_ray_aabb(const vec3& pos, const vec3& rcp_di
 
     return hit;
 }
+
+
+// Moller and Trumbore's method
+CUDA_CALLABLE inline bool intersect_ray_tri(const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& w, float& sign, vec3* normal)
+{
+    vec3 ab = b - a;
+    vec3 ac = c - a;
+    vec3 n = cross(ab, ac);
+
+    float d = dot(-dir, n);
+    float ood = 1.0f / d; // No need to check for division by zero here as infinity arithmetic will save us...
+    vec3 ap = p - a;
+
+    t = dot(ap, n) * ood;
+    if (t < 0.0f)
+        return false;
+
+    vec3 e = cross(-dir, ap);
+    v = dot(ac, e) * ood;
+    if (v < 0.0f || v > 1.0f) // ...here...
+        return false;
+    w = -dot(ab, e) * ood;
+    if (w < 0.0f || v + w > 1.0f) // ...and here
+        return false;
+
+    u = 1.0f - v - w;
+    if (normal)
+        *normal = n;
+
+	sign = d;
+
+    return true;
+}

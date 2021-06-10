@@ -165,14 +165,14 @@ def create_soft_contacts(
         mesh = og.load(shape_geo_id, shape_index)
 
         face_index = int(0)
-        face_v = float(0.0)  
-        face_w = float(0.0)
+        face_u = float(0.0)  
+        face_v = float(0.0)
         sign = float(0.0)
 
-        if (og.mesh_query_point(mesh, x_local/geo_scale[0], soft_contact_margin, sign, face_index, face_v, face_w)):
+        if (og.mesh_query_point(mesh, x_local/geo_scale[0], soft_contact_margin, sign, face_index, face_u, face_v)):
 
-            shape_p = og.mesh_eval_position(mesh, face_index, face_v, face_w)
-            shape_v = og.mesh_eval_velocity(mesh, face_index, face_v, face_w)
+            shape_p = og.mesh_eval_position(mesh, face_index, face_u, face_v)
+            shape_v = og.mesh_eval_velocity(mesh, face_index, face_u, face_v)
 
             shape_p = shape_p*geo_scale[0]
 

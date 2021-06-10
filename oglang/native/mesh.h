@@ -139,7 +139,7 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, f
 }
 
 // returns true if there is a point (strictly) < distance max_dist
-CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& v, float& w)
+CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v)
 {
     Mesh mesh = mesh_get(id);
 
@@ -328,8 +328,8 @@ printf("%d\n", tests);
 	// check if we found a point, and write outputs
 	if (min_dist_sq < max_dist*max_dist)
 	{
+		u = 1.0f - min_v - min_w;
 		v = min_v;
-		w = min_w;
 		face = min_face;
 		inside = min_inside;
 		
@@ -349,85 +349,127 @@ CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, f
 }
 
 
-CUDA_CALLABLE inline float mesh_query_ray(uint64_t id, const vec3& start, const vec3& dir, float max_t, float& u, float& v, float& sign)
+CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& normal)
 {
-	/*
     Mesh mesh = mesh_get(id);
 
-	if (mesh.bvh.mNumNodes == 0)
-		return 0.0f;
+	if (mesh.bvh.num_nodes == 0)
+		return false;
 
-    int stack[64]
+    int stack[32];
 	stack[0] = mesh.bvh.root;
 	int count = 1;
 
 	vec3 rcp_dir = vec3(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
 
+	float min_t = max_t;
+	int min_face;
+	float min_u;
+	float min_v;
+	float min_sign = 1.0f;
+	vec3 min_normal;
+
 	while (count)
 	{
 		const int nodeIndex = stack[--count];
 
-		// union to allow 128-bit loads
-		union { BVHPackedNodeHalf lower; vec4 lowerf; };
-		union {	BVHPackedNodeHalf upper; vec4 upperf; };
-		
-		lowerf = tex1Dfetch<vec4>(bvh.node_lowers, nodeIndex);
-		upperf = tex1Dfetch<vec4>(bvh.node_uppers, nodeIndex);
-
-		Bounds nodeBounds(vec3(&lower.x)*bvhScale, vec3(&upper.x)*bvhScale);
-		nodeBounds.Expand(thickness);
+		BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
+		BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
 
 		float t;
-		bool hit = intersect_ray_aabb(start, rcp_dir, nodeBounds.lower, nodeBounds.upper, t);
+		bool hit = intersect_ray_aabb(start, rcp_dir, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z), t);
 
-		if (hit && t < maxT)
+		if (hit && t < max_t)
 		{
-			const int leftIndex = lower.i;
-			const int rightIndex = upper.i;
+			const int left_index = lower.i;
+			const int right_index = upper.i;
 
 			if (lower.b)
 			{	
-				//f(leftIndex, maxT);
+				// compute closest point on tri
+				int i = mesh.indices[left_index*3+0];
+				int j = mesh.indices[left_index*3+1];
+				int k = mesh.indices[left_index*3+2];
+
+				vec3 p = mesh.points[i];
+				vec3 q = mesh.points[j];
+				vec3 r = mesh.points[k];
+
+				float t, u, v, w, sign;
+				vec3 n;
+				
+				if (intersect_ray_tri(start, dir, p, q, r, t, u, v, w, sign, &n))
+				{
+					if (t < min_t && t >= 0.0f)
+					{
+						min_t = t;
+						min_face = left_index;
+						min_u = u;
+						min_v = v;
+						min_sign = sign;
+						min_normal = n;
+					}
+				}
 			}
 			else
 			{
-				stack[count++] = leftIndex;
-				stack[count++] = rightIndex;
+				stack[count++] = left_index;
+				stack[count++] = right_index;
 			}
 		}
 	}
 
-	// todo:
-	return 0.0f;
-	*/
-	return 0.0f;
+	if (min_t < max_t)
+	{
+		// write outputs
+		u = min_u;
+		v = min_v;
+		sign = min_sign;
+		t = max_t;
+		normal = normalize(min_normal);
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+	
 }
 
-// determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)
-CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
+
+CUDA_CALLABLE inline void adj_mesh_query_ray(
+	uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& n,
+	uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_n, bool adj_ret)
 {
-    float u, v, sign;
-    int parity = 0;
-
-    // x-axis
-    if (mesh_query_ray(id, p, vec3(1.0f, 0.0f, 0.0f), FLT_MAX, u, v, sign) < 0.0f)
-        parity++;
-    // y-axis
-    if (mesh_query_ray(id, p, vec3(0.0f, 1.0f, 0.0f), FLT_MAX, u, v, sign) < 0.0f)
-        parity++;
-    // z-axis
-    if (mesh_query_ray(id, p, vec3(0.0f, 0.0f, 1.0f), FLT_MAX, u, v, sign) < 0.0f)
-        parity++;
-
-    // if all 3 rays inside then return -1
-    if (parity == 3)
-        return -1.0f;
-    else
-        return 1.0f;
+	// nop
 }
 
+// // determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)
+// CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
+// {
+//     float t, u, v, sign;
+//     int parity = 0;
 
-CUDA_CALLABLE inline vec3 mesh_eval_position(uint64_t id, int tri, float v, float w)
+//     // x-axis
+//     if (mesh_query_ray(id, p, vec3(1.0f, 0.0f, 0.0f), FLT_MAX, t, u, v, sign))
+//         parity++;
+//     // y-axis
+//     if (mesh_query_ray(id, p, vec3(0.0f, 1.0f, 0.0f), FLT_MAX, t, u, v, sign))
+//         parity++;
+//     // z-axis
+//     if (mesh_query_ray(id, p, vec3(0.0f, 0.0f, 1.0f), FLT_MAX, t, u, v, sign))
+//         parity++;
+
+//     // if all 3 rays inside then return -1
+//     if (parity == 3)
+//         return -1.0f;
+//     else
+//         return 1.0f;
+// }
+
+
+CUDA_CALLABLE inline vec3 mesh_eval_position(uint64_t id, int tri, float u, float v)
 {
 	Mesh mesh = mesh_get(id);
 
@@ -444,10 +486,10 @@ CUDA_CALLABLE inline vec3 mesh_eval_position(uint64_t id, int tri, float v, floa
 	vec3 q = mesh.points[j];
 	vec3 r = mesh.points[k];
 
-	return p*(1.0f-v-w) + q*v + r*w;
+	return p*u + q*v + r*(1.0f-u-v);
 }
 
-CUDA_CALLABLE inline vec3 mesh_eval_velocity(uint64_t id, int tri, float v, float w)
+CUDA_CALLABLE inline vec3 mesh_eval_velocity(uint64_t id, int tri, float u, float v)
 {
 	Mesh mesh = mesh_get(id);
 
@@ -464,7 +506,7 @@ CUDA_CALLABLE inline vec3 mesh_eval_velocity(uint64_t id, int tri, float v, floa
 	vec3 vq = mesh.velocities[j];
 	vec3 vr = mesh.velocities[k];
 
-	return vp*(1.0f-v-w) + vq*v + vr*w;
+	return vp*u + vq*v + vr*(1.0f-u-v);
 }
 
 

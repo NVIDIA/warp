@@ -48,15 +48,15 @@ def simulate(positions: og.array(dtype=og.vec3),
     xpred = x + v*dt
 
     face_index = int(0)
+    face_u = float(0.0)
     face_v = float(0.0)
-    face_w = float(0.0)
     sign = float(0.0)
 
     max_dist = 1.5
     
-    if (og.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_v, face_w)):
+    if (og.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_u, face_v)):
         
-        p = og.mesh_eval_position(mesh, face_index, face_v, face_w)
+        p = og.mesh_eval_position(mesh, face_index, face_u, face_v)
 
         delta = xpred-p
         
