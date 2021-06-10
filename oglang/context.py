@@ -1165,13 +1165,17 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
             elif (arg_type == oglang.types.uint64):
                 params.append(c_uint64(a))
             
-            elif isinstance(a, np.ndarray):
+            elif isinstance(a, np.ndarray) or isinstance(a, tuple):
+
+                # force conversion to ndarray (handle tuple case)
+                a = np.array(a)
 
                 # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
                 v = a.flatten()
                 if (len(v) != arg_type.length()):
                     raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.adj.args[i].label, len(v), arg_type.length()))
 
+                # try convert to kernels type
                 x = arg_type()
                 for i in range(arg_type.length()):
                     x.value[i] = v[i]
@@ -1179,7 +1183,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
                 params.append(x)
 
             else:
-                raise RuntimeError("Unknown parameter type {} for param {}".format(arg_type, kernel.adj.args[i].label))
+                raise RuntimeError("Unknown parameter type {} for param {}, expected {}".format(type(a), kernel.adj.args[i].label, arg_type))
 
         # late bind
         if (kernel.forward_cpu == None or kernel.forward_cuda == None):

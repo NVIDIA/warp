@@ -49,7 +49,7 @@ def render(mesh: og.uint64,
 device = "cuda"
 width = 1024
 height = 1024
-cam_pos = np.array((0.01, 0.1, 2.0))
+cam_pos = (0.01, 0.1, 2.0)
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
