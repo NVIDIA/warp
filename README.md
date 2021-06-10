@@ -158,16 +158,15 @@ add, sub, mod, mul, div, neg, min, max, clamp, step, sign, abs, sin, cos, acos, 
 #### Vector functions
 
 ```python
-dot, cross, skew, length, normalize, rotate, rotate_inv, determinant, transpose, vec3, quat, quat_identity, quat_from_axis_angle, mat22, mat33, mat44, transform_point, transform_vector
+dot, cross, skew, length, normalize, rotate, rotate_inv, determinant, transpose, vec3, quat, quat_identity, quat_from_axis_angle, mat22, mat33, mat44, transform_point, transform_vector, inverse
 ```
 
 #### Spatial Functions
 
-Spatial vectors are often used in the implementation of articulated body algorithms. The following methods can be used to operate on `spatial_vector` and `spatial_matrix` types.
+Spatial vectors are often used in the implementation of rigid body dynamics. The following methods are available to operate on `spatial_vector` and `spatial_matrix` types.
 
 ```python
-spatial_vector, spatial_transform, spatial_transform_identity, inverse, 
-spatial_transform_get_translation, spatial_transform_get_rotation, spatial_transform_multiply, spatial_adjoint, spatial_dot, spatial_cross, spatial_cross_dual, spatial_transform_point, spatial_transform_vector, spatial_top, spatial_bottom, spatial_jacobian, spatial_mass
+spatial_vector, spatial_transform, spatial_transform_identity, spatial_transform_get_translation, spatial_transform_get_rotation, spatial_transform_multiply, spatial_adjoint, spatial_dot, spatial_cross, spatial_cross_dual, spatial_transform_point, spatial_transform_vector, spatial_top, spatial_bottom, spatial_jacobian, spatial_mass
 ```
 
 #### Dense-Matrix Functions
@@ -187,7 +186,7 @@ mesh_query_point, mesh_query_ray, mesh_eval_position, mesh_eval_velocity
 To achieve high performance some dynamic language features are not supported:
 
 * Array slicing notation
-* Lambda expressions
+* Lambda functions
 * Exceptions
 * Class definitions
 * Runtime evaluation of expressions, e.g.: eval()
