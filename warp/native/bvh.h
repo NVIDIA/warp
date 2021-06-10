@@ -2,7 +2,7 @@
 
 #include "core.h"
 
-namespace og
+namespace wp
 {
 
 struct bounds3
@@ -65,8 +65,8 @@ struct bounds3
 
 	CUDA_CALLABLE inline void add_point(const vec3& p)
 	{
-		lower = og::min(lower, p);
-		upper = og::max(upper, p);
+		lower = wp::min(lower, p);
+		upper = wp::max(upper, p);
 	}
 
 	CUDA_CALLABLE inline float area() const
@@ -173,7 +173,7 @@ CUDA_CALLABLE inline uint32_t part1by2(uint32_t n)
     return n;
 }
 
-// Takes values in the range [0, 1] and assigns an index based Morton codes of length 3*log2(dim) bits 
+// Takes values in the range [0, 1] and assigns an index based Morton codes of length 3*lwp2(dim) bits 
 template <int dim>
 CUDA_CALLABLE inline uint32_t morton3(float x, float y, float z)
 {
@@ -185,5 +185,5 @@ CUDA_CALLABLE inline uint32_t morton3(float x, float y, float z)
 }
 
 
-} // namespace og
+} // namespace wp
 

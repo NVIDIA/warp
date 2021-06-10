@@ -9,18 +9,18 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import oglang as og
+import warp as wp
 
-og.init()
+wp.init()
 
-@og.kernel
-def render(mesh: og.uint64,
-           cam_pos: og.vec3,
+@wp.kernel
+def render(mesh: wp.uint64,
+           cam_pos: wp.vec3,
            width: int,
            height: int,
-           pixels: og.array(dtype=og.vec3)):
+           pixels: wp.array(dtype=wp.vec3)):
     
-    tid = og.tid()
+    tid = wp.tid()
 
     x = tid%width
     y = tid//width
@@ -30,20 +30,20 @@ def render(mesh: og.uint64,
 
     # compute view ray
     ro = cam_pos
-    rd = og.normalize(og.vec3(sx, sy, -1.0))
+    rd = wp.normalize(wp.vec3(sx, sy, -1.0))
     
     t = float(0.0)
     u = float(0.0)
     v = float(0.0)
     sign = float(0.0)
-    n = og.vec3(0.0, 0.0, 0.0)
+    n = wp.vec3(0.0, 0.0, 0.0)
 
-    color = og.vec3(0.0, 0.0, 0.0)
+    color = wp.vec3(0.0, 0.0, 0.0)
 
-    if (og.mesh_query_ray(mesh, ro, rd, 1.e+6, t, u, v, sign, n)):
-        color = n*0.5 + og.vec3(0.5, 0.5, 0.5)
+    if (wp.mesh_query_ray(mesh, ro, rd, 1.e+6, t, u, v, sign, n)):
+        color = n*0.5 + wp.vec3(0.5, 0.5, 0.5)
         
-    og.store(pixels, tid, color)
+    wp.store(pixels, tid, color)
 
 
 device = "cuda"
@@ -59,23 +59,23 @@ mesh_geom = UsdGeom.Mesh(stage.GetPrimAtPath("/World/model/Suzanne"))
 points = np.array(mesh_geom.GetPointsAttr().Get())
 indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
 
-pixels = og.zeros(width*height, dtype=og.vec3, device=device)
+pixels = wp.zeros(width*height, dtype=wp.vec3, device=device)
 
-# create og mesh
-mesh = og.Mesh(
-    points=og.array(points, dtype=og.vec3, device=device),
+# create wp mesh
+mesh = wp.Mesh(
+    points=wp.array(points, dtype=wp.vec3, device=device),
     velocities=None,
-    indices=og.array(indices, dtype=int, device=device))
+    indices=wp.array(indices, dtype=int, device=device))
 
-with og.ScopedTimer("render"):
+with wp.ScopedTimer("render"):
 
-    og.launch(
+    wp.launch(
         kernel=render,
         dim=width*height,
         inputs=[mesh.id, cam_pos, width, height, pixels],
         device=device)
 
-    og.synchronize()
+    wp.synchronize()
 
 plt.imshow(pixels.to("cpu").numpy().reshape((height, width, 3)), origin="lower", interpolation="antialiased")
 plt.show()

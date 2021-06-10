@@ -7,44 +7,44 @@ import ctypes
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import oglang as og
+import warp as wp
 import render
 
 np.random.seed(42)
 
-og.init()
+wp.init()
 
-@og.kernel
-def deform(positions: og.array(dtype=og.vec3), t: float):
+@wp.kernel
+def deform(positions: wp.array(dtype=wp.vec3), t: float):
     
-    tid = og.tid()
+    tid = wp.tid()
 
-    x = og.load(positions, tid)
+    x = wp.load(positions, tid)
     
 #    a = 2.0 + 3.0
 
     offset = -sin(x[0])*0.01
     scale = sin(t)
 
-    x = x + og.vec3(0.0, offset*scale, 0.0)
+    x = x + wp.vec3(0.0, offset*scale, 0.0)
 
-    og.store(positions, tid, x)
+    wp.store(positions, tid, x)
 
 
-@og.kernel
-def simulate(positions: og.array(dtype=og.vec3),
-            velocities: og.array(dtype=og.vec3),
-            mesh: og.uint64,
+@wp.kernel
+def simulate(positions: wp.array(dtype=wp.vec3),
+            velocities: wp.array(dtype=wp.vec3),
+            mesh: wp.uint64,
             restitution: float,
             margin: float,
             dt: float):
     
-    tid = og.tid()
+    tid = wp.tid()
 
-    x = og.load(positions, tid)
-    v = og.load(velocities, tid)
+    x = wp.load(positions, tid)
+    v = wp.load(velocities, tid)
 
-    v = v + og.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
+    v = v + wp.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
     xpred = x + v*dt
 
     face_index = int(0)
@@ -54,30 +54,30 @@ def simulate(positions: og.array(dtype=og.vec3),
 
     max_dist = 1.5
     
-    if (og.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_u, face_v)):
+    if (wp.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_u, face_v)):
         
-        p = og.mesh_eval_position(mesh, face_index, face_u, face_v)
+        p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
 
         delta = xpred-p
         
-        dist = og.length(delta)*sign
+        dist = wp.length(delta)*sign
         err = dist - margin
 
         # mesh collision
         if (err < 0.0):
-            n = og.normalize(delta)*sign
+            n = wp.normalize(delta)*sign
             xpred = xpred - n*err
 
         # # ground collision
         # if (xpred[1] < margin):
-        #     xpred = og.vec3(xpred[0], margin, xpred[2])
+        #     xpred = wp.vec3(xpred[0], margin, xpred[2])
 
     # pbd update
     v = (xpred - x)*(1.0/dt)
     x = xpred
 
-    og.store(positions, tid, x)
-    og.store(velocities, tid, v)
+    wp.store(positions, tid, x)
+    wp.store(velocities, tid, v)
 
 
 device = "cpu"
@@ -101,28 +101,28 @@ torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
 points = np.array(torus_geom.GetPointsAttr().Get())
 indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
 
-# create og mesh
-mesh = og.Mesh(
-    points=og.array(points, dtype=og.vec3, device=device),
+# create wp mesh
+mesh = wp.Mesh(
+    points=wp.array(points, dtype=wp.vec3, device=device),
     velocities=None,
-    indices=og.array(indices, dtype=int, device=device))
+    indices=wp.array(indices, dtype=int, device=device))
 
 init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -0.2, 0.5]))*10.0
 init_vel = np.random.rand(num_particles, 3)*0.0
 
-positions = og.from_numpy(init_pos.astype(np.float32), dtype=og.vec3, device=device)
-velocities = og.from_numpy(init_vel.astype(np.float32), dtype=og.vec3, device=device)
+positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device=device)
+velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=device)
 
-positions_host = og.from_numpy(init_pos.astype(np.float32), dtype=og.vec3, device="cpu")
+positions_host = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device="cpu")
 
 if (sim_render):
     stage = render.UsdRenderer("tests/outputs/test_mesh.usd")
 
 for i in range(sim_steps):
 
-    with og.ScopedTimer("simulate", detailed=False, dict=sim_timers):
+    with wp.ScopedTimer("simulate", detailed=False, dict=sim_timers):
 
-        og.launch(
+        wp.launch(
             kernel=deform,
             dim=len(mesh.points),
             inputs=[mesh.points, sim_time],
@@ -130,20 +130,20 @@ for i in range(sim_steps):
 
         mesh.refit()
 
-        og.launch(
+        wp.launch(
             kernel=simulate, 
             dim=num_particles, 
             inputs=[positions, velocities, mesh.id, sim_restitution, sim_margin, sim_dt], 
             device=device)
 
-        og.synchronize()
+        wp.synchronize()
     
     # render
     if (sim_render):
 
-        with og.ScopedTimer("render", detailed=False):
+        with wp.ScopedTimer("render", detailed=False):
 
-            og.copy(positions_host, positions)
+            wp.copy(positions_host, positions)
 
             stage.begin_frame(sim_time)
 

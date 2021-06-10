@@ -1,7 +1,7 @@
 #include "mesh.h"
 #include "bvh.h"
 
-using namespace og;
+using namespace wp;
 
 #include <map>
 
@@ -13,7 +13,7 @@ namespace
 } // anonymous namespace
 
 
-namespace og
+namespace wp
 {
 
 bool mesh_get_descriptor(uint64_t id, Mesh& mesh)
@@ -37,7 +37,7 @@ void mesh_rem_descriptor(uint64_t id)
 
 }
 
-} // namespace og
+} // namespace wp
 
 uint64_t mesh_create_host(vec3* points, vec3* velocities, int* indices, int num_points, int num_tris)
 {

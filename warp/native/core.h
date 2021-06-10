@@ -59,7 +59,7 @@
 #define FP_CHECK 0
 
 
-namespace og
+namespace wp
 {
 
 template <typename T>
@@ -79,7 +79,7 @@ CUDA_CALLABLE void adj_cast_int(T x, T& adj_x, int adj_ret) { adj_x += adj_ret; 
 typedef uint64_t array;
 
 template <typename T>
-CUDA_CALLABLE T cast(og::array addr)
+CUDA_CALLABLE T cast(wp::array addr)
 {
     return (T)(addr);
 }
@@ -529,7 +529,7 @@ inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj
 }
 
 
-} // namespace og
+} // namespace wp
 
 
 
@@ -557,11 +557,11 @@ extern "C"
 
     // create a user-accesible copy of the mesh, it is the 
     // users reponsibility to keep-alive the points/tris data for the duration of the mesh lifetime
-	OG_API uint64_t mesh_create_host(og::vec3* points, og::vec3* velocities, int* tris, int num_points, int num_tris);
+	OG_API uint64_t mesh_create_host(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
 	OG_API void mesh_destroy_host(uint64_t id);
     OG_API void mesh_refit_host(uint64_t id);
 
-	OG_API uint64_t mesh_create_device(og::vec3* points, og::vec3* velocities, int* tris, int num_points, int num_tris);
+	OG_API uint64_t mesh_create_device(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
 	OG_API void mesh_destroy_device(uint64_t id);
     OG_API void mesh_refit_device(uint64_t id);
 

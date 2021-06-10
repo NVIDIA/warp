@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-import oglang as og
+import warp as wp
 
 class Cloth:
 
@@ -165,15 +165,15 @@ def run_benchmark(mode, dim, timers, render=False):
         grid.GetFaceVertexIndicesAttr().Set(cloth.triangles, 0.0)
         grid.GetFaceVertexCountsAttr().Set([3]*cloth.num_tris, 0.0)
 
-    with og.ScopedTimer("Initialization", dict=timers):
+    with wp.ScopedTimer("Initialization", dict=timers):
 
-        if mode == "oglang_cpu":
-            import tests.benchmark_cloth_oglang
-            integrator = tests.benchmark_cloth_oglang.OgIntegrator(cloth, "cpu")
+        if mode == "warp_cpu":
+            import tests.benchmark_cloth_warp
+            integrator = tests.benchmark_cloth_warp.WpIntegrator(cloth, "cpu")
 
-        elif mode == "oglang_gpu":
-            import tests.benchmark_cloth_oglang
-            integrator = tests.benchmark_cloth_oglang.OgIntegrator(cloth, "cuda")
+        elif mode == "warp_gpu":
+            import tests.benchmark_cloth_warp
+            integrator = tests.benchmark_cloth_warp.WpIntegrator(cloth, "cuda")
 
         elif mode == "taichi_cpu":
             import tests.benchmark_cloth_taichi
@@ -232,7 +232,7 @@ def run_benchmark(mode, dim, timers, render=False):
     for i in range(sim_frames):
 
         # simulate
-        with og.ScopedTimer(label, dict=timers):
+        with wp.ScopedTimer(label, dict=timers):
             positions = integrator.simulate(sim_dt, sim_substeps)
 
         if render:

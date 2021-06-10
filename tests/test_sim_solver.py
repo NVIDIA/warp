@@ -9,8 +9,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-import oglang as og
-import oglang.sim as ogsim
+import warp as wp
+import warp.sim as wpsim
+
+wp.init()
 
 import render
 
@@ -31,11 +33,11 @@ sim_render = True
 
 device = "cpu"
 
-builder = ogsim.ModelBuilder()
+builder = wpsim.ModelBuilder()
 
 builder.add_cloth_grid(
     pos=(0.0, 3.0, 0.0), 
-    rot=og.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
+    rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
     vel=(0.0, 0.0, 0.0), 
     dim_x=sim_width, 
     dim_y=sim_height, 
@@ -60,8 +62,8 @@ model.tri_kb = 1.0
 model.tri_kd = 1.e+1
 model.contact_kd = 1.e+2
 
-#integrator = ogsim.SemiImplicitIntegrator()
-integrator = ogsim.VariationalImplicitIntegrator(model, solver="nesterov", max_iters=64, alpha=0.01, report=True)
+#integrator = wpsim.SemiImplicitIntegrator()
+integrator = wpsim.VariationalImplicitIntegrator(model, solver="nesterov", max_iters=64, alpha=0.01, report=True)
 
 state_0 = model.state()
 state_1 = model.state()
@@ -72,7 +74,7 @@ for i in range(sim_frames):
     
     if (sim_render):
     
-        with og.ScopedTimer("render"):
+        with wp.ScopedTimer("render"):
 
             stage.begin_frame(sim_time)
             stage.render_mesh(name="cloth", points=state_0.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
@@ -81,7 +83,7 @@ for i in range(sim_frames):
 
             stage.end_frame()
 
-    with og.ScopedTimer("simulate"):
+    with wp.ScopedTimer("simulate"):
 
         for s in range(sim_substeps):
 
@@ -91,7 +93,7 @@ for i in range(sim_frames):
             # swap states
             (state_0, state_1) = (state_1, state_0)
 
-        og.synchronize()
+        wp.synchronize()
 
 
 

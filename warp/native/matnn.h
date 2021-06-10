@@ -312,7 +312,7 @@ CUDA_CALLABLE inline void adj_dense_solve(
     int n, const float* __restrict__ A, const float* __restrict__ L, const float* __restrict__ b, const float* __restrict__ x,
     int adj_n, float* __restrict__ adj_A, float* __restrict__ adj_L, float* __restrict__ adj_b, const float* __restrict__ adj_x)
 {
-    // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pog, section 2.3.1
+    // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pwp, section 2.3.1
     dense_subs(n, L, adj_x, adj_b);
 
     // A* = -adj_b*x^T

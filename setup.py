@@ -1,7 +1,7 @@
 import setuptools
 
 setuptools.setup(
-    name="oglang",                                          # Replace with your own username
+    name="warp",                                          # Replace with your own username
     version="0.0.1",
     author="NVIDIA",
     author_email="mmacklin@nvidia.com",
@@ -12,7 +12,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     package_data={"": ["native/*.h", "native/*.cpp", "native/*.cu", "kernels/core.dll"]},
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Prwpramming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
     install_requires=["numpy"],

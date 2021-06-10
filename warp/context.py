@@ -13,12 +13,12 @@ import hashlib
 from ctypes import*
 
 
-from oglang.types import *
-from oglang.utils import *
-from oglang.config import *
+from warp.types import *
+from warp.utils import *
+from warp.config import *
 
-import oglang.codegen
-import oglang.build
+import warp.codegen
+import warp.build
 
 
 # represents either a built-in or user-defined function
@@ -33,7 +33,7 @@ class Function:
         self.module = module
 
         if (func):
-            self.adj = oglang.codegen.Adjoint(func)
+            self.adj = warp.codegen.Adjoint(func)
 
         if (module):
             module.register_function(self)
@@ -53,7 +53,7 @@ class Kernel:
         self.forward_cuda = None
         self.backward_cuda = None
 
-        self.adj = oglang.codegen.Adjoint(func)
+        self.adj = warp.codegen.Adjoint(func)
 
         if (module):
             module.register_kernel(self)
@@ -69,7 +69,7 @@ class Kernel:
         except:
             print("Could not load CPU methods for kernel {}".format(self.func.__name__))
 
-        if (oglang.build.find_cuda()):
+        if (warp.build.find_cuda()):
             
             try:
                 self.forward_cuda = eval("dll." + self.func.__name__ + "_cuda_forward")
@@ -103,7 +103,7 @@ builtin_functions = {}
 def builtin(key):
     def insert(c):
         
-        func = Function(func=None, key=key, namespace="og::", value_type=c.value_type)
+        func = Function(func=None, key=key, namespace="wp::", value_type=c.value_type)
         builtin_functions[key] = func
 
     return insert
@@ -140,23 +140,23 @@ class MulFunc:
     def value_type(args):
 
         # int x int
-        if (oglang.types.type_is_int(args[0].type) and oglang.types.type_is_int(args[1].type)):
+        if (warp.types.type_is_int(args[0].type) and warp.types.type_is_int(args[1].type)):
             return int
 
         # float x int
-        elif (oglang.types.type_is_float(args[1].type) and oglang.types.type_is_int(args[0].type)):
+        elif (warp.types.type_is_float(args[1].type) and warp.types.type_is_int(args[0].type)):
             return float
 
         # int x float
-        elif (oglang.types.type_is_int(args[0].type) and oglang.types.type_is_float(args[1].type)):
+        elif (warp.types.type_is_int(args[0].type) and warp.types.type_is_float(args[1].type)):
             return float
 
         # scalar x object
-        elif (oglang.types.type_is_float(args[0].type)):
+        elif (warp.types.type_is_float(args[0].type)):
             return args[1].type
 
         # object x scalar
-        elif (oglang.types.type_is_float(args[1].type)):
+        elif (warp.types.type_is_float(args[1].type)):
             return args[0].type
 
         # mat33 x vec3
@@ -180,7 +180,7 @@ class MulFunc:
             return quat
 
         else:
-            raise Exception("Unrecognized types for multiply operator *, got {} and {}".format(args[0].type, args[1].type))
+            raise Exception("Unrecwpnized types for multiply operator *, got {} and {}".format(args[0].type, args[1].type))
 
 
 @builtin("div")
@@ -189,27 +189,27 @@ class DivFunc:
     def value_type(args):
         
         # int / int
-        if (oglang.types.type_is_int(args[0].type) and oglang.types.type_is_int(args[1].type)):
+        if (warp.types.type_is_int(args[0].type) and warp.types.type_is_int(args[1].type)):
             return int
 
         # float / int
-        elif (oglang.types.type_is_float(args[0].type) and oglang.types.type_is_int(args[1].type)):
+        elif (warp.types.type_is_float(args[0].type) and warp.types.type_is_int(args[1].type)):
             return float
 
         # int / float
-        elif (oglang.types.type_is_int(args[0].type) and oglang.types.type_is_float(args[1].type)):
+        elif (warp.types.type_is_int(args[0].type) and warp.types.type_is_float(args[1].type)):
             return float
 
         # vec3 / float
-        elif (args[0].type == vec3 and oglang.types.type_is_float(args[1].type)):
+        elif (args[0].type == vec3 and warp.types.type_is_float(args[1].type)):
             return vec3
 
         # object / float
-        elif (oglang.types.type_is_float(args[0].type)):
+        elif (warp.types.type_is_float(args[0].type)):
             return args[1].type
 
         else:
-            raise Exception("Unrecognized types for division operator /, got {} and {}".format(args[0].type, args[1].type))
+            raise Exception("Unrecwpnized types for division operator /, got {} and {}".format(args[0].type, args[1].type))
 
 
 @builtin("neg")
@@ -389,9 +389,9 @@ class TransposeFunc:
 class LoadFunc:
     @staticmethod
     def value_type(args):
-        if (type(args[0].type) != oglang.types.array):
+        if (type(args[0].type) != warp.types.array):
             raise Exception("load() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != oglang.types.int32 and args[1].type != oglang.types.int64 and args[1].type != oglang.types.uint64):
+        if (args[1].type != int and args[1].type != warp.types.int32 and args[1].type != warp.types.int64 and args[1].type != warp.types.uint64):
             raise Exception("load() argument input 1 must be a int")
 
         return args[0].type.dtype
@@ -401,9 +401,9 @@ class LoadFunc:
 class StoreFunc:
     @staticmethod
     def value_type(args):
-        if (type(args[0].type) != oglang.types.array):
+        if (type(args[0].type) != warp.types.array):
             raise Exception("store() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != oglang.types.int32 and args[1].type != oglang.types.int64 and args[1].type != oglang.types.uint64):
+        if (args[1].type != int and args[1].type != warp.types.int32 and args[1].type != warp.types.int64 and args[1].type != warp.types.uint64):
             raise Exception("store() argument input 1 must be a int")
         if (args[2].type != args[0].type.dtype):
             raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
@@ -741,7 +741,7 @@ user_modules = {}
 def get_module(m):
 
     if (m not in user_modules):
-        user_modules[m] = oglang.context.Module(str(m))
+        user_modules[m] = warp.context.Module(str(m))
 
     return user_modules[m]
 
@@ -767,7 +767,7 @@ class Module:
             # if kernel is replacing an old one then assume it has changed and 
             # force a rebuild / reload of the dynamic libary 
             if (self.dll):
-                oglang.build.unload_module(self.dll)
+                warp.build.unload_module(self.dll)
                 self.dll = None
 
         # register new kernel
@@ -790,7 +790,7 @@ class Module:
             h.update(bytes(s, 'utf-8'))
 
         # append any configuration parameters
-        h.update(bytes(oglang.config.mode, 'utf-8'))
+        h.update(bytes(warp.config.mode, 'utf-8'))
         
         return h.digest()
 
@@ -800,7 +800,7 @@ class Module:
         if not use_cuda:
             print("[INFO] CUDA support not found. Disabling CUDA kernel compilation.")
 
-        module_name = "og_" + self.name
+        module_name = "wp_" + self.name
 
         include_path = os.path.dirname(os.path.realpath(__file__))
         build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
@@ -837,8 +837,8 @@ class Module:
         cpp_source = ""
         cu_source = ""
 
-        cpp_source += oglang.codegen.cpu_module_header
-        cu_source += oglang.codegen.cuda_module_header
+        cpp_source += warp.codegen.cpu_module_header
+        cu_source += warp.codegen.cuda_module_header
 
         # kernels
         entry_points = []
@@ -848,8 +848,8 @@ class Module:
            
             func.adj.build(builtin_functions, self.functions)
             
-            cpp_source += oglang.codegen.codegen_func(func.adj, device="cpu")
-            cu_source += oglang.codegen.codegen_func(func.adj, device="cuda")
+            cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
+            cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
 
             # complete the function return type after we have analyzed it (infered from return statement in ast)
             func.value_type = wrap(func.adj)
@@ -864,18 +864,18 @@ class Module:
             entry_points.append(kernel.func.__name__ + "_cpu_forward")
             entry_points.append(kernel.func.__name__ + "_cpu_backward")
 
-            cpp_source += oglang.codegen.codegen_module_decl(kernel.adj, device="cpu")
-            cpp_source += oglang.codegen.codegen_kernel(kernel.adj, device="cpu")
-            cpp_source += oglang.codegen.codegen_module(kernel.adj, device="cpu")
+            cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cpu")
+            cpp_source += warp.codegen.codegen_kernel(kernel.adj, device="cpu")
+            cpp_source += warp.codegen.codegen_module(kernel.adj, device="cpu")
 
             if use_cuda:
                 
                 entry_points.append(kernel.func.__name__ + "_cuda_forward")
                 entry_points.append(kernel.func.__name__ + "_cuda_backward")
 
-                cpp_source += oglang.codegen.codegen_module_decl(kernel.adj, device="cuda")
-                cu_source += oglang.codegen.codegen_kernel(kernel.adj, device="cuda")
-                cu_source += oglang.codegen.codegen_module(kernel.adj, device="cuda")
+                cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cuda")
+                cu_source += warp.codegen.codegen_kernel(kernel.adj, device="cuda")
+                cu_source += warp.codegen.codegen_module(kernel.adj, device="cuda")
 
 
         # write cpp sources
@@ -889,7 +889,7 @@ class Module:
        
         try:
 
-            oglang.build.build_module(cpp_path, cu_path, dll_path, config=oglang.config.mode, load=True)
+            warp.build.build_module(cpp_path, cu_path, dll_path, config=warp.config.mode, load=True)
 
             # update cached output
             f = open(cache_path, 'wb')
@@ -902,7 +902,7 @@ class Module:
             raise(e)
 
 
-        self.dll = oglang.build.load_module(dll_path)
+        self.dll = warp.build.load_module(dll_path)
 
 
 #-------------------------------------------
@@ -923,48 +923,48 @@ class Runtime:
         # else:
         #     print("Unknown platform")
 
-        # if (oglang.cuda.cuda):
+        # if (warp.cuda.cuda):
 
-        #     oglang.cuda.cuInit(0)
+        #     warp.cuda.cuInit(0)
 
         #     self.cuda_device = c_int(0)
-        #     ret = oglang.cuda.cuDeviceGet(byref(self.cuda_device), 0)
+        #     ret = warp.cuda.cuDeviceGet(byref(self.cuda_device), 0)
 
         #     self.cuda_context = c_void_p()            
-        #     ret = oglang.cuda.cuDevicePrimaryCtxRetain(byref(self.cuda_context), self.cuda_device)
-        #     ret = oglang.cuda.cuCtxPushCurrent(self.cuda_context)
-        #     ret = oglang.cuda.cuCtxAttach(byref(self.cuda_context), 0)
+        #     ret = warp.cuda.cuDevicePrimaryCtxRetain(byref(self.cuda_context), self.cuda_device)
+        #     ret = warp.cuda.cuCtxPushCurrent(self.cuda_context)
+        #     ret = warp.cuda.cuCtxAttach(byref(self.cuda_context), 0)
 
         #     flags = c_uint(0)
         #     active = c_int(0)
 
-        #     ret = oglang.cuda.cuDevicePrimaryCtxGetState(self.cuda_device, byref(flags), byref(active))
+        #     ret = warp.cuda.cuDevicePrimaryCtxGetState(self.cuda_device, byref(flags), byref(active))
 
         #     current = c_void_p()
-        #     ret = oglang.cuda.cuCtxGetCurrent(byref(current))
+        #     ret = warp.cuda.cuCtxGetCurrent(byref(current))
 
         #     ver = c_uint(0)
-        #     ret = oglang.cuda.cuCtxGetApiVersion(current, byref(ver))
+        #     ret = warp.cuda.cuCtxGetApiVersion(current, byref(ver))
 
         #     ver0 = c_uint(0)
-        #     ret = oglang.cuda.cuCtxGetApiVersion(c_void_p(), byref(ver0))
+        #     ret = warp.cuda.cuCtxGetApiVersion(c_void_p(), byref(ver0))
 
         build_path = os.path.dirname(os.path.realpath(__file__))
 
         try:
 
-            oglang.build.build_module(
+            warp.build.build_module(
                             cpp_path=build_path + "/native/core.cpp", 
                             cu_path=build_path + "/native/core.cu", 
-                            dll_path=build_path + "/bin/oglang.dll",
-                            config=oglang.config.mode)
+                            dll_path=build_path + "/bin/warp.dll",
+                            config=warp.config.mode)
                             
         except Exception as e:
 
             print("Could not load core library")
             raise e
 
-        self.core = oglang.build.load_module(build_path + "/bin/oglang.dll")
+        self.core = warp.build.load_module(build_path + "/bin/warp.dll")
 
         # setup c-types for core.dll
         self.core.alloc_host.restype = c_void_p
@@ -1015,7 +1015,7 @@ class Runtime:
 
     def verify_device(self):
 
-        if oglang.config.verify_cuda:
+        if warp.config.verify_cuda:
 
             context = self.core.cuda_get_context()
             if (context != self.cuda_device):
@@ -1061,7 +1061,7 @@ def copy(dest, src, requires_grad=False):
 
 def zeros(n, dtype=float, device="cpu", requires_grad=False):
 
-    num_bytes = n*oglang.types.type_size_in_bytes(dtype)
+    num_bytes = n*warp.types.type_size_in_bytes(dtype)
 
     if (device == "cpu"):
         ptr = runtime.core.alloc_host(num_bytes) 
@@ -1075,7 +1075,7 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
         # construct array
-        return oglang.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
+        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
 
 def zeros_like(src, requires_grad=False):
 
@@ -1101,7 +1101,7 @@ def empty_like(src, requires_grad=False):
 
 def from_numpy(arr, dtype, device="cpu", requires_grad=False):
 
-    return oglang.array(data=arr, dtype=dtype, device=device)
+    return warp.array(data=arr, dtype=dtype, device=device)
 
 
 def synchronize():
@@ -1133,7 +1133,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
             arg_type = kernel.adj.args[i].type
 
-            if (isinstance(arg_type, oglang.types.array)):
+            if (isinstance(arg_type, warp.types.array)):
 
                 if (a == None):
                     
@@ -1153,16 +1153,16 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
                     params.append(c_int64(a.data))
 
             # try and convert arg to correct type
-            elif (arg_type == oglang.types.float32):
+            elif (arg_type == warp.types.float32):
                 params.append(c_float(a))
 
-            elif (arg_type == oglang.types.int32):
+            elif (arg_type == warp.types.int32):
                 params.append(c_int32(a))
 
-            elif (arg_type == oglang.types.int64):
+            elif (arg_type == warp.types.int64):
                 params.append(c_int64(a))
 
-            elif (arg_type == oglang.types.uint64):
+            elif (arg_type == warp.types.uint64):
                 params.append(c_uint64(a))
             
             elif isinstance(a, np.ndarray) or isinstance(a, tuple):
@@ -1228,8 +1228,8 @@ def init():
 
     if (runtime == None):
         runtime = Runtime()
-        print("Initialized oglang")
+        print("Initialized warp")
     else:
-        print("Calling oglang.init() after initialization, this call will be ignored")
+        print("Calling warp.init() after initialization, this call will be ignored")
 
 

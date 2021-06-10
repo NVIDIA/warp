@@ -1,7 +1,7 @@
 #include "mesh.h"
 #include "bvh.h"
 
-using namespace og;
+using namespace wp;
 
 __global__ void compute_triangle_bounds(int n, const vec3* points, const int* indices, bounds3* b)
 {

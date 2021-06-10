@@ -1,41 +1,41 @@
-from oglang.context import synchronize
-import oglang as og
+from warp.context import synchronize
+import warp as wp
 
 import numpy as np
 
 
-@og.kernel
-def gd_step(arr_x: og.array(dtype=float), 
-            arr_dfdx: og.array(dtype=float),
+@wp.kernel
+def gd_step(arr_x: wp.array(dtype=float), 
+            arr_dfdx: wp.array(dtype=float),
             alpha: float):
 
-    tid = og.tid()
+    tid = wp.tid()
 
-    x = og.load(arr_x, tid)
-    dfdx = og.load(arr_dfdx, tid)
+    x = wp.load(arr_x, tid)
+    dfdx = wp.load(arr_dfdx, tid)
 
     x = x - dfdx*alpha
 
-    og.store(arr_x, tid, x)
+    wp.store(arr_x, tid, x)
 
-@og.kernel
+@wp.kernel
 def nesterov1(beta: float,
-              x: og.array(dtype=float),
-              x_prev: og.array(dtype=float),
-              y: og.array(dtype=float)):
+              x: wp.array(dtype=float),
+              x_prev: wp.array(dtype=float),
+              y: wp.array(dtype=float)):
     
-    tid = og.tid()
+    tid = wp.tid()
 
     y[tid] = x[tid] + beta*(x[tid] - x_prev[tid])
 
-@og.kernel
+@wp.kernel
 def nesterov2(alpha: float,
-              beta: og.array(float), 
-              eta: og.array(float), 
-              x: og.array(dtype=float), 
-              x_prev: og.array(dtype=float), 
-              y: og.array(dtype=float),
-              dfdx: og.array(dtype=float)):
+              beta: wp.array(float), 
+              eta: wp.array(float), 
+              x: wp.array(dtype=float), 
+              x_prev: wp.array(dtype=float), 
+              y: wp.array(dtype=float),
+              dfdx: wp.array(dtype=float)):
 
     # if (eta > 0.0):
     #     # adaptive restart
@@ -46,7 +46,7 @@ def nesterov2(alpha: float,
     #     x_prev = x
     #     x = y - alpha*dfdx
 
-    tid = og.tid()
+    tid = wp.tid()
 
     x_prev[tid] = x[tid]
     x[tid] = y[tid] - alpha*dfdx[tid]
@@ -57,9 +57,9 @@ def inner(a, b, out):
         raise RuntimeError("Inner product devices do not match")
 
     if a.device == "cpu":
-        og.runtime.array_inner_host(a, b, out, a.length)
+        wp.runtime.array_inner_host(a, b, out, a.length)
     elif a.device == "cuda":
-        og.runtime.array_inner_device(a, b, out, a.length)
+        wp.runtime.array_inner_device(a, b, out, a.length)
 
 class Optimizer:
 
@@ -70,14 +70,14 @@ class Optimizer:
         self.device = device
                
         # allocate space for residual buffers
-        self.dfdx = og.zeros(n, dtype=float, device=device)
+        self.dfdx = wp.zeros(n, dtype=float, device=device)
 
         if (mode == "nesterov"):
-            self.x_prev = og.zeros(n, dtype=float, device=device)
-            self.y = og.zeros(n, dtype=float, device=device)
-            self.eta = og.zeros(1, dtype=float, device=device)
-            self.eta_prev = og.zeros(1, dtype=float, device=device)
-            self.beta = og.zeros(1, dtype=int, device=device)
+            self.x_prev = wp.zeros(n, dtype=float, device=device)
+            self.y = wp.zeros(n, dtype=float, device=device)
+            self.eta = wp.zeros(1, dtype=float, device=device)
+            self.eta_prev = wp.zeros(1, dtype=float, device=device)
+            self.beta = wp.zeros(1, dtype=int, device=device)
 
 
 
@@ -101,7 +101,7 @@ class Optimizer:
                 grad_func(x, self.dfdx)
 
                 # gradient step
-                og.launch(kernel=gd_step, dim=self.n, inputs=[x, self.dfdx, alpha], device=self.device)
+                wp.launch(kernel=gd_step, dim=self.n, inputs=[x, self.dfdx, alpha], device=self.device)
 
                 if (report):
 
@@ -112,7 +112,7 @@ class Optimizer:
 
         elif (self.mode == "nesterov"):
             
-            og.copy(self.x_prev, x)
+            wp.copy(self.x_prev, x)
 
             # momentum index (reset after restart)
             b = 0
@@ -122,7 +122,7 @@ class Optimizer:
                 b += 1
 
                 # y = x + beta*(x - x_prev)
-                og.launch(kernel=nesterov1, dim=self.n, inputs=[beta, x, self.x_prev, self.y], device=self.device)
+                wp.launch(kernel=nesterov1, dim=self.n, inputs=[beta, x, self.x_prev, self.y], device=self.device)
                 
                 # grad
                 grad_func(self.y, self.dfdx)
@@ -131,7 +131,7 @@ class Optimizer:
                 #np.dot(dfdx, x - x_prev)
 
                 # x = y - alpha*dfdx
-                og.launch(kernel=nesterov2, dim=self.n, inputs=[alpha, None, None, x, self.x_prev, self.y, self.dfdx], device=self.device)
+                wp.launch(kernel=nesterov2, dim=self.n, inputs=[alpha, None, None, x, self.x_prev, self.y, self.dfdx], device=self.device)
 
                 if (report):
     

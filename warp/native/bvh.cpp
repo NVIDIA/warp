@@ -4,7 +4,7 @@
 #include <algorithm>
 
 
-namespace og
+namespace wp
 {
 
 
@@ -473,7 +473,7 @@ void bvh_refit_host(BVH& bvh, const bounds3* b)
 }
 
 
-} // namespace og
+} // namespace wp
 
 
 

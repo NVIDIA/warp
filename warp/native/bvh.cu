@@ -6,7 +6,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-namespace og
+namespace wp
 {
 
 
@@ -110,7 +110,7 @@ void bvh_refit_device(BVH& bvh, const bounds3* b)
 
 
 
-} // namespace og
+} // namespace wp
 
 
 

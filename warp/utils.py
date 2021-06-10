@@ -4,12 +4,12 @@ import timeit
 import cProfile
 import numpy as np
 
-log_output = ""
+lwp_output = ""
 
-def log(s):
+def lwp(s):
     print(s)
-    global log_output
-    log_output = log_output + s + "\n"
+    global lwp_output
+    lwp_output = lwp_output + s + "\n"
 
 # short hands
 

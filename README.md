@@ -1,6 +1,6 @@
-# NVIDIA OgLang
+# NVIDIA Warp
 
-OgLang is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
+Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
 ##  Installation
 
@@ -25,46 +25,46 @@ To run built-in tests you should install the USD Core library to your Python env
 
 ## Example Usage
 
-To define a computational kernel use the following syntax with the `@og.kernel` decorator. Note that all input arguments must be typed, and that the function can not access any global state.
+To define a computational kernel use the following syntax with the `@wp.kernel` decorator. Note that all input arguments must be typed, and that the function can not access any global state.
 
 ```python
-@og.kernel
-def simple_kernel(a: og.array(dtype=vec3),
-                  b: og.array(dtype=vec3),
-                  c: og.array(dtype=float)):
+@wp.kernel
+def simple_kernel(a: wp.array(dtype=vec3),
+                  b: wp.array(dtype=vec3),
+                  c: wp.array(dtype=float)):
 
     # get thread index
-    tid = og.tid()
+    tid = wp.tid()
 
     # load two vec3s
-    x = og.load(a, tid)
-    y = og.load(b, tid)
+    x = wp.load(a, tid)
+    y = wp.load(b, tid)
 
     # compute the dot product between vectors
-    r = og.dot(x, y)
+    r = wp.dot(x, y)
 
     # write result back to memory
-    og.store(c, tid, r)
+    wp.store(c, tid, r)
 ```
 
 Arrays can be allocated similar to PyTorch:
 
 ```python
     # allocate an uninitizalized array of vec3s
-    v = og.empty(dim=n, dtype=og.vec3, device="cuda")
+    v = wp.empty(dim=n, dtype=wp.vec3, device="cuda")
 
     # allocate a zero-initialized array of quaternions    
-    q = og.zeros(dim=n, dtype=og.quat, device="cuda")
+    q = wp.zeros(dim=n, dtype=wp.quat, device="cuda")
 
     # allocate and initialize an array from a numpy array
     # will be automatically transferred to the specified device
-    v = og.from_numpy(array, dtype=og.vec3, device="cuda")
+    v = wp.from_numpy(array, dtype=wp.vec3, device="cuda")
 ```
 
 To launch a kernel use the following syntax:
 
 ```python
-    og.launch(kernel=simple_kernel, # kernel to launch
+    wp.launch(kernel=simple_kernel, # kernel to launch
               dim=1024,             # number of threads
               inputs=[a, b, c],     # parameters
               device="cuda")        # execution device
@@ -84,20 +84,20 @@ This pattern will allocate a temporary CPU buffer, perform a copy from device->h
 
 ```python
     # manually bring data back to host
-    og.copy(dest=host_array, src=device_array)
-    og.synchronize()
+    wp.copy(dest=host_array, src=device_array)
+    wp.synchronize()
 
     view = host_array.numpy()
 ```
 
-All copy operations are performed asynchronously and must be synchronized explicitly to ensure data is visible. For best performance multiple copies should be queued together:
+All copy operations are performed asynchronously and must be synchronized explicitly to ensure data is visible. For best performance multiple copies should be queued twpether:
 
 ```python
     # launch multiple copy operations asynchronously
-    og.copy(dest=host_array_0, src=device_array_0)
-    og.copy(dest=host_array_1, src=device_array_1)
-    og.copy(dest=host_array_2, src=device_array_2)
-    og.synchronize()
+    wp.copy(dest=host_array_0, src=device_array_0)
+    wp.copy(dest=host_array_1, src=device_array_1)
+    wp.copy(dest=host_array_2, src=device_array_2)
+    wp.synchronize()
 ```
 
 ## Memory Model
@@ -108,9 +108,9 @@ Arrays may be constructed from Python lists or numpy arrays, by default data wil
 
 ## Compilation Model
 
-OgLang uses a Python->C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries (.dll/.so) and cached between application restarts.
+Warp uses a Python->C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries (.dll/.so) and cached between application restarts.
 
-Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with `@og.kernel` will be included in the shared library.
+Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with `@wp.kernel` will be included in the shared library.
 
 ## Language Details
 
@@ -118,16 +118,16 @@ To support GPU computation and differentiability there are some differences from
 
 ### Built-in Types
 
-OgLang supports a number of built-in math types similar to high-level shading languages, for example `vec2, vec3, vec4, mat22, mat33, mat44, quat, array`. All built-in types have value semantics so that expressions such as `a = b` generate a copy of the variable b rather than a reference.
+Warp supports a number of built-in math types similar to high-level shading languages, for example `vec2, vec3, vec4, mat22, mat33, mat44, quat, array`. All built-in types have value semantics so that expressions such as `a = b` generate a copy of the variable b rather than a reference.
 
 ### Strong Typing
 
-Unlike Python, in oglang all variables must be typed. Types are inferred from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:
+Unlike Python, in warp all variables must be typed. Types are inferred from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:
 
 ```python
-@og.kernel
-def simple_kernel(a: og.array(dtype=vec3),
-                  b: og.array(dtype=vec3),
+@wp.kernel
+def simple_kernel(a: wp.array(dtype=vec3),
+                  b: wp.array(dtype=vec3),
                   c: float):
 ...
 ```
@@ -195,6 +195,6 @@ To achieve high performance some dynamic language features are not supported:
 
 ## Source
 
-https://gitlab-master.nvidia.com/mmacklin/oglang
+https://gitlab-master.nvidia.com/mmacklin/warp
 
 

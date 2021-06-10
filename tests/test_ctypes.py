@@ -8,30 +8,32 @@ import ctypes
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-import oglang as og
+import warp as wp
 
-@og.kernel
-def add_vec3(dest: og.array(dtype=og.vec3),
-             c: og.vec3):
+wp.init()
 
-    tid = og.tid()
+@wp.kernel
+def add_vec3(dest: wp.array(dtype=wp.vec3),
+             c: wp.vec3):
 
-    og.store(dest, tid, c)
+    tid = wp.tid()
 
-@og.kernel
-def transform_vec3(dest: og.array(dtype=og.vec3),
-    m: og.mat44,
-    v: og.vec3):
+    wp.store(dest, tid, c)
 
-    tid = og.tid()
+@wp.kernel
+def transform_vec3(dest: wp.array(dtype=wp.vec3),
+    m: wp.mat44,
+    v: wp.vec3):
 
-    p = og.transform_point(m, v)
-    og.store(dest, tid, p)
+    tid = wp.tid()
+
+    p = wp.transform_point(m, v)
+    wp.store(dest, tid, p)
 
 device = "cpu"
 n = 32
 
-dest = og.zeros(n=32, dtype=og.vec3, device=device)
+dest = wp.zeros(n=32, dtype=wp.vec3, device=device)
 c = np.array((1.0, 2.0, 3.0))
 m = np.array(((1.0, 0.0, 0.0, 1.0),
               (0.0, 1.0, 0.0, 2.0),
@@ -39,12 +41,12 @@ m = np.array(((1.0, 0.0, 0.0, 1.0),
               (0.0, 0.0, 0.0, 1.0)))
 
 print("add_vec3")
-og.launch(add_vec3, dim=n, inputs=[dest, c], device=device)
+wp.launch(add_vec3, dim=n, inputs=[dest, c], device=device)
 print(dest)
 
 
 print("transform_vec3")
-og.launch(transform_vec3, dim=n, inputs=[dest, m, c], device=device)
+wp.launch(transform_vec3, dim=n, inputs=[dest, m, c], device=device)
 print(dest)
 
 

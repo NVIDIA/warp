@@ -5,7 +5,7 @@ import imp
 import subprocess
 from ctypes import *
 
-from oglang.utils import ScopedTimer
+from warp.utils import ScopedTimer
 
 # runs vcvars and copies back the build environment
 def set_build_env():
@@ -101,7 +101,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             ld_inputs = []
 
         else:
-            raise RuntimeError("Unrecognized build configuration (debug, release), got: {}".format(config))
+            raise RuntimeError("Unrecwpnized build configuration (debug, release), got: {}".format(config))
 
 
         with ScopedTimer("build"):
@@ -178,7 +178,7 @@ def unload_module(dll):
     
     # platform dependent unload, removes *all* references to the dll
     # note this should only be performed if you know there are no dangling
-    # refs to the dll inside the Python program 
+    # refs to the dll inside the Python prwpram 
     try:
         while (True):
             _ctypes.FreeLibrary(handle)

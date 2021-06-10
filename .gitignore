@@ -2,8 +2,8 @@ __pycache__
 .idea
 *.net
 *.prof
-oglang/kernels
-oglang.egg-info
+warp/kernels
+warp.egg-info
 .vscode
 archive
 _*/
@@ -14,3 +14,4 @@ _*/
 *.cpp.obj
 tests/outputs/.thumbs
 *.pdb
+tests/outputs

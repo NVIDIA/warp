@@ -11,7 +11,7 @@ import numpy as np
 
 import copy
 
-from oglang.types import *
+from warp.types import *
 
 
 # map operator to function name
@@ -39,7 +39,7 @@ builtin_operators[ast.NotEq] = "!="
 class Var:
     def __init__(adj, label, type, requires_grad=False, constant=None):
 
-        # convert built-in types to og types
+        # convert built-in types to wp types
         if (type == float):
             type = float32
         elif (type == int):
@@ -56,11 +56,11 @@ class Var:
     def ctype(self):
         if (isinstance(self.type, array)):
             if self.type.dtype == vec3:
-                return str("og::" + self.type.dtype.__name__) + "*"
+                return str("wp::" + self.type.dtype.__name__) + "*"
 
             return str(self.type.dtype.__name__) + "*"
         elif self.type == vec3:
-            return "og::" + str(self.type.__name__)
+            return "wp::" + str(self.type.__name__)
         else:
             return str(self.type.__name__)
 
@@ -182,7 +182,7 @@ class Adjoint:
 
         return output
 
-    def add_call(adj, func, inputs, prefix='og::'):
+    def add_call(adj, func, inputs, prefix='wp::'):
         # expression (zero output), e.g.: void do_something();
         if (func.value_type(inputs) == None):
 
@@ -346,7 +346,7 @@ class Adjoint:
                 return out
 
             elif (isinstance(node, ast.BoolOp)):
-                # op, expr list values (e.g. and and a list of things anded together)
+                # op, expr list values (e.g. and and a list of things anded twpether)
 
                 op = node.op
                 if isinstance(op, ast.And):
@@ -479,7 +479,7 @@ class Adjoint:
 
                 name = None
 
-                # determine if call is to a builtin (e.g.: og.cos(x)), or to a free-func, e.g.: my_func(x)
+                # determine if call is to a builtin (e.g.: wp.cos(x)), or to a free-func, e.g.: my_func(x)
                 if (isinstance(node.func, ast.Attribute)):
                     name = node.func.attr
                 elif (isinstance(node.func, ast.Name)):
@@ -618,7 +618,7 @@ class Adjoint:
 cpu_module_header = '''
 #include "../native/core.h"
 
-// avoid namespacing of float type for casting to float type, this is to avoid og::float(x), which is not valid in C++
+// avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
 #define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
 
@@ -626,14 +626,14 @@ cpu_module_header = '''
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
 
-using namespace og;
+using namespace wp;
 
 '''
 
 cuda_module_header = '''
 #include "../native/core.h"
 
-// avoid namespacing of float type for casting to float type, this is to avoid og::float(x), which is not valid in C++
+// avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
 #define adj_float(x, adj_x, adj_ret) adj_cast_float(x, adj_x, adj_ret)
 
@@ -641,7 +641,7 @@ cuda_module_header = '''
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
 
-using namespace og;
+using namespace wp;
 
 '''
 
@@ -1012,7 +1012,7 @@ def codegen_module(adj, device='cpu'):
     sep = ""
     for arg in adj.args:
         if (isinstance(arg.type, array)):
-            forward_args += sep + "og::array var_" + arg.label
+            forward_args += sep + "wp::array var_" + arg.label
             forward_params += sep + "cast<" + arg.ctype() + ">(var_" + arg.label + ")"
         else:
             forward_args += sep + arg.ctype() + " var_" + arg.label
@@ -1023,7 +1023,7 @@ def codegen_module(adj, device='cpu'):
     sep = ""
     for arg in adj.args:
         if (isinstance(arg.type, array)):
-            reverse_args += sep + "og::array adj_" + arg.label
+            reverse_args += sep + "wp::array adj_" + arg.label
             reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
         else:
             reverse_args += sep + arg.ctype() + " adj_" + arg.label
@@ -1057,7 +1057,7 @@ def codegen_module_decl(adj, device='cpu'):
     sep = ""
     for arg in adj.args:
         if (isinstance(arg.type, array)):
-            forward_args += sep + "og::array var_" + arg.label
+            forward_args += sep + "wp::array var_" + arg.label
             forward_params += sep + "cast<" + arg.ctype() + ">(var_" + arg.label + ")"
         else:
             forward_args += sep + arg.ctype() + " var_" + arg.label
@@ -1068,7 +1068,7 @@ def codegen_module_decl(adj, device='cpu'):
     sep = ""
     for arg in adj.args:
         if (isinstance(arg.type, array)):
-            reverse_args += sep + "og::array adj_" + arg.label
+            reverse_args += sep + "wp::array adj_" + arg.label
             reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
         else:
             reverse_args += sep + arg.ctype() + " adj_" + arg.label
@@ -1105,7 +1105,7 @@ def codegen_module_decl(adj, device='cpu'):
 #         threads = 256   # should match the threadblock size
 
 #     tape.launch(
-#         func=og.eval_dense_gemm,
+#         func=wp.eval_dense_gemm,
 #         dim=threads,
 #         inputs=[
 #             m,
@@ -1131,7 +1131,7 @@ def codegen_module_decl(adj, device='cpu'):
 #         threads = 256*batch_count   # must match the threadblock size used in adjoint.py
 
 #     tape.launch(
-#         func=og.eval_dense_gemm_batched,
+#         func=wp.eval_dense_gemm_batched,
 #         dim=threads,
 #         inputs=[
 #             m,

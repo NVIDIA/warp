@@ -340,7 +340,7 @@ class array:
 
     def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True):
         
-        # convert built-in numeric type to og type
+        # convert built-in numeric type to wp type
         if (dtype == int):
             dtype = int32
 
@@ -353,7 +353,7 @@ class array:
             isinstance(data, list) or 
             isinstance(data, tuple)):
 
-            from oglang.context import empty, copy, synchronize
+            from warp.context import empty, copy, synchronize
 
             arr = np.array(data, copy=False)
 
@@ -384,7 +384,7 @@ class array:
             if (device == "cpu" and copy == False):
 
                 # todo: if runtime is global do we really need to store it per-array?
-                from oglang.context import runtime
+                from warp.context import runtime
                 
                 # ref numpy memory directly
                 self.data = ptr
@@ -468,7 +468,7 @@ class array:
 
         if (self.device == "cpu"):
 
-            # todo: make each og type return it's corresponding ctype
+            # todo: make each wp type return it's corresponding ctype
             # ptr_type = ctypes.POINTER(type_ctype(self.dtype))
             # ptr = ctypes.cast(self.data, ptr_type)
 
@@ -485,7 +485,7 @@ class array:
         if (self.device == device):
             return self
         else:
-            from oglang.context import empty, copy, synchronize
+            from warp.context import empty, copy, synchronize
 
             dest = empty(n=self.length, dtype=self.dtype, device=device)
             copy(dest, self)

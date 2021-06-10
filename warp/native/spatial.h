@@ -632,7 +632,7 @@ inline CUDA_CALLABLE spatial_matrix spatial_transform_inertia(const spatial_tran
 
     spatial_matrix T = spatial_adjoint(R, S);
 
-    // first quadratic form, for derivation of the adjoint see https://people.maths.ox.ac.uk/gilesm/files/AD2008.pog, section 2.3.2
+    // first quadratic form, for derivation of the adjoint see https://people.maths.ox.ac.uk/gilesm/files/AD2008.pwp, section 2.3.2
     return mul(mul(transpose(T), I), T);
 }
 */

@@ -6,7 +6,7 @@
 
 #define BVH_DEBUG 0
 
-namespace og
+namespace wp
 {
 
 struct Mesh
@@ -522,4 +522,4 @@ void mesh_add_descriptor(uint64_t id, const Mesh& mesh);
 void mesh_rem_descriptor(uint64_t id);
 
 
-} // namespace og
+} // namespace wp

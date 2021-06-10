@@ -9,12 +9,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-import oglang as og
-import oglang.sim
+import warp as wp
+import warp.sim
 
 import render
 
-og.init()
+wp.init()
 
 # params
 sim_width = 64
@@ -31,11 +31,11 @@ sim_use_graph = False
 
 device = "cuda"
 
-builder = og.sim.ModelBuilder()
+builder = wp.sim.ModelBuilder()
 
 builder.add_cloth_grid(
     pos=(0.0, 3.0, 0.0), 
-    rot=og.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
+    rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
     vel=(0.0, 0.0, 0.0), 
     dim_x=sim_width, 
     dim_y=sim_height, 
@@ -66,13 +66,13 @@ torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
 points = np.array(torus_geom.GetPointsAttr().Get())
 indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
 
-mesh = og.sim.Mesh(points, indices)
+mesh = wp.sim.Mesh(points, indices)
 
 builder.add_shape_mesh(
     body=-1,
     mesh=mesh,
     pos=(1.0, 0.0, 1.0),
-    rot=og.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5),
+    rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5),
     scale=(2.0, 2.0, 2.0),
     ke=1.e+2,
     kd=1.e+2,
@@ -91,8 +91,8 @@ model.tri_kd = 1.e+1
 model.soft_contact_kd = 1.e+2
 #model.soft_contact_ke = 
 
-integrator = og.sim.SemiImplicitIntegrator()
-#integrator = og.sim.VariationalImplicitIntegrator(model)
+integrator = wp.sim.SemiImplicitIntegrator()
+#integrator = wp.sim.VariationalImplicitIntegrator(model)
 
 
 state_0 = model.state()
@@ -102,9 +102,9 @@ stage = render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
 
 if (sim_use_graph):
     # create update graph
-    og.capture_begin()
+    wp.capture_begin()
 
-    og.sim.collide(model, state_0)
+    wp.sim.collide(model, state_0)
 
     for s in range(sim_substeps):
 
@@ -114,20 +114,20 @@ if (sim_use_graph):
         # swap states
         (state_0, state_1) = (state_1, state_0)
 
-    graph = og.capture_end()
+    graph = wp.capture_end()
 
 
 # launch simulation
 for i in range(sim_frames):
     
-    with og.ScopedTimer("simulate", active=True):
+    with wp.ScopedTimer("simulate", active=True):
 
         if (sim_use_graph):
-            og.capture_launch(graph)
+            wp.capture_launch(graph)
             sim_time += 1.0/60.0
         else:
 
-            og.sim.collide(model, state_0)
+            wp.sim.collide(model, state_0)
 
             for s in range(sim_substeps):
 
@@ -139,7 +139,7 @@ for i in range(sim_frames):
 
     if (sim_render):
 
-        with og.ScopedTimer("render", active=False):
+        with wp.ScopedTimer("render", active=False):
 
             stage.begin_frame(sim_time)
             #stage.render_mesh(name="cloth", points=state.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
@@ -149,7 +149,7 @@ for i in range(sim_frames):
             if (i == 0):
                 #stage.render_box(name="box", pos=(0.0, 0.0, 0.0), extents=(0.5, 0.5, 0.5))
                 #stage.render_sphere(name="sphere", pos=(1.0, 0.0, 1.0), radius=1.0)
-                stage.render_mesh(name="mesh", points=points, indices=indices, pos=(1.0, 0.0, 1.0), rot=og.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5), scale=(2.0, 2.0, 2.0))
+                stage.render_mesh(name="mesh", points=points, indices=indices, pos=(1.0, 0.0, 1.0), rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5), scale=(2.0, 2.0, 2.0))
 
             stage.end_frame()
 

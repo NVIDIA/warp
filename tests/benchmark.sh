@@ -1,6 +1,6 @@
 rm report.csv
-python3 benchmark_cloth.py oglang_cpu
-python3 benchmark_cloth.py oglang_gpu
+python3 benchmark_cloth.py warp_cpu
+python3 benchmark_cloth.py warp_gpu
 # python3 benchmark_cloth.py taichi_cpu
 # python3 benchmark_cloth.py taichi_gpu
 # python3 benchmark_cloth.py numpy

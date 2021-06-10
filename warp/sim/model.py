@@ -2,7 +2,7 @@
 """
 
 from operator import pos
-import oglang as og
+import warp as wp
 
 import math
 import numpy as np
@@ -100,7 +100,7 @@ class Mesh:
                     # displacement of quadrature point from COM
                     d = quads[j] - com
 
-                    I += weight * volume * (og.length_sq(d) * np.eye(3, 3) - np.outer(d, d))
+                    I += weight * volume * (wp.length_sq(d) * np.eye(3, 3) - np.outer(d, d))
                     mass += weight * volume
 
             self.I = I
@@ -118,11 +118,11 @@ class Mesh:
     # construct simulation ready buffers from points
     def finalize(self, device):
 
-        pos = og.array(self.vertices, dtype=og.vec3, device=device)
-        vel = og.zeros_like(pos)
-        indices = og.array(self.indices, dtype=og.int32, device=device)
+        pos = wp.array(self.vertices, dtype=wp.vec3, device=device)
+        vel = wp.zeros_like(pos)
+        indices = wp.array(self.indices, dtype=wp.int32, device=device)
 
-        self.mesh = og.Mesh(pos, vel, indices)
+        self.mesh = wp.Mesh(pos, vel, indices)
         return self.mesh.id
 
 
@@ -137,12 +137,12 @@ class State:
 
     Attributes:
 
-        particle_q (og.array): Tensor of particle positions
-        particle_qd (og.array): Tensor of particle velocities
+        particle_q (wp.array): Tensor of particle positions
+        particle_qd (wp.array): Tensor of particle velocities
 
-        joint_q (og.array): Tensor of joint coordinates
-        joint_qd (og.array): Tensor of joint velocities
-        joint_act (og.array): Tensor of joint actuation values
+        joint_q (wp.array): Tensor of joint coordinates
+        joint_qd (wp.array): Tensor of joint velocities
+        joint_act (wp.array): Tensor of joint actuation values
 
     """
 
@@ -185,7 +185,7 @@ class State:
 
         # build a list of all tensor attributes
         for attr, value in self.__dict__.items():
-            if (og.is_tensor(value)):
+            if (wp.is_tensor(value)):
                 tensors.append(value)
 
         return tensors
@@ -198,55 +198,55 @@ class Model:
     all geometry, constraints, and parameters used to describe the simulation.
 
     Attributes:
-        particle_q (og.array): Particle positions, shape [particle_count, 3], float
-        particle_qd (og.array): Particle velocities, shape [particle_count, 3], float
-        particle_mass (og.array): Particle mass, shape [particle_count], float
-        particle_inv_mass (og.array): Particle inverse mass, shape [particle_count], float
+        particle_q (wp.array): Particle positions, shape [particle_count, 3], float
+        particle_qd (wp.array): Particle velocities, shape [particle_count, 3], float
+        particle_mass (wp.array): Particle mass, shape [particle_count], float
+        particle_inv_mass (wp.array): Particle inverse mass, shape [particle_count], float
 
-        shape_transform (og.array): Rigid shape transforms, shape [shape_count, 7], float
-        shape_body (og.array): Rigid shape body index, shape [shape_count], int
-        shape_geo_type (og.array): Rigid shape geometry type, [shape_count], int
-        shape_geo_src (og.array): Rigid shape geometry source, shape [shape_count], int
-        shape_geo_scale (og.array): Rigid shape geometry scale, shape [shape_count, 3], float
-        shape_materials (og.array): Rigid shape contact materials, shape [shape_count, 4], float
+        shape_transform (wp.array): Rigid shape transforms, shape [shape_count, 7], float
+        shape_body (wp.array): Rigid shape body index, shape [shape_count], int
+        shape_geo_type (wp.array): Rigid shape geometry type, [shape_count], int
+        shape_geo_src (wp.array): Rigid shape geometry source, shape [shape_count], int
+        shape_geo_scale (wp.array): Rigid shape geometry scale, shape [shape_count, 3], float
+        shape_materials (wp.array): Rigid shape contact materials, shape [shape_count, 4], float
 
-        spring_indices (og.array): Particle spring indices, shape [spring_count*2], int
-        spring_rest_length (og.array): Particle spring rest length, shape [spring_count], float
-        spring_stiffness (og.array): Particle spring stiffness, shape [spring_count], float
-        spring_damping (og.array): Particle spring damping, shape [spring_count], float
-        spring_control (og.array): Particle spring activation, shape [spring_count], float
+        spring_indices (wp.array): Particle spring indices, shape [spring_count*2], int
+        spring_rest_length (wp.array): Particle spring rest length, shape [spring_count], float
+        spring_stiffness (wp.array): Particle spring stiffness, shape [spring_count], float
+        spring_damping (wp.array): Particle spring damping, shape [spring_count], float
+        spring_control (wp.array): Particle spring activation, shape [spring_count], float
 
-        tri_indices (og.array): Triangle element indices, shape [tri_count*3], int
-        tri_poses (og.array): Triangle element rest pose, shape [tri_count, 2, 2], float
-        tri_activations (og.array): Triangle element activations, shape [tri_count], float
+        tri_indices (wp.array): Triangle element indices, shape [tri_count*3], int
+        tri_poses (wp.array): Triangle element rest pose, shape [tri_count, 2, 2], float
+        tri_activations (wp.array): Triangle element activations, shape [tri_count], float
 
-        edge_indices (og.array): Bending edge indices, shape [edge_count*2], int
-        edge_rest_angle (og.array): Bending edge rest angle, shape [edge_count], float
+        edge_indices (wp.array): Bending edge indices, shape [edge_count*2], int
+        edge_rest_angle (wp.array): Bending edge rest angle, shape [edge_count], float
 
-        tet_indices (og.array): Tetrahedral element indices, shape [tet_count*4], int
-        tet_poses (og.array): Tetrahedral rest poses, shape [tet_count, 3, 3], float
-        tet_activations (og.array): Tetrahedral volumetric activations, shape [tet_count], float
-        tet_materials (og.array): Tetrahedral elastic parameters in form :math:`k_{mu}, k_{lambda}, k_{damp}`, shape [tet_count, 3]
+        tet_indices (wp.array): Tetrahedral element indices, shape [tet_count*4], int
+        tet_poses (wp.array): Tetrahedral rest poses, shape [tet_count, 3, 3], float
+        tet_activations (wp.array): Tetrahedral volumetric activations, shape [tet_count], float
+        tet_materials (wp.array): Tetrahedral elastic parameters in form :math:`k_{mu}, k_{lambda}, k_{damp}`, shape [tet_count, 3]
         
-        body_X_cm (og.array): Rigid body center of mass (in local frame), shape [link_count, 7], float
-        body_I_m (og.array): Rigid body inertia tensor (relative to COM), shape [link_count, 3, 3], float
+        body_X_cm (wp.array): Rigid body center of mass (in local frame), shape [link_count, 7], float
+        body_I_m (wp.array): Rigid body inertia tensor (relative to COM), shape [link_count, 3, 3], float
 
-        articulation_start (og.array): Articulation start offset, shape [num_articulations], int
+        articulation_start (wp.array): Articulation start offset, shape [num_articulations], int
 
-        joint_q (og.array): Joint coordinate, shape [joint_coord_count], float
-        joint_qd (og.array): Joint velocity, shape [joint_dof_count], float
-        joint_type (og.array): Joint type, shape [joint_count], int
-        joint_parent (og.array): Joint parent, shape [joint_count], int
-        joint_X_pj (og.array): Joint transform in parent frame, shape [joint_count, 7], float
-        joint_X_cm (og.array): Joint mass frame in child frame, shape [joint_count, 7], float
-        joint_axis (og.array): Joint axis in child frame, shape [joint_count, 3], float
-        joint_q_start (og.array): Joint coordinate offset, shape [joint_count], int
-        joint_qd_start (og.array): Joint velocity offset, shape [joint_count], int
+        joint_q (wp.array): Joint coordinate, shape [joint_coord_count], float
+        joint_qd (wp.array): Joint velocity, shape [joint_dof_count], float
+        joint_type (wp.array): Joint type, shape [joint_count], int
+        joint_parent (wp.array): Joint parent, shape [joint_count], int
+        joint_X_pj (wp.array): Joint transform in parent frame, shape [joint_count, 7], float
+        joint_X_cm (wp.array): Joint mass frame in child frame, shape [joint_count, 7], float
+        joint_axis (wp.array): Joint axis in child frame, shape [joint_count, 3], float
+        joint_q_start (wp.array): Joint coordinate offset, shape [joint_count], int
+        joint_qd_start (wp.array): Joint velocity offset, shape [joint_count], int
 
-        joint_armature (og.array): Armature for each joint, shape [joint_count], float
-        joint_target_ke (og.array): Joint stiffness, shape [joint_count], float
-        joint_target_kd (og.array): Joint damping, shape [joint_count], float
-        joint_target (og.array): Joint target, shape [joint_count], float
+        joint_armature (wp.array): Armature for each joint, shape [joint_count], float
+        joint_target_ke (wp.array): Joint stiffness, shape [joint_count], float
+        joint_target_kd (wp.array): Joint damping, shape [joint_count], float
+        joint_target (wp.array): Joint target, shape [joint_count], float
 
         particle_count (int): Total number of particles in the system
         joint_coord_count (int): Total number of joint coordinates in the system
@@ -367,46 +367,46 @@ class Model:
           
         # particles
         if (self.particle_count):
-            s.particle_q = og.clone(self.particle_q)
-            s.particle_qd = og.clone(self.particle_qd)
+            s.particle_q = wp.clone(self.particle_q)
+            s.particle_qd = wp.clone(self.particle_qd)
 
         # articulations
         if (self.link_count):
-            s.joint_q = og.clone(self.joint_q)
-            s.joint_qd = og.clone(self.joint_qd)
-            s.joint_act = og.zeros_like(self.joint_qd)
+            s.joint_q = wp.clone(self.joint_q)
+            s.joint_qd = wp.clone(self.joint_qd)
+            s.joint_act = wp.zeros_like(self.joint_qd)
 
         #--------------------------------
         # derived state (output only)
         
         if (self.particle_count):
-            s.particle_f = og.empty_like(self.particle_qd, requires_grad=True)
+            s.particle_f = wp.empty_like(self.particle_qd, requires_grad=True)
 
         if (self.link_count):
 
             # joints
-            s.joint_qdd = og.empty_like(self.joint_qd, requires_grad=True)
-            s.joint_tau = og.empty_like(self.joint_qd, requires_grad=True)
-            s.joint_S_s = og.empty((self.joint_dof_count, 6), dtype=og.float32, device=self.device, requires_grad=True)            
+            s.joint_qdd = wp.empty_like(self.joint_qd, requires_grad=True)
+            s.joint_tau = wp.empty_like(self.joint_qd, requires_grad=True)
+            s.joint_S_s = wp.empty((self.joint_dof_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)            
 
             # rigids
-            s.body_X_sc = og.empty((self.link_count, 7), dtype=og.float32, device=self.device, requires_grad=True)
-            s.body_X_sm = og.empty((self.link_count, 7), dtype=og.float32, device=self.device, requires_grad=True)
-            s.body_I_s = og.empty((self.link_count, 6, 6), dtype=og.float32, device=self.device, requires_grad=True)
-            s.body_v_s = og.empty((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
-            s.body_a_s = og.empty((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
-            s.body_f_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
-            #s.body_ft_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
-            #s.body_f_ext_s = og.zeros((self.link_count, 6), dtype=og.float32, device=self.device, requires_grad=True)
+            s.body_X_sc = wp.empty((self.link_count, 7), dtype=wp.float32, device=self.device, requires_grad=True)
+            s.body_X_sm = wp.empty((self.link_count, 7), dtype=wp.float32, device=self.device, requires_grad=True)
+            s.body_I_s = wp.empty((self.link_count, 6, 6), dtype=wp.float32, device=self.device, requires_grad=True)
+            s.body_v_s = wp.empty((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
+            s.body_a_s = wp.empty((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
+            s.body_f_s = wp.zeros((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
+            #s.body_ft_s = wp.zeros((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
+            #s.body_f_ext_s = wp.zeros((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
 
             # system matrices
-            s.M = og.zeros(self.M_size, dtype=og.float32, device=self.device, requires_grad=True)
-            s.J = og.zeros(self.J_size, dtype=og.float32, device=self.device, requires_grad=True)
-            s.P = og.empty(self.J_size, dtype=og.float32, device=self.device, requires_grad=True)
-            s.H = og.empty(self.H_size, dtype=og.float32, device=self.device, requires_grad=True)
+            s.M = wp.zeros(self.M_size, dtype=wp.float32, device=self.device, requires_grad=True)
+            s.J = wp.zeros(self.J_size, dtype=wp.float32, device=self.device, requires_grad=True)
+            s.P = wp.empty(self.J_size, dtype=wp.float32, device=self.device, requires_grad=True)
+            s.H = wp.empty(self.H_size, dtype=wp.float32, device=self.device, requires_grad=True)
             
             # zero since only upper triangle is set which can trigger NaN detection
-            s.L = og.zeros(self.H_size, dtype=og.float32, device=self.device, requires_grad=True)
+            s.L = wp.zeros(self.H_size, dtype=wp.float32, device=self.device, requires_grad=True)
 
         else:
 
@@ -426,7 +426,7 @@ class Model:
 
         # build a list of all tensor attributes
         for attr, value in self.__dict__.items():
-            if (og.is_tensor(value)):
+            if (wp.is_tensor(value)):
                 tensors.append(value)
 
         return tensors
@@ -516,12 +516,12 @@ class Model:
 
                     add_contact(self.shape_body[i], -1, X_bs, p, 0.0, i)
 
-        # send to og
-        self.contact_body0 = og.array(body0, dtype=og.int32, device=self.device)
-        self.contact_body1 = og.array(body1, dtype=og.int32, device=self.device)
-        self.contact_point0 = og.array(point, dtype=og.float32, device=self.device)
-        self.contact_dist = og.array(dist, dtype=og.float32, device=self.device)
-        self.contact_material = og.array(mat, dtype=og.int32, device=self.device)
+        # send to wp
+        self.contact_body0 = wp.array(body0, dtype=wp.int32, device=self.device)
+        self.contact_body1 = wp.array(body1, dtype=wp.int32, device=self.device)
+        self.contact_point0 = wp.array(point, dtype=wp.float32, device=self.device)
+        self.contact_dist = wp.array(dist, dtype=wp.float32, device=self.device)
+        self.contact_material = wp.array(mat, dtype=wp.int32, device=self.device)
 
         self.contact_count = len(body0)
 
@@ -533,16 +533,16 @@ class ModelBuilder:
     """A helper class for building simulation models at runtime.
 
     Use the ModelBuilder to construct a simulation scene. The ModelBuilder
-    is independent of Pyog and builds the scene representation using
+    is independent of Pywp and builds the scene representation using
     standard Python data structures, this means it is not differentiable. Once :func:`finalize()` 
-    has been called the ModelBuilder transfers all data to og tensors and returns 
+    has been called the ModelBuilder transfers all data to wp tensors and returns 
     an object that may be used for simulation.
 
     Example:
 
-        >>> import og as og
+        >>> import wp as wp
         >>>
-        >>> builder = og.ModelBuilder()
+        >>> builder = wp.ModelBuilder()
         >>>
         >>> # anchor point (zero mass)
         >>> builder.add_particle((0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
@@ -954,7 +954,7 @@ class ModelBuilder:
 
     def _add_shape(self, body , pos, rot, type, scale, src, density, ke, kd, kf, mu):
         self.shape_body.append(body)
-        self.shape_transform.append(og.transform(pos, rot))
+        self.shape_transform.append(wp.transform(pos, rot))
         self.shape_geo_type.append(type)
         self.shape_geo_scale.append((scale[0], scale[1], scale[2]))
         self.shape_geo_src.append(src)
@@ -1046,9 +1046,9 @@ class ModelBuilder:
         rp = r - p
 
         # construct basis aligned with the triangle
-        n = og.normalize(og.cross(qp, rp))
-        e1 = og.normalize(qp)
-        e2 = og.normalize(og.cross(n, e1))
+        n = wp.normalize(wp.cross(qp, rp))
+        e1 = wp.normalize(qp)
+        e2 = wp.normalize(wp.cross(n, e1))
 
         R = np.matrix((e1, e2))
         M = np.matrix((qp, rp))
@@ -1146,9 +1146,9 @@ class ModelBuilder:
             x3 = np.array(self.particle_q[k])
             x4 = np.array(self.particle_q[l])
 
-            n1 = og.normalize(np.cross(x3 - x1, x4 - x1))
-            n2 = og.normalize(np.cross(x4 - x2, x3 - x2))
-            e = og.normalize(x4 - x3)
+            n1 = wp.normalize(np.cross(x3 - x1, x4 - x1))
+            n2 = wp.normalize(np.cross(x4 - x2, x3 - x2))
+            e = wp.normalize(x4 - x3)
 
             d = np.clip(np.dot(n2, n1), -1.0, 1.0)
 
@@ -1208,7 +1208,7 @@ class ModelBuilder:
             for x in range(0, dim_x + 1):
 
                 g = np.array((x * cell_x, y * cell_y, 0.0))
-                p = og.quat_rotate(rot, g) + pos
+                p = wp.quat_rotate(rot, g) + pos
                 m = mass
 
                 if (x == 0 and fix_left):
@@ -1254,7 +1254,7 @@ class ModelBuilder:
 
         # bending constraints, could create these explicitly for a grid but this
         # is a good test of the adjacency structure
-        adj = og.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
+        adj = wp.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
         for k, e in adj.edges.items():
 
@@ -1293,7 +1293,7 @@ class ModelBuilder:
         # particles
         for i, v in enumerate(vertices):
 
-            p = og.quat_rotate(rot, v * scale) + pos
+            p = wp.quat_rotate(rot, v * scale) + pos
 
             self.add_particle(p, vel, 0.0)
 
@@ -1319,7 +1319,7 @@ class ModelBuilder:
         end_vertex = len(self.particle_q)
         end_tri = len(self.tri_indices)
 
-        adj = og.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
+        adj = wp.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
         # bend constraints
         for k, e in adj.edges.items():
@@ -1400,7 +1400,7 @@ class ModelBuilder:
                     if (fix_bottom and y == 0):
                         m = 0.0
 
-                    p = og.quat_rotate(rot, v) + pos
+                    p = wp.quat_rotate(rot, v) + pos
 
                     self.add_particle(p, vel, m)
 
@@ -1492,7 +1492,7 @@ class ModelBuilder:
         # add particles
         for v in vertices:
 
-            p = og.quat_rotate(rot, v * scale) + pos
+            p = wp.quat_rotate(rot, v * scale) + pos
 
             self.add_particle(p, vel, 0.0)
 
@@ -1674,18 +1674,18 @@ class ModelBuilder:
         # particles
 
         # state (initial)
-        m.particle_q = og.array(self.particle_q, dtype=og.vec3, device=device)
-        m.particle_qd = og.array(self.particle_qd, dtype=og.vec3, device=device)
+        m.particle_q = wp.array(self.particle_q, dtype=wp.vec3, device=device)
+        m.particle_qd = wp.array(self.particle_qd, dtype=wp.vec3, device=device)
 
         # model 
-        m.particle_mass = og.array(self.particle_mass, dtype=og.float32, device=device)
-        m.particle_inv_mass = og.array(particle_inv_mass, dtype=og.float32, device=device)
+        m.particle_mass = wp.array(self.particle_mass, dtype=wp.float32, device=device)
+        m.particle_inv_mass = wp.array(particle_inv_mass, dtype=wp.float32, device=device)
 
         #---------------------
         # collision geometry
-        m.shape_transform = og.array(og.transform_flatten_list(self.shape_transform), dtype=og.spatial_transform, device=device)
-        m.shape_body = og.array(self.shape_body, dtype=og.int32, device=device)
-        m.shape_geo_type = og.array(self.shape_geo_type, dtype=og.int32, device=device)
+        m.shape_transform = wp.array(wp.transform_flatten_list(self.shape_transform), dtype=wp.spatial_transform, device=device)
+        m.shape_body = wp.array(self.shape_body, dtype=wp.int32, device=device)
+        m.shape_geo_type = wp.array(self.shape_geo_type, dtype=wp.int32, device=device)
         m.shape_geo_src = self.shape_geo_src
 
         # build list of ids for geometry sources (meshes, sdfs)
@@ -1696,39 +1696,39 @@ class ModelBuilder:
             else:
                 shape_geo_id.append(-1)
 
-        m.shape_geo_id = og.array(shape_geo_id, dtype=og.uint64, device=device)
-        m.shape_geo_scale = og.array(self.shape_geo_scale, dtype=og.vec3, device=device)
-        m.shape_materials = og.array(self.shape_materials, dtype=og.float32, device=device)
+        m.shape_geo_id = wp.array(shape_geo_id, dtype=wp.uint64, device=device)
+        m.shape_geo_scale = wp.array(self.shape_geo_scale, dtype=wp.vec3, device=device)
+        m.shape_materials = wp.array(self.shape_materials, dtype=wp.float32, device=device)
 
         #---------------------
         # springs
 
-        m.spring_indices = og.array(self.spring_indices, dtype=og.int32, device=device)
-        m.spring_rest_length = og.array(self.spring_rest_length, dtype=og.float32, device=device)
-        m.spring_stiffness = og.array(self.spring_stiffness, dtype=og.float32, device=device)
-        m.spring_damping = og.array(self.spring_damping, dtype=og.float32, device=device)
-        m.spring_control = og.array(self.spring_control, dtype=og.float32, device=device)
+        m.spring_indices = wp.array(self.spring_indices, dtype=wp.int32, device=device)
+        m.spring_rest_length = wp.array(self.spring_rest_length, dtype=wp.float32, device=device)
+        m.spring_stiffness = wp.array(self.spring_stiffness, dtype=wp.float32, device=device)
+        m.spring_damping = wp.array(self.spring_damping, dtype=wp.float32, device=device)
+        m.spring_control = wp.array(self.spring_control, dtype=wp.float32, device=device)
 
         #---------------------
         # triangles
 
-        m.tri_indices = og.array(self.tri_indices, dtype=og.int32, device=device)
-        m.tri_poses = og.array(self.tri_poses, dtype=og.mat22, device=device)
-        m.tri_activations = og.array(self.tri_activations, dtype=og.float32, device=device)
+        m.tri_indices = wp.array(self.tri_indices, dtype=wp.int32, device=device)
+        m.tri_poses = wp.array(self.tri_poses, dtype=wp.mat22, device=device)
+        m.tri_activations = wp.array(self.tri_activations, dtype=wp.float32, device=device)
 
         #---------------------
         # edges
 
-        m.edge_indices = og.array(self.edge_indices, dtype=og.int32, device=device)
-        m.edge_rest_angle = og.array(self.edge_rest_angle, dtype=og.float32, device=device)
+        m.edge_indices = wp.array(self.edge_indices, dtype=wp.int32, device=device)
+        m.edge_rest_angle = wp.array(self.edge_rest_angle, dtype=wp.float32, device=device)
 
         #---------------------
         # tetrahedra
 
-        m.tet_indices = og.array(self.tet_indices, dtype=og.int32, device=device)
-        m.tet_poses = og.array(self.tet_poses, dtype=og.mat33, device=device)
-        m.tet_activations = og.array(self.tet_activations, dtype=og.float32, device=device)
-        m.tet_materials = og.array(self.tet_materials, dtype=og.float32, device=device)
+        m.tet_indices = wp.array(self.tet_indices, dtype=wp.int32, device=device)
+        m.tet_poses = wp.array(self.tet_poses, dtype=wp.mat33, device=device)
+        m.tet_activations = wp.array(self.tet_activations, dtype=wp.float32, device=device)
+        m.tet_materials = wp.array(self.tet_materials, dtype=wp.float32, device=device)
 
         #-----------------------
         # muscles
@@ -1738,11 +1738,11 @@ class ModelBuilder:
         # close the muscle waypoint indices
         self.muscle_start.append(len(self.muscle_links))
 
-        m.muscle_start = og.array(self.muscle_start, dtype=og.int32, device=device)
-        m.muscle_params = og.array(self.muscle_params, dtype=og.float32, device=device)
-        m.muscle_links = og.array(self.muscle_links, dtype=og.int32, device=device)
-        m.muscle_points = og.array(self.muscle_points, dtype=og.float32, device=device)
-        m.muscle_activation = og.array(self.muscle_activation, dtype=og.float32, device=device)
+        m.muscle_start = wp.array(self.muscle_start, dtype=wp.int32, device=device)
+        m.muscle_params = wp.array(self.muscle_params, dtype=wp.float32, device=device)
+        m.muscle_links = wp.array(self.muscle_links, dtype=wp.int32, device=device)
+        m.muscle_points = wp.array(self.muscle_points, dtype=wp.float32, device=device)
+        m.muscle_activation = wp.array(self.muscle_activation, dtype=wp.float32, device=device)
 
         #--------------------------------------
         # articulations
@@ -1752,10 +1752,10 @@ class ModelBuilder:
         body_I_m = [] 
 
         for i in range(len(self.body_inertia)):
-            body_I_m.append(og.spatial_matrix_from_inertia(self.body_inertia[i], self.body_mass[i]))
-            body_X_cm.append(og.transform(self.body_com[i], og.quat_identity()))
+            body_I_m.append(wp.spatial_matrix_from_inertia(self.body_inertia[i], self.body_mass[i]))
+            body_X_cm.append(wp.transform(self.body_com[i], wp.quat_identity()))
         
-        m.body_I_m = og.array(body_I_m, dtype=og.float32, device=device)
+        m.body_I_m = wp.array(body_I_m, dtype=wp.float32, device=device)
 
 
         articulation_count = len(self.articulation_start)
@@ -1816,55 +1816,55 @@ class ModelBuilder:
             m.H_size += dof_count*dof_count
             
 
-        m.articulation_joint_start = og.array(self.articulation_start, dtype=og.int32, device=device)
+        m.articulation_joint_start = wp.array(self.articulation_start, dtype=wp.int32, device=device)
 
         # matrix offsets for batched gemm
-        m.articulation_J_start = og.array(articulation_J_start, dtype=og.int32, device=device)
-        m.articulation_M_start = og.array(articulation_M_start, dtype=og.int32, device=device)
-        m.articulation_H_start = og.array(articulation_H_start, dtype=og.int32, device=device)
+        m.articulation_J_start = wp.array(articulation_J_start, dtype=wp.int32, device=device)
+        m.articulation_M_start = wp.array(articulation_M_start, dtype=wp.int32, device=device)
+        m.articulation_H_start = wp.array(articulation_H_start, dtype=wp.int32, device=device)
         
-        m.articulation_M_rows = og.array(articulation_M_rows, dtype=og.int32, device=device)
-        m.articulation_H_rows = og.array(articulation_H_rows, dtype=og.int32, device=device)
-        m.articulation_J_rows = og.array(articulation_J_rows, dtype=og.int32, device=device)
-        m.articulation_J_cols = og.array(articulation_J_cols, dtype=og.int32, device=device)
+        m.articulation_M_rows = wp.array(articulation_M_rows, dtype=wp.int32, device=device)
+        m.articulation_H_rows = wp.array(articulation_H_rows, dtype=wp.int32, device=device)
+        m.articulation_J_rows = wp.array(articulation_J_rows, dtype=wp.int32, device=device)
+        m.articulation_J_cols = wp.array(articulation_J_cols, dtype=wp.int32, device=device)
 
-        m.articulation_dof_start = og.array(articulation_dof_start, dtype=og.int32, device=device)
-        m.articulation_coord_start = og.array(articulation_coord_start, dtype=og.int32, device=device)
+        m.articulation_dof_start = wp.array(articulation_dof_start, dtype=wp.int32, device=device)
+        m.articulation_coord_start = wp.array(articulation_coord_start, dtype=wp.int32, device=device)
 
         # state (initial)
-        m.joint_q = og.array(self.joint_q, dtype=og.float32, device=device)
-        m.joint_qd = og.array(self.joint_qd, dtype=og.float32, device=device)
+        m.joint_q = wp.array(self.joint_q, dtype=wp.float32, device=device)
+        m.joint_qd = wp.array(self.joint_qd, dtype=wp.float32, device=device)
 
         # model
-        m.joint_type = og.array(self.joint_type, dtype=og.int32, device=device)
-        m.joint_parent = og.array(self.joint_parent, dtype=og.int32, device=device)
-        m.joint_X_pj = og.array(og.transform_flatten_list(self.joint_X_pj), dtype=og.float32, device=device)
-        m.joint_X_cm = og.array(og.transform_flatten_list(body_X_cm), dtype=og.float32, device=device)
-        m.joint_axis = og.array(self.joint_axis, dtype=og.float32, device=device)
-        m.joint_q_start = og.array(self.joint_q_start, dtype=og.int32, device=device) 
-        m.joint_qd_start = og.array(self.joint_qd_start, dtype=og.int32, device=device)
+        m.joint_type = wp.array(self.joint_type, dtype=wp.int32, device=device)
+        m.joint_parent = wp.array(self.joint_parent, dtype=wp.int32, device=device)
+        m.joint_X_pj = wp.array(wp.transform_flatten_list(self.joint_X_pj), dtype=wp.float32, device=device)
+        m.joint_X_cm = wp.array(wp.transform_flatten_list(body_X_cm), dtype=wp.float32, device=device)
+        m.joint_axis = wp.array(self.joint_axis, dtype=wp.float32, device=device)
+        m.joint_q_start = wp.array(self.joint_q_start, dtype=wp.int32, device=device) 
+        m.joint_qd_start = wp.array(self.joint_qd_start, dtype=wp.int32, device=device)
 
         # dynamics properties
-        m.joint_armature = og.array(self.joint_armature, dtype=og.float32, device=device)
+        m.joint_armature = wp.array(self.joint_armature, dtype=wp.float32, device=device)
         
-        m.joint_target = og.array(self.joint_target, dtype=og.float32, device=device)
-        m.joint_target_ke = og.array(self.joint_target_ke, dtype=og.float32, device=device)
-        m.joint_target_kd = og.array(self.joint_target_kd, dtype=og.float32, device=device)
+        m.joint_target = wp.array(self.joint_target, dtype=wp.float32, device=device)
+        m.joint_target_ke = wp.array(self.joint_target_ke, dtype=wp.float32, device=device)
+        m.joint_target_kd = wp.array(self.joint_target_kd, dtype=wp.float32, device=device)
 
-        m.joint_limit_lower = og.array(self.joint_limit_lower, dtype=og.float32, device=device)
-        m.joint_limit_upper = og.array(self.joint_limit_upper, dtype=og.float32, device=device)
-        m.joint_limit_ke = og.array(self.joint_limit_ke, dtype=og.float32, device=device)
-        m.joint_limit_kd = og.array(self.joint_limit_kd, dtype=og.float32, device=device)
+        m.joint_limit_lower = wp.array(self.joint_limit_lower, dtype=wp.float32, device=device)
+        m.joint_limit_upper = wp.array(self.joint_limit_upper, dtype=wp.float32, device=device)
+        m.joint_limit_ke = wp.array(self.joint_limit_ke, dtype=wp.float32, device=device)
+        m.joint_limit_kd = wp.array(self.joint_limit_kd, dtype=wp.float32, device=device)
 
         # contacts
         m.soft_contact_max = 64*1024
 
-        m.soft_contact_count = og.zeros(1, dtype=og.int32, device=device)
-        m.soft_contact_particle = og.zeros(m.soft_contact_max, dtype=int, device=device)
-        m.soft_contact_body = og.zeros(m.soft_contact_max, dtype=int, device=device)
-        m.soft_contact_body_pos = og.zeros(m.soft_contact_max, dtype=og.vec3, device=device)
-        m.soft_contact_body_vel = og.zeros(m.soft_contact_max, dtype=og.vec3, device=device)
-        m.soft_contact_normal = og.zeros(m.soft_contact_max, dtype=og.vec3, device=device)
+        m.soft_contact_count = wp.zeros(1, dtype=wp.int32, device=device)
+        m.soft_contact_particle = wp.zeros(m.soft_contact_max, dtype=int, device=device)
+        m.soft_contact_body = wp.zeros(m.soft_contact_max, dtype=int, device=device)
+        m.soft_contact_body_pos = wp.zeros(m.soft_contact_max, dtype=wp.vec3, device=device)
+        m.soft_contact_body_vel = wp.zeros(m.soft_contact_max, dtype=wp.vec3, device=device)
+        m.soft_contact_normal = wp.zeros(m.soft_contact_max, dtype=wp.vec3, device=device)
 
         # counts
         m.particle_count = len(self.particle_q)

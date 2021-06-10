@@ -7,25 +7,25 @@ import ctypes
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import oglang as og
+import warp as wp
 
-og.init()
+wp.init()
 
 
-@og.kernel
-def basic(x: og.array(dtype=float)):
+@wp.kernel
+def basic(x: wp.array(dtype=float)):
     
-    tid = og.tid()
+    tid = wp.tid()
 
-    og.store(x, tid, float(tid)*1.0)
+    wp.store(x, tid, float(tid)*1.0)
 
 
 device = "cuda"
 n = 32
 
-x = og.zeros(n, dtype=float, device="cuda")
+x = wp.zeros(n, dtype=float, device="cuda")
 
-og.launch(
+wp.launch(
     kernel=basic, 
     dim=n, 
     inputs=[x], 
@@ -34,15 +34,15 @@ og.launch(
 print(x.to("cpu").numpy())
 
 # redefine kernel
-@og.kernel
-def basic(x: og.array(dtype=float)):
+@wp.kernel
+def basic(x: wp.array(dtype=float)):
     
-    tid = og.tid()
+    tid = wp.tid()
 
-    og.store(x, tid, float(tid)*2.0)
+    wp.store(x, tid, float(tid)*2.0)
     
 
-og.launch(
+wp.launch(
     kernel=basic, 
     dim=n, 
     inputs=[x], 

@@ -10,24 +10,26 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from pxr import Usd, UsdGeom, Gf, Sdf
 
 
-import oglang as og
+import warp as wp
 
-@og.func
-def sample(f: og.array(dtype=float),
+wp.init()
+
+@wp.func
+def sample(f: wp.array(dtype=float),
            x: int,
            y: int,
            width: int,
            height: int):
 
     # clamp texture coords
-    x = og.clamp(x, 0, width-1)
-    y = og.clamp(y, 0, height-1)
+    x = wp.clamp(x, 0, width-1)
+    y = wp.clamp(y, 0, height-1)
     
-    s = og.load(f, y*width + x)
+    s = wp.load(f, y*width + x)
     return s
 
-@og.func
-def laplacian(f: og.array(dtype=float),
+@wp.func
+def laplacian(f: wp.array(dtype=float),
               x: int,
               y: int,
               width: int,
@@ -38,9 +40,9 @@ def laplacian(f: og.array(dtype=float),
 
     return (ddx + ddy)
 
-@og.kernel
-def wave_displace(hcurrent: og.array(dtype=float),
-                  hprevious: og.array(dtype=float),
+@wp.kernel
+def wave_displace(hcurrent: wp.array(dtype=float),
+                  hprevious: wp.array(dtype=float),
                   width: int,
                   height: int,
                   center_x: float,
@@ -49,7 +51,7 @@ def wave_displace(hcurrent: og.array(dtype=float),
                   mag: float,
                   t: float):
 
-    tid = og.tid()
+    tid = wp.tid()
 
     x = tid%width
     y = tid//width
@@ -61,15 +63,15 @@ def wave_displace(hcurrent: og.array(dtype=float),
 
     if (dist_sq < r*r):
 
-        h = mag*og.sin(t)
+        h = mag*wp.sin(t)
 
-        og.store(hcurrent, tid, h)
-        og.store(hprevious, tid, h)
+        wp.store(hcurrent, tid, h)
+        wp.store(hprevious, tid, h)
 
 
-@og.kernel
-def wave_solve(hprevious: og.array(dtype=float),
-               hcurrent: og.array(dtype=float),
+@wp.kernel
+def wave_solve(hprevious: wp.array(dtype=float),
+               hcurrent: wp.array(dtype=float),
                width: int,
                height: int,
                inv_cell: float,
@@ -77,7 +79,7 @@ def wave_solve(hprevious: og.array(dtype=float),
                k_damp: float,
                dt: float):
 
-    tid = og.tid()
+    tid = wp.tid()
 
     x = tid%width
     y = tid//width
@@ -85,28 +87,28 @@ def wave_solve(hprevious: og.array(dtype=float),
     l = laplacian(hcurrent, x, y, width, height)*inv_cell*inv_cell
 
     # integrate 
-    h1 = og.load(hcurrent, tid)
-    h0 = og.load(hprevious, tid)
+    h1 = wp.load(hcurrent, tid)
+    h0 = wp.load(hprevious, tid)
     
     h = 2.0*h1 - h0 + dt*dt*(k_speed*l - k_damp*(h1-h0))
 
     # buffers get swapped each iteration
-    og.store(hprevious, tid, h)
+    wp.store(hprevious, tid, h)
 
 
 # simple kernel to apply height deltas to a vertex array
-@og.kernel
-def grid_update(heights: og.array(dtype=float),
-                vertices: og.array(dtype=og.vec3)):
+@wp.kernel
+def grid_update(heights: wp.array(dtype=float),
+                vertices: wp.array(dtype=wp.vec3)):
 
-    tid = og.tid()
+    tid = wp.tid()
 
-    h = og.load(heights, tid)
-    v = og.load(vertices, tid)
+    h = wp.load(heights, tid)
+    v = wp.load(vertices, tid)
 
-    v_new = og.vec3(v[0], h, v[2])
+    v_new = wp.vec3(v[0], h, v[2])
 
-    og.store(vertices, tid, v_new)
+    wp.store(vertices, tid, v_new)
 
 
 # params
@@ -135,11 +137,11 @@ grid_size = 0.1
 grid_displace = 0.5
 
 # simulation grids
-sim_grid0 = og.zeros(sim_width*sim_height, dtype=float, device="cuda")
-sim_grid1 = og.zeros(sim_width*sim_height, dtype=float, device="cuda")
+sim_grid0 = wp.zeros(sim_width*sim_height, dtype=float, device="cuda")
+sim_grid1 = wp.zeros(sim_width*sim_height, dtype=float, device="cuda")
 
-sim_host = og.zeros(sim_width*sim_height, dtype=float, device="cpu")
-verts_host = og.zeros(sim_width*sim_height, dtype=og.vec3, device="cpu")
+sim_host = wp.zeros(sim_width*sim_height, dtype=float, device="cpu")
+verts_host = wp.zeros(sim_width*sim_height, dtype=wp.vec3, device="cpu")
 
 vertices = verts_host.numpy().reshape((sim_width*sim_height, 3))
 indices = []
@@ -200,7 +202,7 @@ grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
 for i in range(sim_frames):
 
     # simulate
-    with og.ScopedTimer("Simulate"):
+    with wp.ScopedTimer("Simulate"):
 
         for s in range(sim_substeps):
 
@@ -208,7 +210,7 @@ for i in range(sim_frames):
             cx = sim_width/2 + math.sin(sim_time)*sim_width/3
             cy = sim_height/2 + math.cos(sim_time)*sim_height/3
 
-            og.launch(
+            wp.launch(
                 kernel=wave_displace, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],  
@@ -216,7 +218,7 @@ for i in range(sim_frames):
 
 
             # integrate wave equation
-            og.launch(
+            wp.launch(
                 kernel=wave_solve, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
@@ -229,21 +231,21 @@ for i in range(sim_frames):
 
 
         # copy data back to host
-        og.copy(sim_host, sim_grid0)
-        og.synchronize()
+        wp.copy(sim_host, sim_grid0)
+        wp.synchronize()
 
     # render
-    with og.ScopedTimer("Render"):
+    with wp.ScopedTimer("Render"):
 
         # update grid vertices from heights (CPU)
-        with og.ScopedTimer("Mesh"):
+        with wp.ScopedTimer("Mesh"):
 
-            og.launch(kernel=grid_update,
+            wp.launch(kernel=grid_update,
                         dim=sim_width*sim_height,
                         inputs=[sim_host, verts_host],
                         device="cpu")
 
-        with og.ScopedTimer("Usd"):
+        with wp.ScopedTimer("Usd"):
             
             vertices = verts_host.numpy()
 

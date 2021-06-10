@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "torus_obj"
-    doc = """Generated from Composed Stage of root layer F:/gitlab/oglang/tests/assets/torus.usd
+    doc = """Generated from Composed Stage of root layer F:/gitlab/warp/tests/assets/torus.usd
 """
     endTimeCode = 0
     metersPerUnit = 1

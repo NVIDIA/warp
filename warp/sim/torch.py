@@ -18,10 +18,10 @@
     #     """
 
 
-    #     if og.config.no_grad:
+    #     if wp.config.no_grad:
 
     #         # if no gradient required then do inplace update
-    #         self._simulate(og.Tape(), model, state_in, state_in, dt)
+    #         self._simulate(wp.Tape(), model, state_in, state_in, dt)
     #         return state_in
 
     #     else:
@@ -40,9 +40,9 @@
 
 
 
-# # define PyTorch autograd op to wrap simulate func
-# class SimulateFunc(torch.autograd.Function):
-#     """PyTorch autograd function representing a simulation stpe
+# # define PyTorch autwprad op to wrap simulate func
+# class SimulateFunc(torch.autwprad.Function):
+#     """PyTorch autwprad function representing a simulation stpe
     
 #     Note:
     
@@ -55,12 +55,12 @@
 #     def forward(ctx, integrator, model, state_in, state_out, dt, *tensors):
 
 #         # record launches
-#         ctx.og = og.og()
+#         ctx.wp = wp.wp()
 #         ctx.inputs = tensors
-#         ctx.outputs = og.to_weak_list(state_out.flatten())
+#         ctx.outputs = wp.to_weak_list(state_out.flatten())
 
 #         # simulate
-#         integrator._simulate(ctx.og, model, state_in, state_out, dt)
+#         integrator._simulate(ctx.wp, model, state_in, state_out, dt)
 
 #         return tuple(state_out.flatten())
 
@@ -68,28 +68,28 @@
 #     def backward(ctx, *grads):
 
 #         # ensure grads are contiguous in memory
-#         adj_outputs = og.make_contiguous(grads)
+#         adj_outputs = wp.make_contiguous(grads)
 
-#         # register outputs with og
-#         outputs = og.to_strong_list(ctx.outputs)        
+#         # register outputs with wp
+#         outputs = wp.to_strong_list(ctx.outputs)        
 #         for o in range(len(outputs)):
-#             ctx.og.adjoints[outputs[o]] = adj_outputs[o]
+#             ctx.wp.adjoints[outputs[o]] = adj_outputs[o]
 
 #         # replay launches backwards
-#         ctx.og.replay()
+#         ctx.wp.replay()
 
 #         # find adjoint of inputs
 #         adj_inputs = []
 #         for i in ctx.inputs:
 
-#             if i in ctx.og.adjoints:
-#                 adj_inputs.append(ctx.og.adjoints[i])
+#             if i in ctx.wp.adjoints:
+#                 adj_inputs.append(ctx.wp.adjoints[i])
 #             else:
 #                 adj_inputs.append(None)
 
 
-#         # free the og
-#         ctx.og.reset()
+#         # free the wp
+#         ctx.wp.reset()
 
 #         # filter grads to replace empty tensors / no grad / constant params with None
-#         return (None, None, None, None, None, *og.filter_grads(adj_inputs))
+#         return (None, None, None, None, None, *wp.filter_grads(adj_inputs))
