@@ -1,11 +1,10 @@
 # NVIDIA OgLang
 
-OgLang is a Python DSL and framework for writing high-performance code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
+OgLang is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
 ##  Installation
 
 ### Local Python
-
 
 To install in your local Python environment use:
 
@@ -101,21 +100,29 @@ All copy operations are performed asynchronously and must be synchronized explic
     og.synchronize()
 ```
 
+## Memory Model
+
+Memory allocations are exposed via. the `array` type. Arrays wrap an underlying piece of memory that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (`vec3`, `matrix33`, etc).
+
+Arrays may be constructed from Python lists or numpy arrays, by default data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the `copy=False` parameter to the array constructor.
+
 ## Compilation Model
 
-OgLang uses a Python->C++/CUDA compilation model that generates kernel code from Python function definitions. Generated kernel code is compiled into dynamic libraries (.dll/.so) per-module and cached between application restarts.
+OgLang uses a Python->C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries (.dll/.so) and cached between application restarts.
+
+Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with `@og.kernel` will be included in the shared library.
 
 ## Language Details
 
-To support GPU computation and differentiability not all Python there are some differences from CPython implementation. 
+To support GPU computation and differentiability there are some differences from the CPython runtime.
 
 ### Built-in Types
 
-OgLang supports a number of built-in math types similar to high-level shading languages, `vec2, vec3, vec4, mat22, mat33, mat44, quat, array`. All built-in types have value semantics. This means expressions such as `a = b` generate a copy of the variable b rather than a reference.
+OgLang supports a number of built-in math types similar to high-level shading languages, for example `vec2, vec3, vec4, mat22, mat33, mat44, quat, array`. All built-in types have value semantics so that expressions such as `a = b` generate a copy of the variable b rather than a reference.
 
 ### Strong Typing
 
-Unlike Python, in oglang all variables must be typed. Types are infered from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:
+Unlike Python, in oglang all variables must be typed. Types are inferred from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:
 
 ```python
 @og.kernel
@@ -184,6 +191,8 @@ To achieve high performance some dynamic language features are not supported:
 * Exceptions
 * Class definitions
 * Runtime evaluation of expressions, e.g.: eval()
+* Recursion
+* Dynamic allocation, lists, sets, dictionaries
 
 ## Source
 
