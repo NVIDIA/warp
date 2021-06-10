@@ -311,7 +311,6 @@ class SqrtFunc:
         return float
 
 
-
 @builtin("dot")
 class DotFunc:
     @staticmethod
@@ -1195,6 +1194,14 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
         runtime.verify_device()
 
 
+def print_builtins():
+
+    s = ""
+    for items in builtin_functions.items():
+        s += str(items[0]) + ", "
+
+    print(s)
+
 # ensures that correct CUDA is set for the guards lifetime
 # restores the previous CUDA context on exit
 class ScopedCudaGuard:
@@ -1220,3 +1227,5 @@ def init():
         print("Initialized oglang")
     else:
         print("Calling oglang.init() after initialization, this call will be ignored")
+
+

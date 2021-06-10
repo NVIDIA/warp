@@ -12,21 +12,6 @@ To install in your local Python environment use:
     pip install -e .
 
 
-### Omniverse
-
-To install in the Omniverse Python environment, use:
-
-```python
-import omni.kit.pipapi as pip
-
-pip.install(package="F:\gitlab\oglang", module="oglang")
-```
-
-Where the package path is where the oglang package lives on your local machine. See the following FAQ for more details on custom Python packages in Kit:
-
-http://omnidocs-internal.nvidia.com/py/docs/guide/faq.html#can-i-use-packages-from-pip
-
-
 ## Requirements
 
 For developers writing their own kernels the following are required:
@@ -35,7 +20,7 @@ For developers writing their own kernels the following are required:
     * GCC 4.0 upwards (Linux)
     * CUDA 11.0 upwards
 
-To build CUDA kernels either `CUDA_HOME` or `CUDA_PATH` should be set as environment variables pointing to the CUDA installation directory.
+To build CUDA kernels ensure that either `CUDA_HOME` or `CUDA_PATH` should be set as environment variables pointing to the CUDA installation directory.
 
 To run built-in tests you should install the USD Core library to your Python environment using `pip install usd-core`.
 
@@ -116,11 +101,92 @@ All copy operations are performed asynchronously and must be synchronized explic
     og.synchronize()
 ```
 
+## Compilation Model
+
+OgLang uses a Python->C++/CUDA compilation model that generates kernel code from Python function definitions. Generated kernel code is compiled into dynamic libraries (.dll/.so) per-module and cached between application restarts.
+
+## Language Details
+
+To support GPU computation and differentiability not all Python there are some differences from CPython implementation. 
+
+### Built-in Types
+
+OgLang supports a number of built-in math types similar to high-level shading languages, `vec2, vec3, vec4, mat22, mat33, mat44, quat, array`. All built-in types have value semantics. This means expressions such as `a = b` generate a copy of the variable b rather than a reference.
+
+### Strong Typing
+
+Unlike Python, in oglang all variables must be typed. Types are infered from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:
+
+```python
+@og.kernel
+def simple_kernel(a: og.array(dtype=vec3),
+                  b: og.array(dtype=vec3),
+                  c: float):
+...
+```
+
+Tuple initialization is not supported, instead variables should be explicitly typed:
+
+```python
+# invalid
+a = (1.0, 2.0, 3.0)        
+
+# valid
+a = vec3(1.0, 2.0, 3.0) 
+```
+### Built-in Functions
+
+#### Core functions
+
+```python
+tid, print, load, store, atomic_add, atomic_sub
+```
+
+#### Math functions
+
+```python
+add, sub, mod, mul, div, neg, min, max, clamp, step, sign, abs, sin, cos, acos, sqrt, select
+```
+
+#### Vector functions
+
+```python
+dot, cross, skew, length, normalize, rotate, rotate_inv, determinant, transpose, vec3, quat, quat_identity, quat_from_axis_angle, mat22, mat33, mat44, transform_point, transform_vector
+```
+
+#### Spatial Functions
+
+Spatial vectors are often used in the implementation of articulated body algorithms. The following methods can be used to operate on `spatial_vector` and `spatial_matrix` types.
+
+```python
+spatial_vector, spatial_transform, spatial_transform_identity, inverse, 
+spatial_transform_get_translation, spatial_transform_get_rotation, spatial_transform_multiply, spatial_adjoint, spatial_dot, spatial_cross, spatial_cross_dual, spatial_transform_point, spatial_transform_vector, spatial_top, spatial_bottom, spatial_jacobian, spatial_mass
+```
+
+#### Dense-Matrix Functions
+
+```python
+dense_gemm, dense_gemm_batched, dense_chol, dense_chol_batched, dense_subs, dense_solve, dense_solve_batched
+```
+
+#### Mesh Functions
+
+```python
+mesh_query_point, mesh_query_ray, mesh_eval_position, mesh_eval_velocity
+```
+
+### Unsupported Features
+
+To achieve high performance some dynamic language features are not supported:
+
+* Array slicing notation
+* Lambda expressions
+* Exceptions
+* Class definitions
+* Runtime evaluation of expressions, e.g.: eval()
+
 ## Source
 
 https://gitlab-master.nvidia.com/mmacklin/oglang
 
-## Contact
-
-mmacklin@nvidia.com
 
