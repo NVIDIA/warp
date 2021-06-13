@@ -147,6 +147,7 @@ for i in range(sim_frames):
             
             # render static geometry once
             if (i == 0):
+
                 #stage.render_box(name="box", pos=(0.0, 0.0, 0.0), extents=(0.5, 0.5, 0.5))
                 #stage.render_sphere(name="sphere", pos=(1.0, 0.0, 1.0), radius=1.0)
                 stage.render_mesh(name="mesh", points=points, indices=indices, pos=(1.0, 0.0, 1.0), rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5), scale=(2.0, 2.0, 2.0))

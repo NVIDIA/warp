@@ -704,12 +704,12 @@ cuda_module_template = '''
 extern "C" {{
 
 // Python entry points
-OG_API void {name}_cuda_forward(void* stream, int dim, {forward_args})
+WP_API void {name}_cuda_forward(void* stream, int dim, {forward_args})
 {{
     {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(dim, {forward_params});
 }}
 
-OG_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse_args})
+WP_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse_args})
 {{
     {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(dim, {forward_params}, {reverse_params});
 }}
@@ -721,7 +721,7 @@ OG_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse
 cpu_module_template = '''
 
 // Python CPU entry points
-OG_API void {name}_cpu_forward(int dim, {forward_args})
+WP_API void {name}_cpu_forward(int dim, {forward_args})
 {{
     for (int i=0; i < dim; ++i)
     {{
@@ -731,7 +731,7 @@ OG_API void {name}_cpu_forward(int dim, {forward_args})
     }}
 }}
 
-OG_API void {name}_cpu_backward(int dim, {forward_args}, {reverse_args})
+WP_API void {name}_cpu_backward(int dim, {forward_args}, {reverse_args})
 {{
     for (int i=0; i < dim; ++i)
     {{
@@ -748,9 +748,9 @@ cuda_module_header_template = '''
 extern "C" {{
 
 // Python CUDA entry points
-OG_API void {name}_cuda_forward(void* stream, int dim, {forward_args});
+WP_API void {name}_cuda_forward(void* stream, int dim, {forward_args});
 
-OG_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse_args});
+WP_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse_args});
 
 }} // extern C
 '''
@@ -760,9 +760,9 @@ cpu_module_header_template = '''
 extern "C" {{
 
 // Python CPU entry points
-OG_API void {name}_cpu_forward(int dim, {forward_args});
+WP_API void {name}_cpu_forward(int dim, {forward_args});
 
-OG_API void {name}_cpu_backward(int dim, {forward_args}, {reverse_args});
+WP_API void {name}_cpu_backward(int dim, {forward_args}, {reverse_args});
 
 }} // extern C
 '''

@@ -23,7 +23,7 @@ def deform(positions: wp.array(dtype=wp.vec3), t: float):
     
 #    a = 2.0 + 3.0
 
-    offset = -sin(x[0])*0.01
+    offset = -sin(x[0])*0.02
     scale = sin(t)
 
     x = x + wp.vec3(0.0, offset*scale, 0.0)

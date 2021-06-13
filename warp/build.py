@@ -5,6 +5,7 @@ import imp
 import subprocess
 from ctypes import *
 
+import warp.config
 from warp.utils import ScopedTimer
 
 # runs vcvars and copies back the build environment
@@ -35,12 +36,13 @@ def set_build_env():
 
 def run_cmd(cmd):
 
-    print(cmd)
+    if (warp.config.verbose):
+        print(cmd)
 
     try:
-        subprocess.check_output(cmd, shell=True)
+        subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True)
     except subprocess.CalledProcessError as e:
-        print(e.output)
+        print(e.output.decode())
         raise(e)
 
 
@@ -59,7 +61,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
     set_build_env()
 
-    cuda_home = find_cuda()
+    cuda_home = warp.config.cuda_path
     cuda_cmd = None
 
     if (cuda_home == None):
@@ -75,15 +77,18 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             dll_time = os.path.getmtime(dll_path)
 
             if (cu_time < dll_time and cpp_time < dll_time):
-                # output valid, skip build
-                print("Skipping build of {} since outputs newer than inputs".format(dll_path))
+                
+                if (warp.config.verbose):
+                    print("Skipping build of {} since outputs newer than inputs".format(dll_path))
+                
                 return True
 
             # ensure that dll is not loaded in the process
             force_unload(dll_path)
 
     # output stale, rebuild
-    print("Building {}".format(dll_path))
+    if (warp.config.verbose):
+        print("Building {}".format(dll_path))
 
     if os.name == 'nt':
 
@@ -101,10 +106,10 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             ld_inputs = []
 
         else:
-            raise RuntimeError("Unrecwpnized build configuration (debug, release), got: {}".format(config))
+            raise RuntimeError("Unrecognized build configuration (debug, release), got: {}".format(config))
 
 
-        with ScopedTimer("build"):
+        with ScopedTimer("build", active=warp.config.verbose):
             cpp_cmd = 'cl.exe {cflags} -c "{cpp_path}" /Fo"{cpp_out}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
             run_cmd(cpp_cmd)
 
@@ -118,12 +123,12 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             elif (config == "release"):
                 cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DCUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
-            with ScopedTimer("build_cuda"):
+            with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
                 ld_inputs.append(quote(cu_out))
                 ld_inputs.append("cudart.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
 
-        with ScopedTimer("link"):
+        with ScopedTimer("link", active=warp.config.verbose):
             link_cmd = 'link.exe {inputs} {flags} /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), flags=ld_flags, dll_path=dll_path)
             run_cmd(link_cmd)
         
@@ -143,7 +148,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             ld_inputs = []
 
 
-        with ScopedTimer("build"):
+        with ScopedTimer("build", active=warp.config.verbose):
             build_cmd = 'g++ {cflags} -c -o "{cpp_out}" "{cpp_path}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
             run_cmd(build_cmd)
 
@@ -153,13 +158,13 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
             cuda_cmd = '"{cuda_home}/bin/nvcc" -gencode=arch=compute_35,code=compute_35 -DCUDA --compiler-options -fPIC -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
-            with ScopedTimer("build_cuda"):
+            with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
 
                 ld_inputs.append(quote(cu_out))
                 ld_inputs.append('-L"{cuda_home}/lib64" -lcudart')
 
-        with ScopedTimer("link"):
+        with ScopedTimer("link", active=warp.config.verbose):
             link_cmd = 'g++ -shared -o "{dll_path}" {inputs}'.format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)            
             run_cmd(link_cmd)
 

@@ -553,8 +553,6 @@ class Mesh:
         self.context = points.context
         self.device = points.device
 
-        
-
         if (self.device == "cpu"):
             self.id = self.context.core.mesh_create_host(
                 get_data(points), 

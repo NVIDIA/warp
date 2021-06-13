@@ -52,8 +52,6 @@ void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
         indices[i] = i;
 
     build_recursive(bvh, items, &indices[0], 0, n, 0, -1);
-
-    print(bvh.max_depth);
 }
 
 

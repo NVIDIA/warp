@@ -32,7 +32,7 @@ static CUcontext g_save_context;
 
 static cudaStream_t g_cuda_stream;
 
-bool cuda_init()
+int cuda_init()
 {
     #if defined(_WIN32)
         static HMODULE hCudaDriver = LoadLibrary("nvcuda.dll");
@@ -46,15 +46,13 @@ bool cuda_init()
 	cuInit_f = (cuInit_t*)GetProcAddress(hCudaDriver, "cuInit");
 	cuCtxSetCurrent_f = (cuCtxSetCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxSetCurrent");
 	cuCtxGetCurrent_f = (cuCtxGetCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxGetCurrent");
-//	cuCtxCreate_f = (cuCtxCreate_t*)GetProcAddress(hCudaDriver, "cuCtxCreate");
-//	cuCtxDestroy_f = (cuCtxDestroy_t*)GetProcAddress(hCudaDriver, "cuCtxDestroy");
-//	cuDeviceGet_f = (cuDeviceGet_t*)GetProcAddress(hCudaDriver, "cuDeviceGet");
 
     if (cuInit_f == NULL)
-        return false;
+        return -1;
 
-    if (cuInit_f(0) != CUDA_SUCCESS)
-		return false;
+    CUresult err = cuInit_f(0);    
+    if (err != CUDA_SUCCESS)
+		return err;
 
     CUcontext ctx;
     cuCtxGetCurrent_f(&ctx);
@@ -66,11 +64,12 @@ bool cuda_init()
         cuCtxGetCurrent_f(&ctx);
     }
     
+    // save the context, all API calls must have this context set on the calling thread
     g_cuda_context = ctx;
     
     check_cuda(cudaStreamCreate(&g_cuda_stream));
     
-    return true;
+    return 0;
 }
 
 void* alloc_host(size_t s)
@@ -200,6 +199,14 @@ void* cuda_get_context()
 void cuda_set_context(void* ctx)
 {
     cuCtxSetCurrent_f((CUcontext)ctx);
+}
+
+const char* cuda_get_device_name()
+{
+    static cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
+
+    return prop.name;
 }
 
 // impl. files

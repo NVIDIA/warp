@@ -8,9 +8,9 @@
 #include <stdio.h>
 
 #if _WIN32
-#define OG_API __declspec(dllexport)
+#define WP_API __declspec(dllexport)
 #else
-#define OG_API
+#define WP_API
 #endif
 
 #if !defined(__CUDACC__)
@@ -536,57 +536,58 @@ inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj
 // this is the core runtime API exposed on the DLL level
 extern "C"
 {
-    OG_API void init();
-    //OG_API void shutdown();
+    WP_API int init();
+    //WP_API void shutdown();
 
-    OG_API void* alloc_host(size_t s);
-    OG_API void* alloc_device(size_t s);
+    WP_API void* alloc_host(size_t s);
+    WP_API void* alloc_device(size_t s);
 
-    OG_API void free_host(void* ptr);
-    OG_API void free_device(void* ptr);
+    WP_API void free_host(void* ptr);
+    WP_API void free_device(void* ptr);
 
     // all memcpys are performed asynchronously
-    OG_API void memcpy_h2h(void* dest, void* src, size_t n);
-    OG_API void memcpy_h2d(void* dest, void* src, size_t n);
-    OG_API void memcpy_d2h(void* dest, void* src, size_t n);
-    OG_API void memcpy_d2d(void* dest, void* src, size_t n);
+    WP_API void memcpy_h2h(void* dest, void* src, size_t n);
+    WP_API void memcpy_h2d(void* dest, void* src, size_t n);
+    WP_API void memcpy_d2h(void* dest, void* src, size_t n);
+    WP_API void memcpy_d2d(void* dest, void* src, size_t n);
 
     // all memsets are performed asynchronously
-    OG_API void memset_host(void* dest, int value, size_t n);
-    OG_API void memset_device(void* dest, int value, size_t n);
+    WP_API void memset_host(void* dest, int value, size_t n);
+    WP_API void memset_device(void* dest, int value, size_t n);
 
     // create a user-accesible copy of the mesh, it is the 
     // users reponsibility to keep-alive the points/tris data for the duration of the mesh lifetime
-	OG_API uint64_t mesh_create_host(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
-	OG_API void mesh_destroy_host(uint64_t id);
-    OG_API void mesh_refit_host(uint64_t id);
+	WP_API uint64_t mesh_create_host(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
+	WP_API void mesh_destroy_host(uint64_t id);
+    WP_API void mesh_refit_host(uint64_t id);
 
-	OG_API uint64_t mesh_create_device(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
-	OG_API void mesh_destroy_device(uint64_t id);
-    OG_API void mesh_refit_device(uint64_t id);
+	WP_API uint64_t mesh_create_device(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
+	WP_API void mesh_destroy_device(uint64_t id);
+    WP_API void mesh_refit_device(uint64_t id);
 
-    OG_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
-    OG_API void array_sum_host(uint64_t a, uint64_t out, int len);
+    WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
+    WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
 
-    OG_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
-    OG_API void array_sum_device(uint64_t a, uint64_t out, int len);
+    WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
+    WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
 
     // ensures all device side operations have completed
-    OG_API void synchronize();
+    WP_API void synchronize();
 
     // return cudaError_t code
-    OG_API uint64_t cuda_check_device();
+    WP_API uint64_t cuda_check_device();
     
-    OG_API void cuda_acquire_context();
-    OG_API void cuda_restore_context();
-    OG_API void* cuda_get_context();
-    OG_API void cuda_set_context(void* ctx);
-    OG_API void* cuda_get_stream();
+    WP_API void cuda_acquire_context();
+    WP_API void cuda_restore_context();
+    WP_API void* cuda_get_context();
+    WP_API void cuda_set_context(void* ctx);
+    WP_API void* cuda_get_stream();
+    WP_API const char* cuda_get_device_name();
 
-    OG_API void cuda_graph_begin_capture();
-    OG_API void* cuda_graph_end_capture();
-    OG_API void cuda_graph_launch(void* graph);
-    OG_API void cuda_graph_destroy(void* graph);
+    WP_API void cuda_graph_begin_capture();
+    WP_API void* cuda_graph_end_capture();
+    WP_API void cuda_graph_launch(void* graph);
+    WP_API void cuda_graph_destroy(void* graph);
 
 }
 

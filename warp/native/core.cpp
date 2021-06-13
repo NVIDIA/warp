@@ -4,11 +4,11 @@
 #include "string.h"
 
 
-bool cuda_init();
+int cuda_init();
 
-void init()
+int init()
 {
-    cuda_init();
+    return cuda_init();
 }
 
 void shutdown()

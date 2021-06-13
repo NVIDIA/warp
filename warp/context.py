@@ -913,42 +913,16 @@ from ctypes import *
 class Runtime:
 
     def __init__(self):
-        
-        # if (sys.platform.startswith("linux")):
-        #     self.crt = CDLL("libc.so.6")
-        # elif (sys.platform.startswith("win32")):
-        #     self.crt = CDLL("msvcrt")
-        # elif (sys.platform.startswith("darwin")):
-        #     self.crt = CDLL("libc.dylib")
-        # else:
-        #     print("Unknown platform")
+    
+        # check for CUDA
+        if (warp.config.cuda_path == None):
+            warp.config.cuda_path = warp.build.find_cuda()
 
-        # if (warp.cuda.cuda):
-
-        #     warp.cuda.cuInit(0)
-
-        #     self.cuda_device = c_int(0)
-        #     ret = warp.cuda.cuDeviceGet(byref(self.cuda_device), 0)
-
-        #     self.cuda_context = c_void_p()            
-        #     ret = warp.cuda.cuDevicePrimaryCtxRetain(byref(self.cuda_context), self.cuda_device)
-        #     ret = warp.cuda.cuCtxPushCurrent(self.cuda_context)
-        #     ret = warp.cuda.cuCtxAttach(byref(self.cuda_context), 0)
-
-        #     flags = c_uint(0)
-        #     active = c_int(0)
-
-        #     ret = warp.cuda.cuDevicePrimaryCtxGetState(self.cuda_device, byref(flags), byref(active))
-
-        #     current = c_void_p()
-        #     ret = warp.cuda.cuCtxGetCurrent(byref(current))
-
-        #     ver = c_uint(0)
-        #     ret = warp.cuda.cuCtxGetApiVersion(current, byref(ver))
-
-        #     ver0 = c_uint(0)
-        #     ret = warp.cuda.cuCtxGetApiVersion(c_void_p(), byref(ver0))
-
+        # still no CUDA toolchain not found
+        if (warp.config.cuda_path == None):
+            raise Exception("Warp: Could not find CUDA toolkit, ensure that the CUDA_PATH environment variable is set or specify manually in warp.config.cuda_path before initialization")
+            
+        # set build output path off this file
         build_path = os.path.dirname(os.path.realpath(__file__))
 
         try:
@@ -961,8 +935,7 @@ class Runtime:
                             
         except Exception as e:
 
-            print("Could not load core library")
-            raise e
+            raise Exception("Could not load core library, build failed.")
 
         self.core = warp.build.load_module(build_path + "/bin/warp.dll")
 
@@ -986,15 +959,23 @@ class Runtime:
         self.core.cuda_get_context.restype = c_void_p
         self.core.cuda_get_stream.restype = c_void_p
         self.core.cuda_graph_end_capture.restype = c_void_p
+        self.core.cuda_get_device_name.restype = c_char_p
 
-        self.core.init()
+        self.core.init.restype = c_int
+        
+        error = self.core.init()
+
+        if (error > 0):
+            raise Exception("Initialization failed")
 
         # save context
         self.cuda_device = self.core.cuda_get_context()
         self.cuda_stream = self.core.cuda_get_stream()
 
-
-        pass
+        # print device and version information
+        print("Warp initialized:")
+        print("   Version: {}".format(warp.config.version))
+        print("   Using CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
 
 
     # host functions
@@ -1115,7 +1096,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
         # delay load modules
         if (kernel.module.dll == None):
 
-            with ScopedTimer("Module load"):
+            with ScopedTimer("Module {} load".format(kernel.module.name)):
                 kernel.module.load()
 
         # first param is the number of threads
@@ -1228,8 +1209,5 @@ def init():
 
     if (runtime == None):
         runtime = Runtime()
-        print("Initialized warp")
-    else:
-        print("Calling warp.init() after initialization, this call will be ignored")
 
 
