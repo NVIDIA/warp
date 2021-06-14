@@ -796,6 +796,7 @@ class Module:
 
     def load(self):
 
+        # todo: key off config
         use_cuda = True
         if not use_cuda:
             print("[INFO] CUDA support not found. Disabling CUDA kernel compilation.")
@@ -826,9 +827,15 @@ class Module:
             f.close()
 
             if (cache_hash == module_hash):
-                print("Using cached kernels")
+                
+                if (warp.config.verbose):
+                    print("Warp: Using cached kernels for module {}".format(self.name))
+                    
                 self.dll = cdll.LoadLibrary(dll_path)
                 return
+
+        if (warp.config.verbose):
+            print("Warp: Rebuilding kernels for module {}".format(self.name))
 
         # otherwise rebuid
         cpp_path = gen_path + "/" + module_name + ".cpp"
