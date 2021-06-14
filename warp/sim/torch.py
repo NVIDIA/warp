@@ -40,9 +40,9 @@
 
 
 
-# # define PyTorch autwprad op to wrap simulate func
-# class SimulateFunc(torch.autwprad.Function):
-#     """PyTorch autwprad function representing a simulation stpe
+# # define PyTorch autograd op to wrap simulate func
+# class SimulateFunc(torch.autograd.Function):
+#     """PyTorch autograd function representing a simulation stpe
     
 #     Note:
     
@@ -93,3 +93,5 @@
 
 #         # filter grads to replace empty tensors / no grad / constant params with None
 #         return (None, None, None, None, None, *wp.filter_grads(adj_inputs))
+
+
