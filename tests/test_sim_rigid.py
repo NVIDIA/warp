@@ -15,3 +15,5 @@ import warp.sim
 wp.init()
 
 
+builder = wp.sim.ModelBuilder()
+

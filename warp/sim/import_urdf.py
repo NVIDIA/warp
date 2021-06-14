@@ -8,11 +8,11 @@ import xml.etree.ElementTree as ET
 
 import warp as wp
 
-def urwp_add_collision(builder, link, collisions, shape_ke, shape_kd, shape_kf, shape_mu):
+def urdf_add_collision(builder, link, collisions, shape_ke, shape_kd, shape_kf, shape_mu):
         
     # add geometry
     for collision in collisions:
-        
+    
         origin = urdfpy.matrix_to_xyz_rpy(collision.origin)
 
         pos = origin[0:3]
@@ -46,7 +46,7 @@ def urwp_add_collision(builder, link, collisions, shape_ke, shape_kd, shape_kf, 
          
         if (geo.cylinder):
             
-            # cylinders in URwp are aligned with z-axis, while wplex uses x-axis
+            # cylinders in urdf are aligned with z-axis, while wplex uses x-axis
             r = wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5)
 
             builder.add_shape_capsule(
@@ -86,7 +86,7 @@ def urwp_add_collision(builder, link, collisions, shape_ke, shape_kd, shape_kf, 
                     kf=shape_kf,
                     mu=shape_mu)
 
-def urwp_load(
+def urdf_load(
     builder, 
     filename, 
     xform, 
@@ -99,7 +99,7 @@ def urwp_load(
     limit_ke=100.0,
     limit_kd=10.0):
 
-    robot = urdfpy.URwp.load(filename)
+    robot = urdfpy.urdf.load(filename)
 
     # maps from link name -> link index
     link_index = {}
@@ -124,7 +124,7 @@ def urwp_load(
     else:    
         root = builder.add_link(-1, xform, (0,0,0), wp.JOINT_FIXED)
 
-    urwp_add_collision(builder, root, robot.links[0].collisions, shape_ke, shape_kd, shape_kf, shape_mu)
+    urdf_add_collision(builder, root, robot.links[0].collisions, shape_ke, shape_kd, shape_kf, shape_mu)
     link_index[robot.links[0].name] = root
 
     # add children
@@ -184,7 +184,7 @@ def urwp_load(
             damping=damping)
        
         # add collisions
-        urwp_add_collision(builder, link, robot.link_map[joint.child].collisions, shape_ke, shape_kd, shape_kf, shape_mu)
+        urdf_add_collision(builder, link, robot.link_map[joint.child].collisions, shape_ke, shape_kd, shape_kf, shape_mu)
 
         # add ourselves to the index
         link_index[joint.child] = link

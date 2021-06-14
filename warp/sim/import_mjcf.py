@@ -1,9 +1,19 @@
 import xml.etree.ElementTree as ET
 
 import numpy as np
+import math
 
 import warp as wp
-import warpsim
+import warp.sim
+
+class MJCF:
+
+    def __init__(self):
+        
+        # map node names to link indices
+        self.node_map = {}
+        self.xform_map = {}
+        self.mesh_map = {}
 
 def parse_mjcf(
     filename, 
@@ -21,10 +31,12 @@ def parse_mjcf(
     file = ET.parse(filename)
     root = file.getroot()
 
+    mjcf = MJCF()
+
     # map node names to link indices
-    self.node_map = {}
-    self.xform_map = {}
-    self.mesh_map = {}
+    mjcf.node_map = {}
+    mjcf.xform_map = {}
+    mjcf.mesh_map = {}
 
     type_map = { 
         "ball": wp.JOINT_BALL, 
@@ -48,7 +60,6 @@ def parse_mjcf(
 
         # note: only supports single joint per-body
         joint = body.find("joint")
-        
         
         joint_name = joint.attrib["name"],
         joint_type = type_map[joint.attrib["type"]]
@@ -160,3 +171,5 @@ def parse_mjcf(
     for body in world.findall("body"):
         parse_body(body, -1)
 
+
+    return mjcf
