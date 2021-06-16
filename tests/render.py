@@ -20,7 +20,7 @@ def _usd_set_xform(xform, transform, scale, time):
     rot = tuple(transform[1])
 
     xform_ops[0].Set(Gf.Vec3d(pos), time)
-    xform_ops[1].Set(Gf.Quatf(rot[3], rot[0], rot[1], rot[2]), time)
+    xform_ops[1].Set(Gf.Quatf(float(rot[3]), float(rot[0]), float(rot[1]), float(rot[2])), time)
     xform_ops[2].Set(Gf.Vec3d(scale), time)
 
 # transforms a cylinder such that it connects the two points pos0, pos1
@@ -109,7 +109,7 @@ class UsdRenderer:
         op.Set(mat, self.time)
 
 
-    def render_box(self, pos: tuple, extents: tuple, name: str):
+    def render_box(self, pos: tuple, rot: tuple, extents: tuple, name: str):
         """Debug helper to add a box for visualization
         
         Args:
@@ -122,16 +122,11 @@ class UsdRenderer:
         box = UsdGeom.Cube.Get(self.stage, box_path)
         if not box:
             box = UsdGeom.Cube.Define(self.stage, box_path)
-        
-        #sphere.GetSizeAttr().Set((extents[0]*2.0, extents[1]*2.0, extents[2]*2.0), time)
+            _usd_add_xform(box)
 
-        mat = Gf.Matrix4d()
-        mat.SetIdentity()
-        mat.SetScale(Gf.Vec3d(extents))
-        mat.SetTranslateOnly(Gf.Vec3d(pos))
-
-        op = box.MakeMatrixXform()
-        op.Set(mat, self.time)        
+        # update transform        
+        _usd_set_xform(box, (pos, rot), extents, self.time)
+    
 
     def render_ref(self, name: str, path: str, pos, rot, scale):
 
@@ -141,7 +136,6 @@ class UsdRenderer:
         if not ref:
             ref = UsdGeom.Xform.Define(self.stage, ref_path)
             ref.GetPrim().GetReferences().AddReference(path)
-            
             _usd_add_xform(ref)
 
         # update transform
@@ -155,7 +149,6 @@ class UsdRenderer:
         if not mesh:
             
             mesh = UsdGeom.Mesh.Define(self.stage, mesh_path)
-            
             _usd_add_xform(mesh)
 
         mesh.GetPointsAttr().Set(points, self.time)

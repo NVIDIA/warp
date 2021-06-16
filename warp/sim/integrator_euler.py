@@ -40,54 +40,60 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 
 # semi-implicit Euler integration
 @wp.kernel
-def integrate_bodys(body_q: wp.array(dtype=wp.spatial_transform),
-                    body_qd: wp.array(dtype=wp.spatial_vector),
-                    body_f: wp.array(dtype=wp.spatial_vector),
-                    inv_m: wp.array(dtype=float),
-                    inv_I: wp.array(dtype=wp.mat33),
-                    gravity: wp.vec3,
-                    dt: float,
-                    body_q_new: wp.array(dtype=wp.spatial_transform),
-                    body_qd_new: wp.array(dtype=wp.spatial_vector)):
+def integrate_bodies(body_q: wp.array(dtype=wp.spatial_transform),
+                     body_qd: wp.array(dtype=wp.spatial_vector),
+                     body_f: wp.array(dtype=wp.spatial_vector),
+                     m: wp.array(dtype=float),
+                     I: wp.array(dtype=wp.mat33),
+                     inv_m: wp.array(dtype=float),
+                     inv_I: wp.array(dtype=wp.mat33),
+                     gravity: wp.vec3,
+                     dt: float,
+                     body_q_new: wp.array(dtype=wp.spatial_transform),
+                     body_qd_new: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
 
     # positions
-    x0 = wp.load(body_x, tid)
-    r0 = wp.load(body_r, tid)
-
-    # velocities
-    v0 = wp.load(body_v, tid)
-    w0 = wp.load(body_w, tid)         # angular velocity
-
-    # forces
-    f0 = wp.load(body_f, tid)
-    t0 = wp.load(body_t, tid)
+    q = body_q[tid]
+    qd = body_qd[tid]
+    f = body_f[tid]
 
     # masses
-    inv_mass = wp.load(inv_m, tid)     # 1 / mass
-    inv_inertia = wp.load(inv_I, tid)  # inverse of 3x3 inertia matrix
+    mass = m[tid]
+    inv_mass = inv_m[tid]     # 1 / mass
+
+    inertia = I[tid]
+    inv_inertia = inv_I[tid]  # inverse of 3x3 inertia matrix
+
+    # unpack transform
+    x0 = wp.spatial_transform_get_translation(q)
+    r0 = wp.spatial_transform_get_rotation(q)
+
+    # unpack spatial twist
+    w0 = wp.spatial_top(qd)
+    v0 = wp.spatial_bottom(qd)
+
+    # unpack spatial wrench
+    t0 = wp.spatial_top(f)
+    f0 = wp.spatial_bottom(f)
 
     # linear part
-    v1 = v0 + (f0 * inv_mass + gravity * wp.nonzero(inv_mass)) * dt           # linear integral (linear position/velocity)
+    v1 = v0 + (f0 * inv_mass + gravity * wp.nonzero(inv_mass)) * dt
     x1 = x0 + v1 * dt
+ 
+    # angular part (compute in body frame)
+    wb = wp.rotate_inv(r0, w0)
+    tb = wp.rotate_inv(r0, t0) - wp.cross(wb, inertia*wb)
 
-    # angular part
+    w1 = wp.rotate(r0, wb + inv_inertia * tb * dt)
+    r1 = wp.normalize(r0 + wp.quat(w1, 0.0) * r0 * 0.5 * dt)
 
-    # so reverse multiplication by r0 takes you from global coordinates into local coordinates
-    # because it's covector and thus gets pulled back rather than pushed forward
-    wb = wp.rotate_inv(r0, w0)         # angular integral (angular velocity and rotation), rotate into object reference frame
-    tb = wp.rotate_inv(r0, t0)         # also rotate torques into local coordinates
+    # angular damping
+    w1 = w1*(1.0-0.1*dt)
 
-    # I^{-1} torque = angular acceleration and inv_inertia is always going to be in the object frame.
-    # So we need to rotate into that frame, and then back into global.
-    w1 = wp.rotate(r0, wb + inv_inertia * tb * dt)                   # I^-1 * torque * dt., then go back into global coordinates
-    r1 = wp.normalize(r0 + wp.quat(w1, 0.0) * r0 * 0.5 * dt)         # rotate around w1 by dt
-
-    wp.store(body_x_new, tid, x1)
-    wp.store(body_r_new, tid, r1)
-    wp.store(body_v_new, tid, v1)
-    wp.store(body_w_new, tid, w1)
+    body_q_new[tid] = wp.spatial_transform(x1, r1)
+    body_qd_new[tid] = wp.spatial_vector(w1, v1)
 
 
 @wp.kernel
@@ -2094,28 +2100,28 @@ def compute_forces(model, state, particle_f, body_f):
                     device=model.device)
 
 
-    if (model.articulation_count):
+    # if (model.articulation_count):
         
-        if (model.ground and model.contact_count > 0):
+    #     if (model.ground and model.contact_count > 0):
             
-            # evaluate contact forces
-            wp.launch(
-                kernel=eval_body_contacts_art,
-                dim=model.contact_count,
-                inputs=[
-                    state.body_X_sc,
-                    state.body_v_s,
-                    model.contact_body0,
-                    model.contact_point0,
-                    model.contact_dist,
-                    model.contact_material,
-                    model.shape_materials
-                ],
-                outputs=[
-                    body_f
-                ],
-                device=model.device,
-                preserve_output=True)
+    #         # evaluate contact forces
+    #         wp.launch(
+    #             kernel=eval_body_contacts_art,
+    #             dim=model.contact_count,
+    #             inputs=[
+    #                 state.body_X_sc,
+    #                 state.body_v_s,
+    #                 model.contact_body0,
+    #                 model.contact_point0,
+    #                 model.contact_dist,
+    #                 model.contact_material,
+    #                 model.shape_materials
+    #             ],
+    #             outputs=[
+    #                 body_f
+    #             ],
+    #             device=model.device,
+    #             preserve_output=True)
 
 
     # particle shape contact
@@ -2126,8 +2132,8 @@ def compute_forces(model, state, particle_f, body_f):
                     inputs=[
                         state.particle_q, 
                         state.particle_qd,
-                        state.body_X_sc,
-                        state.body_v_s,
+                        state.body_q,
+                        state.body_qd,
                         model.soft_contact_ke,
                         model.soft_contact_kd, 
                         model.soft_contact_kf, 
@@ -2153,8 +2159,8 @@ def compute_forces(model, state, particle_f, body_f):
             kernel=eval_muscles,
             dim=model.muscle_count,
             inputs=[
-                state.body_X_sc,
-                state.body_v_s,
+                state.body_q,
+                state.body_qd,
                 model.muscle_start,
                 model.muscle_params,
                 model.muscle_links,
@@ -2168,38 +2174,38 @@ def compute_forces(model, state, particle_f, body_f):
             preserve_output=True)
 
 
-    if (model.articulation_count):
+    # if (model.articulation_count):
         
-        # evaluate joint torques
-        wp.launch(
-            kernel=eval_body_tau,
-            dim=model.articulation_count,
-            inputs=[
-                model.articulation_joint_start,
-                model.joint_type,
-                model.joint_parent,
-                model.joint_q_start,
-                model.joint_qd_start,
-                state.joint_q,
-                state.joint_qd,
-                state.joint_act,
-                model.joint_target,
-                model.joint_target_ke,
-                model.joint_target_kd,
-                model.joint_limit_lower,
-                model.joint_limit_upper,
-                model.joint_limit_ke,
-                model.joint_limit_kd,
-                model.joint_axis,
-                state.joint_S_s,
-                state.body_f_s
-            ],
-            outputs=[
-                state.body_ft_s,
-                state.joint_tau
-            ],
-            device=model.device,
-            preserve_output=True)
+    #     # evaluate joint torques
+    #     wp.launch(
+    #         kernel=eval_body_tau,
+    #         dim=model.articulation_count,
+    #         inputs=[
+    #             model.articulation_joint_start,
+    #             model.joint_type,
+    #             model.joint_parent,
+    #             model.joint_q_start,
+    #             model.joint_qd_start,
+    #             state.joint_q,
+    #             state.joint_qd,
+    #             state.joint_act,
+    #             model.joint_target,
+    #             model.joint_target_ke,
+    #             model.joint_target_kd,
+    #             model.joint_limit_lower,
+    #             model.joint_limit_upper,
+    #             model.joint_limit_ke,
+    #             model.joint_limit_kd,
+    #             model.joint_axis,
+    #             state.joint_S_s,
+    #             state.body_f_s
+    #         ],
+    #         outputs=[
+    #             state.body_ft_s,
+    #             state.joint_tau
+    #         ],
+    #         device=model.device,
+    #         preserve_output=True)
 
 
 
@@ -2231,7 +2237,7 @@ class SemiImplicitIntegrator:
         pass
 
 
-    def simulate(self, model, state, state_out, dt):
+    def simulate(self, model, state_in, state_out, dt):
 
         with wp.ScopedTimer("simulate", False):
 
@@ -2239,33 +2245,33 @@ class SemiImplicitIntegrator:
             if (model.particle_count):
                 state_out.particle_f.zero_()
 
-            if (model.link_count):
-                state_out.body_f = wp.zeros((model.link_count, 6), dtype=wp.spatial_vector, device=model.device, requires_grad=True)
-                state_out.body_f_ext_s = wp.zeros((model.link_count, 6), dtype=wp.spatial_vector, device=model.device, requires_grad=True)
+            if (model.body_count):
+                state_out.body_f.zero_()
 
-
-            compute_forces(model, state, state_out.particle_f, None)
+            compute_forces(model, state_in, state_out.particle_f, state_out.body_f)
 
             #-------------------------------------
-            # integrate bodys
+            # integrate bodies
 
-            if (model.articulation_count):
+            if (model.body_count):
 
                 wp.launch(
-                    kernel=eval_body_integrate,
-                    dim=model.link_count,
+                    kernel=integrate_bodies,
+                    dim=model.body_count,
                     inputs=[
-                        model.joint_type,
-                        model.joint_q_start,
-                        model.joint_qd_start,
-                        state.joint_q,
-                        state.joint_qd,
-                        state_out.joint_qdd,
-                        dt
+                        state_in.body_q,
+                        state_in.body_qd,
+                        state_in.body_f,
+                        model.body_mass,
+                        model.body_inertia,
+                        model.body_inv_mass,
+                        model.body_inv_inertia,
+                        model.gravity,
+                        dt,
                     ],
                     outputs=[
-                        state_out.joint_q,
-                        state_out.joint_qd
+                        state_out.body_q,
+                        state_out.body_qd
                     ],
                     device=model.device)
 
@@ -2278,8 +2284,8 @@ class SemiImplicitIntegrator:
                     kernel=integrate_particles,
                     dim=model.particle_count,
                     inputs=[
-                        state.particle_q, 
-                        state.particle_qd, 
+                        state_in.particle_q, 
+                        state_in.particle_qd, 
                         state_out.particle_f, 
                         model.particle_inv_mass, 
                         model.gravity, 

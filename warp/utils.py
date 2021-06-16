@@ -303,8 +303,8 @@ def translate_wrench(p_ab, s_b):
     return np.array((*w, *v))
 
 
-def spatial_vector(v=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)):
-    return np.array(v)
+# def spatial_vector(v=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)):
+#     return np.array(v)
 
 
 # ad_V pg. 289 L&P, pg. 25 Featherstone
