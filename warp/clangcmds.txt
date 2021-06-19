@@ -1,0 +1,14 @@
+#Executing LLVM Bitcode at runtime:
+https://stackoverflow.com/questions/15077869/executing-llvm-ir-during-runtime-on-windows
+
+
+
+
+# emit .o file (ABI compt with MSVC)
+./clang++.exe -D CUDA_KERNEL -c wp_warp.sim.integrator_euler.cpp
+
+# emit llvm bitcode (add -s for text mode)
+./clang++.exe -D CUDA_KERNEL -c wp_warp.sim.integrator_euler.cpp -emit-llvm -o test.bc
+
+# link a .o into a .dll with clang (not working)
+./clang++.exe -shared -v -fuse-ld=lld -stdlib=libc++ -static -nodefaultlibs -o test.dll test.o

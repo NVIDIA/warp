@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 struct vec3
 {
     float x;
@@ -29,7 +32,7 @@ struct vec3
 //--------------
 // vec3 methods
 
-inline CUDA_CALLABLE vec3 operator - (vec3 a)
+inline CUDA_CALLABLE vec3 operator-(vec3 a)
 {
     return { -a.x, -a.y, -a.z };
 }
@@ -130,7 +133,7 @@ inline CUDA_CALLABLE void adj_index(const vec3 & a, int idx, vec3 & adj_a, int &
 
 inline CUDA_CALLABLE float length(vec3 a)
 {
-    return sqrtf(dot(a, a));
+    return sqrt(dot(a, a));
 }
 
 inline CUDA_CALLABLE float length_sq(vec3 a)
@@ -279,3 +282,5 @@ CUDA_CALLABLE inline int longest_axis(const vec3& v)
 		return (v.y > v.z) ? 1 : 2;
 }
 
+
+} // namespace wp

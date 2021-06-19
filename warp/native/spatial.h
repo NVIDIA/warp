@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 //---------------------------------------------------------------------------------
 // Represents a twist in se(3)
 
@@ -853,3 +856,6 @@ CUDA_CALLABLE inline void adj_spatial_mass(
         }
     } 
 }
+
+
+ } // namespace wp

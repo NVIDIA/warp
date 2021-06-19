@@ -57,6 +57,55 @@ def find_cuda():
 def quote(path):
     return "\"" + path + "\""
 
+def build_cuda(cu_path, out_path, config="release", load=True, force=False):
+
+    # inputs:
+    #   
+    #   .cpp
+    #   .cu
+    #
+    # outputs:
+    #
+    #   .dll
+    #   .ptx
+    #
+    # runtime:
+    #
+    #   load dll
+    #   load cuda module
+
+    src_file = open(cu_path)
+    src = src_file.read().encode('utf-8')
+    src_file.close()
+
+    inc_path = os.path.dirname(cu_path).encode('utf-8')
+    ptx_path = out_path.encode('utf-8')
+
+    with ScopedTimer("CUDA compile"):
+        warp.context.runtime.core.cuda_compile_program(src, inc_path, False, True, ptx_path)
+
+    with ScopedTimer("CUDA module load"):
+        module = warp.context.runtime.core.cuda_load_module(ptx_path)
+
+    return module
+    
+def build_x86(cpp_path, out_path, config="release", load=True, force=False):
+
+    src_file = open(cu_path)
+    src = src_file.read().encode('utf-8')
+    src_file.close()
+
+    inc_path = os.path.dirname(cu_path).encode('utf-8')
+    ptx_path = out_path.encode('utf-8')
+
+    with ScopedTimer("CUDA compile"):
+        warp.context.runtime.core.cuda_compile_program(src, inc_path, False, True, ptx_path)
+
+    with ScopedTimer("CUDA module load"):
+        module = warp.context.runtime.core.cuda_load_module(ptx_path)
+
+    return module
+
 def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force=False):
 
     set_build_env()
@@ -126,7 +175,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append("cudart.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
+                ld_inputs.append("cudart.lib cuda.lib nvrtc.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
 
         with ScopedTimer("link", active=warp.config.verbose):
             link_cmd = 'link.exe {inputs} {flags} /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), flags=ld_flags, dll_path=dll_path)

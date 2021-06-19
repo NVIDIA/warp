@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 //----------------------------------------------------------
 // mat44
 
@@ -267,4 +270,4 @@ inline CUDA_CALLABLE void adj_transpose(const mat44& a, mat44& adj_a, const mat4
     adj_a += transpose(adj_ret);
 }
 
-
+} // namespace wp

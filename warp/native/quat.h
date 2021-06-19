@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 struct quat
 {
     // imaginary part
@@ -47,9 +50,9 @@ inline CUDA_CALLABLE void adj_quat(const vec3& v, float w, vec3& adj_v, float& a
 inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
 {
     float half = angle*0.5f;
-    float w = cosf(half);
+    float w = cos(half);
 
-    float sin_theta_over_two = sinf(half);
+    float sin_theta_over_two = sin(half);
     vec3 v = axis*sin_theta_over_two;
 
     return quat(v.x, v.y, v.z, w);
@@ -67,7 +70,7 @@ inline CUDA_CALLABLE float dot(const quat& a, const quat& b)
 
 inline CUDA_CALLABLE float length(const quat& q)
 {
-    return sqrtf(dot(q, q));
+    return sqrt(dot(q, q));
 }
 
 inline CUDA_CALLABLE quat normalize(const quat& q)
@@ -162,8 +165,8 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle
 {
     vec3 v = vec3(adj_ret.x, adj_ret.y, adj_ret.z);
 
-    float s = sinf(angle*0.5f);
-    float c = cosf(angle*0.5f);
+    float s = sin(angle*0.5f);
+    float c = cos(angle*0.5f);
 
     quat dqda = quat(axis.x*c, axis.y*c, axis.z*c, -s)*0.5f;
 
@@ -327,3 +330,5 @@ inline CUDA_CALLABLE void adj_rotate_inv(const quat& q, const vec3& p, quat& adj
         adj_p.z += -r.x*(t5-t6)+r.z*(t3+(q.z*q.z)*2.0f-1.0f)+r.y*(t7+q.y*q.z*2.0f);
     }
 }
+
+} // namespace wp

@@ -3,6 +3,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
+#include <string>
 
 #if defined(__linux__)
 #include <dlfcn.h>
@@ -12,6 +13,8 @@ static void* GetProcAddress(void* handle, const char* name) { return dlsym(handl
 #if defined(_WIN32)
 #include <windows.h>
 #endif
+
+#include "nvrtc.h"
 
 typedef CUresult CUDAAPI cuInit_t(unsigned int);
 typedef CUresult CUDAAPI cuDeviceGet_t(CUdevice *dev, int ordinal);
@@ -139,7 +142,13 @@ uint64_t cuda_check_device()
     return cudaPeekAtLastError(); 
 }
 
-
+void cuda_report_error(int code, const char* file, int line)
+{
+    if (code != cudaSuccess) 
+    {
+        printf("CUDA Error: %s %s %d\n", cudaGetErrorString((cudaError_t)code), file, line);
+    }
+}
 
 void* cuda_get_stream()
 {
@@ -207,6 +216,141 @@ const char* cuda_get_device_name()
     cudaGetDeviceProperties(&prop, 0);
 
     return prop.name;
+}
+
+size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool debug, bool verbose, const char* output_file)
+{
+    nvrtcResult res;
+
+    nvrtcProgram prog;
+    res = nvrtcCreateProgram(
+        &prog,          // prog
+        cuda_src,      // buffer
+        NULL,          // name
+        0,             // numHeaders
+        NULL,          // headers
+        NULL);         // includeNames
+
+    if (res != NVRTC_SUCCESS)
+        return res;
+
+    std::string include_opt = std::string("--include-path=") + include_dir;
+
+    const char *opts[] = 
+    {   
+        "--device-as-default-execution-space",
+        "--gpu-architecture=sm_35",
+        "--use_fast_math",
+        "--std=c++11",
+        "--define-macro=CUDA_KERNEL",
+        include_opt.c_str()
+    };
+
+    res = nvrtcCompileProgram(prog, 6, opts);
+
+    if (res == NVRTC_SUCCESS)
+    {
+        // save ptx
+        size_t ptx_size;
+        nvrtcGetPTXSize(prog, &ptx_size);
+
+        char* ptx = (char*)malloc(ptx_size);
+        nvrtcGetPTX(prog, ptx);
+
+        // write to file
+        FILE* file = fopen(output_file, "w");
+        fwrite(ptx, 1, ptx_size, file);
+        fclose(file);
+
+        free(ptx);
+    }
+
+    if (res != NVRTC_SUCCESS || verbose)
+    {
+        // get program log
+        size_t log_size;
+        nvrtcGetProgramLogSize(prog, &log_size);
+
+        char* log = (char*)malloc(log_size);
+        nvrtcGetProgramLog(prog, log);
+
+        // todo: figure out better way to return this to python
+        printf(log);
+        free(log);
+    }
+
+    nvrtcDestroyProgram(&prog);
+    return res;
+}
+
+void* cuda_load_module(const char* path)
+{
+    FILE* file = fopen(path, "r");
+    fseek(file, 0, SEEK_END);
+    size_t length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buf = (char*)malloc(length);
+    fread(buf, length, 1, file);
+    fclose(file);
+
+    CUmodule module = NULL;
+    CUresult res = cuModuleLoadDataEx(&module, buf, 0, 0, 0);
+    if (res != NVRTC_SUCCESS)
+        printf("Warp: Loading PTX module failed with error: %d\n", res);
+
+    free(buf);
+
+    return module;
+}
+
+void cuda_unload_module(void* module)
+{
+    cuModuleUnload((CUmodule)module);
+}
+
+void* cuda_get_kernel(void* module, const char* name)
+{
+    CUfunction kernel = NULL;
+    CUresult res = cuModuleGetFunction(&kernel, (CUmodule)module, name);
+    if (res != NVRTC_SUCCESS)
+        printf("Warp: Failed to lookup kernel function %s in module\n", name);
+
+    return kernel;
+}
+
+size_t cuda_launch_kernel(void* kernel, void** args, size_t argc)
+{
+    // CUdevice cuDevice;
+    // CUcontext context;
+    // CUmodule module;
+    // CUfunction kernel;
+    // cuInit(0);
+    // cuDeviceGet(&cuDevice, 0);
+    // cuCtxCreate(&context, 0, cuDevice);
+    // cuModuleLoadDataEx(&module, ptx, 0, 0, 0);
+    // cuModuleGetFunction(&kernel, module, "saxpy");
+    // size_t n = size_t n = NUM_THREADS * NUM_BLOCKS;
+    // size_t bufferSize = n * sizeof(float);
+    // float a = ...;
+    // float *hX = ..., *hY = ..., *hOut = ...;
+    // CUdeviceptr dX, dY, dOut;
+    // cuMemAlloc(&dX, bufferSize);
+    // cuMemAlloc(&dY, bufferSize);
+    // cuMemAlloc(&dOut, bufferSize);
+    // cuMemcpyHtoD(dX, hX, bufferSize);
+    // cuMemcpyHtoD(dY, hY, bufferSize);
+    // void *args[] = { &a, &dX, &dY, &dOut, &n };
+    // cuLaunchKernel(kernel,
+    //             NUM_THREADS, 1, 1,   // grid dim
+    //             NUM_BLOCKS, 1, 1,    // block dim
+    //             0, NULL,             // shared mem and stream
+    //             args,                // arguments
+    //             0);
+    // cuCtxSynchronize();
+    // cuMemcpyDtoH(hOut, dOut, bufferSize);
+    return 0;
+
 }
 
 // impl. files

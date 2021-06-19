@@ -895,7 +895,8 @@ class Module:
         cu_file.close()
        
         try:
-
+            
+            warp.build.build_cuda(cu_path, dll_path + ".ptx", config=warp.config.mode, load=True)
             warp.build.build_module(cpp_path, cu_path, dll_path, config=warp.config.mode, load=True)
 
             # update cached output
@@ -967,6 +968,18 @@ class Runtime:
         self.core.cuda_get_stream.restype = c_void_p
         self.core.cuda_graph_end_capture.restype = c_void_p
         self.core.cuda_get_device_name.restype = c_char_p
+
+        self.core.cuda_compile_program.argtypes = [c_char_p, c_char_p, c_bool, c_bool, c_char_p]
+        self.core.cuda_compile_program.restype = c_size_t
+
+        self.core.cuda_load_module.argtypes = [c_char_p]
+        self.core.cuda_load_module.restype = c_void_p
+
+        self.core.cuda_get_kernel.argtypes = [c_void_p, c_char_p]
+        self.core.cuda_get_kernel.restype = c_void_p
+        
+        self.core.cuda_launch_kernel.argtypes = [c_void_p, POINTER(c_void_p), c_size_t]
+        self.core.cuda_launch_kernel.restype = c_size_t
 
         self.core.init.restype = c_int
         

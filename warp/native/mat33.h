@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 //----------------------------------------------------------
 // mat33
 
@@ -263,3 +266,5 @@ inline CUDA_CALLABLE void adj_skew(const vec3& a, vec3& adj_a, const mat33& adj_
     adj_a.y += adj_ret.data[0][2] - adj_ret.data[2][0];
     adj_a.z += adj_ret.data[1][0] - adj_ret.data[0][1];
 }
+
+} // namespace wp

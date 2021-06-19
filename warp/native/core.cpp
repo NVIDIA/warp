@@ -3,7 +3,6 @@
 #include "stdlib.h"
 #include "string.h"
 
-
 int cuda_init();
 
 int init()
