@@ -66,7 +66,7 @@ struct mat33
     float data[3][3];
 };
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ mat33 atomic_add(mat33 * addr, mat33 value) 
 {
     mat33 m;

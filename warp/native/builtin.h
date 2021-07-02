@@ -100,8 +100,8 @@ inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
 inline CUDA_CALLABLE float acos(float x) { return ::acos(min(max(x, -1.0f), 1.0f)); }
-inline CUDA_CALLABLE float sin(float x) { return ::asin(x); }
-inline CUDA_CALLABLE float cos(float x) { return ::acos(x); }
+inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
+inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
 inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
 
 inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
@@ -331,11 +331,11 @@ inline CUDA_CALLABLE void store(T* buf, int index, T value)
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 {
-#ifdef CPU
+#ifdef WP_CPU
     T old = buf[0];
     buf[0] += value;
     return old;
-#elif defined(CUDA)
+#elif defined(WP_CUDA)
     return atomicAdd(buf, value);
 #endif
 }
@@ -357,9 +357,9 @@ inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index
 {
     // allow NULL buffers for case where gradients are not required
     if (adj_buf) {
-#ifdef CPU
+#ifdef WP_CPU
         adj_buf[index] += adj_output;  // does not need to be atomic if single-threaded
-#elif defined(CUDA)
+#elif defined(WP_CUDA)
         atomic_add(adj_buf, index, adj_output);
 #endif
 

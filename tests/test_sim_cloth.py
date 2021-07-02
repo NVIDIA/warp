@@ -15,6 +15,7 @@ import warp.sim
 import render
 
 wp.init()
+#wp.config.verify_cuda = True
 
 # params
 sim_width = 64

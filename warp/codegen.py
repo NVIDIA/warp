@@ -673,12 +673,12 @@ static CUDA_CALLABLE void adj_{name}({forward_args}, {reverse_args})
 
 cuda_kernel_template = '''
 
-__global__ void {name}_cuda_kernel_forward(int dim, {forward_args})
+extern "C" __global__ void {name}_cuda_kernel_forward(int dim, {forward_args})
 {{
     {forward_body}
 }}
 
-__global__ void {name}_cuda_kernel_backward(int dim, {forward_args}, {reverse_args})
+extern "C" __global__ void {name}_cuda_kernel_backward(int dim, {forward_args}, {reverse_args})
 {{
     {reverse_body}
 }}

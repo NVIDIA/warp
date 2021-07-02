@@ -1,4 +1,4 @@
-#include "core.h"
+#include "warp.h"
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
@@ -242,11 +242,13 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
         "--gpu-architecture=sm_35",
         "--use_fast_math",
         "--std=c++11",
-        "--define-macro=CUDA_KERNEL",
+        "--define-macro=WP_CUDA",
+        "--define-macro=WP_NO_CRT",
+        "--define-macro=NDEBUG",
         include_opt.c_str()
     };
 
-    res = nvrtcCompileProgram(prog, 6, opts);
+    res = nvrtcCompileProgram(prog, 8, opts);
 
     if (res == NVRTC_SUCCESS)
     {
@@ -319,37 +321,20 @@ void* cuda_get_kernel(void* module, const char* name)
     return kernel;
 }
 
-size_t cuda_launch_kernel(void* kernel, void** args, size_t argc)
+size_t cuda_launch_kernel(void* kernel, int dim, void** args)
 {
-    // CUdevice cuDevice;
-    // CUcontext context;
-    // CUmodule module;
-    // CUfunction kernel;
-    // cuInit(0);
-    // cuDeviceGet(&cuDevice, 0);
-    // cuCtxCreate(&context, 0, cuDevice);
-    // cuModuleLoadDataEx(&module, ptx, 0, 0, 0);
-    // cuModuleGetFunction(&kernel, module, "saxpy");
-    // size_t n = size_t n = NUM_THREADS * NUM_BLOCKS;
-    // size_t bufferSize = n * sizeof(float);
-    // float a = ...;
-    // float *hX = ..., *hY = ..., *hOut = ...;
-    // CUdeviceptr dX, dY, dOut;
-    // cuMemAlloc(&dX, bufferSize);
-    // cuMemAlloc(&dY, bufferSize);
-    // cuMemAlloc(&dOut, bufferSize);
-    // cuMemcpyHtoD(dX, hX, bufferSize);
-    // cuMemcpyHtoD(dY, hY, bufferSize);
-    // void *args[] = { &a, &dX, &dY, &dOut, &n };
-    // cuLaunchKernel(kernel,
-    //             NUM_THREADS, 1, 1,   // grid dim
-    //             NUM_BLOCKS, 1, 1,    // block dim
-    //             0, NULL,             // shared mem and stream
-    //             args,                // arguments
-    //             0);
-    // cuCtxSynchronize();
-    // cuMemcpyDtoH(hOut, dOut, bufferSize);
-    return 0;
+    const int block_dim = 256;
+    const int grid_dim = (dim + block_dim - 1)/block_dim;
+
+    CUresult res = cuLaunchKernel(
+        (CUfunction)kernel,
+        grid_dim, 1, 1,
+        block_dim, 1, 1,
+        0, g_cuda_stream,
+        args,
+        0);
+
+    return res;
 
 }
 

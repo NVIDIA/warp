@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef CUDA_KERNEL
+#ifndef WP_NO_CRT
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -113,73 +113,73 @@ typedef unsigned long long uintmax_t;
 
 /// math.h
 
-#if __cplusplus >= 201103L
-#define DEFINE_MATH_UNARY_FUNC_WRAPPER(f) \
-	inline double      f(double x)         { return ::f(x); } \
-	inline float       f##f(float x)       { return ::f(x); } \
-	/*inline long double f##l(long double x) { return ::f(x); }*/ \
-	inline float       f(float x)          { return ::f(x); } \
-	/*inline long double f(long double x)    { return ::f(x); }*/
-#else
-#define DEFINE_MATH_UNARY_FUNC_WRAPPER(f) \
-	inline double      f(double x)         { return ::f(x); } \
-	inline float       f##f(float x)       { return ::f(x); } \
-	/*inline long double f##l(long double x) { return ::f(x); }*/
-#endif
-DEFINE_MATH_UNARY_FUNC_WRAPPER(cos)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(sin)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(tan)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(acos)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(asin)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(atan)
-template<typename T> inline T atan2(T y, T x) { return ::atan2(y, x); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(cosh)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(sinh)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(tanh)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(exp)
-template<typename T> inline T frexp(T x, int* exp) { return ::frexp(x, exp); }
-template<typename T> inline T ldexp(T x, int  exp) { return ::ldexp(x, exp); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(log)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(log10)
-template<typename T> inline T modf(T x, T* intpart) { return ::modf(x, intpart); }
-template<typename T> inline T pow(T x, T y) { return ::pow(x, y); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(sqrt)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(ceil)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(floor)
-template<typename T> inline T fmod(T n, T d) { return ::fmod(n, d); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(fabs)
-template<typename T> inline T abs(T x) { return ::abs(x); }
-#if __cplusplus >= 201103L
-DEFINE_MATH_UNARY_FUNC_WRAPPER(acosh)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(asinh)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(atanh)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(exp2)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(expm1)
-template<typename T> inline int ilogb(T x) { return ::ilogb(x); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(log1p)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(log2)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(logb)
-template<typename T> inline T scalbn (T x, int n)  { return ::scalbn(x, n); }
-template<typename T> inline T scalbln(T x, long n) { return ::scalbn(x, n); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(cbrt)
-template<typename T> inline T hypot(T x, T y) { return ::hypot(x, y); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(erf)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(erfc)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(tgamma)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(lgamma)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(trunc)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(round)
-template<typename T> inline long lround(T x) { return ::lround(x); }
-template<typename T> inline long long llround(T x) { return ::llround(x); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(rint)
-template<typename T> inline long lrint(T x) { return ::lrint(x); }
-template<typename T> inline long long llrint(T x) { return ::llrint(x); }
-DEFINE_MATH_UNARY_FUNC_WRAPPER(nearbyint)
-DEFINE_MATH_UNARY_FUNC_WRAPPER(isfinite)
-// TODO: remainder, remquo, copysign, nan, nextafter, nexttoward, fdim,
-// fmax, fmin, fma
-#endif
-#undef DEFINE_MATH_UNARY_FUNC_WRAPPER
+// #if __cplusplus >= 201103L
+// #define DEFINE_MATH_UNARY_FUNC_WRAPPER(f) \
+// 	inline double      f(double x)         { return ::f(x); } \
+// 	inline float       f##f(float x)       { return ::f(x); } \
+// 	/*inline long double f##l(long double x) { return ::f(x); }*/ \
+// 	inline float       f(float x)          { return ::f(x); } \
+// 	/*inline long double f(long double x)    { return ::f(x); }*/
+// #else
+// #define DEFINE_MATH_UNARY_FUNC_WRAPPER(f) \
+// 	inline double      f(double x)         { return ::f(x); } \
+// 	inline float       f##f(float x)       { return ::f(x); } \
+// 	/*inline long double f##l(long double x) { return ::f(x); }*/
+// #endif
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(cos)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(sin)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(tan)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(acos)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(asin)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(atan)
+// template<typename T> inline T atan2(T y, T x) { return ::atan2(y, x); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(cosh)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(sinh)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(tanh)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(exp)
+// template<typename T> inline T frexp(T x, int* exp) { return ::frexp(x, exp); }
+// template<typename T> inline T ldexp(T x, int  exp) { return ::ldexp(x, exp); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(log)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(log10)
+// template<typename T> inline T modf(T x, T* intpart) { return ::modf(x, intpart); }
+// template<typename T> inline T pow(T x, T y) { return ::pow(x, y); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(sqrt)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(ceil)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(floor)
+// template<typename T> inline T fmod(T n, T d) { return ::fmod(n, d); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(fabs)
+// template<typename T> inline T abs(T x) { return ::abs(x); }
+// #if __cplusplus >= 201103L
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(acosh)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(asinh)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(atanh)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(exp2)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(expm1)
+// template<typename T> inline int ilogb(T x) { return ::ilogb(x); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(log1p)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(log2)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(logb)
+// template<typename T> inline T scalbn (T x, int n)  { return ::scalbn(x, n); }
+// template<typename T> inline T scalbln(T x, long n) { return ::scalbn(x, n); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(cbrt)
+// template<typename T> inline T hypot(T x, T y) { return ::hypot(x, y); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(erf)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(erfc)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(tgamma)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(lgamma)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(trunc)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(round)
+// template<typename T> inline long lround(T x) { return ::lround(x); }
+// template<typename T> inline long long llround(T x) { return ::llround(x); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(rint)
+// template<typename T> inline long lrint(T x) { return ::lrint(x); }
+// template<typename T> inline long long llrint(T x) { return ::llrint(x); }
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(nearbyint)
+// //DEFINE_MATH_UNARY_FUNC_WRAPPER(isfinite)
+// // TODO: remainder, remquo, copysign, nan, nextafter, nexttoward, fdim,
+// // fmax, fmin, fma
+// #endif
+// #undef DEFINE_MATH_UNARY_FUNC_WRAPPER
 
 #define M_PI 3.14159265358979323846
 
@@ -191,6 +191,6 @@ int printf (const char * format, ... );
 //#ifndef __CUDACC__
 //#include <cassert>
 //#endif
-#define assert(x) {}
+//#define assert(x) {}
 
-#endif // CUDA_KERNEL
+#endif // WP_CUDA

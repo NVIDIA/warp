@@ -85,7 +85,7 @@ struct mat44
     float data[4][4];
 };
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ void atomic_add(mat44 * addr, mat44 value) {
     for (int i=0; i < 4; ++i)
     {

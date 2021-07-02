@@ -20,7 +20,7 @@ struct mat22
     float data[2][2];
 };
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ mat22 atomic_add(mat22 * addr, mat22 value) {
     // *addr += value;
     mat22 m;

@@ -54,59 +54,30 @@ def find_cuda():
     return cuda_home
     
 
+def build_cuda(cu_path, ptx_path, config="release", force=False):
+
+    src_file = open(cu_path)
+    src = src_file.read().encode('utf-8')
+    src_file.close()
+
+    inc_path = os.path.dirname(cu_path).encode('utf-8')
+    ptx_path = ptx_path.encode('utf-8')
+
+    with ScopedTimer("CUDA compile"):
+        warp.context.runtime.core.cuda_compile_program(src, inc_path, False, True, ptx_path)
+
+    
+def load_cuda(ptx_path):
+
+    with ScopedTimer("CUDA module load"):
+        module = warp.context.runtime.core.cuda_load_module(ptx_path.encode('utf-8'))
+        return module
+
+
 def quote(path):
     return "\"" + path + "\""
 
-def build_cuda(cu_path, out_path, config="release", load=True, force=False):
-
-    # inputs:
-    #   
-    #   .cpp
-    #   .cu
-    #
-    # outputs:
-    #
-    #   .dll
-    #   .ptx
-    #
-    # runtime:
-    #
-    #   load dll
-    #   load cuda module
-
-    src_file = open(cu_path)
-    src = src_file.read().encode('utf-8')
-    src_file.close()
-
-    inc_path = os.path.dirname(cu_path).encode('utf-8')
-    ptx_path = out_path.encode('utf-8')
-
-    with ScopedTimer("CUDA compile"):
-        warp.context.runtime.core.cuda_compile_program(src, inc_path, False, True, ptx_path)
-
-    with ScopedTimer("CUDA module load"):
-        module = warp.context.runtime.core.cuda_load_module(ptx_path)
-
-    return module
-    
-def build_x86(cpp_path, out_path, config="release", load=True, force=False):
-
-    src_file = open(cu_path)
-    src = src_file.read().encode('utf-8')
-    src_file.close()
-
-    inc_path = os.path.dirname(cu_path).encode('utf-8')
-    ptx_path = out_path.encode('utf-8')
-
-    with ScopedTimer("CUDA compile"):
-        warp.context.runtime.core.cuda_compile_program(src, inc_path, False, True, ptx_path)
-
-    with ScopedTimer("CUDA module load"):
-        module = warp.context.runtime.core.cuda_load_module(ptx_path)
-
-    return module
-
-def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force=False):
+def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
 
     set_build_env()
 
@@ -120,12 +91,21 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
         if (os.path.exists(dll_path) == True):
 
-            # check if output exists and is newer than source
-            cu_time = os.path.getmtime(cu_path)
-            cpp_time = os.path.getmtime(cpp_path)
             dll_time = os.path.getmtime(dll_path)
+            cache_valid = True
 
-            if (cu_time < dll_time and cpp_time < dll_time):
+            # check if output exists and is newer than source
+            if (cu_path):
+                cu_time = os.path.getmtime(cu_path)
+                if (cu_time > dll_time):
+                    cache_valid = False
+
+            if (cpp_path):
+                cpp_time = os.path.getmtime(cpp_path)
+                if (cpp_time > dll_time):
+                    cache_valid = False
+                
+            if (cache_valid):
                 
                 if (warp.config.verbose):
                     print("Skipping build of {} since outputs newer than inputs".format(dll_path))
@@ -133,7 +113,7 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
                 return True
 
             # ensure that dll is not loaded in the process
-            force_unload(dll_path)
+            force_unload_dll(dll_path)
 
     # output stale, rebuild
     if (warp.config.verbose):
@@ -142,15 +122,14 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
     if os.name == 'nt':
 
         cpp_out = cpp_path + ".obj"
-        cu_out = cu_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = '/MTd /Zi /Od /D "_DEBUG" /D "CPU" /D "_ITERATOR_DEBUG_LEVEL=0" '
+            cpp_flags = '/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" '
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = '/Ox /D "NDEBUG" /D "CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast'
+            cpp_flags = '/Ox /D "NDEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -164,13 +143,15 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
             ld_inputs.append(quote(cpp_out))
 
-        if (cuda_home):
+        if (cuda_home and cu_path):
+
+            cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_35,code=compute_35 -DCUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_35,code=compute_35 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
             elif (config == "release"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DCUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_35,code=compute_35 --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -184,15 +165,14 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
     else:
 
         cpp_out = cpp_path + ".o"
-        cu_out = cu_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = "-O0 -g -D_DEBUG -DCPU -fPIC --std=c++11"
+            cpp_flags = "-O0 -g -D_DEBUG -DWP_CPU -fPIC --std=c++11"
             ld_flags = "-D_DEBUG"
             ld_inputs = []
 
         if (config == "release"):
-            cpp_flags = "-O3 -DNDEBUG -DCPU  -fPIC --std=c++11"
+            cpp_flags = "-O3 -DNDEBUG -DWP_CPU  -fPIC --std=c++11"
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
@@ -203,9 +183,11 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
 
             ld_inputs.append(quote(cpp_out))
 
-        if (cuda_home):
+        if (cuda_home and cu_path):
 
-            cuda_cmd = '"{cuda_home}/bin/nvcc" -gencode=arch=compute_35,code=compute_35 -DCUDA --compiler-options -fPIC -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+            cu_out = cu_path + ".o"
+
+            cuda_cmd = '"{cuda_home}/bin/nvcc" -gencode=arch=compute_35,code=compute_35 -DWP_CUDA --compiler-options -fPIC -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -218,12 +200,12 @@ def build_module(cpp_path, cu_path, dll_path, config="release", load=True, force
             run_cmd(link_cmd)
 
     
-def load_module(dll_path):
+def load_dll(dll_path):
     
     dll = CDLL(dll_path)
     return dll
 
-def unload_module(dll):
+def unload_dll(dll):
     
     handle = dll._handle
     del dll
@@ -239,11 +221,11 @@ def unload_module(dll):
     except:
         return
 
-def force_unload(dll_path):
+def force_unload_dll(dll_path):
 
     try:
         # force load/unload of the dll from the process 
-        dll = load_module(dll_path)
-        unload_module(dll)
+        dll = load_dll(dll_path)
+        unload_dll(dll)
     except:
         return

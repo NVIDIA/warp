@@ -62,20 +62,26 @@ class Kernel:
     def hook(self):
 
         dll = self.module.dll
+        cuda = self.module.cuda
 
-        try:
-            self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
-            self.backward_cpu = eval("dll." + self.func.__name__ + "_cpu_backward")
-        except:
-            print("Could not load CPU methods for kernel {}".format(self.func.__name__))
+        if (dll):
 
-        if (warp.build.find_cuda()):
-            
             try:
-                self.forward_cuda = eval("dll." + self.func.__name__ + "_cuda_forward")
-                self.backward_cuda = eval("dll." + self.func.__name__ + "_cuda_backward")
+                self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
+                self.backward_cpu = eval("dll." + self.func.__name__ + "_cpu_backward")
             except:
-                print("Could not load CUDA methods for kernel {}".format(self.func.__name__))
+                print("Could not load CPU methods for kernel {}".format(self.func.__name__))
+
+        if (cuda):
+
+            # try:
+            #     self.forward_cuda = eval("dll." + self.func.__name__ + "_cuda_forward")
+            #     self.backward_cuda = eval("dll." + self.func.__name__ + "_cuda_backward")
+            # except:
+            #     print("Could not load CUDA methods for kernel {}".format(self.func.__name__))
+
+            self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_forward").encode('utf-8'))
+            self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_backward").encode('utf-8'))
 
 
 #----------------------
@@ -760,6 +766,7 @@ class Module:
 
         self.dll = None
 
+
     def register_kernel(self, kernel):
 
         if kernel.key in self.kernels:
@@ -767,7 +774,7 @@ class Module:
             # if kernel is replacing an old one then assume it has changed and 
             # force a rebuild / reload of the dynamic libary 
             if (self.dll):
-                warp.build.unload_module(self.dll)
+                warp.build.unload_dll(self.dll)
                 self.dll = None
 
         # register new kernel
@@ -791,7 +798,7 @@ class Module:
 
         # append any configuration parameters
         h.update(bytes(warp.config.mode, 'utf-8'))
-        
+
         return h.digest()
 
     def load(self):
@@ -808,11 +815,10 @@ class Module:
         gen_path = os.path.dirname(os.path.realpath(__file__)) + "/gen"
 
         cache_path = build_path + "/" + module_name + ".hash"
+        module_path = build_path + "/" + module_name
 
-        if (os.name == "nt"):
-            dll_path = build_path + "/" + module_name + ".dll"
-        else:
-            dll_path = build_path + "/" + module_name + ".so"
+        ptx_path = module_path + ".ptx"
+        dll_path = module_path + ".dll"
 
         if (os.path.exists(build_path) == False):
             os.mkdir(build_path)
@@ -831,21 +837,19 @@ class Module:
                 if (warp.config.verbose):
                     print("Warp: Using cached kernels for module {}".format(self.name))
                     
-                self.dll = cdll.LoadLibrary(dll_path)
+                self.dll = warp.build.load_dll(dll_path)
+                self.cuda = warp.build.load_cuda(ptx_path)
                 return
 
         if (warp.config.verbose):
             print("Warp: Rebuilding kernels for module {}".format(self.name))
 
-        # otherwise rebuid
+        # otherwise rebuild
         cpp_path = gen_path + "/" + module_name + ".cpp"
         cu_path = gen_path + "/" + module_name + ".cu"
 
-        cpp_source = ""
-        cu_source = ""
-
-        cpp_source += warp.codegen.cpu_module_header
-        cu_source += warp.codegen.cuda_module_header
+        cpp_source = warp.codegen.cpu_module_header
+        cu_source = warp.codegen.cuda_module_header
 
         # kernels
         entry_points = []
@@ -896,8 +900,8 @@ class Module:
        
         try:
             
-            warp.build.build_cuda(cu_path, dll_path + ".ptx", config=warp.config.mode, load=True)
-            warp.build.build_module(cpp_path, cu_path, dll_path, config=warp.config.mode, load=True)
+            warp.build.build_cuda(cu_path, ptx_path, config=warp.config.mode)
+            warp.build.build_dll(cpp_path, None, dll_path, config=warp.config.mode)
 
             # update cached output
             f = open(cache_path, 'wb')
@@ -910,7 +914,8 @@ class Module:
             raise(e)
 
 
-        self.dll = warp.build.load_module(dll_path)
+        self.cuda = warp.build.load_cuda(ptx_path)
+        self.dll = warp.build.load_dll(dll_path)
 
 
 #-------------------------------------------
@@ -921,31 +926,9 @@ from ctypes import *
 class Runtime:
 
     def __init__(self):
-    
-        # check for CUDA
-        if (warp.config.cuda_path == None):
-            warp.config.cuda_path = warp.build.find_cuda()
 
-        # still no CUDA toolchain not found
-        if (warp.config.cuda_path == None):
-            raise Exception("Warp: Could not find CUDA toolkit, ensure that the CUDA_PATH environment variable is set or specify manually in warp.config.cuda_path before initialization")
-            
-        # set build output path off this file
-        build_path = os.path.dirname(os.path.realpath(__file__))
-
-        try:
-
-            warp.build.build_module(
-                            cpp_path=build_path + "/native/core.cpp", 
-                            cu_path=build_path + "/native/core.cu", 
-                            dll_path=build_path + "/bin/warp.dll",
-                            config=warp.config.mode)
-                            
-        except Exception as e:
-
-            raise Exception("Could not load core library, build failed.")
-
-        self.core = warp.build.load_module(build_path + "/bin/warp.dll")
+        # load core
+        self.core = warp.build.load_dll(os.path.dirname(os.path.realpath(__file__)) + "/bin/warp.dll")
 
         # setup c-types for core.dll
         self.core.alloc_host.restype = c_void_p
@@ -978,7 +961,7 @@ class Runtime:
         self.core.cuda_get_kernel.argtypes = [c_void_p, c_char_p]
         self.core.cuda_get_kernel.restype = c_void_p
         
-        self.core.cuda_launch_kernel.argtypes = [c_void_p, POINTER(c_void_p), c_size_t]
+        self.core.cuda_launch_kernel.argtypes = [c_void_p, c_size_t, POINTER(c_void_p)]
         self.core.cuda_launch_kernel.restype = c_size_t
 
         self.core.init.restype = c_int
@@ -996,7 +979,6 @@ class Runtime:
         print("Warp initialized:")
         print("   Version: {}".format(warp.config.version))
         print("   Using CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
-
 
     # host functions
     def alloc_host(self, num_bytes):
@@ -1031,6 +1013,11 @@ class Runtime:
 # global entry points 
 
 def capture_begin():
+    # ensure that all modules are loaded, this is necessary
+    # since cuLoadModule() is not permitted during capture
+    for m in user_modules.values():
+        m.load()
+
     runtime.core.cuda_graph_begin_capture()
 
 def capture_end():
@@ -1121,11 +1108,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
         # first param is the number of threads
         params = []
-
-        if (device == "cuda"):
-            params.append(c_void_p(runtime.cuda_stream))
-
-        params.append(dim)
+        params.append(c_long(dim))
 
         # todo: verify argument types against the kernel definition, perform automatic conversion for simple types
         args = inputs + outputs
@@ -1193,10 +1176,13 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
         # run kernel
         if device == 'cpu':
             kernel.forward_cpu(*params)
-        elif device.startswith("cuda"):
-            kernel.forward_cuda(*params)
+        
+        elif device.startswith("cuda"):            
+            kernel_args = [c_void_p(addressof(x)) for x in params]
+            kernel_params = (c_void_p * len(kernel_args))(*kernel_args)
 
-        runtime.verify_device()
+            runtime.core.cuda_launch_kernel(kernel.forward_cuda, dim, kernel_params)
+            runtime.verify_device()
 
 
 def print_builtins():

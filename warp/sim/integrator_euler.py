@@ -279,6 +279,7 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
     wp.atomic_sub(f, j, f1)
     wp.atomic_sub(f, k, f2)
 
+
 @wp.func
 def triangle_closest_point_barycentric(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
     ab = b - a

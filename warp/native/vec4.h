@@ -180,7 +180,7 @@ inline CUDA_CALLABLE void adj_dot(vec4 a, vec4 b, vec4& adj_a, vec4& adj_b, cons
 
 }
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ vec4 atomic_add(vec4 * addr, vec4 value) {
     // *addr += value;
     float x = atomicAdd(&(addr -> x), value.x);

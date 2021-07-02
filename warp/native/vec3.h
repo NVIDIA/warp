@@ -232,7 +232,7 @@ inline CUDA_CALLABLE void adj_cross(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, co
 }
 
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ vec3 atomic_add(vec3 * addr, vec3 value) {
     // *addr += value;
     float x = atomicAdd(&(addr -> x), value.x);

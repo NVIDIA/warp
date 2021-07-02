@@ -17,7 +17,7 @@ struct quat
     explicit inline CUDA_CALLABLE quat(const vec3& v, float w=0.0f) : x(v.x), y(v.y), z(v.z), w(w) {}
 };
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ quat atomic_add(quat * addr, quat value) 
 {
     float x = atomicAdd(&(addr -> x), value.x);
