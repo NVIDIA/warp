@@ -1154,12 +1154,12 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
                 # force conversion to ndarray (handle tuple case)
                 a = np.array(a)
 
-                # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
+                # flatten to 1D array
                 v = a.flatten()
                 if (len(v) != arg_type.length()):
                     raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.adj.args[i].label, len(v), arg_type.length()))
 
-                # try convert to kernels type
+                # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
                 x = arg_type()
                 for i in range(arg_type.length()):
                     x.value[i] = v[i]
@@ -1177,7 +1177,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
         if device == 'cpu':
             kernel.forward_cpu(*params)
         
-        elif device.startswith("cuda"):            
+        elif device.startswith("cuda"):
             kernel_args = [c_void_p(addressof(x)) for x in params]
             kernel_params = (c_void_p * len(kernel_args))(*kernel_args)
 
