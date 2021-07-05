@@ -198,16 +198,12 @@ void cuda_restore_context()
 
 void* cuda_get_context()
 {
-	CUcontext ctx;
-	if (cuCtxGetCurrent_f(&ctx) == CUDA_SUCCESS)
-	    return ctx;
-    else
-        return NULL;
+	return g_cuda_context;
 }
 
 void cuda_set_context(void* ctx)
 {
-    cuCtxSetCurrent_f((CUcontext)ctx);
+    g_cuda_context = (CUcontext)ctx;
 }
 
 const char* cuda_get_device_name()

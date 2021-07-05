@@ -15,11 +15,10 @@ from ctypes import*
 
 from warp.types import *
 from warp.utils import *
-from warp.config import *
 
 import warp.codegen
 import warp.build
-
+import warp.config
 
 # represents either a built-in or user-defined function
 class Function:
@@ -186,7 +185,7 @@ class MulFunc:
             return quat
 
         else:
-            raise Exception("Unrecwpnized types for multiply operator *, got {} and {}".format(args[0].type, args[1].type))
+            raise Exception("Unrecognized types for multiply operator *, got {} and {}".format(args[0].type, args[1].type))
 
 
 @builtin("div")
@@ -215,7 +214,7 @@ class DivFunc:
             return args[1].type
 
         else:
-            raise Exception("Unrecwpnized types for division operator /, got {} and {}".format(args[0].type, args[1].type))
+            raise Exception("Unrecognized types for division operator /, got {} and {}".format(args[0].type, args[1].type))
 
 
 @builtin("neg")
@@ -398,7 +397,7 @@ class LoadFunc:
         if (type(args[0].type) != warp.types.array):
             raise Exception("load() argument 0 must be a array")
         if (args[1].type != int and args[1].type != warp.types.int32 and args[1].type != warp.types.int64 and args[1].type != warp.types.uint64):
-            raise Exception("load() argument input 1 must be a int")
+            raise Exception("load() argument input 1 must be an integer type")
 
         return args[0].type.dtype
 
@@ -410,7 +409,7 @@ class StoreFunc:
         if (type(args[0].type) != warp.types.array):
             raise Exception("store() argument 0 must be a array")
         if (args[1].type != int and args[1].type != warp.types.int32 and args[1].type != warp.types.int64 and args[1].type != warp.types.uint64):
-            raise Exception("store() argument input 1 must be a int")
+            raise Exception("store() argument input 1 must be an integer type")
         if (args[2].type != args[0].type.dtype):
             raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
 
@@ -765,6 +764,9 @@ class Module:
         self.functions = {}
 
         self.dll = None
+        self.cuda = None
+
+        self.loaded = False
 
 
     def register_kernel(self, kernel):
@@ -803,10 +805,8 @@ class Module:
 
     def load(self):
 
-        # todo: key off config
-        use_cuda = True
-        if not use_cuda:
-            print("[INFO] CUDA support not found. Disabling CUDA kernel compilation.")
+        enable_cpu = warp.is_cpu_available()
+        enable_cuda = warp.is_cuda_available()
 
         module_name = "wp_" + self.name
 
@@ -837,19 +837,27 @@ class Module:
                 if (warp.config.verbose):
                     print("Warp: Using cached kernels for module {}".format(self.name))
                     
-                self.dll = warp.build.load_dll(dll_path)
-                self.cuda = warp.build.load_cuda(ptx_path)
+                if (enable_cpu):
+                    self.dll = warp.build.load_dll(dll_path)
+
+                if (enable_cuda):
+                    self.cuda = warp.build.load_cuda(ptx_path)
+
+                self.loaded = True
                 return
 
         if (warp.config.verbose):
             print("Warp: Rebuilding kernels for module {}".format(self.name))
 
-        # otherwise rebuild
-        cpp_path = gen_path + "/" + module_name + ".cpp"
-        cu_path = gen_path + "/" + module_name + ".cu"
 
-        cpp_source = warp.codegen.cpu_module_header
-        cu_source = warp.codegen.cuda_module_header
+        # generate kernel source
+        if (enable_cpu):
+            cpp_path = gen_path + "/" + module_name + ".cpp"
+            cpp_source = warp.codegen.cpu_module_header
+        
+        if (enable_cuda):
+            cu_path = gen_path + "/" + module_name + ".cu"        
+            cu_source = warp.codegen.cuda_module_header
 
         # kernels
         entry_points = []
@@ -859,8 +867,11 @@ class Module:
            
             func.adj.build(builtin_functions, self.functions)
             
-            cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
-            cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
+            if (enable_cpu):
+                cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
+
+            if (enable_cuda):
+                cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
 
             # complete the function return type after we have analyzed it (infered from return statement in ast)
             func.value_type = wrap(func.adj)
@@ -872,15 +883,15 @@ class Module:
             kernel.adj.build(builtin_functions, self.functions)
 
             # each kernel gets an entry point in the module
-            entry_points.append(kernel.func.__name__ + "_cpu_forward")
-            entry_points.append(kernel.func.__name__ + "_cpu_backward")
+            if (enable_cpu):
+                entry_points.append(kernel.func.__name__ + "_cpu_forward")
+                entry_points.append(kernel.func.__name__ + "_cpu_backward")
 
-            cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cpu")
-            cpp_source += warp.codegen.codegen_kernel(kernel.adj, device="cpu")
-            cpp_source += warp.codegen.codegen_module(kernel.adj, device="cpu")
+                cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cpu")
+                cpp_source += warp.codegen.codegen_kernel(kernel.adj, device="cpu")
+                cpp_source += warp.codegen.codegen_module(kernel.adj, device="cpu")
 
-            if use_cuda:
-                
+            if (enable_cuda):                
                 entry_points.append(kernel.func.__name__ + "_cuda_forward")
                 entry_points.append(kernel.func.__name__ + "_cuda_backward")
 
@@ -890,18 +901,23 @@ class Module:
 
 
         # write cpp sources
-        cpp_file = open(cpp_path, "w")
-        cpp_file.write(cpp_source)
-        cpp_file.close()
+        if (enable_cpu):
+            cpp_file = open(cpp_path, "w")
+            cpp_file.write(cpp_source)
+            cpp_file.close()
 
-        cu_file = open(cu_path, "w")
-        cu_file.write(cu_source)
-        cu_file.close()
+        if (enable_cuda):
+            cu_file = open(cu_path, "w")
+            cu_file.write(cu_source)
+            cu_file.close()
        
         try:
-            
-            warp.build.build_cuda(cu_path, ptx_path, config=warp.config.mode)
-            warp.build.build_dll(cpp_path, None, dll_path, config=warp.config.mode)
+                       
+            if (enable_cuda):
+                warp.build.build_dll(cpp_path, None, dll_path, config=warp.config.mode)
+
+            if (enable_cpu):
+                warp.build.build_cuda(cu_path, ptx_path, config=warp.config.mode)
 
             # update cached output
             f = open(cache_path, 'wb')
@@ -913,10 +929,13 @@ class Module:
             print(e)
             raise(e)
 
+        if (enable_cpu):
+            self.dll = warp.build.load_dll(dll_path)
 
-        self.cuda = warp.build.load_cuda(ptx_path)
-        self.dll = warp.build.load_dll(dll_path)
+        if (enable_cuda):
+            self.cuda = warp.build.load_cuda(ptx_path)
 
+        self.loaded = True
 
 #-------------------------------------------
 # exectution context
@@ -969,16 +988,21 @@ class Runtime:
         error = self.core.init()
 
         if (error > 0):
-            raise Exception("Initialization failed")
+            raise Exception("Warp Initialization failed, CUDA not found")
 
         # save context
         self.cuda_device = self.core.cuda_get_context()
         self.cuda_stream = self.core.cuda_get_stream()
 
+        # initialize host build env
+        if (warp.config.host_compiler == None):
+            warp.config.host_compiler = warp.build.find_host_compiler()
+
         # print device and version information
         print("Warp initialized:")
         print("   Version: {}".format(warp.config.version))
         print("   Using CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
+        print("   Using CPU compiler: {}".format(warp.config.host_compiler))
 
     # host functions
     def alloc_host(self, num_bytes):
@@ -1011,6 +1035,12 @@ class Runtime:
 
 
 # global entry points 
+def is_cpu_available():
+    return warp.config.host_compiler != None
+
+def is_cuda_available():
+    return runtime.cuda_device != None
+
 
 def capture_begin():
     # ensure that all modules are loaded, this is necessary
@@ -1101,7 +1131,7 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
     if (dim > 0):
 
         # delay load modules
-        if (kernel.module.dll == None):
+        if (kernel.module.loaded == False):
 
             with ScopedTimer("Module {} load".format(kernel.module.name)):
                 kernel.module.load()

@@ -9,19 +9,19 @@ import warp.config
 from warp.utils import ScopedTimer
 
 # runs vcvars and copies back the build environment
-def set_build_env():
+def find_host_compiler():
 
-    # cl.exe not on path then set vcvars
-    if os.system("where cl.exe >nul 2>nul") != 0:
+    if (os.name == 'nt'):
 
-        def find_vcvars_path():
-            import glob
-            for edition in ['Enterprise', 'Professional', 'BuildTools', 'Community']:
-                paths = sorted(glob.glob(r"C:\Program Files (x86)\Microsoft Visual Studio\*\%s\VC\Auxiliary\Build\vcvars64.bat" % edition), reverse=True)
-                if paths:
-                    return paths[0]
+        if os.system("where cl.exe >nul 2>nul") != 0:
 
-        if os.name == 'nt':
+            # cl.exe not on path then set vcvars
+            def find_vcvars_path():
+                import glob
+                for edition in ['Enterprise', 'Professional', 'BuildTools', 'Community']:
+                    paths = sorted(glob.glob(r"C:\Program Files (x86)\Microsoft Visual Studio\*\%s\VC\Auxiliary\Build\vcvars64.bat" % edition), reverse=True)
+                    if paths:
+                        return paths[0]
 
             vcvars_path = find_vcvars_path()
 
@@ -32,6 +32,19 @@ def set_build_env():
                 pair = line.split("=", 1)
                 if (len(pair) >= 2):
                     os.environ[pair[0]] = pair[1]
+
+        # try and find cl.exe
+        try:
+            return subprocess.check_output("where cl.exe").decode()
+        except:
+            return None
+    else:
+        
+        # try and find g++
+        try:
+            return subprocess.check_output("which g++").decode()
+        except:
+            return None
 
 
 def run_cmd(cmd):
@@ -54,6 +67,7 @@ def find_cuda():
     return cuda_home
     
 
+# builds cuda->ptx using NVRTC
 def build_cuda(cu_path, ptx_path, config="release", force=False):
 
     src_file = open(cu_path)
@@ -66,7 +80,7 @@ def build_cuda(cu_path, ptx_path, config="release", force=False):
     with ScopedTimer("CUDA compile"):
         warp.context.runtime.core.cuda_compile_program(src, inc_path, False, True, ptx_path)
 
-    
+# load ptx to a CUDA runtime module    
 def load_cuda(ptx_path):
 
     with ScopedTimer("CUDA module load"):
@@ -78,8 +92,6 @@ def quote(path):
     return "\"" + path + "\""
 
 def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
-
-    set_build_env()
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None

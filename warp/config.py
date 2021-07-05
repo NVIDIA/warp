@@ -13,3 +13,4 @@ enable_backward = False # disable code gen of backwards pass
 mode = "release"
 verbose = True
 
+host_compiler = None    # user can specify host compiler here, otherwise will attempt to find one automatically
