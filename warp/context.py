@@ -1126,7 +1126,7 @@ def synchronize():
     runtime.core.synchronize()
 
 
-def launch(kernel, dim, inputs, outputs=[], device="cpu"):
+def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], device="cpu", adjoint=False):
 
     if (dim > 0):
 
@@ -1140,64 +1140,70 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
         params = []
         params.append(c_long(dim))
 
-        # todo: verify argument types against the kernel definition, perform automatic conversion for simple types
-        args = inputs + outputs
+        # converts arguments to expected types and packs into params to passed to kernel def.
+        def pack_args(args, params):
 
-        for i, a in enumerate(args):
+            for i, a in enumerate(args):
 
-            arg_type = kernel.adj.args[i].type
+                arg_type = kernel.adj.args[i].type
 
-            if (isinstance(arg_type, warp.types.array)):
+                if (isinstance(arg_type, warp.types.array)):
 
-                if (a == None):
-                    
-                    # allow for NULL arrays
-                    params.append(c_int64(0))
+                    if (a == None):
+                        
+                        # allow for NULL arrays
+                        params.append(c_int64(0))
+
+                    else:
+
+                        # check subtype
+                        if (a.dtype != arg_type.dtype):
+                            raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.adj.args[i].label))
+
+                        # check device
+                        if (a.device != device):
+                            raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
+            
+                        params.append(c_int64(a.data))
+
+                # try and convert arg to correct type
+                elif (arg_type == warp.types.float32):
+                    params.append(c_float(a))
+
+                elif (arg_type == warp.types.int32):
+                    params.append(c_int32(a))
+
+                elif (arg_type == warp.types.int64):
+                    params.append(c_int64(a))
+
+                elif (arg_type == warp.types.uint64):
+                    params.append(c_uint64(a))
+                
+                elif isinstance(a, np.ndarray) or isinstance(a, tuple):
+
+                    # force conversion to ndarray (handle tuple case)
+                    a = np.array(a)
+
+                    # flatten to 1D array
+                    v = a.flatten()
+                    if (len(v) != arg_type.length()):
+                        raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.adj.args[i].label, len(v), arg_type.length()))
+
+                    # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
+                    x = arg_type()
+                    for i in range(arg_type.length()):
+                        x.value[i] = v[i]
+
+                    params.append(x)
 
                 else:
+                    raise RuntimeError("Unknown parameter type {} for param {}, expected {}".format(type(a), kernel.adj.args[i].label, arg_type))
 
-                    # check subtype
-                    if (a.dtype != arg_type.dtype):
-                        raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.adj.args[i].label))
+        fwd_args = inputs + outputs
+        adj_args = adj_inputs + adj_outputs
 
-                    # check device
-                    if (a.device != device):
-                        raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
-        
-                    params.append(c_int64(a.data))
-
-            # try and convert arg to correct type
-            elif (arg_type == warp.types.float32):
-                params.append(c_float(a))
-
-            elif (arg_type == warp.types.int32):
-                params.append(c_int32(a))
-
-            elif (arg_type == warp.types.int64):
-                params.append(c_int64(a))
-
-            elif (arg_type == warp.types.uint64):
-                params.append(c_uint64(a))
-            
-            elif isinstance(a, np.ndarray) or isinstance(a, tuple):
-
-                # force conversion to ndarray (handle tuple case)
-                a = np.array(a)
-
-                # flatten to 1D array
-                v = a.flatten()
-                if (len(v) != arg_type.length()):
-                    raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.adj.args[i].label, len(v), arg_type.length()))
-
-                # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
-                x = arg_type()
-                for i in range(arg_type.length()):
-                    x.value[i] = v[i]
-
-                params.append(x)
-
-            else:
-                raise RuntimeError("Unknown parameter type {} for param {}, expected {}".format(type(a), kernel.adj.args[i].label, arg_type))
+        pack_args(fwd_args, params)
+        pack_args(adj_args, params)
 
         # late bind
         if (kernel.forward_cpu == None or kernel.forward_cuda == None):
@@ -1205,13 +1211,22 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
         # run kernel
         if device == 'cpu':
-            kernel.forward_cpu(*params)
+
+            if (adjoint):
+                kernel.backward_cpu(*params)
+            else:
+                kernel.forward_cpu(*params)
+
         
         elif device.startswith("cuda"):
             kernel_args = [c_void_p(addressof(x)) for x in params]
             kernel_params = (c_void_p * len(kernel_args))(*kernel_args)
 
-            runtime.core.cuda_launch_kernel(kernel.forward_cuda, dim, kernel_params)
+            if (adjoint):
+                runtime.core.cuda_launch_kernel(kernel.backward_cuda, dim, kernel_params)
+            else:
+                runtime.core.cuda_launch_kernel(kernel.forward_cuda, dim, kernel_params)
+
             runtime.verify_device()
 
 
