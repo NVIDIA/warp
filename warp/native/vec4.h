@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 struct vec4
 {
     float x;
@@ -95,7 +98,7 @@ inline CUDA_CALLABLE void adj_index(const vec4 & a, int idx, vec4 & adj_a, int &
 
 inline CUDA_CALLABLE float length(vec4 a)
 {
-    return sqrtf(dot(a, a));
+    return sqrt(dot(a, a));
 }
 
 inline CUDA_CALLABLE vec4 normalize(vec4 a)
@@ -177,7 +180,7 @@ inline CUDA_CALLABLE void adj_dot(vec4 a, vec4 b, vec4& adj_a, vec4& adj_b, cons
 
 }
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ vec4 atomic_add(vec4 * addr, vec4 value) {
     // *addr += value;
     float x = atomicAdd(&(addr -> x), value.x);
@@ -219,3 +222,4 @@ inline CUDA_CALLABLE void adj_normalize(vec4 a, vec4& adj_a, const vec4& adj_ret
     }
 }
 
+} // namespace wp

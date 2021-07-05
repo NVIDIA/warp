@@ -616,7 +616,7 @@ class Adjoint:
 # code generation
 
 cpu_module_header = '''
-#include "../native/core.h"
+#include "../native/builtin.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
@@ -631,7 +631,7 @@ using namespace wp;
 '''
 
 cuda_module_header = '''
-#include "../native/core.h"
+#include "../native/builtin.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
@@ -673,12 +673,12 @@ static CUDA_CALLABLE void adj_{name}({forward_args}, {reverse_args})
 
 cuda_kernel_template = '''
 
-__global__ void {name}_cuda_kernel_forward(int dim, {forward_args})
+extern "C" __global__ void {name}_cuda_kernel_forward(int dim, {forward_args})
 {{
     {forward_body}
 }}
 
-__global__ void {name}_cuda_kernel_backward(int dim, {forward_args}, {reverse_args})
+extern "C" __global__ void {name}_cuda_kernel_backward(int dim, {forward_args}, {reverse_args})
 {{
     {reverse_body}
 }}

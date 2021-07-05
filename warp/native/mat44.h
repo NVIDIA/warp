@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 //----------------------------------------------------------
 // mat44
 
@@ -82,7 +85,7 @@ struct mat44
     float data[4][4];
 };
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ void atomic_add(mat44 * addr, mat44 value) {
     for (int i=0; i < 4; ++i)
     {
@@ -267,4 +270,4 @@ inline CUDA_CALLABLE void adj_transpose(const mat44& a, mat44& adj_a, const mat4
     adj_a += transpose(adj_ret);
 }
 
-
+} // namespace wp

@@ -1,8 +1,9 @@
 #pragma once
 
-#include "core.h"
-#include "vec3.h"
+#include "builtin.h"
 
+namespace wp
+{
 
 CUDA_CALLABLE inline vec3 closest_point_to_aabb(const vec3& p, const vec3& lower, const vec3& upper)
 {
@@ -156,3 +157,6 @@ CUDA_CALLABLE inline bool intersect_ray_tri(const vec3& p, const vec3& dir, cons
 
     return true;
 }
+
+
+} // namespace wp

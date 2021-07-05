@@ -1,11 +1,10 @@
 #pragma once
 
-#include <math.h>
-#include <float.h>
+// All built-in types and functions. To be compatible with runtime NVRTC compilation
+// this header must be independently compilable (without external headers)
+// to achieve this we redefine a subset of CRT functions (printf, pow, sin, cos, etc)
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
+#include "crt.h"
 
 #if _WIN32
 #define WP_API __declspec(dllexport)
@@ -13,48 +12,17 @@
 #define WP_API
 #endif
 
+#ifdef _WIN32
+#define __restrict__ __restrict
+#endif
+
 #if !defined(__CUDACC__)
     #define CUDA_CALLABLE
 
 #else
     #define CUDA_CALLABLE __host__ __device__ 
-
-    #include <cuda.h>
-    #include <cuda_runtime_api.h>
-
-    #if _DEBUG
-        #define check_cuda(code) { check_cuda_impl(code, __FILE__, __LINE__); }
-    #else
-        #define check_cuda(code) code;
-    #endif
-
-    void check_cuda_impl(cudaError_t code, const char* file, int line)
-    {
-        if (code != cudaSuccess) 
-        {
-            printf("CUDA Error: %s %s %d\n", cudaGetErrorString(code), file, line);
-        }
-    }
-
-    void print_device()
-    {
-        int currentDevice;
-        cudaError_t err = cudaGetDevice(&currentDevice);        
-
-        cudaDeviceProp props;
-        err = cudaGetDeviceProperties(&props, currentDevice);
-        if (err != cudaSuccess)
-            printf("CUDA error: %d\n", err);
-        else
-            printf("%s\n", props.name);
-    }
-
-
 #endif
 
-#ifdef _WIN32
-#define __restrict__ __restrict
-#endif
 
 #define FP_CHECK 0
 
@@ -84,7 +52,7 @@ CUDA_CALLABLE T cast(wp::array addr)
     return (T)(addr);
 }
 
-// numeric types
+// numeric types (used from generated kernels)
 typedef float float32;
 typedef double float64;
 
@@ -128,13 +96,13 @@ inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, 
 inline CUDA_CALLABLE float clamp(float x, float a, float b) { return min(max(a, x), b); }
 inline CUDA_CALLABLE float step(float x) { return x < 0.0f ? 1.0f : 0.0f; }
 inline CUDA_CALLABLE float sign(float x) { return x < 0.0f ? -1.0f : 1.0f; }
-inline CUDA_CALLABLE float abs(float x) { return fabsf(x); }
+inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
-inline CUDA_CALLABLE float acos(float x) { return acosf(min(max(x, -1.0f), 1.0f)); }
-inline CUDA_CALLABLE float sin(float x) { return sinf(x); }
-inline CUDA_CALLABLE float cos(float x) { return cosf(x); }
-inline CUDA_CALLABLE float sqrt(float x) { return sqrtf(x); }
+inline CUDA_CALLABLE float acos(float x) { return ::acos(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
+inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
+inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
 
 inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
 inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret/b; adj_b -= adj_ret*(a/b)/b; }
@@ -229,24 +197,24 @@ inline CUDA_CALLABLE void adj_abs(float x, float& adj_x, float adj_ret)
 
 inline CUDA_CALLABLE void adj_acos(float x, float& adj_x, float adj_ret)
 {
-    float d = sqrtf(1.0f-x*x);
+    float d = sqrt(1.0f-x*x);
     if (d > 0.0f)
         adj_x -= (1.0f/d)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_sin(float x, float& adj_x, float adj_ret)
 {
-    adj_x += cosf(x)*adj_ret;
+    adj_x += cos(x)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_cos(float x, float& adj_x, float adj_ret)
 {
-    adj_x -= sinf(x)*adj_ret;
+    adj_x -= sin(x)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_sqrt(float x, float& adj_x, float adj_ret)
 {
-    adj_x += 0.5f*(1.0f/sqrtf(x))*adj_ret;
+    adj_x += 0.5f*(1.0f/sqrt(x))*adj_ret;
 }
 
 
@@ -324,6 +292,7 @@ inline CUDA_CALLABLE int tid()
 #endif
 }
 
+} // namespace wp
 
 #include "vec2.h"
 #include "vec3.h"
@@ -335,9 +304,11 @@ inline CUDA_CALLABLE int tid()
 #include "quat.h"
 #include "spatial.h"
 #include "intersect.h"
-
+#include "mesh.h"
 
 //--------------
+namespace wp
+{
 
 template<typename T>
 inline CUDA_CALLABLE T load(T* buf, int index)
@@ -360,11 +331,11 @@ inline CUDA_CALLABLE void store(T* buf, int index, T value)
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 {
-#ifdef CPU
+#ifdef WP_CPU
     T old = buf[0];
     buf[0] += value;
     return old;
-#elif defined(CUDA)
+#elif defined(WP_CUDA)
     return atomicAdd(buf, value);
 #endif
 }
@@ -386,9 +357,9 @@ inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index
 {
     // allow NULL buffers for case where gradients are not required
     if (adj_buf) {
-#ifdef CPU
+#ifdef WP_CPU
         adj_buf[index] += adj_output;  // does not need to be atomic if single-threaded
-#elif defined(CUDA)
+#elif defined(WP_CUDA)
         atomic_add(adj_buf, index, adj_output);
 #endif
 
@@ -531,67 +502,3 @@ inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj
 
 } // namespace wp
 
-
-
-// this is the core runtime API exposed on the DLL level
-extern "C"
-{
-    WP_API int init();
-    //WP_API void shutdown();
-
-    WP_API void* alloc_host(size_t s);
-    WP_API void* alloc_device(size_t s);
-
-    WP_API void free_host(void* ptr);
-    WP_API void free_device(void* ptr);
-
-    // all memcpys are performed asynchronously
-    WP_API void memcpy_h2h(void* dest, void* src, size_t n);
-    WP_API void memcpy_h2d(void* dest, void* src, size_t n);
-    WP_API void memcpy_d2h(void* dest, void* src, size_t n);
-    WP_API void memcpy_d2d(void* dest, void* src, size_t n);
-
-    // all memsets are performed asynchronously
-    WP_API void memset_host(void* dest, int value, size_t n);
-    WP_API void memset_device(void* dest, int value, size_t n);
-
-    // create a user-accesible copy of the mesh, it is the 
-    // users reponsibility to keep-alive the points/tris data for the duration of the mesh lifetime
-	WP_API uint64_t mesh_create_host(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
-	WP_API void mesh_destroy_host(uint64_t id);
-    WP_API void mesh_refit_host(uint64_t id);
-
-	WP_API uint64_t mesh_create_device(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
-	WP_API void mesh_destroy_device(uint64_t id);
-    WP_API void mesh_refit_device(uint64_t id);
-
-    WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
-    WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
-
-    WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
-    WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
-
-    // ensures all device side operations have completed
-    WP_API void synchronize();
-
-    // return cudaError_t code
-    WP_API uint64_t cuda_check_device();
-    
-    WP_API void cuda_acquire_context();
-    WP_API void cuda_restore_context();
-    WP_API void* cuda_get_context();
-    WP_API void cuda_set_context(void* ctx);
-    WP_API void* cuda_get_stream();
-    WP_API const char* cuda_get_device_name();
-
-    WP_API void cuda_graph_begin_capture();
-    WP_API void* cuda_graph_end_capture();
-    WP_API void cuda_graph_launch(void* graph);
-    WP_API void cuda_graph_destroy(void* graph);
-
-}
-
-
-
-#include "mesh.h"
-#include "volume.h"

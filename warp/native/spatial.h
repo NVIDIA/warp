@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 //---------------------------------------------------------------------------------
 // Represents a twist in se(3)
 
@@ -157,7 +160,7 @@ CUDA_CALLABLE inline void adj_spatial_bottom(const spatial_vector& a, spatial_ve
     adj_a.v += adj_ret;
 }
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ spatial_vector atomic_add(spatial_vector* addr, const spatial_vector& value) {
     
     vec3 w = atomic_add(&addr->w, value.w);
@@ -270,7 +273,7 @@ CUDA_CALLABLE inline void adj_mul(const spatial_transform& a, float s, spatial_t
     adj_mul(a.q, s, adj_a.q, adj_s, adj_ret.q);
 }
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ spatial_transform atomic_add(spatial_transform* addr, const spatial_transform& value) {
     
     vec3 p = atomic_add(&addr->p, value.p);
@@ -678,7 +681,7 @@ inline void CUDA_CALLABLE adj_index(const spatial_matrix& m, int row, int col, s
     adj_m.data[row][col] += adj_ret;
 }
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ spatial_matrix atomic_add(spatial_matrix* addr, const spatial_matrix& value) 
 {
     spatial_matrix m;
@@ -853,3 +856,6 @@ CUDA_CALLABLE inline void adj_spatial_mass(
         }
     } 
 }
+
+
+ } // namespace wp

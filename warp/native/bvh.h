@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core.h"
+#include "builtin.h"
 
 namespace wp
 {
@@ -65,8 +65,8 @@ struct bounds3
 
 	CUDA_CALLABLE inline void add_point(const vec3& p)
 	{
-		lower = wp::min(lower, p);
-		upper = wp::max(upper, p);
+		lower = min(lower, p);
+		upper = max(upper, p);
 	}
 
 	CUDA_CALLABLE inline float area() const

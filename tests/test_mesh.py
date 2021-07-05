@@ -13,6 +13,7 @@ import render
 np.random.seed(42)
 
 wp.init()
+#wp.config.verify_cuda = True
 
 @wp.kernel
 def deform(positions: wp.array(dtype=wp.vec3), t: float):
@@ -80,7 +81,7 @@ def simulate(positions: wp.array(dtype=wp.vec3),
     wp.store(velocities, tid, v)
 
 
-device = "cpu"
+device = "cuda"
 num_particles = 1000
 
 sim_steps = 500
