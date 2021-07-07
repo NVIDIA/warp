@@ -1057,7 +1057,7 @@ def capture_launch(graph):
     runtime.core.cuda_graph_launch(c_void_p(graph))
 
 
-def copy(dest, src, requires_grad=False):
+def copy(dest, src):
 
     num_bytes = src.length*type_size_in_bytes(src.dtype)
 
@@ -1093,15 +1093,15 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
         # construct array
-        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
+        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True, requires_grad=requires_grad)
 
 def zeros_like(src, requires_grad=False):
 
-    arr = zeros(len(src), dtype=src.dtype, device=src.device)
+    arr = zeros(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
     return arr
 
 def clone(src):
-    dest = empty(len(src), dtype=src.dtype, device=src.device)
+    dest = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
     copy(dest, src)
 
     return dest
@@ -1109,17 +1109,17 @@ def clone(src):
 def empty(n, dtype=float, device="cpu", requires_grad=False):
 
     # todo: implement uninitialized allocation
-    return zeros(n, dtype, device)  
+    return zeros(n, dtype, device, requires_grad=requires_grad)  
 
 def empty_like(src, requires_grad=False):
 
-    arr = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=False)
+    arr = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
     return arr
 
 
 def from_numpy(arr, dtype, device="cpu", requires_grad=False):
 
-    return warp.array(data=arr, dtype=dtype, device=device)
+    return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
 def synchronize():

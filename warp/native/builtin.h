@@ -331,7 +331,7 @@ inline CUDA_CALLABLE void store(T* buf, int index, T value)
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 {
-#ifdef WP_CPU
+#if defined(WP_CPU)
     T old = buf[0];
     buf[0] += value;
     return old;
@@ -357,7 +357,8 @@ inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index
 {
     // allow NULL buffers for case where gradients are not required
     if (adj_buf) {
-#ifdef WP_CPU
+
+#if defined(WP_CPU)
         adj_buf[index] += adj_output;  // does not need to be atomic if single-threaded
 #elif defined(WP_CUDA)
         atomic_add(adj_buf, index, adj_output);
@@ -369,23 +370,22 @@ inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index
 template <typename T>
 inline CUDA_CALLABLE void adj_store(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value)
 {   
-    adj_value += adj_buf[index]; // doesn't need to be atomic because it's used to load from a buffer onto the stack
+    if (adj_buf)
+        adj_value += adj_buf[index];
 }
 
 template<typename T>
 inline CUDA_CALLABLE void adj_atomic_add(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value, const T& adj_ret)
 {
-    if (adj_buf) {  // cannot be atomic because used locally
+    if (adj_buf) 
         adj_value += adj_buf[index];
-    }
 }
 
 template<typename T>
 inline CUDA_CALLABLE void adj_atomic_sub(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value, const T& adj_ret)
 {
-    if (adj_buf) { // cannot be atomic because used locally
+    if (adj_buf) 
         adj_value -= adj_buf[index];
-    }
 }
 
 //-------------------------

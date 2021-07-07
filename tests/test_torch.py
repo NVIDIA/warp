@@ -16,15 +16,6 @@ device = "cuda"
 
 wp.init()
 
-@wp.kernel
-def test_kernel(
-    x : wp.array(dtype=float),
-    y : wp.array(dtype=float)):
-
-    tid = wp.tid()
-
-    y[tid] = 0.5 - x[tid]*2.0
-
 # wrap a torch tensor to a wp array, data is not copied
 def torch_to_wp(t, dtype=wp.float32):
     
@@ -40,6 +31,17 @@ def torch_to_wp(t, dtype=wp.float32):
         device=t.device.type)
     
     return a
+
+
+@wp.kernel
+def test_kernel(
+    x : wp.array(dtype=float),
+    y : wp.array(dtype=float)):
+
+    tid = wp.tid()
+
+    y[tid] = 0.5 - x[tid]*2.0
+
 
 # define PyTorch autograd op to wrap simulate func
 class TestFunc(torch.autograd.Function):
@@ -74,7 +76,7 @@ class TestFunc(torch.autograd.Function):
             dim=len(ctx.x), 
 
             # fwd inputs
-            inputs=[torch_to_wp(ctx.x)], 
+            inputs=[torch_to_wp(ctx.x)],
             outputs=[None], 
 
             # adj inputs

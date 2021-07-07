@@ -338,7 +338,7 @@ def type_is_float(t):
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True):
+    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
         
         # convert built-in numeric type to wp type
         if (dtype == int):
@@ -347,6 +347,8 @@ class array:
         elif (dtype == float):
             dtype = float32
 
+        # save flag, controls if gradients will be computed in by wp.Tape
+        self.requires_grad = requires_grad
 
         # if src is a list, tuple try to convert to numpy array and construct from that (data will be copied)
         if (isinstance(data, np.ndarray) or 
@@ -383,7 +385,6 @@ class array:
 
             if (device == "cpu" and copy == False):
 
-                # todo: if runtime is global do we really need to store it per-array?
                 from warp.context import runtime
                 
                 # ref numpy memory directly
@@ -392,7 +393,7 @@ class array:
                 self.length=rows
                 self.capacity=rows*type_size_in_bytes(dtype)
                 self.device = device
-                self.context = runtime
+                self.context = runtime  #                 # todo: if runtime is global do we really need to store it per-array?
                 self.owner = False
 
                 # keep a ref to source array to keep allocation alive
@@ -400,9 +401,10 @@ class array:
 
             else:
 
-                # otherwise, copy to device memory
+                # otherwise, create a host wrapper around the numpy
+                #  array and a new destination array to copy it to
                 src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
-                dest = empty(rows, dtype=dtype, device=device)
+                dest = empty(rows, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
                 # data copy
@@ -427,12 +429,15 @@ class array:
             self.__name__ = "array<" + type.__name__ + ">"
 
 
+        # store 2D shape (useful for interop with tensor frameworks)
+        self.shape = (self.length, type_length(self.dtype))
+
         # set up array interface access so we can treat this object as a read-only numpy array
         if (device == "cpu"):
 
             self.__array_interface__ = { 
                 "data": (self.data, False), 
-                "shape": (self.length, type_length(self.dtype)),  
+                "shape": self.shape,  
                 "typestr": type_typestr(type_ctype(self.dtype)), 
                 "version": 3 
             }
