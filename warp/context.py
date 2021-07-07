@@ -991,6 +991,9 @@ class Runtime:
         print("   Using CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
         print("   Using CPU compiler: {}".format(warp.config.host_compiler))
 
+        # global tape
+        self.tape = None
+
     # host functions
     def alloc_host(self, num_bytes):
         ptr = self.core.alloc_host(num_bytes)       
@@ -1215,6 +1218,10 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
                 runtime.core.cuda_launch_kernel(kernel.forward_cuda, dim, kernel_params)
 
             runtime.verify_device()
+
+    # record on tape if one is active
+    if (runtime.tape):
+        runtime.tape.record(kernel, dim, inputs, outputs, device)
 
 
 def print_builtins():

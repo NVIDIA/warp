@@ -7,17 +7,22 @@ class Tape:
         self.adjoints = {}
         self.launches = []
 
-    # launch a kernel and record on the tape
-    def launch(self, kernel, dim, inputs, outputs, device):
-        
-        wp.launch(
-            kernel=kernel, 
-            dim=dim, 
-            inputs=inputs, 
-            outputs=outputs, 
-            device=device)
+    def __enter__(self):      
+        if (wp.context.runtime.tape != None):
+            raise RuntimeError("Warp: Error, entering a tape while one is already active")
 
+        wp.context.runtime.tape = self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if (wp.context.runtime.tape == None):
+            raise RuntimeError("Warp: Error, ended tape capture, but tape not present")            
+
+        wp.context.runtime.tape = None
+
+    # record a kernel launch on the tape
+    def record(self, kernel, dim, inputs, outputs, device):   
         self.launches.append([kernel, dim, inputs, outputs, device])
+
 
     # adj_outputs is a mapping from output tensor -> adjoint of the output
     # after running backward the adjoints of tensors may be retrieved by:
