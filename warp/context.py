@@ -1177,7 +1177,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
                     # flatten to 1D array
                     v = a.flatten()
                     if (len(v) != arg_type.length()):
-                        raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.adj.args[i].label, len(v), arg_type.length()))
+                        raise RuntimeError(f"Kernel parameter {kernel.adj.args[i].label} has incorrect value length {len(v)}, expected {arg_type.length()}")
 
                     # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
                     x = arg_type()
@@ -1187,7 +1187,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
                     params.append(x)
 
                 else:
-                    raise RuntimeError("Unknown parameter type {} for param {}, expected {}".format(type(a), kernel.adj.args[i].label, arg_type))
+                    raise RuntimeError(f"Unknown parameter type {type(a)} for param {kernel.adj.args[i].label}, expected {arg_type}")
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
