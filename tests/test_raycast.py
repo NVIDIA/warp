@@ -37,10 +37,11 @@ def render(mesh: wp.uint64,
     v = float(0.0)
     sign = float(0.0)
     n = wp.vec3(0.0, 0.0, 0.0)
+    f = 0
 
     color = wp.vec3(0.0, 0.0, 0.0)
 
-    if (wp.mesh_query_ray(mesh, ro, rd, 1.e+6, t, u, v, sign, n)):
+    if (wp.mesh_query_ray(mesh, ro, rd, 1.e+6, t, u, v, sign, n, f)):
         color = n*0.5 + wp.vec3(0.5, 0.5, 0.5)
         
     wp.store(pixels, tid, color)

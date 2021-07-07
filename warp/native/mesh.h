@@ -349,7 +349,7 @@ CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, f
 }
 
 
-CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& normal)
+CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& normal, int& face)
 {
     Mesh mesh = mesh_get(id);
 
@@ -427,6 +427,7 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 		sign = min_sign;
 		t = max_t;
 		normal = normalize(min_normal);
+		face = min_face;
 
 		return true;
 	}
@@ -439,8 +440,8 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 
 
 CUDA_CALLABLE inline void adj_mesh_query_ray(
-	uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& n,
-	uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_n, bool adj_ret)
+	uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& n, int& face,
+	uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_n, int& adj_face, bool adj_ret)
 {
 	// nop
 }
