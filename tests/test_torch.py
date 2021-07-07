@@ -9,28 +9,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-import warp as wp
 import torch
+
+import warp as wp
+from warp.torch import torch_to_wp
 
 device = "cuda"
 
 wp.init()
-
-# wrap a torch tensor to a wp array, data is not copied
-def torch_to_wp(t, dtype=wp.float32):
-    
-    # ensure tensors are contiguous
-    assert(t.is_contiguous())
-
-    a = wp.array(
-        data=t.storage().data_ptr(),
-        dtype=dtype,
-        length=t.shape[0],
-        copy=False,
-        owner=False,
-        device=t.device.type)
-    
-    return a
 
 
 @wp.kernel

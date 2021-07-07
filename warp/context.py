@@ -25,7 +25,7 @@ class Function:
 
     def __init__(self, func, key, namespace, module=None, value_type=None):
         
-        self.func = func   # may be None for built-in funcs
+        self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
         self.value_type = value_type
@@ -57,7 +57,7 @@ class Kernel:
         if (module):
             module.register_kernel(self)
 
-    # cache entry points based on name, called after compilation / module load
+    # lookup and cache entry points based on name, called after compilation / module load
     def hook(self):
 
         dll = self.module.dll
@@ -69,18 +69,15 @@ class Kernel:
                 self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
                 self.backward_cpu = eval("dll." + self.func.__name__ + "_cpu_backward")
             except:
-                print("Could not load CPU methods for kernel {}".format(self.func.__name__))
+                print(f"Could not load CPU methods for kernel {self.func.__name__}")
 
         if (cuda):
 
-            # try:
-            #     self.forward_cuda = eval("dll." + self.func.__name__ + "_cuda_forward")
-            #     self.backward_cuda = eval("dll." + self.func.__name__ + "_cuda_backward")
-            # except:
-            #     print("Could not load CUDA methods for kernel {}".format(self.func.__name__))
-
-            self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_forward").encode('utf-8'))
-            self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_backward").encode('utf-8'))
+            try:
+                self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_forward").encode('utf-8'))
+                self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_backward").encode('utf-8'))
+            except:
+                print(f"Could not load CUDA methods for kernel {self.func.__name__}")
 
 
 #----------------------
@@ -720,16 +717,6 @@ class ExpectEqFunc:
         return None
 
 
-def rename(name, return_type):
-    def func(cls):
-        cls.__name__ = name
-        cls.key = name
-        cls.prefix = ""
-        cls.return_type = return_type
-        return cls
-
-    return func
-
 def wrap(adj):
     def value_type(args):
         if (adj.return_var):
@@ -777,7 +764,7 @@ class Module:
             # force a rebuild / reload of the dynamic libary 
             if (self.dll):
                 warp.build.unload_dll(self.dll)
-                self.dll = None
+                self.dll = None                
 
         # register new kernel
         self.kernels[kernel.key] = kernel
