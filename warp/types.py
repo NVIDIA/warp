@@ -523,25 +523,6 @@ class array:
 
         return arr
 
-    #  def __getstate__(self):
-    #      # capture what is normally pickled
-    #      state = self.__dict__.copy()
-    #      # replace the `value` key (now an EnumValue instance), with it's index:
-    #      state['value'] = state['value'].index
-    #      # what we return here will be stored in the pickle
-    #      return state
-
-    #  def __setstate__(self, newstate):
-    #      # re-create the EnumState instance based on the stored index
-    #      newstate['value'] = self.Values[newstate['value']]
-    #      # re-instate our __dict__ state from the pickled state
-    #      self.__dict__.update(newstate)
-
-def get_data(array):
-    if (array):
-        return ctypes.c_void_p(array.data)
-    else:
-        return ctypes.c_void_p(0)
 
 class Mesh:
 
@@ -557,6 +538,13 @@ class Mesh:
         # inherit context from points, todo: find this globally
         self.context = points.context
         self.device = points.device
+
+        def get_data(array):
+            if (array):
+                return ctypes.c_void_p(array.data)
+            else:
+                return ctypes.c_void_p(0)
+
 
         if (self.device == "cpu"):
             self.id = self.context.core.mesh_create_host(
