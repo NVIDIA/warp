@@ -42,8 +42,8 @@ def skew(v):
 
 
 # math utils
-def quat(i, j, k, w):
-    return np.array([i, j, k, w])
+# def quat(i, j, k, w):
+#     return np.array([i, j, k, w])
 
 
 def quat_identity():
@@ -303,8 +303,8 @@ def translate_wrench(p_ab, s_b):
     return np.array((*w, *v))
 
 
-def spatial_vector(v=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)):
-    return np.array(v)
+# def spatial_vector(v=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)):
+#     return np.array(v)
 
 
 # ad_V pg. 289 L&P, pg. 25 Featherstone
@@ -331,8 +331,8 @@ def spatial_outer(a, b):
     return np.outer(a, b)
 
 
-def spatial_matrix():
-    return np.zeros((6, 6))
+# def spatial_matrix():
+#     return np.zeros((6, 6))
 
 
 def spatial_matrix_from_inertia(I, m):
