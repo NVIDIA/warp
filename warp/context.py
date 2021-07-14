@@ -764,7 +764,13 @@ class Module:
             # force a rebuild / reload of the dynamic libary 
             if (self.dll):
                 warp.build.unload_dll(self.dll)
-                self.dll = None                
+
+            if (self.cuda):
+                runtime.core.cuda_unload_module(self.cuda)
+                
+            self.dll = None
+            self.cuda = None
+            self.loaded = False
 
         # register new kernel
         self.kernels[kernel.key] = kernel
@@ -963,6 +969,8 @@ class Runtime:
 
         self.core.cuda_load_module.argtypes = [c_char_p]
         self.core.cuda_load_module.restype = c_void_p
+
+        self.core.cuda_unload_module.argtypes = [c_void_p]
 
         self.core.cuda_get_kernel.argtypes = [c_void_p, c_char_p]
         self.core.cuda_get_kernel.restype = c_void_p

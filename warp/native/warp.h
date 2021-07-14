@@ -72,6 +72,7 @@ extern "C"
 
     WP_API size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool debug, bool verbose, const char* output_file);
     WP_API void* cuda_load_module(const char* ptx);
+    WP_API void cuda_unload_module(void* module);
     WP_API void* cuda_get_kernel(void* module, const char* name);
     WP_API size_t cuda_launch_kernel(void* kernel, int dim, void** args);
 
