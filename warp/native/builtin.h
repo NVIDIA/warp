@@ -416,14 +416,19 @@ inline CUDA_CALLABLE void print(int i)
     printf("%d\n", i);
 }
 
-inline CUDA_CALLABLE void print(float i)
+inline CUDA_CALLABLE void print(float f)
 {
-    printf("%f\n", i);
+    printf("%f\n", f);
 }
 
-inline CUDA_CALLABLE void print(vec3 i)
+inline CUDA_CALLABLE void print(vec3 v)
 {
-    printf("%f %f %f\n", i.x, i.y, i.z);
+    printf("%f %f %f\n", v.x, v.y, v.z);
+}
+
+inline CUDA_CALLABLE void print(vec4 v)
+{
+    printf("%f %f %f %f\n", v.x, v.y, v.z, v.w);
 }
 
 inline CUDA_CALLABLE void print(quat i)
@@ -442,6 +447,14 @@ inline CUDA_CALLABLE void print(mat33 m)
     printf("%f %f %f\n%f %f %f\n%f %f %f\n", m.data[0][0], m.data[0][1], m.data[0][2], 
                                              m.data[1][0], m.data[1][1], m.data[1][2], 
                                              m.data[2][0], m.data[2][1], m.data[2][2]);
+}
+
+inline CUDA_CALLABLE void print(mat44 m)
+{
+    printf("%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n", m.data[0][0], m.data[0][1], m.data[0][2], m.data[0][3],
+                                                                   m.data[1][0], m.data[1][1], m.data[1][2], m.data[1][3],
+                                                                   m.data[2][0], m.data[2][1], m.data[2][2], m.data[2][3],
+                                                                   m.data[3][0], m.data[3][1], m.data[3][2], m.data[3][3]);
 }
 
 inline CUDA_CALLABLE void print(spatial_transform t)
@@ -473,10 +486,12 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float i, float& adj_i) { printf("%f adj: %f\n", i, adj_i); }
-inline CUDA_CALLABLE void adj_print(vec3 i, vec3& adj_i) { printf("%f %f %f adj: %f %f %f \n", i.x, i.y, i.z, adj_i.x, adj_i.y, adj_i.z); }
-inline CUDA_CALLABLE void adj_print(quat i, quat& adj_i) { }
+inline CUDA_CALLABLE void adj_print(vec3 v, vec3& adj_v) { printf("%f %f %f adj: %f %f %f \n", v.x, v.y, v.z, adj_v.x, adj_v.y, adj_v.z); }
+inline CUDA_CALLABLE void adj_print(vec4 v, vec4& adj_v) { printf("%f %f %f %f adj: %f %f %f %f\n", v.x, v.y, v.z, v.w, adj_v.x, adj_v.y, adj_v.z, adj_v.w); }
+inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%f %f %f %f adj: %f %f %f %f\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
 inline CUDA_CALLABLE void adj_print(mat22 m, mat22& adj_m) { }
 inline CUDA_CALLABLE void adj_print(mat33 m, mat33& adj_m) { }
+inline CUDA_CALLABLE void adj_print(mat44 m, mat44& adj_m) { }
 inline CUDA_CALLABLE void adj_print(spatial_transform t, spatial_transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
@@ -485,7 +500,7 @@ inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
 template <typename T>
 inline CUDA_CALLABLE void expect_eq(const T& a, const T& b)
 {
-    if (a != b)
+    if (!(a == b))
     {
         printf("Error, expected equal failed:\n");
         printf("\t Expected: "); print(b); 
