@@ -169,6 +169,14 @@ class MulFunc:
         elif(args[0].type == mat33 and args[1].type == mat33):
             return mat33
 
+        # mat44 x vec4
+        elif (args[0].type == mat44 and args[1].type == vec4):
+            return vec4
+
+        # mat44 x mat44
+        elif(args[0].type == mat44 and args[1].type == mat44):
+            return mat44
+
         # mat66 x vec6
         if (args[0].type == spatial_matrix and args[1].type == spatial_vector):
             return spatial_vector
@@ -449,10 +457,16 @@ class IntFunc:
         return int
 
 @builtin("vec3")
-class vec3Func:
+class Vec3Func:
     @staticmethod
     def value_type(args):
         return vec3
+
+@builtin("vec4")
+class Vec4Func:
+    @staticmethod
+    def value_type(args):
+        return vec4
 
 
 @builtin("quat")

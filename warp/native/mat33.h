@@ -23,9 +23,10 @@ struct mat33
         data[2][2] = c2.z;
     }
 
-    inline CUDA_CALLABLE mat33(float m00=0.0f, float m01=0.0f, float m02=0.0f,
-                 float m10=0.0f, float m11=0.0f, float m12=0.0f,
-                 float m20=0.0f, float m21=0.0f, float m22=0.0f) 
+    inline CUDA_CALLABLE mat33(
+        float m00=0.0f, float m01=0.0f, float m02=0.0f,
+        float m10=0.0f, float m11=0.0f, float m12=0.0f,
+        float m20=0.0f, float m21=0.0f, float m22=0.0f) 
     {
         data[0][0] = m00;
         data[1][0] = m10;

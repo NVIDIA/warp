@@ -13,17 +13,17 @@ struct mat44
         data[0][0] = c0.x;
         data[1][0] = c0.y;
         data[2][0] = c0.z;
-        data[2][0] = c0.w;
+        data[3][0] = c0.w;
 
         data[0][1] = c1.x;
         data[1][1] = c1.y;
         data[2][1] = c1.z;
-        data[2][1] = c1.w;
+        data[3][1] = c1.w;
 
         data[0][2] = c2.x;
         data[1][2] = c2.y;
         data[2][2] = c2.z;
-        data[2][2] = c2.w;
+        data[3][2] = c2.w;
 
         data[0][3] = c3.x;
         data[1][3] = c3.y;

@@ -263,6 +263,10 @@ inline CUDA_CALLABLE void adj_mul(const quat& a, float s, quat& adj_a, float& ad
     adj_s += dot(a, adj_ret);
 }
 
+inline CUDA_CALLABLE void adj_mul(float s, const quat& a, float& adj_s, quat& adj_a, const quat& adj_ret)
+{
+    adj_mul(a, s, adj_a, adj_s, adj_ret);
+}
 
 inline CUDA_CALLABLE void adj_rotate(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
 {

@@ -12,6 +12,8 @@ struct vec4
 
     inline CUDA_CALLABLE vec4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
     inline CUDA_CALLABLE vec4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+    inline CUDA_CALLABLE vec4(float s) : x(s), y(s), z(s), w(s) {}
+
     explicit inline CUDA_CALLABLE vec4(const float* p) : x(p[0]), y(p[1]), z(p[2]), w(p[3]) {}
 
     float operator[](int index) const
@@ -34,6 +36,11 @@ struct vec4
 inline CUDA_CALLABLE vec4 operator - (vec4 a)
 {
     return { -a.x, -a.y, -a.z, -a.w };
+}
+
+inline CUDA_CALLABLE bool operator==(const vec4& a, const vec4& b)
+{
+    return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
 }
 
 
@@ -118,13 +125,22 @@ inline bool CUDA_CALLABLE isfinite(vec4 x)
 }
 
 // adjoint vec4 constructor
-inline CUDA_CALLABLE void adj_vec4(float x, float y, float z, float& adj_x, float& adj_y, float& adj_z, float& adj_w, const vec4& adj_ret)
+inline CUDA_CALLABLE void adj_vec4(float x, float y, float z, float w, float& adj_x, float& adj_y, float& adj_z, float& adj_w, const vec4& adj_ret)
 {
     adj_x += adj_ret.x;
     adj_y += adj_ret.y;
     adj_z += adj_ret.z;
     adj_w += adj_ret.w;
 }
+
+inline CUDA_CALLABLE void adj_vec4(float s, float& adj_s, const vec4& adj_ret)
+{
+    adj_s += adj_ret.x;
+    adj_s += adj_ret.y;
+    adj_s += adj_ret.z;
+    adj_s += adj_ret.w;
+}
+
 
 inline CUDA_CALLABLE void adj_mul(vec4 a, float s, vec4& adj_a, float& adj_s, const vec4& adj_ret)
 {
@@ -140,6 +156,12 @@ inline CUDA_CALLABLE void adj_mul(vec4 a, float s, vec4& adj_a, float& adj_s, co
         printf("adj_mul((%f %f %f), %f, (%f %f %f), %f, (%f %f %f)\n", a.x, a.y, a.z, s, adj_a.x, adj_a.y, adj_a.z, adj_s, adj_ret.x, adj_ret.y, adj_ret.z);
 #endif
 }
+
+inline CUDA_CALLABLE void adj_mul(float s, vec4 a, float& adj_s, vec4& adj_a, const vec4& adj_ret)
+{
+    adj_mul(a, s, adj_a, adj_s, adj_ret);
+}
+
 
 inline CUDA_CALLABLE void adj_div(vec4 a, float s, vec4& adj_a, float& adj_s, const vec4& adj_ret)
 {

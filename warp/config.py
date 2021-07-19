@@ -11,6 +11,6 @@ verify_cuda = False     # if true will check CUDA errors after each kernel launc
 enable_backward = False # disable code gen of backwards pass
 
 mode = "release"
-verbose = True
+verbose = False
 
 host_compiler = None    # user can specify host compiler here, otherwise will attempt to find one automatically
