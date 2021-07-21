@@ -15,3 +15,4 @@ _*/
 tests/outputs/.thumbs
 *.pdb
 tests/outputs
+_build

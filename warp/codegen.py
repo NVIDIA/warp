@@ -12,7 +12,7 @@ import numpy as np
 import copy
 
 from warp.types import *
-
+import warp.config
 
 # map operator to function name
 builtin_operators = {}
@@ -496,7 +496,8 @@ class Adjoint:
 
                         if var1 != var2:
 
-                            print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
+                            if (warp.config.verbose):
+                                print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
 
                             if (var2.constant is not None):
                                 raise Exception("Error mutating a constant {}, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))

@@ -77,15 +77,13 @@ def build_cuda(cu_path, ptx_path, config="release", force=False):
     inc_path = os.path.dirname(cu_path).encode('utf-8')
     ptx_path = ptx_path.encode('utf-8')
 
-    with ScopedTimer("CUDA compile"):
-        warp.context.runtime.core.cuda_compile_program(src, inc_path, False, True, ptx_path)
+    warp.context.runtime.core.cuda_compile_program(src, inc_path, False, warp.config.verbose, ptx_path)
 
 # load ptx to a CUDA runtime module    
 def load_cuda(ptx_path):
 
-    with ScopedTimer("CUDA module load"):
-        module = warp.context.runtime.core.cuda_load_module(ptx_path.encode('utf-8'))
-        return module
+    module = warp.context.runtime.core.cuda_load_module(ptx_path.encode('utf-8'))
+    return module
 
 
 def quote(path):
@@ -96,7 +94,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
 
-    if (cuda_home == None):
+    if (cu_path != None and cuda_home == None):
         print("CUDA toolchain not found, skipping CUDA build")
     
     if(force == False):
