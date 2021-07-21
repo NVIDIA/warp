@@ -12,7 +12,6 @@ import hashlib
 
 from ctypes import*
 
-
 from warp.types import *
 from warp.utils import *
 
@@ -23,12 +22,14 @@ import warp.config
 # represents either a built-in or user-defined function
 class Function:
 
-    def __init__(self, func, key, namespace, module=None, value_type=None):
+    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, doc=""):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
         self.value_type = value_type
+        self.input_types = input_types
+        self.doc = doc
         self.module = module
 
         if (func):
@@ -110,250 +111,252 @@ def builtin(key):
 
     return insert
 
+def add_builtin(key, input_types={}, value_type=None, doc=""):
+
+    # lambda to return a constant type for an overload
+    def value_func(arg):
+        return value_type
+
+    func = Function(func=None, key=key, namespace="wp::", input_types=input_types, value_type=value_func, doc=doc)
+
+    if key in builtin_functions:
+        builtin_functions[key].append(func)
+    else:
+        builtin_functions[key] = [func]
 
 #---------------------------------
-# built-in operators +,-,*,/
-
-
-@builtin("add")
-class AddFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("sub")
-class SubFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("mod")
-class ModFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("mul")
-class MulFunc:
-    @staticmethod
-    def value_type(args):
-
-        # int x int
-        if (warp.types.type_is_int(args[0].type) and warp.types.type_is_int(args[1].type)):
-            return int
-
-        # float x int
-        elif (warp.types.type_is_float(args[1].type) and warp.types.type_is_int(args[0].type)):
-            return float
-
-        # int x float
-        elif (warp.types.type_is_int(args[0].type) and warp.types.type_is_float(args[1].type)):
-            return float
-
-        # scalar x object
-        elif (warp.types.type_is_float(args[0].type)):
-            return args[1].type
-
-        # object x scalar
-        elif (warp.types.type_is_float(args[1].type)):
-            return args[0].type
-
-        # mat33 x vec3
-        elif (args[0].type == mat33 and args[1].type == vec3):
-            return vec3
-
-        # mat33 x mat33
-        elif(args[0].type == mat33 and args[1].type == mat33):
-            return mat33
-
-        # mat44 x vec4
-        elif (args[0].type == mat44 and args[1].type == vec4):
-            return vec4
-
-        # mat44 x mat44
-        elif(args[0].type == mat44 and args[1].type == mat44):
-            return mat44
-
-        # mat66 x vec6
-        if (args[0].type == spatial_matrix and args[1].type == spatial_vector):
-            return spatial_vector
-
-        # mat66 x mat66        
-        if (args[0].type == spatial_matrix and args[1].type == spatial_matrix):
-            return spatial_matrix
-
-        # quat x quat
-        if (args[0].type == quat and args[1].type == quat):
-            return quat
-
-        else:
-            raise Exception("Unrecognized types for multiply operator *, got {} and {}".format(args[0].type, args[1].type))
-
-
-@builtin("div")
-class DivFunc:
-    @staticmethod
-    def value_type(args):
-        
-        # int / int
-        if (warp.types.type_is_int(args[0].type) and warp.types.type_is_int(args[1].type)):
-            return int
-
-        # float / int
-        elif (warp.types.type_is_float(args[0].type) and warp.types.type_is_int(args[1].type)):
-            return float
-
-        # int / float
-        elif (warp.types.type_is_int(args[0].type) and warp.types.type_is_float(args[1].type)):
-            return float
-
-        # vec3 / float
-        elif (args[0].type == vec3 and warp.types.type_is_float(args[1].type)):
-            return vec3
-
-        # object / float
-        elif (warp.types.type_is_float(args[0].type)):
-            return args[1].type
-
-        else:
-            raise Exception("Unrecognized types for division operator /, got {} and {}".format(args[0].type, args[1].type))
-
-
-@builtin("neg")
-class NegFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-#----------------------
-# built-in functions
-
-
-
-@builtin("min")
-class MinFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("max")
-class MaxFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("leaky_max")
-class LeakyMaxFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("leaky_min")
-class LeakyMinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("clamp")
-class ClampFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("step")
-class StepFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("nonzero")
-class NonZeroFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("sign")
-class SignFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("abs")
-class AbsFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("sin")
-class SinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("cos")
-class CosFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("acos")
-class ACosFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("sqrt")
-class SqrtFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("dot")
-class DotFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("cross")
-class CrossFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("skew")
-class SkewFunc:
-    @staticmethod
-    def value_type(args):
-        return mat33
-
-
-@builtin("length")
-class LengthFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("normalize")
-class NormalizeFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
+# built-in operators
+
+add_builtin("add", input_types={"x": int, "y": int}, value_type=int, doc="")
+add_builtin("add", input_types={"x": int, "y": float}, value_type=float, doc="")
+add_builtin("add", input_types={"x": float, "y": int}, value_type=float, doc="")
+add_builtin("add", input_types={"x": float, "y": float}, value_type=float, doc="")
+add_builtin("add", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="")
+add_builtin("add", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="")
+add_builtin("add", input_types={"x": quat, "y": quat}, value_type=quat, doc="")
+add_builtin("add", input_types={"x": mat22, "y": mat22}, value_type=mat22, doc="")
+add_builtin("add", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="")
+add_builtin("add", input_types={"x": mat44, "y": mat44}, value_type=mat44, doc="")
+add_builtin("add", input_types={"x": spatial_vector, "y": spatial_vector}, value_type=spatial_vector, doc="")
+add_builtin("add", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="")
+
+add_builtin("sub", input_types={"x": int, "y": int}, value_type=int, doc="")
+add_builtin("sub", input_types={"x": int, "y": float}, value_type=float, doc="")
+add_builtin("sub", input_types={"x": float, "y": int}, value_type=float, doc="")
+add_builtin("sub", input_types={"x": float, "y": float}, value_type=float, doc="")
+add_builtin("sub", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="")
+add_builtin("sub", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="")
+add_builtin("sub", input_types={"x": mat22, "y": mat22}, value_type=mat22, doc="")
+add_builtin("sub", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="")
+add_builtin("sub", input_types={"x": mat44, "y": mat44}, value_type=mat44, doc="")
+add_builtin("sub", input_types={"x": spatial_vector, "y": spatial_vector}, value_type=spatial_vector, doc="")
+add_builtin("sub", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="")
+
+add_builtin("mul", input_types={"x": int, "y": int}, value_type=int, doc="")
+add_builtin("mul", input_types={"x": int, "y": float}, value_type=float, doc="")
+add_builtin("mul", input_types={"x": float, "y": int}, value_type=float, doc="")
+add_builtin("mul", input_types={"x": float, "y": float}, value_type=float, doc="")
+add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="")
+add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="")
+add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="")
+add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="")
+add_builtin("mul", input_types={"x": quat, "y": quat}, value_type=quat, doc="")
+add_builtin("mul", input_types={"x": quat, "y": float}, value_type=quat, doc="")
+add_builtin("mul", input_types={"x": mat22, "y": float}, value_type=mat22, doc="")
+add_builtin("mul", input_types={"x": mat33, "y": float}, value_type=mat33, doc="")
+add_builtin("mul", input_types={"x": mat33, "y": vec3}, value_type=vec3, doc="")
+add_builtin("mul", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="")
+add_builtin("mul", input_types={"x": mat44, "y": float}, value_type=mat44, doc="")
+add_builtin("mul", input_types={"x": mat44, "y": vec4}, value_type=vec4, doc="")
+add_builtin("mul", input_types={"x": mat44, "y": mat44}, value_type=mat44, doc="")
+add_builtin("mul", input_types={"x": spatial_vector, "y": float}, value_type=spatial_vector, doc="")
+add_builtin("mul", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="")
+add_builtin("mul", input_types={"x": spatial_matrix, "y": spatial_vector}, value_type=spatial_vector, doc="")
+
+add_builtin("mod", input_types={"x": int, "y": int}, value_type=int, doc="")
+add_builtin("mod", input_types={"x": float, "y": float}, value_type=float, doc="")
+
+add_builtin("div", input_types={"x": int, "y": int}, value_type=int, doc="")
+add_builtin("div", input_types={"x": float, "y": int}, value_type=float, doc="")
+add_builtin("div", input_types={"x": int, "y": float}, value_type=float, doc="")
+add_builtin("div", input_types={"x": float, "y": float}, value_type=float, doc="")
+add_builtin("div", input_types={"x": vec3, "y": float}, value_type=vec3, doc="")
+
+add_builtin("neg", input_types={"x": int}, value_type=int, doc="")
+add_builtin("neg", input_types={"x": float}, value_type=int, doc="")
+add_builtin("neg", input_types={"x": vec3}, value_type=int, doc="")
+add_builtin("neg", input_types={"x": vec4}, value_type=int, doc="")
+add_builtin("neg", input_types={"x": quat}, value_type=int, doc="")
+add_builtin("neg", input_types={"x": mat33}, value_type=int, doc="")
+add_builtin("neg", input_types={"x": mat44}, value_type=int, doc="")
+
+add_builtin("min", input_types={"x": int, "y": int}, value_type=int, doc="")
+add_builtin("min", input_types={"x": float, "y": float}, value_type=float, doc="")
+
+add_builtin("max", input_types={"x": int, "y": int}, value_type=int, doc="")
+add_builtin("max", input_types={"x": float, "y": float}, value_type=float, doc="")
+
+add_builtin("clamp", input_types={"x": float, "a": float, "b": float}, value_type=float, doc="")
+add_builtin("clamp", input_types={"x": int, "a": int, "b": int}, value_type=int, doc="")
+
+add_builtin("step", input_types={"x": float}, value_type=float, doc="")
+add_builtin("nonzero", input_types={"x": float}, value_type=float, doc="")
+add_builtin("sign", input_types={"x": float}, value_type=float, doc="")
+add_builtin("abs", input_types={"x": float}, value_type=float, doc="")
+add_builtin("sin", input_types={"x": float}, value_type=float, doc="")
+add_builtin("cos", input_types={"x": float}, value_type=float, doc="")
+add_builtin("acos", input_types={"x": float}, value_type=float, doc="")
+add_builtin("sqrt", input_types={"x": float}, value_type=float, doc="")
+
+add_builtin("dot", input_types={"x": vec3, "y": vec3}, value_type=float, doc="")
+add_builtin("dot", input_types={"x": vec4, "y": vec4}, value_type=float, doc="")
+add_builtin("dot", input_types={"x": quat, "y": quat}, value_type=float, doc="")
+
+add_builtin("cross", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="")
+add_builtin("skew", input_types={"x": vec3}, value_type=mat33, doc="")
+
+add_builtin("length", input_types={"x": vec3}, value_type=float, doc="")
+add_builtin("normalize", input_types={"x": vec3}, value_type=vec3, doc="")
+add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, doc="")
+add_builtin("normalize", input_types={"x": quat}, value_type=quat, doc="")
+
+add_builtin("rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="")
+add_builtin("rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="")
+
+add_builtin("determinant", input_types={"m": mat22}, value_type=float, doc="")
+add_builtin("determinant", input_types={"m": mat33}, value_type=float, doc="")
+add_builtin("transpose", input_types={"m": mat22}, value_type=mat22, doc="")
+add_builtin("transpose", input_types={"m": mat33}, value_type=mat33, doc="")
+add_builtin("transpose", input_types={"m": mat44}, value_type=mat44, doc="")
+add_builtin("transpose", input_types={"m": spatial_matrix}, value_type=spatial_matrix, doc="")
+
+add_builtin("tid", input_types={}, value_type=int, doc="")
+
+# type construtors
+add_builtin("int", input_types={"x": int}, value_type=int, doc="")
+add_builtin("float", input_types={"x": float}, value_type=float, doc="")
+
+add_builtin("vec3", input_types={}, value_type=vec3, doc="")
+add_builtin("vec3", input_types={"x": float, "y": float, "z": float}, value_type=vec3, doc="")
+add_builtin("vec3", input_types={"s": float}, value_type=vec3, doc="")
+
+add_builtin("vec4", input_types={}, value_type=vec4, doc="")
+add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="")
+add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="")
+
+add_builtin("quat", input_types={}, value_type=quat, doc="")
+add_builtin("quat", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=quat, doc="")
+add_builtin("quat", input_types={"i": vec3, "r": float}, value_type=quat, doc="")
+add_builtin("quat_identity", input_types={}, value_type=quat, doc="")
+add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, doc="")
+add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, doc="")
+
+add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="")
+add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="")
+add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="")
+
+add_builtin("spatial_vector", input_types={}, value_type=spatial_vector, doc="")
+add_builtin("spatial_vector", input_types={"a": float, "b": float, "c": float, "d": float, "e": float, "f": float}, value_type=spatial_vector, doc="")
+add_builtin("spatial_vector", input_types={"w": vec3, "v": vec3}, value_type=spatial_vector, doc="")
+add_builtin("spatial_vector", input_types={"s": float}, value_type=spatial_vector, doc="")
+
+add_builtin("spatial_transform", input_types={"p": vec3, "q": quat}, value_type=spatial_transform, doc="")
+add_builtin("spatial_transform_identity", input_types={}, value_type=spatial_transform, doc="")
+
+add_builtin("spatial_transform_get_translation", input_types={"t": spatial_transform}, value_type=vec3, doc="")
+add_builtin("spatial_transform_get_rotation", input_types={"t": spatial_transform}, value_type=quat, doc="")
+add_builtin("spatial_transform_multiply", input_types={"a": spatial_transform, "b": spatial_transform}, value_type=spatial_transform, doc="")
+
+add_builtin("spatial_adjoint", input_types={"r": mat33, "s": mat33}, value_type=spatial_matrix, doc="")
+add_builtin("spatial_dot", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=float, doc="")
+add_builtin("spatial_cross", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="")
+add_builtin("spatial_cross_dual", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="")
+
+add_builtin("spatial_transform_point", input_types={"t": spatial_transform, "p": vec3}, value_type=vec3, doc="")
+add_builtin("spatial_transform_vector", input_types={"t": spatial_transform, "p": vec3}, value_type=vec3, doc="")
+
+add_builtin("spatial_top", input_types={"a": spatial_vector}, value_type=vec3, doc="")
+add_builtin("spatial_bottom", input_types={"a": spatial_vector}, value_type=vec3, doc="")
+
+add_builtin("spatial_jacobian",
+     input_types={"S": array(dtype=spatial_vector), 
+                  "joint_parents": array(dtype=int),
+                  "joint_qd_start": array(dtype=int),
+                  "joint_start": int,
+                  "joint_count": int,
+                  "J_start": int,
+                  "J_out": array(dtype=float)}, value_type=None, doc="")
+
+add_builtin("spatial_mass", input_types={"I_s": array(dtype=spatial_matrix), "joint_start": int, "joint_count": int, "M_start": int, "M": array(float)}, value_type=None, doc="")
+add_builtin("dense_gemm", 
+    input_types={"m": int, 
+                 "n": int, 
+                 "p": int, 
+                 "t1": int, 
+                 "t2": int, 
+                 "A": array(dtype=float), 
+                 "B": array(dtype=float), 
+                 "C": array(dtype=float) }, value_type=None, doc="")
+
+add_builtin("dense_gemm_batched", 
+    input_types={"m": array(dtype=int), 
+                 "n": array(dtype=int), 
+                 "p": array(dtype=int), 
+                 "t1": int, 
+                 "t2": int, 
+                 "A_start": array(dtype=int), 
+                 "B_start": array(dtype=int), 
+                 "C_start": array(dtype=int), 
+                 "A": array(dtype=float), 
+                 "B": array(dtype=float), 
+                 "C": array(dtype=float)}, value_type=None, doc="")
+
+
+add_builtin("dense_chol",
+    input_types={"n": int, 
+                 "A": array(dtype=float), 
+                 "regularization": float, 
+                 "L": array(dtype=float)}, value_type=None, doc="")
+
+add_builtin("dense_chol_batched",
+    input_types={"A_start": array(dtype=int),
+                 "A_dim": array(dtype=int),
+                 "A": array(dtype=float),
+                 "regularization": float,
+                 "L": array(dtype=float)}, value_type=None, doc="")
+
+add_builtin("dense_subs", 
+    input_types={"n": int, 
+                 "L": array(dtype=float), 
+                 "b": array(dtype=float), 
+                 "x": array(dtype=float)}, value_type=None, doc="")
+
+add_builtin("dense_solve", 
+    input_types={"n": int, 
+                 "A": array(dtype=float), 
+                 "L": array(dtype=float), 
+                 "b": array(dtype=float), 
+                 "x": array(dtype=float)}, value_type=None, doc="")
+
+add_builtin("dense_solve_batched",
+    input_types={"b_start": array(dtype=int), 
+                 "A_start": array(dtype=int),
+                 "A_dim": array(dtype=int),
+                 "A": array(dtype=float),
+                 "L": array(dtype=float),
+                 "b": array(dtype=float),
+                 "x": array(dtype=float)}, value_type=None, doc="")
+
+add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, doc="")
+add_builtin("transform_vector", input_types={"m": mat44, "p": vec3}, value_type=vec3, doc="")
+
+add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, doc="")
+add_builtin("mesh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3, "max_t": float, "t": float, "bary_u": float, "bary_v": float, "sign": float, "normal": vec3, "face": int}, value_type=bool, doc="")
+
+add_builtin("mesh_eval_position", input_types={"id": uint64, "face": int, "bary_u": float, "bary_v": float}, value_type=vec3, doc="")
+add_builtin("mesh_eval_velocity", input_types={"id": uint64, "face": int, "bary_u": float, "bary_v": float}, value_type=vec3, doc="")
+
+# helpers
 
 @builtin("select")
 class SelectFunc:
@@ -366,34 +369,6 @@ class CopyFunc:
     @staticmethod
     def value_type(args):
         return None
-
-@builtin("rotate")
-class RotateFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-
-@builtin("rotate_inv")
-class RotateInvFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-
-@builtin("determinant")
-class DeterminantFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("transpose")
-class TransposeFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
 
 @builtin("load")
 class LoadFunc:
@@ -434,282 +409,6 @@ class AtomicSubFunc:
     def value_type(args):
         return args[0].type.dtype
 
-
-@builtin("tid")
-class ThreadIdFunc:
-    @staticmethod
-    def value_type(args):
-        return int
-
-
-# type construtors
-
-@builtin("float")
-class FloatFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("int")
-class IntFunc:
-    @staticmethod
-    def value_type(args):
-        return int
-
-@builtin("vec3")
-class Vec3Func:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("vec4")
-class Vec4Func:
-    @staticmethod
-    def value_type(args):
-        return vec4
-
-
-@builtin("quat")
-class QuatFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("quat_identity")
-class QuatIdentityFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("quat_from_axis_angle")
-class QuatAxisAngleFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("mat22")
-class Mat22Func:
-    @staticmethod
-    def value_type(args):
-        return mat22
-
-
-@builtin("mat33")
-class Mat33Func:
-    @staticmethod
-    def value_type(args):
-        return mat33
-
-@builtin("mat44")
-class Mat44Func:
-    @staticmethod
-    def value_type(args):
-        return mat44
-
-
-@builtin("spatial_vector")
-class SpatialVectorFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-
-# built-in spatial builtin_operators
-@builtin("spatial_transform")
-class TransformFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-
-@builtin("spatial_transform_identity")
-class TransformIdentity:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-@builtin("inverse")
-class Inverse:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-# @builtin("spatial_transform_inverse")
-# class TransformInverse:
-#     @staticmethod
-#     def value_type(args):
-#         return spatial_transform
-
-
-@builtin("spatial_transform_get_translation")
-class TransformGetTranslation:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_transform_get_rotation")
-class TransformGetRotation:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-@builtin("spatial_transform_multiply")
-class TransformMulFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-# @builtin("spatial_transform_inertia")
-# class TransformInertiaFunc:
-#     @staticmethod
-#     def value_type(args):
-#         return spatial_matrix
-
-@builtin("spatial_adjoint")
-class SpatialAdjoint:
-    @staticmethod
-    def value_type(args):
-        return spatial_matrix
-
-@builtin("spatial_dot")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("spatial_cross")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-@builtin("spatial_cross_dual")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-@builtin("spatial_transform_point")
-class SpatialTransformPointFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_transform_vector")
-class SpatialTransformVectorFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_top")
-class SpatialTopFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_bottom")
-class SpatialBottomFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_jacobian")
-class SpatialJacobian:
-    @staticmethod
-    def value_type(args):
-        return None
-    
-@builtin("spatial_mass")
-class SpatialMass:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_gemm")
-class DenseGemm:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_gemm_batched")
-class DenseGemmBatched:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-@builtin("dense_chol")
-class DenseChol:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_chol_batched")
-class DenseCholBatched:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-@builtin("dense_subs")
-class DenseSubs:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_solve")
-class DenseSolve:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_solve_batched")
-class DenseSolveBatched:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-
-# mat44 point/vec transforms
-@builtin("transform_point")
-class TransformPointFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("transform_vector")
-class TransformVectorFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("mesh_query_point")
-class MeshQueryPoint:
-    @staticmethod
-    def value_type(args):
-        return bool
-
-@builtin("mesh_query_ray")
-class MeshQueryRay:
-    @staticmethod
-    def value_type(args):
-        return bool
-
-@builtin("mesh_eval_position")
-class MeshEvalPosition:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("mesh_eval_velocity")
-class MeshEvalVelocity:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-# helpers
 
 @builtin("index")
 class IndexFunc:
@@ -1246,13 +945,28 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
         runtime.tape.record(kernel, dim, inputs, outputs, device)
 
 
+def type_str(t):
+    if (isinstance(t, array)):
+        #s = type(t.dtype)
+        return f"array({t.dtype.__name__})"
+    else:
+        return t.__name__
+        
+def print_function(f):
+    args = ", ".join(f"{k}: {type_str(v)}" for k,v in f.input_types.items())
+
+    print(f"{f.key}({args})")
+
 def print_builtins():
 
-    s = ""
-    for items in builtin_functions.items():
-        s += str(items[0]) + ", "
+    for k, f in builtin_functions.items():
+        
+        if isinstance(f, list):
+            for x in f:
+                print_function(x)
+        else:
+            print_function(f)
 
-    print(s)
 
 # ensures that correct CUDA is set for the guards lifetime
 # restores the previous CUDA context on exit

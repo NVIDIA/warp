@@ -91,6 +91,8 @@ inline CUDA_CALLABLE float add(float a, float b) { return a+b; }
 inline CUDA_CALLABLE float sub(float a, float b) { return a-b; }
 inline CUDA_CALLABLE float min(float a, float b) { return a<b?a:b; }
 inline CUDA_CALLABLE float max(float a, float b) { return a>b?a:b; }
+inline CUDA_CALLABLE float mod(float a, float b) { return fmodf(a, b); }
+
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
 inline CUDA_CALLABLE float clamp(float x, float a, float b) { return min(max(a, x), b); }
@@ -108,7 +110,10 @@ inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, 
 inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret/b; adj_b -= adj_ret*(a/b)/b; }
 inline CUDA_CALLABLE void adj_add(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b += adj_ret; }
 inline CUDA_CALLABLE void adj_sub(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b -= adj_ret; }
-
+inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, float adj_ret) 
+{
+    printf("adj_mod not implemented for floating point types\n");
+}
 
 // inline CUDA_CALLABLE bool lt(float a, float b) { return a < b; }
 // inline CUDA_CALLABLE bool gt(float a, float b) { return a > b; }

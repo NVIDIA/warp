@@ -336,6 +336,24 @@ def type_is_float(t):
     else:
         return False
 
+def types_equal(a, b):
+    
+    # convert to canonical types
+    if (a == float):
+        a = float32
+    if (a == int):
+        a = int32
+
+    if (b == float):
+        b = float32
+    if (b == int):
+        b = int32
+        
+    if (isinstance(a, array) and isinstance(b, array)):
+        return a.dtype == b.dtype
+    else:
+        return a == b
+
 class array:
 
     def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
@@ -459,7 +477,11 @@ class array:
 
     def __str__(self):
 
-        return str(self.to("cpu").numpy())
+        if self.device == None:
+            # for 'empty' arrays we just return the type information, these are used in kernel function signatures
+            return f"array{self.dtype}"
+        else:
+            return str(self.to("cpu").numpy())
 
     def zero_(self):
 

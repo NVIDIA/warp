@@ -81,3 +81,7 @@ wp.launch(
 
 
 wp.synchronize()
+
+
+wp.print_builtins()
+

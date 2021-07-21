@@ -5,14 +5,14 @@ import warp as wp
 
 
 
-# todo: copied from integratos_euler.py, need to figure out how to share funcs across modules
+# todo: copied from integrators_euler.py, need to figure out how to share funcs across modules
 @wp.func
 def spatial_transform_inverse(t: wp.spatial_transform):
 
     p = spatial_transform_get_translation(t)
     q = spatial_transform_get_rotation(t)
 
-    q_inv = inverse(q)
+    q_inv = quat_inverse(q)
     return spatial_transform(rotate(q_inv, p)*(0.0 - 1.0), q_inv)
 
 

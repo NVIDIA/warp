@@ -63,6 +63,12 @@ inline CUDA_CALLABLE quat quat_identity()
     return quat(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
+inline CUDA_CALLABLE quat quat_inverse(const quat& q)
+{
+    return quat(-q.x, -q.y, -q.z, q.w);
+}
+
+
 inline CUDA_CALLABLE float dot(const quat& a, const quat& b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
@@ -88,10 +94,6 @@ inline CUDA_CALLABLE quat normalize(const quat& q)
     }
 }
 
-inline CUDA_CALLABLE quat inverse(const quat& q)
-{
-    return quat(-q.x, -q.y, -q.z, q.w);
-}
 
 inline CUDA_CALLABLE quat add(const quat& a, const quat& b)
 {
@@ -202,7 +204,7 @@ inline CUDA_CALLABLE void adj_normalize(const quat& q, quat& adj_q, const quat& 
     }
 }
 
-inline CUDA_CALLABLE void adj_inverse(const quat& q, quat& adj_q, const quat& adj_ret)
+inline CUDA_CALLABLE void adj_quat_inverse(const quat& q, quat& adj_q, const quat& adj_ret)
 {
     adj_q.x -= adj_ret.x;
     adj_q.y -= adj_ret.y;
