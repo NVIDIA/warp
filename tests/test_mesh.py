@@ -40,6 +40,7 @@ def simulate(positions: wp.array(dtype=wp.vec3),
             margin: float,
             dt: float):
     
+    
     tid = wp.tid()
 
     x = wp.load(positions, tid)

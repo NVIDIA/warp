@@ -128,8 +128,6 @@ def add_builtin(key, input_types={}, value_type=None, doc=""):
 # built-in operators
 
 add_builtin("add", input_types={"x": int, "y": int}, value_type=int, doc="")
-add_builtin("add", input_types={"x": int, "y": float}, value_type=float, doc="")
-add_builtin("add", input_types={"x": float, "y": int}, value_type=float, doc="")
 add_builtin("add", input_types={"x": float, "y": float}, value_type=float, doc="")
 add_builtin("add", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="")
 add_builtin("add", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="")
@@ -141,8 +139,6 @@ add_builtin("add", input_types={"x": spatial_vector, "y": spatial_vector}, value
 add_builtin("add", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="")
 
 add_builtin("sub", input_types={"x": int, "y": int}, value_type=int, doc="")
-add_builtin("sub", input_types={"x": int, "y": float}, value_type=float, doc="")
-add_builtin("sub", input_types={"x": float, "y": int}, value_type=float, doc="")
 add_builtin("sub", input_types={"x": float, "y": float}, value_type=float, doc="")
 add_builtin("sub", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="")
 add_builtin("sub", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="")
@@ -153,15 +149,13 @@ add_builtin("sub", input_types={"x": spatial_vector, "y": spatial_vector}, value
 add_builtin("sub", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="")
 
 add_builtin("mul", input_types={"x": int, "y": int}, value_type=int, doc="")
-add_builtin("mul", input_types={"x": int, "y": float}, value_type=float, doc="")
-add_builtin("mul", input_types={"x": float, "y": int}, value_type=float, doc="")
 add_builtin("mul", input_types={"x": float, "y": float}, value_type=float, doc="")
 add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="")
 add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="")
 add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="")
 add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="")
-add_builtin("mul", input_types={"x": quat, "y": quat}, value_type=quat, doc="")
 add_builtin("mul", input_types={"x": quat, "y": float}, value_type=quat, doc="")
+add_builtin("mul", input_types={"x": quat, "y": quat}, value_type=quat, doc="")
 add_builtin("mul", input_types={"x": mat22, "y": float}, value_type=mat22, doc="")
 add_builtin("mul", input_types={"x": mat33, "y": float}, value_type=mat33, doc="")
 add_builtin("mul", input_types={"x": mat33, "y": vec3}, value_type=vec3, doc="")
@@ -183,12 +177,12 @@ add_builtin("div", input_types={"x": float, "y": float}, value_type=float, doc="
 add_builtin("div", input_types={"x": vec3, "y": float}, value_type=vec3, doc="")
 
 add_builtin("neg", input_types={"x": int}, value_type=int, doc="")
-add_builtin("neg", input_types={"x": float}, value_type=int, doc="")
-add_builtin("neg", input_types={"x": vec3}, value_type=int, doc="")
-add_builtin("neg", input_types={"x": vec4}, value_type=int, doc="")
-add_builtin("neg", input_types={"x": quat}, value_type=int, doc="")
-add_builtin("neg", input_types={"x": mat33}, value_type=int, doc="")
-add_builtin("neg", input_types={"x": mat44}, value_type=int, doc="")
+add_builtin("neg", input_types={"x": float}, value_type=float, doc="")
+add_builtin("neg", input_types={"x": vec3}, value_type=vec3, doc="")
+add_builtin("neg", input_types={"x": vec4}, value_type=vec4, doc="")
+add_builtin("neg", input_types={"x": quat}, value_type=quat, doc="")
+add_builtin("neg", input_types={"x": mat33}, value_type=mat33, doc="")
+add_builtin("neg", input_types={"x": mat44}, value_type=mat44, doc="")
 
 add_builtin("min", input_types={"x": int, "y": int}, value_type=int, doc="")
 add_builtin("min", input_types={"x": float, "y": float}, value_type=float, doc="")
@@ -234,6 +228,9 @@ add_builtin("tid", input_types={}, value_type=int, doc="")
 
 # type construtors
 add_builtin("int", input_types={"x": int}, value_type=int, doc="")
+add_builtin("int", input_types={"x": float}, value_type=int, doc="")
+
+add_builtin("float", input_types={"x": int}, value_type=float, doc="")
 add_builtin("float", input_types={"x": float}, value_type=float, doc="")
 
 add_builtin("vec3", input_types={}, value_type=vec3, doc="")
@@ -652,10 +649,13 @@ class Runtime:
 
     def __init__(self):
 
-        # load core
-        self.core = warp.build.load_dll(os.path.dirname(os.path.realpath(__file__)) + "/bin/warp.dll")
+        # in Python 3.8 we should use os.add_dll_directory
+        bin_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
+        os.environ["PATH"] += os.pathsep + bin_path
 
-        # setup c-types for core.dll
+        self.core = warp.build.load_dll("warp.dll")
+
+        # setup c-types for warp.dll
         self.core.alloc_host.restype = c_void_p
         self.core.alloc_device.restype = c_void_p
         

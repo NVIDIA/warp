@@ -115,19 +115,7 @@ inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, 
     printf("adj_mod not implemented for floating point types\n");
 }
 
-// inline CUDA_CALLABLE bool lt(float a, float b) { return a < b; }
-// inline CUDA_CALLABLE bool gt(float a, float b) { return a > b; }
-// inline CUDA_CALLABLE bool lte(float a, float b) { return a <= b; }
-// inline CUDA_CALLABLE bool gte(float a, float b) { return a >= b; }
-// inline CUDA_CALLABLE bool eq(float a, float b) { return a == b; }
-// inline CUDA_CALLABLE bool neq(float a, float b) { return a != b; }
 
-// inline CUDA_CALLABLE bool adj_lt(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) { }
-// inline CUDA_CALLABLE bool adj_gt(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
-// inline CUDA_CALLABLE bool adj_lte(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
-// inline CUDA_CALLABLE bool adj_gte(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
-// inline CUDA_CALLABLE bool adj_eq(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
-// inline CUDA_CALLABLE bool adj_neq(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
 
 inline CUDA_CALLABLE void adj_min(float a, float b, float& adj_a, float& adj_b, float adj_ret)
 {

@@ -37,7 +37,7 @@ def render(mesh: wp.uint64,
     v = float(0.0)
     sign = float(0.0)
     n = wp.vec3(0.0, 0.0, 0.0)
-    f = 0
+    f = int(0)
 
     color = wp.vec3(0.0, 0.0, 0.0)
 

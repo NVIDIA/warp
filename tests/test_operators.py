@@ -13,6 +13,22 @@ np.random.seed(42)
 wp.init()
 
 @wp.kernel
+def test_operators_scalar(dt: float):
+
+    a = 1.0
+    b = 2.0
+
+    c = a*b
+    d = a+b
+    e = a/b
+
+    expect_eq(c, 2.0)
+    expect_eq(d, 3.0)
+    expect_eq(e, 0.5)
+    
+
+
+@wp.kernel
 def test_operators_vec3(dt: float):
     
     v = vec3(1.0, 2.0, 3.0)
@@ -65,7 +81,15 @@ def test_operators_vec4(dt: float):
 
     
 
+
 device = "cpu"
+
+wp.launch(
+    kernel=test_operators_scalar,
+    dim=1,
+    inputs=[],
+    device=device)
+
 
 wp.launch(
     kernel=test_operators_vec3,
