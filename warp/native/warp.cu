@@ -75,17 +75,17 @@ int cuda_init()
     return 0;
 }
 
-void* alloc_host(size_t s)
-{
-    void* ptr;
-    check_cuda(cudaMallocHost(&ptr, s));
-    return ptr;
-}
+// void* alloc_host(size_t s)
+// {
+//     void* ptr;
+//     check_cuda(cudaMallocHost(&ptr, s));
+//     return ptr;
+// }
 
-void free_host(void* ptr)
-{
-    cudaFreeHost(ptr);
-}
+// void free_host(void* ptr)
+// {
+//     cudaFreeHost(ptr);
+// }
 
 void* alloc_device(size_t s)
 {
