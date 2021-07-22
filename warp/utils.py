@@ -42,8 +42,8 @@ def skew(v):
 
 
 # math utils
-def quat(i, j, k, w):
-    return np.array([i, j, k, w])
+# def quat(i, j, k, w):
+#     return np.array([i, j, k, w])
 
 
 def quat_identity():
@@ -331,8 +331,8 @@ def spatial_outer(a, b):
     return np.outer(a, b)
 
 
-def spatial_matrix():
-    return np.zeros((6, 6))
+# def spatial_matrix():
+#     return np.zeros((6, 6))
 
 
 def spatial_matrix_from_inertia(I, m):

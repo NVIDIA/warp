@@ -280,6 +280,7 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
     wp.atomic_sub(f, j, f1)
     wp.atomic_sub(f, k, f2)
 
+
 @wp.func
 def triangle_closest_point_barycentric(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
     ab = b - a
@@ -1047,7 +1048,7 @@ def spatial_transform_inverse(t: wp.spatial_transform):
     p = spatial_transform_get_translation(t)
     q = spatial_transform_get_rotation(t)
 
-    q_inv = inverse(q)
+    q_inv = quat_inverse(q)
     return spatial_transform(rotate(q_inv, p)*(0.0 - 1.0), q_inv)
 
 

@@ -1,8 +1,9 @@
-#include "core.h"
+#include "warp.h"
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
+#include <string>
 
 #if defined(__linux__)
 #include <dlfcn.h>
@@ -12,6 +13,8 @@ static void* GetProcAddress(void* handle, const char* name) { return dlsym(handl
 #if defined(_WIN32)
 #include <windows.h>
 #endif
+
+#include "nvrtc.h"
 
 typedef CUresult CUDAAPI cuInit_t(unsigned int);
 typedef CUresult CUDAAPI cuDeviceGet_t(CUdevice *dev, int ordinal);
@@ -139,7 +142,13 @@ uint64_t cuda_check_device()
     return cudaPeekAtLastError(); 
 }
 
-
+void cuda_report_error(int code, const char* file, int line)
+{
+    if (code != cudaSuccess) 
+    {
+        printf("CUDA Error: %s %s %d\n", cudaGetErrorString((cudaError_t)code), file, line);
+    }
+}
 
 void* cuda_get_stream()
 {
@@ -189,16 +198,12 @@ void cuda_restore_context()
 
 void* cuda_get_context()
 {
-	CUcontext ctx;
-	if (cuCtxGetCurrent_f(&ctx) == CUDA_SUCCESS)
-	    return ctx;
-    else
-        return NULL;
+	return g_cuda_context;
 }
 
 void cuda_set_context(void* ctx)
 {
-    cuCtxSetCurrent_f((CUcontext)ctx);
+    g_cuda_context = (CUcontext)ctx;
 }
 
 const char* cuda_get_device_name()
@@ -207,6 +212,126 @@ const char* cuda_get_device_name()
     cudaGetDeviceProperties(&prop, 0);
 
     return prop.name;
+}
+
+size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool debug, bool verbose, const char* output_file)
+{
+    nvrtcResult res;
+
+    nvrtcProgram prog;
+    res = nvrtcCreateProgram(
+        &prog,          // prog
+        cuda_src,      // buffer
+        NULL,          // name
+        0,             // numHeaders
+        NULL,          // headers
+        NULL);         // includeNames
+
+    if (res != NVRTC_SUCCESS)
+        return res;
+
+    std::string include_opt = std::string("--include-path=") + include_dir;
+
+    const char *opts[] = 
+    {   
+        "--device-as-default-execution-space",
+        "--gpu-architecture=sm_35",
+        "--use_fast_math",
+        "--std=c++11",
+        "--define-macro=WP_CUDA",
+        "--define-macro=WP_NO_CRT",
+        "--define-macro=NDEBUG",
+        include_opt.c_str()
+    };
+
+    res = nvrtcCompileProgram(prog, 8, opts);
+
+    if (res == NVRTC_SUCCESS)
+    {
+        // save ptx
+        size_t ptx_size;
+        nvrtcGetPTXSize(prog, &ptx_size);
+
+        char* ptx = (char*)malloc(ptx_size);
+        nvrtcGetPTX(prog, ptx);
+
+        // write to file
+        FILE* file = fopen(output_file, "w");
+        fwrite(ptx, 1, ptx_size, file);
+        fclose(file);
+
+        free(ptx);
+    }
+
+    if (res != NVRTC_SUCCESS || verbose)
+    {
+        // get program log
+        size_t log_size;
+        nvrtcGetProgramLogSize(prog, &log_size);
+
+        char* log = (char*)malloc(log_size);
+        nvrtcGetProgramLog(prog, log);
+
+        // todo: figure out better way to return this to python
+        printf(log);
+        free(log);
+    }
+
+    nvrtcDestroyProgram(&prog);
+    return res;
+}
+
+void* cuda_load_module(const char* path)
+{
+    FILE* file = fopen(path, "r");
+    fseek(file, 0, SEEK_END);
+    size_t length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buf = (char*)malloc(length);
+    fread(buf, length, 1, file);
+    fclose(file);
+
+    CUmodule module = NULL;
+    CUresult res = cuModuleLoadDataEx(&module, buf, 0, 0, 0);
+    if (res != NVRTC_SUCCESS)
+        printf("Warp: Loading PTX module failed with error: %d\n", res);
+
+    free(buf);
+
+    return module;
+}
+
+void cuda_unload_module(void* module)
+{
+    cuModuleUnload((CUmodule)module);
+}
+
+void* cuda_get_kernel(void* module, const char* name)
+{
+    CUfunction kernel = NULL;
+    CUresult res = cuModuleGetFunction(&kernel, (CUmodule)module, name);
+    if (res != NVRTC_SUCCESS)
+        printf("Warp: Failed to lookup kernel function %s in module\n", name);
+
+    return kernel;
+}
+
+size_t cuda_launch_kernel(void* kernel, int dim, void** args)
+{
+    const int block_dim = 256;
+    const int grid_dim = (dim + block_dim - 1)/block_dim;
+
+    CUresult res = cuLaunchKernel(
+        (CUfunction)kernel,
+        grid_dim, 1, 1,
+        block_dim, 1, 1,
+        0, g_cuda_stream,
+        args,
+        0);
+
+    return res;
+
 }
 
 // impl. files

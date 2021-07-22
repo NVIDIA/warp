@@ -12,24 +12,25 @@ import hashlib
 
 from ctypes import*
 
-
 from warp.types import *
 from warp.utils import *
-from warp.config import *
 
 import warp.codegen
 import warp.build
-
+import warp.config
 
 # represents either a built-in or user-defined function
 class Function:
 
-    def __init__(self, func, key, namespace, module=None, value_type=None):
+    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, doc="", group=""):
         
-        self.func = func   # may be None for built-in funcs
+        self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
         self.value_type = value_type
+        self.input_types = input_types
+        self.doc = doc
+        self.group = group
         self.module = module
 
         if (func):
@@ -58,24 +59,27 @@ class Kernel:
         if (module):
             module.register_kernel(self)
 
-    # cache entry points based on name, called after compilation / module load
+    # lookup and cache entry points based on name, called after compilation / module load
     def hook(self):
 
         dll = self.module.dll
+        cuda = self.module.cuda
 
-        try:
-            self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
-            self.backward_cpu = eval("dll." + self.func.__name__ + "_cpu_backward")
-        except:
-            print("Could not load CPU methods for kernel {}".format(self.func.__name__))
+        if (dll):
 
-        if (warp.build.find_cuda()):
-            
             try:
-                self.forward_cuda = eval("dll." + self.func.__name__ + "_cuda_forward")
-                self.backward_cuda = eval("dll." + self.func.__name__ + "_cuda_backward")
+                self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
+                self.backward_cpu = eval("dll." + self.func.__name__ + "_cpu_backward")
             except:
-                print("Could not load CUDA methods for kernel {}".format(self.func.__name__))
+                print(f"Could not load CPU methods for kernel {self.func.__name__}")
+
+        if (cuda):
+
+            try:
+                self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_forward").encode('utf-8'))
+                self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_backward").encode('utf-8'))
+            except:
+                print(f"Could not load CUDA methods for kernel {self.func.__name__}")
 
 
 #----------------------
@@ -108,242 +112,248 @@ def builtin(key):
 
     return insert
 
+def add_builtin(key, input_types={}, value_type=None, doc="", group="Other"):
+
+    # lambda to return a constant type for an overload
+    def value_func(arg):
+        return value_type
+
+    func = Function(func=None, key=key, namespace="wp::", input_types=input_types, value_type=value_func, doc=doc, group=group)
+
+    if key in builtin_functions:
+        builtin_functions[key].append(func)
+    else:
+        builtin_functions[key] = [func]
 
 #---------------------------------
-# built-in operators +,-,*,/
+# built-in operators
+
+add_builtin("add", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
+add_builtin("add", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
+add_builtin("add", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Operators")
+add_builtin("add", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Operators")
+add_builtin("add", input_types={"x": quat, "y": quat}, value_type=quat, doc="", group="Operators")
+add_builtin("add", input_types={"x": mat22, "y": mat22}, value_type=mat22, doc="", group="Operators")
+add_builtin("add", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="", group="Operators")
+add_builtin("add", input_types={"x": mat44, "y": mat44}, value_type=mat44, doc="", group="Operators")
+add_builtin("add", input_types={"x": spatial_vector, "y": spatial_vector}, value_type=spatial_vector, doc="", group="Operators")
+add_builtin("add", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="", group="Operators")
+
+add_builtin("sub", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
+add_builtin("sub", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
+add_builtin("sub", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Operators")
+add_builtin("sub", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Operators")
+add_builtin("sub", input_types={"x": mat22, "y": mat22}, value_type=mat22, doc="", group="Operators")
+add_builtin("sub", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="", group="Operators")
+add_builtin("sub", input_types={"x": mat44, "y": mat44}, value_type=mat44, doc="", group="Operators")
+add_builtin("sub", input_types={"x": spatial_vector, "y": spatial_vector}, value_type=spatial_vector, doc="", group="Operators")
+add_builtin("sub", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="", group="Operators")
+
+add_builtin("mul", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="", group="Operators")
+add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
+add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")
+add_builtin("mul", input_types={"x": quat, "y": float}, value_type=quat, doc="", group="Operators")
+add_builtin("mul", input_types={"x": quat, "y": quat}, value_type=quat, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat22, "y": float}, value_type=mat22, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat33, "y": float}, value_type=mat33, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat33, "y": vec3}, value_type=vec3, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat44, "y": float}, value_type=mat44, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat44, "y": vec4}, value_type=vec4, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat44, "y": mat44}, value_type=mat44, doc="", group="Operators")
+add_builtin("mul", input_types={"x": spatial_vector, "y": float}, value_type=spatial_vector, doc="", group="Operators")
+add_builtin("mul", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="", group="Operators")
+add_builtin("mul", input_types={"x": spatial_matrix, "y": spatial_vector}, value_type=spatial_vector, doc="", group="Operators")
+
+add_builtin("mod", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
+add_builtin("mod", input_types={"x": float, "y": float}, value_type=float, doc="", group="operators")
+
+add_builtin("div", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
+add_builtin("div", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
+add_builtin("div", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
+
+add_builtin("neg", input_types={"x": int}, value_type=int, doc="", group="Operators")
+add_builtin("neg", input_types={"x": float}, value_type=float, doc="", group="Operators")
+add_builtin("neg", input_types={"x": vec3}, value_type=vec3, doc="", group="Operators")
+add_builtin("neg", input_types={"x": vec4}, value_type=vec4, doc="", group="Operators")
+add_builtin("neg", input_types={"x": quat}, value_type=quat, doc="", group="Operators")
+add_builtin("neg", input_types={"x": mat33}, value_type=mat33, doc="", group="Operators")
+add_builtin("neg", input_types={"x": mat44}, value_type=mat44, doc="", group="Operators")
+
+add_builtin("min", input_types={"x": int, "y": int}, value_type=int, doc="", group="Scalar Math")
+add_builtin("min", input_types={"x": float, "y": float}, value_type=float, doc="", group="Scalar Math")
+
+add_builtin("max", input_types={"x": int, "y": int}, value_type=int, doc="", group="Scalar Math")
+add_builtin("max", input_types={"x": float, "y": float}, value_type=float, doc="", group="Scalar Math")
+
+add_builtin("clamp", input_types={"x": float, "a": float, "b": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("clamp", input_types={"x": int, "a": int, "b": int}, value_type=int, doc="", group="Scalar Math")
+
+add_builtin("step", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("nonzero", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("sign", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("abs", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("sin", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("cos", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("acos", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("sqrt", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+
+add_builtin("dot", input_types={"x": vec3, "y": vec3}, value_type=float, doc="", group="Vector Math")
+add_builtin("dot", input_types={"x": vec4, "y": vec4}, value_type=float, doc="", group="Vector Math")
+add_builtin("dot", input_types={"x": quat, "y": quat}, value_type=float, doc="", group="Vector Math")
+
+add_builtin("cross", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("skew", input_types={"x": vec3}, value_type=mat33, doc="", group="Vector Math"),
+
+add_builtin("length", input_types={"x": vec3}, value_type=float, doc="", group="Vector Math")
+add_builtin("normalize", input_types={"x": vec3}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, doc="", group="Vector Math")
+add_builtin("normalize", input_types={"x": quat}, value_type=quat, doc="", group="Vector Math")
+
+add_builtin("rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Vector Math")
+
+add_builtin("determinant", input_types={"m": mat22}, value_type=float, doc="", group="Vector Math")
+add_builtin("determinant", input_types={"m": mat33}, value_type=float, doc="", group="Vector Math")
+add_builtin("transpose", input_types={"m": mat22}, value_type=mat22, doc="", group="Vector Math")
+add_builtin("transpose", input_types={"m": mat33}, value_type=mat33, doc="", group="Vector Math")
+add_builtin("transpose", input_types={"m": mat44}, value_type=mat44, doc="", group="Vector Math")
+add_builtin("transpose", input_types={"m": spatial_matrix}, value_type=spatial_matrix, doc="", group="Vector Math")
+
+# type construtors
+add_builtin("int", input_types={"x": int}, value_type=int, doc="", group="Scalar Math")
+add_builtin("int", input_types={"x": float}, value_type=int, doc="", group="Scalar Math")
+
+add_builtin("float", input_types={"x": int}, value_type=float, doc="", group="Scalar Math")
+add_builtin("float", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+
+add_builtin("vec3", input_types={}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("vec3", input_types={"x": float, "y": float, "z": float}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("vec3", input_types={"s": float}, value_type=vec3, doc="", group="Vector Math")
+
+add_builtin("vec4", input_types={}, value_type=vec4, doc="", group="Vector Math")
+add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="", group="Vector Math")
+add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="", group="Vector Math")
+
+add_builtin("quat", input_types={}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat", input_types={"i": vec3, "r": float}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat_identity", input_types={}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, doc="", group="Quaternion Math")
+
+add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="", group="Vector Math")
+add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="", group="Vector Math")
+add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="", group="Vector Math")
+
+add_builtin("spatial_vector", input_types={}, value_type=spatial_vector, doc="", group="Spatial Math")
+add_builtin("spatial_vector", input_types={"a": float, "b": float, "c": float, "d": float, "e": float, "f": float}, value_type=spatial_vector, doc="", group="Spatial Math")
+add_builtin("spatial_vector", input_types={"w": vec3, "v": vec3}, value_type=spatial_vector, doc="", group="Spatial Math")
+add_builtin("spatial_vector", input_types={"s": float}, value_type=spatial_vector, doc="", group="Spatial Math"),
+
+add_builtin("spatial_transform", input_types={"p": vec3, "q": quat}, value_type=spatial_transform, doc="", group="Spatial Math")
+add_builtin("spatial_transform_identity", input_types={}, value_type=spatial_transform, doc="", group="Spatial Math")
+
+add_builtin("spatial_transform_get_translation", input_types={"t": spatial_transform}, value_type=vec3, doc="", group="Spatial Math")
+add_builtin("spatial_transform_get_rotation", input_types={"t": spatial_transform}, value_type=quat, doc="", group="Spatial Math")
+add_builtin("spatial_transform_multiply", input_types={"a": spatial_transform, "b": spatial_transform}, value_type=spatial_transform, doc="", group="Spatial Math")
+
+add_builtin("spatial_adjoint", input_types={"r": mat33, "s": mat33}, value_type=spatial_matrix, doc="", group="Spatial Math")
+add_builtin("spatial_dot", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=float, doc="", group="Spatial Math")
+add_builtin("spatial_cross", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="", group="Spatial Math")
+add_builtin("spatial_cross_dual", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="", group="Spatial Math")
+
+add_builtin("spatial_transform_point", input_types={"t": spatial_transform, "p": vec3}, value_type=vec3, doc="Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)", group="Spatial Math")
+add_builtin("spatial_transform_vector", input_types={"t": spatial_transform, "v": vec3}, value_type=vec3, doc="Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)", group="Spatial Math")
+
+add_builtin("spatial_top", input_types={"a": spatial_vector}, value_type=vec3, doc="", group="Spatial Math")
+add_builtin("spatial_bottom", input_types={"a": spatial_vector}, value_type=vec3, doc="", group="Spatial Math")
+
+add_builtin("spatial_jacobian",
+     input_types={"S": array(dtype=spatial_vector), 
+                  "joint_parents": array(dtype=int),
+                  "joint_qd_start": array(dtype=int),
+                  "joint_start": int,
+                  "joint_count": int,
+                  "J_start": int,
+                  "J_out": array(dtype=float)}, value_type=None, doc="", group="Spatial Math")
+
+add_builtin("spatial_mass", input_types={"I_s": array(dtype=spatial_matrix), "joint_start": int, "joint_count": int, "M_start": int, "M": array(float)}, value_type=None, doc="", group="Spatial Math")
+
+add_builtin("dense_gemm", 
+    input_types={"m": int, 
+                 "n": int, 
+                 "p": int, 
+                 "t1": int, 
+                 "t2": int, 
+                 "A": array(dtype=float), 
+                 "B": array(dtype=float), 
+                 "C": array(dtype=float) }, value_type=None, doc="", group="Linear Algebra")
+
+add_builtin("dense_gemm_batched", 
+    input_types={"m": array(dtype=int), 
+                 "n": array(dtype=int), 
+                 "p": array(dtype=int), 
+                 "t1": int, 
+                 "t2": int, 
+                 "A_start": array(dtype=int), 
+                 "B_start": array(dtype=int), 
+                 "C_start": array(dtype=int), 
+                 "A": array(dtype=float), 
+                 "B": array(dtype=float), 
+                 "C": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
 
-@builtin("add")
-class AddFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
+add_builtin("dense_chol",
+    input_types={"n": int, 
+                 "A": array(dtype=float), 
+                 "regularization": float, 
+                 "L": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
+add_builtin("dense_chol_batched",
+    input_types={"A_start": array(dtype=int),
+                 "A_dim": array(dtype=int),
+                 "A": array(dtype=float),
+                 "regularization": float,
+                 "L": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
-@builtin("sub")
-class SubFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
+add_builtin("dense_subs", 
+    input_types={"n": int, 
+                 "L": array(dtype=float), 
+                 "b": array(dtype=float), 
+                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
+add_builtin("dense_solve", 
+    input_types={"n": int, 
+                 "A": array(dtype=float), 
+                 "L": array(dtype=float), 
+                 "b": array(dtype=float), 
+                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
-@builtin("mod")
-class ModFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
+add_builtin("dense_solve_batched",
+    input_types={"b_start": array(dtype=int), 
+                 "A_start": array(dtype=int),
+                 "A_dim": array(dtype=int),
+                 "A": array(dtype=float),
+                 "L": array(dtype=float),
+                 "b": array(dtype=float),
+                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
+add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, doc="", group="Vector Math")
 
-@builtin("mul")
-class MulFunc:
-    @staticmethod
-    def value_type(args):
+add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, doc="", group="Geometry")
+add_builtin("mesh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3, "max_t": float, "t": float, "bary_u": float, "bary_v": float, "sign": float, "normal": vec3, "face": int}, value_type=bool, doc="", group="Geometry")
 
-        # int x int
-        if (warp.types.type_is_int(args[0].type) and warp.types.type_is_int(args[1].type)):
-            return int
+add_builtin("mesh_eval_position", input_types={"id": uint64, "face": int, "bary_u": float, "bary_v": float}, value_type=vec3, doc="", group="Geometry")
+add_builtin("mesh_eval_velocity", input_types={"id": uint64, "face": int, "bary_u": float, "bary_v": float}, value_type=vec3, doc="", group="Geometry")
 
-        # float x int
-        elif (warp.types.type_is_float(args[1].type) and warp.types.type_is_int(args[0].type)):
-            return float
+# helpers
 
-        # int x float
-        elif (warp.types.type_is_int(args[0].type) and warp.types.type_is_float(args[1].type)):
-            return float
-
-        # scalar x object
-        elif (warp.types.type_is_float(args[0].type)):
-            return args[1].type
-
-        # object x scalar
-        elif (warp.types.type_is_float(args[1].type)):
-            return args[0].type
-
-        # mat33 x vec3
-        elif (args[0].type == mat33 and args[1].type == vec3):
-            return vec3
-
-        # mat33 x mat33
-        elif(args[0].type == mat33 and args[1].type == mat33):
-            return mat33
-
-        # mat66 x vec6
-        if (args[0].type == spatial_matrix and args[1].type == spatial_vector):
-            return spatial_vector
-
-        # mat66 x mat66        
-        if (args[0].type == spatial_matrix and args[1].type == spatial_matrix):
-            return spatial_matrix
-
-        # quat x quat
-        if (args[0].type == quat and args[1].type == quat):
-            return quat
-
-        else:
-            raise Exception("Unrecwpnized types for multiply operator *, got {} and {}".format(args[0].type, args[1].type))
-
-
-@builtin("div")
-class DivFunc:
-    @staticmethod
-    def value_type(args):
-        
-        # int / int
-        if (warp.types.type_is_int(args[0].type) and warp.types.type_is_int(args[1].type)):
-            return int
-
-        # float / int
-        elif (warp.types.type_is_float(args[0].type) and warp.types.type_is_int(args[1].type)):
-            return float
-
-        # int / float
-        elif (warp.types.type_is_int(args[0].type) and warp.types.type_is_float(args[1].type)):
-            return float
-
-        # vec3 / float
-        elif (args[0].type == vec3 and warp.types.type_is_float(args[1].type)):
-            return vec3
-
-        # object / float
-        elif (warp.types.type_is_float(args[0].type)):
-            return args[1].type
-
-        else:
-            raise Exception("Unrecwpnized types for division operator /, got {} and {}".format(args[0].type, args[1].type))
-
-
-@builtin("neg")
-class NegFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-#----------------------
-# built-in functions
-
-
-
-@builtin("min")
-class MinFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("max")
-class MaxFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("leaky_max")
-class LeakyMaxFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("leaky_min")
-class LeakyMinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("clamp")
-class ClampFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
-@builtin("step")
-class StepFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("nonzero")
-class NonZeroFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("sign")
-class SignFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("abs")
-class AbsFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("sin")
-class SinFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("cos")
-class CosFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("acos")
-class ACosFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("sqrt")
-class SqrtFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("dot")
-class DotFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("cross")
-class CrossFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("skew")
-class SkewFunc:
-    @staticmethod
-    def value_type(args):
-        return mat33
-
-
-@builtin("length")
-class LengthFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("normalize")
-class NormalizeFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
+add_builtin("tid", input_types={}, value_type=int, doc="Return the current thread id.", group="Utility")
 
 @builtin("select")
 class SelectFunc:
@@ -357,34 +367,6 @@ class CopyFunc:
     def value_type(args):
         return None
 
-@builtin("rotate")
-class RotateFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-
-@builtin("rotate_inv")
-class RotateInvFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-
-@builtin("determinant")
-class DeterminantFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-
-@builtin("transpose")
-class TransposeFunc:
-    @staticmethod
-    def value_type(args):
-        return args[0].type
-
-
 @builtin("load")
 class LoadFunc:
     @staticmethod
@@ -392,7 +374,7 @@ class LoadFunc:
         if (type(args[0].type) != warp.types.array):
             raise Exception("load() argument 0 must be a array")
         if (args[1].type != int and args[1].type != warp.types.int32 and args[1].type != warp.types.int64 and args[1].type != warp.types.uint64):
-            raise Exception("load() argument input 1 must be a int")
+            raise Exception("load() argument input 1 must be an integer type")
 
         return args[0].type.dtype
 
@@ -404,7 +386,7 @@ class StoreFunc:
         if (type(args[0].type) != warp.types.array):
             raise Exception("store() argument 0 must be a array")
         if (args[1].type != int and args[1].type != warp.types.int32 and args[1].type != warp.types.int64 and args[1].type != warp.types.uint64):
-            raise Exception("store() argument input 1 must be a int")
+            raise Exception("store() argument input 1 must be an integer type")
         if (args[2].type != args[0].type.dtype):
             raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
 
@@ -425,276 +407,6 @@ class AtomicSubFunc:
         return args[0].type.dtype
 
 
-@builtin("tid")
-class ThreadIdFunc:
-    @staticmethod
-    def value_type(args):
-        return int
-
-
-# type construtors
-
-@builtin("float")
-class FloatFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("int")
-class IntFunc:
-    @staticmethod
-    def value_type(args):
-        return int
-
-@builtin("vec3")
-class vec3Func:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-
-@builtin("quat")
-class QuatFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("quat_identity")
-class QuatIdentityFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("quat_from_axis_angle")
-class QuatAxisAngleFunc:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-@builtin("mat22")
-class Mat22Func:
-    @staticmethod
-    def value_type(args):
-        return mat22
-
-
-@builtin("mat33")
-class Mat33Func:
-    @staticmethod
-    def value_type(args):
-        return mat33
-
-@builtin("mat44")
-class Mat44Func:
-    @staticmethod
-    def value_type(args):
-        return mat44
-
-
-@builtin("spatial_vector")
-class SpatialVectorFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-
-# built-in spatial builtin_operators
-@builtin("spatial_transform")
-class TransformFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-
-@builtin("spatial_transform_identity")
-class TransformIdentity:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-@builtin("inverse")
-class Inverse:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-
-# @builtin("spatial_transform_inverse")
-# class TransformInverse:
-#     @staticmethod
-#     def value_type(args):
-#         return spatial_transform
-
-
-@builtin("spatial_transform_get_translation")
-class TransformGetTranslation:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_transform_get_rotation")
-class TransformGetRotation:
-    @staticmethod
-    def value_type(args):
-        return quat
-
-@builtin("spatial_transform_multiply")
-class TransformMulFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_transform
-
-# @builtin("spatial_transform_inertia")
-# class TransformInertiaFunc:
-#     @staticmethod
-#     def value_type(args):
-#         return spatial_matrix
-
-@builtin("spatial_adjoint")
-class SpatialAdjoint:
-    @staticmethod
-    def value_type(args):
-        return spatial_matrix
-
-@builtin("spatial_dot")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
-@builtin("spatial_cross")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-@builtin("spatial_cross_dual")
-class SpatialDotFunc:
-    @staticmethod
-    def value_type(args):
-        return spatial_vector
-
-@builtin("spatial_transform_point")
-class SpatialTransformPointFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_transform_vector")
-class SpatialTransformVectorFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_top")
-class SpatialTopFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_bottom")
-class SpatialBottomFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("spatial_jacobian")
-class SpatialJacobian:
-    @staticmethod
-    def value_type(args):
-        return None
-    
-@builtin("spatial_mass")
-class SpatialMass:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_gemm")
-class DenseGemm:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_gemm_batched")
-class DenseGemmBatched:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-@builtin("dense_chol")
-class DenseChol:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_chol_batched")
-class DenseCholBatched:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-@builtin("dense_subs")
-class DenseSubs:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_solve")
-class DenseSolve:
-    @staticmethod
-    def value_type(args):
-        return None
-
-@builtin("dense_solve_batched")
-class DenseSolveBatched:
-    @staticmethod
-    def value_type(args):
-        return None        
-
-
-# mat44 point/vec transforms
-@builtin("transform_point")
-class TransformPointFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("transform_vector")
-class TransformVectorFunc:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("mesh_query_point")
-class MeshQueryPoint:
-    @staticmethod
-    def value_type(args):
-        return bool
-
-@builtin("mesh_query_ray")
-class MeshQueryRay:
-    @staticmethod
-    def value_type(args):
-        return bool
-
-@builtin("mesh_eval_position")
-class MeshEvalPosition:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-@builtin("mesh_eval_velocity")
-class MeshEvalVelocity:
-    @staticmethod
-    def value_type(args):
-        return vec3
-
-# helpers
-
 @builtin("index")
 class IndexFunc:
     @staticmethod
@@ -714,16 +426,6 @@ class ExpectEqFunc:
     def value_type(args):
         return None
 
-
-def rename(name, return_type):
-    def func(cls):
-        cls.__name__ = name
-        cls.key = name
-        cls.prefix = ""
-        cls.return_type = return_type
-        return cls
-
-    return func
 
 def wrap(adj):
     def value_type(args):
@@ -759,6 +461,10 @@ class Module:
         self.functions = {}
 
         self.dll = None
+        self.cuda = None
+
+        self.loaded = False
+
 
     def register_kernel(self, kernel):
 
@@ -767,8 +473,14 @@ class Module:
             # if kernel is replacing an old one then assume it has changed and 
             # force a rebuild / reload of the dynamic libary 
             if (self.dll):
-                warp.build.unload_module(self.dll)
-                self.dll = None
+                warp.build.unload_dll(self.dll)
+
+            if (self.cuda):
+                runtime.core.cuda_unload_module(self.cuda)
+                
+            self.dll = None
+            self.cuda = None
+            self.loaded = False
 
         # register new kernel
         self.kernels[kernel.key] = kernel
@@ -791,126 +503,147 @@ class Module:
 
         # append any configuration parameters
         h.update(bytes(warp.config.mode, 'utf-8'))
-        
+
         return h.digest()
 
     def load(self):
 
-        # todo: key off config
-        use_cuda = True
-        if not use_cuda:
-            print("[INFO] CUDA support not found. Disabling CUDA kernel compilation.")
+        with ScopedTimer(f"Module {self.name} load"):
 
-        module_name = "wp_" + self.name
+            enable_cpu = warp.is_cpu_available()
+            enable_cuda = warp.is_cuda_available()
 
-        include_path = os.path.dirname(os.path.realpath(__file__))
-        build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
-        gen_path = os.path.dirname(os.path.realpath(__file__)) + "/gen"
+            module_name = "wp_" + self.name
 
-        cache_path = build_path + "/" + module_name + ".hash"
+            include_path = os.path.dirname(os.path.realpath(__file__))
+            build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
+            gen_path = os.path.dirname(os.path.realpath(__file__)) + "/gen"
 
-        if (os.name == "nt"):
-            dll_path = build_path + "/" + module_name + ".dll"
-        else:
-            dll_path = build_path + "/" + module_name + ".so"
+            cache_path = build_path + "/" + module_name + ".hash"
+            module_path = build_path + "/" + module_name
 
-        if (os.path.exists(build_path) == False):
-            os.mkdir(build_path)
+            ptx_path = module_path + ".ptx"
+            dll_path = module_path + ".dll"
 
-        # test cache
-        module_hash = self.hash_module()
+            if (os.path.exists(build_path) == False):
+                os.mkdir(build_path)
 
-        if (os.path.exists(cache_path)):
+            # test cache
+            module_hash = self.hash_module()
 
-            f = open(cache_path, 'rb')
-            cache_hash = f.read()
-            f.close()
+            if (os.path.exists(cache_path)):
 
-            if (cache_hash == module_hash):
-                
-                if (warp.config.verbose):
-                    print("Warp: Using cached kernels for module {}".format(self.name))
+                f = open(cache_path, 'rb')
+                cache_hash = f.read()
+                f.close()
+
+                if (cache_hash == module_hash):
                     
-                self.dll = cdll.LoadLibrary(dll_path)
-                return
+                    if (warp.config.verbose):
+                        print("Warp: Using cached kernels for module {}".format(self.name))
+                        
+                    if (enable_cpu):
+                        self.dll = warp.build.load_dll(dll_path)
 
-        if (warp.config.verbose):
-            print("Warp: Rebuilding kernels for module {}".format(self.name))
+                    if (enable_cuda):
+                        self.cuda = warp.build.load_cuda(ptx_path)
 
-        # otherwise rebuid
-        cpp_path = gen_path + "/" + module_name + ".cpp"
-        cu_path = gen_path + "/" + module_name + ".cu"
+                    self.loaded = True
+                    return
 
-        cpp_source = ""
-        cu_source = ""
+            if (warp.config.verbose):
+                print("Warp: Rebuilding kernels for module {}".format(self.name))
 
-        cpp_source += warp.codegen.cpu_module_header
-        cu_source += warp.codegen.cuda_module_header
 
-        # kernels
-        entry_points = []
-
-        # functions
-        for name, func in self.functions.items():
-           
-            func.adj.build(builtin_functions, self.functions)
+            # generate kernel source
+            if (enable_cpu):
+                cpp_path = gen_path + "/" + module_name + ".cpp"
+                cpp_source = warp.codegen.cpu_module_header
             
-            cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
-            cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
+            if (enable_cuda):
+                cu_path = gen_path + "/" + module_name + ".cu"        
+                cu_source = warp.codegen.cuda_module_header
 
-            # complete the function return type after we have analyzed it (infered from return statement in ast)
-            func.value_type = wrap(func.adj)
+            # kernels
+            entry_points = []
 
-
-        # kernels
-        for kernel in self.kernels.values():
-
-            kernel.adj.build(builtin_functions, self.functions)
-
-            # each kernel gets an entry point in the module
-            entry_points.append(kernel.func.__name__ + "_cpu_forward")
-            entry_points.append(kernel.func.__name__ + "_cpu_backward")
-
-            cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cpu")
-            cpp_source += warp.codegen.codegen_kernel(kernel.adj, device="cpu")
-            cpp_source += warp.codegen.codegen_module(kernel.adj, device="cpu")
-
-            if use_cuda:
+            # functions
+            for name, func in self.functions.items():
+            
+                func.adj.build(builtin_functions, self.functions)
                 
-                entry_points.append(kernel.func.__name__ + "_cuda_forward")
-                entry_points.append(kernel.func.__name__ + "_cuda_backward")
+                if (enable_cpu):
+                    cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
 
-                cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cuda")
-                cu_source += warp.codegen.codegen_kernel(kernel.adj, device="cuda")
-                cu_source += warp.codegen.codegen_module(kernel.adj, device="cuda")
+                if (enable_cuda):
+                    cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
 
-
-        # write cpp sources
-        cpp_file = open(cpp_path, "w")
-        cpp_file.write(cpp_source)
-        cpp_file.close()
-
-        cu_file = open(cu_path, "w")
-        cu_file.write(cu_source)
-        cu_file.close()
-       
-        try:
-
-            warp.build.build_module(cpp_path, cu_path, dll_path, config=warp.config.mode, load=True)
-
-            # update cached output
-            f = open(cache_path, 'wb')
-            f.write(module_hash)
-            f.close()
-
-        except Exception as e:
-
-            print(e)
-            raise(e)
+                # complete the function return type after we have analyzed it (infered from return statement in ast)
+                func.value_type = wrap(func.adj)
 
 
-        self.dll = warp.build.load_module(dll_path)
+            # kernels
+            for kernel in self.kernels.values():
 
+                kernel.adj.build(builtin_functions, self.functions)
+
+                # each kernel gets an entry point in the module
+                if (enable_cpu):
+                    entry_points.append(kernel.func.__name__ + "_cpu_forward")
+                    entry_points.append(kernel.func.__name__ + "_cpu_backward")
+
+                    cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cpu")
+                    cpp_source += warp.codegen.codegen_kernel(kernel.adj, device="cpu")
+                    cpp_source += warp.codegen.codegen_module(kernel.adj, device="cpu")
+
+                if (enable_cuda):                
+                    entry_points.append(kernel.func.__name__ + "_cuda_forward")
+                    entry_points.append(kernel.func.__name__ + "_cuda_backward")
+
+                    cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cuda")
+                    cu_source += warp.codegen.codegen_kernel(kernel.adj, device="cuda")
+                    cu_source += warp.codegen.codegen_module(kernel.adj, device="cuda")
+
+
+            # write cpp sources
+            if (enable_cpu):
+                cpp_file = open(cpp_path, "w")
+                cpp_file.write(cpp_source)
+                cpp_file.close()
+
+            # write cuda sources
+            if (enable_cuda):
+                cu_file = open(cu_path, "w")
+                cu_file.write(cu_source)
+                cu_file.close()
+        
+            try:
+                
+                if (enable_cuda):
+                    with ScopedTimer("Compile x86", active=warp.config.verbose):
+                        warp.build.build_dll(cpp_path, None, dll_path, config=warp.config.mode)
+
+                if (enable_cpu):
+                    with ScopedTimer("Compile CUDA", active=warp.config.verbose):
+                        warp.build.build_cuda(cu_path, ptx_path, config=warp.config.mode)
+
+                # update cached output
+                f = open(cache_path, 'wb')
+                f.write(module_hash)
+                f.close()
+
+            except Exception as e:
+
+                print(e)
+                raise(e)
+
+            if (enable_cpu):
+                self.dll = warp.build.load_dll(dll_path)
+
+            if (enable_cuda):
+                self.cuda = warp.build.load_cuda(ptx_path)
+
+            self.loaded = True
 
 #-------------------------------------------
 # exectution context
@@ -920,33 +653,14 @@ from ctypes import *
 class Runtime:
 
     def __init__(self):
-    
-        # check for CUDA
-        if (warp.config.cuda_path == None):
-            warp.config.cuda_path = warp.build.find_cuda()
 
-        # still no CUDA toolchain not found
-        if (warp.config.cuda_path == None):
-            raise Exception("Warp: Could not find CUDA toolkit, ensure that the CUDA_PATH environment variable is set or specify manually in warp.config.cuda_path before initialization")
-            
-        # set build output path off this file
-        build_path = os.path.dirname(os.path.realpath(__file__))
+        # in Python 3.8 we should use os.add_dll_directory() since adding to the PATH is not supported
+        bin_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
+        os.environ["PATH"] += os.pathsep + bin_path
 
-        try:
+        self.core = warp.build.load_dll("warp.dll")
 
-            warp.build.build_module(
-                            cpp_path=build_path + "/native/core.cpp", 
-                            cu_path=build_path + "/native/core.cu", 
-                            dll_path=build_path + "/bin/warp.dll",
-                            config=warp.config.mode)
-                            
-        except Exception as e:
-
-            raise Exception("Could not load core library, build failed.")
-
-        self.core = warp.build.load_module(build_path + "/bin/warp.dll")
-
-        # setup c-types for core.dll
+        # setup c-types for warp.dll
         self.core.alloc_host.restype = c_void_p
         self.core.alloc_device.restype = c_void_p
         
@@ -968,22 +682,43 @@ class Runtime:
         self.core.cuda_graph_end_capture.restype = c_void_p
         self.core.cuda_get_device_name.restype = c_char_p
 
+        self.core.cuda_compile_program.argtypes = [c_char_p, c_char_p, c_bool, c_bool, c_char_p]
+        self.core.cuda_compile_program.restype = c_size_t
+
+        self.core.cuda_load_module.argtypes = [c_char_p]
+        self.core.cuda_load_module.restype = c_void_p
+
+        self.core.cuda_unload_module.argtypes = [c_void_p]
+
+        self.core.cuda_get_kernel.argtypes = [c_void_p, c_char_p]
+        self.core.cuda_get_kernel.restype = c_void_p
+        
+        self.core.cuda_launch_kernel.argtypes = [c_void_p, c_size_t, POINTER(c_void_p)]
+        self.core.cuda_launch_kernel.restype = c_size_t
+
         self.core.init.restype = c_int
         
         error = self.core.init()
 
         if (error > 0):
-            raise Exception("Initialization failed")
+            raise Exception("Warp Initialization failed, CUDA not found")
 
         # save context
         self.cuda_device = self.core.cuda_get_context()
         self.cuda_stream = self.core.cuda_get_stream()
 
+        # initialize host build env
+        if (warp.config.host_compiler == None):
+            warp.config.host_compiler = warp.build.find_host_compiler()
+
         # print device and version information
         print("Warp initialized:")
         print("   Version: {}".format(warp.config.version))
         print("   Using CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
+        print("   Using CPU compiler: {}".format(warp.config.host_compiler.rstrip()))
 
+        # global tape
+        self.tape = None
 
     # host functions
     def alloc_host(self, num_bytes):
@@ -1016,8 +751,19 @@ class Runtime:
 
 
 # global entry points 
+def is_cpu_available():
+    return warp.config.host_compiler != None
+
+def is_cuda_available():
+    return runtime.cuda_device != None
+
 
 def capture_begin():
+    # ensure that all modules are loaded, this is necessary
+    # since cuLoadModule() is not permitted during capture
+    for m in user_modules.values():
+        m.load()
+
     runtime.core.cuda_graph_begin_capture()
 
 def capture_end():
@@ -1027,7 +773,7 @@ def capture_launch(graph):
     runtime.core.cuda_graph_launch(c_void_p(graph))
 
 
-def copy(dest, src, requires_grad=False):
+def copy(dest, src):
 
     num_bytes = src.length*type_size_in_bytes(src.dtype)
 
@@ -1063,15 +809,15 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
         # construct array
-        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True)
+        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True, requires_grad=requires_grad)
 
 def zeros_like(src, requires_grad=False):
 
-    arr = zeros(len(src), dtype=src.dtype, device=src.device)
+    arr = zeros(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
     return arr
 
 def clone(src):
-    dest = empty(len(src), dtype=src.dtype, device=src.device)
+    dest = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
     copy(dest, src)
 
     return dest
@@ -1079,99 +825,99 @@ def clone(src):
 def empty(n, dtype=float, device="cpu", requires_grad=False):
 
     # todo: implement uninitialized allocation
-    return zeros(n, dtype, device)  
+    return zeros(n, dtype, device, requires_grad=requires_grad)  
 
 def empty_like(src, requires_grad=False):
 
-    arr = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=False)
+    arr = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
     return arr
 
 
 def from_numpy(arr, dtype, device="cpu", requires_grad=False):
 
-    return warp.array(data=arr, dtype=dtype, device=device)
+    return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
 def synchronize():
     runtime.core.synchronize()
 
 
-def launch(kernel, dim, inputs, outputs=[], device="cpu"):
+def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], device="cpu", adjoint=False):
 
     if (dim > 0):
 
         # delay load modules
-        if (kernel.module.dll == None):
-
-            with ScopedTimer("Module {} load".format(kernel.module.name)):
-                kernel.module.load()
+        if (kernel.module.loaded == False):
+            kernel.module.load()
 
         # first param is the number of threads
         params = []
+        params.append(c_long(dim))
 
-        if (device == "cuda"):
-            params.append(c_void_p(runtime.cuda_stream))
+        # converts arguments to expected types and packs into params to passed to kernel def.
+        def pack_args(args, params):
 
-        params.append(dim)
+            for i, a in enumerate(args):
 
-        # todo: verify argument types against the kernel definition, perform automatic conversion for simple types
-        args = inputs + outputs
+                arg_type = kernel.adj.args[i].type
 
-        for i, a in enumerate(args):
+                if (isinstance(arg_type, warp.types.array)):
 
-            arg_type = kernel.adj.args[i].type
+                    if (a == None):
+                        
+                        # allow for NULL arrays
+                        params.append(c_int64(0))
 
-            if (isinstance(arg_type, warp.types.array)):
+                    else:
 
-                if (a == None):
-                    
-                    # allow for NULL arrays
-                    params.append(c_int64(0))
+                        # check subtype
+                        if (a.dtype != arg_type.dtype):
+                            raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.adj.args[i].label))
+
+                        # check device
+                        if (a.device != device):
+                            raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
+            
+                        params.append(c_int64(a.data))
+
+                # try and convert arg to correct type
+                elif (arg_type == warp.types.float32):
+                    params.append(c_float(a))
+
+                elif (arg_type == warp.types.int32):
+                    params.append(c_int32(a))
+
+                elif (arg_type == warp.types.int64):
+                    params.append(c_int64(a))
+
+                elif (arg_type == warp.types.uint64):
+                    params.append(c_uint64(a))
+                
+                elif isinstance(a, np.ndarray) or isinstance(a, tuple):
+
+                    # force conversion to ndarray (handle tuple case)
+                    a = np.array(a)
+
+                    # flatten to 1D array
+                    v = a.flatten()
+                    if (len(v) != arg_type.length()):
+                        raise RuntimeError(f"Kernel parameter {kernel.adj.args[i].label} has incorrect value length {len(v)}, expected {arg_type.length()}")
+
+                    # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
+                    x = arg_type()
+                    for i in range(arg_type.length()):
+                        x.value[i] = v[i]
+
+                    params.append(x)
 
                 else:
+                    raise RuntimeError(f"Unknown parameter type {type(a)} for param {kernel.adj.args[i].label}, expected {arg_type}")
 
-                    # check subtype
-                    if (a.dtype != arg_type.dtype):
-                        raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.adj.args[i].label))
+        fwd_args = inputs + outputs
+        adj_args = adj_inputs + adj_outputs
 
-                    # check device
-                    if (a.device != device):
-                        raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
-        
-                    params.append(c_int64(a.data))
-
-            # try and convert arg to correct type
-            elif (arg_type == warp.types.float32):
-                params.append(c_float(a))
-
-            elif (arg_type == warp.types.int32):
-                params.append(c_int32(a))
-
-            elif (arg_type == warp.types.int64):
-                params.append(c_int64(a))
-
-            elif (arg_type == warp.types.uint64):
-                params.append(c_uint64(a))
-            
-            elif isinstance(a, np.ndarray) or isinstance(a, tuple):
-
-                # force conversion to ndarray (handle tuple case)
-                a = np.array(a)
-
-                # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
-                v = a.flatten()
-                if (len(v) != arg_type.length()):
-                    raise RuntimeError("Kernel parameter {} has incorrect value length {}, expected {}".format(kernel.adj.args[i].label, len(v), arg_type.length()))
-
-                # try convert to kernels type
-                x = arg_type()
-                for i in range(arg_type.length()):
-                    x.value[i] = v[i]
-
-                params.append(x)
-
-            else:
-                raise RuntimeError("Unknown parameter type {} for param {}, expected {}".format(type(a), kernel.adj.args[i].label, arg_type))
+        pack_args(fwd_args, params)
+        pack_args(adj_args, params)
 
         # late bind
         if (kernel.forward_cpu == None or kernel.forward_cuda == None):
@@ -1179,20 +925,88 @@ def launch(kernel, dim, inputs, outputs=[], device="cpu"):
 
         # run kernel
         if device == 'cpu':
-            kernel.forward_cpu(*params)
+
+            if (adjoint):
+                kernel.backward_cpu(*params)
+            else:
+                kernel.forward_cpu(*params)
+
+        
         elif device.startswith("cuda"):
-            kernel.forward_cuda(*params)
+            kernel_args = [c_void_p(addressof(x)) for x in params]
+            kernel_params = (c_void_p * len(kernel_args))(*kernel_args)
 
-        runtime.verify_device()
+            if (adjoint):
+                runtime.core.cuda_launch_kernel(kernel.backward_cuda, dim, kernel_params)
+            else:
+                runtime.core.cuda_launch_kernel(kernel.forward_cuda, dim, kernel_params)
+
+            runtime.verify_device()
+
+    # record on tape if one is active
+    if (runtime.tape):
+        runtime.tape.record(kernel, dim, inputs, outputs, device)
 
 
+def type_str(t):
+    if (t == None):
+        return "None"
+    if (isinstance(t, array)):
+        #s = type(t.dtype)
+        return f"array({t.dtype.__name__})"
+    else:
+        return t.__name__
+        
+def print_function(f):
+    args = ", ".join(f"{k}: {type_str(v)}" for k,v in f.input_types.items())
+
+    return_type = ""
+
+    try:
+        return_type = " -> " + type_str(f.value_type(None))
+    except:
+        pass
+
+    print(f".. function:: {f.key}({args}){return_type}")
+    print("")
+    
+    if (f.doc != ""):
+        print(f"   {f.doc}")
+        print("")
+
+    print()
+    
 def print_builtins():
 
-    s = ""
-    for items in builtin_functions.items():
-        s += str(items[0]) + ", "
+    # build dictionary of all functions by group
+    groups = {}
 
-    print(s)
+    for k, f in builtin_functions.items():
+        
+        g = None
+
+        if (isinstance(f, list)):
+            g = f[0].group  # assumes all overloads have the same group
+        else:
+            g = f.group
+
+        if (g not in groups):
+            groups[g] = []
+        
+        groups[g].append(f)
+
+    for k, g in groups.items():
+        print("\n")
+        print(k)
+        print("---------------")
+
+        for f in g:            
+            if isinstance(f, list):
+                for x in f:
+                    print_function(x)
+            else:
+                print_function(f)
+
 
 # ensures that correct CUDA is set for the guards lifetime
 # restores the previous CUDA context on exit

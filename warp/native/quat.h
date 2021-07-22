@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 struct quat
 {
     // imaginary part
@@ -14,7 +17,7 @@ struct quat
     explicit inline CUDA_CALLABLE quat(const vec3& v, float w=0.0f) : x(v.x), y(v.y), z(v.z), w(w) {}
 };
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ quat atomic_add(quat * addr, quat value) 
 {
     float x = atomicAdd(&(addr -> x), value.x);
@@ -47,9 +50,9 @@ inline CUDA_CALLABLE void adj_quat(const vec3& v, float w, vec3& adj_v, float& a
 inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
 {
     float half = angle*0.5f;
-    float w = cosf(half);
+    float w = cos(half);
 
-    float sin_theta_over_two = sinf(half);
+    float sin_theta_over_two = sin(half);
     vec3 v = axis*sin_theta_over_two;
 
     return quat(v.x, v.y, v.z, w);
@@ -60,6 +63,12 @@ inline CUDA_CALLABLE quat quat_identity()
     return quat(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
+inline CUDA_CALLABLE quat quat_inverse(const quat& q)
+{
+    return quat(-q.x, -q.y, -q.z, q.w);
+}
+
+
 inline CUDA_CALLABLE float dot(const quat& a, const quat& b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
@@ -67,7 +76,7 @@ inline CUDA_CALLABLE float dot(const quat& a, const quat& b)
 
 inline CUDA_CALLABLE float length(const quat& q)
 {
-    return sqrtf(dot(q, q));
+    return sqrt(dot(q, q));
 }
 
 inline CUDA_CALLABLE quat normalize(const quat& q)
@@ -85,10 +94,6 @@ inline CUDA_CALLABLE quat normalize(const quat& q)
     }
 }
 
-inline CUDA_CALLABLE quat inverse(const quat& q)
-{
-    return quat(-q.x, -q.y, -q.z, q.w);
-}
 
 inline CUDA_CALLABLE quat add(const quat& a, const quat& b)
 {
@@ -162,8 +167,8 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle
 {
     vec3 v = vec3(adj_ret.x, adj_ret.y, adj_ret.z);
 
-    float s = sinf(angle*0.5f);
-    float c = cosf(angle*0.5f);
+    float s = sin(angle*0.5f);
+    float c = cos(angle*0.5f);
 
     quat dqda = quat(axis.x*c, axis.y*c, axis.z*c, -s)*0.5f;
 
@@ -199,7 +204,7 @@ inline CUDA_CALLABLE void adj_normalize(const quat& q, quat& adj_q, const quat& 
     }
 }
 
-inline CUDA_CALLABLE void adj_inverse(const quat& q, quat& adj_q, const quat& adj_ret)
+inline CUDA_CALLABLE void adj_quat_inverse(const quat& q, quat& adj_q, const quat& adj_ret)
 {
     adj_q.x -= adj_ret.x;
     adj_q.y -= adj_ret.y;
@@ -260,6 +265,10 @@ inline CUDA_CALLABLE void adj_mul(const quat& a, float s, quat& adj_a, float& ad
     adj_s += dot(a, adj_ret);
 }
 
+inline CUDA_CALLABLE void adj_mul(float s, const quat& a, float& adj_s, quat& adj_a, const quat& adj_ret)
+{
+    adj_mul(a, s, adj_a, adj_s, adj_ret);
+}
 
 inline CUDA_CALLABLE void adj_rotate(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
 {
@@ -327,3 +336,5 @@ inline CUDA_CALLABLE void adj_rotate_inv(const quat& q, const vec3& p, quat& adj
         adj_p.z += -r.x*(t5-t6)+r.z*(t3+(q.z*q.z)*2.0f-1.0f)+r.y*(t7+q.y*q.z*2.0f);
     }
 }
+
+} // namespace wp

@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 struct vec3
 {
     float x;
@@ -29,11 +32,15 @@ struct vec3
 //--------------
 // vec3 methods
 
-inline CUDA_CALLABLE vec3 operator - (vec3 a)
+inline CUDA_CALLABLE vec3 operator-(vec3 a)
 {
     return { -a.x, -a.y, -a.z };
 }
 
+inline CUDA_CALLABLE bool operator==(const vec3& a, const vec3& b)
+{
+    return a.x == b.x && a.y == b.y && a.z == b.z;
+}
 
 inline CUDA_CALLABLE vec3 mul(vec3 a, float s)
 {
@@ -130,7 +137,7 @@ inline CUDA_CALLABLE void adj_index(const vec3 & a, int idx, vec3 & adj_a, int &
 
 inline CUDA_CALLABLE float length(vec3 a)
 {
-    return sqrtf(dot(a, a));
+    return sqrt(dot(a, a));
 }
 
 inline CUDA_CALLABLE float length_sq(vec3 a)
@@ -154,13 +161,19 @@ inline bool CUDA_CALLABLE isfinite(vec3 x)
     return ::isfinite(x.x) && ::isfinite(x.y) && ::isfinite(x.z);
 }
 
-// adjoint vec3 constructor
+// adjoint vec3 constructors
 inline CUDA_CALLABLE void adj_vec3(float x, float y, float z, float& adj_x, float& adj_y, float& adj_z, const vec3& adj_ret)
 {
     adj_x += adj_ret.x;
     adj_y += adj_ret.y;
     adj_z += adj_ret.z;
 }
+
+inline CUDA_CALLABLE void adj_vec3(float s, float& adj_s, const vec3& adj_ret)
+{
+    adj_s += adj_ret.x + adj_ret.y + adj_ret.z;
+}
+
 
 inline CUDA_CALLABLE void adj_mul(vec3 a, float s, vec3& adj_a, float& adj_s, const vec3& adj_ret)
 {
@@ -173,6 +186,11 @@ inline CUDA_CALLABLE void adj_mul(vec3 a, float s, vec3& adj_a, float& adj_s, co
     if (!isfinite(a) || !isfinite(s) || !isfinite(adj_a) || !isfinite(adj_s) || !isfinite(adj_ret))
         printf("adj_mul((%f %f %f), %f, (%f %f %f), %f, (%f %f %f)\n", a.x, a.y, a.z, s, adj_a.x, adj_a.y, adj_a.z, adj_s, adj_ret.x, adj_ret.y, adj_ret.z);
 #endif
+}
+
+inline CUDA_CALLABLE void adj_mul(float s, vec3 a, float& adj_s, vec3& adj_a, const vec3& adj_ret)
+{
+    adj_mul(a, s, adj_a, adj_s, adj_ret);
 }
 
 
@@ -229,7 +247,7 @@ inline CUDA_CALLABLE void adj_cross(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, co
 }
 
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ vec3 atomic_add(vec3 * addr, vec3 value) {
     // *addr += value;
     float x = atomicAdd(&(addr -> x), value.x);
@@ -279,3 +297,5 @@ CUDA_CALLABLE inline int longest_axis(const vec3& v)
 		return (v.y > v.z) ? 1 : 2;
 }
 
+
+} // namespace wp

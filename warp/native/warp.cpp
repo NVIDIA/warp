@@ -1,8 +1,7 @@
-#include "core.h"
+#include "warp.h"
 
 #include "stdlib.h"
 #include "string.h"
-
 
 int cuda_init();
 

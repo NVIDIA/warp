@@ -15,6 +15,7 @@ import warp.sim
 import render
 
 wp.init()
+#wp.config.verify_cuda = True
 
 # params
 sim_width = 64
@@ -120,7 +121,7 @@ if (sim_use_graph):
 # launch simulation
 for i in range(sim_frames):
     
-    with wp.ScopedTimer("simulate", active=True):
+    with wp.ScopedTimer("simulate", active=True, detailed=False):
 
         if (sim_use_graph):
             wp.capture_launch(graph)

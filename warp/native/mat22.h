@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 //----------------------------------------------------------
 // mat22
 
@@ -17,7 +20,7 @@ struct mat22
     float data[2][2];
 };
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ mat22 atomic_add(mat22 * addr, mat22 value) {
     // *addr += value;
     mat22 m;
@@ -141,3 +144,5 @@ inline CUDA_CALLABLE void adj_determinant(const mat22& m, mat22& adj_m, float ad
     adj_m.data[0][1] -= m.data[1][0]*adj_ret;
     adj_m.data[1][0] -= m.data[0][1]*adj_ret;
 }
+
+} // namespace wp

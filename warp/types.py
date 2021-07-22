@@ -336,9 +336,27 @@ def type_is_float(t):
     else:
         return False
 
+def types_equal(a, b):
+    
+    # convert to canonical types
+    if (a == float):
+        a = float32
+    if (a == int):
+        a = int32
+
+    if (b == float):
+        b = float32
+    if (b == int):
+        b = int32
+        
+    if (isinstance(a, array) and isinstance(b, array)):
+        return a.dtype == b.dtype
+    else:
+        return a == b
+
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True):
+    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
         
         # convert built-in numeric type to wp type
         if (dtype == int):
@@ -347,6 +365,8 @@ class array:
         elif (dtype == float):
             dtype = float32
 
+        # save flag, controls if gradients will be computed in by wp.Tape
+        self.requires_grad = requires_grad
 
         # if src is a list, tuple try to convert to numpy array and construct from that (data will be copied)
         if (isinstance(data, np.ndarray) or 
@@ -383,7 +403,6 @@ class array:
 
             if (device == "cpu" and copy == False):
 
-                # todo: if runtime is global do we really need to store it per-array?
                 from warp.context import runtime
                 
                 # ref numpy memory directly
@@ -392,7 +411,7 @@ class array:
                 self.length=rows
                 self.capacity=rows*type_size_in_bytes(dtype)
                 self.device = device
-                self.context = runtime
+                self.context = runtime  #                 # todo: if runtime is global do we really need to store it per-array?
                 self.owner = False
 
                 # keep a ref to source array to keep allocation alive
@@ -400,9 +419,10 @@ class array:
 
             else:
 
-                # otherwise, copy to device memory
+                # otherwise, create a host wrapper around the numpy
+                #  array and a new destination array to copy it to
                 src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
-                dest = empty(rows, dtype=dtype, device=device)
+                dest = empty(rows, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
                 # data copy
@@ -427,12 +447,15 @@ class array:
             self.__name__ = "array<" + type.__name__ + ">"
 
 
+        # store 2D shape (useful for interop with tensor frameworks)
+        self.shape = (self.length, type_length(self.dtype))
+
         # set up array interface access so we can treat this object as a read-only numpy array
         if (device == "cpu"):
 
             self.__array_interface__ = { 
                 "data": (self.data, False), 
-                "shape": (self.length, type_length(self.dtype)),  
+                "shape": self.shape,  
                 "typestr": type_typestr(type_ctype(self.dtype)), 
                 "version": 3 
             }
@@ -454,7 +477,11 @@ class array:
 
     def __str__(self):
 
-        return str(self.to("cpu").numpy())
+        if self.device == None:
+            # for 'empty' arrays we just return the type information, these are used in kernel function signatures
+            return f"array{self.dtype}"
+        else:
+            return str(self.to("cpu").numpy())
 
     def zero_(self):
 
@@ -518,25 +545,6 @@ class array:
 
         return arr
 
-    #  def __getstate__(self):
-    #      # capture what is normally pickled
-    #      state = self.__dict__.copy()
-    #      # replace the `value` key (now an EnumValue instance), with it's index:
-    #      state['value'] = state['value'].index
-    #      # what we return here will be stored in the pickle
-    #      return state
-
-    #  def __setstate__(self, newstate):
-    #      # re-create the EnumState instance based on the stored index
-    #      newstate['value'] = self.Values[newstate['value']]
-    #      # re-instate our __dict__ state from the pickled state
-    #      self.__dict__.update(newstate)
-
-def get_data(array):
-    if (array):
-        return ctypes.c_void_p(array.data)
-    else:
-        return ctypes.c_void_p(0)
 
 class Mesh:
 
@@ -552,6 +560,13 @@ class Mesh:
         # inherit context from points, todo: find this globally
         self.context = points.context
         self.device = points.device
+
+        def get_data(array):
+            if (array):
+                return ctypes.c_void_p(array.data)
+            else:
+                return ctypes.c_void_p(0)
+
 
         if (self.device == "cpu"):
             self.id = self.context.core.mesh_create_host(

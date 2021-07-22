@@ -13,6 +13,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 import warp as wp
 
 wp.init()
+wp.config.verify_cuda = True
 
 @wp.func
 def sample(f: wp.array(dtype=float),
@@ -62,9 +63,8 @@ def wave_displace(hcurrent: wp.array(dtype=float),
     dist_sq = float(dx*dx + dy*dy)
 
     if (dist_sq < r*r):
-
         h = mag*wp.sin(t)
-
+    
         wp.store(hcurrent, tid, h)
         wp.store(hprevious, tid, h)
 
@@ -136,9 +136,11 @@ grid = UsdGeom.Mesh.Define(stage, "/root")
 grid_size = 0.1
 grid_displace = 0.5
 
+device = "cuda"
+
 # simulation grids
-sim_grid0 = wp.zeros(sim_width*sim_height, dtype=float, device="cuda")
-sim_grid1 = wp.zeros(sim_width*sim_height, dtype=float, device="cuda")
+sim_grid0 = wp.zeros(sim_width*sim_height, dtype=float, device=device)
+sim_grid1 = wp.zeros(sim_width*sim_height, dtype=float, device=device)
 
 sim_host = wp.zeros(sim_width*sim_height, dtype=float, device="cpu")
 verts_host = wp.zeros(sim_width*sim_height, dtype=wp.vec3, device="cpu")
@@ -214,7 +216,7 @@ for i in range(sim_frames):
                 kernel=wave_displace, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],  
-                device="cuda")
+                device=device)
 
 
             # integrate wave equation
@@ -222,7 +224,7 @@ for i in range(sim_frames):
                 kernel=wave_solve, 
                 dim=sim_width*sim_height, 
                 inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
-                device="cuda")
+                device=device)
 
             # swap grids
             (sim_grid0, sim_grid1) = (sim_grid1, sim_grid0)

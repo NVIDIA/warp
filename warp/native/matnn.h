@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 
 CUDA_CALLABLE inline int dense_index(int stride, int i, int j)
 {
@@ -149,7 +152,7 @@ void  CUDA_CALLABLE inline dense_chol(int n, const float* __restrict__ A, float 
             s -= r*r;
         }
 
-        s = sqrtf(s);
+        s = sqrt(s);
         const float invS = 1.0f/s;
 
         L[dense_index(n, j, j)] = s;
@@ -340,3 +343,6 @@ CUDA_CALLABLE inline void adj_dense_solve_batched(
                     0, adj_A + A_start[batch], adj_L + A_start[batch], adj_b + b_start[batch], adj_x + b_start[batch]);
 
 }
+
+
+} // namespace wp

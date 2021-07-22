@@ -12,7 +12,7 @@ import numpy as np
 import copy
 
 from warp.types import *
-
+import warp.config
 
 # map operator to function name
 builtin_operators = {}
@@ -182,15 +182,49 @@ class Adjoint:
 
         return output
 
-    def add_call(adj, func, inputs, prefix='wp::'):
+    def add_call(adj, func, inputs):
+
+        # if func is overloaded then perform resolution here, this is just to try and catch
+        # argument errors before they go to generated native code
+
+        if (isinstance(func, list)):
+    
+            resolved_func = None
+
+            for f in func:
+                match = True
+    
+                # check argument counts match (todo: default arguments?)
+                if len(f.input_types) != len(inputs):
+                    math = False
+                    continue
+
+                # check argument types equal
+                for i, a in enumerate(f.input_types.values()):
+                    if not types_equal(a, inputs[i].type):
+                        match = False
+                        break
+
+                # found a match, use it
+                if (match):
+                    resolved_func = f
+                    break
+
+            if (resolved_func == None):
+                arg_types = "".join(str(x.type) + ", " for x in inputs)
+
+                raise Exception(f"Couldn't find function overload for {func[0].key} that matched inputs {arg_types}")
+            else:
+                func = resolved_func
+
         # expression (zero output), e.g.: void do_something();
         if (func.value_type(inputs) == None):
 
-            forward_call = prefix + "{}({});".format(func.key, adj.format_args("var_", inputs))
+            forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
             adj.add_forward(forward_call)
 
             if (len(inputs)):
-                reverse_call = prefix + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs))
+                reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs))
                 adj.add_reverse(reverse_call)
 
             return None
@@ -200,11 +234,11 @@ class Adjoint:
 
             output = adj.add_var(func.value_type(inputs))
 
-            forward_call = "var_{} = ".format(output) + prefix + "{}({});".format(func.key, adj.format_args("var_", inputs))
+            forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
             adj.add_forward(forward_call)
 
             if (len(inputs)):
-                reverse_call = prefix + "{}({}, {}, {});".format(
+                reverse_call = func.namespace + "{}({}, {}, {});".format(
                     "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs), adj.format_args("adj_", [output]))
                 adj.add_reverse(reverse_call)
 
@@ -462,7 +496,8 @@ class Adjoint:
 
                         if var1 != var2:
 
-                            print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
+                            if (warp.config.verbose):
+                                print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
 
                             if (var2.constant is not None):
                                 raise Exception("Error mutating a constant {}, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
@@ -504,7 +539,7 @@ class Adjoint:
                     args.append(var)
 
                 # add var with value type from the function
-                out = adj.add_call(func, args, prefix=func.namespace)
+                out = adj.add_call(func, args)
                 return out
 
             elif (isinstance(node, ast.Subscript)):
@@ -577,7 +612,7 @@ class Adjoint:
                 if out is not None:        # set return type of function
                     return_var = out
                     if adj.return_var is not None and adj.return_var.ctype() != return_var.ctype():
-                        raise TypeError("Error, function returned different types")
+                        raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {return_var.ctype()}")
                     adj.return_var = return_var
 
                 adj.add_return(out)
@@ -616,7 +651,7 @@ class Adjoint:
 # code generation
 
 cpu_module_header = '''
-#include "../native/core.h"
+#include "../native/builtin.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
@@ -631,7 +666,7 @@ using namespace wp;
 '''
 
 cuda_module_header = '''
-#include "../native/core.h"
+#include "../native/builtin.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
@@ -673,12 +708,12 @@ static CUDA_CALLABLE void adj_{name}({forward_args}, {reverse_args})
 
 cuda_kernel_template = '''
 
-__global__ void {name}_cuda_kernel_forward(int dim, {forward_args})
+extern "C" __global__ void {name}_cuda_kernel_forward(int dim, {forward_args})
 {{
     {forward_body}
 }}
 
-__global__ void {name}_cuda_kernel_backward(int dim, {forward_args}, {reverse_args})
+extern "C" __global__ void {name}_cuda_kernel_backward(int dim, {forward_args}, {reverse_args})
 {{
     {reverse_body}
 }}

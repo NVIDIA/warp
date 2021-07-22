@@ -1,11 +1,10 @@
 #pragma once
 
-#include <math.h>
-#include <float.h>
+// All built-in types and functions. To be compatible with runtime NVRTC compilation
+// this header must be independently compilable (without external headers)
+// to achieve this we redefine a subset of CRT functions (printf, pow, sin, cos, etc)
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
+#include "crt.h"
 
 #if _WIN32
 #define WP_API __declspec(dllexport)
@@ -13,48 +12,17 @@
 #define WP_API
 #endif
 
+#ifdef _WIN32
+#define __restrict__ __restrict
+#endif
+
 #if !defined(__CUDACC__)
     #define CUDA_CALLABLE
 
 #else
     #define CUDA_CALLABLE __host__ __device__ 
-
-    #include <cuda.h>
-    #include <cuda_runtime_api.h>
-
-    #if _DEBUG
-        #define check_cuda(code) { check_cuda_impl(code, __FILE__, __LINE__); }
-    #else
-        #define check_cuda(code) code;
-    #endif
-
-    void check_cuda_impl(cudaError_t code, const char* file, int line)
-    {
-        if (code != cudaSuccess) 
-        {
-            printf("CUDA Error: %s %s %d\n", cudaGetErrorString(code), file, line);
-        }
-    }
-
-    void print_device()
-    {
-        int currentDevice;
-        cudaError_t err = cudaGetDevice(&currentDevice);        
-
-        cudaDeviceProp props;
-        err = cudaGetDeviceProperties(&props, currentDevice);
-        if (err != cudaSuccess)
-            printf("CUDA error: %d\n", err);
-        else
-            printf("%s\n", props.name);
-    }
-
-
 #endif
 
-#ifdef _WIN32
-#define __restrict__ __restrict
-#endif
 
 #define FP_CHECK 0
 
@@ -84,7 +52,7 @@ CUDA_CALLABLE T cast(wp::array addr)
     return (T)(addr);
 }
 
-// numeric types
+// numeric types (used from generated kernels)
 typedef float float32;
 typedef double float64;
 
@@ -123,38 +91,31 @@ inline CUDA_CALLABLE float add(float a, float b) { return a+b; }
 inline CUDA_CALLABLE float sub(float a, float b) { return a-b; }
 inline CUDA_CALLABLE float min(float a, float b) { return a<b?a:b; }
 inline CUDA_CALLABLE float max(float a, float b) { return a>b?a:b; }
+inline CUDA_CALLABLE float mod(float a, float b) { return fmodf(a, b); }
+
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
 inline CUDA_CALLABLE float clamp(float x, float a, float b) { return min(max(a, x), b); }
 inline CUDA_CALLABLE float step(float x) { return x < 0.0f ? 1.0f : 0.0f; }
 inline CUDA_CALLABLE float sign(float x) { return x < 0.0f ? -1.0f : 1.0f; }
-inline CUDA_CALLABLE float abs(float x) { return fabsf(x); }
+inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
-inline CUDA_CALLABLE float acos(float x) { return acosf(min(max(x, -1.0f), 1.0f)); }
-inline CUDA_CALLABLE float sin(float x) { return sinf(x); }
-inline CUDA_CALLABLE float cos(float x) { return cosf(x); }
-inline CUDA_CALLABLE float sqrt(float x) { return sqrtf(x); }
+inline CUDA_CALLABLE float acos(float x) { return ::acos(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
+inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
+inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
 
 inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
 inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret/b; adj_b -= adj_ret*(a/b)/b; }
 inline CUDA_CALLABLE void adj_add(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b += adj_ret; }
 inline CUDA_CALLABLE void adj_sub(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b -= adj_ret; }
+inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, float adj_ret) 
+{
+    printf("adj_mod not implemented for floating point types\n");
+}
 
 
-// inline CUDA_CALLABLE bool lt(float a, float b) { return a < b; }
-// inline CUDA_CALLABLE bool gt(float a, float b) { return a > b; }
-// inline CUDA_CALLABLE bool lte(float a, float b) { return a <= b; }
-// inline CUDA_CALLABLE bool gte(float a, float b) { return a >= b; }
-// inline CUDA_CALLABLE bool eq(float a, float b) { return a == b; }
-// inline CUDA_CALLABLE bool neq(float a, float b) { return a != b; }
-
-// inline CUDA_CALLABLE bool adj_lt(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) { }
-// inline CUDA_CALLABLE bool adj_gt(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
-// inline CUDA_CALLABLE bool adj_lte(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
-// inline CUDA_CALLABLE bool adj_gte(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
-// inline CUDA_CALLABLE bool adj_eq(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
-// inline CUDA_CALLABLE bool adj_neq(float a, float b, float & adj_a, float & adj_b, bool & adj_ret) {  }
 
 inline CUDA_CALLABLE void adj_min(float a, float b, float& adj_a, float& adj_b, float adj_ret)
 {
@@ -229,24 +190,24 @@ inline CUDA_CALLABLE void adj_abs(float x, float& adj_x, float adj_ret)
 
 inline CUDA_CALLABLE void adj_acos(float x, float& adj_x, float adj_ret)
 {
-    float d = sqrtf(1.0f-x*x);
+    float d = sqrt(1.0f-x*x);
     if (d > 0.0f)
         adj_x -= (1.0f/d)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_sin(float x, float& adj_x, float adj_ret)
 {
-    adj_x += cosf(x)*adj_ret;
+    adj_x += cos(x)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_cos(float x, float& adj_x, float adj_ret)
 {
-    adj_x -= sinf(x)*adj_ret;
+    adj_x -= sin(x)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_sqrt(float x, float& adj_x, float adj_ret)
 {
-    adj_x += 0.5f*(1.0f/sqrtf(x))*adj_ret;
+    adj_x += 0.5f*(1.0f/sqrt(x))*adj_ret;
 }
 
 
@@ -310,7 +271,7 @@ template <typename T>
 CUDA_CALLABLE T neg(const T& x) { return x*T(-1); }
 
 template <typename T>
-CUDA_CALLABLE void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(-1); }
+CUDA_CALLABLE void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(-adj_ret); }
 
 // for single thread CPU only
 static int s_threadIdx;
@@ -324,6 +285,7 @@ inline CUDA_CALLABLE int tid()
 #endif
 }
 
+} // namespace wp
 
 #include "vec2.h"
 #include "vec3.h"
@@ -335,9 +297,11 @@ inline CUDA_CALLABLE int tid()
 #include "quat.h"
 #include "spatial.h"
 #include "intersect.h"
-
+#include "mesh.h"
 
 //--------------
+namespace wp
+{
 
 template<typename T>
 inline CUDA_CALLABLE T load(T* buf, int index)
@@ -360,11 +324,11 @@ inline CUDA_CALLABLE void store(T* buf, int index, T value)
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 {
-#ifdef CPU
+#if defined(WP_CPU)
     T old = buf[0];
     buf[0] += value;
     return old;
-#elif defined(CUDA)
+#elif defined(WP_CUDA)
     return atomicAdd(buf, value);
 #endif
 }
@@ -386,9 +350,10 @@ inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index
 {
     // allow NULL buffers for case where gradients are not required
     if (adj_buf) {
-#ifdef CPU
+
+#if defined(WP_CPU)
         adj_buf[index] += adj_output;  // does not need to be atomic if single-threaded
-#elif defined(CUDA)
+#elif defined(WP_CUDA)
         atomic_add(adj_buf, index, adj_output);
 #endif
 
@@ -398,23 +363,22 @@ inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index
 template <typename T>
 inline CUDA_CALLABLE void adj_store(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value)
 {   
-    adj_value += adj_buf[index]; // doesn't need to be atomic because it's used to load from a buffer onto the stack
+    if (adj_buf)
+        adj_value += adj_buf[index];
 }
 
 template<typename T>
 inline CUDA_CALLABLE void adj_atomic_add(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value, const T& adj_ret)
 {
-    if (adj_buf) {  // cannot be atomic because used locally
+    if (adj_buf) 
         adj_value += adj_buf[index];
-    }
 }
 
 template<typename T>
 inline CUDA_CALLABLE void adj_atomic_sub(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value, const T& adj_ret)
 {
-    if (adj_buf) { // cannot be atomic because used locally
+    if (adj_buf) 
         adj_value -= adj_buf[index];
-    }
 }
 
 //-------------------------
@@ -445,14 +409,19 @@ inline CUDA_CALLABLE void print(int i)
     printf("%d\n", i);
 }
 
-inline CUDA_CALLABLE void print(float i)
+inline CUDA_CALLABLE void print(float f)
 {
-    printf("%f\n", i);
+    printf("%f\n", f);
 }
 
-inline CUDA_CALLABLE void print(vec3 i)
+inline CUDA_CALLABLE void print(vec3 v)
 {
-    printf("%f %f %f\n", i.x, i.y, i.z);
+    printf("%f %f %f\n", v.x, v.y, v.z);
+}
+
+inline CUDA_CALLABLE void print(vec4 v)
+{
+    printf("%f %f %f %f\n", v.x, v.y, v.z, v.w);
 }
 
 inline CUDA_CALLABLE void print(quat i)
@@ -471,6 +440,14 @@ inline CUDA_CALLABLE void print(mat33 m)
     printf("%f %f %f\n%f %f %f\n%f %f %f\n", m.data[0][0], m.data[0][1], m.data[0][2], 
                                              m.data[1][0], m.data[1][1], m.data[1][2], 
                                              m.data[2][0], m.data[2][1], m.data[2][2]);
+}
+
+inline CUDA_CALLABLE void print(mat44 m)
+{
+    printf("%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n", m.data[0][0], m.data[0][1], m.data[0][2], m.data[0][3],
+                                                                   m.data[1][0], m.data[1][1], m.data[1][2], m.data[1][3],
+                                                                   m.data[2][0], m.data[2][1], m.data[2][2], m.data[2][3],
+                                                                   m.data[3][0], m.data[3][1], m.data[3][2], m.data[3][3]);
 }
 
 inline CUDA_CALLABLE void print(spatial_transform t)
@@ -502,10 +479,12 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float i, float& adj_i) { printf("%f adj: %f\n", i, adj_i); }
-inline CUDA_CALLABLE void adj_print(vec3 i, vec3& adj_i) { printf("%f %f %f adj: %f %f %f \n", i.x, i.y, i.z, adj_i.x, adj_i.y, adj_i.z); }
-inline CUDA_CALLABLE void adj_print(quat i, quat& adj_i) { }
+inline CUDA_CALLABLE void adj_print(vec3 v, vec3& adj_v) { printf("%f %f %f adj: %f %f %f \n", v.x, v.y, v.z, adj_v.x, adj_v.y, adj_v.z); }
+inline CUDA_CALLABLE void adj_print(vec4 v, vec4& adj_v) { printf("%f %f %f %f adj: %f %f %f %f\n", v.x, v.y, v.z, v.w, adj_v.x, adj_v.y, adj_v.z, adj_v.w); }
+inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%f %f %f %f adj: %f %f %f %f\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
 inline CUDA_CALLABLE void adj_print(mat22 m, mat22& adj_m) { }
 inline CUDA_CALLABLE void adj_print(mat33 m, mat33& adj_m) { }
+inline CUDA_CALLABLE void adj_print(mat44 m, mat44& adj_m) { }
 inline CUDA_CALLABLE void adj_print(spatial_transform t, spatial_transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
@@ -514,7 +493,7 @@ inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
 template <typename T>
 inline CUDA_CALLABLE void expect_eq(const T& a, const T& b)
 {
-    if (a != b)
+    if (!(a == b))
     {
         printf("Error, expected equal failed:\n");
         printf("\t Expected: "); print(b); 
@@ -531,67 +510,3 @@ inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj
 
 } // namespace wp
 
-
-
-// this is the core runtime API exposed on the DLL level
-extern "C"
-{
-    WP_API int init();
-    //WP_API void shutdown();
-
-    WP_API void* alloc_host(size_t s);
-    WP_API void* alloc_device(size_t s);
-
-    WP_API void free_host(void* ptr);
-    WP_API void free_device(void* ptr);
-
-    // all memcpys are performed asynchronously
-    WP_API void memcpy_h2h(void* dest, void* src, size_t n);
-    WP_API void memcpy_h2d(void* dest, void* src, size_t n);
-    WP_API void memcpy_d2h(void* dest, void* src, size_t n);
-    WP_API void memcpy_d2d(void* dest, void* src, size_t n);
-
-    // all memsets are performed asynchronously
-    WP_API void memset_host(void* dest, int value, size_t n);
-    WP_API void memset_device(void* dest, int value, size_t n);
-
-    // create a user-accesible copy of the mesh, it is the 
-    // users reponsibility to keep-alive the points/tris data for the duration of the mesh lifetime
-	WP_API uint64_t mesh_create_host(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
-	WP_API void mesh_destroy_host(uint64_t id);
-    WP_API void mesh_refit_host(uint64_t id);
-
-	WP_API uint64_t mesh_create_device(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
-	WP_API void mesh_destroy_device(uint64_t id);
-    WP_API void mesh_refit_device(uint64_t id);
-
-    WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
-    WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
-
-    WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
-    WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
-
-    // ensures all device side operations have completed
-    WP_API void synchronize();
-
-    // return cudaError_t code
-    WP_API uint64_t cuda_check_device();
-    
-    WP_API void cuda_acquire_context();
-    WP_API void cuda_restore_context();
-    WP_API void* cuda_get_context();
-    WP_API void cuda_set_context(void* ctx);
-    WP_API void* cuda_get_stream();
-    WP_API const char* cuda_get_device_name();
-
-    WP_API void cuda_graph_begin_capture();
-    WP_API void* cuda_graph_end_capture();
-    WP_API void cuda_graph_launch(void* graph);
-    WP_API void cuda_graph_destroy(void* graph);
-
-}
-
-
-
-#include "mesh.h"
-#include "volume.h"

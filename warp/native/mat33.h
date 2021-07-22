@@ -1,5 +1,8 @@
 #pragma once
 
+namespace wp
+{
+
 //----------------------------------------------------------
 // mat33
 
@@ -20,9 +23,10 @@ struct mat33
         data[2][2] = c2.z;
     }
 
-    inline CUDA_CALLABLE mat33(float m00=0.0f, float m01=0.0f, float m02=0.0f,
-                 float m10=0.0f, float m11=0.0f, float m12=0.0f,
-                 float m20=0.0f, float m21=0.0f, float m22=0.0f) 
+    inline CUDA_CALLABLE mat33(
+        float m00=0.0f, float m01=0.0f, float m02=0.0f,
+        float m10=0.0f, float m11=0.0f, float m12=0.0f,
+        float m20=0.0f, float m21=0.0f, float m22=0.0f) 
     {
         data[0][0] = m00;
         data[1][0] = m10;
@@ -63,7 +67,7 @@ struct mat33
     float data[3][3];
 };
 
-#ifdef CUDA
+#ifdef WP_CUDA
 inline __device__ mat33 atomic_add(mat33 * addr, mat33 value) 
 {
     mat33 m;
@@ -263,3 +267,5 @@ inline CUDA_CALLABLE void adj_skew(const vec3& a, vec3& adj_a, const mat33& adj_
     adj_a.y += adj_ret.data[0][2] - adj_ret.data[2][0];
     adj_a.z += adj_ret.data[1][0] - adj_ret.data[0][1];
 }
+
+} // namespace wp
