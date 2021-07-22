@@ -3,598 +3,462 @@ Warp Function Reference
 
 Operators
 ---------------
-.. function:: add(x: int, y: int)
+.. function:: add(x: int, y: int) -> int
 
-   :return: int
 
-.. function:: add(x: float, y: float)
+.. function:: add(x: float, y: float) -> float
 
-   :return: float
 
-.. function:: add(x: vec3, y: vec3)
+.. function:: add(x: vec3, y: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: add(x: vec4, y: vec4)
+.. function:: add(x: vec4, y: vec4) -> vec4
 
-   :return: vec4
 
-.. function:: add(x: quat, y: quat)
+.. function:: add(x: quat, y: quat) -> quat
 
-   :return: quat
 
-.. function:: add(x: mat22, y: mat22)
+.. function:: add(x: mat22, y: mat22) -> mat22
 
-   :return: mat22
 
-.. function:: add(x: mat33, y: mat33)
+.. function:: add(x: mat33, y: mat33) -> mat33
 
-   :return: mat33
 
-.. function:: add(x: mat44, y: mat44)
+.. function:: add(x: mat44, y: mat44) -> mat44
 
-   :return: mat44
 
-.. function:: add(x: spatial_vector, y: spatial_vector)
+.. function:: add(x: spatial_vector, y: spatial_vector) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: add(x: spatial_matrix, y: spatial_matrix)
+.. function:: add(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
 
-   :return: spatial_matrix
 
-.. function:: sub(x: int, y: int)
+.. function:: sub(x: int, y: int) -> int
 
-   :return: int
 
-.. function:: sub(x: float, y: float)
+.. function:: sub(x: float, y: float) -> float
 
-   :return: float
 
-.. function:: sub(x: vec3, y: vec3)
+.. function:: sub(x: vec3, y: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: sub(x: vec4, y: vec4)
+.. function:: sub(x: vec4, y: vec4) -> vec4
 
-   :return: vec4
 
-.. function:: sub(x: mat22, y: mat22)
+.. function:: sub(x: mat22, y: mat22) -> mat22
 
-   :return: mat22
 
-.. function:: sub(x: mat33, y: mat33)
+.. function:: sub(x: mat33, y: mat33) -> mat33
 
-   :return: mat33
 
-.. function:: sub(x: mat44, y: mat44)
+.. function:: sub(x: mat44, y: mat44) -> mat44
 
-   :return: mat44
 
-.. function:: sub(x: spatial_vector, y: spatial_vector)
+.. function:: sub(x: spatial_vector, y: spatial_vector) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: sub(x: spatial_matrix, y: spatial_matrix)
+.. function:: sub(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
 
-   :return: spatial_matrix
 
-.. function:: mul(x: int, y: int)
+.. function:: mul(x: int, y: int) -> int
 
-   :return: int
 
-.. function:: mul(x: float, y: float)
+.. function:: mul(x: float, y: float) -> float
 
-   :return: float
 
-.. function:: mul(x: float, y: vec3)
+.. function:: mul(x: float, y: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: mul(x: float, y: vec4)
+.. function:: mul(x: float, y: vec4) -> vec4
 
-   :return: vec4
 
-.. function:: mul(x: vec3, y: float)
+.. function:: mul(x: vec3, y: float) -> vec3
 
-   :return: vec3
 
-.. function:: mul(x: vec4, y: float)
+.. function:: mul(x: vec4, y: float) -> vec4
 
-   :return: vec4
 
-.. function:: mul(x: quat, y: float)
+.. function:: mul(x: quat, y: float) -> quat
 
-   :return: quat
 
-.. function:: mul(x: quat, y: quat)
+.. function:: mul(x: quat, y: quat) -> quat
 
-   :return: quat
 
-.. function:: mul(x: mat22, y: float)
+.. function:: mul(x: mat22, y: float) -> mat22
 
-   :return: mat22
 
-.. function:: mul(x: mat33, y: float)
+.. function:: mul(x: mat33, y: float) -> mat33
 
-   :return: mat33
 
-.. function:: mul(x: mat33, y: vec3)
+.. function:: mul(x: mat33, y: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: mul(x: mat33, y: mat33)
+.. function:: mul(x: mat33, y: mat33) -> mat33
 
-   :return: mat33
 
-.. function:: mul(x: mat44, y: float)
+.. function:: mul(x: mat44, y: float) -> mat44
 
-   :return: mat44
 
-.. function:: mul(x: mat44, y: vec4)
+.. function:: mul(x: mat44, y: vec4) -> vec4
 
-   :return: vec4
 
-.. function:: mul(x: mat44, y: mat44)
+.. function:: mul(x: mat44, y: mat44) -> mat44
 
-   :return: mat44
 
-.. function:: mul(x: spatial_vector, y: float)
+.. function:: mul(x: spatial_vector, y: float) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: mul(x: spatial_matrix, y: spatial_matrix)
+.. function:: mul(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
 
-   :return: spatial_matrix
 
-.. function:: mul(x: spatial_matrix, y: spatial_vector)
+.. function:: mul(x: spatial_matrix, y: spatial_vector) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: mod(x: int, y: int)
+.. function:: mod(x: int, y: int) -> int
 
-   :return: int
 
-.. function:: mod(x: float, y: float)
+.. function:: mod(x: float, y: float) -> float
 
-   :return: float
 
-.. function:: div(x: int, y: int)
+.. function:: div(x: int, y: int) -> int
 
-   :return: int
 
-.. function:: div(x: float, y: float)
+.. function:: div(x: float, y: float) -> float
 
-   :return: float
 
-.. function:: div(x: vec3, y: float)
+.. function:: div(x: vec3, y: float) -> vec3
 
-   :return: vec3
 
-.. function:: neg(x: int)
+.. function:: neg(x: int) -> int
 
-   :return: int
 
-.. function:: neg(x: float)
+.. function:: neg(x: float) -> float
 
-   :return: float
 
-.. function:: neg(x: vec3)
+.. function:: neg(x: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: neg(x: vec4)
+.. function:: neg(x: vec4) -> vec4
 
-   :return: vec4
 
-.. function:: neg(x: quat)
+.. function:: neg(x: quat) -> quat
 
-   :return: quat
 
-.. function:: neg(x: mat33)
+.. function:: neg(x: mat33) -> mat33
 
-   :return: mat33
 
-.. function:: neg(x: mat44)
+.. function:: neg(x: mat44) -> mat44
 
-   :return: mat44
 
 
 
 Scalar Math
 ---------------
-.. function:: min(x: int, y: int)
+.. function:: min(x: int, y: int) -> int
 
-   :return: int
 
-.. function:: min(x: float, y: float)
+.. function:: min(x: float, y: float) -> float
 
-   :return: float
 
-.. function:: max(x: int, y: int)
+.. function:: max(x: int, y: int) -> int
 
-   :return: int
 
-.. function:: max(x: float, y: float)
+.. function:: max(x: float, y: float) -> float
 
-   :return: float
 
-.. function:: clamp(x: float, a: float, b: float)
+.. function:: clamp(x: float, a: float, b: float) -> float
 
-   :return: float
 
-.. function:: clamp(x: int, a: int, b: int)
+.. function:: clamp(x: int, a: int, b: int) -> int
 
-   :return: int
 
-.. function:: step(x: float)
+.. function:: step(x: float) -> float
 
-   :return: float
 
-.. function:: nonzero(x: float)
+.. function:: nonzero(x: float) -> float
 
-   :return: float
 
-.. function:: sign(x: float)
+.. function:: sign(x: float) -> float
 
-   :return: float
 
-.. function:: abs(x: float)
+.. function:: abs(x: float) -> float
 
-   :return: float
 
-.. function:: sin(x: float)
+.. function:: sin(x: float) -> float
 
-   :return: float
 
-.. function:: cos(x: float)
+.. function:: cos(x: float) -> float
 
-   :return: float
 
-.. function:: acos(x: float)
+.. function:: acos(x: float) -> float
 
-   :return: float
 
-.. function:: sqrt(x: float)
+.. function:: sqrt(x: float) -> float
 
-   :return: float
 
-.. function:: int(x: int)
+.. function:: int(x: int) -> int
 
-   :return: int
 
-.. function:: int(x: float)
+.. function:: int(x: float) -> int
 
-   :return: int
 
-.. function:: float(x: int)
+.. function:: float(x: int) -> float
 
-   :return: float
 
-.. function:: float(x: float)
+.. function:: float(x: float) -> float
 
-   :return: float
 
 
 
 Vector Math
 ---------------
-.. function:: dot(x: vec3, y: vec3)
+.. function:: dot(x: vec3, y: vec3) -> float
 
-   :return: float
 
-.. function:: dot(x: vec4, y: vec4)
+.. function:: dot(x: vec4, y: vec4) -> float
 
-   :return: float
 
-.. function:: dot(x: quat, y: quat)
+.. function:: dot(x: quat, y: quat) -> float
 
-   :return: float
 
-.. function:: cross(x: vec3, y: vec3)
+.. function:: cross(x: vec3, y: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: skew(x: vec3)
+.. function:: skew(x: vec3) -> mat33
 
-   :return: mat33
 
-.. function:: length(x: vec3)
+.. function:: length(x: vec3) -> float
 
-   :return: float
 
-.. function:: normalize(x: vec3)
+.. function:: normalize(x: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: normalize(x: vec4)
+.. function:: normalize(x: vec4) -> vec4
 
-   :return: vec4
 
-.. function:: normalize(x: quat)
+.. function:: normalize(x: quat) -> quat
 
-   :return: quat
 
-.. function:: rotate(q: quat, p: vec3)
+.. function:: rotate(q: quat, p: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: rotate_inv(q: quat, p: vec3)
+.. function:: rotate_inv(q: quat, p: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: determinant(m: mat22)
+.. function:: determinant(m: mat22) -> float
 
-   :return: float
 
-.. function:: determinant(m: mat33)
+.. function:: determinant(m: mat33) -> float
 
-   :return: float
 
-.. function:: transpose(m: mat22)
+.. function:: transpose(m: mat22) -> mat22
 
-   :return: mat22
 
-.. function:: transpose(m: mat33)
+.. function:: transpose(m: mat33) -> mat33
 
-   :return: mat33
 
-.. function:: transpose(m: mat44)
+.. function:: transpose(m: mat44) -> mat44
 
-   :return: mat44
 
-.. function:: transpose(m: spatial_matrix)
+.. function:: transpose(m: spatial_matrix) -> spatial_matrix
 
-   :return: spatial_matrix
 
-.. function:: vec3()
+.. function:: vec3() -> vec3
 
-   :return: vec3
 
-.. function:: vec3(x: float, y: float, z: float)
+.. function:: vec3(x: float, y: float, z: float) -> vec3
 
-   :return: vec3
 
-.. function:: vec3(s: float)
+.. function:: vec3(s: float) -> vec3
 
-   :return: vec3
 
-.. function:: vec4()
+.. function:: vec4() -> vec4
 
-   :return: vec4
 
-.. function:: vec4(x: float, y: float, z: float, w: float)
+.. function:: vec4(x: float, y: float, z: float, w: float) -> vec4
 
-   :return: vec4
 
-.. function:: vec4(s: float)
+.. function:: vec4(s: float) -> vec4
 
-   :return: vec4
 
-.. function:: mat22(m00: float, m01: float, m10: float, m11: float)
+.. function:: mat22(m00: float, m01: float, m10: float, m11: float) -> mat22
 
-   :return: mat22
 
-.. function:: mat33(c0: vec3, c1: vec3, c2: vec3)
+.. function:: mat33(c0: vec3, c1: vec3, c2: vec3) -> mat33
 
-   :return: mat33
 
-.. function:: mat44(c0: vec4, c1: vec4, c2: vec4, c3: vec4)
+.. function:: mat44(c0: vec4, c1: vec4, c2: vec4, c3: vec4) -> mat44
 
-   :return: mat44
 
-.. function:: transform_point(m: mat44, p: vec3)
+.. function:: transform_point(m: mat44, p: vec3) -> vec3
 
-   :return: vec3
 
-.. function:: transform_vector(m: mat44, p: vec3)
+.. function:: transform_vector(m: mat44, v: vec3) -> vec3
 
-   :return: vec3
 
 
 
 Quaternion Math
 ---------------
-.. function:: quat()
+.. function:: quat() -> quat
 
-   :return: quat
 
-.. function:: quat(x: float, y: float, z: float, w: float)
+.. function:: quat(x: float, y: float, z: float, w: float) -> quat
 
-   :return: quat
 
-.. function:: quat(i: vec3, r: float)
+.. function:: quat(i: vec3, r: float) -> quat
 
-   :return: quat
 
-.. function:: quat_identity()
+.. function:: quat_identity() -> quat
 
-   :return: quat
 
-.. function:: quat_from_axis_angle(axis: vec3, angle: float)
+.. function:: quat_from_axis_angle(axis: vec3, angle: float) -> quat
 
-   :return: quat
 
-.. function:: quat_inverse(q: quat)
+.. function:: quat_inverse(q: quat) -> quat
 
-   :return: quat
 
 
 
 Spatial Math
 ---------------
-.. function:: spatial_vector()
+.. function:: spatial_vector() -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: spatial_vector(a: float, b: float, c: float, d: float, e: float, f: float)
+.. function:: spatial_vector(a: float, b: float, c: float, d: float, e: float, f: float) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: spatial_vector(w: vec3, v: vec3)
+.. function:: spatial_vector(w: vec3, v: vec3) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: spatial_vector(s: float)
+.. function:: spatial_vector(s: float) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: spatial_transform(p: vec3, q: quat)
+.. function:: spatial_transform(p: vec3, q: quat) -> spatial_transform
 
-   :return: spatial_transform
 
-.. function:: spatial_transform_identity()
+.. function:: spatial_transform_identity() -> spatial_transform
 
-   :return: spatial_transform
 
-.. function:: spatial_transform_get_translation(t: spatial_transform)
+.. function:: spatial_transform_get_translation(t: spatial_transform) -> vec3
 
-   :return: vec3
 
-.. function:: spatial_transform_get_rotation(t: spatial_transform)
+.. function:: spatial_transform_get_rotation(t: spatial_transform) -> quat
 
-   :return: quat
 
-.. function:: spatial_transform_multiply(a: spatial_transform, b: spatial_transform)
+.. function:: spatial_transform_multiply(a: spatial_transform, b: spatial_transform) -> spatial_transform
 
-   :return: spatial_transform
 
-.. function:: spatial_adjoint(r: mat33, s: mat33)
+.. function:: spatial_adjoint(r: mat33, s: mat33) -> spatial_matrix
 
-   :return: spatial_matrix
 
-.. function:: spatial_dot(a: spatial_vector, b: spatial_vector)
+.. function:: spatial_dot(a: spatial_vector, b: spatial_vector) -> float
 
-   :return: float
 
-.. function:: spatial_cross(a: spatial_vector, b: spatial_vector)
+.. function:: spatial_cross(a: spatial_vector, b: spatial_vector) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: spatial_cross_dual(a: spatial_vector, b: spatial_vector)
+.. function:: spatial_cross_dual(a: spatial_vector, b: spatial_vector) -> spatial_vector
 
-   :return: spatial_vector
 
-.. function:: spatial_transform_point(t: spatial_transform, p: vec3)
+.. function:: spatial_transform_point(t: spatial_transform, p: vec3) -> vec3
 
-   :return: vec3
+   Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)
 
-.. function:: spatial_transform_vector(t: spatial_transform, p: vec3)
 
-   :return: vec3
+.. function:: spatial_transform_vector(t: spatial_transform, v: vec3) -> vec3
 
-.. function:: spatial_top(a: spatial_vector)
+   Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)
 
-   :return: vec3
 
-.. function:: spatial_bottom(a: spatial_vector)
+.. function:: spatial_top(a: spatial_vector) -> vec3
 
-   :return: vec3
 
-.. function:: spatial_jacobian(S: array(spatial_vector), joint_parents: array(int32), joint_qd_start: array(int32), joint_start: int, joint_count: int, J_start: int, J_out: array(float32))
+.. function:: spatial_bottom(a: spatial_vector) -> vec3
 
-   :return: Input dependent
 
-.. function:: spatial_mass(I_s: array(spatial_matrix), joint_start: int, joint_count: int, M_start: int, M: array(float32))
+.. function:: spatial_jacobian(S: array(spatial_vector), joint_parents: array(int32), joint_qd_start: array(int32), joint_start: int, joint_count: int, J_start: int, J_out: array(float32)) -> None  
 
-   :return: Input dependent
+
+.. function:: spatial_mass(I_s: array(spatial_matrix), joint_start: int, joint_count: int, M_start: int, M: array(float32)) -> None
+
 
 
 
 Linear Algebra
 ---------------
-.. function:: dense_gemm(m: int, n: int, p: int, t1: int, t2: int, A: array(float32), B: array(float32), C: array(float32))
+.. function:: dense_gemm(m: int, n: int, p: int, t1: int, t2: int, A: array(float32), B: array(float32), C: array(float32)) -> None
 
-   :return: Input dependent
 
-.. function:: dense_gemm_batched(m: array(int32), n: array(int32), p: array(int32), t1: int, t2: int, A_start: array(int32), B_start: array(int32), C_start: array(int32), A: array(float32), B: array(float32), C: array(float32))
+.. function:: dense_gemm_batched(m: array(int32), n: array(int32), p: array(int32), t1: int, t2: int, A_start: array(int32), B_start: array(int32), C_start: array(int32), A: array(float32), B: array(float32), C: array(float32)) -> None
 
-   :return: Input dependent
 
-.. function:: dense_chol(n: int, A: array(float32), regularization: float, L: array(float32))
+.. function:: dense_chol(n: int, A: array(float32), regularization: float, L: array(float32)) -> None
 
-   :return: Input dependent
 
-.. function:: dense_chol_batched(A_start: array(int32), A_dim: array(int32), A: array(float32), regularization: float, L: array(float32))
+.. function:: dense_chol_batched(A_start: array(int32), A_dim: array(int32), A: array(float32), regularization: float, L: array(float32)) -> None
 
-   :return: Input dependent
 
-.. function:: dense_subs(n: int, L: array(float32), b: array(float32), x: array(float32))
+.. function:: dense_subs(n: int, L: array(float32), b: array(float32), x: array(float32)) -> None
 
-   :return: Input dependent
 
-.. function:: dense_solve(n: int, A: array(float32), L: array(float32), b: array(float32), x: array(float32))
+.. function:: dense_solve(n: int, A: array(float32), L: array(float32), b: array(float32), x: array(float32)) -> None
 
-   :return: Input dependent
 
-.. function:: dense_solve_batched(b_start: array(int32), A_start: array(int32), A_dim: array(int32), A: array(float32), L: array(float32), b: array(float32), x: array(float32))
+.. function:: dense_solve_batched(b_start: array(int32), A_start: array(int32), A_dim: array(int32), A: array(float32), L: array(float32), b: array(float32), x: array(float32)) -> None
 
-   :return: Input dependent
 
 
 
 Geometry
 ---------------
-.. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float, inside: float, face: int, bary_u: float, bary_v: float)
+.. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float, inside: float, face: int, bary_u: float, bary_v: float) -> bool
 
-   :return: bool
 
-.. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float, t: float, bary_u: float, bary_v: float, sign: float, normal: vec3, face: int)
+.. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float, t: float, bary_u: float, bary_v: float, sign: float, normal: vec3, face: int) -> bool
 
-   :return: bool
 
-.. function:: mesh_eval_position(id: uint64, face: int, bary_u: float, bary_v: float)
+.. function:: mesh_eval_position(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
 
-   :return: vec3
 
-.. function:: mesh_eval_velocity(id: uint64, face: int, bary_u: float, bary_v: float)
+.. function:: mesh_eval_velocity(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
 
-   :return: vec3
 
 
 
 Utility
 ---------------
-.. function:: tid()
+.. function:: tid() -> int
 
-   :return: int
+   Return the current thread id.
 
 
-Other
+
+
+
 ---------------
-
 .. function:: select()
 
-   :return: Input dependent
 
-.. function:: copy()
+.. function:: copy() -> None
 
-   :return: Input dependent
 
 .. function:: load()
 
-   :return: Input dependent
 
 .. function:: store()
 
-   :return: Input dependent
 
 .. function:: atomic_add()
 
-   :return: Input dependent
 
 .. function:: atomic_sub()
 
-   :return: Input dependent
 
-.. function:: index()
+.. function:: index() -> float
 
-   :return: float
 
-.. function:: print()
+.. function:: print() -> None
 
-   :return: Input dependent
 
-.. function:: expect_eq()
-
-   :return: Input dependent
+.. function:: expect_eq() -> None

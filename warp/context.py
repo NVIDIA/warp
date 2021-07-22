@@ -266,8 +266,8 @@ add_builtin("spatial_dot", input_types={"a": spatial_vector, "b": spatial_vector
 add_builtin("spatial_cross", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="", group="Spatial Math")
 add_builtin("spatial_cross_dual", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="", group="Spatial Math")
 
-add_builtin("spatial_transform_point", input_types={"t": spatial_transform, "p": vec3}, value_type=vec3, doc="", group="Spatial Math")
-add_builtin("spatial_transform_vector", input_types={"t": spatial_transform, "p": vec3}, value_type=vec3, doc="", group="Spatial Math")
+add_builtin("spatial_transform_point", input_types={"t": spatial_transform, "p": vec3}, value_type=vec3, doc="Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)", group="Spatial Math")
+add_builtin("spatial_transform_vector", input_types={"t": spatial_transform, "v": vec3}, value_type=vec3, doc="Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)", group="Spatial Math")
 
 add_builtin("spatial_top", input_types={"a": spatial_vector}, value_type=vec3, doc="", group="Spatial Math")
 add_builtin("spatial_bottom", input_types={"a": spatial_vector}, value_type=vec3, doc="", group="Spatial Math")
@@ -343,7 +343,7 @@ add_builtin("dense_solve_batched",
                  "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
 add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, doc="", group="Vector Math")
-add_builtin("transform_vector", input_types={"m": mat44, "p": vec3}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, doc="", group="Vector Math")
 
 add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, doc="", group="Geometry")
 add_builtin("mesh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3, "max_t": float, "t": float, "bary_u": float, "bary_v": float, "sign": float, "normal": vec3, "face": int}, value_type=bool, doc="", group="Geometry")
@@ -949,6 +949,8 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
 
 
 def type_str(t):
+    if (t == None):
+        return "None"
     if (isinstance(t, array)):
         #s = type(t.dtype)
         return f"array({t.dtype.__name__})"
@@ -958,14 +960,19 @@ def type_str(t):
 def print_function(f):
     args = ", ".join(f"{k}: {type_str(v)}" for k,v in f.input_types.items())
 
-    print(f".. function:: {f.key}({args})")
-    print("")
+    return_type = ""
 
     try:
-        print(f"   :return: {type_str(f.value_type(None))}")
+        return_type = " -> " + type_str(f.value_type(None))
     except:
-        # for functions without a fixed return type (e.g.: load), we don't 
-        print("   :return: Input dependent")
+        pass
+
+    print(f".. function:: {f.key}({args}){return_type}")
+    print("")
+    
+    if (f.doc != ""):
+        print(f"   {f.doc}")
+        print("")
 
     print()
     
