@@ -20,18 +20,16 @@ struct mat22
     float data[2][2];
 };
 
-#ifdef WP_CUDA
-inline __device__ mat22 atomic_add(mat22 * addr, mat22 value) {
+inline CUDA_CALLABLE mat22 atomic_add(mat22 * addr, mat22 value) {
     // *addr += value;
     mat22 m;
-    m.data[0][0] = atomicAdd(&((addr -> data)[0][0]), value.data[0][0]);
-    m.data[0][1] = atomicAdd(&((addr -> data)[0][1]), value.data[0][1]);
-    m.data[1][0] = atomicAdd(&((addr -> data)[1][0]), value.data[1][0]);
-    m.data[1][1] = atomicAdd(&((addr -> data)[1][1]), value.data[1][1]);
+    m.data[0][0] = atomic_add(&((addr -> data)[0][0]), value.data[0][0]);
+    m.data[0][1] = atomic_add(&((addr -> data)[0][1]), value.data[0][1]);
+    m.data[1][0] = atomic_add(&((addr -> data)[1][0]), value.data[1][0]);
+    m.data[1][1] = atomic_add(&((addr -> data)[1][1]), value.data[1][1]);
 
     return m;
 }
-#endif
 
 inline CUDA_CALLABLE void adj_mat22(float m00, float m01, float m10, float m11, float& adj_m00, float& adj_m01, float& adj_m10, float& adj_m11, const mat22& adj_ret)
 {

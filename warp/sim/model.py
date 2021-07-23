@@ -399,66 +399,70 @@ class Model:
         def add_contact(b0, b1, t, p0, d, m):
             body0.append(b0)
             body1.append(b1)
-            point.append(transform_point(t, np.array(p0)))
+            point.append(wp.transform_point(t, np.array(p0)))
             dist.append(d)
             mat.append(m)
+
+        # pull shape data back to CPU 
+        shape_transform = self.shape_transform.numpy()
+        shape_body = self.shape_body.numpy()
+        shape_geo_type = self.shape_geo_type.numpy()
+        shape_geo_scale = self.shape_geo_scale.numpy()
+        shape_geo_src = self.shape_geo_src # already numpy
 
         for i in range(self.shape_count):
 
             # transform from shape to body
-            X_bs = transform_expand(self.shape_transform[i].tolist())
+            X_bs = wp.transform_expand(shape_transform[i].tolist())
 
-            geo_type = self.shape_geo_type[i].item()
+            geo_type = shape_geo_type[i].item()
 
             if (geo_type == GEO_SPHERE):
 
-                radius = self.shape_geo_scale[i][0].item()
+                radius = shape_geo_scale[i][0].item()
 
-                add_contact(self.shape_body[i], -1, X_bs, (0.0, 0.0, 0.0), radius, i)
+                add_contact(shape_body[i], -1, X_bs, (0.0, 0.0, 0.0), radius, i)
 
             elif (geo_type == GEO_CAPSULE):
 
-                radius = self.shape_geo_scale[i][0].item()
-                half_width = self.shape_geo_scale[i][1].item()
+                radius = shape_geo_scale[i][0].item()
+                half_width = shape_geo_scale[i][1].item()
 
-                add_contact(self.shape_body[i], -1, X_bs, (-half_width, 0.0, 0.0), radius, i)
-                add_contact(self.shape_body[i], -1, X_bs, (half_width, 0.0, 0.0), radius, i)
+                add_contact(shape_body[i], -1, X_bs, (-half_width, 0.0, 0.0), radius, i)
+                add_contact(shape_body[i], -1, X_bs, (half_width, 0.0, 0.0), radius, i)
 
             elif (geo_type == GEO_BOX):
 
-                edges = self.shape_geo_scale[i].tolist()
+                edges = shape_geo_scale[i].tolist()
 
-                add_contact(self.shape_body[i], -1, X_bs, (-edges[0], -edges[1], -edges[2]), 0.0, i)        
-                add_contact(self.shape_body[i], -1, X_bs, ( edges[0], -edges[1], -edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (-edges[0],  edges[1], -edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (edges[0], edges[1], -edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (-edges[0], -edges[1], edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (edges[0], -edges[1], edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (-edges[0], edges[1], edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (edges[0], edges[1], edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (-edges[0], -edges[1], -edges[2]), 0.0, i)        
+                add_contact(shape_body[i], -1, X_bs, ( edges[0], -edges[1], -edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (-edges[0],  edges[1], -edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (edges[0], edges[1], -edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (-edges[0], -edges[1], edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (edges[0], -edges[1], edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (-edges[0], edges[1], edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (edges[0], edges[1], edges[2]), 0.0, i)
 
             elif (geo_type == GEO_MESH):
 
-                mesh = self.shape_geo_src[i]
-                scale = self.shape_geo_scale[i]
+                mesh = shape_geo_src[i]
+                scale = shape_geo_scale[i]
 
                 for v in mesh.vertices:
 
                     p = (v[0] * scale[0], v[1] * scale[1], v[2] * scale[2])
 
-                    add_contact(self.shape_body[i], -1, X_bs, p, 0.0, i)
+                    add_contact(shape_body[i], -1, X_bs, p, 0.0, i)
 
         # send to wp
         self.contact_body0 = wp.array(body0, dtype=wp.int32, device=self.device)
         self.contact_body1 = wp.array(body1, dtype=wp.int32, device=self.device)
-        self.contact_point0 = wp.array(point, dtype=wp.float32, device=self.device)
+        self.contact_point0 = wp.array(point, dtype=wp.vec3, device=self.device)
         self.contact_dist = wp.array(dist, dtype=wp.float32, device=self.device)
         self.contact_material = wp.array(mat, dtype=wp.int32, device=self.device)
 
         self.contact_count = len(body0)
-
-
-
 
 
 class ModelBuilder:
@@ -569,18 +573,18 @@ class ModelBuilder:
     # rigids, register a rigid body and return its index.
     def add_body(
         self, 
-        parent : int, 
         X_pj : Transform, 
-        axis : Vec3, 
-        type : int, 
-        armature: float=0.0, 
-        stiffness: float=0.0, 
+        parent : int=-1, 
+        axis : Vec3=(0.0, 0.0, 0.0),
+        type : int=JOINT_FREE,
+        armature: float=0.0,
+        stiffness: float=0.0,
         damping: float=0.0,
         limit_lower: float=-1.e+3,
         limit_upper: float=1.e+3,
         limit_ke: float=100.0,
         limit_kd: float=10.0,
-        com: Vec3=np.zeros(3), 
+        com: Vec3=np.zeros(3),
         I_m: Mat33=np.zeros((3, 3)), 
         m: float=0.0) -> int:
 
@@ -613,7 +617,7 @@ class ModelBuilder:
         self.body_mass.append(0.0)
         self.body_com.append(np.zeros(3))
         
-        self.body_q.append(wp.transform_identity())
+        self.body_q.append(X_pj)
         self.body_qd.append(wp.spatial_vector())
 
         # joint data
@@ -1664,3 +1668,5 @@ class ModelBuilder:
         m.enable_tri_collisions = False
 
         return m
+
+

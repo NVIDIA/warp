@@ -85,7 +85,7 @@ class UsdRenderer:
         mesh.GetFaceVertexCountsAttr().Set(counts)
         mesh.GetFaceVertexIndicesAttr().Set(indices)
 
-    def render_sphere(self, pos: tuple, radius: float, name: str):
+    def render_sphere(self, pos: tuple, rot: tuple, radius: float, name: str):
         """Debug helper to add a sphere for visualization
         
         Args:
@@ -98,15 +98,17 @@ class UsdRenderer:
         sphere = UsdGeom.Sphere.Get(self.stage, sphere_path)
         if not sphere:
             sphere = UsdGeom.Sphere.Define(self.stage, sphere_path)
+            _usd_add_xform(sphere)
         
         sphere.GetRadiusAttr().Set(radius, self.time)
 
-        mat = Gf.Matrix4d()
-        mat.SetIdentity()
-        mat.SetTranslateOnly(Gf.Vec3d(pos))
+        # mat = Gf.Matrix4d()
+        # mat.SetIdentity()
+        # mat.SetTranslateOnly(Gf.Vec3d(pos[0], pos[1], pos[2]))
 
-        op = sphere.MakeMatrixXform()
-        op.Set(mat, self.time)
+        # op = sphere.MakeMatrixXform()
+        # op.Set(mat, self.time)
+        _usd_set_xform(sphere, (pos, rot), (1.0, 1.0, 1.0), self.time)
 
 
     def render_box(self, pos: tuple, rot: tuple, extents: tuple, name: str):

@@ -59,7 +59,7 @@ model.gravity[1] = 0.0
 integrator = wp.sim.SemiImplicitIntegrator()
 state = model.state()
 
-stage = render.UsdRenderer("tests/outputs/test_sim_rigid.usda")
+stage = render.UsdRenderer("tests/outputs/test_sim_rigid_gyroscopic.usda")
 
 for i in range(sim_steps):
 

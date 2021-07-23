@@ -202,17 +202,15 @@ inline CUDA_CALLABLE void adj_dot(vec4 a, vec4 b, vec4& adj_a, vec4& adj_b, cons
 
 }
 
-#ifdef WP_CUDA
-inline __device__ vec4 atomic_add(vec4 * addr, vec4 value) {
-    // *addr += value;
-    float x = atomicAdd(&(addr -> x), value.x);
-    float y = atomicAdd(&(addr -> y), value.y);
-    float z = atomicAdd(&(addr -> z), value.z);
-    float w = atomicAdd(&(addr -> w), value.w);
+inline CUDA_CALLABLE vec4 atomic_add(vec4 * addr, vec4 value) {
+
+    float x = atomic_add(&(addr -> x), value.x);
+    float y = atomic_add(&(addr -> y), value.y);
+    float z = atomic_add(&(addr -> z), value.z);
+    float w = atomic_add(&(addr -> w), value.w);
 
     return vec4(x, y, z, w);
 }
-#endif
 
 inline CUDA_CALLABLE void adj_length(vec4 a, vec4& adj_a, const float adj_ret)
 {

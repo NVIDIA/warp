@@ -247,16 +247,14 @@ inline CUDA_CALLABLE void adj_cross(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, co
 }
 
 
-#ifdef WP_CUDA
-inline __device__ vec3 atomic_add(vec3 * addr, vec3 value) {
-    // *addr += value;
-    float x = atomicAdd(&(addr -> x), value.x);
-    float y = atomicAdd(&(addr -> y), value.y);
-    float z = atomicAdd(&(addr -> z), value.z);
+inline CUDA_CALLABLE vec3 atomic_add(vec3 * addr, vec3 value) {
+
+    float x = atomic_add(&(addr -> x), value.x);
+    float y = atomic_add(&(addr -> y), value.y);
+    float z = atomic_add(&(addr -> z), value.z);
 
     return vec3(x, y, z);
 }
-#endif
 
 inline CUDA_CALLABLE void adj_length(vec3 a, vec3& adj_a, const float adj_ret)
 {

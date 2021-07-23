@@ -4,7 +4,8 @@ models + state forward in time.
 """
 
 import math
-from warp.types import vec3
+from warp.utils import quat_identity
+from warp.types import spatial_transform, vec3
 import numpy as np
 import time
 
@@ -43,6 +44,7 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 def integrate_bodies(body_q: wp.array(dtype=wp.spatial_transform),
                      body_qd: wp.array(dtype=wp.spatial_vector),
                      body_f: wp.array(dtype=wp.spatial_vector),
+                     body_com: wp.array(dtype=wp.vec3),
                      m: wp.array(dtype=float),
                      I: wp.array(dtype=wp.mat33),
                      inv_m: wp.array(dtype=float),
@@ -78,21 +80,23 @@ def integrate_bodies(body_q: wp.array(dtype=wp.spatial_transform),
     t0 = wp.spatial_top(f)
     f0 = wp.spatial_bottom(f)
 
+    x_com = x0 + wp.rotate(r0, body_com[tid])
+ 
     # linear part
     v1 = v0 + (f0 * inv_mass + gravity * wp.nonzero(inv_mass)) * dt
-    x1 = x0 + v1 * dt
+    x1 = x_com + v1 * dt
  
     # angular part (compute in body frame)
     wb = wp.rotate_inv(r0, w0)
-    tb = wp.rotate_inv(r0, t0) - wp.cross(wb, inertia*wb)
+    tb = wp.rotate_inv(r0, t0) - wp.cross(wb, inertia*wb)   # coriolis forces
 
     w1 = wp.rotate(r0, wb + inv_inertia * tb * dt)
     r1 = wp.normalize(r0 + wp.quat(w1, 0.0) * r0 * 0.5 * dt)
 
-    # angular damping
+    # angular damping, todo: expose
     w1 = w1*(1.0-0.1*dt)
 
-    body_q_new[tid] = wp.spatial_transform(x1, r1)
+    body_q_new[tid] = wp.spatial_transform(x1 - wp.rotate(r1, body_com[tid]), r1)
     body_qd_new[tid] = wp.spatial_vector(w1, v1)
 
 
@@ -937,58 +941,57 @@ def eval_soft_contacts(
 
 
 @wp.kernel
-def eval_body_contacts(body_x: wp.array(dtype=wp.vec3),
-                        body_r: wp.array(dtype=wp.quat),
-                        body_v: wp.array(dtype=wp.vec3),
-                        body_w: wp.array(dtype=wp.vec3),
-                        contact_body: wp.array(dtype=int),
-                        contact_point: wp.array(dtype=wp.vec3),
-                        contact_dist: wp.array(dtype=float),
-                        contact_mat: wp.array(dtype=int),
-                        materials: wp.array(dtype=float),
-                        body_f: wp.array(dtype=wp.vec3),
-                        body_t: wp.array(dtype=wp.vec3)):
+def eval_body_contacts(body_q: wp.array(dtype=wp.spatial_transform),
+                       body_qd: wp.array(dtype=wp.spatial_vector),
+                       body_com: wp.array(dtype=wp.vec3),
+                       contact_body: wp.array(dtype=int),
+                       contact_point: wp.array(dtype=wp.vec3),
+                       contact_dist: wp.array(dtype=float),
+                       contact_mat: wp.array(dtype=int),
+                       materials: wp.array(dtype=float),
+                       body_f: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
 
-    c_body = wp.load(contact_body, tid)
-    c_point = wp.load(contact_point, tid)
-    c_dist = wp.load(contact_dist, tid)
-    c_mat = wp.load(contact_mat, tid)
+    c_body = contact_body[tid]
+    c_point = contact_point[tid]
+    c_dist = contact_dist[tid]
+    c_mat = contact_mat[tid]
 
     # hard coded surface parameter tensor layout (ke, kd, kf, mu)
-    ke = wp.load(materials, c_mat * 4 + 0)       # restitution coefficient
-    kd = wp.load(materials, c_mat * 4 + 1)       # damping coefficient
-    kf = wp.load(materials, c_mat * 4 + 2)       # friction coefficient
-    mu = wp.load(materials, c_mat * 4 + 3)       # coulomb friction
+    ke = materials[c_mat * 4 + 0]       # restitution coefficient
+    kd = materials[c_mat * 4 + 1]       # damping coefficient
+    kf = materials[c_mat * 4 + 2]       # friction coefficient
+    mu = materials[c_mat * 4 + 3]       # coulomb friction
 
-    x0 = wp.load(body_x, c_body)      # position of colliding body
-    r0 = wp.load(body_r, c_body)      # orientation of colliding body
+    X_wb = body_q[c_body]
+    v_wc = body_qd[c_body]
 
-    v0 = wp.load(body_v, c_body)
-    w0 = wp.load(body_w, c_body)
+    # unpack spatial twist
+    w = wp.spatial_top(v_wc)
+    v = wp.spatial_bottom(v_wc)
 
     n = vec3(0.0, 1.0, 0.0)
 
     # transform point to world space
-    p = x0 + wp.rotate(r0, c_point) - n * c_dist           # add on 'thickness' of shape, e.g.: radius of sphere/capsule
-                                                           # use x0 as center, everything is offset from center of mass
+    cp = wp.spatial_transform_point(X_wb, c_point) - n * c_dist # add on 'thickness' of shape, e.g.: radius of sphere/capsule
 
-    # moment arm
-    r = p - x0     # basically just c_point in the new coordinates
+    # moment arm around center of mass
+    r = cp - wp.spatial_transform_point(X_wb, body_com[tid])
 
     # contact point velocity
-    dpdt = v0 + wp.cross(w0, r)        # this is body velocity cross offset, so it's the velocity of the contact point.
+    dpdt = v + wp.cross(w, r)     
 
     # check ground contact
-    c = wp.min(dot(n, p), 0.0)         # check if we're inside the ground
+    c = wp.min(wp.dot(n, cp), 0.0) 
 
-    vn = dot(n, dpdt)        # velocity component out of the ground
-    vt = dpdt - n * vn       # velocity component not into the ground
+    vn = wp.dot(n, dpdt)     
+    vt = dpdt - n * vn       
 
-    fn = c * ke    # normal force (restitution coefficient * how far inside for ground)
+    # normal force
+    fn = c * ke    
 
-    # contact damping
+    # damping force
     fd = wp.min(vn, 0.0) * kd * wp.step(c)       # again, velocity into the ground, negative
 
     # viscous friction
@@ -998,8 +1001,8 @@ def eval_body_contacts(body_x: wp.array(dtype=wp.vec3),
     lower = mu * (fn + fd)   # negative
     upper = 0.0 - lower      # positive, workaround for no unary ops
 
-    vx = wp.clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
-    vz = wp.clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
+    vx = wp.clamp(wp.dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
+    vz = wp.clamp(wp.dot(vec3(0.0, 0.0, kf), vt), lower, upper)
 
     ft = wp.vec3(vx, 0.0, vz) * wp.step(c)
 
@@ -1009,8 +1012,9 @@ def eval_body_contacts(body_x: wp.array(dtype=wp.vec3),
     f_total = n * (fn + fd) + ft
     t_total = wp.cross(r, f_total)
 
-    wp.atomic_sub(body_f, c_body, f_total)
-    wp.atomic_sub(body_t, c_body, t_total)
+    wp.atomic_sub(body_f, c_body, wp.spatial_vector(t_total, f_total))
+
+
 
 # # Frank & Park definition 3.20, pg 100
 @wp.func
@@ -2095,35 +2099,30 @@ def compute_forces(model, state, particle_f, body_f):
     if (model.tet_count):
 
         wp.launch(kernel=eval_tetrahedra,
-                    dim=model.tet_count,
-                    inputs=[state.particle_q, state.particle_qd, model.tet_indices, model.tet_poses, model.tet_activations, model.tet_materials],
-                    outputs=[particle_f],
-                    device=model.device)
+                  dim=model.tet_count,
+                  inputs=[state.particle_q, state.particle_qd, model.tet_indices, model.tet_poses, model.tet_activations, model.tet_materials],
+                  outputs=[particle_f],
+                  device=model.device)
 
+    if (model.body_count and model.contact_count > 0 and model.ground):
 
-    # if (model.articulation_count):
-        
-    #     if (model.ground and model.contact_count > 0):
-            
-    #         # evaluate contact forces
-    #         wp.launch(
-    #             kernel=eval_body_contacts_art,
-    #             dim=model.contact_count,
-    #             inputs=[
-    #                 state.body_X_sc,
-    #                 state.body_v_s,
-    #                 model.contact_body0,
-    #                 model.contact_point0,
-    #                 model.contact_dist,
-    #                 model.contact_material,
-    #                 model.shape_materials
-    #             ],
-    #             outputs=[
-    #                 body_f
-    #             ],
-    #             device=model.device,
-    #             preserve_output=True)
-
+        wp.launch(kernel=eval_body_contacts,
+                  dim=model.contact_count,
+                  inputs=[
+                      state.body_q,
+                      state.body_qd,
+                      model.body_com,
+                      model.contact_body0,
+                      model.contact_point0,
+                      model.contact_dist,
+                      model.contact_material,
+                      model.shape_materials
+                  ],
+                  outputs=[
+                      body_f
+                  ],
+                  device=model.device)
+ 
 
     # particle shape contact
     if (model.particle_count and model.shape_count):
@@ -2262,7 +2261,8 @@ class SemiImplicitIntegrator:
                     inputs=[
                         state_in.body_q,
                         state_in.body_qd,
-                        state_in.body_f,
+                        state_out.body_f,
+                        model.body_com,
                         model.body_mass,
                         model.body_inertia,
                         model.body_inv_mass,

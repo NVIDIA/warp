@@ -77,7 +77,9 @@ def build_cuda(cu_path, ptx_path, config="release", force=False):
     inc_path = os.path.dirname(cu_path).encode('utf-8')
     ptx_path = ptx_path.encode('utf-8')
 
-    warp.context.runtime.core.cuda_compile_program(src, inc_path, False, warp.config.verbose, ptx_path)
+    err = warp.context.runtime.core.cuda_compile_program(src, inc_path, False, warp.config.verbose, ptx_path)
+    if (err):
+        raise Exception("CUDA build failed")
 
 # load ptx to a CUDA runtime module    
 def load_cuda(ptx_path):

@@ -160,15 +160,23 @@ CUDA_CALLABLE inline void adj_spatial_bottom(const spatial_vector& a, spatial_ve
     adj_a.v += adj_ret;
 }
 
-#ifdef WP_CUDA
-inline __device__ spatial_vector atomic_add(spatial_vector* addr, const spatial_vector& value) {
-    
-    vec3 w = atomic_add(&addr->w, value.w);
-    vec3 v = atomic_add(&addr->v, value.v);
+inline CUDA_CALLABLE spatial_vector atomic_add(spatial_vector* addr, const spatial_vector& value) 
+{   
+    vec3 w = atomic_add(&(addr->w), value.w);
+    vec3 v = atomic_add(&(addr->v), value.v);
 
     return spatial_vector(w, v);
 }
-#endif
+
+// inline CUDA_CALLABLE spatial_vector atomic_sub(spatial_vector* addr, const spatial_vector& value) 
+// {   
+//     vec3 w = atomic_sub(&(addr->w), value.w);
+//     vec3 v = atomic_sub(&(addr->v), value.v);
+
+//     return spatial_vector(w, v);
+// }
+
+
 
 //---------------------------------------------------------------------------------
 // Represents a rigid body transformation
@@ -273,15 +281,13 @@ CUDA_CALLABLE inline void adj_mul(const spatial_transform& a, float s, spatial_t
     adj_mul(a.q, s, adj_a.q, adj_s, adj_ret.q);
 }
 
-#ifdef WP_CUDA
-inline __device__ spatial_transform atomic_add(spatial_transform* addr, const spatial_transform& value) {
-    
+inline CUDA_CALLABLE spatial_transform atomic_add(spatial_transform* addr, const spatial_transform& value) 
+{   
     vec3 p = atomic_add(&addr->p, value.p);
     quat q = atomic_add(&addr->q, value.q);
 
     return spatial_transform(p, q);
 }
-#endif
 
 CUDA_CALLABLE inline void adj_spatial_transform(const vec3& p, const quat& q, vec3& adj_p, quat& adj_q, const spatial_transform& adj_ret)
 {
@@ -681,8 +687,7 @@ inline void CUDA_CALLABLE adj_index(const spatial_matrix& m, int row, int col, s
     adj_m.data[row][col] += adj_ret;
 }
 
-#ifdef WP_CUDA
-inline __device__ spatial_matrix atomic_add(spatial_matrix* addr, const spatial_matrix& value) 
+inline CUDA_CALLABLE spatial_matrix atomic_add(spatial_matrix* addr, const spatial_matrix& value) 
 {
     spatial_matrix m;
 
@@ -690,13 +695,13 @@ inline __device__ spatial_matrix atomic_add(spatial_matrix* addr, const spatial_
     {
         for (int j=0; j < 6; ++j)
         {
-            m.data[i][j] = atomicAdd(&addr->data[i][j], value.data[i][j]);
+            m.data[i][j] = atomic_add(&addr->data[i][j], value.data[i][j]);
         }
     }   
 
     return m;
 }
-#endif
+
 
 
 CUDA_CALLABLE inline int row_index(int stride, int i, int j)

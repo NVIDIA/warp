@@ -397,6 +397,14 @@ class StoreFunc:
 class AtomicAddFunc:
     @staticmethod
     def value_type(args):
+
+        if (type(args[0].type) != warp.types.array):
+            raise Exception("store() argument 0 must be a array")
+        if (args[1].type != int and args[1].type != warp.types.int32 and args[1].type != warp.types.int64 and args[1].type != warp.types.uint64):
+            raise Exception("store() argument input 1 must be an integer type")
+        if (args[2].type != args[0].type.dtype):
+            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
+
         return args[0].type.dtype
 
 
@@ -404,6 +412,14 @@ class AtomicAddFunc:
 class AtomicSubFunc:
     @staticmethod
     def value_type(args):
+
+        if (type(args[0].type) != warp.types.array):
+            raise Exception("store() argument 0 must be a array")
+        if (args[1].type != int and args[1].type != warp.types.int32 and args[1].type != warp.types.int64 and args[1].type != warp.types.uint64):
+            raise Exception("store() argument input 1 must be an integer type")
+        if (args[2].type != args[0].type.dtype):
+            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
+
         return args[0].type.dtype
 
 
@@ -544,9 +560,15 @@ class Module:
                         
                     if (enable_cpu):
                         self.dll = warp.build.load_dll(dll_path)
+                        
+                        if (self.dll == None):
+                            raise Exception(f"Could not load dll from cache {dll_path}")
 
                     if (enable_cuda):
                         self.cuda = warp.build.load_cuda(ptx_path)
+
+                        if (self.cuda == None):
+                            raise Exception(f"Could not load ptx from cache path: {ptx_path}")
 
                     self.loaded = True
                     return
@@ -619,11 +641,11 @@ class Module:
         
             try:
                 
-                if (enable_cuda):
+                if (enable_cpu):
                     with ScopedTimer("Compile x86", active=warp.config.verbose):
                         warp.build.build_dll(cpp_path, None, dll_path, config=warp.config.mode)
 
-                if (enable_cpu):
+                if (enable_cuda):
                     with ScopedTimer("Compile CUDA", active=warp.config.verbose):
                         warp.build.build_cuda(cu_path, ptx_path, config=warp.config.mode)
 
@@ -863,7 +885,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
 
                 if (isinstance(arg_type, warp.types.array)):
 
-                    if (a == None):
+                    if (a is None):
                         
                         # allow for NULL arrays
                         params.append(c_int64(0))
