@@ -236,7 +236,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
     {   
         "--device-as-default-execution-space",
         "--gpu-architecture=sm_35",
-        "--use_fast_math",
+//        "--use_fast_math",
         "--std=c++11",
         "--define-macro=WP_CUDA",
         "--define-macro=WP_NO_CRT",
@@ -244,7 +244,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
         include_opt.c_str()
     };
 
-    res = nvrtcCompileProgram(prog, 8, opts);
+    res = nvrtcCompileProgram(prog, 7, opts);
 
     if (res == NVRTC_SUCCESS)
     {
