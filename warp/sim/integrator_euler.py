@@ -977,7 +977,7 @@ def eval_body_contacts(body_q: wp.array(dtype=wp.spatial_transform),
     cp = wp.spatial_transform_point(X_wb, c_point) - n * c_dist # add on 'thickness' of shape, e.g.: radius of sphere/capsule
 
     # moment arm around center of mass
-    r = cp - wp.spatial_transform_point(X_wb, body_com[tid])
+    r = cp - wp.spatial_transform_point(X_wb, body_com[c_body])
 
     # contact point velocity
     dpdt = v + wp.cross(w, r)     

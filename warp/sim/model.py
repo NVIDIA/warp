@@ -404,10 +404,10 @@ class Model:
             mat.append(m)
 
         # pull shape data back to CPU 
-        shape_transform = self.shape_transform.numpy()
-        shape_body = self.shape_body.numpy()
-        shape_geo_type = self.shape_geo_type.numpy()
-        shape_geo_scale = self.shape_geo_scale.numpy()
+        shape_transform = self.shape_transform.to("cpu").numpy()
+        shape_body = self.shape_body.to("cpu").numpy()
+        shape_geo_type = self.shape_geo_type.to("cpu").numpy()
+        shape_geo_scale = self.shape_geo_scale.to("cpu").numpy()
         shape_geo_src = self.shape_geo_src # already numpy
 
         for i in range(self.shape_count):
