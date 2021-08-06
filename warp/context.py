@@ -539,7 +539,11 @@ class Module:
             module_path = build_path + "/" + module_name
 
             ptx_path = module_path + ".ptx"
-            dll_path = module_path + ".dll"
+
+            if (os.name == 'nt'):
+                dll_path = module_path + ".dll"
+            else:
+                dll_path = module_path + ".so"
 
             if (os.path.exists(build_path) == False):
                 os.mkdir(build_path)
