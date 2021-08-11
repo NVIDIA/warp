@@ -67,6 +67,14 @@ struct mat33
     float data[3][3];
 };
 
+inline CUDA_CALLABLE mat33 diag(const vec3& d) {
+  return mat33(d.x, 0.f, 0.f, 0.f, d.y, 0.f, 0.f, 0.f, d.z);
+}
+
+inline CUDA_CALLABLE void adj_diag(const vec3& d, vec3& adj_d, const mat33& adj_ret) {
+  adj_d += vec3(adj_ret.data[0][0], adj_ret.data[1][1], adj_ret.data[2][2]);
+}
+
 inline CUDA_CALLABLE mat33 atomic_add(mat33 * addr, mat33 value) 
 {
     mat33 m;
@@ -123,6 +131,20 @@ inline CUDA_CALLABLE mat33 add(const mat33& a, const mat33& b)
     }
 
     return t;
+}
+
+inline CUDA_CALLABLE mat33 sub(const mat33& a, const mat33& b)
+{
+  mat33 t;
+  for (int i=0; i < 3; ++i)
+  {
+    for (int j=0; j < 3; ++j)
+    {
+      t.data[i][j] = a.data[i][j] - b.data[i][j];
+    }
+  }
+
+  return t;
 }
 
 inline CUDA_CALLABLE mat33 mul(const mat33& a, float b)
@@ -217,6 +239,18 @@ inline CUDA_CALLABLE void adj_add(const mat33& a, const mat33& b, mat33& adj_a, 
     }
 }
 
+inline CUDA_CALLABLE void adj_sub(const mat33& a, const mat33& b, mat33& adj_a, mat33& adj_b, const mat33& adj_ret)
+{
+  for (int i=0; i < 3; ++i)
+  {
+    for (int j=0; j < 3; ++j)
+    {
+      adj_a.data[i][j] += adj_ret.data[i][j];
+      adj_b.data[i][j] -= adj_ret.data[i][j];
+    }
+  }
+}
+
 inline CUDA_CALLABLE void adj_mul(const mat33& a, float b, mat33& adj_a, float& adj_b, const mat33& adj_ret)
 {
     for (int i=0; i < 3; ++i)
@@ -253,6 +287,11 @@ inline CUDA_CALLABLE void adj_determinant(const mat33& m, mat33& adj_m, float ad
     (vec3&)adj_m.data[2] += cross(m.get_row(0), m.get_row(1))*adj_ret;
 }
 
+inline CUDA_CALLABLE void adj_outer(const vec3& a, const vec3& b, vec3& adj_a, vec3& adj_b, const mat33& adj_ret)
+{
+  adj_a += mul(adj_ret, b);
+  adj_b += mul(transpose(adj_ret), a);
+}
 
 inline CUDA_CALLABLE void adj_skew(const vec3& a, vec3& adj_a, const mat33& adj_ret)
 {

@@ -85,6 +85,16 @@ struct mat44
     float data[4][4];
 };
 
+inline CUDA_CALLABLE mat44 diag(const vec4& d) {
+  return mat44(d.x, 0.f, 0.f, 0.f,
+               0.f, d.y, 0.f, 0.f,
+               0.f, 0.f, d.z, 0.f,
+               0.f, 0.f, 0.f, d.w);
+}
+
+inline CUDA_CALLABLE void adj_diag(const vec4& d, vec4& adj_d, const mat44& adj_ret) {
+  adj_d += vec4(adj_ret.data[0][0], adj_ret.data[1][1], adj_ret.data[2][2], adj_ret.data[3][3]);
+}
 
 inline CUDA_CALLABLE void atomic_add(mat44 * addr, mat44 value) {
     for (int i=0; i < 4; ++i)
