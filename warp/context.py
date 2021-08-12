@@ -676,11 +676,21 @@ class Runtime:
 
     def __init__(self):
 
-        # in Python 3.8 we should use os.add_dll_directory() since adding to the PATH is not supported
         bin_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
-        os.environ["PATH"] += os.pathsep + bin_path
+        
+        if (os.name == 'nt'):
 
-        self.core = warp.build.load_dll("warp.dll")
+            # in Python 3.8 we should use os.add_dll_directory() 
+            # since adding to the PATH is not supported
+            os.environ["PATH"] += os.pathsep + bin_path
+
+            warp_lib = "warp.dll"
+            self.core = warp.build.load_dll(warp_lib)
+
+        else:
+
+            warp_lib = bin_path + "/" + "warp.so"
+            self.core = warp.build.load_dll(warp_lib)
 
         # setup c-types for warp.dll
         self.core.alloc_host.restype = c_void_p
@@ -698,6 +708,7 @@ class Runtime:
         self.core.mesh_refit_host.argtypes = [c_uint64]
         self.core.mesh_refit_device.argtypes = [c_uint64]
 
+        # load CUDA entry points on supported platforms
         self.core.cuda_check_device.restype = c_uint64
         self.core.cuda_get_context.restype = c_void_p
         self.core.cuda_get_stream.restype = c_void_p
@@ -717,6 +728,7 @@ class Runtime:
         
         self.core.cuda_launch_kernel.argtypes = [c_void_p, c_size_t, POINTER(c_void_p)]
         self.core.cuda_launch_kernel.restype = c_size_t
+
 
         self.core.init.restype = c_int
         

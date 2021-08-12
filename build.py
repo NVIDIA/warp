@@ -22,15 +22,21 @@ if (warp.config.cuda_path == None):
 
 # no CUDA toolchain not found
 if (warp.config.cuda_path == None):
-    raise Exception("Warp: Could not find CUDA toolkit, ensure that the CUDA_PATH environment variable is set or specify manually in warp.config.cuda_path before initialization")
+    print("Warning: building without CUDA support")
 
-warp.config.mode = "release"
-warp.config.verbose = True
+    warp.build.build_dll(
+                    cpp_path=build_path + "/native/warp.cpp", 
+                    cu_path=None, 
+                    dll_path=build_path + "/bin/warp.so",
+                    config=warp.config.mode,
+                    force=True)
 
-warp.build.build_dll(
-                cpp_path=build_path + "/native/warp.cpp", 
-                cu_path=build_path + "/native/warp.cu", 
-                dll_path=build_path + "/bin/warp.dll",
-                config=warp.config.mode,
-                force=True)
+else:
+
+    warp.build.build_dll(
+                    cpp_path=build_path + "/native/warp.cpp", 
+                    cu_path=build_path + "/native/warp.cu", 
+                    dll_path=build_path + "/bin/warp.dll",
+                    config=warp.config.mode,
+                    force=True)
                     
