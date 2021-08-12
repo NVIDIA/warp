@@ -68,6 +68,8 @@ mesh = wp.Mesh(
     velocities=None,
     indices=wp.array(indices, dtype=int, device=device))
 
+mesh.refit()
+
 with wp.ScopedTimer("render"):
 
     wp.launch(

@@ -17,7 +17,8 @@ from . optimizer import Optimizer
 @wp.kernel
 def integrate_particles(x: wp.array(dtype=wp.vec3),
                         v: wp.array(dtype=wp.vec3),
-                        f: wp.array(dtype=wp.vec3),
+                        f_ext: wp.array(dtype=wp.vec3),
+                        f_int: wp.array(dtype=wp.vec3),
                         w: wp.array(dtype=float),
                         gravity: wp.vec3,
                         dt: float,
@@ -26,13 +27,16 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    x0 = wp.load(x, tid)
-    v0 = wp.load(v, tid)
-    f0 = wp.load(f, tid)
-    inv_mass = wp.load(w, tid)
+    x0 = x[tid]
+    v0 = v[tid]
+
+    fe = f_ext[tid]
+    fi = f_int[tid]
+
+    inv_mass = w[tid]
 
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
-    v1 = v0 + (f0 * inv_mass + gravity * wp.step(0.0 - inv_mass)) * dt
+    v1 = v0 + ((fe + fi) * inv_mass + gravity * wp.step(0.0 - inv_mass)) * dt
     x1 = x0 + v1 * dt
 
     wp.store(x_new, tid, x1)
@@ -2286,7 +2290,8 @@ class SemiImplicitIntegrator:
                     dim=model.particle_count,
                     inputs=[
                         state_in.particle_q, 
-                        state_in.particle_qd, 
+                        state_in.particle_qd,
+                        state_in.particle_f,
                         state_out.particle_f, 
                         model.particle_inv_mass, 
                         model.gravity, 

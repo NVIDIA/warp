@@ -24,6 +24,8 @@ if (warp.config.cuda_path == None):
 if (warp.config.cuda_path == None):
     raise Exception("Warp: Could not find CUDA toolkit, ensure that the CUDA_PATH environment variable is set or specify manually in warp.config.cuda_path before initialization")
 
+warp.config.mode = "release"
+warp.config.verbose = True
 
 warp.build.build_dll(
                 cpp_path=build_path + "/native/warp.cpp", 

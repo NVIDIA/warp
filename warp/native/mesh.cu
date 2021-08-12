@@ -1,3 +1,4 @@
+#include "warp.h"
 #include "mesh.h"
 #include "bvh.h"
 
@@ -33,10 +34,7 @@ void mesh_refit_device(uint64_t id)
     Mesh m;
     if (mesh_get_descriptor(id, m))
     {
-        const int num_threads_per_block = 256;
-        const int num_blocks = (m.num_tris + num_threads_per_block - 1)/num_threads_per_block;
-
-        compute_triangle_bounds<<<num_blocks, num_threads_per_block, 0, (cudaStream_t)cuda_get_stream()>>>(m.num_tris, m.points, m.indices, m.bounds);
+        launch_device(compute_triangle_bounds, m.num_tris, (cudaStream_t)cuda_get_stream(), (m.num_tris, m.points, m.indices, m.bounds));
 
         bvh_refit_device(m.bvh, m.bounds);
     }

@@ -487,12 +487,15 @@ def mem_report():
             #     mem) )
         print('Type: %s Total Tensors: %d \tUsed Memory Space: %.2f MBytes' % (mem_type, total_numel, total_mem) )
 
+    import gc
+    import torch
+
     gc.collect()
 
     LEN = 65
     objects = gc.get_objects()
     #print('%s\t%s\t\t\t%s' %('Element type', 'Size', 'Used MEM(MBytes)') )
-    tensors = [obj for obj in objects if np.is_tensor(obj)]
+    tensors = [obj for obj in objects if torch.is_tensor(obj)]
     cuda_tensors = [t for t in tensors if t.is_cuda]
     host_tensors = [t for t in tensors if not t.is_cuda]
     _mem_report(cuda_tensors, 'GPU')

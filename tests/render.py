@@ -269,4 +269,7 @@ class UsdRenderer:
 
 
     def save(self):
-        self.stage.Save()
+        try:
+            self.stage.Save()
+        except:
+            print("Failed to save USD stage")

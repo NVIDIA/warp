@@ -1,3 +1,4 @@
+#include "warp.h"
 #include "bvh.h"
 
 #include <vector>
@@ -8,8 +9,6 @@
 
 namespace wp
 {
-
-
 
 __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __restrict__ child_count, BVHPackedNodeHalf* __restrict__ lowers, BVHPackedNodeHalf* __restrict__ uppers, const bounds3* bounds)
 {
@@ -95,20 +94,11 @@ __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __
 
 void bvh_refit_device(BVH& bvh, const bounds3* b)
 {
-
     // clear child counters
     memset_device(bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
 
-    const int num_threads_per_block = 256;
-    const int num_blocks = (bvh.max_nodes + num_threads_per_block - 1)/num_threads_per_block;
-  
-    bvh_refit_kernel<<<num_blocks, num_threads_per_block, 0, (cudaStream_t)cuda_get_stream()>>>(bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b);
-
+    launch_device(bvh_refit_kernel, bvh.max_nodes, (cudaStream_t)cuda_get_stream(), (bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
 }
-
-
-
-
 
 } // namespace wp
 

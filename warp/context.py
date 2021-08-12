@@ -797,19 +797,23 @@ def capture_launch(graph):
 
 def copy(dest, src):
 
-    num_bytes = src.length*type_size_in_bytes(src.dtype)
+    src_bytes = src.length*type_size_in_bytes(src.dtype)
+    dst_bytes = dest.length*type_size_in_bytes(dest.dtype)
+
+    if (src_bytes > dst_bytes):
+        raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")
 
     if (src.device == "cpu" and dest.device == "cuda"):
-        runtime.core.memcpy_h2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
+        runtime.core.memcpy_h2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(src_bytes))
 
     elif (src.device == "cuda" and dest.device == "cpu"):
-        runtime.core.memcpy_d2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
+        runtime.core.memcpy_d2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(src_bytes))
 
     elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.core.memcpy_h2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
+        runtime.core.memcpy_h2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(src_bytes))
 
     elif (src.device == "cuda" and dest.device == "cuda"):
-        runtime.core.memcpy_d2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(num_bytes))
+        runtime.core.memcpy_d2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(src_bytes))
     
     else:
         raise RuntimeError("Unexpected source and destination combination")
@@ -866,6 +870,9 @@ def synchronize():
 
 def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], device="cpu", adjoint=False):
 
+    if (warp.config.print_launches):
+        print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
+
     if (dim > 0):
 
         # delay load modules
@@ -876,7 +883,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
         params = []
         params.append(c_long(dim))
 
-        # converts arguments to expected types and packs into params to passed to kernel def.
+        # converts arguments to kernel's expected ctypes and packs into params
         def pack_args(args, params):
 
             for i, a in enumerate(args):
@@ -963,7 +970,11 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
             else:
                 runtime.core.cuda_launch_kernel(kernel.forward_cuda, dim, kernel_params)
 
-            runtime.verify_device()
+            try:
+                runtime.verify_device()            
+            except Exception as e:
+                print(f"Error launching kernel: {kernel.key} on device {device}")
+                raise e
 
     # record on tape if one is active
     if (runtime.tape):

@@ -202,16 +202,19 @@ CUDA_CALLABLE inline bool intersect_ray_tri_rtcd(const vec3& p, const vec3& dir,
 	return true;
 }
 
-#if WP_CPU
-float __int_as_float(int i)
+#ifndef  __CUDA_ARCH__
+
+// these are provided as built-ins by CUDA
+inline float __int_as_float(int i)
 {
 	return *(float*)(&i);
 }
 
-int __float_as_int(float f)
+inline int __float_as_int(float f)
 {
 	return *(int*)(&f);
 }
+
 #endif
 
 

@@ -486,10 +486,10 @@ class array:
     def zero_(self):
 
         if (self.device == "cpu"):
-            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.capacity)
+            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.length*type_length(self.dtype))
 
         if(self.device == "cuda"):
-            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.capacity)
+            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.length*type_length(self.dtype))
 
     def numpy(self):
 
@@ -600,6 +600,7 @@ class Mesh:
             self.context.core.mesh_refit_host(self.id)
         else:
             self.context.core.mesh_refit_device(self.id)
+            self.context.verify_device()
 
 
 

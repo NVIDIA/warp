@@ -310,7 +310,7 @@ class Model:
         self.particle_radius = 0.1
         self.device = device
 
-    def state(self) -> State:
+    def state(self, requires_grad=False) -> State:
         """Returns a state object for the model
 
         The returned state will be initialized with the initial configuration given in
@@ -339,11 +339,19 @@ class Model:
             s.particle_qd = wp.clone(self.particle_qd)
             s.particle_f = wp.empty_like(self.particle_qd)
 
+            s.particle_q.requires_grad = requires_grad
+            s.particle_qd.requires_grad = requires_grad
+            s.particle_f.requires_grad = requires_grad
+
         # articulations
         if (self.body_count):
             s.body_q = wp.clone(self.body_q)
             s.body_qd = wp.clone(self.body_qd)
             s.body_f = wp.empty_like(self.body_qd)
+
+            s.body_q.requires_grad = requires_grad
+            s.body_qd.requires_grad = requires_grad
+            s.body_f.requires_grad = requires_grad
         
         return s
 

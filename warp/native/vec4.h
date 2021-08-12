@@ -232,7 +232,7 @@ inline CUDA_CALLABLE void adj_normalize(vec4 a, vec4& adj_a, const vec4& adj_ret
 
         vec4 ahat = normalize(a);
 
-        adj_a += (adj_ret - ahat*(dot(ahat, adj_ret))*invd);
+        adj_a += (adj_ret*invd - ahat*(dot(ahat, adj_ret))*invd);
 
 #if FP_CHECK
         if (!isfinite(adj_a))
