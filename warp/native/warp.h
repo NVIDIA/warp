@@ -2,11 +2,29 @@
 
 #if defined(__CUDACC__)
 
-    #if _DEBUG
+    #if _DEBUG   
         #define check_cuda(code) { cuda_report_error(code, __FILE__, __LINE__); }
+
+        // helper for launching kernels (synchronize + error checking after each kernel)
+        #define launch_device(kernel, dim, stream, args) { \
+            if (dim) { \
+            const int num_threads = 256; \
+            const int num_blocks = (dim+num_threads-1)/num_threads; \
+            kernel<<<num_blocks, 256, 0, stream>>>args; \
+            check_cuda(cuda_check_device()); } }
+
     #else
         #define check_cuda(code) code;
+
+        // helper for launching kernels (no error checking)
+        #define launch_device(kernel, dim, stream, args) { \
+            if (dim) { \
+            const int num_threads = 256; \
+            const int num_blocks = (dim+num_threads-1)/num_threads; \
+            kernel<<<num_blocks, 256, 0, stream>>>args; } }
+
     #endif
+
 
 #endif
 

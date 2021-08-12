@@ -8,6 +8,18 @@ from ctypes import *
 import warp.config
 from warp.utils import ScopedTimer
 
+def run_cmd(cmd, capture=False):
+    
+    if (warp.config.verbose):
+        print(cmd)
+
+    try:
+        return subprocess.check_output(cmd, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(e.output.decode())
+        raise(e)
+        
+
 # runs vcvars and copies back the build environment
 def find_host_compiler():
 
@@ -42,21 +54,12 @@ def find_host_compiler():
         
         # try and find g++
         try:
-            return subprocess.check_output("which g++").decode()
+            return run_cmd("which g++").decode()
         except:
             return None
 
 
-def run_cmd(cmd):
 
-    if (warp.config.verbose):
-        print(cmd)
-
-    try:
-        subprocess.check_output(cmd, stderr=subprocess.DEVNULL, shell=True)
-    except subprocess.CalledProcessError as e:
-        print(e.output.decode())
-        raise(e)
 
 
 # See PyTorch for reference on how to find nvcc.exe more robustly, https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
@@ -77,7 +80,9 @@ def build_cuda(cu_path, ptx_path, config="release", force=False):
     inc_path = os.path.dirname(cu_path).encode('utf-8')
     ptx_path = ptx_path.encode('utf-8')
 
-    warp.context.runtime.core.cuda_compile_program(src, inc_path, False, warp.config.verbose, ptx_path)
+    err = warp.context.runtime.core.cuda_compile_program(src, inc_path, False, warp.config.verbose, ptx_path)
+    if (err):
+        raise Exception("CUDA build failed")
 
 # load ptx to a CUDA runtime module    
 def load_cuda(ptx_path):
@@ -188,7 +193,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
 
 
         with ScopedTimer("build", active=warp.config.verbose):
-            build_cmd = 'g++ {cflags} -c -o "{cpp_out}" "{cpp_path}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
+            build_cmd = 'g++ {cflags} -c "{cpp_path}" -o "{cpp_out}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
             run_cmd(build_cmd)
 
             ld_inputs.append(quote(cpp_out))

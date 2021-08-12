@@ -212,7 +212,7 @@ def collide(model, state):
         inputs=[
             model.particle_count,
             state.particle_q, 
-            state.body_X_sc,
+            state.body_q,
             model.shape_transform,
             model.shape_body,
             model.shape_geo_type, 

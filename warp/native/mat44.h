@@ -85,15 +85,15 @@ struct mat44
     float data[4][4];
 };
 
-#ifdef WP_CUDA
-inline __device__ void atomic_add(mat44 * addr, mat44 value) {
+
+inline CUDA_CALLABLE void atomic_add(mat44 * addr, mat44 value) {
     for (int i=0; i < 4; ++i)
     {
         for (int j=0; j < 4; ++j)
-        atomicAdd(&addr->data[i][j], value.data[i][j]);
+        atomic_add(&addr->data[i][j], value.data[i][j]);
     }
 }
-#endif
+
 
 inline CUDA_CALLABLE void adj_mat44(
     vec4 c0, vec4 c1, vec4 c2, vec4 c3,
@@ -235,8 +235,8 @@ inline CUDA_CALLABLE void adj_add(const mat44& a, const mat44& b, mat44& adj_a, 
     {
         for (int j=0; j < 4; ++j)
         {
-            adj_a.data[i][j] = adj_ret.data[i][j];
-            adj_b.data[i][j] = adj_ret.data[i][j];
+            adj_a.data[i][j] += adj_ret.data[i][j];
+            adj_b.data[i][j] += adj_ret.data[i][j];
         }
     }
 }

@@ -140,38 +140,15 @@ class State:
         particle_q (wp.array): Tensor of particle positions
         particle_qd (wp.array): Tensor of particle velocities
 
-        joint_q (wp.array): Tensor of joint coordinates
-        joint_qd (wp.array): Tensor of joint velocities
-        joint_act (wp.array): Tensor of joint actuation values
+        body_q (wp.array): Tensor of body coordinates
+        body_qd (wp.array): Tensor of body velocities
 
     """
 
     def __init__(self):
         
         self.particle_count = 0
-        self.link_count = 0
-
-    # def flatten(self):
-    #     """Returns a list of Tensors stored by the state
-
-    #     This function is intended to be used internal-only but can be used to obtain
-    #     a set of all tensors owned by the state.
-    #     """
-
-    #     tensors = []
-
-    #     # particles
-    #     if (self.particle_count):
-    #         tensors.append(self.particle_q)
-    #         tensors.append(self.particle_qd)
-
-    #     # articulations
-    #     if (self.link_count):
-    #         tensors.append(self.joint_q)
-    #         tensors.append(self.joint_qd)
-    #         tensors.append(self.joint_act)
-
-    #     return tensors
+        self.body_count = 0
 
 
     def flatten(self):
@@ -228,30 +205,21 @@ class Model:
         tet_activations (wp.array): Tetrahedral volumetric activations, shape [tet_count], float
         tet_materials (wp.array): Tetrahedral elastic parameters in form :math:`k_{mu}, k_{lambda}, k_{damp}`, shape [tet_count, 3]
         
-        body_X_cm (wp.array): Rigid body center of mass (in local frame), shape [link_count, 7], float
-        body_I_m (wp.array): Rigid body inertia tensor (relative to COM), shape [link_count, 3, 3], float
+        body_com (wp.array): Rigid body center of mass (in local frame), shape [body_count, 7], float
+        body_inertia (wp.array): Rigid body inertia tensor (relative to COM), shape [body_count, 3, 3], float
 
-        articulation_start (wp.array): Articulation start offset, shape [num_articulations], int
-
-        joint_q (wp.array): Joint coordinate, shape [joint_coord_count], float
-        joint_qd (wp.array): Joint velocity, shape [joint_dof_count], float
         joint_type (wp.array): Joint type, shape [joint_count], int
         joint_parent (wp.array): Joint parent, shape [joint_count], int
         joint_X_pj (wp.array): Joint transform in parent frame, shape [joint_count, 7], float
         joint_X_cm (wp.array): Joint mass frame in child frame, shape [joint_count, 7], float
         joint_axis (wp.array): Joint axis in child frame, shape [joint_count, 3], float
-        joint_q_start (wp.array): Joint coordinate offset, shape [joint_count], int
-        joint_qd_start (wp.array): Joint velocity offset, shape [joint_count], int
-
         joint_armature (wp.array): Armature for each joint, shape [joint_count], float
         joint_target_ke (wp.array): Joint stiffness, shape [joint_count], float
         joint_target_kd (wp.array): Joint damping, shape [joint_count], float
         joint_target (wp.array): Joint target, shape [joint_count], float
 
         particle_count (int): Total number of particles in the system
-        joint_coord_count (int): Total number of joint coordinates in the system
-        joint_dof_count (int): Total number of joint dofs in the system
-        link_count (int): Total number of links in the system
+        body_count (int): Total number of bodies in the system
         shape_count (int): Total number of shapes in the system
         tri_count (int): Total number of triangles in the system
         tet_count (int): Total number of tetrahedra in the system
@@ -297,30 +265,22 @@ class Model:
         self.tet_activations = None
         self.tet_materials = None
         
-        self.body_X_cm = None
-        self.body_I_m = None
+        self.body_com = None
+        self.body_inertia = None
 
-        self.articulation_start = None
-
-        self.joint_q = None
-        self.joint_qd = None
         self.joint_type = None
         self.joint_parent = None
-        self.joint_X_pj = None
-        self.joint_X_cm = None
+        self.joint_child = None
+        self.joint_X_p = None
+        self.joint_X_c = None
         self.joint_axis = None
-        self.joint_q_start = None
-        self.joint_qd_start = None
-
         self.joint_armature = None
         self.joint_target_ke = None
         self.joint_target_kd = None
         self.joint_target = None
 
         self.particle_count = 0
-        self.joint_coord_count = 0
-        self.joint_dof_count = 0
-        self.link_count = 0
+        self.body_count = 0
         self.shape_count = 0
         self.tri_count = 0
         self.tet_count = 0
@@ -350,7 +310,7 @@ class Model:
         self.particle_radius = 0.1
         self.device = device
 
-    def state(self) -> State:
+    def state(self, requires_grad=False) -> State:
         """Returns a state object for the model
 
         The returned state will be initialized with the initial configuration given in
@@ -360,59 +320,39 @@ class Model:
         s = State()
 
         s.particle_count = self.particle_count
-        s.link_count = self.link_count
+        s.body_count = self.body_count
 
         #--------------------------------
         # dynamic state (input, output)
-          
+
+        s.particle_q = None
+        s.particle_qd = None
+        s.particle_f = None
+
+        s.body_q = None
+        s.body_qd = None
+        s.body_f = None
+
         # particles
         if (self.particle_count):
             s.particle_q = wp.clone(self.particle_q)
             s.particle_qd = wp.clone(self.particle_qd)
+            s.particle_f = wp.empty_like(self.particle_qd)
+
+            s.particle_q.requires_grad = requires_grad
+            s.particle_qd.requires_grad = requires_grad
+            s.particle_f.requires_grad = requires_grad
 
         # articulations
-        if (self.link_count):
-            s.joint_q = wp.clone(self.joint_q)
-            s.joint_qd = wp.clone(self.joint_qd)
-            s.joint_act = wp.zeros_like(self.joint_qd)
+        if (self.body_count):
+            s.body_q = wp.clone(self.body_q)
+            s.body_qd = wp.clone(self.body_qd)
+            s.body_f = wp.empty_like(self.body_qd)
 
-        #--------------------------------
-        # derived state (output only)
+            s.body_q.requires_grad = requires_grad
+            s.body_qd.requires_grad = requires_grad
+            s.body_f.requires_grad = requires_grad
         
-        if (self.particle_count):
-            s.particle_f = wp.empty_like(self.particle_qd, requires_grad=True)
-
-        if (self.link_count):
-
-            # joints
-            s.joint_qdd = wp.empty_like(self.joint_qd, requires_grad=True)
-            s.joint_tau = wp.empty_like(self.joint_qd, requires_grad=True)
-            s.joint_S_s = wp.empty((self.joint_dof_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)            
-
-            # rigids
-            s.body_X_sc = wp.empty((self.link_count, 7), dtype=wp.float32, device=self.device, requires_grad=True)
-            s.body_X_sm = wp.empty((self.link_count, 7), dtype=wp.float32, device=self.device, requires_grad=True)
-            s.body_I_s = wp.empty((self.link_count, 6, 6), dtype=wp.float32, device=self.device, requires_grad=True)
-            s.body_v_s = wp.empty((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
-            s.body_a_s = wp.empty((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
-            s.body_f_s = wp.zeros((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
-            #s.body_ft_s = wp.zeros((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
-            #s.body_f_ext_s = wp.zeros((self.link_count, 6), dtype=wp.float32, device=self.device, requires_grad=True)
-
-            # system matrices
-            s.M = wp.zeros(self.M_size, dtype=wp.float32, device=self.device, requires_grad=True)
-            s.J = wp.zeros(self.J_size, dtype=wp.float32, device=self.device, requires_grad=True)
-            s.P = wp.empty(self.J_size, dtype=wp.float32, device=self.device, requires_grad=True)
-            s.H = wp.empty(self.H_size, dtype=wp.float32, device=self.device, requires_grad=True)
-            
-            # zero since only upper triangle is set which can trigger NaN detection
-            s.L = wp.zeros(self.H_size, dtype=wp.float32, device=self.device, requires_grad=True)
-
-        else:
-
-            s.body_X_sc = None
-            s.body_v_s = None
-
         return s
 
     def flatten(self):
@@ -467,66 +407,70 @@ class Model:
         def add_contact(b0, b1, t, p0, d, m):
             body0.append(b0)
             body1.append(b1)
-            point.append(transform_point(t, np.array(p0)))
+            point.append(wp.transform_point(t, np.array(p0)))
             dist.append(d)
             mat.append(m)
+
+        # pull shape data back to CPU 
+        shape_transform = self.shape_transform.to("cpu").numpy()
+        shape_body = self.shape_body.to("cpu").numpy()
+        shape_geo_type = self.shape_geo_type.to("cpu").numpy()
+        shape_geo_scale = self.shape_geo_scale.to("cpu").numpy()
+        shape_geo_src = self.shape_geo_src # already numpy
 
         for i in range(self.shape_count):
 
             # transform from shape to body
-            X_bs = transform_expand(self.shape_transform[i].tolist())
+            X_bs = wp.transform_expand(shape_transform[i].tolist())
 
-            geo_type = self.shape_geo_type[i].item()
+            geo_type = shape_geo_type[i].item()
 
             if (geo_type == GEO_SPHERE):
 
-                radius = self.shape_geo_scale[i][0].item()
+                radius = shape_geo_scale[i][0].item()
 
-                add_contact(self.shape_body[i], -1, X_bs, (0.0, 0.0, 0.0), radius, i)
+                add_contact(shape_body[i], -1, X_bs, (0.0, 0.0, 0.0), radius, i)
 
             elif (geo_type == GEO_CAPSULE):
 
-                radius = self.shape_geo_scale[i][0].item()
-                half_width = self.shape_geo_scale[i][1].item()
+                radius = shape_geo_scale[i][0].item()
+                half_width = shape_geo_scale[i][1].item()
 
-                add_contact(self.shape_body[i], -1, X_bs, (-half_width, 0.0, 0.0), radius, i)
-                add_contact(self.shape_body[i], -1, X_bs, (half_width, 0.0, 0.0), radius, i)
+                add_contact(shape_body[i], -1, X_bs, (-half_width, 0.0, 0.0), radius, i)
+                add_contact(shape_body[i], -1, X_bs, (half_width, 0.0, 0.0), radius, i)
 
             elif (geo_type == GEO_BOX):
 
-                edges = self.shape_geo_scale[i].tolist()
+                edges = shape_geo_scale[i].tolist()
 
-                add_contact(self.shape_body[i], -1, X_bs, (-edges[0], -edges[1], -edges[2]), 0.0, i)        
-                add_contact(self.shape_body[i], -1, X_bs, ( edges[0], -edges[1], -edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (-edges[0],  edges[1], -edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (edges[0], edges[1], -edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (-edges[0], -edges[1], edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (edges[0], -edges[1], edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (-edges[0], edges[1], edges[2]), 0.0, i)
-                add_contact(self.shape_body[i], -1, X_bs, (edges[0], edges[1], edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (-edges[0], -edges[1], -edges[2]), 0.0, i)        
+                add_contact(shape_body[i], -1, X_bs, ( edges[0], -edges[1], -edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (-edges[0],  edges[1], -edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (edges[0], edges[1], -edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (-edges[0], -edges[1], edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (edges[0], -edges[1], edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (-edges[0], edges[1], edges[2]), 0.0, i)
+                add_contact(shape_body[i], -1, X_bs, (edges[0], edges[1], edges[2]), 0.0, i)
 
             elif (geo_type == GEO_MESH):
 
-                mesh = self.shape_geo_src[i]
-                scale = self.shape_geo_scale[i]
+                mesh = shape_geo_src[i]
+                scale = shape_geo_scale[i]
 
                 for v in mesh.vertices:
 
                     p = (v[0] * scale[0], v[1] * scale[1], v[2] * scale[2])
 
-                    add_contact(self.shape_body[i], -1, X_bs, p, 0.0, i)
+                    add_contact(shape_body[i], -1, X_bs, p, 0.0, i)
 
         # send to wp
         self.contact_body0 = wp.array(body0, dtype=wp.int32, device=self.device)
         self.contact_body1 = wp.array(body1, dtype=wp.int32, device=self.device)
-        self.contact_point0 = wp.array(point, dtype=wp.float32, device=self.device)
+        self.contact_point0 = wp.array(point, dtype=wp.vec3, device=self.device)
         self.contact_dist = wp.array(dist, dtype=wp.float32, device=self.device)
         self.contact_material = wp.array(mat, dtype=wp.int32, device=self.device)
 
         self.contact_count = len(body0)
-
-
-
 
 
 class ModelBuilder:
@@ -606,18 +550,23 @@ class ModelBuilder:
         self.muscle_start = []
         self.muscle_params = []
         self.muscle_activation = []
-        self.muscle_links = []
+        self.muscle_bodies = []
         self.muscle_points = []
 
         # rigid bodies
+        self.body_mass = []
+        self.body_inertia = []
+        self.body_com = []
+        self.body_q = []
+        self.body_qd = []
+
+        # rigid joints
         self.joint_parent = []         # index of the parent body                      (constant)
         self.joint_child = []          # index of the child body                       (constant)
         self.joint_axis = []           # joint axis in child joint frame               (constant)
-        self.joint_X_pj = []           # frame of joint in parent                      (constant)
-        self.joint_X_cm = []           # frame of child com (in child coordinates)     (constant)
+        self.joint_X_p = []            # frame of joint in parent                      (constant)
+        self.joint_X_c = []            # frame of child com (in child coordinates)     (constant)
 
-        self.joint_q_start = []        # joint offset in the q array
-        self.joint_qd_start = []       # joint offset in the qd array
         self.joint_type = []
         self.joint_armature = []
         self.joint_target_ke = []
@@ -628,46 +577,25 @@ class ModelBuilder:
         self.joint_limit_ke = []
         self.joint_limit_kd = []
 
-        self.joint_q = []              # generalized coordinates       (input)
-        self.joint_qd = []             # generalized velocities        (input)
-        self.joint_qdd = []            # generalized accelerations     (id,fd)
-        self.joint_tau = []            # generalized actuation         (input)
-        self.joint_u = []              # generalized total torque      (fd)
-
-        self.body_mass = []
-        self.body_inertia = []
-        self.body_com = []
-
-        self.articulation_start = []
-
-    def add_articulation(self) -> int:
-        """Add an articulation object, all subsequently added links (see: :func:`add_link`) will belong to this articulation object. 
-        Calling this method multiple times 'closes' any previous articulations and begins a new one.
-
-        Returns:
-            The index of the articulation
-        """
-        self.articulation_start.append(len(self.joint_type))
-        return len(self.articulation_start)-1
-
 
     # rigids, register a rigid body and return its index.
-    def add_link(
+    def add_body(
         self, 
-        parent : int, 
         X_pj : Transform, 
-        axis : Vec3, 
-        type : int, 
-        armature: float=0.0, 
-        stiffness: float=0.0, 
+        parent : int=-1, 
+        axis : Vec3=(0.0, 0.0, 0.0),
+        type : int=JOINT_FREE,
+        armature: float=0.0,
+        stiffness: float=0.0,
         damping: float=0.0,
         limit_lower: float=-1.e+3,
         limit_upper: float=1.e+3,
         limit_ke: float=100.0,
         limit_kd: float=10.0,
-        com: Vec3=np.zeros(3), 
+        com: Vec3=np.zeros(3),
         I_m: Mat33=np.zeros((3, 3)), 
         m: float=0.0) -> int:
+
         """Adds a rigid body to the model.
 
         Args:
@@ -690,11 +618,23 @@ class ModelBuilder:
 
         """
 
+        child = len(self.body_mass)
+
+        # body data
+        self.body_inertia.append(np.zeros((3, 3)))
+        self.body_mass.append(0.0)
+        self.body_com.append(np.zeros(3))
+        
+        self.body_q.append(X_pj)
+        self.body_qd.append(wp.spatial_vector())
+
         # joint data
         self.joint_type.append(type)
         self.joint_axis.append(np.array(axis))
         self.joint_parent.append(parent)
-        self.joint_X_pj.append(X_pj)
+        self.joint_child.append(child)
+        self.joint_X_p.append(X_pj)
+        self.joint_X_c.append(wp.transform_identity())
 
         self.joint_target_ke.append(stiffness)
         self.joint_target_kd.append(damping)
@@ -702,110 +642,30 @@ class ModelBuilder:
         self.joint_limit_kd.append(limit_kd)
         self.joint_armature.append(armature)
 
-        self.joint_q_start.append(len(self.joint_q))
-        self.joint_qd_start.append(len(self.joint_qd))
+        # pd targets
+        self.joint_target.append(0.0)
+        self.joint_target.append(0.0)
+        self.joint_target.append(0.0)
 
-        if (type == JOINT_PRISMATIC):
-            self.joint_q.append(0.0)
-            self.joint_qd.append(0.0)
-            self.joint_target.append(0.0)
-            self.joint_limit_lower.append(limit_lower)
-            self.joint_limit_upper.append(limit_upper)
+        self.joint_limit_lower.append(limit_lower)
+        self.joint_limit_lower.append(limit_lower)
+        self.joint_limit_lower.append(limit_lower)
+        
+        self.joint_limit_upper.append(limit_upper)
+        self.joint_limit_upper.append(limit_upper)
+        self.joint_limit_upper.append(limit_upper)
 
-        elif (type == JOINT_REVOLUTE):
-            self.joint_q.append(0.0)
-            self.joint_qd.append(0.0)
-            self.joint_target.append(0.0)
-            self.joint_limit_lower.append(limit_lower)
-            self.joint_limit_upper.append(limit_upper)
-
-        elif (type == JOINT_BALL):
-            
-            # quaternion
-            self.joint_q.append(0.0)
-            self.joint_q.append(0.0)
-            self.joint_q.append(0.0)
-            self.joint_q.append(1.0)
-
-            # angular velocity
-            self.joint_qd.append(0.0)
-            self.joint_qd.append(0.0)
-            self.joint_qd.append(0.0)
-
-            # pd targets
-            self.joint_target.append(0.0)
-            self.joint_target.append(0.0)
-            self.joint_target.append(0.0)
-
-            self.joint_limit_lower.append(limit_lower)
-            self.joint_limit_lower.append(limit_lower)
-            self.joint_limit_lower.append(limit_lower)
-            self.joint_limit_lower.append(0.0)
-                       
-            self.joint_limit_upper.append(limit_upper)
-            self.joint_limit_upper.append(limit_upper)
-            self.joint_limit_upper.append(limit_upper)
-            self.joint_limit_upper.append(0.0)
-
-
-        elif (type == JOINT_FIXED):
-            pass
-        elif (type == JOINT_FREE):
-
-            # translation
-            self.joint_q.append(0.0)
-            self.joint_q.append(0.0)
-            self.joint_q.append(0.0)
-
-            # quaternion
-            self.joint_q.append(0.0)
-            self.joint_q.append(0.0)
-            self.joint_q.append(0.0)
-            self.joint_q.append(1.0)
-
-            self.joint_target.append(0.0)
-            self.joint_target.append(0.0)
-            self.joint_target.append(0.0)
-            self.joint_target.append(0.0)
-            self.joint_target.append(0.0)
-            self.joint_target.append(0.0)
-            self.joint_target.append(0.0)
-
-            self.joint_limit_lower.append(0.0)
-            self.joint_limit_lower.append(0.0)
-            self.joint_limit_lower.append(0.0)
-            self.joint_limit_lower.append(0.0)
-            self.joint_limit_lower.append(0.0)
-            self.joint_limit_lower.append(0.0)
-            self.joint_limit_lower.append(0.0)
-                       
-            self.joint_limit_upper.append(0.0)
-            self.joint_limit_upper.append(0.0)
-            self.joint_limit_upper.append(0.0)
-            self.joint_limit_upper.append(0.0)
-            self.joint_limit_upper.append(0.0)
-            self.joint_limit_upper.append(0.0)
-            self.joint_limit_upper.append(0.0)
-
-            # joint velocities
-            for i in range(6):
-                self.joint_qd.append(0.0)
-
-        self.body_inertia.append(np.zeros((3, 3)))
-        self.body_mass.append(0.0)
-        self.body_com.append(np.zeros(3))
-
-        # return index of body
-        return len(self.joint_type) - 1
+        # return index of child body / joint
+        return child
 
 
     # muscles
-    def add_muscle(self, links: List[int], positions: List[Vec3], f0: float, lm: float, lt: float, lmax: float, pen: float) -> float:
+    def add_muscle(self, bodies: List[int], positions: List[Vec3], f0: float, lm: float, lt: float, lmax: float, pen: float) -> float:
         """Adds a muscle-tendon activation unit
 
         Args:
-            links: A list of link indices for each waypoint
-            positions: A list of positions of each waypoint in the link's local frame
+            bodies: A list of body indices for each waypoint
+            positions: A list of positions of each waypoint in the body's local frame
             f0: Force scaling
             lm: Muscle length
             lt: Tendon length
@@ -816,15 +676,15 @@ class ModelBuilder:
 
         """
 
-        n = len(links)
+        n = len(bodies)
 
-        self.muscle_start.append(len(self.muscle_links))
+        self.muscle_start.append(len(self.muscle_bodies))
         self.muscle_params.append((f0, lm, lt, lmax, pen))
         self.muscle_activation.append(0.0)
 
         for i in range(n):
 
-            self.muscle_links.append(links[i])
+            self.muscle_bodies.append(bodies[i])
             self.muscle_points.append(positions[i])
 
         # return the index of the muscle
@@ -845,10 +705,10 @@ class ModelBuilder:
         self._add_shape(-1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), GEO_PLANE, plane, None, 0.0, ke, kd, kf, mu)
 
     def add_shape_sphere(self, body, pos: Vec3=(0.0, 0.0, 0.0), rot: Quat=(0.0, 0.0, 0.0, 1.0), radius: float=1.0, density: float=1000.0, ke: float=1.e+5, kd: float=1000.0, kf: float=1000.0, mu: float=0.5):
-        """Adds a sphere collision shape to a link.
+        """Adds a sphere collision shape to a body.
 
         Args:
-            body: The index of the parent link this shape belongs to
+            body: The index of the parent body this shape belongs to
             pos: The location of the shape with respect to the parent frame
             rot: The rotation of the shape with respect to the parent frame
             radius: The radius of the sphere
@@ -874,10 +734,10 @@ class ModelBuilder:
                       kd: float=1000.0,
                       kf: float=1000.0,
                       mu: float=0.5):
-        """Adds a box collision shape to a link.
+        """Adds a box collision shape to a body.
 
         Args:
-            body: The index of the parent link this shape belongs to
+            body: The index of the parent body this shape belongs to
             pos: The location of the shape with respect to the parent frame
             rot: The rotation of the shape with respect to the parent frame
             hx: The half-extents along the x-axis
@@ -904,10 +764,10 @@ class ModelBuilder:
                           kd: float=1000.0,
                           kf: float=1000.0,
                           mu: float=0.5):
-        """Adds a capsule collision shape to a link.
+        """Adds a capsule collision shape to a body.
 
         Args:
-            body: The index of the parent link this shape belongs to
+            body: The index of the parent body this shape belongs to
             pos: The location of the shape with respect to the parent frame
             rot: The rotation of the shape with respect to the parent frame
             radius: The radius of the capsule
@@ -933,10 +793,10 @@ class ModelBuilder:
                        kd: float=1000.0,
                        kf: float=1000.0,
                        mu: float=0.5):
-        """Adds a triangle mesh collision shape to a link.
+        """Adds a triangle mesh collision shape to a body.
 
         Args:
-            body: The index of the parent link this shape belongs to
+            body: The index of the parent body this shape belongs to
             pos: The location of the shape with respect to the parent frame
             rot: The rotation of the shape with respect to the parent frame
             mesh: The mesh object
@@ -1635,7 +1495,7 @@ class ModelBuilder:
         com_offset = new_com - self.body_com[i]
         shape_offset = new_com - p
 
-        new_inertia = transform_inertia(self.body_mass[i], self.body_inertia[i], com_offset, quat_identity()) + transform_inertia(
+        new_inertia = wp.transform_inertia(self.body_mass[i], self.body_inertia[i], com_offset, wp.quat_identity()) + wp.transform_inertia(
             m, I, shape_offset, q)
 
         self.body_mass[i] = new_mass
@@ -1659,11 +1519,23 @@ class ModelBuilder:
 
         # construct particle inv masses
         particle_inv_mass = []
+        
         for m in self.particle_mass:
             if (m > 0.0):
                 particle_inv_mass.append(1.0 / m)
             else:
                 particle_inv_mass.append(0.0)
+
+
+        # construct rigid inv masses
+        body_inv_mass = []
+        body_inv_inertia = []
+        
+        for m in self.body_mass:
+            body_inv_mass.append(1.0/m)
+        
+        for i in self.body_inertia:
+            body_inv_inertia.append(np.linalg.inv(i))
 
         #-------------------------------------
         # construct Model (non-time varying) data
@@ -1676,13 +1548,12 @@ class ModelBuilder:
         # state (initial)
         m.particle_q = wp.array(self.particle_q, dtype=wp.vec3, device=device)
         m.particle_qd = wp.array(self.particle_qd, dtype=wp.vec3, device=device)
-
-        # model 
         m.particle_mass = wp.array(self.particle_mass, dtype=wp.float32, device=device)
         m.particle_inv_mass = wp.array(particle_inv_mass, dtype=wp.float32, device=device)
 
         #---------------------
         # collision geometry
+
         m.shape_transform = wp.array(wp.transform_flatten_list(self.shape_transform), dtype=wp.spatial_transform, device=device)
         m.shape_body = wp.array(self.shape_body, dtype=wp.int32, device=device)
         m.shape_geo_type = wp.array(self.shape_geo_type, dtype=wp.int32, device=device)
@@ -1733,120 +1604,36 @@ class ModelBuilder:
         #-----------------------
         # muscles
 
-        muscle_count = len(self.muscle_start)
-
         # close the muscle waypoint indices
-        self.muscle_start.append(len(self.muscle_links))
+        self.muscle_start.append(len(self.muscle_bodies))
 
         m.muscle_start = wp.array(self.muscle_start, dtype=wp.int32, device=device)
         m.muscle_params = wp.array(self.muscle_params, dtype=wp.float32, device=device)
-        m.muscle_links = wp.array(self.muscle_links, dtype=wp.int32, device=device)
+        m.muscle_bodies = wp.array(self.muscle_bodies, dtype=wp.int32, device=device)
         m.muscle_points = wp.array(self.muscle_points, dtype=wp.float32, device=device)
         m.muscle_activation = wp.array(self.muscle_activation, dtype=wp.float32, device=device)
 
         #--------------------------------------
-        # articulations
-
-        # build 6x6 spatial inertia and COM transform
-        body_X_cm = []
-        body_I_m = [] 
-
-        for i in range(len(self.body_inertia)):
-            body_I_m.append(wp.spatial_matrix_from_inertia(self.body_inertia[i], self.body_mass[i]))
-            body_X_cm.append(wp.transform(self.body_com[i], wp.quat_identity()))
+        # rigid bodies
         
-        m.body_I_m = wp.array(body_I_m, dtype=wp.float32, device=device)
-
-
-        articulation_count = len(self.articulation_start)
-        joint_coord_count = len(self.joint_q)
-        joint_dof_count = len(self.joint_qd)
-
-        # 'close' the start index arrays with a sentinel value
-        self.joint_q_start.append(len(self.joint_q))
-        self.joint_qd_start.append(len(self.joint_qd))
-        self.articulation_start.append(len(self.joint_type))        
-
-        # calculate total size and offsets of Jacobian and mass matrices for entire system
-        m.J_size = 0
-        m.M_size = 0
-        m.H_size = 0
-
-        articulation_J_start = []
-        articulation_M_start = []
-        articulation_H_start = []
-
-        articulation_M_rows = []
-        articulation_H_rows = []
-        articulation_J_rows = []
-        articulation_J_cols = []
-
-        articulation_dof_start = []
-        articulation_coord_start = []
-
-        for i in range(articulation_count):
-
-            first_joint = self.articulation_start[i]
-            last_joint = self.articulation_start[i+1]
-
-            first_coord = self.joint_q_start[first_joint]
-            last_coord = self.joint_q_start[last_joint]
-
-            first_dof = self.joint_qd_start[first_joint]
-            last_dof = self.joint_qd_start[last_joint]
-
-            joint_count = last_joint-first_joint
-            dof_count = last_dof-first_dof
-            coord_count = last_coord-first_coord
-
-            articulation_J_start.append(m.J_size)
-            articulation_M_start.append(m.M_size)
-            articulation_H_start.append(m.H_size)
-            articulation_dof_start.append(first_dof)
-            articulation_coord_start.append(first_coord)
-
-            # bit of data duplication here, but will leave it as such for clarity
-            articulation_M_rows.append(joint_count*6)
-            articulation_H_rows.append(dof_count)
-            articulation_J_rows.append(joint_count*6)
-            articulation_J_cols.append(dof_count)
-
-            m.J_size += 6*joint_count*dof_count
-            m.M_size += 6*joint_count*6*joint_count
-            m.H_size += dof_count*dof_count
-            
-
-        m.articulation_joint_start = wp.array(self.articulation_start, dtype=wp.int32, device=device)
-
-        # matrix offsets for batched gemm
-        m.articulation_J_start = wp.array(articulation_J_start, dtype=wp.int32, device=device)
-        m.articulation_M_start = wp.array(articulation_M_start, dtype=wp.int32, device=device)
-        m.articulation_H_start = wp.array(articulation_H_start, dtype=wp.int32, device=device)
-        
-        m.articulation_M_rows = wp.array(articulation_M_rows, dtype=wp.int32, device=device)
-        m.articulation_H_rows = wp.array(articulation_H_rows, dtype=wp.int32, device=device)
-        m.articulation_J_rows = wp.array(articulation_J_rows, dtype=wp.int32, device=device)
-        m.articulation_J_cols = wp.array(articulation_J_cols, dtype=wp.int32, device=device)
-
-        m.articulation_dof_start = wp.array(articulation_dof_start, dtype=wp.int32, device=device)
-        m.articulation_coord_start = wp.array(articulation_coord_start, dtype=wp.int32, device=device)
-
-        # state (initial)
-        m.joint_q = wp.array(self.joint_q, dtype=wp.float32, device=device)
-        m.joint_qd = wp.array(self.joint_qd, dtype=wp.float32, device=device)
+        m.body_q = wp.array(wp.transform_flatten_list(self.body_q), dtype=wp.spatial_transform, device=device)
+        m.body_qd = wp.array(self.body_qd, dtype=wp.spatial_vector, device=device)
+        m.body_inertia = wp.array(self.body_inertia, dtype=wp.mat33, device=device)
+        m.body_inv_inertia = wp.array(body_inv_inertia, dtype=wp.mat33, device=device)
+        m.body_mass = wp.array(self.body_mass, dtype=wp.float32, device=device)
+        m.body_inv_mass = wp.array(body_inv_mass, dtype=wp.float32, device=device)
+        m.body_com = wp.array(self.body_com, dtype=wp.vec3, device=device)
 
         # model
         m.joint_type = wp.array(self.joint_type, dtype=wp.int32, device=device)
         m.joint_parent = wp.array(self.joint_parent, dtype=wp.int32, device=device)
-        m.joint_X_pj = wp.array(wp.transform_flatten_list(self.joint_X_pj), dtype=wp.float32, device=device)
-        m.joint_X_cm = wp.array(wp.transform_flatten_list(body_X_cm), dtype=wp.float32, device=device)
+        m.joint_child = wp.array(self.joint_child, dtype=wp.int32, device=device)
+        m.joint_X_p = wp.array(wp.transform_flatten_list(self.joint_X_p), dtype=wp.spatial_transform, device=device)
+        m.joint_X_c = wp.array(wp.transform_flatten_list(self.joint_X_c), dtype=wp.spatial_transform, device=device)
         m.joint_axis = wp.array(self.joint_axis, dtype=wp.float32, device=device)
-        m.joint_q_start = wp.array(self.joint_q_start, dtype=wp.int32, device=device) 
-        m.joint_qd_start = wp.array(self.joint_qd_start, dtype=wp.int32, device=device)
 
         # dynamics properties
         m.joint_armature = wp.array(self.joint_armature, dtype=wp.float32, device=device)
-        
         m.joint_target = wp.array(self.joint_target, dtype=wp.float32, device=device)
         m.joint_target_ke = wp.array(self.joint_target_ke, dtype=wp.float32, device=device)
         m.joint_target_kd = wp.array(self.joint_target_kd, dtype=wp.float32, device=device)
@@ -1868,18 +1655,14 @@ class ModelBuilder:
 
         # counts
         m.particle_count = len(self.particle_q)
-
-        m.articulation_count = articulation_count
-        m.joint_coord_count = joint_coord_count
-        m.joint_dof_count = joint_dof_count
-        m.muscle_count = muscle_count
-
-        m.link_count = len(self.joint_type)        
+        m.body_count = len(self.body_q)
         m.shape_count = len(self.shape_geo_type)
         m.tri_count = len(self.tri_poses)
         m.tet_count = len(self.tet_poses)
         m.edge_count = len(self.edge_rest_angle)
         m.spring_count = len(self.spring_rest_length)
+        m.muscle_count = len(self.muscle_start)-1       # -1 due to sentinel value
+
         m.contact_count = 0
         
         # store refs to geometry
@@ -1892,7 +1675,6 @@ class ModelBuilder:
 
         m.enable_tri_collisions = False
 
-        #-------------------------------------
-        # construct generalized State (time-varying) vector
-
         return m
+
+

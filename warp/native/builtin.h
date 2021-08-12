@@ -285,6 +285,20 @@ inline CUDA_CALLABLE int tid()
 #endif
 }
 
+
+template<typename T>
+inline CUDA_CALLABLE T atomic_add(T* buf, T value)
+{
+#if defined(WP_CPU)
+    T old = buf[0];
+    buf[0] += value;
+    return old;
+#elif defined(WP_CUDA)
+    return atomicAdd(buf, value);
+#endif
+}
+
+
 } // namespace wp
 
 #include "vec2.h"
@@ -304,6 +318,19 @@ namespace wp
 {
 
 template<typename T>
+inline CUDA_CALLABLE T atomic_add(T* buf, int index, T value)
+{
+    return atomic_add(buf + index, value);
+}
+
+template<typename T>
+inline CUDA_CALLABLE T atomic_sub(T* buf, int index, T value)
+{
+    return atomic_add(buf + index, -value);
+}
+
+
+template<typename T>
 inline CUDA_CALLABLE T load(T* buf, int index)
 {
     assert(buf);
@@ -320,30 +347,6 @@ inline CUDA_CALLABLE void store(T* buf, int index, T value)
     }
 }
 
-
-template<typename T>
-inline CUDA_CALLABLE T atomic_add(T* buf, T value)
-{
-#if defined(WP_CPU)
-    T old = buf[0];
-    buf[0] += value;
-    return old;
-#elif defined(WP_CUDA)
-    return atomicAdd(buf, value);
-#endif
-}
-
-template<typename T>
-inline CUDA_CALLABLE T atomic_add(T* buf, int index, T value)
-{
-    return atomic_add(buf + index, value);
-}
-
-template<typename T>
-inline CUDA_CALLABLE T atomic_sub(T* buf, int index, T value)
-{
-    return atomic_add(buf + index, -value);
-}
 
 template <typename T>
 inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index, const T& adj_output)

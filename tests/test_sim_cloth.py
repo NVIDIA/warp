@@ -31,7 +31,7 @@ sim_render = True
 sim_use_graph = False
 
 device = "cuda"
-
+ 
 builder = wp.sim.ModelBuilder()
 
 builder.add_cloth_grid(

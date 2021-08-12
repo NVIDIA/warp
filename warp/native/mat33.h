@@ -67,24 +67,22 @@ struct mat33
     float data[3][3];
 };
 
-#ifdef WP_CUDA
-inline __device__ mat33 atomic_add(mat33 * addr, mat33 value) 
+inline CUDA_CALLABLE mat33 atomic_add(mat33 * addr, mat33 value) 
 {
     mat33 m;
 
-    m.data[0][0] = atomicAdd(&((addr -> data)[0][0]), value.data[0][0]);
-    m.data[1][0] = atomicAdd(&((addr -> data)[1][0]), value.data[1][0]);
-    m.data[2][0] = atomicAdd(&((addr -> data)[2][0]), value.data[2][0]);
-    m.data[0][1] = atomicAdd(&((addr -> data)[0][1]), value.data[0][1]);
-    m.data[1][1] = atomicAdd(&((addr -> data)[1][1]), value.data[1][1]);
-    m.data[2][1] = atomicAdd(&((addr -> data)[2][1]), value.data[2][1]);
-    m.data[0][2] = atomicAdd(&((addr -> data)[0][2]), value.data[0][2]);
-    m.data[1][2] = atomicAdd(&((addr -> data)[1][2]), value.data[1][2]);
-    m.data[2][2] = atomicAdd(&((addr -> data)[2][2]), value.data[2][2]);
+    m.data[0][0] = atomic_add(&((addr -> data)[0][0]), value.data[0][0]);
+    m.data[1][0] = atomic_add(&((addr -> data)[1][0]), value.data[1][0]);
+    m.data[2][0] = atomic_add(&((addr -> data)[2][0]), value.data[2][0]);
+    m.data[0][1] = atomic_add(&((addr -> data)[0][1]), value.data[0][1]);
+    m.data[1][1] = atomic_add(&((addr -> data)[1][1]), value.data[1][1]);
+    m.data[2][1] = atomic_add(&((addr -> data)[2][1]), value.data[2][1]);
+    m.data[0][2] = atomic_add(&((addr -> data)[0][2]), value.data[0][2]);
+    m.data[1][2] = atomic_add(&((addr -> data)[1][2]), value.data[1][2]);
+    m.data[2][2] = atomic_add(&((addr -> data)[2][2]), value.data[2][2]);
 
     return m;
 }
-#endif
 
 inline CUDA_CALLABLE void adj_mat33(vec3 c0, vec3 c1, vec3 c2,
                       vec3& a0, vec3& a1, vec3& a2,
@@ -213,8 +211,8 @@ inline CUDA_CALLABLE void adj_add(const mat33& a, const mat33& b, mat33& adj_a, 
     {
         for (int j=0; j < 3; ++j)
         {
-            adj_a.data[i][j] = adj_ret.data[i][j];
-            adj_b.data[i][j] = adj_ret.data[i][j];
+            adj_a.data[i][j] += adj_ret.data[i][j];
+            adj_b.data[i][j] += adj_ret.data[i][j];
         }
     }
 }

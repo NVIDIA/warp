@@ -376,10 +376,12 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 		BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
 		BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
 
-		float t;
-		bool hit = intersect_ray_aabb(start, rcp_dir, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z), t);
+		// todo: switch to robust ray-aabb, or expand bounds in build stage
+		float eps = 1.e-3f;
+		float t = 0.0f;
+		bool hit = intersect_ray_aabb(start, rcp_dir, vec3(lower.x-eps, lower.y-eps, lower.z-eps), vec3(upper.x+eps, upper.y+eps, upper.z+eps), t);
 
-		if (hit && t < max_t)
+		if (hit && t < min_t)
 		{
 			const int left_index = lower.i;
 			const int right_index = upper.i;
@@ -398,7 +400,7 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 				float t, u, v, w, sign;
 				vec3 n;
 				
-				if (intersect_ray_tri(start, dir, p, q, r, t, u, v, w, sign, &n))
+				if (intersect_ray_tri_woop(start, dir, p, q, r, t, u, v, w, sign, &n))
 				{
 					if (t < min_t && t >= 0.0f)
 					{
@@ -425,7 +427,7 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 		u = min_u;
 		v = min_v;
 		sign = min_sign;
-		t = max_t;
+		t = min_t;
 		normal = normalize(min_normal);
 		face = min_face;
 

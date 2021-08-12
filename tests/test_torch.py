@@ -88,3 +88,6 @@ l.backward()
 
 print(f"y = {y}")
 print(f"x.grad = {x.grad}")
+
+passed = (x.grad == -2.0).all()
+print(f"Test passed: {passed.item()}")

@@ -143,11 +143,39 @@ def solve_tetrahedra(x: wp.array(dtype=wp.vec3),
     f2 = wp.vec3(F[0, 1], F[1, 1], F[2, 1])
     f3 = wp.vec3(F[0, 2], F[1, 2], F[2, 2])
 
+    # # C_sqrt
+    # tr = dot(f1, f1) + dot(f2, f2) + dot(f3, f3)
+    # r_s = wp.sqrt(abs(tr - 3.0))
+    # C = r_s
+
+    # if (r_s == 0.0):
+    #     return
+    
+    # if (tr < 3.0):
+    #     r_s = 0.0 - r_s
+
+    # dCdx = F*wp.transpose(Dm)*(1.0/r_s)
+    # alpha = 1.0 + k_mu / k_lambda
+
+    # C_Neo
     r_s = wp.sqrt(dot(f1, f1) + dot(f2, f2) + dot(f3, f3))
     r_s_inv = 1.0/r_s
-
-    C = r_s - wp.sqrt(3.0) 
+    C = r_s
     dCdx = F*wp.transpose(Dm)*r_s_inv
+    alpha = 1.0 + k_mu / k_lambda
+
+    # C_Spherical
+    # r_s = wp.sqrt(dot(f1, f1) + dot(f2, f2) + dot(f3, f3))
+    # r_s_inv = 1.0/r_s
+    # C = r_s - wp.sqrt(3.0) 
+    # dCdx = F*wp.transpose(Dm)*r_s_inv
+    # alpha = 1.0
+
+    # C_D
+    #r_s = wp.sqrt(dot(f1, f1) + dot(f2, f2) + dot(f3, f3))
+    #C = r_s*r_s - 3.0
+    #dCdx = F*wp.transpose(Dm)*2.0
+    #alpha = 1.0
 
     grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
     grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
@@ -162,43 +190,18 @@ def solve_tetrahedra(x: wp.array(dtype=wp.vec3),
     delta2 = grad2*multiplier
     delta3 = grad3*multiplier
 
-       
-    # r_s = wp.sqrt(wp.abs(dot(f1, f1) + dot(f2, f2) + dot(f3, f3) - 3.0))
 
-    # grad0 = wp.vec3(0.0, 0.0, 0.0)
-    # grad1 = wp.vec3(0.0, 0.0, 0.0)
-    # grad2 = wp.vec3(0.0, 0.0, 0.0)
-    # grad3 = wp.vec3(0.0, 0.0, 0.0)
-    # multiplier = 0.0
-
-    # if (r_s > 0.0):
-    #     r_s_inv = 1.0/r_s
-
-    #     C = r_s 
-    #     dCdx = F*wp.transpose(Dm)*r_s_inv*wp.sign(r_s)
-
-    #     grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
-    #     grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
-    #     grad3 = vec3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
-    #     grad0 = (grad1 + grad2 + grad3)*(0.0 - 1.0)
-
-    #     denom = dot(grad0,grad0)*w0 + dot(grad1,grad1)*w1 + dot(grad2,grad2)*w2 + dot(grad3,grad3)*w3 
-    #     multiplier = C/(denom + 1.0/(k_mu*dt*dt*rest_volume))
-
-    # delta0 = grad0*multiplier
-    # delta1 = grad1*multiplier
-    # delta2 = grad2*multiplier
-    # delta3 = grad3*multiplier
 
     # hydrostatic part
     J = wp.determinant(F)
 
-    C_vol = J - 1.0
+
+    C_vol = J - alpha
     # dCdx = wp.mat33(cross(f2, f3), cross(f3, f1), cross(f1, f2))*wp.transpose(Dm)
 
-    # grad1 = vec3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
-    # grad2 = vec3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
-    # grad3 = vec3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
+    # grad1 = float3(dCdx[0,0], dCdx[1,0], dCdx[2,0])
+    # grad2 = float3(dCdx[0,1], dCdx[1,1], dCdx[2,1])
+    # grad3 = float3(dCdx[0,2], dCdx[1,2], dCdx[2,2])
     # grad0 = (grad1 + grad2 + grad3)*(0.0 - 1.0)
 
     s = inv_rest_volume / 6.0
@@ -271,17 +274,18 @@ class XPBDIntegrator:
 
     """
 
-    def __init__(self, iterations):
+    def __init__(self, iterations, relaxation):
         
         self.iterations = iterations
+        self.relaxation = relaxation
 
 
     def simulate(self, model, state_in, state_out, dt):
 
-        with wp.util.ScopedTimer("simulate", False):
+        with wp.ScopedTimer("simulate", False):
 
-            q_pred = torch.zeros_like(state_in.particle_q)
-            qd_pred = torch.zeros_like(state_in.particle_qd)
+            q_pred = wp.zeros_like(state_in.particle_q)
+            qd_pred = wp.zeros_like(state_in.particle_qd)
 
             # alloc particle force buffer
             if (model.particle_count):
@@ -315,7 +319,7 @@ class XPBDIntegrator:
 
                     wp.launch(kernel=solve_tetrahedra,
                                 dim=model.tet_count,
-                                inputs=[q_pred, qd_pred, model.particle_inv_mass, model.tet_indices, model.tet_poses, model.tet_activations, model.tet_materials, dt, model.relaxation],
+                                inputs=[q_pred, qd_pred, model.particle_inv_mass, model.tet_indices, model.tet_poses, model.tet_activations, model.tet_materials, dt, self.relaxation],
                                 outputs=[state_out.particle_f],
                                 device=model.device)
 

@@ -33,7 +33,7 @@ void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
 {
     memset(&bvh, 0, sizeof(BVH));
 
-    bvh.max_nodes = 2*n;
+    bvh.max_nodes = 2*n-1;
 
     bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
     bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
@@ -257,7 +257,7 @@ void LinearBVHBuilderCPU::build(BVH& bvh, const bounds3* items, int n)
 {
 	memset(&bvh, 0, sizeof(BVH));
 
-	bvh.max_nodes = 2*n;
+	bvh.max_nodes = 2*n-1;
 
 	bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
 	bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];

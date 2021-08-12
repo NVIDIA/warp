@@ -17,17 +17,16 @@ struct quat
     explicit inline CUDA_CALLABLE quat(const vec3& v, float w=0.0f) : x(v.x), y(v.y), z(v.z), w(w) {}
 };
 
-#ifdef WP_CUDA
-inline __device__ quat atomic_add(quat * addr, quat value) 
+inline CUDA_CALLABLE quat atomic_add(quat * addr, quat value) 
 {
-    float x = atomicAdd(&(addr -> x), value.x);
-    float y = atomicAdd(&(addr -> y), value.y);
-    float z = atomicAdd(&(addr -> z), value.z);
-    float w = atomicAdd(&(addr -> w), value.w);
+    float x = atomic_add(&(addr -> x), value.x);
+    float y = atomic_add(&(addr -> y), value.y);
+    float z = atomic_add(&(addr -> z), value.z);
+    float w = atomic_add(&(addr -> w), value.w);
 
     return quat(x, y, z, w);
 }
-#endif
+
 
 inline CUDA_CALLABLE void adj_quat(float x, float y, float z, float w, float& adj_x, float& adj_y, float& adj_z, float& adj_w, quat adj_ret)
 {
