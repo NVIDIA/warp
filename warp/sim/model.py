@@ -150,6 +150,13 @@ class State:
         self.particle_count = 0
         self.body_count = 0
 
+    def clear_forces(self):
+
+        if self.particle_count:
+            self.particle_f.zero_()
+
+        if self.body_count:
+            self.body_f.zero_()
 
     def flatten(self):
         """Returns a list of Tensors stored by the state
@@ -337,7 +344,7 @@ class Model:
         if (self.particle_count):
             s.particle_q = wp.clone(self.particle_q)
             s.particle_qd = wp.clone(self.particle_qd)
-            s.particle_f = wp.empty_like(self.particle_qd)
+            s.particle_f = wp.zeros_like(self.particle_qd)
 
             s.particle_q.requires_grad = requires_grad
             s.particle_qd.requires_grad = requires_grad
@@ -347,7 +354,7 @@ class Model:
         if (self.body_count):
             s.body_q = wp.clone(self.body_q)
             s.body_qd = wp.clone(self.body_qd)
-            s.body_f = wp.empty_like(self.body_qd)
+            s.body_f = wp.zeros_like(self.body_qd)
 
             s.body_q.requires_grad = requires_grad
             s.body_qd.requires_grad = requires_grad

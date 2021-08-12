@@ -109,6 +109,9 @@ if (sim_use_graph):
 
     for s in range(sim_substeps):
 
+        state_0.clear_forces()
+        state_1.clear_forces()
+
         integrator.simulate(model, state_0, state_1, sim_dt)
         sim_time += sim_dt
 
@@ -131,6 +134,9 @@ for i in range(sim_frames):
             wp.sim.collide(model, state_0)
 
             for s in range(sim_substeps):
+
+                state_0.clear_forces()
+                state_1.clear_forces()
 
                 integrator.simulate(model, state_0, state_1, sim_dt)
                 sim_time += sim_dt

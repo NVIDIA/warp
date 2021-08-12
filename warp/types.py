@@ -466,9 +466,9 @@ class array:
         if (self.owner and self.context):
 
             if (self.device == "cpu"):
-                self.context.free_host(self.data)
+                self.context.host_allocator.free(self.data, self.capacity)
             else:
-                self.context.free_device(self.data)
+                self.context.device_allocator.free(self.data, self.capacity)
                 
 
     def __len__(self):

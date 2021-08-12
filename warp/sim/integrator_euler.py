@@ -853,8 +853,9 @@ def eval_contacts(x: wp.array(dtype=wp.vec3), v: wp.array(dtype=wp.vec3), ke: fl
 def eval_soft_contacts(
     particle_x: wp.array(dtype=wp.vec3), 
     particle_v: wp.array(dtype=wp.vec3), 
-    body_X_sc: wp.array(dtype=wp.spatial_transform),
-    body_v_sc: wp.array(dtype=wp.spatial_vector),
+    body_q: wp.array(dtype=wp.spatial_transform),
+    body_qd: wp.array(dtype=wp.spatial_vector),
+    body_com: wp.array(dtype=wp.vec3),
     ke: float,
     kd: float, 
     kf: float, 
@@ -882,12 +883,13 @@ def eval_soft_contacts(
     px = wp.load(particle_x, particle_index)
     pv = wp.load(particle_v, particle_index)
 
-    X_sc = wp.spatial_transform_identity()
+    X_wb = wp.spatial_transform_identity()
     if (body_index >= 0):
-        X_sc = wp.load(body_X_sc, body_index)
+        X_wb = wp.load(body_q, body_index)
 
     # body position in world space
-    bx = wp.spatial_transform_point(X_sc, contact_body_pos[tid])
+    bx = wp.spatial_transform_point(X_wb, contact_body_pos[tid])
+    r = bx - wp.spatial_transform_point(X_wb, body_com[body_index])
     
     n = contact_normal[tid]
     c = wp.dot(n, px-bx) - contact_distance
@@ -898,13 +900,13 @@ def eval_soft_contacts(
     # body velocity
     body_v_s = wp.spatial_vector()
     if (body_index >= 0):
-        body_v_s = wp.load(body_v_sc, body_index)
+        body_v_s = wp.load(body_qd, body_index)
     
     body_w = wp.spatial_top(body_v_s)
     body_v = wp.spatial_bottom(body_v_s)
 
     # compute the body velocity at the particle position
-    bv = body_v + wp.cross(body_w, px) + wp.spatial_transform_vector(X_sc, contact_body_vel[tid])
+    bv = body_v + wp.cross(body_w, r) + wp.spatial_transform_vector(X_wb, contact_body_vel[tid])
 
     # relative velocity
     v = pv - bv
@@ -935,12 +937,12 @@ def eval_soft_contacts(
     ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*c*ke)
 
     f_total = fn + (fd + ft) * wp.step(c)
-    t_total = wp.cross(px, f_total)
+    t_total = wp.cross(r, f_total)
 
     wp.atomic_sub(particle_f, particle_index, f_total)
 
     if (body_index >= 0):
-        wp.atomic_sub(body_f, body_index, wp.spatial_vector(t_total, f_total))
+        wp.atomic_add(body_f, body_index, wp.spatial_vector(t_total, f_total))
 
 
 
@@ -2137,6 +2139,7 @@ def compute_forces(model, state, particle_f, body_f):
                         state.particle_qd,
                         state.body_q,
                         state.body_qd,
+                        model.body_com,
                         model.soft_contact_ke,
                         model.soft_contact_kd, 
                         model.soft_contact_kf, 
@@ -2244,14 +2247,19 @@ class SemiImplicitIntegrator:
 
         with wp.ScopedTimer("simulate", False):
 
+            particle_f = None
+            body_f = None
+
             # alloc particle force buffer
             if (model.particle_count):
-                state_out.particle_f.zero_()
+                particle_f = state_out.particle_f
+                #particle_f.zero_()
 
             if (model.body_count):
-                state_out.body_f.zero_()
+                body_f = state_out.body_f
+                #body_f.zero()
 
-            compute_forces(model, state_in, state_out.particle_f, state_out.body_f)
+            compute_forces(model, state_in, particle_f, body_f)
 
             #-------------------------------------
             # integrate bodies
@@ -2264,7 +2272,7 @@ class SemiImplicitIntegrator:
                     inputs=[
                         state_in.body_q,
                         state_in.body_qd,
-                        state_out.body_f,
+                        body_f,
                         model.body_com,
                         model.body_mass,
                         model.body_inertia,
@@ -2291,7 +2299,7 @@ class SemiImplicitIntegrator:
                         state_in.particle_q, 
                         state_in.particle_qd,
                         state_in.particle_f,
-                        state_out.particle_f, 
+                        particle_f, 
                         model.particle_inv_mass, 
                         model.gravity, 
                         dt

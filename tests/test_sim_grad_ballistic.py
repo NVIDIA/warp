@@ -65,6 +65,10 @@ class Ballistic:
 
     def step(self):
         for i in range(self.sim_substeps):
+
+            self.states[i].clear_forces()
+            self.states[i+1].clear_forces()
+
             self.integrator.simulate(self.model, self.states[i], self.states[i+1], self.sim_dt)
 
 

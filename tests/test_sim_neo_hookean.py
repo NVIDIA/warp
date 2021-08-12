@@ -144,6 +144,9 @@ with wp.ScopedTimer("Total"):
 
             for s in range(sim_substeps):
 
+                state_0.clear_forces()
+                state_1.clear_forces()
+
                 integrator.simulate(model, state_0, state_1, sim_dt)
                 sim_time += sim_dt
 

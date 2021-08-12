@@ -28,7 +28,7 @@ sim_frames = int(sim_duration*sim_fps)
 sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
 sim_render = True
-sim_use_graph = False
+sim_use_graph = True
 
 device = "cuda"
  
@@ -101,7 +101,9 @@ state_1 = model.state()
 
 stage = render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
 
+
 if (sim_use_graph):
+
     # create update graph
     wp.capture_begin()
 
@@ -109,8 +111,10 @@ if (sim_use_graph):
 
     for s in range(sim_substeps):
 
+        state_0.clear_forces()
+        state_1.clear_forces()
+
         integrator.simulate(model, state_0, state_1, sim_dt)
-        sim_time += sim_dt
 
         # swap states
         (state_0, state_1) = (state_1, state_0)
@@ -131,6 +135,9 @@ for i in range(sim_frames):
             wp.sim.collide(model, state_0)
 
             for s in range(sim_substeps):
+
+                state_0.clear_forces()
+                state_1.clear_forces()
 
                 integrator.simulate(model, state_0, state_1, sim_dt)
                 sim_time += sim_dt

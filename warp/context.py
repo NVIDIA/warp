@@ -671,6 +671,53 @@ class Module:
 # exectution context
 from ctypes import *
 
+# a simple pooled allocator that caches allocs based 
+# on size to avoid hitting the system allocator
+class Allocator:
+
+    def __init__(self, alloc_func, free_func):
+
+        # map from sizes to array of allocs
+        self.alloc_func = alloc_func
+        self.free_func = free_func
+
+        # map from size->list[allocs]
+        self.pool = {}
+
+    def __del__(self):
+        self.clear()       
+
+    def alloc(self, size_in_bytes):
+        
+        if size_in_bytes in self.pool and len(self.pool[size_in_bytes]) > 0:
+            return self.pool[size_in_bytes].pop()
+        else:
+            return self.alloc_func(size_in_bytes)
+
+    def free(self, addr, size_in_bytes):
+        
+        if size_in_bytes not in self.pool:
+            self.pool[size_in_bytes] = [addr,]
+        else:
+            self.pool[size_in_bytes].append(addr)
+
+    def print(self):
+        
+        total_size = 0
+
+        for k,v in self.pool.items():
+            print(f"alloc size: {k} num allocs: {len(v)}")
+            total_size += k*len(v)
+
+        print(f"total size: {total_size}")
+
+
+    def clear(self):
+        for s in self.pool.values():
+            for a in s:
+                self.free_func(a)
+        
+        self.pool = {}
 
 class Runtime:
 
@@ -729,10 +776,28 @@ class Runtime:
         self.core.cuda_launch_kernel.argtypes = [c_void_p, c_size_t, POINTER(c_void_p)]
         self.core.cuda_launch_kernel.restype = c_size_t
 
-
         self.core.init.restype = c_int
         
         error = self.core.init()
+
+        # allocation functions, these are function local to 
+        # force other classes to go through the allocator objects
+        def alloc_host(num_bytes):
+            ptr = self.core.alloc_host(num_bytes)       
+            return ptr
+
+        def free_host(ptr):
+            self.core.free_host(cast(ptr,POINTER(c_int)))
+
+        def alloc_device(num_bytes):
+            ptr = self.core.alloc_device(c_size_t(num_bytes))
+            return ptr
+
+        def free_device(ptr):
+            self.core.free_device(cast(ptr,POINTER(c_int)))
+
+        self.host_allocator = Allocator(alloc_host, free_host)
+        self.device_allocator = Allocator(alloc_device, free_device)
 
         if (error > 0):
             raise Exception("Warp Initialization failed, CUDA not found")
@@ -754,21 +819,6 @@ class Runtime:
         # global tape
         self.tape = None
 
-    # host functions
-    def alloc_host(self, num_bytes):
-        ptr = self.core.alloc_host(num_bytes)       
-        return ptr
-
-    def free_host(self, ptr):
-        self.core.free_host(cast(ptr,POINTER(c_int)))
-
-    # device functions
-    def alloc_device(self, num_bytes):
-        ptr = self.core.alloc_device(c_size_t(num_bytes))
-        return ptr
-
-    def free_device(self, ptr):
-        self.core.free_device(cast(ptr,POINTER(c_int)))
 
     def verify_device(self):
 
@@ -836,11 +886,11 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
     num_bytes = n*warp.types.type_size_in_bytes(dtype)
 
     if (device == "cpu"):
-        ptr = runtime.core.alloc_host(num_bytes) 
+        ptr = runtime.host_allocator.alloc(num_bytes) 
         runtime.core.memset_host(cast(ptr,POINTER(c_int)), c_int(0), c_size_t(num_bytes))
 
     if( device == "cuda"):
-        ptr = runtime.alloc_device(num_bytes)
+        ptr = runtime.device_allocator.alloc(num_bytes)
         runtime.core.memset_device(cast(ptr,POINTER(c_int)), c_int(0), c_size_t(num_bytes))
 
     if (ptr == None and num_bytes > 0):

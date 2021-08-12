@@ -61,7 +61,7 @@ for i in range(num_bodies):
 
     # initial spin 
     builder.body_qd[i] = (0.0, 2.0, 10.0, 0.0, 0.0, 0.0)
-
+ 
 model = builder.finalize(device)
 model.ground = True
 
@@ -75,6 +75,8 @@ stage = render.UsdRenderer("tests/outputs/test_sim_rigid_contact.usda")
 
 for i in range(sim_steps):
 
+    state.clear_forces()
+    
     state = integrator.simulate(model, state, state, sim_dt)   
 
     X_wb = state.body_q.to("cpu").numpy()
