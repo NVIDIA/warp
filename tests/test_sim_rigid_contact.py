@@ -52,7 +52,7 @@ for i in range(num_bodies):
     #     pos=(0.0, 0.0, 0.0),
     #     radius=0.25*scale,
     #     density=100.0,
-    #     body=0,
+    #     body=i,
     #     ke=1.e+3,
     #     kd=1.0,
     #     kf=10.0,
@@ -90,7 +90,7 @@ for i in range(sim_steps):
         X_ws = wp.transform_multiply(wp.transform(X_wb[i, 0:3], X_wb[i,3:7]), wp.transform(X_bs[0, 0:3], X_bs[0,3:7]))
 
         stage.render_box(X_ws[0], X_ws[1], extents=builder.shape_geo_scale[0], name="body" + str(i))
-        #stage.render_sphere(X_ws[0], X_ws[1], radius=builder.shape_geo_scale[0][0], name="body")
+        #stage.render_sphere(X_ws[0], X_ws[1], radius=builder.shape_geo_scale[0][0], name="body" + str(i))
 
     stage.end_frame()
     

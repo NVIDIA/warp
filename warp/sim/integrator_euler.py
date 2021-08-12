@@ -812,7 +812,7 @@ def eval_tetrahedra(x: wp.array(dtype=wp.vec3),
 @wp.kernel
 def eval_contacts(x: wp.array(dtype=wp.vec3), v: wp.array(dtype=wp.vec3), ke: float, kd: float, kf: float, mu: float, offset: float, ground: wp.vec4, f: wp.array(dtype=wp.vec3)):
 
-    tid = wp.tid()           # this just handles contact of particles with the ground plane, nothing else.
+    tid = wp.tid()           
 
     x0 = wp.load(x, tid)
     v0 = wp.load(v, tid)
@@ -2126,7 +2126,6 @@ def compute_forces(model, state, particle_f, body_f):
                       body_f
                   ],
                   device=model.device)
- 
 
     # particle shape contact
     if (model.particle_count and model.shape_count):

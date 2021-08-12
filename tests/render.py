@@ -70,7 +70,7 @@ class UsdRenderer:
     def end_frame(self):
         pass
 
-    def render_ground(self, size: float=10.0):
+    def render_ground(self, size: float=100.0):
 
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
         mesh.CreateDoubleSidedAttr().Set(True)
