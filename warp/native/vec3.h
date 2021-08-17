@@ -83,6 +83,21 @@ inline CUDA_CALLABLE vec3 sub(vec3 a, vec3 b)
     return { a.x-b.x, a.y-b.y, a.z-b.z };
 }
 
+inline CUDA_CALLABLE vec3 sub(vec3 a, float s)
+{
+  return { a.x - s, a.y - s, a.z - s };
+}
+
+inline CUDA_CALLABLE vec3 log(vec3 a)
+{
+  return { logf(a.x), logf(a.y), logf(a.z) };
+}
+
+inline CUDA_CALLABLE vec3 exp(vec3 a)
+{
+  return { expf(a.x), expf(a.y), expf(a.z) };
+}
+
 inline CUDA_CALLABLE float dot(vec3 a, vec3 b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z;
@@ -193,7 +208,11 @@ inline CUDA_CALLABLE void adj_mul(float s, vec3 a, float& adj_s, vec3& adj_a, co
     adj_mul(a, s, adj_a, adj_s, adj_ret);
 }
 
-
+inline CUDA_CALLABLE void adj_mul(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, const vec3& adj_ret)
+{
+  adj_a += mul(b, adj_ret);
+  adj_b += mul(a, adj_ret);
+}
 
 inline CUDA_CALLABLE void adj_div(vec3 a, float s, vec3& adj_a, float& adj_s, const vec3& adj_ret)
 {
@@ -225,6 +244,24 @@ inline CUDA_CALLABLE void adj_sub(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, cons
 {
     adj_a += adj_ret;
     adj_b -= adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_sub(vec3 a, float s, vec3& adj_a, float& adj_s, const vec3& adj_ret)
+{
+  adj_a += adj_ret;
+  adj_s -= adj_ret.x + adj_ret.y + adj_ret.z;
+}
+
+// TODO: test
+inline CUDA_CALLABLE void adj_log(vec3 a, vec3& adj_a, const vec3& adj_ret)
+{
+  adj_a += vec3(adj_ret.x / a.x, adj_ret.y / a.y, adj_ret.z / a.z);
+}
+
+// TODO: test
+inline CUDA_CALLABLE void adj_exp(vec3 a, vec3& adj_a, const vec3& adj_ret)
+{
+  adj_a += vec3(adj_ret.x * expf(a.x), adj_ret.y * expf(a.y), adj_ret.z * expf(a.z));
 }
 
 inline CUDA_CALLABLE void adj_dot(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, const float adj_ret)

@@ -32,11 +32,15 @@ if (warp.config.cuda_path == None):
                     force=True)
 
 else:
+    if (os.name == 'nt'):
+        dll_path = build_path + "/bin/warp.dll"
+    else:
+        dll_path = build_path + "/bin/warp.so"
 
     warp.build.build_dll(
                     cpp_path=build_path + "/native/warp.cpp", 
                     cu_path=build_path + "/native/warp.cu", 
-                    dll_path=build_path + "/bin/warp.dll",
+                    dll_path=dll_path,
                     config=warp.config.mode,
                     force=True)
                     
