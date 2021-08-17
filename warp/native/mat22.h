@@ -130,6 +130,12 @@ inline CUDA_CALLABLE void adj_mul(const mat22& a, const mat22& b, mat22& adj_a, 
     printf("todo\n");
 }
 
+inline CUDA_CALLABLE void adj_mul(const mat22& a, float b, mat22& adj_a, float& adj_b, mat22& adj_ret)
+{
+    printf("todo\n");
+}
+
+
 inline CUDA_CALLABLE void adj_transpose(const mat22& a, mat22& adj_a, const mat22& adj_ret)
 {
     printf("todo\n");
