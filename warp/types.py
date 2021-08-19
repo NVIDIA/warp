@@ -7,9 +7,10 @@ from copy import copy as shallowcopy
 # built-in types
 
 
-class vec3(ctypes.Structure):
+class vec3(ctypes.Array):
     
-    _fields_ = [("value", ctypes.c_float*3)]
+    _length_ = 3
+    _type_ = ctypes.c_float
     
     def __init__(self):
         pass        
@@ -27,9 +28,10 @@ class vec3(ctypes.Structure):
         return ctypes.c_float
 
 
-class vec4(ctypes.Structure):
+class vec4(ctypes.Array):
     
-    _fields_ = [("value", ctypes.c_float*4)]
+    _length_ = 4
+    _type_ = ctypes.c_float
 
     def __init__(self):
         pass
@@ -46,9 +48,10 @@ class vec4(ctypes.Structure):
     def ctype():
         return ctypes.c_float
 
-class quat(ctypes.Structure):
+class quat(ctypes.Array):
     
-    _fields_ = [("value", ctypes.c_float*4)]
+    _length_ = 4
+    _type_ = ctypes.c_float
 
     def __init__(self):
         pass
@@ -66,9 +69,10 @@ class quat(ctypes.Structure):
         return ctypes.c_float        
 
 
-class mat22(ctypes.Structure):
+class mat22(ctypes.Array):
     
-    _fields_ = [("value", ctypes.c_float*4)]
+    _length_ = 4
+    _type_ = ctypes.c_float
     
     def __init__(self):
         pass
@@ -85,9 +89,10 @@ class mat22(ctypes.Structure):
     def ctype():
         return ctypes.c_float        
 
-class mat33(ctypes.Structure):
+class mat33(ctypes.Array):
     
-    _fields_ = [("value", ctypes.c_float*9)]
+    _length_ = 9
+    _type_ = ctypes.c_float
     
     def __init__(self):
         pass
@@ -106,8 +111,9 @@ class mat33(ctypes.Structure):
 
 class mat44(ctypes.Structure):
     
-    _fields_ = [("value", ctypes.c_float*16)]
-    
+    _length_ = 16
+    _type_ = ctypes.c_float
+
     def __init__(self):
         pass
     
@@ -124,9 +130,10 @@ class mat44(ctypes.Structure):
         return ctypes.c_float
 
 
-class spatial_vector(ctypes.Structure):
+class spatial_vector(ctypes.Array):
     
-    _fields_ = [("value", ctypes.c_float*6)]
+    _length_ = 6
+    _type_ = ctypes.c_float
 
     def __init__(self):
         pass
@@ -143,10 +150,11 @@ class spatial_vector(ctypes.Structure):
     def ctype():
         return ctypes.c_float        
 
-class spatial_matrix(ctypes.Structure):
+class spatial_matrix(ctypes.Array):
     
-    _fields_ = [("value", ctypes.c_float*36)]
-    
+    _length_ = 36
+    _type_ = ctypes.c_float
+
     def __init__(self):
         pass
     
@@ -164,8 +172,9 @@ class spatial_matrix(ctypes.Structure):
 
 class spatial_transform(ctypes.Structure):
     
-    _fields_ = [("value", ctypes.c_float*7)]
-    
+    _length_ = 7
+    _type_ = ctypes.c_float
+
     def __init__(self):
         pass
     
@@ -368,38 +377,31 @@ class array:
         # save flag, controls if gradients will be computed in by wp.Tape
         self.requires_grad = requires_grad
 
-        # if src is a list, tuple try to convert to numpy array and construct from that (data will be copied)
+        # construct from numpy array, list, tuple
         if (isinstance(data, np.ndarray) or 
             isinstance(data, list) or 
             isinstance(data, tuple)):
 
             from warp.context import empty, copy, synchronize
 
+            # convert lists / tuples to ndarrays if necessary
             arr = np.array(data, copy=False)
 
-            # attempt to convert from double to float precision
-            if (arr.dtype == np.float64):
-                arr = arr.astype(np.float32)
+            # try to convert src array to destination shape
+            try:
+                arr = arr.reshape((-1, type_length(dtype)))
+            except:
+                raise RuntimeError(f"Could not reshape input data with shape {arr.shape} to array with shape (*, {type_length(dtype)}")
 
-            # todo: need a more robust way to convert types
-            if (arr.dtype == np.int64 and dtype==int32):
-                arr = arr.astype(np.int32)
-
-
-            # if array is multi-dimensional, but data type is scalar, then flatten
-            if (len(arr.shape) > 1 and type_length(dtype) == 1):
-                arr = arr.flatten()
-
+            # try to convert src array to destination type
+            try:
+                arr = arr.astype(dtype=type_typestr(dtype.ctype()))
+            except:
+                raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype.ctype}")
+            
             ptr = arr.__array_interface__["data"][0]
             shape = arr.__array_interface__["shape"]
-            rows = shape[0]
-
-            #if (arr.__array_interface__["typestr"] != "<i4" and arr.__array_interface__["typestr"] != "<f4"):
-            #if (arr.__array_interface__["typestr"] != "<i4" and arr.__array_interface__["typestr"] != "<f4"):
-                #raise RuntimeError("Source numpy array must be either 32bit integer or floating point data")
-
-            if (arr.__array_interface__["typestr"] == "<f8"):
-                raise RuntimeError("64bit floating point (double) data type not supported")
+            length = shape[0]
 
             if (device == "cpu" and copy == False):
 
@@ -408,10 +410,10 @@ class array:
                 # ref numpy memory directly
                 self.data = ptr
                 self.dtype=dtype
-                self.length=rows
-                self.capacity=rows*type_size_in_bytes(dtype)
+                self.length=length
+                self.capacity=length*type_size_in_bytes(dtype)
                 self.device = device
-                self.context = runtime  #                 # todo: if runtime is global do we really need to store it per-array?
+                self.context = runtime  # todo: if runtime is global do we really need to store it per-array?
                 self.owner = False
 
                 # keep a ref to source array to keep allocation alive
@@ -421,8 +423,8 @@ class array:
 
                 # otherwise, create a host wrapper around the numpy
                 #  array and a new destination array to copy it to
-                src = array(dtype=dtype, length=rows, capacity=rows*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
-                dest = empty(rows, dtype=dtype, device=device, requires_grad=requires_grad)
+                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
+                dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
                 # data copy
@@ -490,6 +492,12 @@ class array:
 
         if(self.device == "cuda"):
             self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.length*type_size_in_bytes(self.dtype))
+
+
+    # equivalent to wrapping src data in an array and copying to self
+    def assign(self, src):
+        from warp.context import copy
+        copy(self, array(src, dtype=self.dtype, copy=False, device=self.device))
 
     def numpy(self):
 

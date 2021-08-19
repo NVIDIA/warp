@@ -47,7 +47,8 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 @wp.kernel
 def integrate_bodies(body_q: wp.array(dtype=wp.spatial_transform),
                      body_qd: wp.array(dtype=wp.spatial_vector),
-                     body_f: wp.array(dtype=wp.spatial_vector),
+                     body_f_int: wp.array(dtype=wp.spatial_vector),
+                     body_f_ext: wp.array(dtype=wp.spatial_vector),
                      body_com: wp.array(dtype=wp.vec3),
                      m: wp.array(dtype=float),
                      I: wp.array(dtype=wp.mat33),
@@ -63,7 +64,8 @@ def integrate_bodies(body_q: wp.array(dtype=wp.spatial_transform),
     # positions
     q = body_q[tid]
     qd = body_qd[tid]
-    f = body_f[tid]
+    f_int = body_f_int[tid]
+    f_ext = body_f_ext[tid]
 
     # masses
     mass = m[tid]
@@ -81,6 +83,7 @@ def integrate_bodies(body_q: wp.array(dtype=wp.spatial_transform),
     v0 = wp.spatial_bottom(qd)
 
     # unpack spatial wrench
+    f = f_int + f_ext
     t0 = wp.spatial_top(f)
     f0 = wp.spatial_bottom(f)
 
@@ -954,7 +957,7 @@ def eval_body_contacts(body_q: wp.array(dtype=wp.spatial_transform),
                        contact_point: wp.array(dtype=wp.vec3),
                        contact_dist: wp.array(dtype=float),
                        contact_mat: wp.array(dtype=int),
-                       materials: wp.array(dtype=float),
+                       materials: wp.array(dtype=wp.vec4),
                        body_f: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
@@ -965,10 +968,12 @@ def eval_body_contacts(body_q: wp.array(dtype=wp.spatial_transform),
     c_mat = contact_mat[tid]
 
     # hard coded surface parameter tensor layout (ke, kd, kf, mu)
-    ke = materials[c_mat * 4 + 0]       # restitution coefficient
-    kd = materials[c_mat * 4 + 1]       # damping coefficient
-    kf = materials[c_mat * 4 + 2]       # friction coefficient
-    mu = materials[c_mat * 4 + 3]       # coulomb friction
+    mat = materials[c_mat]
+
+    ke = mat[0]       # restitution coefficient
+    kd = mat[1]       # damping coefficient
+    kf = mat[2]       # friction coefficient
+    mu = mat[3]       # coulomb friction
 
     X_wb = body_q[c_body]
     v_wc = body_qd[c_body]
@@ -2272,6 +2277,7 @@ class SemiImplicitIntegrator:
                     inputs=[
                         state_in.body_q,
                         state_in.body_qd,
+                        state_in.body_f,
                         body_f,
                         model.body_com,
                         model.body_mass,

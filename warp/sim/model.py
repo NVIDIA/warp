@@ -1576,7 +1576,7 @@ class ModelBuilder:
 
         m.shape_geo_id = wp.array(shape_geo_id, dtype=wp.uint64, device=device)
         m.shape_geo_scale = wp.array(self.shape_geo_scale, dtype=wp.vec3, device=device)
-        m.shape_materials = wp.array(self.shape_materials, dtype=wp.float32, device=device)
+        m.shape_materials = wp.array(self.shape_materials, dtype=wp.vec4, device=device)
 
         #---------------------
         # springs

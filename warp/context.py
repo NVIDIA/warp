@@ -1022,7 +1022,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
                     # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
                     x = arg_type()
                     for i in range(arg_type.length()):
-                        x.value[i] = v[i]
+                        x[i] = v[i]
 
                     params.append(x)
 

@@ -21,7 +21,7 @@ def _usd_set_xform(xform, transform, scale, time):
 
     xform_ops[0].Set(Gf.Vec3d(pos), time)
     xform_ops[1].Set(Gf.Quatf(float(rot[3]), float(rot[0]), float(rot[1]), float(rot[2])), time)
-    xform_ops[2].Set(Gf.Vec3d(scale), time)
+    xform_ops[2].Set(Gf.Vec3d(float(scale[0]), float(scale[1]), float(scale[2])), time)
 
 # transforms a cylinder such that it connects the two points pos0, pos1
 def _compute_segment_xform(pos0, pos1):
