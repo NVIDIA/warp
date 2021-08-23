@@ -55,7 +55,7 @@ builder.add_soft_grid(
     k_lambda=20000.0,
     k_damp=0.0)
 
-builder.add_body(X_pj=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
+builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
 builder.add_shape_sphere(body=0, radius=0.75, density=100.0)
 
 model = builder.finalize(device=device)

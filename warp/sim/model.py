@@ -588,7 +588,7 @@ class ModelBuilder:
     # rigids, register a rigid body and return its index.
     def add_body(
         self, 
-        X_pj : Transform, 
+        origin : Transform, 
         parent : int=-1, 
         axis : Vec3=(0.0, 0.0, 0.0),
         type : int=JOINT_FREE,
@@ -607,7 +607,7 @@ class ModelBuilder:
 
         Args:
             parent: The index of the parent body
-            X_pj: The location of the joint in the parent's local frame connecting this body
+            origin: The location of the joint in the parent's local frame connecting this body
             axis: The joint axis
             type: The type of joint, should be one of: JOINT_PRISMATIC, JOINT_REVOLUTE, JOINT_BALL, JOINT_FIXED, or JOINT_FREE
             armature: Additional inertia around the joint axis
@@ -632,7 +632,7 @@ class ModelBuilder:
         self.body_mass.append(0.0)
         self.body_com.append(np.zeros(3))
         
-        self.body_q.append(X_pj)
+        self.body_q.append(origin)
         self.body_qd.append(wp.spatial_vector())
 
         # joint data
@@ -640,7 +640,7 @@ class ModelBuilder:
         self.joint_axis.append(np.array(axis))
         self.joint_parent.append(parent)
         self.joint_child.append(child)
-        self.joint_X_p.append(X_pj)
+        self.joint_X_p.append(origin)
         self.joint_X_c.append(wp.transform_identity())
 
         self.joint_target_ke.append(stiffness)

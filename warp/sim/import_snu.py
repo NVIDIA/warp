@@ -129,7 +129,7 @@ class Skeleton:
                     # add link
                     link = builder.add_link(
                         parent=parent_link, 
-                        X_pj=joint_X_p,
+                        origin=joint_X_p,
                         axis=joint_axis,
                         type=joint_type,
                         damping=2.0,

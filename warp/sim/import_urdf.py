@@ -174,7 +174,7 @@ def urdf_load(
         # add link
         link = builder.add_link(
             parent=parent, 
-            X_pj=wp.transform(pos, rot), 
+            origin=wp.transform(pos, rot), 
             axis=axis, 
             type=type,
             limit_lower=lower,
@@ -215,18 +215,18 @@ def build_tree(
         if (depth >= max_depth):
             return
 
-        X_pj = wp.transform((length * 2.0, 0.0, 0.0), wp.quat_from_axis_angle((0.0, 0.0, 1.0), angle))
+        origin = wp.transform((length * 2.0, 0.0, 0.0), wp.quat_from_axis_angle((0.0, 0.0, 1.0), angle))
 
         type = wp.JOINT_REVOLUTE
         axis = (0.0, 0.0, 1.0)
 
         if (depth == 0 and floating == True):
-            X_pj = wp.transform((0.0, 0.0, 0.0), wp.quat_identity())
+            origin = wp.transform((0.0, 0.0, 0.0), wp.quat_identity())
             type = wp.JOINT_FREE
 
         link = builder.add_link(
             parent, 
-            X_pj, 
+            origin, 
             axis, 
             type,
             stiffness=joint_stiffness,
@@ -386,7 +386,7 @@ class Skeleton:
                     # add link
                     link = builder.add_link(
                         parent=parent_link, 
-                        X_pj=joint_X_p,
+                        origin=joint_X_p,
                         axis=joint_axis,
                         type=joint_type,
                         damping=2.0,

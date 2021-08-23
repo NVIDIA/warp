@@ -12,7 +12,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 import warp as wp
 import warp.sim
 
-import render
+import render_sim as render
 
 wp.init()
 
@@ -26,7 +26,7 @@ builder = wp.sim.ModelBuilder()
 
 builder.add_body(
     parent=-1,
-    X_pj=wp.transform_identity(),
+    origin=wp.transform_identity(),
     axis=(0.0, 0.0, 0.0),
     type=wp.sim.JOINT_FREE)
 
@@ -55,11 +55,12 @@ builder.body_qd[0] = (25.0, 0.01, 0.01, 0.0, 0.0, 0.0)
 
 model = builder.finalize(device)
 model.gravity[1] = 0.0
+model.ground = False
 
 integrator = wp.sim.SemiImplicitIntegrator()
 state = model.state()
 
-stage = render.UsdRenderer("tests/outputs/test_sim_rigid_gyroscopic.usda")
+renderer = render.SimRenderer(model, "tests/outputs/test_sim_rigid_gyroscopic.usda")
 
 for i in range(sim_steps):
 
@@ -67,23 +68,15 @@ for i in range(sim_steps):
 
     state = integrator.simulate(model, state, state, sim_dt)   
     
-    rigid_xform = state.body_q.to("cpu").numpy()
-
-    xform = wp.transform(rigid_xform[0][0:3], rigid_xform[0][3:7])
-
-    t0 = wp.transform_multiply(xform, wp.transform(builder.shape_transform[0][0], builder.shape_transform[0][1]))
-    t1 = wp.transform_multiply(xform, wp.transform(builder.shape_transform[1][0], builder.shape_transform[1][1]))
-
-    stage.begin_frame(sim_time)
-    stage.render_box(t0[0], t0[1], extents=builder.shape_geo_scale[0], name="axis")
-    stage.render_box(t1[0], t1[1], extents=builder.shape_geo_scale[1], name="tip")
-    stage.end_frame()
-    
+    renderer.begin_frame(sim_time)
+    renderer.render(state)
+    renderer.end_frame()
+   
 
     sim_time += sim_dt
 
 
-stage.save()
+renderer.save()
 
 
 

@@ -448,7 +448,7 @@ class array:
 
             self.__name__ = "array<" + type.__name__ + ">"
 
-
+    
         # store 2D shape (useful for interop with tensor frameworks)
         self.shape = (self.length, type_length(self.dtype))
 
@@ -512,7 +512,8 @@ class array:
             return np.array(self, copy=False)
         
         else:
-            raise RuntimeError("Cannot convert CUDA array to numpy, copy to a host array first")
+            # bring back to CPU
+            return self.to("cpu").numpy()
 
 
     def to(self, device):

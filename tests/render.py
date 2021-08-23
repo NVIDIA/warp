@@ -85,7 +85,7 @@ class UsdRenderer:
         mesh.GetFaceVertexCountsAttr().Set(counts)
         mesh.GetFaceVertexIndicesAttr().Set(indices)
 
-    def render_sphere(self, pos: tuple, rot: tuple, radius: float, name: str):
+    def render_sphere(self, name: str, pos: tuple, rot: tuple, radius: float):
         """Debug helper to add a sphere for visualization
         
         Args:
@@ -111,7 +111,7 @@ class UsdRenderer:
         _usd_set_xform(sphere, (pos, rot), (1.0, 1.0, 1.0), self.time)
 
 
-    def render_box(self, pos: tuple, rot: tuple, extents: tuple, name: str):
+    def render_box(self, name: str, pos: tuple, rot: tuple, extents: tuple):
         """Debug helper to add a box for visualization
         
         Args:
@@ -160,7 +160,7 @@ class UsdRenderer:
         _usd_set_xform(mesh, (pos, rot), scale, self.time)
 
 
-    def render_line_list(self, vertices, color, time, name, radius):
+    def render_line_list(self, name, vertices, indices, color, radius):
         """Debug helper to add a line list as a set of capsules
         
         Args:
@@ -169,7 +169,7 @@ class UsdRenderer:
             time: The time to update at
         """
         
-        num_lines = int(len(vertices)/2)
+        num_lines = int(len(indices)/2)
 
         if (num_lines < 1):
             return
@@ -183,7 +183,7 @@ class UsdRenderer:
             instancer_capsule = UsdGeom.Capsule.Define(self.stage, instancer.GetPath().AppendChild("capsule"))
             instancer_capsule.GetRadiusAttr().Set(radius)
             instancer.CreatePrototypesRel().SetTargets([instancer_capsule.GetPath()])
-            instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.vec3Array, "constant", 1)
+            #instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "constant", 1)
 
         line_positions = []
         line_rotations = []
@@ -191,10 +191,10 @@ class UsdRenderer:
 
         for i in range(num_lines):
 
-            pos0 = vertices[i*2+0]
-            pos1 = vertices[i*2+1]
+            pos0 = vertices[indices[i*2+0]]
+            pos1 = vertices[indices[i*2+1]]
 
-            (pos, rot, scale) = _compute_segment_xform(Gf.Vec3f(pos0), Gf.Vec3f(pos1))
+            (pos, rot, scale) = _compute_segment_xform(Gf.Vec3f(float(pos0[0]), float(pos0[1]), float(pos0[2])), Gf.Vec3f(float(pos1[0]), float(pos1[1]), float(pos1[2])))
 
             line_positions.append(pos)
             line_rotations.append(rot)
@@ -208,7 +208,7 @@ class UsdRenderer:
  #      instancer.GetPrimvar("displayColor").Set(line_colors, time)        
 
 
-    def render_line_strip(self, vertices, color: tuple, name: str, radius: float=0.01):
+    def render_line_strip(self, name: str, vertices, color: tuple, radius: float=0.01):
 
         num_lines = int(len(vertices)-1)
 
@@ -273,3 +273,8 @@ class UsdRenderer:
             self.stage.Save()
         except:
             print("Failed to save USD stage")
+
+
+
+
+

@@ -39,7 +39,7 @@ device = "cuda"
 
 builder = wpsim.ModelBuilder()
 
-builder.add_body(X_pj=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
+builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
 builder.add_shape_box(body=0, hx=0.5, hy=0.5, hz=0.5, density=1000.0, ke=2.e+5, kd=1.e+4)
 
 model = builder.finalize(device=device)

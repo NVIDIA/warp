@@ -82,7 +82,7 @@ def simulate(positions: wp.array(dtype=wp.vec3),
 
 
 device = "cuda"
-num_particles = 1000
+num_particles = 4000
 
 sim_steps = 500
 sim_dt = 1.0/60.0
@@ -92,12 +92,15 @@ sim_timers = {}
 sim_render = True
 
 sim_restitution = 0.0
-sim_margin = 0.1
+sim_margin = 0.5
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
-torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+#torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
+#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+
+torus = Usd.Stage.Open("./tests/assets/excavator.usda")
+torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Excavator/Excavator"))
 
 points = np.array(torus_geom.GetPointsAttr().Get())
 indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
@@ -108,7 +111,7 @@ mesh = wp.Mesh(
     velocities=None,
     indices=wp.array(indices, dtype=int, device=device))
 
-init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -0.2, 0.5]))*10.0
+init_pos = (np.random.rand(num_particles, 3)*2.0 - np.array([0.5, -1.4, 0.5]))*10.0
 init_vel = np.random.rand(num_particles, 3)*0.0
 
 positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device=device)
@@ -123,13 +126,13 @@ for i in range(sim_steps):
 
     with wp.ScopedTimer("simulate", detailed=False, dict=sim_timers):
 
-        wp.launch(
-            kernel=deform,
-            dim=len(mesh.points),
-            inputs=[mesh.points, sim_time],
-            device=device)
+        # wp.launch(
+        #     kernel=deform,
+        #     dim=len(mesh.points),
+        #     inputs=[mesh.points, sim_time],
+        #     device=device)
 
-        mesh.refit()
+        # mesh.refit()
 
         wp.launch(
             kernel=simulate, 

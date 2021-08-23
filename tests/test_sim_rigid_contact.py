@@ -13,7 +13,7 @@ import warp as wp
 import warp.sim
 from warp.utils import quat_identity
 
-import render
+import render_sim as render
 
 wp.init()
 
@@ -21,45 +21,62 @@ sim_steps = 2000
 sim_dt = 1.0/240.0
 sim_time = 0.0
 
-num_bodies = 32
+num_bodies = 8
 
 device = "cpu"
 
 builder = wp.sim.ModelBuilder()
 
+scale = 0.5
+
+ke = 1.e+4
+kd = 100.0
+kf = 100.0
+
+# boxes
 for i in range(num_bodies):
     
-    builder.add_body(
-        parent=-1,
-        X_pj=wp.transform((i, 1.0, 0.0), quat_identity()))
+    b = builder.add_body(origin=wp.transform((i, 1.0, 0.0), quat_identity()))
 
-    scale = 0.5
-
-    # shape
-    builder.add_shape_box( 
+    s = builder.add_shape_box( 
         pos=(0.0, 0.0, 0.0),
-        hx=0.25*scale,
-        hy=0.1*scale,
-        hz=0.1*scale,
-        density=1000.0,
+        hx=0.5*scale,
+        hy=0.2*scale,
+        hz=0.2*scale,
         body=i,
-        ke=1.e+3,
-        kd=10.0,
-        kf=10.0,
-        mu=0.5)
+        ke=ke,
+        kd=kd,
+        kf=kf)
 
-    # builder.add_shape_sphere( 
-    #     pos=(0.0, 0.0, 0.0),
-    #     radius=0.25*scale,
-    #     density=100.0,
-    #     body=i,
-    #     ke=1.e+3,
-    #     kd=1.0,
-    #     kf=10.0,
-    #     mu=0.5)
+# spheres
+for i in range(num_bodies):
+    
+    b = builder.add_body(origin=wp.transform((i, 1.0, 2.0), quat_identity()))
 
+    s = builder.add_shape_sphere(
+        pos=(0.0, 0.0, 0.0),
+        radius=0.25*scale, 
+        body=b,
+        ke=ke,
+        kd=kd,
+        kf=kf)
 
-    # initial spin 
+# capsules
+for i in range(num_bodies):
+    
+    b = builder.add_body(origin=wp.transform((i, 1.0, 4.0), quat_identity()))
+
+    s = builder.add_shape_capsule( 
+        pos=(0.0, 0.0, 0.0),
+        radius=0.25*scale,
+        half_width=scale*0.5,
+        body=b,
+        ke=ke,
+        kd=kd,
+        kf=kf)
+
+# initial spin 
+for i in range(len(builder.body_qd)):
     builder.body_qd[i] = (0.0, 2.0, 10.0, 0.0, 0.0, 0.0)
  
 model = builder.finalize(device)
@@ -71,35 +88,24 @@ state = model.state()
 model.collide(state)
 
 # one time collide for ground contact
-stage = render.UsdRenderer("tests/outputs/test_sim_rigid_contact.usda")
+renderer = render.SimRenderer(model, "tests/outputs/test_sim_rigid_contact.usda")
 
 for i in range(sim_steps):
 
     state.clear_forces()
-    
+
+    # sim
     state = integrator.simulate(model, state, state, sim_dt)   
 
-    X_wb = state.body_q.to("cpu").numpy()
-    X_bs = model.shape_transform.to("cpu").numpy()
-
-    stage.begin_frame(sim_time)
-    
-    stage.render_ground()   
-
-    for i in range(model.body_count):
-    
-        # shape world transform    
-        X_ws = wp.transform_multiply(wp.transform(X_wb[i, 0:3], X_wb[i,3:7]), wp.transform(X_bs[0, 0:3], X_bs[0,3:7]))
-
-        stage.render_box(X_ws[0], X_ws[1], extents=builder.shape_geo_scale[0], name="body" + str(i))
-        #stage.render_sphere(X_ws[0], X_ws[1], radius=builder.shape_geo_scale[0][0], name="body" + str(i))
-
-    stage.end_frame()
+    # render
+    renderer.begin_frame(sim_time)
+    renderer.render(state)
+    renderer.end_frame()
     
     sim_time += sim_dt
 
 
-stage.save()
+renderer.save()
 
 
 

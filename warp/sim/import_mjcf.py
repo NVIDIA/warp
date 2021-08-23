@@ -77,7 +77,7 @@ def parse_mjcf(
         
         link = builder.add_link(
             parent, 
-            X_pj=wp.transform(body_pos, wp.quat_identity()), 
+            origin=wp.transform(body_pos, wp.quat_identity()), 
             axis=joint_axis, 
             type=joint_type,
             limit_lower=np.deg2rad(joint_range[0]),
