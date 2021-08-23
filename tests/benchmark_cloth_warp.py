@@ -11,18 +11,18 @@ def eval_springs(x: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    i = wp.load(spring_indices, tid * 2 + 0)
-    j = wp.load(spring_indices, tid * 2 + 1)
+    i = spring_indices[tid * 2 + 0]
+    j = spring_indices[tid * 2 + 1]
 
-    ke = wp.load(spring_stiffness, tid)
-    kd = wp.load(spring_damping, tid)
-    rest = wp.load(spring_rest_lengths, tid)
+    ke = spring_stiffness[tid]
+    kd = spring_damping[tid]
+    rest = spring_rest_lengths[tid]
 
-    xi = wp.load(x, i)
-    xj = wp.load(x, j)
+    xi = x[i]
+    xj = x[j]
 
-    vi = wp.load(v, i)
-    vj = wp.load(v, j)
+    vi = v[i]
+    vj = v[j]
 
     xij = xi - xj
     vij = vi - vj
@@ -34,7 +34,7 @@ def eval_springs(x: wp.array(dtype=wp.vec3),
     dir = xij * l_inv
 
     c = l - rest
-    dcdt = dot(dir, vij)
+    dcdt = wp.dot(dir, vij)
 
     # damping based on relative velocity.
     fs = dir * (ke * c + kd * dcdt)
@@ -52,10 +52,10 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    x0 = wp.load(x, tid)
-    v0 = wp.load(v, tid)
-    f0 = wp.load(f, tid)
-    inv_mass = wp.load(w, tid)
+    x0 = x[tid]
+    v0 = v[tid]
+    f0 = f[tid]
+    inv_mass = w[tid]
 
     g = wp.vec3(0.0, 0.0, 0.0)
 
@@ -67,11 +67,11 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
     v1 = v0 + (f0 * inv_mass + g) * dt
     x1 = x0 + v1 * dt
 
-    wp.store(x, tid, x1)
-    wp.store(v, tid, v1)
+    x[tid] = x1
+    v[tid] = v1
 
     # clear forces
-    wp.store(f, tid, wp.vec3(0.0, 0.0, 0.0))
+    f[tid] = wp.vec3(0.0, 0.0, 0.0)
 
 
 class WpIntegrator:
