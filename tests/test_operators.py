@@ -1,3 +1,6 @@
+
+
+
 # include parent path
 import os
 import sys
@@ -106,6 +109,4 @@ wp.launch(
 
 wp.synchronize()
 
-
-wp.print_builtins()
 

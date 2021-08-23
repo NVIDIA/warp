@@ -186,6 +186,8 @@ add_builtin("neg", input_types={"x": quat}, value_type=quat, doc="", group="Oper
 add_builtin("neg", input_types={"x": mat33}, value_type=mat33, doc="", group="Operators")
 add_builtin("neg", input_types={"x": mat44}, value_type=mat44, doc="", group="Operators")
 
+add_builtin("unot", input_types={"b": bool}, value_type=bool, doc="", group="Operators")
+
 add_builtin("min", input_types={"x": int, "y": int}, value_type=int, doc="", group="Scalar Math")
 add_builtin("min", input_types={"x": float, "y": float}, value_type=float, doc="", group="Scalar Math")
 

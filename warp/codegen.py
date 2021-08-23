@@ -27,6 +27,7 @@ builtin_operators[ast.Div] = "div"
 builtin_operators[ast.FloorDiv] = "div"
 builtin_operators[ast.Mod] = "mod"
 builtin_operators[ast.USub] = "neg"
+builtin_operators[ast.Not] = "unot"
 
 builtin_operators[ast.Gt] = ">"
 builtin_operators[ast.Lt] = "<"
@@ -271,6 +272,21 @@ class Adjoint:
         adj.add_forward("}")
         adj.add_reverse("if (var_{}) {{".format(cond))
 
+    def begin_else(adj, cond):
+
+        adj.add_forward("if (!var_{}) {{".format(cond))
+        adj.add_reverse("}")
+
+        adj.indent_count += 1
+
+    def end_else(adj, cond):
+
+        adj.indent_count -= 1
+
+        adj.add_forward("}")
+        adj.add_reverse("if (!var_{}) {{".format(cond))
+
+
     # define a for-loop
     def begin_for(adj, iter, start, end):
 
@@ -332,17 +348,14 @@ class Adjoint:
             # if statement
             elif (isinstance(node, ast.If)):         
 
-                if len(node.orelse) != 0:
-                    raise SyntaxError("Else statements not currently supported")
-
                 if len(node.body) == 0:
                     return None
 
-                # save symbol map
-                symbols_prev = adj.symbols.copy()
-
                 # eval condition
                 cond = adj.eval(node.test)
+
+                # save symbol map
+                symbols_prev = adj.symbols.copy()
 
                 # eval body
                 adj.begin_if(cond)
@@ -352,7 +365,8 @@ class Adjoint:
 
                 adj.end_if(cond)
 
-                # detect symbols with conflicting definitions (assigned inside the branch)
+                # detect existing symbols with conflicting definitions (variables assigned inside the branch)
+                # and resolve with a phi (select) function
                 for items in symbols_prev.items():
 
                     sym = items[0]
@@ -360,10 +374,37 @@ class Adjoint:
                     var2 = adj.symbols[sym]
 
                     if var1 != var2:
-                        # insert a phi function that
-                        # selects var1, var2 based on cond
+                        # insert a phi function that selects var1, var2 based on cond
                         out = adj.add_call(adj.builtin_functions["select"], [cond, var1, var2])
                         adj.symbols[sym] = out
+
+
+                symbols_prev = adj.symbols.copy()
+
+                # evaluate 'else' statement as if (!cond)
+                if (len(node.orelse) > 0):
+
+                    adj.begin_else(cond)
+                
+                    for stmt in node.orelse:
+                        adj.eval(stmt)
+                    
+                    adj.end_else(cond)
+
+                # detect existing symbols with conflicting definitions (variables assigned inside the else)
+                # and resolve with a phi (select) function
+                for items in symbols_prev.items():
+
+                    sym = items[0]
+                    var1 = items[1]
+                    var2 = adj.symbols[sym]
+
+                    if var1 != var2:
+                        # insert a phi function that selects var1, var2 based on cond
+                        # note the reversed order of vars since we want to use !cond as our select
+                        out = adj.add_call(adj.builtin_functions["select"], [cond, var2, var1])
+                        adj.symbols[sym] = out
+
 
                 return None
 
@@ -380,7 +421,7 @@ class Adjoint:
                 return out
 
             elif (isinstance(node, ast.BoolOp)):
-                # op, expr list values (e.g. and and a list of things anded twpether)
+                # op, expr list values
 
                 op = node.op
                 if isinstance(op, ast.And):
@@ -391,10 +432,6 @@ class Adjoint:
                     raise KeyError("Op {} is not supported".format(op))
 
                 out = adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
-
-                # import pdb
-                # pdb.set_trace()
-
                 return out
 
             elif (isinstance(node, ast.Name)):
@@ -634,6 +671,16 @@ class Adjoint:
                 # update symbol map
                 adj.symbols[node.target.id] = out
 
+            elif (isinstance(node, ast.NameConstant)):
+                if node.value == True:
+                    out = adj.add_constant(True)
+                elif node.value == False:
+                    out = adj.add_constant(False)
+                elif node.value == None:
+                    raise TypeError("None type unsupported")
+
+                return out
+
             elif node is None:
                 return None
             else:
@@ -802,6 +849,14 @@ WP_API void {name}_cpu_backward(int dim, {forward_args}, {reverse_args});
 }} // extern C
 '''
 
+def constant_str(value):
+    if (type(value) == bool):
+        if value:
+            return "true"
+        else:
+            return "false"
+    else:
+        return str(value)
 
 def indent(args, stops=1):
     sep = "\n"
@@ -832,7 +887,7 @@ def codegen_func_forward(adj, func_type='kernel', device='cpu'):
         if var.constant == None:
             s += "    " + var.ctype() + " var_" + str(var.label) + ";\n"
         else:
-            s += "    const " + var.ctype() + " var_" + str(var.label) + " = " + str(var.constant) + ";\n"
+            s += "    const " + var.ctype() + " var_" + str(var.label) + " = " + constant_str(var.constant) + ";\n"
 
 
     # forward pass
@@ -890,7 +945,7 @@ def codegen_func_reverse(adj, func_type='kernel', device='cpu'):
         if var.constant == None:
             s += "    " + var.ctype() + " var_" + str(var.label) + ";\n"
         else:
-            s += "    const " + var.ctype() + " var_" + str(var.label) + " = " + str(var.constant) + ";\n"
+            s += "    const " + var.ctype() + " var_" + str(var.label) + " = " + constant_str(var.constant) + ";\n"
 
     # dual vars
     s += "    //---------\n"
