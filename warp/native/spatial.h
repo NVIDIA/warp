@@ -261,6 +261,11 @@ CUDA_CALLABLE inline spatial_transform mul(const spatial_transform& a, float s)
     return { a.p*s, a.q*s };
 }
 
+CUDA_CALLABLE inline spatial_transform mul(const spatial_transform& a, const spatial_transform& b)
+{
+    return spatial_transform_multiply(a, b);
+}
+
 
 // adjoint methods
 CUDA_CALLABLE inline void adj_add(const spatial_transform& a, const spatial_transform& b, spatial_transform& adj_a, spatial_transform& adj_b, const spatial_transform& adj_ret)
@@ -280,6 +285,12 @@ CUDA_CALLABLE inline void adj_mul(const spatial_transform& a, float s, spatial_t
     adj_mul(a.p, s, adj_a.p, adj_s, adj_ret.p);
     adj_mul(a.q, s, adj_a.q, adj_s, adj_ret.q);
 }
+
+CUDA_CALLABLE inline void adj_mul(const spatial_transform& a, const spatial_transform& b, spatial_transform& adj_a, spatial_transform& adj_b, const spatial_transform& adj_ret)
+{
+    adj_spatial_transform_multiply(a, b, adj_a, adj_b, adj_ret);
+}
+
 
 inline CUDA_CALLABLE spatial_transform atomic_add(spatial_transform* addr, const spatial_transform& value) 
 {   

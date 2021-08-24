@@ -170,6 +170,7 @@ add_builtin("mul", input_types={"x": mat44, "y": mat44}, value_type=mat44, doc="
 add_builtin("mul", input_types={"x": spatial_vector, "y": float}, value_type=spatial_vector, doc="", group="Operators")
 add_builtin("mul", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="", group="Operators")
 add_builtin("mul", input_types={"x": spatial_matrix, "y": spatial_vector}, value_type=spatial_vector, doc="", group="Operators")
+add_builtin("mul", input_types={"x": spatial_transform, "y": spatial_transform}, value_type=spatial_transform, doc="", group="Operators")
 
 add_builtin("mod", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
 add_builtin("mod", input_types={"x": float, "y": float}, value_type=float, doc="", group="operators")

@@ -583,13 +583,15 @@ class ModelBuilder:
         self.joint_limit_upper = []
         self.joint_limit_ke = []
         self.joint_limit_kd = []
+        self.joint_act = []
 
 
     # rigids, register a rigid body and return its index.
     def add_body(
         self, 
         origin : Transform, 
-        parent : int=-1, 
+        parent : int=-1,
+        joint_xform : Transform=wp.transform_identity(),
         axis : Vec3=(0.0, 0.0, 0.0),
         type : int=JOINT_FREE,
         armature: float=0.0,
@@ -640,7 +642,7 @@ class ModelBuilder:
         self.joint_axis.append(np.array(axis))
         self.joint_parent.append(parent)
         self.joint_child.append(child)
-        self.joint_X_p.append(origin)
+        self.joint_X_p.append(joint_xform)
         self.joint_X_c.append(wp.transform_identity())
 
         self.joint_target_ke.append(stiffness)
@@ -648,6 +650,7 @@ class ModelBuilder:
         self.joint_limit_ke.append(limit_ke)
         self.joint_limit_kd.append(limit_kd)
         self.joint_armature.append(armature)
+        self.joint_act.append(0.0)
 
         # pd targets
         self.joint_target.append(0.0)
@@ -1644,6 +1647,7 @@ class ModelBuilder:
         m.joint_target = wp.array(self.joint_target, dtype=wp.float32, device=device)
         m.joint_target_ke = wp.array(self.joint_target_ke, dtype=wp.float32, device=device)
         m.joint_target_kd = wp.array(self.joint_target_kd, dtype=wp.float32, device=device)
+        m.joint_act = wp.array(self.joint_act, dtype=wp.float32, device=device)
 
         m.joint_limit_lower = wp.array(self.joint_limit_lower, dtype=wp.float32, device=device)
         m.joint_limit_upper = wp.array(self.joint_limit_upper, dtype=wp.float32, device=device)
