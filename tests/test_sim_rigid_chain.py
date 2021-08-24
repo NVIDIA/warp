@@ -7,12 +7,14 @@ import ctypes
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+#from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
 
-import render_sim as render
+wp.config.mode = "debug"
+
+#import render_sim as render
 
 wp.init()
 
@@ -47,7 +49,7 @@ model.ground = False
 integrator = wp.sim.SemiImplicitIntegrator()
 state = model.state()
 
-renderer = render.SimRenderer(model, "tests/outputs/test_sim_rigid_chain.usda")
+#renderer = render.SimRenderer(model, "tests/outputs/test_sim_rigid_chain.usda")
 
 for i in range(sim_steps):
 
@@ -55,15 +57,15 @@ for i in range(sim_steps):
 
     state = integrator.simulate(model, state, state, sim_dt)   
     
-    renderer.begin_frame(sim_time)
-    renderer.render(state)
-    renderer.end_frame()
+    # renderer.begin_frame(sim_time)
+    # renderer.render(state)
+    # renderer.end_frame()
    
 
     sim_time += sim_dt
 
 
-renderer.save()
+#renderer.save()
 
 
 

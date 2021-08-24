@@ -1135,17 +1135,16 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
     # parent transform and moment arm
     if (c_parent >= 0):
         X_wp = body_q[c_parent]*X_wp
-        r_wp = X_wp.p - wp.spatial_transform_point(body_com[c_parent])
+        r_wp = wp.spatial_transform_get_translation(X_wp) - wp.spatial_transform_point(body_q[c_parent], body_com[c_parent])
         
         twist_p = body_qd[c_parent]
 
         w_p = wp.spatial_top(twist_p)
         v_p = wp.spatial_bottom(twist_p) + wp.cross(w_p, r_wp)
 
-
     # child transform and moment arm
     X_wc = body_q[c_child]*joint_X_c[tid]
-    r_c = X_wc.p - wp.spatial_transform_point(body_com[c_child])
+    r_c = wp.spatial_transform_get_translation(X_wc) - wp.spatial_transform_point(body_q[c_child], body_com[c_child])
     
     twist_c = body_qd[c_child]
 
@@ -1153,6 +1152,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
     v_c = wp.spatial_bottom(twist_c) + wp.cross(w_c, r_c)
 
     # joint properties
+    type = joint_type[tid]
     axis = joint_axis[tid]
     target = joint_target[tid*3+0]                  # todo: 3-dof targets
     target_ke = joint_target_ke[tid]
@@ -1182,7 +1182,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
     f_total = wp.vec3(0.0, 0.0, 0.0)
 
     # prismatic
-    if (joint_type == 0):
+    if (type == 0):
         
         # world space joint axis
         axis_w = wp.spatial_transform_vector(X_wp, joint_axis[tid])
@@ -1202,7 +1202,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
         f_total += (target_ke*(q - target) - target_kd*qd + act + limit_f)*axis_w
 
         # attachment dynamics
-        q_pc = wp.quat_multiply(wp.quat_inverse(q_p), q_c)
+        q_pc = wp.quat_inverse(q_p)*q_c
 
         ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
     
@@ -1210,22 +1210,22 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
         t_total += ang_err*attach_ke + w_err*attach_kd
     
     # revolute
-    if (joint_type == 1):
+    if (type == 1):
         
         axis_w = wp.spatial_transform_vector(X_wp, joint_axis[tid])
 
         # swing twist decomposition
-        q_pc = wp.quat_multiply(wp.quat_inverse(q_p), q_c)
-        q_twist = quat_twist(axis, q_pc)
+        q_pc = wp.quat_inverse(q_p)*q_c
+        twist = wp.quat_twist(axis, q_pc)
 
-        q = wp.acos(q_twist[3])*2.0
+        q = wp.acos(twist[3])*2.0
         qd = wp.dot(w_err, axis_w)
 
         # joint dynamics
         t_total += (target_ke*(q - target) - target_kd*qd + act + limit_f)*axis_w
         
         # torque to remove swing
-        swing = q_pc*wp.quat_inverse(quat_twist)
+        swing = q_pc*wp.quat_inverse(twist)
         swing_err = wp.normalize(wp.vec3(swing[0], swing[1], swing[2]))*wp.acos(swing[3])*2.0
 
         # attachment dynamics
@@ -1233,17 +1233,17 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
         t_total += swing_err*attach_ke + (w_err - qd*axis_w)*attach_kd 
 
     
-    # ball
-    if (joint_type == 2):
-        pass
+    # # ball
+    # if (joint_type == 2):
+    #     pass
     
-    # fixed
-    if (joint_type == 3):
-        pass
+    # # fixed
+    # if (joint_type == 3):
+    #     pass
     
-    # free
-    if (joint_type == 4):
-        pass
+    # # free
+    # if (joint_type == 4):
+    #     pass
 
     # write forces
     if (c_parent >= 0):
@@ -1452,7 +1452,7 @@ def compute_forces(model, state, particle_f, body_f):
                   ],
                   device=model.device)
 
-    if (model.body_count):
+    if (False and model.body_count):
 
         wp.launch(kernel=eval_body_joints,
                   dim=model.body_count,

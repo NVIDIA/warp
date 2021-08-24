@@ -7,7 +7,7 @@ from copy import copy as shallowcopy
 # built-in types
 
 
-class vec3(ctypes.Array):
+class vec3(ctypes.Structure):
     
     _length_ = 3
     _type_ = ctypes.c_float
@@ -109,7 +109,7 @@ class mat33(ctypes.Array):
     def ctype():
         return ctypes.c_float
 
-class mat44(ctypes.Structure):
+class mat44(ctypes.Array):
     
     _length_ = 16
     _type_ = ctypes.c_float
@@ -170,7 +170,7 @@ class spatial_matrix(ctypes.Array):
     def ctype():
         return ctypes.c_float
 
-class spatial_transform(ctypes.Structure):
+class spatial_transform(ctypes.Array):
     
     _length_ = 7
     _type_ = ctypes.c_float

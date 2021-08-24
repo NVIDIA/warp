@@ -1640,7 +1640,7 @@ class ModelBuilder:
         m.joint_child = wp.array(self.joint_child, dtype=wp.int32, device=device)
         m.joint_X_p = wp.array(wp.transform_flatten_list(self.joint_X_p), dtype=wp.spatial_transform, device=device)
         m.joint_X_c = wp.array(wp.transform_flatten_list(self.joint_X_c), dtype=wp.spatial_transform, device=device)
-        m.joint_axis = wp.array(self.joint_axis, dtype=wp.float32, device=device)
+        m.joint_axis = wp.array(self.joint_axis, dtype=wp.vec3, device=device)
 
         # dynamics properties
         m.joint_armature = wp.array(self.joint_armature, dtype=wp.float32, device=device)
