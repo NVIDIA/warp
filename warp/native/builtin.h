@@ -104,6 +104,7 @@ inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
 inline CUDA_CALLABLE float acos(float x) { return ::acos(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float asin(float x) { return ::asin(min(max(x, -1.0f), 1.0f)); }
 inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
 inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
 inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
@@ -197,6 +198,14 @@ inline CUDA_CALLABLE void adj_acos(float x, float& adj_x, float adj_ret)
     if (d > 0.0f)
         adj_x -= (1.0f/d)*adj_ret;
 }
+
+inline CUDA_CALLABLE void adj_asin(float x, float& adj_x, float adj_ret)
+{
+    float d = sqrt(1.0f-x*x);
+    if (d > 0.0f)
+        adj_x += (1.0f/d)*adj_ret;
+}
+
 
 inline CUDA_CALLABLE void adj_sin(float x, float& adj_x, float adj_ret)
 {

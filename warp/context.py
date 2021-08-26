@@ -205,6 +205,7 @@ add_builtin("abs", input_types={"x": float}, value_type=float, doc="", group="Sc
 add_builtin("sin", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("cos", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("acos", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("asin", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("sqrt", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 
 add_builtin("log", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
