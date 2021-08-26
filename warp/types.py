@@ -7,7 +7,7 @@ from copy import copy as shallowcopy
 # built-in types
 
 
-class vec3(ctypes.Structure):
+class vec3(ctypes.Array):
     
     _length_ = 3
     _type_ = ctypes.c_float
@@ -448,7 +448,7 @@ class array:
 
             self.__name__ = "array<" + type.__name__ + ">"
 
-    
+
         # store 2D shape (useful for interop with tensor frameworks)
         self.shape = (self.length, type_length(self.dtype))
 

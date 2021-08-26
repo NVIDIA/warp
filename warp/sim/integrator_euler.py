@@ -1117,6 +1117,8 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
                      joint_limit_upper: wp.array(dtype=float),
                      joint_limit_ke: wp.array(dtype=float),
                      joint_limit_kd: wp.array(dtype=float),
+                     joint_attach_ke: float,
+                     joint_attach_kd: float,
                      body_f: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
@@ -1163,9 +1165,6 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
     limit_upper = joint_limit_upper[tid*3+0]        # todo: 3-dof limits
     act = joint_act[tid]
 
-    attach_ke = 1.e+3
-    attach_kd = 1.e+2
-
     x_p = wp.spatial_transform_get_translation(X_wp)
     x_c = wp.spatial_transform_get_translation(X_wc)
 
@@ -1181,15 +1180,20 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
     t_total = wp.vec3(0.0, 0.0, 0.0)
     f_total = wp.vec3(0.0, 0.0, 0.0)
 
+    # reduce angular damping stiffness for stability
+    angular_damping_scale = 0.01
+
     # prismatic
     if (type == 0):
         
         # world space joint axis
-        axis_w = wp.spatial_transform_vector(X_wp, joint_axis[tid])
+        axis_p = wp.spatial_transform_vector(X_wp, joint_axis[tid])
 
         # evaluate joint coordinates
-        q = wp.dot(x_err, axis_w)
-        qd = wp.dot(v_err, axis_w)
+        q = wp.dot(x_err, axis_p)
+        qd = wp.dot(v_err, axis_p)
+
+        limit_f = 0.0
 
         # compute limit forces, damping only active when limit is violated
         if (q < limit_lower):
@@ -1199,51 +1203,63 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
             limit_f = limit_ke*(limit_upper-q) - limit_kd*max(qd, 0.0)
 
         # joint dynamics
-        f_total += (target_ke*(q - target) - target_kd*qd + act + limit_f)*axis_w
+        f_total += (target_ke*(q - target) + target_kd*qd + act - limit_f)*axis_p
 
         # attachment dynamics
         q_pc = wp.quat_inverse(q_p)*q_c
 
         ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
     
-        f_total += (x_err - q*axis_w)*attach_ke + (v_err - qd*axis_w)*attach_kd
-        t_total += ang_err*attach_ke + w_err*attach_kd
+        f_total += (x_err - q*axis_p)*joint_attach_ke + (v_err - qd*axis_p)*joint_attach_kd
+        t_total += ang_err*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
     
     # revolute
     if (type == 1):
         
-        axis_w = wp.spatial_transform_vector(X_wp, joint_axis[tid])
+        axis_p = wp.spatial_transform_vector(X_wp, joint_axis[tid])
+        axis_c = wp.spatial_transform_vector(X_wc, joint_axis[tid])
 
         # swing twist decomposition
         q_pc = wp.quat_inverse(q_p)*q_c
-        twist = wp.quat_twist(axis, q_pc)
+        twist = wp.quat_twist(axis_p, q_pc)
 
-        q = wp.acos(twist[3])*2.0
-        qd = wp.dot(w_err, axis_w)
+        q = wp.acos(twist[3])*2.0*wp.sign(wp.dot(axis, wp.vec3(twist[0], twist[1], twist[2])))
+        qd = wp.dot(w_err, axis_p)
 
-        # joint dynamics
-        t_total += (target_ke*(q - target) - target_kd*qd + act + limit_f)*axis_w
+        limit_f = 0.0
+
+        if (q < limit_lower):
+            limit_f = limit_ke*(limit_lower-q) - limit_kd*min(qd, 0.0)
+
+        if (q > limit_upper):
+            limit_f = limit_ke*(limit_upper-q) - limit_kd*max(qd, 0.0)
+
+        # joint dynamics        
+        t_total += (target_ke*(q - target) + target_kd*qd + act - limit_f)*axis_p
         
-        # torque to remove swing
-        swing = q_pc*wp.quat_inverse(twist)
-        swing_err = wp.normalize(wp.vec3(swing[0], swing[1], swing[2]))*wp.acos(swing[3])*2.0
+        # remove swing
+        swing_err = wp.cross(axis_p, axis_c)
 
-        # attachment dynamics
-        f_total += x_err*attach_ke + v_err*attach_kd
-        t_total += swing_err*attach_ke + (w_err - qd*axis_w)*attach_kd 
+        f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
+        t_total += (swing_err*joint_attach_ke + (w_err - qd*axis_p)*joint_attach_kd*angular_damping_scale)
+ 
+    
+    # ball
+    if (type == 2):
+        
+        # todo: joint limits
 
+        f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
     
-    # # ball
-    # if (joint_type == 2):
-    #     pass
+    # fixed
+    if (type == 3):
+
+        q_pc = wp.quat_inverse(q_p)*q_c
+        ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
+
+        f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
+        t_total += ang_err*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
     
-    # # fixed
-    # if (joint_type == 3):
-    #     pass
-    
-    # # free
-    # if (joint_type == 4):
-    #     pass
 
     # write forces
     if (c_parent >= 0):
@@ -1452,7 +1468,7 @@ def compute_forces(model, state, particle_f, body_f):
                   ],
                   device=model.device)
 
-    if (False and model.body_count):
+    if (model.body_count):
 
         wp.launch(kernel=eval_body_joints,
                   dim=model.body_count,
@@ -1472,7 +1488,9 @@ def compute_forces(model, state, particle_f, body_f):
                       model.joint_limit_lower,
                       model.joint_limit_upper,
                       model.joint_limit_ke,
-                      model.joint_limit_kd
+                      model.joint_limit_kd,
+                      model.joint_attach_ke,
+                      model.joint_attach_kd,
                   ],
                   outputs=[
                       body_f

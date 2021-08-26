@@ -286,6 +286,10 @@ class Model:
         self.joint_target_kd = None
         self.joint_target = None
 
+        # todo: per-joint values?
+        self.joint_attach_ke = 1.e+3
+        self.joint_attach_kd = 1.e+2
+
         self.particle_count = 0
         self.body_count = 0
         self.shape_count = 0
@@ -585,22 +589,44 @@ class ModelBuilder:
         self.joint_limit_kd = []
         self.joint_act = []
 
+        self.joint_q_start = []
+        self.joint_qd_start = []
+        self.articulation_start = []
 
-    # rigids, register a rigid body and return its index.
+        self.joint_count = 0
+        self.joint_dof_count = 0
+        self.joint_coord_count = 0
+        
+
+    # an articulation is a set of contiguous bodies bodies from articulation_start[i] to articulation_start[i+1]
+    # these are used for computing forward kinematics e.g.:
+    #
+    # model.eval_articulation_fk()
+    # model.eval_articulation_j()
+    # model.eval_articulation_m()
+    # 
+    # articulations are automatically 'closed' when calling finalize
+    
+    def add_articulation(self):
+        self.articulation_start.append(self.joint_count)
+
+    # register a rigid body and return its index.
     def add_body(
         self, 
         origin : Transform, 
         parent : int=-1,
-        joint_xform : Transform=wp.transform_identity(),
-        axis : Vec3=(0.0, 0.0, 0.0),
-        type : int=JOINT_FREE,
-        armature: float=0.0,
-        stiffness: float=0.0,
-        damping: float=0.0,
-        limit_lower: float=-1.e+3,
-        limit_upper: float=1.e+3,
-        limit_ke: float=100.0,
-        limit_kd: float=10.0,
+        joint_xform : Transform=wp.transform_identity(),    # transform of joint in parent space, child joint xform is assumed to align with origin
+        joint_axis : Vec3=(0.0, 0.0, 0.0),
+        joint_type : int=JOINT_FREE,
+        joint_ke: float=0.0,
+        joint_kd: float=0.0,
+        joint_target_ke: float=0.0,
+        joint_target_kd: float=0.0,
+        joint_limit_ke: float=100.0,
+        joint_limit_kd: float=10.0,
+        joint_limit_lower: float=-1.e+3,
+        joint_limit_upper: float=1.e+3,
+        joint_armature: float=0.0,
         com: Vec3=np.zeros(3),
         I_m: Mat33=np.zeros((3, 3)), 
         m: float=0.0) -> int:
@@ -638,32 +664,55 @@ class ModelBuilder:
         self.body_qd.append(wp.spatial_vector())
 
         # joint data
-        self.joint_type.append(type)
-        self.joint_axis.append(np.array(axis))
+        self.joint_type.append(joint_type)
+        self.joint_axis.append(np.array(joint_axis))
         self.joint_parent.append(parent)
         self.joint_child.append(child)
         self.joint_X_p.append(joint_xform)
         self.joint_X_c.append(wp.transform_identity())
 
-        self.joint_target_ke.append(stiffness)
-        self.joint_target_kd.append(damping)
-        self.joint_limit_ke.append(limit_ke)
-        self.joint_limit_kd.append(limit_kd)
-        self.joint_armature.append(armature)
+        self.joint_target_ke.append(joint_target_ke)
+        self.joint_target_kd.append(joint_target_kd)
+        self.joint_limit_ke.append(joint_limit_ke)
+        self.joint_limit_kd.append(joint_limit_kd)
+        self.joint_armature.append(joint_armature)
         self.joint_act.append(0.0)
 
-        # pd targets
+        # pd targets (use 3 for each even if it's redundant for 1D joints just to make indexing simpler)
         self.joint_target.append(0.0)
         self.joint_target.append(0.0)
         self.joint_target.append(0.0)
 
-        self.joint_limit_lower.append(limit_lower)
-        self.joint_limit_lower.append(limit_lower)
-        self.joint_limit_lower.append(limit_lower)
+        self.joint_limit_lower.append(joint_limit_lower)
+        self.joint_limit_lower.append(joint_limit_lower)
+        self.joint_limit_lower.append(joint_limit_lower)
         
-        self.joint_limit_upper.append(limit_upper)
-        self.joint_limit_upper.append(limit_upper)
-        self.joint_limit_upper.append(limit_upper)
+        self.joint_limit_upper.append(joint_limit_upper)
+        self.joint_limit_upper.append(joint_limit_upper)
+        self.joint_limit_upper.append(joint_limit_upper)
+
+        if (joint_type == JOINT_PRISMATIC):
+            dof_count = 1
+            coord_count = 1
+        elif (joint_type == JOINT_REVOLUTE):
+            dof_count = 1
+            coord_count = 1
+        elif (joint_type == JOINT_BALL):
+            dof_count = 3
+            coord_count = 4
+        elif (joint_type == JOINT_FREE):
+            dof_count = 6
+            coord_count = 7
+        elif (joint_type == JOINT_FIXED):
+            dof_count = 0
+            coord_count = 0
+
+        self.joint_q_start.append(self.joint_dof_count)
+        self.joint_qd_start.append(self.joint_coord_count)
+
+        self.joint_count += 1
+        self.joint_dof_count += dof_count
+        self.joint_coord_count += coord_count
 
         # return index of child body / joint
         return child
@@ -1653,6 +1702,11 @@ class ModelBuilder:
         m.joint_limit_upper = wp.array(self.joint_limit_upper, dtype=wp.float32, device=device)
         m.joint_limit_ke = wp.array(self.joint_limit_ke, dtype=wp.float32, device=device)
         m.joint_limit_kd = wp.array(self.joint_limit_kd, dtype=wp.float32, device=device)
+
+        # 'close' the start index arrays with a sentinel value
+        self.joint_q_start.append(self.joint_coord_count)
+        self.joint_qd_start.append(self.joint_dof_count)
+        self.articulation_start.append(self.joint_count)
 
         # contacts
         m.soft_contact_max = 64*1024
