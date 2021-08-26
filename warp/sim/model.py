@@ -2,6 +2,7 @@
 """
 
 from operator import pos
+from warp.sim.articulation import eval_articulation_fk
 import warp as wp
 
 import math
@@ -656,7 +657,7 @@ class ModelBuilder:
         child = len(self.body_mass)
 
         # body data
-        self.body_inertia.append(np.zeros((3, 3)))
+        self.body_inertia.append(np.eye(3)*joint_armature)
         self.body_mass.append(0.0)
         self.body_com.append(np.zeros(3))
         
@@ -707,8 +708,8 @@ class ModelBuilder:
             dof_count = 0
             coord_count = 0
 
-        self.joint_q_start.append(self.joint_dof_count)
-        self.joint_qd_start.append(self.joint_coord_count)
+        self.joint_q_start.append(self.joint_coord_count)
+        self.joint_qd_start.append(self.joint_dof_count)
 
         self.joint_count += 1
         self.joint_dof_count += dof_count
@@ -1561,6 +1562,7 @@ class ModelBuilder:
         self.body_inertia[i] = new_inertia
         self.body_com[i] = new_com
 
+
     # returns a (model, state) pair given the description
     def finalize(self, device: str) -> Model:
         """Convert this builder object to a concrete model for simulation.
@@ -1708,6 +1710,10 @@ class ModelBuilder:
         self.joint_qd_start.append(self.joint_dof_count)
         self.articulation_start.append(self.joint_count)
 
+        m.joint_q_start = wp.array(self.joint_q_start, dtype=int, device=device) 
+        m.joint_qd_start = wp.array(self.joint_qd_start, dtype=int, device=device)
+        m.articulation_start = wp.array(self.articulation_start, dtype=int, device=device)
+
         # contacts
         m.soft_contact_max = 64*1024
 
@@ -1726,7 +1732,11 @@ class ModelBuilder:
         m.tet_count = len(self.tet_poses)
         m.edge_count = len(self.edge_rest_angle)
         m.spring_count = len(self.spring_rest_length)
-        m.muscle_count = len(self.muscle_start)-1       # -1 due to sentinel value
+        m.muscle_count = len(self.muscle_start)-1               # -1 due to sentinel value
+        m.articulation_count = len(self.articulation_start)-1   # -1 due to sentinel value
+        
+        m.joint_dof_count = self.joint_dof_count
+        m.joint_coord_count = self.joint_coord_count
 
         m.contact_count = 0
         

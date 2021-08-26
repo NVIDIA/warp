@@ -1,0 +1,165 @@
+<!-- ======================================================
+	This file is part of MuJoCo.     
+	Copyright 2009-2015 Roboti LLC.
+	
+	Model 		:: Humanoid
+		
+	Mujoco		:: Advanced physics simulation engine
+		Source		: www.roboti.us
+		Version		: 1.31
+		Released 	: 23Apr16
+		
+	Author		:: Vikash Kumar
+		Contacts 	: kumar@roboti.us
+		Last edits 	: 30Apr'16, 30Nov'15, 26Sept'15
+====================================================== -->
+<mujoco model='humanoid (v1.31)'>
+    <compiler inertiafromgeom='true' angle='degree'/>
+
+    <default>
+        <joint limited='true' damping='1' armature='0'  />
+        <geom contype='1' conaffinity='1' condim='1' rgba='0.8 0.6 .4 1' 
+        	margin="0.001" solref=".02 1" solimp=".8 .8 .01" material="geom"/>
+        <motor ctrlrange='-.4 .4' ctrllimited='true'/>
+    </default>
+
+    <option timestep='0.002' iterations="50" solver="PGS">
+        <flag energy="enable"/>
+    </option>
+
+	<size nkey='5'/>
+
+    <visual>
+        <map fogstart="3" fogend="5" force="0.1"/>
+        <quality shadowsize="2048"/>
+    </visual>
+
+    <asset>
+        <texture type="skybox" builtin="gradient" width="100" height="100" rgb1=".4 .6 .8" 
+            rgb2="0 0 0"/>  
+        <texture name="texgeom" type="cube" builtin="flat" mark="cross" width="127" height="1278" 
+            rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01"/>  
+        <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" 
+            width="100" height="100"/>  
+
+        <material name='MatPlane' reflectance='0.5' texture="texplane" texrepeat="1 1" texuniform="true"/>
+        <material name='geom' texture="texgeom" texuniform="true"/>
+    </asset>
+
+    <worldbody>
+        <geom name='floor' pos='0 0 0' size='10 10 0.125' type='plane' material="MatPlane" condim='3'/>
+
+        <body name='torso' pos='0 0 1.4'>
+            <light mode='trackcom' directional='false' diffuse='.8 .8 .8' specular='0.3 0.3 0.3' pos='0 0 4.0' dir='0 0 -1'/>
+
+            <joint name='root' type='free' pos='0 0 0' limited='false' damping='0' armature='0' stiffness='0'/>
+            <geom name='torso1' type='capsule' fromto='0 -.07 0 0 .07 0'  size='0.07' />
+            <geom name='head' type='sphere' pos='0 0 .19' size='.09'/>
+            <geom name='uwaist' type='capsule' fromto='-.01 -.06 -.12 -.01 .06 -.12' size='0.06'/>
+            <body name='lwaist' pos='-.01 0 -0.260' quat='1.000 0 -0.002 0' >
+                <geom name='lwaist' type='capsule' fromto='0 -.06 0 0 .06 0'  size='0.06' />
+                <joint name='abdomen_z' type='hinge' pos='0 0 0.065' axis='0 0 1' range='-45 45' damping='5' stiffness='20' armature='0.02' />
+                <joint name='abdomen_y' type='hinge' pos='0 0 0.065' axis='0 1 0' range='-75 30' damping='5' stiffness='10' armature='0.02' />
+                <body name='pelvis' pos='0 0 -0.165' quat='1.000 0 -0.002 0' >
+                    <joint name='abdomen_x' type='hinge' pos='0 0 0.1' axis='1 0 0' range='-35 35' damping='5' stiffness='10' armature='0.02' />
+                    <geom name='butt' type='capsule' fromto='-.02 -.07 0 -.02 .07 0'  size='0.09' />
+                    <body name='right_thigh' pos='0 -0.1 -0.04' >
+                        <joint name='right_hip_x' type='hinge' pos='0 0 0' axis='1 0 0' range='-25 5'   damping='5' stiffness='10' armature='0.01' />
+                        <joint name='right_hip_z' type='hinge' pos='0 0 0' axis='0 0 1' range='-60 35'  damping='5' stiffness='10' armature='0.01' />
+                        <joint name='right_hip_y' type='hinge' pos='0 0 0' axis='0 1 0' range='-120 20' damping='5' stiffness='20' armature='0.01' />
+                        <geom name='right_thigh1' type='capsule' fromto='0 0 0 0 0.01 -.34'  size='0.06' />
+                        <body name='right_shin' pos='0 0.01 -0.403' >
+                            <joint name='right_knee' type='hinge' pos='0 0 .02' axis='0 -1 0' range='-160 -2' stiffness='1' armature='0.006' />
+                            <geom name='right_shin1' type='capsule' fromto='0 0 0 0 0 -.3'   size='0.049' />
+                            <body name='right_foot' pos='0 0 -.39' >
+                                <joint name='right_ankle_y' type='hinge' pos='0 0 0.08' axis='0 1 0'   range='-50 50' damping='5' stiffness='4' armature='0.008' />
+                                <joint name='right_ankle_x' type='hinge' pos='0 0 0.08' axis='1 0 0.5' range='-50 50' damping='5' stiffness='1'  armature='0.006' />
+                                <geom name='right_foot_cap1' type='capsule' fromto='-.07 -0.02 0 0.14 -0.04 0'  size='0.027' />
+                                <geom name='right_foot_cap2' type='capsule' fromto='-.07 0 0 0.14  0.02 0'  size='0.027' />
+                            </body>
+                        </body>
+                    </body>
+                    <body name='left_thigh' pos='0 0.1 -0.04' >
+                        <joint name='left_hip_x' type='hinge' pos='0 0 0' axis='-1 0 0' range='-25 5'  damping='5' stiffness='10' armature='0.01' />
+                        <joint name='left_hip_z' type='hinge' pos='0 0 0' axis='0 0 -1' range='-60 35' damping='5' stiffness='10' armature='0.01' />
+                        <joint name='left_hip_y' type='hinge' pos='0 0 0' axis='0 1 0' range='-120 20' damping='5' stiffness='20' armature='0.01' />
+                        <geom name='left_thigh1' type='capsule' fromto='0 0 0 0 -0.01 -.34'  size='0.06' />
+                        <body name='left_shin' pos='0 -0.01 -0.403' >
+                            <joint name='left_knee' type='hinge' pos='0 0 .02' axis='0 -1 0' range='-160 -2' stiffness='1' armature='0.006' />
+                            <geom name='left_shin1' type='capsule' fromto='0 0 0 0 0 -.3'   size='0.049' />
+                            <body name='left_foot' pos='0 0 -.39' >
+                                <joint name='left_ankle_y' type='hinge' pos='0 0 0.08' axis='0 1 0'   range='-50 50' damping='5' stiffness='4' armature='0.008' />
+                                <joint name='left_ankle_x' type='hinge' pos='0 0 0.08' axis='1 0 0.5' range='-50 50' damping='5' stiffness='1'  armature='0.006' />
+                                <geom name='left_foot_cap1' type='capsule' fromto='-.07 0.02 0 0.14 0.04 0'  size='0.027' />
+                                <geom name='left_foot_cap2' type='capsule' fromto='-.07 0 0 0.14  -0.02 0'  size='0.027' />
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+            <body name='right_upper_arm' pos='0 -0.17 0.06' >
+                <joint name='right_shoulder1' type='hinge' pos='0 0 0' axis='2 1 1'  range='-85 60' stiffness='1' armature='0.0068' />
+                <joint name='right_shoulder2' type='hinge' pos='0 0 0' axis='0 -1 1' range='-85 60' stiffness='1' armature='0.0051' />
+                <geom name='right_uarm1' type='capsule' fromto='0 0 0 .16 -.16 -.16'  size='0.04 0.16' />
+                <body name='right_lower_arm' pos='.18 -.18 -.18' >
+                    <joint name='right_elbow' type='hinge' pos='0 0 0' axis='0 -1 1' range='-90 50'  stiffness='0' armature='0.0028' />
+                    <geom name='right_larm' type='capsule' fromto='0.01 0.01 0.01 .17 .17 .17'  size='0.031' />
+                    <geom name='right_hand' type='sphere' pos='.18 .18 .18'  size='0.04'/>
+                </body>
+            </body>
+            <body name='left_upper_arm' pos='0 0.17 0.06' >
+                <joint name='left_shoulder1' type='hinge' pos='0 0 0' axis='2 -1 1' range='-60 85' stiffness='1' armature='0.0068' />
+                <joint name='left_shoulder2' type='hinge' pos='0 0 0' axis='0 1 1' range='-60 85'  stiffness='1' armature='0.0051' />
+                <geom name='left_uarm1' type='capsule' fromto='0 0 0 .16 .16 -.16'  size='0.04 0.16' />
+                <body name='left_lower_arm' pos='.18 .18 -.18' >
+                    <joint name='left_elbow' type='hinge' pos='0 0 0' axis='0 -1 -1' range='-90 50' stiffness='0' armature='0.0028' />
+                    <geom name='left_larm' type='capsule' fromto='0.01 -0.01 0.01 .17 -.17 .17'  size='0.031' />
+                    <geom name='left_hand' type='sphere' pos='.18 -.18 .18'  size='0.04'/>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <tendon>
+        <fixed name='left_hipknee'>
+            <joint joint='left_hip_y'  coef='-1'/>
+            <joint joint='left_knee'  coef='1'/>
+        </fixed>
+        <fixed name='right_hipknee'>
+            <joint joint='right_hip_y'  coef='-1'/>
+            <joint joint='right_knee'  coef='1'/>
+        </fixed>
+    </tendon>
+
+    <keyframe>
+        <key qpos='-0.0233227 0.00247283 0.0784829 0.728141 0.00223397 -0.685422 -0.00181805 -0.000580139 -0.245119 0.0329713 -0.0461148 0.0354257 0.252234 -0.0347763 -0.4663 -0.0313013 0.0285638 0.0147285 0.264063 -0.0346441 -0.559198 0.021724 -0.0333332 -0.718563 0.872778 0.000260393 0.733088 0.872748'      />
+        <key qpos='0.0168601 -0.00192002 0.127167 0.762693 0.00191588 0.646754 -0.00210291 -0.000199049 0.0573113 -4.05731e-005 0.0134177 -0.00468944 0.0985945 -0.282695 -0.0469067 0.00874203 0.0263262 -0.00295056 0.0984851 -0.282098 -0.044293 0.00475795 0.127371 -0.42895 0.882402 -0.0980573 0.428506 0.88193'  />
+        <key qpos='0.000471586 0.0317577 0.210587 0.758805 -0.583984 0.254155 0.136322 -0.0811633 0.0870309 -0.0935227 0.0904958 -0.0278004 -0.00978614 -0.359193 0.139761 -0.240168 0.060149 0.237062 -0.00622109 -0.252598 -0.00376874 -0.160597 0.25253 -0.278634 0.834376 -0.990444 -0.169065 0.652876' />
+        <key qpos='-0.0602175 0.048078 0.194579 -0.377418 -0.119412 -0.675073 -0.622553 0.139093 0.0710746 -0.0506027 0.0863461 0.196165 -0.0276685 -0.521954 -0.267784 0.179051 0.0371897 0.0560134 -0.032595 -0.0480022 0.0357436 0.108502 0.963806 0.157805 0.873092 -1.01145 -0.796409 0.24736' />
+    </keyframe>
+
+    <actuator>
+        <motor name='abdomen_y'       gear='200' joint='abdomen_y' />
+        <motor name='abdomen_z'       gear='200' joint='abdomen_z' />
+        <motor name='abdomen_x'       gear='200' joint='abdomen_x' />
+        <motor name='right_hip_x'     gear='200' joint='right_hip_x' />
+        <motor name='right_hip_z'     gear='200' joint='right_hip_z' />
+        <motor name='right_hip_y'     gear='600' joint='right_hip_y' />
+        <motor name='right_knee'      gear='400' joint='right_knee' />
+        <motor name='right_ankle_x'   gear='100' joint='right_ankle_x' />
+        <motor name='right_ankle_y'   gear='100' joint='right_ankle_y' />
+        <motor name='left_hip_x'      gear='200' joint='left_hip_x' />
+        <motor name='left_hip_z'      gear='200' joint='left_hip_z' />
+        <motor name='left_hip_y'      gear='600' joint='left_hip_y' />
+        <motor name='left_knee'       gear='400' joint='left_knee' />
+        <motor name='left_ankle_x'    gear='100' joint='left_ankle_x' />
+        <motor name='left_ankle_y'    gear='100' joint='left_ankle_y' />
+        <motor name='right_shoulder1' gear='100' joint='right_shoulder1' />
+        <motor name='right_shoulder2' gear='100' joint='right_shoulder2' />
+        <motor name='right_elbow'     gear='200' joint='right_elbow' />
+        <motor name='left_shoulder1'  gear='100' joint='left_shoulder1' />
+        <motor name='left_shoulder2'  gear='100' joint='left_shoulder2' />
+        <motor name='left_elbow'      gear='200' joint='left_elbow' />
+    </actuator>
+
+</mujoco>
