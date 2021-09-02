@@ -1,4 +1,5 @@
 
+from warp.utils import transform_identity
 import urdfpy
 import math
 import numpy as np
@@ -447,12 +448,12 @@ class MuscleUnit:
 
 class Skeleton:
 
-    def __init__(self, skeleton_file, muscle_file, builder, filter):
+    def __init__(self, root_xform, skeleton_file, muscle_file, builder, filter, armature=0.0):
 
-        self.parse_skeleton(skeleton_file, builder, filter)
+        self.parse_skeleton(skeleton_file, builder, filter, root_xform, armature)
         self.parse_muscles(muscle_file, builder)
 
-    def parse_skeleton(self, filename, builder, filter):
+    def parse_skeleton(self, filename, builder, filter, root_xform, armature):
         file = ET.parse(filename)
         root = file.getroot()
         
@@ -460,16 +461,15 @@ class Skeleton:
         self.xform_map = {}      # map node names to parent transforms
         self.mesh_map = {}       # map mesh names to link indices objects
 
-        self.coord_start = len(builder.joint_q)
-        self.dof_start = len(builder.joint_qd)
-
+        self.coord_start = builder.joint_coord_count
+        self.dof_start = builder.joint_dof_count
     
         type_map = { 
-            "Ball": wp.JOINT_BALL, 
-            "Revolute": wp.JOINT_REVOLUTE, 
-            "Prismatic": wp.JOINT_PRISMATIC, 
-            "Free": wp.JOINT_FREE, 
-            "Fixed": wp.JOINT_FIXED
+            "Ball": wp.sim.JOINT_BALL, 
+            "Revolute": wp.sim.JOINT_REVOLUTE, 
+            "Prismatic": wp.sim.JOINT_PRISMATIC, 
+            "Free": wp.sim.JOINT_FREE, 
+            "Fixed": wp.sim.JOINT_FIXED
         }
 
         builder.add_articulation()
@@ -561,15 +561,19 @@ class Skeleton:
                         joint_X_p = wp.transform_identity()
 
                     # add link
-                    link = builder.add_link(
+                    link = builder.add_body(
                         parent=parent_link, 
-                        X_pj=joint_X_p,
-                        axis=joint_axis,
-                        type=joint_type,
-                        damping=2.0,
-                        stiffness=10.0,
-                        limit_lower=joint_lower[0],
-                        limit_upper=joint_upper[0])
+                        origin=wp.transform_multiply(root_xform, joint_X_s),
+                        joint_xform=joint_X_p,
+                        joint_axis=joint_axis,
+                        joint_type=joint_type,
+                        joint_target_ke=5.0,
+                        joint_target_kd=2.0,
+                        joint_limit_lower=joint_lower[0],
+                        joint_limit_upper=joint_upper[0],
+                        joint_limit_ke=1.e+3,
+                        joint_limit_kd=1.e+2,
+                        joint_armature=armature)
 
                     # add shape
                     shape = builder.add_shape_box(
@@ -581,7 +585,7 @@ class Skeleton:
                         hz=body_size[2]*0.5,
                         ke=1.e+3*5.0,
                         kd=1.e+2*2.0,
-                        kf=1.e+2,
+                        kf=1.e+3,
                         mu=0.5)
 
                 # add lookup in name->link map

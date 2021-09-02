@@ -619,8 +619,6 @@ class ModelBuilder:
         joint_xform : Transform=wp.transform_identity(),    # transform of joint in parent space, child joint xform is assumed to align with origin
         joint_axis : Vec3=(0.0, 0.0, 0.0),
         joint_type : int=JOINT_FREE,
-        joint_ke: float=0.0,
-        joint_kd: float=0.0,
         joint_target_ke: float=0.0,
         joint_target_kd: float=0.0,
         joint_limit_ke: float=100.0,
@@ -1671,7 +1669,7 @@ class ModelBuilder:
         m.muscle_start = wp.array(self.muscle_start, dtype=wp.int32, device=device)
         m.muscle_params = wp.array(self.muscle_params, dtype=wp.float32, device=device)
         m.muscle_bodies = wp.array(self.muscle_bodies, dtype=wp.int32, device=device)
-        m.muscle_points = wp.array(self.muscle_points, dtype=wp.float32, device=device)
+        m.muscle_points = wp.array(self.muscle_points, dtype=wp.vec3, device=device)
         m.muscle_activation = wp.array(self.muscle_activation, dtype=wp.float32, device=device)
 
         #--------------------------------------

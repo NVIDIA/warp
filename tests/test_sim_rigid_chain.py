@@ -53,7 +53,7 @@ for i in range(5):
             # joint_type=wp.sim.JOINT_BALL,
 
             # fixed
-            # joint_type=wp.sim.JOINT_FIXED,
+            joint_type=wp.sim.JOINT_FIXED,
 
             joint_limit_ke=100.0,
             joint_limit_kd=10.0)

@@ -3,6 +3,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 import math
 import render
 
+import warp as wp
 import warp.sim
 
 class SimRenderer(render.UsdRenderer):
@@ -16,7 +17,7 @@ class SimRenderer(render.UsdRenderer):
 
         # add ground plane
         if (self.model.ground):
-            self.render_ground(size=20.0)
+            self.render_ground(size=10.0)
 
         # create rigid body root node
         for b in range(model.body_count):
@@ -123,7 +124,42 @@ class SimRenderer(render.UsdRenderer):
 
         # render muscles
         if (self.model.muscle_count):
-            pass
+            
+            body_q = state.body_q.numpy()
+
+            muscle_start = self.model.muscle_start.numpy()
+            muscle_links = self.model.muscle_bodies.numpy()
+            muscle_points = self.model.muscle_points.numpy()
+            muscle_activation = self.model.muscle_activation.numpy()
+
+            # for s in self.skeletons:
+                
+            #     # for mesh, link in s.mesh_map.items():
+                    
+            #     #     if link != -1:
+            #     #         X_sc = wp.transform_expand(self.state.body_X_sc[link].tolist())
+
+            #     #         #self.renderer.add_mesh(mesh, "../assets/snu/OBJ/" + mesh + ".usd", X_sc, 1.0, self.render_time)
+            #     #         self.renderer.add_mesh(mesh, "../assets/snu/OBJ/" + mesh + ".usd", X_sc, 1.0, self.render_time)
+
+            for m in range(self.model.muscle_count):
+
+                start = int(muscle_start[m])
+                end = int(muscle_start[m + 1])
+
+                points = []
+
+                for w in range(start, end):
+                    
+                    link = muscle_links[w]
+                    point = muscle_points[w]
+
+                    X_sc = wp.transform_expand(body_q[link][0])
+
+                    points.append(Gf.Vec3f(wp.transform_point(X_sc, point).tolist()))
+                
+                self.render_line_strip(name=f"muscle_{m}", vertices=points, radius=0.0075, color=(muscle_activation[m], 0.2, 0.5))
+           
 
         # update  bodies
         if (self.model.body_count):

@@ -10,6 +10,8 @@ import warp as wp
 import tests.test_sim_util as util
 from tests.render_sim import SimRenderer
 
+import matplotlib.pyplot as plt
+
 wp.init()
 
 class Robot:
@@ -19,7 +21,7 @@ class Robot:
     episode_duration = 2.0      # seconds
     episode_frames = int(episode_duration/frame_dt)
 
-    sim_substeps = 16
+    sim_substeps = 10
     sim_dt = frame_dt / sim_substeps
     sim_steps = int(episode_duration / sim_dt)
    
@@ -28,23 +30,27 @@ class Robot:
 
     name = "ant"
 
-    def __init__(self, render=True, device='cpu'):
+    def __init__(self, render=True, num_envs=1, device='cpu'):
 
         builder = wp.sim.ModelBuilder()
 
         self.device = device
-        self.render = render   
+        self.render = render
 
-        util.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
-            stiffness=0.0,
-            damping=1.0,
-            armature=0.05,
-            contact_ke=1.e+4,
-            contact_kd=1.e+2,
-            contact_kf=1.e+2,
-            contact_mu=0.75,
-            limit_ke=1.e+3,
-            limit_kd=1.e+1)
+        self.num_envs = num_envs
+
+        for i in range(num_envs):
+
+            util.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
+                stiffness=0.0,
+                damping=1.0,
+                armature=0.1,
+                contact_ke=1.e+4,
+                contact_kd=1.e+2,
+                contact_kf=1.e+2,
+                contact_mu=0.75,
+                limit_ke=1.e+3,
+                limit_kd=1.e+1)
 
         # finalize model
         self.model = builder.finalize(device)
@@ -68,20 +74,21 @@ class Robot:
         self.sim_time = 0.0
         self.state = self.model.state()
 
-        joint_q = np.zeros(self.model.joint_coord_count, dtype=np.float32)
-        joint_qd = np.zeros(self.model.joint_dof_count, dtype=np.float32)
+        ant_coord_count = 15
+        ant_dof_count = 14
 
-        # set joint targets to rest pose in mjcf
-        if (self.name == "ant"):
-            joint_q[0:3] = [0.0, 0.70, 0.0]
-            joint_q[3:7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
+        joint_q = np.zeros((self.num_envs, ant_coord_count), dtype=np.float32)
+        joint_qd = np.zeros((self.num_envs, ant_dof_count), dtype=np.float32)
 
-            joint_q[7:] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
-            #joint_q[7:] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0] 
+        for i in range(self.num_envs):
 
-        if (self.name == "humanoid"):
-            joint_q[0:3] = [0.0, 1.70, 0.0]
-            joint_q[3:7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
+            # set joint targets to rest pose in mjcf
+            if (self.name == "ant"):
+                joint_q[i, 0:3] = [i*2.0, 0.70, 0.0]
+                joint_q[i, 3:7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
+
+                joint_q[i, 7:] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
+                #joint_q[7:] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0] 
 
         wp.sim.eval_fk(
             self.model,
@@ -92,29 +99,88 @@ class Robot:
         if (self.model.ground):
             self.model.collide(self.state)
 
-        for f in range(0, self.episode_frames):
-                
-            # simulate
-            with wp.ScopedTimer("simulate", detailed=False, active=True):
+        profiler = {}
 
-                for i in range(0, self.sim_substeps):
-                    self.state.clear_forces()
-                    self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
-                    self.sim_time += self.sim_dt
- 
- 
-             # render
-            with wp.ScopedTimer("render", False):
+        # create update graph
+        wp.capture_begin()
+
+        # simulate
+        for i in range(0, self.sim_substeps):
+            self.state.clear_forces()
+            self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+            self.sim_time += self.sim_dt
+                
+        graph = wp.capture_end()
+
+
+        # simulate
+        with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
+
+            for f in range(0, self.episode_frames):
+                
+                # for i in range(0, self.sim_substeps):
+                #     self.state.clear_forces()
+                #     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+                #     self.sim_time += self.sim_dt
+
+                wp.capture_launch(graph)
+                self.sim_time += self.frame_dt
 
                 if (self.render):
-                    self.render_time += self.frame_dt
-                    
-                    self.renderer.begin_frame(self.render_time)
-                    self.renderer.render(self.state)
-                    self.renderer.end_frame()
 
-        self.renderer.save()
+                    with wp.ScopedTimer("render", False):
+
+                        if (self.render):
+                            self.render_time += self.frame_dt
+                            
+                            self.renderer.begin_frame(self.render_time)
+                            self.renderer.render(self.state)
+                            self.renderer.end_frame()
+
+                    self.renderer.save()
+
+            wp.synchronize()
 
  
-robot = Robot(render=True, device='cuda')
-robot.run()
+        avg_time = np.array(profiler["simulate"]).mean()/self.episode_frames
+        avg_steps_second = 1000.0*float(self.num_envs)/avg_time
+
+        print(f"envs: {self.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
+
+        return 1000.0*float(self.num_envs)/avg_time
+
+profile = False
+
+if profile:
+
+    env_count = 2
+    env_times = []
+    env_size = []
+
+    for i in range(15):
+
+        robot = Robot(render=False, device='cuda', num_envs=env_count)
+        steps_per_second = robot.run()
+
+        env_size.append(env_count)
+        env_times.append(steps_per_second)
+        
+        env_count *= 2
+
+    # dump times
+    for i in range(len(env_times)):
+        print(f"envs: {env_size[i]} steps/second: {env_times[i]}")
+
+    # plot
+    plt.figure(1)
+    plt.plot(env_size, env_times)
+    plt.xscale('log')
+    plt.xlabel("Number of Envs")
+    plt.yscale('log')
+    plt.ylabel("Steps/Second")
+    plt.show()
+
+else:
+
+    robot = Robot(render=False, device='cuda', num_envs=2048)
+    robot.run()

@@ -889,12 +889,15 @@ def eval_soft_contacts(
     pv = wp.load(particle_v, particle_index)
 
     X_wb = wp.spatial_transform_identity()
+    X_com = wp.vec3(0.0, 0.0, 0.0)
+    
     if (body_index >= 0):
         X_wb = wp.load(body_q, body_index)
+        X_com = body_com[body_index]
 
     # body position in world space
     bx = wp.spatial_transform_point(X_wb, contact_body_pos[tid])
-    r = bx - wp.spatial_transform_point(X_wb, body_com[body_index])
+    r = bx - wp.spatial_transform_point(X_wb, X_com)
     
     n = contact_normal[tid]
     c = wp.dot(n, px-bx) - contact_distance
@@ -969,14 +972,6 @@ def eval_body_contacts(body_q: wp.array(dtype=wp.spatial_transform),
     c_dist = contact_dist[tid]
     c_mat = contact_mat[tid]
 
-    # hard coded surface parameter tensor layout (ke, kd, kf, mu)
-    mat = materials[c_mat]
-
-    ke = mat[0]       # restitution coefficient
-    kd = mat[1]       # damping coefficient
-    kf = mat[2]       # friction coefficient
-    mu = mat[3]       # coulomb friction
-
     X_wb = body_q[c_body]
     v_wc = body_qd[c_body]
 
@@ -996,7 +991,18 @@ def eval_body_contacts(body_q: wp.array(dtype=wp.spatial_transform),
     dpdt = v + wp.cross(w, r)     
 
     # check ground contact
-    c = wp.min(wp.dot(n, cp), 0.0) 
+    c = wp.dot(n, cp)
+
+    if (c > 0.0):
+        return
+
+    # hard coded surface parameter tensor layout (ke, kd, kf, mu)
+    mat = materials[c_mat]
+
+    ke = mat[0]       # restitution coefficient
+    kd = mat[1]       # damping coefficient
+    kf = mat[2]       # friction coefficient
+    mu = mat[3]       # coulomb friction
 
     vn = wp.dot(n, dpdt)     
     vt = dpdt - n * vn       
@@ -1010,17 +1016,17 @@ def eval_body_contacts(body_q: wp.array(dtype=wp.spatial_transform),
     # viscous friction
     #ft = vt*kf
 
-    # Coulomb friction (box)
-    lower = mu * (fn + fd)   # negative
-    upper = 0.0 - lower      # positive, workaround for no unary ops
+    # # Coulomb friction (box)
+    # lower = mu * (fn + fd)   # negative
+    # upper = 0.0 - lower      # positive, workaround for no unary ops
 
-    vx = wp.clamp(wp.dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
-    vz = wp.clamp(wp.dot(vec3(0.0, 0.0, kf), vt), lower, upper)
+    # vx = wp.clamp(wp.dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
+    # vz = wp.clamp(wp.dot(vec3(0.0, 0.0, kf), vt), lower, upper)
 
-    ft = wp.vec3(vx, 0.0, vz) * wp.step(c)
+    # ft = wp.vec3(vx, 0.0, vz) * wp.step(c)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
-    #ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*c*ke)
+    ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*c*ke)
 
     f_total = n * (fn + fd) + ft
     t_total = wp.cross(r, f_total)
@@ -1181,7 +1187,12 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
     f_total = wp.vec3(0.0, 0.0, 0.0)
 
     # reduce angular damping stiffness for stability
+    #angular_stiffness_scale = 1.0
     angular_damping_scale = 0.01
+
+    # free joint (early out)
+    if (type == 4):
+        return
 
     # prismatic
     if (type == 0):
@@ -1241,14 +1252,18 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
         swing_err = wp.cross(axis_p, axis_c)
 
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
-        t_total += (swing_err*joint_attach_ke + (w_err - qd*axis_p)*joint_attach_kd*angular_damping_scale)
+        t_total += swing_err*joint_attach_ke + (w_err - qd*axis_p)*joint_attach_kd*angular_damping_scale
  
     
     # ball
     if (type == 2):
         
-        # todo: joint limits
+        q_pc = wp.quat_inverse(q_p)*q_c
+        ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
+        #ang_err = wp.vec3(q_pc[0], q_pc[1], q_pc[2])
 
+        # todo: joint limits
+        t_total += target_kd*w_err + target_ke*ang_err
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
     
     # fixed
@@ -1256,6 +1271,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
 
         q_pc = wp.quat_inverse(q_p)*q_c
         ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
+        #ang_err = wp.vec3(q_pc[0], q_pc[1], q_pc[2])
 
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
         t_total += ang_err*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
@@ -1273,7 +1289,8 @@ def eval_body_joints(body_q: wp.array(dtype=wp.spatial_transform),
 def compute_muscle_force(
     i: int,
     body_X_s: wp.array(dtype=wp.spatial_transform),
-    body_v_s: wp.array(dtype=wp.spatial_vector),    
+    body_v_s: wp.array(dtype=wp.spatial_vector),
+    body_com: wp.array(dtype=wp.vec3),
     muscle_links: wp.array(dtype=int),
     muscle_points: wp.array(dtype=wp.vec3),
     muscle_activation: float,
@@ -1291,16 +1308,16 @@ def compute_muscle_force(
     xform_0 = wp.load(body_X_s, link_0)
     xform_1 = wp.load(body_X_s, link_1)
 
-    pos_0 = wp.spatial_transform_point(xform_0, r_0)
-    pos_1 = wp.spatial_transform_point(xform_1, r_1)
+    pos_0 = wp.spatial_transform_point(xform_0, r_0-body_com[link_0])
+    pos_1 = wp.spatial_transform_point(xform_1, r_1-body_com[link_1])
 
     n = wp.normalize(pos_1 - pos_0)
 
     # todo: add passive elastic and viscosity terms
     f = n * muscle_activation
 
-    wp.atomic_sub(body_f_s, link_0, wp.spatial_vector(wp.cross(pos_0, f), f))
-    wp.atomic_add(body_f_s, link_1, wp.spatial_vector(wp.cross(pos_1, f), f))
+    wp.atomic_sub(body_f_s, link_0, wp.spatial_vector(f, wp.cross(pos_0, f)))
+    wp.atomic_add(body_f_s, link_1, wp.spatial_vector(f, wp.cross(pos_1, f)))
 
     return 0
 
@@ -1309,6 +1326,7 @@ def compute_muscle_force(
 def eval_muscles(
     body_X_s: wp.array(dtype=wp.spatial_transform),
     body_v_s: wp.array(dtype=wp.spatial_vector),
+    body_com: wp.array(dtype=wp.vec3),
     muscle_start: wp.array(dtype=int),
     muscle_params: wp.array(dtype=float),
     muscle_links: wp.array(dtype=int),
@@ -1325,7 +1343,7 @@ def eval_muscles(
     activation = wp.load(muscle_activation, tid)
 
     for i in range(m_start, m_end):
-        compute_muscle_force(i, body_X_s, body_v_s, muscle_links, muscle_points, activation, body_f_s)
+        compute_muscle_force(i, body_X_s, body_v_s, body_com, muscle_links, muscle_points, activation, body_f_s)
     
 
 
@@ -1527,7 +1545,7 @@ def compute_forces(model, state, particle_f, body_f):
 
 
     # evaluate muscle actuation
-    if (model.muscle_count):
+    if (False and model.muscle_count):
         
         wp.launch(
             kernel=eval_muscles,
@@ -1535,17 +1553,17 @@ def compute_forces(model, state, particle_f, body_f):
             inputs=[
                 state.body_q,
                 state.body_qd,
+                model.body_com,
                 model.muscle_start,
                 model.muscle_params,
-                model.muscle_links,
+                model.muscle_bodies,
                 model.muscle_points,
                 model.muscle_activation
             ],
             outputs=[
                 body_f
             ],
-            device=model.device,
-            preserve_output=True)
+            device=model.device)
 
 
     # if (model.articulation_count):
