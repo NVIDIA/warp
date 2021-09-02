@@ -144,7 +144,7 @@ class spatial_vector(ctypes.Array):
 
     @staticmethod
     def size():
-        return 36
+        return 24
 
     @staticmethod
     def ctype():
@@ -363,6 +363,8 @@ def types_equal(a, b):
     else:
         return a == b
 
+
+
 class array:
 
     def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
@@ -488,10 +490,11 @@ class array:
     def zero_(self):
 
         if (self.device == "cpu"):
-            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.length*type_size_in_bytes(self.dtype))
+            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
 
         if(self.device == "cuda"):
-            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.length*type_size_in_bytes(self.dtype))
+            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+
 
 
     # equivalent to wrapping src data in an array and copying to self
