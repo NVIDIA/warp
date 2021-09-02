@@ -104,6 +104,7 @@ inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
 inline CUDA_CALLABLE float acos(float x) { return ::acos(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float asin(float x) { return ::asin(min(max(x, -1.0f), 1.0f)); }
 inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
 inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
 inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
@@ -198,6 +199,14 @@ inline CUDA_CALLABLE void adj_acos(float x, float& adj_x, float adj_ret)
         adj_x -= (1.0f/d)*adj_ret;
 }
 
+inline CUDA_CALLABLE void adj_asin(float x, float& adj_x, float adj_ret)
+{
+    float d = sqrt(1.0f-x*x);
+    if (d > 0.0f)
+        adj_x += (1.0f/d)*adj_ret;
+}
+
+
 inline CUDA_CALLABLE void adj_sin(float x, float& adj_x, float adj_ret)
 {
     adj_x += cos(x)*adj_ret;
@@ -242,42 +251,42 @@ CUDA_CALLABLE inline void adj_copy(T& dest, const T& src, T& adj_dest, T& adj_sr
 // some helpful operator overloads (just for C++ use, these are not adjointed)
 
 template <typename T>
-CUDA_CALLABLE T& operator += (T& a, const T& b) { a = add(a, b); return a; }
+CUDA_CALLABLE inline T& operator += (T& a, const T& b) { a = add(a, b); return a; }
 
 template <typename T>
-CUDA_CALLABLE T& operator -= (T& a, const T& b) { a = sub(a, b); return a; }
+CUDA_CALLABLE inline T& operator -= (T& a, const T& b) { a = sub(a, b); return a; }
 
 template <typename T>
-CUDA_CALLABLE T operator*(const T& a, float s) { return mul(a, s); }
+CUDA_CALLABLE inline T operator*(const T& a, float s) { return mul(a, s); }
 
 template <typename T>
-CUDA_CALLABLE T operator*(float s, const T& a) { return mul(a, s); }
+CUDA_CALLABLE inline T operator*(float s, const T& a) { return mul(a, s); }
 
 template <typename T>
-CUDA_CALLABLE T operator*(const T& a, const T& b) { return mul(a, b); }
+CUDA_CALLABLE inline T operator*(const T& a, const T& b) { return mul(a, b); }
 
 template <typename T>
-CUDA_CALLABLE T operator/(const T& a, float s) { return div(a, s); }
+CUDA_CALLABLE inline T operator/(const T& a, float s) { return div(a, s); }
 
 template <typename T>
-CUDA_CALLABLE T operator/(const T& a, const T& b) { return div(a, b); }
+CUDA_CALLABLE inline T operator/(const T& a, const T& b) { return div(a, b); }
 
 template <typename T>
-CUDA_CALLABLE T operator+(const T& a, const T& b) { return add(a, b); }
+CUDA_CALLABLE inline T operator+(const T& a, const T& b) { return add(a, b); }
 
 template <typename T>
-CUDA_CALLABLE T operator-(const T& a, const T& b) { return sub(a, b); }
+CUDA_CALLABLE inline T operator-(const T& a, const T& b) { return sub(a, b); }
 
 // unary negation implementated as negative multiply, not sure the fp implications of this
 // may be better as 0.0 - x?
 template <typename T>
-CUDA_CALLABLE T neg(const T& x) { return x*T(-1); }
+CUDA_CALLABLE inline T neg(const T& x) { return x*T(-1); }
 template <typename T>
-CUDA_CALLABLE void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(-adj_ret); }
+CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(-adj_ret); }
 
 // unary boolean negation
-CUDA_CALLABLE bool unot(const bool& b) { return !b; }
-CUDA_CALLABLE void adj_unot(const bool& b, bool& adj_b, const bool& adj_ret) { }
+CUDA_CALLABLE inline bool unot(const bool& b) { return !b; }
+CUDA_CALLABLE inline void adj_unot(const bool& b, bool& adj_b, const bool& adj_ret) { }
 
 
 // for single thread CPU only

@@ -17,7 +17,7 @@ def add_vec3(dest: wp.array(dtype=wp.vec3),
              c: wp.vec3):
 
     tid = wp.tid()
-
+    print(c)
     wp.store(dest, tid, c)
 
 @wp.kernel

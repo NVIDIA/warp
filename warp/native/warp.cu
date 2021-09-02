@@ -91,7 +91,6 @@ void* alloc_device(size_t s)
 {
     void* ptr;
     check_cuda(cudaMalloc(&ptr, s));
-
     return ptr;
 }
 
@@ -115,9 +114,28 @@ void memcpy_d2d(void* dest, void* src, size_t n)
     check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice, g_cuda_stream));
 }
 
+__global__ void memset_kernel(int* dest, int value, int n)
+{
+    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    
+    if (tid < n)
+    {
+        dest[tid] = value;
+    }
+}
+
 void memset_device(void* dest, int value, size_t n)
 {
-    check_cuda(cudaMemsetAsync(dest, value, n, g_cuda_stream));
+    if ((n%4) > 0)
+    {
+        // for unaligned lengths fallback to CUDA memset
+        check_cuda(cudaMemsetAsync(dest, value, n, g_cuda_stream));
+    }
+    else
+    {
+        const int num_words = n/4;
+        launch_device(memset_kernel, num_words, g_cuda_stream, ((int*)dest, value, num_words));
+    }
 }
 
 void synchronize()

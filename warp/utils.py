@@ -163,7 +163,7 @@ def quat_from_matrix(m):
             w = (m[1, 0] - m[0, 1]) * h
 
 
-    return normalize(quat(x, y, z, w))
+    return normalize(np.array([x, y, z, w]))
 
 
 # rigid body transform
@@ -518,9 +518,10 @@ class ScopedTimer:
 
     enabled = True
 
-    def __init__(self, name, active=True, detailed=False, dict=None):
+    def __init__(self, name, active=True, print=True, detailed=False, dict=None):
         self.name = name
         self.active = active and self.enabled
+        self.print = print
         self.detailed = detailed
         self.dict = dict
 
@@ -556,7 +557,8 @@ class ScopedTimer:
             for i in range(ScopedTimer.indent):
                 indent += "\t"
 
-            print("{}{} took {:.2f} ms".format(indent, self.name, self.elapsed))
+            if (self.print):
+                print("{}{} took {:.2f} ms".format(indent, self.name, self.elapsed))
 
             ScopedTimer.indent -= 1
 
