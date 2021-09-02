@@ -12,6 +12,7 @@ np.random.seed(42)
 
 wp.init()
 
+
 @wp.kernel
 def test_conditional_if_else(dt: float):
 
@@ -105,6 +106,8 @@ def test_boolean_literal(dt: float):
         r = -1.0
 
     wp.expect_eq(r, -1.0)
+
+
 
 device = "cpu"
 

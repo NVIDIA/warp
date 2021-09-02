@@ -109,7 +109,7 @@ class mat33(ctypes.Array):
     def ctype():
         return ctypes.c_float
 
-class mat44(ctypes.Structure):
+class mat44(ctypes.Array):
     
     _length_ = 16
     _type_ = ctypes.c_float
@@ -144,7 +144,7 @@ class spatial_vector(ctypes.Array):
 
     @staticmethod
     def size():
-        return 36
+        return 24
 
     @staticmethod
     def ctype():
@@ -170,7 +170,7 @@ class spatial_matrix(ctypes.Array):
     def ctype():
         return ctypes.c_float
 
-class spatial_transform(ctypes.Structure):
+class spatial_transform(ctypes.Array):
     
     _length_ = 7
     _type_ = ctypes.c_float
@@ -363,6 +363,8 @@ def types_equal(a, b):
     else:
         return a == b
 
+
+
 class array:
 
     def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
@@ -448,7 +450,7 @@ class array:
 
             self.__name__ = "array<" + type.__name__ + ">"
 
-    
+
         # store 2D shape (useful for interop with tensor frameworks)
         self.shape = (self.length, type_length(self.dtype))
 
@@ -488,10 +490,11 @@ class array:
     def zero_(self):
 
         if (self.device == "cpu"):
-            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.length*type_size_in_bytes(self.dtype))
+            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
 
         if(self.device == "cuda"):
-            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), 0, self.length*type_size_in_bytes(self.dtype))
+            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+
 
 
     # equivalent to wrapping src data in an array and copying to self
