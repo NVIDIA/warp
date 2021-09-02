@@ -536,8 +536,8 @@ class Adjoint:
                             if (warp.config.verbose):
                                 print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
 
-                            if (var2.constant is not None):
-                                raise Exception("Error mutating a constant {}, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
+                            if (var1.constant is not None):
+                                raise Exception("Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
                             
                             # overwrite the old variable value (violates SSA)
                             adj.add_call(adj.builtin_functions["copy"], [var1, var2])
@@ -630,11 +630,20 @@ class Adjoint:
                     name = node.targets[0].id 
 
                     # evaluate rhs
-                    out = adj.eval(node.value)
+                    rhs = adj.eval(node.value)
 
                     # check type matches if symbol already defined
-                    if (name in adj.symbols and out.type != adj.symbols[name].type):
-                        raise TypeError("error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, out.type))
+                    if (name in adj.symbols):
+                    
+                        if (rhs.type != adj.symbols[name].type):
+                            raise TypeError("error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
+
+                    # handle simple assignment case (a = b), where we generate a value copy rather than reference
+                    if isinstance(node.value, ast.Name):
+                        out = adj.add_var(rhs.type)
+                        adj.add_call(adj.builtin_functions["copy"], [out, rhs])
+                    else:
+                        out = rhs
 
                     # update symbol map (assumes lhs is a Name node)
                     adj.symbols[name] = out

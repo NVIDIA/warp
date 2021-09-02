@@ -68,6 +68,29 @@ def test_dynamic_for_inplace(n: int):
     wp.expect_eq(n, 10)
 
 
+@wp.kernel
+def test_reassign(n: int):
+
+    f0 = 1.0
+    f1 = f0
+
+    f1 = f1 + 2.0
+
+    wp.expect_eq(f1, 3.0)
+    wp.expect_eq(f0, 1.0)
+
+@wp.kernel
+def test_dynamic_reassign(n: int):
+
+    f0 = wp.vec3(0.0, 0.0, 0.0)
+    f1 = f0
+
+    for i in range(0, n):
+        f1 = f1 - wp.vec3(2.0, 0.0, 0.0)
+
+    wp.expect_eq(f1, wp.vec3(-4.0, 0.0, 0.0))
+    wp.expect_eq(f0, wp.vec3(0.0, 0.0, 0.0))
+
 
 device = "cpu"
 
@@ -85,6 +108,13 @@ wp.launch(test_dynamic_for_rename, dim=1, inputs=[10], device=device)
 
 print("test_dynamic_for_inplace")
 wp.launch(test_dynamic_for_inplace, dim=1, inputs=[10], device=device)
+
+print("test_reassign")
+wp.launch(test_reassign, dim=1, inputs=[], device=device)
+
+print("test_dynamic_reassign")
+wp.launch(test_dynamic_reassign, dim=1, inputs=[2], device=device)
+
 
 print("passed")
 
