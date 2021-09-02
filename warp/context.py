@@ -718,6 +718,8 @@ class Allocator:
 
     def alloc(self, size_in_bytes):
         
+        return self.alloc_func(size_in_bytes)
+
         if size_in_bytes in self.pool and len(self.pool[size_in_bytes]) > 0:
             return self.pool[size_in_bytes].pop()
         else:
@@ -725,6 +727,9 @@ class Allocator:
 
     def free(self, addr, size_in_bytes):
         
+        self.free_func(addr)
+        return
+
         if size_in_bytes not in self.pool:
             self.pool[size_in_bytes] = [addr,]
         else:
@@ -872,6 +877,10 @@ def is_cuda_available():
 
 
 def capture_begin():
+
+    if warp.config.verify_cuda == True:
+        raise RuntimeError("Cannot use CUDA error verification during graph capture")
+
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
     for m in user_modules.values():
@@ -983,7 +992,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
 
                 if (isinstance(arg_type, warp.types.array)):
 
-                    if (a is None):
+                    if (a is None or a.data is None):
                         
                         # allow for NULL arrays
                         params.append(c_int64(0))
@@ -996,7 +1005,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
 
                         # check device
                         if (a.device != device):
-                            raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, i.device))
+                            raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, a.device))
             
                         params.append(c_int64(a.data))
 
