@@ -24,6 +24,7 @@ variables:
 #     - venv/
 
 before_script:
+  - echo %PATH%
   - python -V  # Print out python version for debugging
   - pip install virtualenv
   - virtualenv venv
