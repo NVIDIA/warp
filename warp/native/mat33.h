@@ -188,6 +188,20 @@ inline CUDA_CALLABLE mat33 mul(const mat33& a, const mat33& b)
     return t;
 }
 
+inline CUDA_CALLABLE mat33 element_mul(const mat33& a, const mat33& b)
+{
+  mat33 t;
+  for (int i=0; i < 3; ++i)
+  {
+    for (int j=0; j < 3; ++j)
+    {
+      t.data[i][j] = a.data[i][j] * b.data[i][j];
+    }
+  }
+
+  return t;
+}
+
 inline CUDA_CALLABLE mat33 transpose(const mat33& a)
 {
     mat33 t;
