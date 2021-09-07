@@ -1,5 +1,6 @@
-Warp Function Reference
-=======================
+Language Reference
+==================
+
 
 Operators
 ---------------
@@ -10,6 +11,9 @@ Operators
 
 
 .. function:: add(x: vec3, y: vec3) -> vec3
+
+
+.. function:: add(x: vec3, y: float) -> vec3
 
 
 .. function:: add(x: vec4, y: vec4) -> vec4
@@ -40,6 +44,9 @@ Operators
 
 
 .. function:: sub(x: vec3, y: vec3) -> vec3
+
+
+.. function:: sub(x: vec3, y: float) -> vec3
 
 
 .. function:: sub(x: vec4, y: vec4) -> vec4
@@ -73,6 +80,9 @@ Operators
 
 
 .. function:: mul(x: vec3, y: float) -> vec3
+
+
+.. function:: mul(x: vec3, y: vec3) -> vec3
 
 
 .. function:: mul(x: vec4, y: float) -> vec4
@@ -114,6 +124,9 @@ Operators
 .. function:: mul(x: spatial_matrix, y: spatial_vector) -> spatial_vector
 
 
+.. function:: mul(x: spatial_transform, y: spatial_transform) -> spatial_transform
+
+
 .. function:: mod(x: int, y: int) -> int
 
 
@@ -148,6 +161,9 @@ Operators
 
 
 .. function:: neg(x: mat44) -> mat44
+
+
+.. function:: unot(b: bool) -> bool
 
 
 
@@ -193,7 +209,22 @@ Scalar Math
 .. function:: acos(x: float) -> float
 
 
+.. function:: asin(x: float) -> float
+
+
 .. function:: sqrt(x: float) -> float
+
+
+.. function:: log(x: float) -> float
+
+
+.. function:: log(x: vec3) -> vec3
+
+
+.. function:: exp(x: float) -> float
+
+
+.. function:: exp(x: vec3) -> vec3
 
 
 .. function:: int(x: int) -> int
@@ -219,6 +250,9 @@ Vector Math
 
 
 .. function:: dot(x: quat, y: quat) -> float
+
+
+.. function:: outer(x: vec3, y: vec3) -> mat33
 
 
 .. function:: cross(x: vec3, y: vec3) -> vec3
@@ -263,6 +297,12 @@ Vector Math
 .. function:: transpose(m: spatial_matrix) -> spatial_matrix
 
 
+.. function:: diag(d: vec3) -> mat33
+
+
+.. function:: diag(d: vec4) -> mat44
+
+
 .. function:: vec3() -> vec3
 
 
@@ -281,10 +321,19 @@ Vector Math
 .. function:: vec4(s: float) -> vec4
 
 
+.. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None
+
+
 .. function:: mat22(m00: float, m01: float, m10: float, m11: float) -> mat22
 
 
 .. function:: mat33(c0: vec3, c1: vec3, c2: vec3) -> mat33
+
+
+.. function:: mat33() -> mat33
+
+
+.. function:: mat33(m00: float, m01: float, m02: float, m10: float, m11: float, m12: float, m20: float, m21: float, m22: float) -> mat33
 
 
 .. function:: mat44(c0: vec4, c1: vec4, c2: vec4, c3: vec4) -> mat44
@@ -377,7 +426,7 @@ Spatial Math
 .. function:: spatial_bottom(a: spatial_vector) -> vec3
 
 
-.. function:: spatial_jacobian(S: array(spatial_vector), joint_parents: array(int32), joint_qd_start: array(int32), joint_start: int, joint_count: int, J_start: int, J_out: array(float32)) -> None  
+.. function:: spatial_jacobian(S: array(spatial_vector), joint_parents: array(int32), joint_qd_start: array(int32), joint_start: int, joint_count: int, J_start: int, J_out: array(float32)) -> None
 
 
 .. function:: spatial_mass(I_s: array(spatial_matrix), joint_start: int, joint_count: int, M_start: int, M: array(float32)) -> None
@@ -462,3 +511,5 @@ Utility
 
 
 .. function:: expect_eq() -> None
+
+

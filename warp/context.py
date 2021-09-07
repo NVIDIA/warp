@@ -1090,7 +1090,7 @@ def type_str(t):
     else:
         return t.__name__
         
-def print_function(f):
+def print_function(f, file):
     args = ", ".join(f"{k}: {type_str(v)}" for k,v in f.input_types.items())
 
     return_type = ""
@@ -1100,16 +1100,19 @@ def print_function(f):
     except:
         pass
 
-    print(f".. function:: {f.key}({args}){return_type}")
-    print("")
+    print(f".. function:: {f.key}({args}){return_type}", file=file)
+    print("", file=file)
     
     if (f.doc != ""):
-        print(f"   {f.doc}")
-        print("")
+        print(f"   {f.doc}", file=file)
+        print("", file=file)
 
-    print()
+    print(file=file)
     
-def print_builtins():
+def print_builtins(file):
+
+    print("Language Reference", file=file)
+    print("==================", file=file)
 
     # build dictionary of all functions by group
     groups = {}
@@ -1129,16 +1132,16 @@ def print_builtins():
         groups[g].append(f)
 
     for k, g in groups.items():
-        print("\n")
-        print(k)
-        print("---------------")
+        print("\n", file=file)
+        print(k, file=file)
+        print("---------------", file=file)
 
         for f in g:            
             if isinstance(f, list):
                 for x in f:
-                    print_function(x)
+                    print_function(x, file=file)
             else:
-                print_function(f)
+                print_function(f, file=file)
 
 
 # ensures that correct CUDA is set for the guards lifetime
