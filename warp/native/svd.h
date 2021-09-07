@@ -383,25 +383,20 @@ inline CUDA_CALLABLE void svd3(const mat33& A, mat33& U, vec3& sigma, mat33& V) 
 }
 
 inline CUDA_CALLABLE void adj_svd3(const mat33& A,
-                                  const mat33& _U,
-                                  const vec3& _sigma,
-                                  const mat33& _V,
+                                  const mat33& U,
+                                  const vec3& sigma,
+                                  const mat33& V,
                                   mat33& adj_A,
                                   const mat33& adj_U,
                                   const vec3& adj_sigma,
                                   const mat33& adj_V) {
-  mat33 U;
-  mat33 V;
-  vec3 s;
-  svd3(A, U, s, V);
+  float sx2 = sigma.x * sigma.x;
+  float sy2 = sigma.y * sigma.y;
+  float sz2 = sigma.z * sigma.z;
 
-  float sx2 = s.x * s.x;
-  float sy2 = s.y * s.y;
-  float sz2 = s.z * s.z;
-
-  float F01 = 1.0f / (sy2 - sx2);
-  float F02 = 1.0f / (sz2 - sx2);
-  float F12 = 1.0f / (sz2 - sy2);
+  float F01 = 1.0f / min(sy2 - sx2, -1e-6f);
+  float F02 = 1.0f / min(sz2 - sx2, -1e-6f);
+  float F12 = 1.0f / min(sz2 - sy2, -1e-6f);
 
   mat33 F = mat33(0, F01, F02,
                   -F01, 0, F12,
@@ -410,9 +405,9 @@ inline CUDA_CALLABLE void adj_svd3(const mat33& A,
   mat33 adj_sigma_mat = mat33(adj_sigma.x, 0, 0,
                               0, adj_sigma.y, 0,
                               0, 0, adj_sigma.z);
-  mat33 s_mat = mat33(s.x, 0, 0,
-                      0, s.y, 0,
-                      0, 0, s.z);
+  mat33 s_mat = mat33(sigma.x, 0, 0,
+                      0, sigma.y, 0,
+                      0, 0, sigma.z);
 
   // https://github.com/pytorch/pytorch/blob/d7ddae8e4fe66fa1330317673438d1eb5aa99ca4/torch/csrc/autograd/FunctionsManual.cpp
   mat33 UT = transpose(U);
@@ -420,8 +415,8 @@ inline CUDA_CALLABLE void adj_svd3(const mat33& A,
 
   mat33 sigma_term = mul(U, mul(adj_sigma_mat, VT));
 
-  mat33 u_term = mul(mul(U, mul(mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
-  mat33 v_term = mul(U, mul(s_mat, mul(mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
+  mat33 u_term = mul(mul(U, mul(element_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
+  mat33 v_term = mul(U, mul(s_mat, mul(element_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
 
   adj_A = adj_A + (u_term + v_term + sigma_term);
 }
