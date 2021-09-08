@@ -26,9 +26,6 @@ variables:
 before_script:
   - echo %PATH%
   - python -V  # Print out python version for debugging
-  - pip install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
 
 # test:
 #   script:
@@ -50,9 +47,9 @@ pages:
   script:
     - pip install sphinx sphinx-rtd-theme
     - cd doc ; make html
-    - mv build/html/ ../pages/
+    - mv build/html/ ../public/
   artifacts:
     paths:
-      - pages
+      - public
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
