@@ -47,7 +47,7 @@ pages:
   script:
     - pip install sphinx sphinx-rtd-theme
     - cd docs ; ./make.bat html
-    - mv build/html/ ../public/
+    - mv _build/html/ ../public/
   artifacts:
     paths:
       - public
