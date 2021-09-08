@@ -27,7 +27,7 @@ Developers should run `build_lib.py` to build the `warp.dll` / `warp.so` core li
 
 ## Documentation
 
-Please refer to the project [documentation](./docs/_build/html/index.html) for detailed language reference.
+Please refer to the project [documentation](https://mmacklin.gitlab-master-pages.nvidia.com/warp/) for detailed language reference.
 
 ## Source
 
