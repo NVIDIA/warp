@@ -1,0 +1,54 @@
+{
+    "OgnRipple": {
+        "version": 1,
+        "description": "2D Wave equation solver",
+        "language": "Python",
+        "inputs": {
+            "resolution": {
+                "type": "float",
+                "description": "",
+                "default": 50.0
+            },
+            "speed": {
+                "type": "float",
+                "description": "",
+                "default": 100.0
+            },
+            "damp": {
+                "type": "float",
+                "description": "",
+                "default": 0
+            },
+            "grid": {
+               "type": "bundle",
+                "description": ""
+            },
+            "collider": {
+               "type": "bundle",
+                "description": ""
+            },
+            "displace": {
+                "type": "float",
+                 "description": "",
+                 "default": 1.0
+             }
+        },
+        "outputs": {
+            "vertices": {
+                "type": "pointf[3][]",
+                "description": ""
+            },
+            "face_indices": {
+                "type": "int[]",
+                "description": ""
+            },
+            "face_counts": {
+                "type": "int[]",
+                "description": ""
+            }
+        },
+        "state": {
+            "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
+        }
+    }
+}

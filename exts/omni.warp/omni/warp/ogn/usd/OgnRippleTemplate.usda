@@ -1,0 +1,46 @@
+#usda 1.0
+(
+    doc ="""Generated from node description file OgnRipple.ogn
+Contains templates for node types found in that file."""
+)
+
+
+def ComputeNode "Template_omni_warp_OgnRipple" (
+    docs="""2D Wave equation solver"""
+)
+{
+    custom token node:type = "PythonNode"
+    custom token PythonNode:type = "omni.warp.OgnRipple"
+    custom int node:typeVersion = 1
+
+    # 6 attributes
+    custom rel inputs:collider (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:damp = 0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:displace = 1.0 (
+        docs="""No documentation provided"""
+    )
+    custom rel inputs:grid (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:resolution = 50.0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:speed = 100.0 (
+        docs="""No documentation provided"""
+    )
+
+    # 3 attributes
+    custom int[] outputs:face_counts (
+        docs="""No documentation provided"""
+    )
+    custom int[] outputs:face_indices (
+        docs="""No documentation provided"""
+    )
+    custom point3f[] outputs:vertices (
+        docs="""No documentation provided"""
+    )
+}

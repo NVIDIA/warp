@@ -1,0 +1,85 @@
+#usda 1.0
+(
+    doc ="""Generated from node description file OgnCloth.ogn
+Contains templates for node types found in that file."""
+)
+
+
+def ComputeNode "Template_omni_warp_OgnCloth" (
+    docs="""Cloth simulation node"""
+)
+{
+    custom token node:type = "PythonNode"
+    custom token PythonNode:type = "omni.warp.OgnCloth"
+    custom int node:typeVersion = 1
+
+    # 21 attributes
+    custom int[] inputs:cloth_indices (
+        docs="""Particle indices"""
+    )
+    custom point3f[] inputs:cloth_positions (
+        docs="""Particle positions"""
+    )
+    custom frame4d inputs:cloth_transform = ((1.0, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, 0.0, 0.0, 1.0)) (
+        docs="""Local to World transform for cloth vertices"""
+    )
+    custom int[] inputs:collider_indices (
+        docs="""Collision indices"""
+    )
+    custom float inputs:collider_offset = 0.01 (
+        docs="""No documentation provided"""
+    )
+    custom point3f[] inputs:collider_positions (
+        docs="""Collision positions"""
+    )
+    custom frame4d inputs:collider_transform = ((1.0, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, 0.0, 0.0, 1.0)) (
+        docs="""Local to world transform for collider vertices"""
+    )
+    custom float inputs:density = 100.0 (
+        docs="""No documentation provided"""
+    )
+    custom vector3f inputs:gravity = (0.0, -9.8, 0.0) (
+        docs="""No documentation provided"""
+    )
+    custom bool inputs:ground = false (
+        docs="""No documentation provided"""
+    )
+    custom vector3f inputs:ground_plane = (0.0, 1.0, 0.0) (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_contact_damp = 100.0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_contact_elastic = 5000.0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_contact_friction = 2000.0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_contact_mu = 0.75 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_edge_bend = 1.0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_edge_damp = 0.0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_tri_area = 1000.0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_tri_damp = 10.0 (
+        docs="""No documentation provided"""
+    )
+    custom float inputs:k_tri_elastic = 1000.0 (
+        docs="""No documentation provided"""
+    )
+    custom int inputs:num_substeps = 32 (
+        docs="""No documentation provided"""
+    )
+
+    # 1 attribute
+    custom point3f[] outputs:positions (
+        docs="""Particle positions"""
+    )
+}

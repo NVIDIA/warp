@@ -1,0 +1,181 @@
+{
+    "OgnCloth": {
+        "version": 1,
+        "description": "Cloth simulation node",
+        "language": "Python",
+        "inputs": {
+            "cloth_positions": {
+                "type": "pointf[3][]",
+                "description": "Particle positions",
+                "default": []
+            },
+            "cloth_indices": {
+                "type": "int[]",
+                "description": "Particle indices",
+                "default": []
+            },
+            "ground": {
+                "type": "bool",
+                "description": "",
+                "default": false
+            },
+            "collider_positions": {
+                "type": "pointf[3][]",
+                "description": "Collision positions",
+                "default": []
+            },
+            "collider_indices": {
+                "type": "int[]",
+                "description": "Collision indices",
+                "default": []
+            },
+            "cloth_transform": {
+                "type": "transform[4]",
+                "description": "Local to World transform for cloth vertices",
+                "default": [
+                    [
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            "collider_transform": {
+                "type": "transform[4]",
+                "description": "Local to world transform for collider vertices",
+                "default": [
+                    [
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                ]
+            },
+            "density": {
+                "type": "float",
+                "description": "",
+                "default": 100.0
+            },
+            "k_tri_elastic": {
+                "type": "float",
+                "description": "",
+                "default": 1000.0
+            },
+            "k_tri_area": {
+                "type": "float",
+                "description": "",
+                "default": 1000.0
+            },
+            "k_tri_damp": {
+                "type": "float",
+                "description": "",
+                "default": 10.0
+            },
+            "k_edge_bend": {
+                "type": "float",
+                "description": "",
+                "default": 1.0
+            },
+            "k_edge_damp": {
+                "type": "float",
+                "description": "",
+                "default": 0.0
+            },
+            "k_contact_elastic": {
+                "type": "float",
+                "description": "",
+                "default": 5000.0
+            },
+            "k_contact_damp": {
+                "type": "float",
+                "description": "",
+                "default": 100.0
+            },
+            "k_contact_friction": {
+                "type": "float",
+                "description": "",
+                "default": 2000.0
+            },
+            "k_contact_mu": {
+                "type": "float",
+                "description": "",
+                "default": 0.75
+            },
+            "num_substeps": {
+                "type": "int",
+                "description": "",
+                "default": 32
+            },
+            "gravity": {
+                "type": "vectorf[3]",
+                "description": "",
+                "default": [
+                    0.0,
+                    -9.8,
+                    0.0
+                ]
+            },
+            "ground_plane": {
+                "type": "vectorf[3]",
+                "description": "",
+                "default": [
+                    0.0,
+                    1.0,
+                    0.0
+                ]
+            },
+            "collider_offset": {
+                "type": "float",
+                "description": "",
+                "default": 0.01
+            }
+        },
+        "outputs": {
+            "positions": {
+                "type": "pointf[3][]",
+                "description": "Particle positions"
+            }
+        },
+        "state": {
+            "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
+        }
+    }
+}

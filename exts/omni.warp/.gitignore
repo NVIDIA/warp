@@ -1,0 +1,7 @@
+﻿__pycache__
+*.pyc
+.vscode
+*.o
+*.obj
+warp/kernels
+data/.thumbs
