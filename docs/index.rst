@@ -1,5 +1,5 @@
-NVDIA Warp Documentation
-========================
+NVIDIA Warp Documentation
+=========================
 
 .. toctree::
    :maxdepth: 3
