@@ -6,7 +6,6 @@ warp/kernels
 warp.egg-info
 .vscode
 archive
-_*/
 *.o
 *.exp
 *.dll
