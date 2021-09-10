@@ -1,4 +1,3 @@
-from copy import deepcopy
 import math
 import os
 import sys
@@ -10,7 +9,8 @@ import cProfile
 import inspect
 import hashlib
 
-from ctypes import*
+#from ctypes import*
+import ctypes
 
 from warp.types import *
 from warp.utils import *
@@ -698,7 +698,6 @@ class Module:
 
 #-------------------------------------------
 # exectution context
-from ctypes import *
 
 # a simple pooled allocator that caches allocs based 
 # on size to avoid hitting the system allocator
@@ -774,43 +773,43 @@ class Runtime:
             self.core = warp.build.load_dll(warp_lib)
 
         # setup c-types for warp.dll
-        self.core.alloc_host.restype = c_void_p
-        self.core.alloc_device.restype = c_void_p
+        self.core.alloc_host.restype = ctypes.c_void_p
+        self.core.alloc_device.restype = ctypes.c_void_p
         
-        self.core.mesh_create_host.restype = c_uint64
-        self.core.mesh_create_host.argtypes = [c_void_p, c_void_p, c_void_p, c_int, c_int]
+        self.core.mesh_create_host.restype = ctypes.c_uint64
+        self.core.mesh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
-        self.core.mesh_create_device.restype = c_uint64
-        self.core.mesh_create_device.argtypes = [c_void_p, c_void_p, c_void_p, c_int, c_int]
+        self.core.mesh_create_device.restype = ctypes.c_uint64
+        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
-        self.core.mesh_destroy_host.argtypes = [c_uint64]
-        self.core.mesh_destroy_device.argtypes = [c_uint64]
+        self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
+        self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
 
-        self.core.mesh_refit_host.argtypes = [c_uint64]
-        self.core.mesh_refit_device.argtypes = [c_uint64]
+        self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
+        self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
 
         # load CUDA entry points on supported platforms
-        self.core.cuda_check_device.restype = c_uint64
-        self.core.cuda_get_context.restype = c_void_p
-        self.core.cuda_get_stream.restype = c_void_p
-        self.core.cuda_graph_end_capture.restype = c_void_p
-        self.core.cuda_get_device_name.restype = c_char_p
+        self.core.cuda_check_device.restype = ctypes.c_uint64
+        self.core.cuda_get_context.restype = ctypes.c_void_p
+        self.core.cuda_get_stream.restype = ctypes.c_void_p
+        self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
+        self.core.cuda_get_device_name.restype = ctypes.c_char_p
 
-        self.core.cuda_compile_program.argtypes = [c_char_p, c_char_p, c_bool, c_bool, c_char_p]
-        self.core.cuda_compile_program.restype = c_size_t
+        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
+        self.core.cuda_compile_program.restype = ctypes.c_size_t
 
-        self.core.cuda_load_module.argtypes = [c_char_p]
-        self.core.cuda_load_module.restype = c_void_p
+        self.core.cuda_load_module.argtypes = [ctypes.c_char_p]
+        self.core.cuda_load_module.restype = ctypes.c_void_p
 
-        self.core.cuda_unload_module.argtypes = [c_void_p]
+        self.core.cuda_unload_module.argtypes = [ctypes.c_void_p]
 
-        self.core.cuda_get_kernel.argtypes = [c_void_p, c_char_p]
-        self.core.cuda_get_kernel.restype = c_void_p
+        self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self.core.cuda_get_kernel.restype = ctypes.c_void_p
         
-        self.core.cuda_launch_kernel.argtypes = [c_void_p, c_size_t, POINTER(c_void_p)]
-        self.core.cuda_launch_kernel.restype = c_size_t
+        self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
+        self.core.cuda_launch_kernel.restype = ctypes.c_size_t
 
-        self.core.init.restype = c_int
+        self.core.init.restype = ctypes.c_int
         
         error = self.core.init()
 
@@ -821,14 +820,14 @@ class Runtime:
             return ptr
 
         def free_host(ptr):
-            self.core.free_host(cast(ptr,POINTER(c_int)))
+            self.core.free_host(ctypes.cast(ptr, ctypes.POINTER(ctypes.c_int)))
 
         def alloc_device(num_bytes):
-            ptr = self.core.alloc_device(c_size_t(num_bytes))
+            ptr = self.core.alloc_device(ctypes.c_size_t(num_bytes))
             return ptr
 
         def free_device(ptr):
-            self.core.free_device(cast(ptr,POINTER(c_int)))
+            self.core.free_device(ctypes.cast(ptr, ctypes.POINTER(ctypes.c_int)))
 
         self.host_allocator = Allocator(alloc_host, free_host)
         self.device_allocator = Allocator(alloc_device, free_device)
@@ -877,6 +876,15 @@ def is_cuda_available():
 
 
 def capture_begin():
+    """Begin capture of a CUDA graph
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    """
 
     if warp.config.verify_cuda == True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
@@ -889,10 +897,21 @@ def capture_begin():
     runtime.core.cuda_graph_begin_capture()
 
 def capture_end():
+    """Begin capture of a CUDA graph
+
+    Args:
+        None
+
+    Returns:
+        A handle to a CUDA graph object that can be launched with capture_launch()
+
+    """
+
+
     return runtime.core.cuda_graph_end_capture()
 
 def capture_launch(graph):
-    runtime.core.cuda_graph_launch(c_void_p(graph))
+    runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
 
 
 def copy(dest, src):
@@ -904,16 +923,16 @@ def copy(dest, src):
         raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")
 
     if (src.device == "cpu" and dest.device == "cuda"):
-        runtime.core.memcpy_h2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(src_bytes))
+        runtime.core.memcpy_h2d(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
 
     elif (src.device == "cuda" and dest.device == "cpu"):
-        runtime.core.memcpy_d2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(src_bytes))
+        runtime.core.memcpy_d2h(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
 
     elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.core.memcpy_h2h(c_void_p(dest.data), c_void_p(src.data), c_size_t(src_bytes))
+        runtime.core.memcpy_h2h(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
 
     elif (src.device == "cuda" and dest.device == "cuda"):
-        runtime.core.memcpy_d2d(c_void_p(dest.data), c_void_p(src.data), c_size_t(src_bytes))
+        runtime.core.memcpy_d2d(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
     
     else:
         raise RuntimeError("Unexpected source and destination combination")
@@ -925,11 +944,11 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
 
     if (device == "cpu"):
         ptr = runtime.host_allocator.alloc(num_bytes) 
-        runtime.core.memset_host(cast(ptr,POINTER(c_int)), c_int(0), c_size_t(num_bytes))
+        runtime.core.memset_host(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(num_bytes))
 
     if( device == "cuda"):
         ptr = runtime.device_allocator.alloc(num_bytes)
-        runtime.core.memset_device(cast(ptr,POINTER(c_int)), c_int(0), c_size_t(num_bytes))
+        runtime.core.memset_device(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(num_bytes))
 
     if (ptr == None and num_bytes > 0):
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
@@ -981,7 +1000,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
 
         # first param is the number of threads
         params = []
-        params.append(c_long(dim))
+        params.append(ctypes.c_long(dim))
 
         # converts arguments to kernel's expected ctypes and packs into params
         def pack_args(args, params):
@@ -995,7 +1014,7 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
                     if (a is None or a.data is None):
                         
                         # allow for NULL arrays
-                        params.append(c_int64(0))
+                        params.append(ctypes.c_int64(0))
 
                     else:
 
@@ -1007,20 +1026,20 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
                         if (a.device != device):
                             raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, a.device))
             
-                        params.append(c_int64(a.data))
+                        params.append(ctypes.c_int64(a.data))
 
                 # try and convert arg to correct type
                 elif (arg_type == warp.types.float32):
-                    params.append(c_float(a))
+                    params.append(ctypes.c_float(a))
 
                 elif (arg_type == warp.types.int32):
-                    params.append(c_int32(a))
+                    params.append(ctypes.c_int32(a))
 
                 elif (arg_type == warp.types.int64):
-                    params.append(c_int64(a))
+                    params.append(ctypes.c_int64(a))
 
                 elif (arg_type == warp.types.uint64):
-                    params.append(c_uint64(a))
+                    params.append(ctypes.c_uint64(a))
                 
                 elif isinstance(a, np.ndarray) or isinstance(a, tuple):
 
@@ -1032,10 +1051,14 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
                     if (len(v) != arg_type.length()):
                         raise RuntimeError(f"Kernel parameter {kernel.adj.args[i].label} has incorrect value length {len(v)}, expected {arg_type.length()}")
 
-                    # try and convert numpy array to builtin numeric type vec3, vec4, mat33, etc
-                    x = arg_type()
+                    # wrap the arg_type (which is an ctypes.Array) in a structure
+                    # to ensure parameter is passed to the .dll by value rather than reference
+                    class ValueArg(ctypes.Structure):
+                        _fields_ = [ ('value', arg_type)]
+
+                    x = ValueArg()
                     for i in range(arg_type.length()):
-                        x[i] = v[i]
+                        x.value[i] = v[i]
 
                     params.append(x)
 
@@ -1062,8 +1085,8 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
 
         
         elif device.startswith("cuda"):
-            kernel_args = [c_void_p(addressof(x)) for x in params]
-            kernel_params = (c_void_p * len(kernel_args))(*kernel_args)
+            kernel_args = [ctypes.c_void_p(addressof(x)) for x in params]
+            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if (adjoint):
                 runtime.core.cuda_launch_kernel(kernel.backward_cuda, dim, kernel_params)

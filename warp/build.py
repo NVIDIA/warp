@@ -3,7 +3,7 @@ import os
 import sys
 import imp
 import subprocess
-from ctypes import *
+import ctypes
 
 import warp.config
 from warp.utils import ScopedTimer
@@ -217,7 +217,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
     
 def load_dll(dll_path):
     
-    dll = CDLL(dll_path)
+    dll = ctypes.CDLL(dll_path)
     return dll
 
 def unload_dll(dll):
@@ -232,7 +232,7 @@ def unload_dll(dll):
     # refs to the dll inside the Python prwpram 
     try:
         while (True):
-            _ctypes.FreeLibrary(handle)
+            ctypes._ctypes.FreeLibrary(handle)
     except:
         return
 

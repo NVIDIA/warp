@@ -1,7 +1,6 @@
 
 import ctypes 
 import numpy as np
-from copy import copy as shallowcopy
 
 #----------------------
 # built-in types
@@ -433,6 +432,8 @@ class array:
                 copy(dest, src)
 
                 # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
+                from copy import copy as shallowcopy
+
                 self.__dict__ = shallowcopy(dest.__dict__)
                 self.owner = True
            
