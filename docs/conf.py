@@ -13,6 +13,7 @@
 import os
 import sys
 
+sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
@@ -39,6 +40,11 @@ extensions = [
 autodoc_typehints = 'description'
 # document class *and* __init__ methods
 autoclass_content = 'both' # 
+
+autodoc_member_order = 'bysource'
+
+
+#add_module_names = False
 
 todo_include_todos = True
 

@@ -58,7 +58,7 @@ Arrays are the fundamental memory abstraction in Warp, they are created through 
     wp.zeros(n=1024, dtype=float, device="cuda")
     
 
-Arrays can also be constructured directly from ``numpy`` ndarrays as follows: ::
+Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
 
    r = np.random.rand(1024)
 
