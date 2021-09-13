@@ -273,12 +273,6 @@ Vector Math
 .. function:: normalize(x: quat) -> quat
 
 
-.. function:: rotate(q: quat, p: vec3) -> vec3
-
-
-.. function:: rotate_inv(q: quat, p: vec3) -> vec3
-
-
 .. function:: determinant(m: mat22) -> float
 
 
@@ -349,6 +343,12 @@ Vector Math
 
 Quaternion Math
 ---------------
+.. function:: rotate(q: quat, p: vec3) -> vec3
+
+
+.. function:: rotate_inv(q: quat, p: vec3) -> vec3
+
+
 .. function:: quat() -> quat
 
 

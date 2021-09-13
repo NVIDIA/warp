@@ -9,6 +9,9 @@ import cProfile
 import inspect
 import hashlib
 
+from typing import Tuple
+from typing import List
+
 #from ctypes import*
 import ctypes
 
@@ -228,8 +231,8 @@ add_builtin("normalize", input_types={"x": vec3}, value_type=vec3, doc="", group
 add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, doc="", group="Vector Math")
 add_builtin("normalize", input_types={"x": quat}, value_type=quat, doc="", group="Vector Math")
 
-add_builtin("rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Vector Math")
-add_builtin("rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Quaternion Math")
+add_builtin("rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Quaternion Math")
 
 add_builtin("determinant", input_types={"m": mat22}, value_type=float, doc="", group="Vector Math")
 add_builtin("determinant", input_types={"m": mat33}, value_type=float, doc="", group="Vector Math")
@@ -875,70 +878,18 @@ def is_cuda_available():
     return runtime.cuda_device != None
 
 
-def capture_begin():
-    """Begin capture of a CUDA graph
+def zeros(n: int, dtype=float, device:str="cpu", requires_grad:bool=False)-> warp.array:
+    """Return a zero-initialized array
 
     Args:
-        None
+        n: Number of elements
+        dtype: Type of each element, e.g.: warp.vec3, warp.mat33, etc
+        device: Device that array will live on
+        requires_grad: Whether the array will be tracked for back propagation
 
     Returns:
-        None
-
+        A warp.array object representing the allocation                
     """
-
-    if warp.config.verify_cuda == True:
-        raise RuntimeError("Cannot use CUDA error verification during graph capture")
-
-    # ensure that all modules are loaded, this is necessary
-    # since cuLoadModule() is not permitted during capture
-    for m in user_modules.values():
-        m.load()
-
-    runtime.core.cuda_graph_begin_capture()
-
-def capture_end():
-    """Begin capture of a CUDA graph
-
-    Args:
-        None
-
-    Returns:
-        A handle to a CUDA graph object that can be launched with capture_launch()
-
-    """
-
-
-    return runtime.core.cuda_graph_end_capture()
-
-def capture_launch(graph):
-    runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
-
-
-def copy(dest, src):
-
-    src_bytes = src.length*type_size_in_bytes(src.dtype)
-    dst_bytes = dest.length*type_size_in_bytes(dest.dtype)
-
-    if (src_bytes > dst_bytes):
-        raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")
-
-    if (src.device == "cpu" and dest.device == "cuda"):
-        runtime.core.memcpy_h2d(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
-
-    elif (src.device == "cuda" and dest.device == "cpu"):
-        runtime.core.memcpy_d2h(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
-
-    elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.core.memcpy_h2h(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
-
-    elif (src.device == "cuda" and dest.device == "cuda"):
-        runtime.core.memcpy_d2d(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
-    
-    else:
-        raise RuntimeError("Unexpected source and destination combination")
-
-
-def zeros(n, dtype=float, device="cpu", requires_grad=False):
 
     num_bytes = n*warp.types.type_size_in_bytes(dtype)
 
@@ -956,24 +907,61 @@ def zeros(n, dtype=float, device="cpu", requires_grad=False):
         # construct array
         return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True, requires_grad=requires_grad)
 
-def zeros_like(src, requires_grad=False):
+def zeros_like(src: warp.array, requires_grad:bool=False) -> warp.array:
+    """Return a zero-initialized array with the same type and dimension of another array
+
+    Args:
+        src: The template array to use for length, data type, and device
+        requires_grad: Whether the array will be tracked for back propagation
+
+    Returns:
+        A warp.array object representing the allocation
+    """
 
     arr = zeros(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
     return arr
 
-def clone(src):
+def clone(src: warp.array) -> warp.array:
+    """Clone an existing array, allocates a copy of the src memory
+
+    Args:
+        src: The source array to copy
+
+    Returns:
+        A warp.array object representing the allocation
+    """
+
     dest = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
     copy(dest, src)
 
     return dest
 
-def empty(n, dtype=float, device="cpu", requires_grad=False):
+def empty(n: int, dtype=float, device:str="cpu", requires_grad:bool=False) -> warp.array:
+    """Returns an uninitialized array
+
+    Args:
+        n: Number of elements
+        dtype: Type of each element, e.g.: warp.vec3, warp.mat33, etc
+        device: Device that array will live on
+        requires_grad: Whether the array will be tracked for back propagation
+
+    Returns:
+        A warp.array object representing the allocation
+    """
 
     # todo: implement uninitialized allocation
     return zeros(n, dtype, device, requires_grad=requires_grad)  
 
-def empty_like(src, requires_grad=False):
+def empty_like(src: warp.array, requires_grad:bool=False) -> warp.array:
+    """Return an uninitialized array with the same type and dimension of another array
 
+    Args:
+        src: The template array to use for length, data type, and device
+        requires_grad: Whether the array will be tracked for back propagation
+
+    Returns:
+        A warp.array object representing the allocation
+    """
     arr = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
     return arr
 
@@ -983,11 +971,21 @@ def from_numpy(arr, dtype, device="cpu", requires_grad=False):
     return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
-def synchronize():
-    runtime.core.synchronize()
+def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:str="cpu", adjoint=False):
+    """Launch a Warp kernel on the target device
 
+    Kernel launches are asynchronous with respect to the calling Python thread. 
 
-def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], device="cpu", adjoint=False):
+    Args:
+        kernel: The name of a Warp kenel function, decorated with the @warp.kernel decorator
+        dim: The number of threads to launch the kernel with
+        inputs: The input parameters to the kernel
+        outputs: The output parameters (optional)
+        adj_inputs: The adjoint inputs (optional)
+        adj_outputs: The adjoint outputs (optional)
+        device: The device to launch on
+        adjoint: Whether to run forward or backward pass (typically use False)
+    """
 
     if (warp.config.print_launches):
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
@@ -1103,6 +1101,83 @@ def launch(kernel, dim, inputs, outputs=[], adj_inputs=[], adj_outputs=[], devic
     if (runtime.tape):
         runtime.tape.record(kernel, dim, inputs, outputs, device)
 
+def synchronize():
+    """Manually synchronize the calling CPU thread with any outstanding CUDA work
+
+    This method allows the host application code to ensure that any kernel launches
+    or memory copies have completed.
+    """
+
+    runtime.core.synchronize()
+
+
+def capture_begin():
+    """Begin capture of a CUDA graph
+
+    Captures all subsequent kernel launches and memory operations on CUDA devices.
+    This can be used to record large numbers of kernels and replay them with low-overhead.
+    """
+
+    if warp.config.verify_cuda == True:
+        raise RuntimeError("Cannot use CUDA error verification during graph capture")
+
+    # ensure that all modules are loaded, this is necessary
+    # since cuLoadModule() is not permitted during capture
+    for m in user_modules.values():
+        m.load()
+
+    runtime.core.cuda_graph_begin_capture()
+
+def capture_end()->int:
+    """Ends the capture of a CUDA graph
+
+    Returns:
+        A handle to a CUDA graph object that can be launched with :func:`~warp.capture_launch()`
+    """
+
+
+    return runtime.core.cuda_graph_end_capture()
+
+def capture_launch(graph: int):
+    """Launch a previously captured CUDA graph
+
+    Args:
+        graph: A handle to the graph as returned by :func:`~warp.capture_end`
+    """
+
+    runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
+
+
+def copy(dest: warp.array, src: warp.array):
+    """Copy array contents from src to dest
+
+    Args:
+        dest: Destination array, must be at least as big as source buffer
+        src: Source array
+
+    """
+
+    src_bytes = src.length*type_size_in_bytes(src.dtype)
+    dst_bytes = dest.length*type_size_in_bytes(dest.dtype)
+
+    if (src_bytes > dst_bytes):
+        raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")
+
+    if (src.device == "cpu" and dest.device == "cuda"):
+        runtime.core.memcpy_h2d(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
+
+    elif (src.device == "cuda" and dest.device == "cpu"):
+        runtime.core.memcpy_d2h(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
+
+    elif (src.device == "cpu" and dest.device == "cpu"):
+        runtime.core.memcpy_h2h(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
+
+    elif (src.device == "cuda" and dest.device == "cuda"):
+        runtime.core.memcpy_d2d(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
+    
+    else:
+        raise RuntimeError("Unexpected source and destination combination")
+
 
 def type_str(t):
     if (t == None):
@@ -1185,6 +1260,8 @@ class ScopedCudaGuard:
 runtime = None
 
 def init():
+    """Initialize the Warp runtimes. This function must be called before any other API call. If an error occurs a exception will be raised.
+    """
     global runtime
 
     if (runtime == None):

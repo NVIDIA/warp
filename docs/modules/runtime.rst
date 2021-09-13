@@ -1,11 +1,15 @@
 Runtime Reference
 =================
 
+.. currentmodule:: warp
 
-Configuration
--------------
+.. toctree::
+   :maxdepth: 2
 
-Before initialization it is possible to set runtime options through the ``wp.config`` module, e.g.: ::
+Initialization
+--------------
+
+Before initialization it is possible to set runtime options through the ``warp.config`` module, e.g.: ::
 
    import warp as wp
 
@@ -15,6 +19,35 @@ Before initialization it is possible to set runtime options through the ``wp.con
    wp.init()
 
 This example sets the kernel build mode to debug, and ensure verify the CUDA context for any errors after each kernel launch, which can be useful for debugging.
+
+.. autofunction:: init
+
+Kernels
+-------
+
+In Warp, kernels are defined as Python functions, decorated with the ``@warp.kernel`` decorator. Kernels have a 1:1 correspondence with CUDA kernels, and may be launched with any number of parallel execution threads. ::
+
+    @wp.kernel
+    def simple_kernel(a: wp.array(dtype=wp.vec3),
+                      b: wp.array(dtype=wp.vec3),
+                      c: wp.array(dtype=float)):
+
+        # get thread index
+        tid = wp.tid()
+
+        # load two vec3s
+        x = a[tid]
+        y = b[tid]
+
+        # compute the dot product between vectors
+        r = wp.dot(x, y)
+
+        # write result back to memory
+        c[tid] = r
+
+Kernels are launched with the ``warp.launch()`` function on a specific device (CPU/GPU). Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.
+
+.. autofunction:: launch
 
 Arrays
 ------
@@ -62,37 +95,10 @@ Additionally, arrays can be copied directly between memory spaces: ::
    # copy from source CPU buffer to GPU
    wp.copy(dest_array, src_array)
 
-
-Kernels
--------
-
-Kernels are launched using the following syntax: ::
-
-   wp.launch(kernel: str
-
-Kernel launches are asynchronous with respect to the calling Python thread.
-
-Differentiability
------------------
-
-By default Warp generates a foward and backward (adjoint) version of each kernel definition. The ``wp.Tape`` class can be used to record kernel launches, and replay them to compute the gradient of a scalar loss function with respect to the kernel inputs. ::
-
-   tape = wp.Tape()
-
-   # forward pass
-   with tape:
-      wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
-      wp.launch(kernel=compute2, inputs=[c, d], device="cuda")
-      wp.launch(kernel=loss, inputs=[d, l], device="cuda")
-
-   # reverse pass
-   tape.backward()
-
-After the backward pass has completed the gradients w.r.t. inputs are available via. a mapping in the Tape object: ::
-
-   # gradient of loss with respect to input a
-   print(tape.adjoints[a])
-
+.. autofunction:: zeros
+.. autofunction:: zeros_like
+.. autofunction:: empty
+.. autofunction:: empty_like
 
 CUDA Graphs
 -----------
@@ -117,3 +123,44 @@ Once a graph has been constructed it can be executed: ::
    wp.capture_launch(graph)
 
 Note that only launch calls are recorded in the graph, any Python executed outside of the kernel code will not be recorded. Typically it only makes sense to use CUDA graphs when the graph will be reused / launched multiple times.
+
+.. autofunction:: capture_begin
+.. autofunction:: capture_end
+.. autofunction:: capture_launch
+
+Data Types
+----------
+
+.. autoclass:: vec3
+.. autoclass:: vec4
+.. autoclass:: quat
+.. autoclass:: mat22
+.. autoclass:: mat33
+.. autoclass:: mat44
+.. autoclass:: spatial_transform
+.. autoclass:: spatial_vector
+.. autoclass:: spatial_matrix
+
+
+Differentiability
+-----------------
+
+By default Warp generates a foward and backward (adjoint) version of each kernel definition. The ``wp.Tape`` class can be used to record kernel launches, and replay them to compute the gradient of a scalar loss function with respect to the kernel inputs. ::
+
+   tape = wp.Tape()
+
+   # forward pass
+   with tape:
+      wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
+      wp.launch(kernel=compute2, inputs=[c, d], device="cuda")
+      wp.launch(kernel=loss, inputs=[d, l], device="cuda")
+
+   # reverse pass
+   tape.backward()
+
+After the backward pass has completed the gradients w.r.t. inputs are available via. a mapping in the Tape object: ::
+
+   # gradient of loss with respect to input a
+   print(tape.adjoints[a])
+
+

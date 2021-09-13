@@ -450,9 +450,7 @@ class MeshAdjacency:
 
 
 def mem_report():
-    '''Report the memory usage of the tensor.storage in pynp
-    Both on CPUs and GPUs are reported'''
-
+  
     def _mem_report(tensors, mem_type):
         '''Print the selected tensors of type
         There are two major storage types in our major concern:
