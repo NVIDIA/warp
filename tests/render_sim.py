@@ -77,7 +77,7 @@ class SimRenderer(render.UsdRenderer):
                     mesh.GetHeightAttr().Set(float(geo_scale[1] * 2.0))
 
                     # geometry transform w.r.t shape, convert USD geometry to physics engine convention
-                    X_sg = warp.utils.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi * 0.5))
+                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi * 0.5))
                     X_bg = warp.utils.transform_multiply(X_bs, X_sg)
 
                     render._usd_add_xform(mesh)
@@ -170,7 +170,7 @@ class SimRenderer(render.UsdRenderer):
 
                 node = UsdGeom.Xform(self.stage.GetPrimAtPath(self.root.GetPath().AppendChild("body_" + str(b))))
 
-                # unpack rigid spatial_transform
+                # unpack rigid transform
                 X_sb = warp.utils.transform_expand(body_q[b])
 
                 render._usd_set_xform(node, X_sb, (1.0, 1.0, 1.0), self.time)

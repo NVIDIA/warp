@@ -181,39 +181,39 @@ inline CUDA_CALLABLE spatial_vector atomic_add(spatial_vector* addr, const spati
 //---------------------------------------------------------------------------------
 // Represents a rigid body transformation
 
-struct spatial_transform
+struct transform
 {
     vec3 p;
     quat q;
 
-    CUDA_CALLABLE inline spatial_transform(vec3 p=vec3(), quat q=quat()) : p(p), q(q) {}
-    CUDA_CALLABLE inline spatial_transform(float)  {}  // helps uniform initialization
+    CUDA_CALLABLE inline transform(vec3 p=vec3(), quat q=quat()) : p(p), q(q) {}
+    CUDA_CALLABLE inline transform(float)  {}  // helps uniform initialization
 };
 
-CUDA_CALLABLE inline spatial_transform spatial_transform_identity()
+CUDA_CALLABLE inline transform transform_identity()
 {
-    return spatial_transform(vec3(), quat_identity());
+    return transform(vec3(), quat_identity());
 }
 
-CUDA_CALLABLE inline vec3 spatial_transform_get_translation(const spatial_transform& t)
+CUDA_CALLABLE inline vec3 transform_get_translation(const transform& t)
 {
     return t.p;
 }
 
-CUDA_CALLABLE inline quat spatial_transform_get_rotation(const spatial_transform& t)
+CUDA_CALLABLE inline quat transform_get_rotation(const transform& t)
 {
     return t.q;
 }
 
-CUDA_CALLABLE inline spatial_transform spatial_transform_multiply(const spatial_transform& a, const spatial_transform& b)
+CUDA_CALLABLE inline transform transform_multiply(const transform& a, const transform& b)
 {
-    return { rotate(a.q, b.p) + a.p, mul(a.q, b.q) };
+    return { quat_rotate(a.q, b.p) + a.p, mul(a.q, b.q) };
 }
 
-CUDA_CALLABLE inline void adj_spatial_transform_multiply(const spatial_transform& a, const spatial_transform& b, spatial_transform& adj_a, spatial_transform& adj_b, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_transform_multiply(const transform& a, const transform& b, transform& adj_a, transform& adj_b, const transform& adj_ret)
 {
     // translational part
-    adj_rotate(a.q, b.p, adj_a.q, adj_b.p, adj_ret.p);
+    adj_quat_rotate(a.q, b.p, adj_a.q, adj_b.p, adj_ret.p);
     adj_a.p += adj_ret.p;
 
     // rotational part
@@ -221,125 +221,125 @@ CUDA_CALLABLE inline void adj_spatial_transform_multiply(const spatial_transform
 }
 
 /*
-CUDA_CALLABLE inline spatial_transform spatial_transform_inverse(const spatial_transform& t)
+CUDA_CALLABLE inline transform transform_inverse(const transform& t)
 {
     quat q_inv = inverse(t.q);
-    return spatial_transform(-rotate(q_inv, t.p), q_inv);
+    return transform(-quat_rotate(q_inv, t.p), q_inv);
 }
 */
     
-CUDA_CALLABLE inline vec3 spatial_transform_vector(const spatial_transform& t, const vec3& x)
+CUDA_CALLABLE inline vec3 transform_vector(const transform& t, const vec3& x)
 {
-    return rotate(t.q, x);
+    return quat_rotate(t.q, x);
 }
 
-CUDA_CALLABLE inline vec3 spatial_transform_point(const spatial_transform& t, const vec3& x)
+CUDA_CALLABLE inline vec3 transform_point(const transform& t, const vec3& x)
 {
-    return t.p + rotate(t.q, x);
+    return t.p + quat_rotate(t.q, x);
 }
 /*
 // Frank & Park definition 3.20, pg 100
-CUDA_CALLABLE inline spatial_vector spatial_transform_twist(const spatial_transform& t, const spatial_vector& x)
+CUDA_CALLABLE inline spatial_vector transform_twist(const transform& t, const spatial_vector& x)
 {
-    vec3 w = rotate(t.q, x.w);
-    vec3 v = rotate(t.q, x.v) + cross(t.p, w);
+    vec3 w = quat_rotate(t.q, x.w);
+    vec3 v = quat_rotate(t.q, x.v) + cross(t.p, w);
 
     return spatial_vector(w, v);
 }
 
-CUDA_CALLABLE inline spatial_vector spatial_transform_wrench(const spatial_transform& t, const spatial_vector& x)
+CUDA_CALLABLE inline spatial_vector transform_wrench(const transform& t, const spatial_vector& x)
 {
-    vec3 v = rotate(t.q, x.v);
-    vec3 w = rotate(t.q, x.w) + cross(t.p, v);
+    vec3 v = quat_rotate(t.q, x.v);
+    vec3 w = quat_rotate(t.q, x.w) + cross(t.p, v);
 
     return spatial_vector(w, v);
 }
 */
 
-CUDA_CALLABLE inline spatial_transform add(const spatial_transform& a, const spatial_transform& b)
+CUDA_CALLABLE inline transform add(const transform& a, const transform& b)
 {
     return { a.p + b.p, a.q + b.q };
 }
 
-CUDA_CALLABLE inline spatial_transform sub(const spatial_transform& a, const spatial_transform& b)
+CUDA_CALLABLE inline transform sub(const transform& a, const transform& b)
 {
     return { a.p - b.p, a.q - b.q };
 }
 
-CUDA_CALLABLE inline spatial_transform mul(const spatial_transform& a, float s)
+CUDA_CALLABLE inline transform mul(const transform& a, float s)
 {
     return { a.p*s, a.q*s };
 }
 
-CUDA_CALLABLE inline spatial_transform mul(const spatial_transform& a, const spatial_transform& b)
+CUDA_CALLABLE inline transform mul(const transform& a, const transform& b)
 {
-    return spatial_transform_multiply(a, b);
+    return transform_multiply(a, b);
 }
 
 
 // adjoint methods
-CUDA_CALLABLE inline void adj_add(const spatial_transform& a, const spatial_transform& b, spatial_transform& adj_a, spatial_transform& adj_b, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_add(const transform& a, const transform& b, transform& adj_a, transform& adj_b, const transform& adj_ret)
 {
     adj_add(a.p, b.p, adj_a.p, adj_b.p, adj_ret.p);
     adj_add(a.q, b.q, adj_a.q, adj_b.q, adj_ret.q);
 }
 
-CUDA_CALLABLE inline void adj_sub(const spatial_transform& a, const spatial_transform& b, spatial_transform& adj_a, spatial_transform& adj_b, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_sub(const transform& a, const transform& b, transform& adj_a, transform& adj_b, const transform& adj_ret)
 {
     adj_sub(a.p, b.p, adj_a.p, adj_b.p, adj_ret.p);
     adj_sub(a.q, b.q, adj_a.q, adj_b.q, adj_ret.q);
 }
 
-CUDA_CALLABLE inline void adj_mul(const spatial_transform& a, float s, spatial_transform& adj_a, float& adj_s, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_mul(const transform& a, float s, transform& adj_a, float& adj_s, const transform& adj_ret)
 {
     adj_mul(a.p, s, adj_a.p, adj_s, adj_ret.p);
     adj_mul(a.q, s, adj_a.q, adj_s, adj_ret.q);
 }
 
-CUDA_CALLABLE inline void adj_mul(const spatial_transform& a, const spatial_transform& b, spatial_transform& adj_a, spatial_transform& adj_b, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_mul(const transform& a, const transform& b, transform& adj_a, transform& adj_b, const transform& adj_ret)
 {
-    adj_spatial_transform_multiply(a, b, adj_a, adj_b, adj_ret);
+    adj_transform_multiply(a, b, adj_a, adj_b, adj_ret);
 }
 
 
-inline CUDA_CALLABLE spatial_transform atomic_add(spatial_transform* addr, const spatial_transform& value) 
+inline CUDA_CALLABLE transform atomic_add(transform* addr, const transform& value) 
 {   
     vec3 p = atomic_add(&addr->p, value.p);
     quat q = atomic_add(&addr->q, value.q);
 
-    return spatial_transform(p, q);
+    return transform(p, q);
 }
 
-CUDA_CALLABLE inline void adj_spatial_transform(const vec3& p, const quat& q, vec3& adj_p, quat& adj_q, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_transform(const vec3& p, const quat& q, vec3& adj_p, quat& adj_q, const transform& adj_ret)
 {
     adj_p += adj_ret.p;
     adj_q += adj_ret.q;
 }
 
-CUDA_CALLABLE inline void adj_spatial_transform_identity(const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_transform_identity(const transform& adj_ret)
 {
     // nop
 }
 
 
-CUDA_CALLABLE inline void adj_spatial_transform_get_translation(const spatial_transform& t, spatial_transform& adj_t, const vec3& adj_ret)
+CUDA_CALLABLE inline void adj_transform_get_translation(const transform& t, transform& adj_t, const vec3& adj_ret)
 {
     adj_t.p += adj_ret;
 }
 
-CUDA_CALLABLE inline void adj_spatial_transform_get_rotation(const spatial_transform& t, spatial_transform& adj_t, const quat& adj_ret)
+CUDA_CALLABLE inline void adj_transform_get_rotation(const transform& t, transform& adj_t, const quat& adj_ret)
 {
     adj_t.q += adj_ret;
 }
 
 /*
-CUDA_CALLABLE inline void adj_spatial_transform_inverse(const spatial_transform& t, spatial_transform& adj_t, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_transform_inverse(const transform& t, transform& adj_t, const transform& adj_ret)
 {
     //quat q_inv = inverse(t.q);
-    //return spatial_transform(-rotate(q_inv, t.p), q_inv);
+    //return transform(-quat_rotate(q_inv, t.p), q_inv);
 
     quat q_inv = inverse(t.q); 
-    vec3 p = rotate(q_inv, t.p);
+    vec3 p = quat_rotate(q_inv, t.p);
     vec3 np = -p;
 
     quat adj_q_inv = 0.0f;
@@ -347,42 +347,42 @@ CUDA_CALLABLE inline void adj_spatial_transform_inverse(const spatial_transform&
     vec3 adj_p = 0.0f;
     vec3 adj_np = 0.0f;
 
-    adj_spatial_transform(np, q_inv, adj_np, adj_q_inv, adj_ret);
+    adj_transform(np, q_inv, adj_np, adj_q_inv, adj_ret);
     adj_p = -adj_np;
-    adj_rotate(q_inv, t.p, adj_q_inv, adj_t.p, adj_p);
+    adj_quat_rotate(q_inv, t.p, adj_q_inv, adj_t.p, adj_p);
     adj_inverse(t.q, adj_t.q, adj_q_inv);
     
 }
 */
 
 
-CUDA_CALLABLE inline void adj_spatial_transform_vector(const spatial_transform& t, const vec3& x, spatial_transform& adj_t, vec3& adj_x, const vec3& adj_ret)
+CUDA_CALLABLE inline void adj_transform_vector(const transform& t, const vec3& x, transform& adj_t, vec3& adj_x, const vec3& adj_ret)
 {
-    adj_rotate(t.q, x, adj_t.q, adj_x, adj_ret);
+    adj_quat_rotate(t.q, x, adj_t.q, adj_x, adj_ret);
 }
 
-CUDA_CALLABLE inline void adj_spatial_transform_point(const spatial_transform& t, const vec3& x, spatial_transform& adj_t, vec3& adj_x, const vec3& adj_ret)
+CUDA_CALLABLE inline void adj_transform_point(const transform& t, const vec3& x, transform& adj_t, vec3& adj_x, const vec3& adj_ret)
 {
-    adj_rotate(t.q, x, adj_t.q, adj_x, adj_ret);
+    adj_quat_rotate(t.q, x, adj_t.q, adj_x, adj_ret);
     adj_t.p += adj_ret;
 }
 
 /*
-CUDA_CALLABLE inline void adj_spatial_transform_twist(const spatial_transform& a, const spatial_vector& s, spatial_transform& adj_a, spatial_vector& adj_s, const spatial_vector& adj_ret)
+CUDA_CALLABLE inline void adj_transform_twist(const transform& a, const spatial_vector& s, transform& adj_a, spatial_vector& adj_s, const spatial_vector& adj_ret)
 {
     printf("todo, %s, %d\n", __FILE__, __LINE__);
 
-    // vec3 w = rotate(t.q, x.w);
-    // vec3 v = rotate(t.q, x.v) + cross(t.p, w);
+    // vec3 w = quat_rotate(t.q, x.w);
+    // vec3 v = quat_rotate(t.q, x.v) + cross(t.p, w);
 
     // return spatial_vector(w, v);    
 }
 
-CUDA_CALLABLE inline void adj_spatial_transform_wrench(const spatial_transform& t, const spatial_vector& x, spatial_transform& adj_t, spatial_vector& adj_x, const spatial_vector& adj_ret)
+CUDA_CALLABLE inline void adj_transform_wrench(const transform& t, const spatial_vector& x, transform& adj_t, spatial_vector& adj_x, const spatial_vector& adj_ret)
 {
     printf("todo, %s, %d\n", __FILE__, __LINE__);
-    // vec3 v = rotate(t.q, x.v);
-    // vec3 w = rotate(t.q, x.w) + cross(t.p, v);
+    // vec3 v = quat_rotate(t.q, x.v);
+    // vec3 w = quat_rotate(t.q, x.w) + cross(t.p, v);
 
     // return spatial_vector(w, v);
 }
@@ -396,18 +396,18 @@ CUDA_CALLABLE inline void adj_spatial_transform_wrench(const spatial_transform& 
 #define JOINT_FREE 3
 
 
-CUDA_CALLABLE inline spatial_transform spatial_jcalc(int type, float* joint_q, vec3 axis, int start)
+CUDA_CALLABLE inline transform spatial_jcalc(int type, float* joint_q, vec3 axis, int start)
 {
     if (type == JOINT_REVOLUTE)
     {
         float q = joint_q[start];
-        spatial_transform X_jc = spatial_transform(vec3(), quat_from_axis_angle(axis, q));
+        transform X_jc = transform(vec3(), quat_from_axis_angle(axis, q));
         return X_jc;
     }
     else if (type == JOINT_PRISMATIC)
     {
         float q = joint_q[start];
-        spatial_transform X_jc = spatial_transform(axis*q, quat_identity());
+        transform X_jc = transform(axis*q, quat_identity());
         return X_jc;
     }
     else if (type == JOINT_FREE)
@@ -421,15 +421,15 @@ CUDA_CALLABLE inline spatial_transform spatial_jcalc(int type, float* joint_q, v
         float qz = joint_q[start+5];
         float qw = joint_q[start+6];
         
-        spatial_transform X_jc = spatial_transform(vec3(px, py, pz), quat(qx, qy, qz, qw));
+        transform X_jc = transform(vec3(px, py, pz), quat(qx, qy, qz, qw));
         return X_jc;
     }
 
     // JOINT_FIXED
-    return spatial_transform(vec3(), quat_identity());
+    return transform(vec3(), quat_identity());
 }
 
-CUDA_CALLABLE inline void adj_spatial_jcalc(int type, float* q, vec3 axis, int start, int& adj_type, float* adj_q, vec3& adj_axis, int& adj_start, const spatial_transform& adj_ret)
+CUDA_CALLABLE inline void adj_spatial_jcalc(int type, float* q, vec3 axis, int start, int& adj_type, float* adj_q, vec3& adj_axis, int& adj_start, const transform& adj_ret)
 {
     if (type == JOINT_REVOLUTE)
     {
@@ -584,7 +584,7 @@ inline CUDA_CALLABLE spatial_matrix outer(const spatial_vector& a, const spatial
     return out;
 }
 
-CUDA_CALLABLE void print(spatial_transform t);
+CUDA_CALLABLE void print(transform t);
 CUDA_CALLABLE void print(spatial_matrix m);
 
 inline CUDA_CALLABLE spatial_matrix spatial_adjoint(const mat33& R, const mat33& S)
@@ -640,13 +640,13 @@ inline CUDA_CALLABLE void adj_spatial_adjoint(const mat33& R, const mat33& S, ma
 
 /*
 // computes adj_t^-T*I*adj_t^-1 (tensor change of coordinates), Frank & Park, section 8.2.3, pg 290
-inline CUDA_CALLABLE spatial_matrix spatial_transform_inertia(const spatial_transform& t, const spatial_matrix& I)
+inline CUDA_CALLABLE spatial_matrix transform_inertia(const transform& t, const spatial_matrix& I)
 {
-    spatial_transform t_inv = spatial_transform_inverse(t);
+    transform t_inv = transform_inverse(t);
 
-    vec3 r1 = rotate(t_inv.q, vec3(1.0, 0.0, 0.0));
-    vec3 r2 = rotate(t_inv.q, vec3(0.0, 1.0, 0.0));
-    vec3 r3 = rotate(t_inv.q, vec3(0.0, 0.0, 1.0));
+    vec3 r1 = quat_rotate(t_inv.q, vec3(1.0, 0.0, 0.0));
+    vec3 r2 = quat_rotate(t_inv.q, vec3(0.0, 1.0, 0.0));
+    vec3 r3 = quat_rotate(t_inv.q, vec3(0.0, 0.0, 1.0));
 
     mat33 R(r1, r2, r3);    
     mat33 S = mul(skew(t_inv.p), R);
@@ -685,9 +685,9 @@ inline CUDA_CALLABLE void adj_transpose(const spatial_matrix& a, spatial_matrix&
 
 
 
-inline CUDA_CALLABLE void adj_spatial_transform_inertia(
-    const spatial_transform& xform, const spatial_matrix& I,
-    const spatial_transform& adj_xform, const spatial_matrix& adj_I,
+inline CUDA_CALLABLE void adj_transform_inertia(
+    const transform& xform, const spatial_matrix& I,
+    const transform& adj_xform, const spatial_matrix& adj_I,
     spatial_matrix& adj_ret)
 {
     //printf("todo, %s, %d\n", __FILE__, __LINE__);

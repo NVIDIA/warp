@@ -424,6 +424,17 @@ inline CUDA_CALLABLE void adj_sdf_grad(vec3 x, vec3& adj_x, vec3& adj_ret)
 
 }
 
+// // based on https://arxiv.org/abs/2004.06278
+// inline CUDA_CALLABLE int rand_int(int count)
+// {
+//     return clock()
+// }
+
+// inline CUDA_CALLABLE float rand_float(int count)
+// {
+
+// }
+
 inline CUDA_CALLABLE void print(int i)
 {
     printf("%d\n", i);
@@ -470,7 +481,7 @@ inline CUDA_CALLABLE void print(mat44 m)
                                                                    m.data[3][0], m.data[3][1], m.data[3][2], m.data[3][3]);
 }
 
-inline CUDA_CALLABLE void print(spatial_transform t)
+inline CUDA_CALLABLE void print(transform t)
 {
     printf("(%f %f %f) (%f %f %f %f)\n", t.p.x, t.p.y, t.p.z, t.q.x, t.q.y, t.q.z, t.q.w);
 }
@@ -505,7 +516,7 @@ inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%f %f %f %f a
 inline CUDA_CALLABLE void adj_print(mat22 m, mat22& adj_m) { }
 inline CUDA_CALLABLE void adj_print(mat33 m, mat33& adj_m) { }
 inline CUDA_CALLABLE void adj_print(mat44 m, mat44& adj_m) { }
-inline CUDA_CALLABLE void adj_print(spatial_transform t, spatial_transform& adj_t) {}
+inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
 

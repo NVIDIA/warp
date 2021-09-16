@@ -26,10 +26,8 @@ builder = wp.sim.ModelBuilder()
 
 builder.add_body(
     parent=-1,
-    origin=wp.transform_identity(),
-    axis=(0.0, 0.0, 0.0),
-    type=wp.sim.JOINT_FREE)
-
+    origin=wp.transform_identity())
+    
 scale = 0.5
 
 # axis shape

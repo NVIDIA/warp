@@ -11,8 +11,10 @@ class vec3(ctypes.Array):
     _length_ = 3
     _type_ = ctypes.c_float
     
-    def __init__(self):
-        pass        
+    def __init__(self, x, y, z):
+        self[0] = x
+        self[1] = y
+        self[2] = z
 
     @staticmethod
     def length():
@@ -32,8 +34,11 @@ class vec4(ctypes.Array):
     _length_ = 4
     _type_ = ctypes.c_float
 
-    def __init__(self):
-        pass
+    def __init__(self, x, y, z, w):
+        self[0] = x
+        self[1] = y
+        self[2] = z
+        self[3] = w
 
     @staticmethod
     def length():
@@ -52,8 +57,11 @@ class quat(ctypes.Array):
     _length_ = 4
     _type_ = ctypes.c_float
 
-    def __init__(self):
-        pass
+    def __init__(self, i, j, k, r):
+        self[0] = i
+        self[1] = j
+        self[2] = k
+        self[3] = r
     
     @staticmethod
     def length():
@@ -169,14 +177,18 @@ class spatial_matrix(ctypes.Array):
     def ctype():
         return ctypes.c_float
 
-class spatial_transform(ctypes.Array):
+class transform(ctypes.Structure):
+    
+    _fields_ = [ ("p", vec3),
+                 ("q", quat)]
     
     _length_ = 7
     _type_ = ctypes.c_float
 
-    def __init__(self):
-        pass
-    
+    def __init__(self, p, q):
+        self.p = vec3(*p)
+        self.q = quat(*q)
+
     @staticmethod
     def length():
         return 7
@@ -473,6 +485,10 @@ class array:
             if (self.device == "cpu"):
                 self.context.host_allocator.free(self.data, self.capacity)
             else:
+                print(self.context.device_allocator)
+                print(self.data)
+                print(self.capacity)
+                print(self.dtype)                
                 self.context.device_allocator.free(self.data, self.capacity)
                 
 

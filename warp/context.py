@@ -173,7 +173,7 @@ add_builtin("mul", input_types={"x": mat44, "y": mat44}, value_type=mat44, doc="
 add_builtin("mul", input_types={"x": spatial_vector, "y": float}, value_type=spatial_vector, doc="", group="Operators")
 add_builtin("mul", input_types={"x": spatial_matrix, "y": spatial_matrix}, value_type=spatial_matrix, doc="", group="Operators")
 add_builtin("mul", input_types={"x": spatial_matrix, "y": spatial_vector}, value_type=spatial_vector, doc="", group="Operators")
-add_builtin("mul", input_types={"x": spatial_transform, "y": spatial_transform}, value_type=spatial_transform, doc="", group="Operators")
+add_builtin("mul", input_types={"x": transform, "y": transform}, value_type=transform, doc="", group="Operators")
 
 add_builtin("mod", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
 add_builtin("mod", input_types={"x": float, "y": float}, value_type=float, doc="", group="operators")
@@ -231,9 +231,6 @@ add_builtin("normalize", input_types={"x": vec3}, value_type=vec3, doc="", group
 add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, doc="", group="Vector Math")
 add_builtin("normalize", input_types={"x": quat}, value_type=quat, doc="", group="Vector Math")
 
-add_builtin("rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Quaternion Math")
-add_builtin("rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Quaternion Math")
-
 add_builtin("determinant", input_types={"m": mat22}, value_type=float, doc="", group="Vector Math")
 add_builtin("determinant", input_types={"m": mat33}, value_type=float, doc="", group="Vector Math")
 add_builtin("transpose", input_types={"m": mat22}, value_type=mat22, doc="", group="Vector Math")
@@ -259,15 +256,6 @@ add_builtin("vec4", input_types={}, value_type=vec4, doc="", group="Vector Math"
 add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="", group="Vector Math")
 add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="", group="Vector Math")
 
-add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, doc="", group="Vector Math")
-
-add_builtin("quat", input_types={}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat", input_types={"i": vec3, "r": float}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat_identity", input_types={}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, doc="", group="Quaternion Math")
-
 add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="", group="Vector Math")
 add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="", group="Vector Math")
 add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="", group="Vector Math")
@@ -277,25 +265,36 @@ add_builtin("mat33", input_types={"m00": float, "m01": float, "m02": float,
                                   "m10": float, "m11": float, "m12": float,
                                   "m20": float, "m21": float, "m22": float}, value_type=mat33, doc="", group="Vector Math")
 
+add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, doc="", group="Vector Math")
+
+add_builtin("quat", input_types={}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat", input_types={"i": vec3, "r": float}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat_identity", input_types={}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, doc="", group="Quaternion Math")
+add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Quaternion Math")
+add_builtin("quat_rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Quaternion Math")
+
+add_builtin("transform", input_types={"p": vec3, "q": quat}, value_type=transform, doc="", group="Transformations")
+add_builtin("transform_identity", input_types={}, value_type=transform, doc="", group="Transformations")
+add_builtin("transform_get_translation", input_types={"t": transform}, value_type=vec3, doc="", group="Transformations")
+add_builtin("transform_get_rotation", input_types={"t": transform}, value_type=quat, doc="", group="Transformations")
+add_builtin("transform_multiply", input_types={"a": transform, "b": transform}, value_type=transform, doc="", group="Transformations")
+add_builtin("transform_point", input_types={"t": transform, "p": vec3}, value_type=vec3, doc="Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)", group="Transformations")
+add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, doc="Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)", group="Vector Math")
+add_builtin("transform_vector", input_types={"t": transform, "v": vec3}, value_type=vec3, doc="Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)", group="Transformations")
+add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, doc="Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)", group="Vector Math")
+
 add_builtin("spatial_vector", input_types={}, value_type=spatial_vector, doc="", group="Spatial Math")
 add_builtin("spatial_vector", input_types={"a": float, "b": float, "c": float, "d": float, "e": float, "f": float}, value_type=spatial_vector, doc="", group="Spatial Math")
 add_builtin("spatial_vector", input_types={"w": vec3, "v": vec3}, value_type=spatial_vector, doc="", group="Spatial Math")
 add_builtin("spatial_vector", input_types={"s": float}, value_type=spatial_vector, doc="", group="Spatial Math"),
 
-add_builtin("spatial_transform", input_types={"p": vec3, "q": quat}, value_type=spatial_transform, doc="", group="Spatial Math")
-add_builtin("spatial_transform_identity", input_types={}, value_type=spatial_transform, doc="", group="Spatial Math")
-
-add_builtin("spatial_transform_get_translation", input_types={"t": spatial_transform}, value_type=vec3, doc="", group="Spatial Math")
-add_builtin("spatial_transform_get_rotation", input_types={"t": spatial_transform}, value_type=quat, doc="", group="Spatial Math")
-add_builtin("spatial_transform_multiply", input_types={"a": spatial_transform, "b": spatial_transform}, value_type=spatial_transform, doc="", group="Spatial Math")
-
 add_builtin("spatial_adjoint", input_types={"r": mat33, "s": mat33}, value_type=spatial_matrix, doc="", group="Spatial Math")
 add_builtin("spatial_dot", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=float, doc="", group="Spatial Math")
 add_builtin("spatial_cross", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="", group="Spatial Math")
 add_builtin("spatial_cross_dual", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="", group="Spatial Math")
-
-add_builtin("spatial_transform_point", input_types={"t": spatial_transform, "p": vec3}, value_type=vec3, doc="Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)", group="Spatial Math")
-add_builtin("spatial_transform_vector", input_types={"t": spatial_transform, "v": vec3}, value_type=vec3, doc="Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)", group="Spatial Math")
 
 add_builtin("spatial_top", input_types={"a": spatial_vector}, value_type=vec3, doc="", group="Spatial Math")
 add_builtin("spatial_bottom", input_types={"a": spatial_vector}, value_type=vec3, doc="", group="Spatial Math")
@@ -369,9 +368,6 @@ add_builtin("dense_solve_batched",
                  "L": array(dtype=float),
                  "b": array(dtype=float),
                  "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
-
-add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, doc="", group="Vector Math")
-add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, doc="", group="Vector Math")
 
 add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, doc="", group="Geometry")
 add_builtin("mesh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3, "max_t": float, "t": float, "bary_u": float, "bary_v": float, "sign": float, "normal": vec3, "face": int}, value_type=bool, doc="", group="Geometry")
@@ -508,7 +504,7 @@ class Module:
         self.cuda = None
 
         self.loaded = False
-
+        self.build_failed = False
 
     def register_kernel(self, kernel):
 
@@ -551,6 +547,10 @@ class Module:
         return h.digest()
 
     def load(self):
+
+        # early out to avoid repeatedly attemping to rebuild
+        if (self.build_failed == True):
+            return False
 
         with ScopedTimer(f"Module {self.name} load"):
 
@@ -688,6 +688,8 @@ class Module:
 
             except Exception as e:
 
+                self.build_failed = True
+
                 print(e)
                 raise(e)
 
@@ -698,6 +700,7 @@ class Module:
                 self.cuda = warp.build.load_cuda(ptx_path)
 
             self.loaded = True
+            return True
 
 #-------------------------------------------
 # exectution context
@@ -994,7 +997,9 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
         # delay load modules
         if (kernel.module.loaded == False):
-            kernel.module.load()
+            success = kernel.module.load()
+            if (success == False):
+                return
 
         # first param is the number of threads
         params = []
@@ -1083,7 +1088,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
         
         elif device.startswith("cuda"):
-            kernel_args = [ctypes.c_void_p(addressof(x)) for x in params]
+            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if (adjoint):

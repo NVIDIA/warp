@@ -1,17 +1,22 @@
 import numpy as np
-
-array = np.zeros((2,3), dtype=np.float32)
-
-#l = [[1.0, 2.0, 3.0], [2.0, 4.0, 6.0]]
-l = [[1, 2, 3], [2, 4, 6]]
-np.copyto(array, l)
-print(l)
+import ctypes
 
 
-array = np.zeros((1,), dtype=np.int32)
-np.copyto(array, [3.141], casting='same_kind')
-print(array)
+class Test(ctypes.Array):
 
-array = np.zeros((0,), dtype=np.int32)
-np.copyto(array, [], casting='unsafe')
-print(array)
+    _length_ = 4
+    _type_ = ctypes.c_float
+    #__fields__ = [("value", *4) ]
+
+    def __init__(self, x, y, z, w):
+        
+
+
+v = np.ones(4)
+print(*v)
+
+t = Test(*v)
+print(*t)
+
+
+

@@ -79,7 +79,7 @@ stage = render.UsdRenderer("tests/outputs/test_sim_neo_hookean_twist.usd")
 def twist_points(rest: wp.array(dtype=wp.vec3),
                  points: wp.array(dtype=wp.vec3),
                  mass: wp.array(dtype=float),
-                 xform: wp.spatial_transform):
+                 xform: wp.transform):
 
     tid = wp.tid()
 
@@ -89,7 +89,7 @@ def twist_points(rest: wp.array(dtype=wp.vec3),
 
     if (m == 0 and p[1] != 0.0):
 
-        points[tid] = wp.spatial_transform_point(xform, r)
+        points[tid] = wp.transform_point(xform, r)
 
 @wp.kernel
 def compute_volume(points: wp.array(dtype=wp.vec3),

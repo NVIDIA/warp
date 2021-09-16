@@ -4,6 +4,8 @@ import timeit
 import cProfile
 import numpy as np
 
+import warp as wp
+
 lwp_output = ""
 
 def lwp(s):
@@ -66,7 +68,7 @@ def quat_from_axis_angle(axis, angle):
     return np.array((v[0], v[1], v[2], w))
 
 
-# rotate a vector
+# quat_rotate a vector
 def quat_rotate(q, x):
     x = np.array(x)
     axis = np.array((q[0], q[1], q[2]))
@@ -169,12 +171,12 @@ def quat_from_matrix(m):
 # rigid body transform
 
 
-def transform(x, r):
-    return (np.array(x), np.array(r))
+# def transform(x, r):
+#     return (np.array(x), np.array(r))
 
 
 def transform_identity():
-    return (np.array((0.0, 0.0, 0.0)), quat_identity())
+    return wp.transform(np.array((0.0, 0.0, 0.0)), quat_identity())
 
 
 # se(3) -> SE(3), Park & Lynch pg. 105, screw in [w, v] normalized form
@@ -194,30 +196,30 @@ def transform_exp(s, angle):
 
 
 def transform_inverse(t):
-    q_inv = quat_inverse(t[1])
-    return (-quat_rotate(q_inv, t[0]), q_inv)
+    q_inv = quat_inverse(t.q)
+    return wp.transform(-quat_rotate(q_inv, t.p), q_inv)
 
 
 def transform_vector(t, v):
-    return quat_rotate(t[1], v)
+    return quat_rotate(t.q, v)
 
 
 def transform_point(t, p):
-    return np.array(t[0]) + quat_rotate(t[1], p)
+    return np.array(t.p) + quat_rotate(t.q, p)
 
 
 def transform_multiply(t, u):
-    return (quat_rotate(t[1], u[0]) + t[0], quat_multiply(t[1], u[1]))
+    return wp.transform(quat_rotate(t.q, u.p) + t.p, quat_multiply(t.q, u.q))
 
 
 # flatten an array of transforms (p,q) format to a 7-vector
 def transform_flatten(t):
-    return np.array([*t[0], *t[1]])
+    return np.array([*t.p, *t.q])
 
 
 # expand a 7-vec to a tuple of arrays
 def transform_expand(t):
-    return (np.array(t[0:3]), np.array(t[3:7]))
+    return wp.transform(np.array(t[0:3]), np.array(t[3:7]))
 
 
 # convert array of transforms to a array of 7-vecs
@@ -243,8 +245,8 @@ def transform_inertia(m, I, p, q):
 # AdT
 def spatial_adjoint(t):
 
-    R = quat_to_matrix(t[1])
-    w = skew(t[0])
+    R = quat_to_matrix(t.q)
+    w = skew(t.p)
 
     A = np.zeros((6, 6))
     A[0:3, 0:3] = R
@@ -257,8 +259,8 @@ def spatial_adjoint(t):
 # (AdT)^-T
 def spatial_adjoint_dual(t):
 
-    R = quat_to_matrix(t[1])
-    w = skew(t[0])
+    R = quat_to_matrix(t.q)
+    w = skew(t.p)
 
     A = np.zeros((6, 6))
     A[0:3, 0:3] = R

@@ -137,7 +137,7 @@ Data Types
 .. autoclass:: mat22
 .. autoclass:: mat33
 .. autoclass:: mat44
-.. autoclass:: spatial_transform
+.. autoclass:: transform
 .. autoclass:: spatial_vector
 .. autoclass:: spatial_matrix
 

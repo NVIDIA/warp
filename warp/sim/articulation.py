@@ -9,12 +9,12 @@ def eval_articulation_fk(
     joint_qd_start: wp.array(dtype=int),
     joint_type: wp.array(dtype=int),
     joint_parent: wp.array(dtype=int),
-    joint_X_p: wp.array(dtype=wp.spatial_transform),
-    joint_X_c: wp.array(dtype=wp.spatial_transform),
+    joint_X_p: wp.array(dtype=wp.transform),
+    joint_X_c: wp.array(dtype=wp.transform),
     joint_axis: wp.array(dtype=wp.vec3),
     body_com: wp.array(dtype=wp.vec3),
     # outputs
-    body_q: wp.array(dtype=wp.spatial_transform),
+    body_q: wp.array(dtype=wp.transform),
     body_qd: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
@@ -25,7 +25,7 @@ def eval_articulation_fk(
     for i in range(joint_start, joint_end):
 
         parent = joint_parent[i]
-        X_wp = wp.spatial_transform_identity()
+        X_wp = wp.transform_identity()
         v_wp = wp.spatial_vector()
 
         if (parent >= 0):
@@ -48,7 +48,7 @@ def eval_articulation_fk(
             q = joint_q[q_start]
             qd = joint_qd[qd_start]
 
-            X_jc = wp.spatial_transform(axis*q, wp.quat_identity())
+            X_jc = wp.transform(axis*q, wp.quat_identity())
             #v_pc = wp.spatial_vector(wp.vec3(0.0, 0.0, 0.0), axis*qd)
 
         # revolute
@@ -57,7 +57,7 @@ def eval_articulation_fk(
             q = joint_q[q_start]
             qd = joint_qd[qd_start]
 
-            X_jc = wp.spatial_transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_from_axis_angle(axis, q))
+            X_jc = wp.transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_from_axis_angle(axis, q))
             #v_pc = wp.spatial_vector(axis*qd, wp.vec3(0.0, 0.0, 0.0))
 
         # ball
@@ -72,17 +72,17 @@ def eval_articulation_fk(
                          joint_qd[qd_start+1],
                          joint_qd[qd_start+2])
 
-            X_jc = wp.spatial_transform(wp.vec3(0.0, 0.0, 0.0), r)
+            X_jc = wp.transform(wp.vec3(0.0, 0.0, 0.0), r)
 
         # fixed
         if type == 3:
             
-            X_jc = wp.spatial_transform_identity()
+            X_jc = wp.transform_identity()
 
         # free
         if type == 4:
 
-            t = wp.spatial_transform(
+            t = wp.transform(
                     wp.vec3(joint_q[q_start+0], joint_q[q_start+1], joint_q[q_start+2]),
                     wp.quat(joint_q[q_start+3], joint_q[q_start+4], joint_q[q_start+5], joint_q[q_start+6]))
 

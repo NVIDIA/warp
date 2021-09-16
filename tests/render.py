@@ -2,6 +2,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import math
 
+import warp as wp
 
 def _usd_add_xform(prim):
 
@@ -16,8 +17,8 @@ def _usd_set_xform(xform, transform, scale, time):
 
     xform_ops = xform.GetOrderedXformOps()
 
-    pos = tuple(transform[0])
-    rot = tuple(transform[1])
+    pos = tuple(transform.p)
+    rot = tuple(transform.q)
 
     xform_ops[0].Set(Gf.Vec3d(pos), time)
     xform_ops[1].Set(Gf.Quatf(float(rot[3]), float(rot[0]), float(rot[1]), float(rot[2])), time)
@@ -157,7 +158,7 @@ class UsdRenderer:
         mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
         mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
 
-        _usd_set_xform(mesh, (pos, rot), scale, self.time)
+        _usd_set_xform(mesh, wp.transform(pos, rot), scale, self.time)
 
 
     def render_line_list(self, name, vertices, indices, color, radius):

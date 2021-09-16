@@ -23,7 +23,7 @@ sim_time = 0.0
 
 num_bodies = 8
 
-device = "cpu"
+device = "cuda"
 
 builder = wp.sim.ModelBuilder()
 

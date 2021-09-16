@@ -122,12 +122,12 @@ inline CUDA_CALLABLE quat mul(float s, const quat& a)
     return mul(a, s);
 }
 
-inline CUDA_CALLABLE vec3 rotate(const quat& q, const vec3& x)
+inline CUDA_CALLABLE vec3 quat_rotate(const quat& q, const vec3& x)
 {
     return x*(2.0f*q.w*q.w-1.0f) + cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
 }
 
-inline CUDA_CALLABLE vec3 rotate_inv(const quat& q, const vec3& x)
+inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
 {
     return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
 }
@@ -269,7 +269,7 @@ inline CUDA_CALLABLE void adj_mul(float s, const quat& a, float& adj_s, quat& ad
     adj_mul(a, s, adj_a, adj_s, adj_ret);
 }
 
-inline CUDA_CALLABLE void adj_rotate(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
+inline CUDA_CALLABLE void adj_quat_rotate(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
 {
     const vec3& r = adj_ret;
 
@@ -303,7 +303,7 @@ inline CUDA_CALLABLE void adj_rotate(const quat& q, const vec3& p, quat& adj_q, 
     }
 }
 
-inline CUDA_CALLABLE void adj_rotate_inv(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
+inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
 {
     const vec3& r = adj_ret;
 

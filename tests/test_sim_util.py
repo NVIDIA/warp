@@ -578,8 +578,8 @@ class Skeleton:
                     # add shape
                     shape = builder.add_shape_box(
                         body=link, 
-                        pos=body_X_c[0],
-                        rot=body_X_c[1],
+                        pos=body_X_c.p,
+                        rot=body_X_c.q,
                         hx=body_size[0]*0.5,
                         hy=body_size[1]*0.5,
                         hz=body_size[2]*0.5,

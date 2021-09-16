@@ -7,13 +7,13 @@ import warp as wp
 
 # todo: copied from integrators_euler.py, need to figure out how to share funcs across modules
 @wp.func
-def spatial_transform_inverse(t: wp.spatial_transform):
+def transform_inverse(t: wp.transform):
 
-    p = spatial_transform_get_translation(t)
-    q = spatial_transform_get_rotation(t)
+    p = transform_get_translation(t)
+    q = transform_get_rotation(t)
 
     q_inv = quat_inverse(q)
-    return spatial_transform(rotate(q_inv, p)*(0.0 - 1.0), q_inv)
+    return transform(quat_rotate(q_inv, p)*(0.0 - 1.0), q_inv)
 
 
 @wp.func
@@ -100,8 +100,8 @@ def capsule_sdf_grad(radius: float, half_width: float, p: wp.vec3):
 def create_soft_contacts(
     num_particles: int,
     particle_x: wp.array(dtype=wp.vec3), 
-    body_X_sc: wp.array(dtype=wp.spatial_transform),
-    shape_X_co: wp.array(dtype=wp.spatial_transform),
+    body_X_sc: wp.array(dtype=wp.transform),
+    shape_X_co: wp.array(dtype=wp.transform),
     shape_body: wp.array(dtype=int),
     shape_geo_type: wp.array(dtype=int), 
     shape_geo_id: wp.array(dtype=wp.uint64),
@@ -124,17 +124,17 @@ def create_soft_contacts(
 
     px = wp.load(particle_x, particle_index)
 
-    X_sc = wp.spatial_transform_identity()
+    X_sc = wp.transform_identity()
     if (rigid_index >= 0):
         X_sc = wp.load(body_X_sc, rigid_index)
     
     X_co = wp.load(shape_X_co, shape_index)
 
-    X_so = wp.spatial_transform_multiply(X_sc, X_co)
-    X_os = wp.spatial_transform_inverse(X_so)
+    X_so = wp.transform_multiply(X_sc, X_co)
+    X_os = wp.transform_inverse(X_so)
     
     # transform particle position to shape local space
-    x_local = wp.spatial_transform_point(X_os, px)
+    x_local = wp.transform_point(X_os, px)
 
     # geo description
     geo_type = wp.load(shape_geo_type, shape_index)
@@ -189,10 +189,10 @@ def create_soft_contacts(
         if (index < soft_contact_max):
 
             # compute contact point in body local space
-            body_pos = wp.spatial_transform_point(X_co, x_local - n*d)
-            body_vel = wp.spatial_transform_vector(X_co, v)
+            body_pos = wp.transform_point(X_co, x_local - n*d)
+            body_vel = wp.transform_vector(X_co, v)
 
-            world_normal = wp.spatial_transform_vector(X_so, n)
+            world_normal = wp.transform_vector(X_so, n)
 
             soft_contact_body[index] = rigid_index
             soft_contact_body_pos[index] = body_pos

@@ -49,10 +49,10 @@ def Xform "World"
         float shaping:focus
         color3f shaping:focusTint
         asset shaping:ies:file
-        double3 xformOp:rotateXYZ = (45, 0, 90)
+        double3 xformOp:quat_rotateXYZ = (45, 0, 90)
         double3 xformOp:scale = (1, 1, 1)
         double3 xformOp:translate = (0, 0, 0)
-        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:quat_rotateXYZ", "xformOp:scale"]
     }
 
     def PhysicsScene "PhysicsScene"

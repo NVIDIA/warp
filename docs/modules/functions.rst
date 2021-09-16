@@ -124,7 +124,7 @@ Operators
 .. function:: mul(x: spatial_matrix, y: spatial_vector) -> spatial_vector
 
 
-.. function:: mul(x: spatial_transform, y: spatial_transform) -> spatial_transform
+.. function:: mul(x: transform, y: transform) -> transform
 
 
 .. function:: mod(x: int, y: int) -> int
@@ -315,9 +315,6 @@ Vector Math
 .. function:: vec4(s: float) -> vec4
 
 
-.. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None
-
-
 .. function:: mat22(m00: float, m01: float, m10: float, m11: float) -> mat22
 
 
@@ -333,22 +330,13 @@ Vector Math
 .. function:: mat44(c0: vec4, c1: vec4, c2: vec4, c3: vec4) -> mat44
 
 
-.. function:: transform_point(m: mat44, p: vec3) -> vec3
-
-
-.. function:: transform_vector(m: mat44, v: vec3) -> vec3
+.. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None
 
 
 
 
 Quaternion Math
 ---------------
-.. function:: rotate(q: quat, p: vec3) -> vec3
-
-
-.. function:: rotate_inv(q: quat, p: vec3) -> vec3
-
-
 .. function:: quat() -> quat
 
 
@@ -367,6 +355,51 @@ Quaternion Math
 .. function:: quat_inverse(q: quat) -> quat
 
 
+.. function:: quat_rotate(q: quat, p: vec3) -> vec3
+
+
+.. function:: quat_rotate_inv(q: quat, p: vec3) -> vec3
+
+
+
+
+Transformations
+---------------
+.. function:: transform(p: vec3, q: quat) -> transform
+
+
+.. function:: transform_identity() -> transform
+
+
+.. function:: transform_get_translation(t: transform) -> vec3
+
+
+.. function:: transform_get_rotation(t: transform) -> quat
+
+
+.. function:: transform_multiply(a: transform, b: transform) -> transform
+
+
+.. function:: transform_point(t: transform, p: vec3) -> vec3
+
+   Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)
+
+
+.. function:: transform_point(m: mat44, p: vec3) -> vec3
+
+   Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)
+
+
+.. function:: transform_vector(t: transform, v: vec3) -> vec3
+
+   Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)
+
+
+.. function:: transform_vector(m: mat44, v: vec3) -> vec3
+
+   Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)
+
+
 
 
 Spatial Math
@@ -383,21 +416,6 @@ Spatial Math
 .. function:: spatial_vector(s: float) -> spatial_vector
 
 
-.. function:: spatial_transform(p: vec3, q: quat) -> spatial_transform
-
-
-.. function:: spatial_transform_identity() -> spatial_transform
-
-
-.. function:: spatial_transform_get_translation(t: spatial_transform) -> vec3
-
-
-.. function:: spatial_transform_get_rotation(t: spatial_transform) -> quat
-
-
-.. function:: spatial_transform_multiply(a: spatial_transform, b: spatial_transform) -> spatial_transform
-
-
 .. function:: spatial_adjoint(r: mat33, s: mat33) -> spatial_matrix
 
 
@@ -408,16 +426,6 @@ Spatial Math
 
 
 .. function:: spatial_cross_dual(a: spatial_vector, b: spatial_vector) -> spatial_vector
-
-
-.. function:: spatial_transform_point(t: spatial_transform, p: vec3) -> vec3
-
-   Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)
-
-
-.. function:: spatial_transform_vector(t: spatial_transform, v: vec3) -> vec3
-
-   Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)
 
 
 .. function:: spatial_top(a: spatial_vector) -> vec3
