@@ -309,7 +309,7 @@ add_builtin("spatial_jacobian",
                   "J_start": int,
                   "J_out": array(dtype=float)}, value_type=None, doc="", group="Spatial Math")
 
-add_builtin("spatial_mass", input_types={"I_s": array(dtype=spatial_matrix), "joint_start": int, "joint_count": int, "M_start": int, "M": array(float)}, value_type=None, doc="", group="Spatial Math")
+add_builtin("spatial_mass", input_types={"I_s": array(dtype=spatial_matrix), "joint_start": int, "joint_count": int, "M_start": int, "M": array(dtype=float)}, value_type=None, doc="", group="Spatial Math")
 
 add_builtin("dense_gemm", 
     input_types={"m": int, 
@@ -549,6 +549,15 @@ class Module:
         h.update(bytes(warp.config.mode, 'utf-8'))
 
         return h.digest()
+
+        # s = ""
+        # for func in self.functions.values():
+        #     s +=func.adj.source
+            
+        # for kernel in self.kernels.values():       
+        #     s += kernel.adj.source
+
+        # return s.encode('utf-8')
 
     def load(self):
 
@@ -830,7 +839,10 @@ class Runtime:
             return ptr
 
         def free_device(ptr):
-            self.core.free_device(ctypes.cast(ptr, ctypes.POINTER(ctypes.c_int)))
+            # must be careful to not call any globals here
+            # since this may be called during destruction / shutdown
+            # even ctypes module may no longer exist
+            self.core.free_device(ptr)
 
         self.host_allocator = Allocator(alloc_host, free_host)
         self.device_allocator = Allocator(alloc_device, free_device)
@@ -1083,7 +1095,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
         
         elif device.startswith("cuda"):
-            kernel_args = [ctypes.c_void_p(addressof(x)) for x in params]
+            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if (adjoint):
@@ -1124,7 +1136,8 @@ def capture_begin():
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
     for m in user_modules.values():
-        m.load()
+        if (m.loaded == False):
+            m.load()
 
     runtime.core.cuda_graph_begin_capture()
 
