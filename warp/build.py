@@ -110,14 +110,22 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cache_valid = True
 
             # check if output exists and is newer than source
-            if (cu_path):
+            if (cu_path):                   
                 cu_time = os.path.getmtime(cu_path)
                 if (cu_time > dll_time):
+                    
+                    if (warp.config.verbose):
+                        print(f"cu_time: {cu_time} > dll_time: {dll_time} invaliding cache for {cu_path}")
+
                     cache_valid = False
 
             if (cpp_path):
                 cpp_time = os.path.getmtime(cpp_path)
                 if (cpp_time > dll_time):
+                    
+                    if (warp.config.verbose):
+                        print(f"cpp_time: {cpp_time} > dll_time: {dll_time} invaliding cache for {cpp_path}")
+
                     cache_valid = False
                 
             if (cache_valid):
@@ -224,16 +232,12 @@ def unload_dll(dll):
     
     handle = dll._handle
     del dll
-
-    import _ctypes
-    
+   
     # platform dependent unload, removes *all* references to the dll
     # note this should only be performed if you know there are no dangling
-    # refs to the dll inside the Python prwpram 
-    try:
-        while (True):
-            ctypes._ctypes.FreeLibrary(handle)
-    except:
+    # refs to the dll inside the Python program 
+    success = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
+    if success:
         return
 
 def force_unload_dll(dll_path):
@@ -242,7 +246,8 @@ def force_unload_dll(dll_path):
         # force load/unload of the dll from the process 
         dll = load_dll(dll_path)
         unload_dll(dll)
-    except:
+
+    except Exception as e:
         return
 
 

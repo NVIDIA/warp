@@ -374,8 +374,6 @@ def types_equal(a, b):
     else:
         return a == b
 
-
-
 class array:
 
     def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
@@ -466,6 +464,9 @@ class array:
 
         # store 2D shape (useful for interop with tensor frameworks)
         self.shape = (self.length, type_length(self.dtype))
+        
+        # store a ptr cast of the data address (to avoid accessing ctypes during destruction)
+        self.ptr = ctypes.cast(self.data, ctypes.POINTER(ctypes.c_int))
 
         # set up array interface access so we can treat this object as a read-only numpy array
         if (device == "cpu"):
@@ -480,16 +481,16 @@ class array:
 
     def __del__(self):
         
+        # must be careful to not call any globals here
+        # since this may be called during destruction / shutdown
+        # even ctypes module may no longer exist
+
         if (self.owner and self.context):
 
             if (self.device == "cpu"):
-                self.context.host_allocator.free(self.data, self.capacity)
+                self.context.host_allocator.free(self.ptr, self.capacity)
             else:
-                print(self.context.device_allocator)
-                print(self.data)
-                print(self.capacity)
-                print(self.dtype)                
-                self.context.device_allocator.free(self.data, self.capacity)
+                self.context.device_allocator.free(self.ptr, self.capacity)
                 
 
     def __len__(self):

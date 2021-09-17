@@ -30,8 +30,8 @@ def nesterov1(beta: float,
 
 @wp.kernel
 def nesterov2(alpha: float,
-              beta: wp.array(float), 
-              eta: wp.array(float), 
+              beta: wp.array(dtype=float), 
+              eta: wp.array(dtype=float), 
               x: wp.array(dtype=float), 
               x_prev: wp.array(dtype=float), 
               y: wp.array(dtype=float),
