@@ -1613,7 +1613,7 @@ class ModelBuilder:
         #---------------------
         # collision geometry
 
-        m.shape_transform = wp.array(wp.transform_flatten_list(self.shape_transform), dtype=wp.transform, device=device)
+        m.shape_transform = wp.array(self.shape_transform, dtype=wp.transform, device=device)
         m.shape_body = wp.array(self.shape_body, dtype=wp.int32, device=device)
         m.shape_geo_type = wp.array(self.shape_geo_type, dtype=wp.int32, device=device)
         m.shape_geo_src = self.shape_geo_src
@@ -1675,7 +1675,7 @@ class ModelBuilder:
         #--------------------------------------
         # rigid bodies
         
-        m.body_q = wp.array(wp.transform_flatten_list(self.body_q), dtype=wp.transform, device=device)
+        m.body_q = wp.array(self.body_q, dtype=wp.transform, device=device)
         m.body_qd = wp.array(self.body_qd, dtype=wp.spatial_vector, device=device)
         m.body_inertia = wp.array(self.body_inertia, dtype=wp.mat33, device=device)
         m.body_inv_inertia = wp.array(body_inv_inertia, dtype=wp.mat33, device=device)
@@ -1687,8 +1687,8 @@ class ModelBuilder:
         m.joint_type = wp.array(self.joint_type, dtype=wp.int32, device=device)
         m.joint_parent = wp.array(self.joint_parent, dtype=wp.int32, device=device)
         m.joint_child = wp.array(self.joint_child, dtype=wp.int32, device=device)
-        m.joint_X_p = wp.array(wp.transform_flatten_list(self.joint_X_p), dtype=wp.transform, device=device)
-        m.joint_X_c = wp.array(wp.transform_flatten_list(self.joint_X_c), dtype=wp.transform, device=device)
+        m.joint_X_p = wp.array(self.joint_X_p, dtype=wp.transform, device=device)
+        m.joint_X_c = wp.array(self.joint_X_c, dtype=wp.transform, device=device)
         m.joint_axis = wp.array(self.joint_axis, dtype=wp.vec3, device=device)
 
         # dynamics properties

@@ -1043,7 +1043,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
             
                         params.append(ctypes.c_int64(a.data))
 
-                # try and convert arg to correct type
+                # try and convert scalar arg to correct type
                 elif (arg_type == warp.types.float32):
                     params.append(ctypes.c_float(a))
 
@@ -1056,9 +1056,10 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                 elif (arg_type == warp.types.uint64):
                     params.append(ctypes.c_uint64(a))
                 
-                elif isinstance(a, np.ndarray) or isinstance(a, tuple):
+                # try to convert to a value type (vec3, mat33, etc)
+                elif issubclass(arg_type, ctypes.Array):
 
-                    # force conversion to ndarray (handle tuple case)
+                    # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
                     a = np.array(a)
 
                     # flatten to 1D array
@@ -1078,7 +1079,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                     params.append(x)
 
                 else:
-                    raise RuntimeError(f"Unknown parameter type {type(a)} for param {kernel.adj.args[i].label}, expected {arg_type}")
+                    raise RuntimeError(f"Unable to pack kernel parameter type {type(a)} for param {kernel.adj.args[i].label}, expected {arg_type}")
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs

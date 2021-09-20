@@ -177,17 +177,14 @@ class spatial_matrix(ctypes.Array):
     def ctype():
         return ctypes.c_float
 
-class transform(ctypes.Structure):
-    
-    _fields_ = [ ("p", vec3),
-                 ("q", quat)]
+class transform(ctypes.Array):
     
     _length_ = 7
     _type_ = ctypes.c_float
 
     def __init__(self, p, q):
-        self.p = vec3(*p)
-        self.q = quat(*q)
+        self[0:3] = vec3(*p)
+        self[3:7] = quat(*q)
 
     @staticmethod
     def length():
@@ -200,6 +197,14 @@ class transform(ctypes.Structure):
     @staticmethod
     def ctype():
         return ctypes.c_float        
+
+    @property 
+    def p(self):
+        return self[0:3]
+
+    @property 
+    def q(self):
+        return self[3:7]
 
 class void:
 

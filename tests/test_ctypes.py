@@ -30,6 +30,16 @@ def transform_vec3(dest: wp.array(dtype=wp.vec3),
     p = wp.transform_point(m, v)
     wp.store(dest, tid, p)
 
+
+@wp.kernel
+def transform_multiply(xforms: wp.array(dtype=wp.transform),
+    a: wp.transform):
+
+    tid = wp.tid()
+
+    xforms[tid] = wp.transform_multiply(xforms[tid], a)
+   
+
 device = "cpu"
 n = 32
 
@@ -50,4 +60,15 @@ wp.launch(transform_vec3, dim=n, inputs=[dest, m, c], device=device)
 print(dest)
 
 
+a = wp.transform((0.0, 1.0, 0.0), wp.quat_identity())
+
+x = []
+for i in range(10):
+    x.append(wp.transform_identity())
+
+xforms = wp.array(x, dtype=wp.transform, device=device)
+
+print("transform_multiply")
+wp.launch(transform_multiply, dim=n, inputs=[xforms, a], device=device)
+print(xforms)
 

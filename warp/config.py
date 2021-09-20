@@ -12,6 +12,6 @@ print_launches = False  # if true will print out launch information
 enable_backward = False # disable code gen of backwards pass
 
 mode = "release"
-verbose = True
+verbose = False
 
 host_compiler = None    # user can specify host compiler here, otherwise will attempt to find one automatically
