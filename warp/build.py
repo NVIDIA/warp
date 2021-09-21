@@ -45,6 +45,9 @@ def find_host_compiler(vcvars_path=None):
                 pair = line.split("=", 1)
                 if (len(pair) >= 2):
                     os.environ[pair[0]] = pair[1]
+                    
+            # debugging
+            print(os.environ)
 
         # try and find cl.exe
         try:
