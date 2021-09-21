@@ -3,7 +3,8 @@
 # as part of the user runtime (since it requires CUDA toolkit, etc)
 
 import os
-import warp
+import warp.config
+import warp.build
 
 # set build output path off this file
 build_path = os.path.dirname(os.path.realpath(__file__)) + "/warp"
