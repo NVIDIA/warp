@@ -1,0 +1,6 @@
+<config remotes="cloudfront">
+    <remote2 name="cloudfront">
+        <transport actions="download" protocol="https" packageLocation="d4i3qtqj3r0z5.cloudfront.net/${name}@${version}" />
+        <transport actions="list upload" configUrl="https://gitlab-master.nvidia.com/hfannar/packman-transports/raw/main/d4i3qtqj3r0z5.cloudfront.toml" />
+    </remote2>
+</config>
