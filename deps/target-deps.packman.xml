@@ -25,10 +25,12 @@
 <dependency name="python" linkPath="../_build/target-deps/python" tags="slim-package">
     <package name="python" version="3.7.9-windows-x86_64" platforms="windows-x86_64" />
     <!-- https://teamcity.nvidia.com/project.html?projectId=Omniverse_Externals_Python -->
-    <package name="python" version="3.7.10-187.9b4bf28b-${platform}" platforms="linux-x86_64 linux-aarch64"
-/>   
+    <package name="python" version="3.7.10-187.9b4bf28b-${platform}" platforms="linux-x86_64 linux-aarch64"/>
+</dependency>   
 
   <dependency name="cuda" linkPath="../_build/target-deps/cuda">
+    <package name="cuda" version="10.1.168-1-windows-x86_64" platforms="windows-x86_64"/>
+    <package name="cuda" version="10.1.168-1-linux-x86_64" platforms="linux-x86_64"/>  
     <package name="cuda" version="11.3.0_465.19.01-de8c77bf-linux-aarch64" platforms="linux-aarch64"/>
   </dependency>
 

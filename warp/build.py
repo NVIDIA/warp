@@ -21,7 +21,7 @@ def run_cmd(cmd, capture=False):
         
 
 # runs vcvars and copies back the build environment
-def find_host_compiler():
+def find_host_compiler(vcvars_path=None):
 
     if (os.name == 'nt'):
 
@@ -35,10 +35,11 @@ def find_host_compiler():
                     if paths:
                         return paths[0]
 
-            vcvars_path = find_vcvars_path()
+            if (vcvars_path == None):
+                vcvars_path = find_vcvars_path()
 
             # merge vcvars with our env
-            s = '"{}" && set'.format(vcvars_path)
+            s = '"{}" & set'.format(vcvars_path)
             output = os.popen(s).read()
             for line in output.splitlines():
                 pair = line.split("=", 1)

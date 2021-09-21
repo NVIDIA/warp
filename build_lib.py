@@ -8,17 +8,22 @@ import warp
 # set build output path off this file
 build_path = os.path.dirname(os.path.realpath(__file__)) + "/warp"
 
-# find host compiler
-if (warp.config.host_compiler == None):
-    warp.config.host_compiler = warp.build.find_host_compiler()
 
-# no host toolchain not found
-if (warp.config.host_compiler == None):
-    raise Exception("Warp: Could not find host compiler (MSVC, GCC, etc), ensure that the compiler is present in the environment")
+# # find host compiler
+# if (warp.config.host_compiler == None):
+#     warp.config.host_compiler = warp.build.find_host_compiler()
 
-# check for CUDA
-if (warp.config.cuda_path == None):
-    warp.config.cuda_path = warp.build.find_cuda()
+# # no host toolchain not found
+# if (warp.config.host_compiler == None):
+#     raise Exception("Warp: Could not find host compiler (MSVC, GCC, etc), ensure that the compiler is present in the environment")
+
+# # check for CUDA
+# if (warp.config.cuda_path == None):
+#     warp.config.cuda_path = warp.build.find_cuda()
+
+warp.config.cuda_path = "_build/target-deps/cuda"
+warp.config.host_compiler = warp.build.find_host_compiler(vcvars_path="_build/host-deps/msvc/VC/Auxiliary/Build/vcvars64.bat")
+
 
 # no CUDA toolchain not found
 if (warp.config.cuda_path == None):
