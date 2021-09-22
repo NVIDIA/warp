@@ -9,7 +9,6 @@ import warp.build
 # set build output path off this file
 build_path = os.path.dirname(os.path.realpath(__file__)) + "/warp"
 
-
 # # find host compiler
 # if (warp.config.host_compiler == None):
 #     warp.config.host_compiler = warp.build.find_host_compiler()
@@ -22,9 +21,11 @@ build_path = os.path.dirname(os.path.realpath(__file__)) + "/warp"
 # if (warp.config.cuda_path == None):
 #     warp.config.cuda_path = warp.build.find_cuda()
 
+warp.config.verbose = True
 warp.config.cuda_path = "_build/target-deps/cuda"
-warp.config.host_compiler = warp.build.find_host_compiler(vcvars_path="_build/host-deps/msvc/VC/Auxiliary/Build/vcvars64.bat")
 
+if os.name == 'nt':
+    warp.build.set_msvc_compiler(msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.16.27023", sdk_path="_build/host-deps/winsdk")
 
 # no CUDA toolchain not found
 if (warp.config.cuda_path == None):

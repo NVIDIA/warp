@@ -18,10 +18,33 @@ def run_cmd(cmd, capture=False):
     except subprocess.CalledProcessError as e:
         print(e.output.decode())
         raise(e)
-        
 
+# cut-down version of vcvars64.bat that allows using
+# custom toolchain locations
+def set_msvc_compiler(msvc_path, sdk_path):
+
+    if "INCLUDE" not in os.environ:
+        os.environ["INCLUDE"] = ""
+
+    if "LIB" not in os.environ:
+        os.environ["LIB"] = ""
+
+    os.environ["INCLUDE"] += os.pathsep + os.path.join(msvc_path, "include")
+    os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/winrt")
+    os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/um")
+    os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/ucrt")
+    os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/shared")
+
+    os.environ["LIB"] += os.pathsep + os.path.join(msvc_path, "lib/x64")
+    os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib/ucrt/x64")
+    os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib/um/x64")
+
+    os.environ["PATH"] += os.pathsep + os.path.join(msvc_path, "bin/HostX64/x64")
+
+
+# try and find an installed host compiler (msvc)
 # runs vcvars and copies back the build environment
-def find_host_compiler(vcvars_path=None):
+def find_host_compiler():
 
     if (os.name == 'nt'):
 
@@ -35,8 +58,7 @@ def find_host_compiler(vcvars_path=None):
                     if paths:
                         return paths[0]
 
-            if (vcvars_path == None):
-                vcvars_path = find_vcvars_path()
+            vcvars_path = find_vcvars_path()
 
             # merge vcvars with our env
             s = '"{}" & set'.format(vcvars_path)
