@@ -5,10 +5,7 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 
 "$SCRIPT_DIR/repo.sh" build --fetch-only --no-docker $@ 
 
-python --version
-python3 --version
-
 # pip deps
-python -m pip install numpy
+python3 -m pip install numpy
 
-python build_lib.py
+python3 build_lib.py
