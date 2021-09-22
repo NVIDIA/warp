@@ -29,10 +29,10 @@
 </dependency>   
 
   <dependency name="cuda" linkPath="../_build/target-deps/cuda">
-    <!-- <package name="cuda" version="10.1.168-1-windows-x86_64" platforms="windows-x86_64"/> -->
-    <!-- <package name="cuda" version="10.1.168-1-linux-x86_64" platforms="linux-x86_64"/>   -->
-    <package name="cuda" version="11.3.0_465.19.01-linux-x86_64-514c720a" platforms="linux-x86_64" />
-    <package name="cuda" version="11.3.0_465.89-46d75baa-windows-x86_64" platforms="windows-x86_64"/>
+    <package name="cuda" version="10.1.168-1-windows-x86_64" platforms="windows-x86_64"/>
+    <package name="cuda" version="10.1.168-1-linux-x86_64" platforms="linux-x86_64"/>  
+    <!-- <package name="cuda" version="11.3.0_465.19.01-linux-x86_64-514c720a" platforms="linux-x86_64" />
+    <package name="cuda" version="11.3.0_465.89-46d75baa-windows-x86_64" platforms="windows-x86_64"/> -->
     <package name="cuda" version="11.3.0_465.19.01-de8c77bf-linux-aarch64" platforms="linux-aarch64"/>
   </dependency>
 
