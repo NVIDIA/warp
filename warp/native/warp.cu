@@ -291,7 +291,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
         nvrtcGetProgramLog(prog, log);
 
         // todo: figure out better way to return this to python
-        printf(log);
+        printf("%s", log);
         free(log);
     }
 
@@ -312,7 +312,7 @@ void* cuda_load_module(const char* path)
 
     CUmodule module = NULL;
     CUresult res = cuModuleLoadDataEx(&module, buf, 0, 0, 0);
-    if (res != NVRTC_SUCCESS)
+    if (res != CUDA_SUCCESS)
         printf("Warp: Loading PTX module failed with error: %d\n", res);
 
     free(buf);
@@ -329,7 +329,7 @@ void* cuda_get_kernel(void* module, const char* name)
 {
     CUfunction kernel = NULL;
     CUresult res = cuModuleGetFunction(&kernel, (CUmodule)module, name);
-    if (res != NVRTC_SUCCESS)
+    if (res != CUDA_SUCCESS)
         printf("Warp: Failed to lookup kernel function %s in module\n", name);
 
     return kernel;
