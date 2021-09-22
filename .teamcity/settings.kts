@@ -337,7 +337,7 @@ object Master_Publish : BuildType({
 
             artifacts {
                 artifactRules = """
-                    *.7z=>_build/packages
+                    *.7z=>warp
                 """.trimIndent()
             }
         }
@@ -349,7 +349,7 @@ object Master_Publish : BuildType({
 
             artifacts {
                 artifactRules = """
-                    *.7z=>_build/packages
+                    *.7z=>warp
                 """.trimIndent()
             }
         }
