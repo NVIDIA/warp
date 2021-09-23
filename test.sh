@@ -10,8 +10,6 @@ cd _build/packages
 echo "Installing Warp to Python"
 ../target-deps/python/python -m pip install -e .
 
-export LD_DEBUG="all"
-
 readelf -d warp/bin/warp.so | grep ORIGIN
 
 echo "Running tests"
