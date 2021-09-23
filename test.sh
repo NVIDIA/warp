@@ -11,6 +11,9 @@ echo "Installing Warp to Python"
 ../target-deps/python/python -m pip install -e .
 
 readelf -d warp/bin/warp.so | grep ORIGIN
+readelf -d warp/bin/libnvrtc.so | grep runpath
+
+patchelf --set-rpath '$ORIGIN' warp/bin/libnvrtc.so
 
 echo "Running tests"
 ../target-deps/python/python tests/test_ctypes.py
