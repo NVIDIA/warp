@@ -1,10 +1,14 @@
-REM @echo off
-call "%~dp0repo" build --fetch-only %*
+#!/bin/bash
+#set -e
+SCRIPT_DIR=$(dirname ${BASH_SOURCE})
+#source "$SCRIPT_DIR/repo.sh" build --fetch-only $@ || exit $?
 
-SET PYTHON="%~dp0\_build\target-deps\python\python.exe"
+"$SCRIPT_DIR/repo.sh" build --fetch-only --no-docker $@ 
 
-REM Dependencies
-call %PYTHON% -m pip install numpy
+cd _build/packages
 
-REM WinSDK
-call %PYTHON% build_lib.py
+echo "Installing Warp to Python"
+../_build/target-deps/python/python -m pip install -e .
+
+echo "Running tests"
+../_build/target-deps/python/python tests/test_ctypes.py
