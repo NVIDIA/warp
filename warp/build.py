@@ -245,7 +245,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
                 ld_inputs.append('-L"{cuda_home}/lib64" -lcudart -lcuda -lnvrtc'.format(cuda_home=cuda_home))
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = 'g++ -shared -Wl,-rpath=$ORIGIN -o "{dll_path}" {inputs}'.format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)            
+            link_cmd = 'g++ -shared -Wl,-rpath="$ORIGIN" -o "{dll_path}" {inputs}'.format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)            
             run_cmd(link_cmd)
 
     
