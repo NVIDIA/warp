@@ -663,7 +663,6 @@ class Module:
                     entry_points.append(kernel.func.__name__ + "_cuda_forward")
                     entry_points.append(kernel.func.__name__ + "_cuda_backward")
 
-                    cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cuda")
                     cu_source += warp.codegen.codegen_kernel(kernel.adj, device="cuda")
                     cu_source += warp.codegen.codegen_module(kernel.adj, device="cuda")
 

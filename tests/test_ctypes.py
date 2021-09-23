@@ -40,7 +40,7 @@ def transform_multiply(xforms: wp.array(dtype=wp.transform),
     xforms[tid] = wp.transform_multiply(xforms[tid], a)
    
 
-device = "cpu"
+device = "cuda"
 n = 32
 
 dest = wp.zeros(n=32, dtype=wp.vec3, device=device)
