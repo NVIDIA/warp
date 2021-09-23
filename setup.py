@@ -10,7 +10,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
                                                            #    url="https://github.com/pypa/sampleproject",
     packages=setuptools.find_packages(),
-    package_data={"": ["native/*.h", "native/*.cpp", "native/*.cu", "kernels/core.dll"]},
+    package_data={"": ["native/*.h", "native/*.cpp", "native/*.cu", "kernels/*.dll", "kernels/*.so"]},
     classifiers=[
         "Prwpramming Language :: Python :: 3",
         "Operating System :: OS Independent",
