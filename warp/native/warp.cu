@@ -253,7 +253,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
     const char *opts[] = 
     {   
         "--device-as-default-execution-space",
-        "--gpu-architecture=sm_52",
+        "--gpu-architecture=compute_52",
 //        "--use_fast_math",
         "--std=c++11",
         "--define-macro=WP_CUDA",
