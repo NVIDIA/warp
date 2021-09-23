@@ -3,6 +3,10 @@ call "%~dp0repo" build --fetch-only %*
 
 SET PYTHON="%~dp0\_build\target-deps\python\python.exe"
 
+dir
+dir _build
+dir _build/packages
+
 cd _build/packages
 
 echo "Installing Warp to Python"
