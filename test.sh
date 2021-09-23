@@ -12,5 +12,7 @@ echo "Installing Warp to Python"
 
 export LD_DEBUG="all"
 
+readelf -d warp/bin/warp.so
+
 echo "Running tests"
 ../target-deps/python/python tests/test_ctypes.py
