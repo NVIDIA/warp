@@ -865,7 +865,11 @@ class Runtime:
         print("Warp initialized:")
         print("   Version: {}".format(warp.config.version))
         print("   Using CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
-        print("   Using CPU compiler: {}".format(warp.config.host_compiler.rstrip()))
+        
+        if (warp.config.host_compiler):
+            print("   Using CPU compiler: {}".format(warp.config.host_compiler.rstrip()))
+        else:
+            print("   Using CPU compiler: Not found")
 
         # global tape
         self.tape = None

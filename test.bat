@@ -6,6 +6,7 @@ SET PYTHON="%~dp0\_build\target-deps\python\python.exe"
 dir
 dir _build
 dir _build\packages
+dir _build\packages\warp\bin
 
 cd _build\packages
 
