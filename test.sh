@@ -13,6 +13,8 @@ echo "Installing Warp to Python"
 readelf -d warp/bin/warp.so | grep ORIGIN
 readelf -d warp/bin/libnvrtc.so | grep runpath
 
+sudo apt-get install chrpath
+
 chrpath -r '$ORIGIN' warp/bin/libnvrtc.so
 chrpath -r '$ORIGIN' warp/bin/libnvrtc.so.10.1
 
