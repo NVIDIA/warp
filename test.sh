@@ -8,7 +8,7 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 cd _build/packages
 
 echo "Installing Warp to Python"
-../_build/target-deps/python/python -m pip install -e .
+../target-deps/python/python -m pip install -e .
 
 echo "Running tests"
-../_build/target-deps/python/python tests/test_ctypes.py
+../target-deps/python/python tests/test_ctypes.py
