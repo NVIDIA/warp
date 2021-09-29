@@ -1,9 +1,13 @@
 # CHANGELOG
 
-## [0.1.17] - 2021-09-08
+## [0.1.17] - 2021-09-30
 
-- Documentation update
 - Fix for 3x3 SVD adjoint
+- Fix for A6000 GPU (bump compute model to sm_52 minimum)
+- Fix for .dll unload on rebuild
+- Fix for possible array destruction warnings on shutdown
+- Rename spatial_transform -> transform
+- Documentation update
 
 ## [0.1.16] - 2021-09-06
 
