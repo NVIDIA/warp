@@ -9,6 +9,10 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 ./_build/target-deps/python/python -m pip install numpy
 ./_build/target-deps/python/python build_lib.py
 
+# copy linux dependencies to bin dir
+cp _build/target-deps/cuda/lib64/libnvrtc* warp.zip!warp/bin
+cp _build/target-deps/cuda/lib64/libcudart.* warp.zip!warp/bin
+
 # set rpath on libnvrtc so we can distribute without the CUDA SDK
 readelf -d warp/bin/warp.so | grep ORIGIN
 readelf -d warp/bin/libnvrtc.so | grep runpath
