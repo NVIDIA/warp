@@ -1,12 +1,16 @@
 
 from warp.utils import transform_identity
-import urdfpy
+
+try:
+    import urdfpy
+except:
+    pass
+
 import math
 import numpy as np
 import os
 
 import xml.etree.ElementTree as ET
-from dflex import sim
 
 import warp as wp
 import warp.sim 
