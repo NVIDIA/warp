@@ -23,7 +23,7 @@ To run built-in tests you should install the USD Core library to your Python env
 
 ## Building
 
-Developers should run `build_lib.py` to build the `warp.dll` / `warp.so` core library. To build with CUDA support ensure that either `CUDA_HOME` or `CUDA_PATH` are set as environment variables pointing to the CUDA installation directory (this is done by default with the NVIDIA CUDA toolkit).
+Developers should run `build.sh` to build the `warp.dll` / `warp.so` core library. 
 
 ## Documentation
 

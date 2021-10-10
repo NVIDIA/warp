@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.1.18] - 2021-10-08
+
+- Enable Linux support (tested on 20.04)
+
 ## [0.1.17] - 2021-09-30
 
 - Fix for 3x3 SVD adjoint
