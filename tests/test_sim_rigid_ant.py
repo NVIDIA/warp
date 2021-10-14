@@ -6,9 +6,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import numpy as np
 import warp as wp
+import warp.sim.render as renderer
 
 import tests.test_sim_util as util
-from tests.render_sim import SimRenderer
 
 import matplotlib.pyplot as plt
 
@@ -52,6 +52,23 @@ class Robot:
                 limit_ke=1.e+3,
                 limit_kd=1.e+1)
 
+            coord_count = 15
+            dof_count = 14
+            
+            coord_start = i*coord_count
+            dof_start = i*dof_count
+
+            # set joint targets to rest pose in mjcf
+            if (self.name == "ant"):
+
+                # base
+                builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
+                builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
+
+                # joints
+                builder.joint_q[coord_start+7:coord_start+coord_count] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
+
+
         # finalize model
         self.model = builder.finalize(device)
         self.model.ground = True
@@ -63,7 +80,7 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
+            self.renderer = renderer.SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
 
 
     def run(self, render=True):
@@ -74,26 +91,11 @@ class Robot:
         self.sim_time = 0.0
         self.state = self.model.state()
 
-        ant_coord_count = 15
-        ant_dof_count = 14
-
-        joint_q = np.zeros((self.num_envs, ant_coord_count), dtype=np.float32)
-        joint_qd = np.zeros((self.num_envs, ant_dof_count), dtype=np.float32)
-
-        for i in range(self.num_envs):
-
-            # set joint targets to rest pose in mjcf
-            if (self.name == "ant"):
-                joint_q[i, 0:3] = [i*2.0, 0.70, 0.0]
-                joint_q[i, 3:7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
-
-                joint_q[i, 7:] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
-                #joint_q[7:] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0] 
-
         wp.sim.eval_fk(
             self.model,
-            wp.array(joint_q, dtype=float, device=self.device), 
-            wp.array(joint_qd, dtype=float, device=self.device), 
+            self.model.joint_q,
+            self.model.joint_qd,
+            None,
             self.state)
 
         if (self.model.ground):

@@ -11,8 +11,8 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
+import warp.sim.render as render
 
-import render_sim as render
 
 wp.init()
 #wp.config.verify_cuda = True

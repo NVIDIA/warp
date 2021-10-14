@@ -11,9 +11,10 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
+import warp.sim.render as render
+
 from warp.utils import quat_identity
 
-import render_sim as render
 
 wp.init()
 

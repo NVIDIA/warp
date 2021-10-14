@@ -12,9 +12,10 @@ def from_torch(t, dtype=warp.types.float32):
     if len(t.shape) > 1 and warp.type_length(dtype) == 1:
         rows = t.numel()
     elif len(t.shape) == 1:
-        rows = 1
-    else:
         rows = t.shape[0]
+
+    if (t.dtype != torch.float32 and t.dtype != torch.int32):
+        raise RuntimeError("Error aliasing Torch tensor to Warp array. Torch tensor must be float32 or int32 type")
 
     a = warp.types.array(
         data=t.data_ptr(),

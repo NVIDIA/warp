@@ -3,6 +3,7 @@ import warp as wp
 @wp.kernel
 def eval_articulation_fk(
     articulation_start: wp.array(dtype=int),
+    articulation_mask: wp.array(dtype=int), # used to enable / disable FK for an articulation, if None then treat all as enabled
     joint_q: wp.array(dtype=float),
     joint_qd: wp.array(dtype=float),
     joint_q_start: wp.array(dtype=int),
@@ -18,6 +19,10 @@ def eval_articulation_fk(
     body_qd: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
+
+    # early out if disabling FK for this articulation
+    if (articulation_mask and articulation_mask[tid]==0):
+        return
 
     joint_start = articulation_start[tid]
     joint_end = articulation_start[tid+1]
@@ -49,7 +54,7 @@ def eval_articulation_fk(
             qd = joint_qd[qd_start]
 
             X_jc = wp.transform(axis*q, wp.quat_identity())
-            #v_pc = wp.spatial_vector(wp.vec3(0.0, 0.0, 0.0), axis*qd)
+            v_jc = wp.spatial_vector(wp.vec3(0.0, 0.0, 0.0), axis*qd)
 
         # revolute
         if type == 1:
@@ -58,7 +63,7 @@ def eval_articulation_fk(
             qd = joint_qd[qd_start]
 
             X_jc = wp.transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_from_axis_angle(axis, q))
-            #v_pc = wp.spatial_vector(axis*qd, wp.vec3(0.0, 0.0, 0.0))
+            v_jc = wp.spatial_vector(axis*qd, wp.vec3(0.0, 0.0, 0.0))
 
         # ball
         if type == 2:
@@ -73,11 +78,13 @@ def eval_articulation_fk(
                          joint_qd[qd_start+2])
 
             X_jc = wp.transform(wp.vec3(0.0, 0.0, 0.0), r)
+            v_jc = wp.spatial_vector(w, wp.vec3(0.0, 0.0, 0.0))
 
         # fixed
         if type == 3:
             
             X_jc = wp.transform_identity()
+            v_jc = wp.spatial_vector(wp.vec3(0.0, 0.0, 0.0), wp.vec3(0.0, 0.0, 0.0))
 
         # free
         if type == 4:
@@ -91,20 +98,29 @@ def eval_articulation_fk(
                     wp.vec3(joint_qd[qd_start+3], joint_qd[qd_start+4], joint_qd[qd_start+5]))
 
             X_jc = t
+            v_jc = v
 
-        X_wc = X_wp*X_pj*X_jc
-        #v_wc = v_wp + v_pc
+        X_wj = X_wp*X_pj
+        X_wc = X_wj*X_jc
+
+        # transform velocity across the joint to world space
+        angular_vel = wp.transform_vector(X_wj, wp.spatial_top(v_jc))
+        linear_vel = wp.transform_vector(X_wj, wp.spatial_bottom(v_jc))
+
+        v_wc = v_wp + wp.spatial_vector(angular_vel, linear_vel + wp.cross(angular_vel, body_com[i]))
 
         body_q[i] = X_wc
+        body_qd[i] = v_wc
         
 
 # updates state body information based on joint coordinates
-def eval_fk(model, joint_q, joint_qd, state):
+def eval_fk(model, joint_q, joint_qd, mask, state):
 
     wp.launch(kernel=eval_articulation_fk,
                 dim=model.articulation_count,
                 inputs=[    
                 model.articulation_start,
+                mask,
                 joint_q,
                 joint_qd,
                 model.joint_q_start,

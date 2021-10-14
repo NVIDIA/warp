@@ -9,10 +9,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import warp as wp
 import warp.sim
+import warp.sim.render as render
 
 wp.config.mode = "debug"
-
-import render_sim as render
 
 wp.init()
 

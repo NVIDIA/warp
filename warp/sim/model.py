@@ -578,6 +578,8 @@ class ModelBuilder:
         self.joint_axis = []           # joint axis in child joint frame               (constant)
         self.joint_X_p = []            # frame of joint in parent                      (constant)
         self.joint_X_c = []            # frame of child com (in child coordinates)     (constant)
+        self.joint_q = []
+        self.joint_qd = []
 
         self.joint_type = []
         self.joint_armature = []
@@ -705,6 +707,12 @@ class ModelBuilder:
         elif (joint_type == JOINT_FIXED):
             dof_count = 0
             coord_count = 0
+
+        for i in range(coord_count):
+            self.joint_q.append(0.0)
+
+        for i in range(dof_count):
+            self.joint_qd.append(0.0)
 
         self.joint_q_start.append(self.joint_coord_count)
         self.joint_qd_start.append(self.joint_dof_count)
@@ -1690,6 +1698,8 @@ class ModelBuilder:
         m.joint_X_p = wp.array(self.joint_X_p, dtype=wp.transform, device=device)
         m.joint_X_c = wp.array(self.joint_X_c, dtype=wp.transform, device=device)
         m.joint_axis = wp.array(self.joint_axis, dtype=wp.vec3, device=device)
+        m.joint_q = wp.array(self.joint_q, dtype=float, device=device)
+        m.joint_qd = wp.array(self.joint_qd, dtype=float, device=device)
 
         # dynamics properties
         m.joint_armature = wp.array(self.joint_armature, dtype=wp.float32, device=device)
