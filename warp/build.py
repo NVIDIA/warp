@@ -68,9 +68,6 @@ def find_host_compiler():
                 if (len(pair) >= 2):
                     os.environ[pair[0]] = pair[1]
                     
-            # debugging
-            print(os.environ)
-
         # try and find cl.exe
         try:
             return subprocess.check_output("where cl.exe").decode()
