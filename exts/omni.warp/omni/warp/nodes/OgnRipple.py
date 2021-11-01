@@ -156,8 +156,6 @@ class OgnRipple:
     """
     """
 
-
-
     @staticmethod
     def internal_state():
 
@@ -174,7 +172,6 @@ class OgnRipple:
         sim_dt = (1.0/sim_fps)/sim_substeps
         
         grid_size = db.inputs.resolution
-        grid_displace = db.inputs.displace
 
         # wave constants
         k_speed = db.inputs.speed
@@ -217,11 +214,9 @@ class OgnRipple:
                     for x in range(state.sim_width):
 
                         center = np.array([0.5*state.sim_width*grid_size, 0.5*state.sim_height*grid_size, 0.0])
-
                         pos = (float(x)*grid_size, float(z)*grid_size, 0.0)
 
                         state.vertices[z*state.sim_width + x,:] = np.array(pos) - center
-                            
 
                         if (x > 0 and z > 0):
                             
@@ -243,14 +238,21 @@ class OgnRipple:
                 db.outputs.face_indices = state.indices
                 db.outputs.face_counts = state.counts
 
+                colliders = [db.inputs.collider_0,
+                             db.inputs.collider_1,
+                             db.inputs.collider_2,
+                             db.inputs.collider_3]
 
+                state.collider_vel = []
+                state.collider_pos = []
 
-                # state.collider_vel = []
-                # state.collider_pos = []
+                for i in range(MAX_COLLIDERS):
+                    
+                    state.collider_pos.append(Gf.Vec3d(0.0, 0.0, 0.0))
+                    state.collider_vel.append(Gf.Vec3d(0.0, 0.0, 0.0))
 
-                
-                state.collider_vel = Gf.Vec3d(0.0, 0.0, 0.0)
-                state.collider_pos = read_transform_bundle(db.inputs.collider).ExtractTranslation()
+                    if (colliders[i].valid):
+                        state.collider_pos[-1] = read_transform_bundle(db.inputs.collider_0).ExtractTranslation()
 
                 state.initialized = True
 
@@ -258,96 +260,99 @@ class OgnRipple:
 
                 if timeline.is_playing():
 
-                    if db.inputs.collider.valid:
+                    def update_collider(collider, density, index):
 
-                        grid_xform = read_transform_bundle(db.inputs.grid).RemoveScaleShear()
-                        collider_xform = read_transform_bundle(db.inputs.collider)
+                        if collider.valid:
 
-                        bounds = read_bounds_bundle(db.inputs.collider).ComputeAlignedBox()
-                        radius = bounds.GetSize()[0]*0.5
+                            grid_displace = db.inputs.displace
+                            grid_xform = read_transform_bundle(db.inputs.grid).RemoveScaleShear()
+                            collider_xform = read_transform_bundle(collider)
 
-                        # get new collider pos, if it is different from previous
-                        # we assume it is being manipulated by the user and zero its velocity
-                        collider_pos = collider_xform.ExtractTranslation()
-                        if ((collider_pos - state.collider_pos).GetLength() > 1.e-3):
-                            state.collider_vel = Gf.Vec3d(0.0, 0.0, 0.0)
-                            state.collider_pos = collider_pos
+                            bounds = read_bounds_bundle(collider).ComputeAlignedBox()
+                            radius = bounds.GetSize()[0]*0.5
 
-                        # transform collider to grid local space
-                        local_pos = grid_xform.GetInverse().Transform(collider_pos)
+                            # get new collider pos, if it is different from previous
+                            # we assume it is being manipulated by the user and zero its velocity
+                            collider_pos = collider_xform.ExtractTranslation()
+                            if ((collider_pos - state.collider_pos[index]).GetLength() > 1.e-3):
+                                state.collider_vel[index] = Gf.Vec3d(0.0, 0.0, 0.0)
+                                state.collider_pos[index] = collider_pos
 
-                        # create surface displacment around a point
-                        cx = float(local_pos[0])/grid_size + state.sim_width*0.5
-                        cz = float(local_pos[1])/grid_size + state.sim_height*0.5
-                        cr = float(radius)/grid_size
+                            # transform collider to grid local space
+                            local_pos = grid_xform.GetInverse().Transform(collider_pos)
 
-                        # clamp coords to grid
-                        cx = max(0, min(state.sim_width-1, cx))
-                        cz = max(0, min(state.sim_width-1, cz))
+                            # create surface displacment around a point
+                            cx = float(local_pos[0])/grid_size + state.sim_width*0.5
+                            cz = float(local_pos[1])/grid_size + state.sim_height*0.5
+                            cr = float(radius)/grid_size
 
-                        # sample height
-                        grid = state.sim_host.numpy()
-                        height = grid[int(cz)*state.sim_width + int(cx)]
+                            # clamp coords to grid
+                            cx = max(0, min(state.sim_width-1, cx))
+                            cz = max(0, min(state.sim_width-1, cz))
 
-                        dt = 1.0/60.0
+                            # sample height
+                            grid = state.sim_host.numpy()
+                            height = grid[int(cz)*state.sim_width + int(cx)]
 
-                        gravity =  Gf.Vec3d(0.0, db.inputs.gravity, 0.0)
-                        buoyancy = Gf.Vec3d(0.0, 0.0, 0.0)
-                        damp = Gf.Vec3d(0.0, 0.0, 0.0)
+                            dt = 1.0/60.0
 
-                        com = local_pos[2] - db.inputs.buoyancy_offset
+                            gravity =  Gf.Vec3d(0.0, db.inputs.gravity, 0.0)
+                            buoyancy = Gf.Vec3d(0.0, 0.0, 0.0)
+                            damp = Gf.Vec3d(0.0, 0.0, 0.0)
 
-                        if (com < height):
+                            com = local_pos[2] - density
 
-                            # linear buoyancy force (approximates volume term by depth)
-                            buoyancy= Gf.Vec3d(0.0, float(height-com)*db.inputs.buoyancy, 0.0)
+                            if (com < height):
 
-                            # linear drag model 
-                            v = state.collider_vel[1]
-                            f = abs(v)*db.inputs.buoyancy_damp
+                                # linear buoyancy force (approximates volume term by depth)
+                                buoyancy = Gf.Vec3d(0.0, float(height-com)*db.inputs.buoyancy, 0.0)
 
-                            # quadratic drag model
-                            # v = state.collider_vel[1]
-                            # f = v*v*db.inputs.buoyancy_damp
-                            
-                            # stability limit
-                            if (f*dt > abs(v)):
-                                f = abs(v)/dt
+                                # linear drag model 
+                                v = state.collider_vel[index][1]
+                                f = abs(v)*db.inputs.buoyancy_damp
 
-                            # ensure drag opposes velocity
-                            if (v > 0.0):
-                                f = -f
+                                # quadratic drag model
+                                # v = state.collider_vel[index][1]
+                                # f = v*v*db.inputs.buoyancy_damp
+                                
+                                # stability limit
+                                if (f*dt > abs(v)):
+                                    f = abs(v)/dt
 
-                            damp = Gf.Vec3d(0.0, f, 0.0)
+                                # ensure drag opposes velocity
+                                if (v > 0.0):
+                                    f = -f
 
-                        else:
-                            # disable displacment when body is above the water plane
-                            grid_displace = 0.0
+                                damp = Gf.Vec3d(0.0, f, 0.0)
 
-                        # integrate                                        
-                        state.collider_vel = state.collider_vel + (damp + gravity + buoyancy)*dt
-                        state.collider_pos = state.collider_pos + state.collider_vel*dt
+                            else:
+                                # disable displacment when body is above the water plane
+                                grid_displace = 0.0
 
-                        translate_bundle(db.inputs.collider, state.collider_vel*dt)
+                            # integrate                                        
+                            state.collider_vel[index] = state.collider_vel[index] + (damp + gravity + buoyancy)*dt
+                            state.collider_pos[index] = state.collider_pos[index] + state.collider_vel[index]*dt
 
-                    
-                    else:
-                        cx = 0.0
-                        cz = 0.0
-                        cr = 0.0
+                            translate_bundle(collider, state.collider_vel[index]*dt)
+                        
+                            # apply displacement
+                            if (grid_displace > 0.0):
 
+                                wp.launch(
+                                    kernel=wave_displace, 
+                                    dim=state.sim_width*state.sim_height, 
+                                    inputs=[state.sim_grid0, state.sim_grid1, state.sim_width, state.sim_height, cx, cz, cr, grid_displace, state.sim_time],  
+                                    outputs=[],
+                                    device="cuda")
+
+                    # colliders
+                    update_collider(db.inputs.collider_0, db.inputs.density_0, 0)
+                    update_collider(db.inputs.collider_1, db.inputs.density_1, 1)
+                    update_collider(db.inputs.collider_2, db.inputs.density_2, 2)
+                    update_collider(db.inputs.collider_3, db.inputs.density_3, 3)
+
+                    # wave solve
                     for s in range(sim_substeps):
-                    
-                        # apply displacement
-                        if (grid_displace > 0.0):
-                            wp.launch(
-                                kernel=wave_displace, 
-                                dim=state.sim_width*state.sim_height, 
-                                inputs=[state.sim_grid0, state.sim_grid1, state.sim_width, state.sim_height, cx, cz, cr, grid_displace, state.sim_time],  
-                                outputs=[],
-                                device="cuda")
-
-                        # integrate wave equation
                         wp.launch(
                             kernel=wave_solve, 
                             dim=state.sim_width*state.sim_height, 

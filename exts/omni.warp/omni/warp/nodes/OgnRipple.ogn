@@ -23,10 +23,42 @@
                "type": "bundle",
                 "description": ""
             },
-            "collider": {
+            "collider_0": {
                "type": "bundle",
                 "description": ""
             },
+            "collider_1": {
+               "type": "bundle",
+                "description": ""
+            },
+            "collider_2": {
+               "type": "bundle",
+                "description": ""
+            },
+            "collider_3": {
+               "type": "bundle",
+                "description": ""
+            },
+            "density_0": {
+                "type": "float",
+                 "description": "",
+                 "default": 1.0
+             },
+            "density_1": {
+                "type": "float",
+                 "description": "",
+                 "default": 1.0
+             },
+            "density_2": {
+                "type": "float",
+                 "description": "",
+                 "default": 1.0
+             },
+            "density_3": {
+                "type": "float",
+                 "description": "",
+                 "default": 1.0
+             },                                       
             "displace": {
                 "type": "float",
                  "description": "",
@@ -46,11 +78,6 @@
                 "type": "float",
                  "description": "",
                  "default": 0.25
-             },
-             "buoyancy_offset": {
-                "type": "float",
-                 "description": "",
-                 "default": 0.0
              }
         },
         "outputs": {
