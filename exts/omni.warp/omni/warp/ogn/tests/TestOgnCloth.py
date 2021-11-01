@@ -4,7 +4,6 @@ from omni.graph.core.tests.omnigraph_test_utils import setup_test_environment
 from omni.graph.core.tests.omnigraph_test_utils import verify_values
 from omni.graph.core.tests.omnigraph_test_utils import load_test_file
 import os
-from contextlib import suppress
 
 
 class TestOgnCloth(omni.kit.test.AsyncTestCase):

@@ -23,7 +23,7 @@ omni.warp.FixedTime Properties
 +---------------------------+----------------------+
 | Generated Class Name      | OgnFixedTimeDatabase |
 +---------------------------+----------------------+
-| Python Module             | omni.warp            |
+| Node Namespace            | omni.warp            |
 +---------------------------+----------------------+
 
 

@@ -96,10 +96,9 @@ def wave_displace(hcurrent: wp.array(dtype=float),
 
     if (dist_sq < r*r):
         h = mag*wp.sin(t)
-
+         
         wp.store(hcurrent, tid, h)
         wp.store(hprevious, tid, h)
-
 
 @wp.kernel
 def wave_solve(hprevious: wp.array(dtype=float),
@@ -166,7 +165,8 @@ class OgnRipple:
         """Compute the outputs from the current input"""
 
         timeline =  omni.timeline.get_timeline_interface()
- 
+        time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
+        
         sim_fps = 60.0
         sim_substeps = 1
         sim_dt = (1.0/sim_fps)/sim_substeps
@@ -274,12 +274,14 @@ class OgnRipple:
                             # get new collider pos, if it is different from previous
                             # we assume it is being manipulated by the user and zero its velocity
                             collider_pos = collider_xform.ExtractTranslation()
-                            if ((collider_pos - state.collider_pos[index]).GetLength() > 1.e-3):
-                                state.collider_vel[index] = Gf.Vec3d(0.0, 0.0, 0.0)
-                                state.collider_pos[index] = collider_pos
 
                             # transform collider to grid local space
                             local_pos = grid_xform.GetInverse().Transform(collider_pos)
+
+                            if ((local_pos - state.collider_pos[index]).GetLength() > 1.e-3):
+                                state.collider_vel[index] = Gf.Vec3d(0.0, 0.0, 0.0)
+                                state.collider_pos[index] = local_pos 
+
 
                             # create surface displacment around a point
                             cx = float(local_pos[0])/grid_size + state.sim_width*0.5
@@ -288,7 +290,7 @@ class OgnRipple:
 
                             # clamp coords to grid
                             cx = max(0, min(state.sim_width-1, cx))
-                            cz = max(0, min(state.sim_width-1, cz))
+                            cz = max(0, min(state.sim_height-1, cz))
 
                             # sample height
                             grid = state.sim_host.numpy()
@@ -296,7 +298,7 @@ class OgnRipple:
 
                             dt = 1.0/60.0
 
-                            gravity =  Gf.Vec3d(0.0, db.inputs.gravity, 0.0)
+                            gravity =  Gf.Vec3d(0.0, 0.0, db.inputs.gravity)
                             buoyancy = Gf.Vec3d(0.0, 0.0, 0.0)
                             damp = Gf.Vec3d(0.0, 0.0, 0.0)
 
@@ -305,14 +307,14 @@ class OgnRipple:
                             if (com < height):
 
                                 # linear buoyancy force (approximates volume term by depth)
-                                buoyancy = Gf.Vec3d(0.0, float(height-com)*db.inputs.buoyancy, 0.0)
+                                buoyancy = Gf.Vec3d(0.0, 0.0, float(height-com)*db.inputs.buoyancy)
 
                                 # linear drag model 
-                                v = state.collider_vel[index][1]
+                                v = state.collider_vel[index][2]
                                 f = abs(v)*db.inputs.buoyancy_damp
 
                                 # quadratic drag model
-                                # v = state.collider_vel[index][1]
+                                # v = state.collider_vel[index][2]
                                 # f = v*v*db.inputs.buoyancy_damp
                                 
                                 # stability limit
@@ -323,17 +325,19 @@ class OgnRipple:
                                 if (v > 0.0):
                                     f = -f
 
-                                damp = Gf.Vec3d(0.0, f, 0.0)
+                                damp = Gf.Vec3d(0.0, 0.0, f)
 
                             else:
                                 # disable displacment when body is above the water plane
                                 grid_displace = 0.0
 
-                            # integrate                                        
-                            state.collider_vel[index] = state.collider_vel[index] + (damp + gravity + buoyancy)*dt
-                            state.collider_pos[index] = state.collider_pos[index] + state.collider_vel[index]*dt
+                            # integrate
+                            if (db.inputs.buoyancy_enabled):
 
-                            translate_bundle(collider, state.collider_vel[index]*dt)
+                                state.collider_vel[index] = state.collider_vel[index] + (damp + gravity + buoyancy)*dt
+                                state.collider_pos[index] = state.collider_pos[index] + state.collider_vel[index]*dt
+
+                                translate_bundle(collider, state.collider_vel[index]*dt)
                         
                             # apply displacement
                             if (grid_displace > 0.0):
@@ -346,10 +350,11 @@ class OgnRipple:
                                     device="cuda")
 
                     # colliders
-                    update_collider(db.inputs.collider_0, db.inputs.density_0, 0)
-                    update_collider(db.inputs.collider_1, db.inputs.density_1, 1)
-                    update_collider(db.inputs.collider_2, db.inputs.density_2, 2)
-                    update_collider(db.inputs.collider_3, db.inputs.density_3, 3)
+                    if time > db.inputs.delay:
+                        update_collider(db.inputs.collider_0, db.inputs.density_0, 0)
+                        update_collider(db.inputs.collider_1, db.inputs.density_1, 1)
+                        update_collider(db.inputs.collider_2, db.inputs.density_2, 2)
+                        update_collider(db.inputs.collider_3, db.inputs.density_3, 3)
 
                     # wave solve
                     for s in range(sim_substeps):

@@ -39,6 +39,11 @@
                "type": "bundle",
                 "description": ""
             },
+            "buoyancy_enabled": {
+               "type": "bool",
+               "description": "",
+               "default": false
+            },            
             "density_0": {
                 "type": "float",
                  "description": "",
@@ -78,6 +83,11 @@
                 "type": "float",
                  "description": "",
                  "default": 0.25
+             },
+             "delay": {
+                "type": "float",
+                 "description": "",
+                 "default": 0.0
              }
         },
         "outputs": {
