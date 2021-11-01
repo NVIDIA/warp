@@ -31,6 +31,26 @@
                 "type": "float",
                  "description": "",
                  "default": 1.0
+             },
+             "gravity": {
+                "type": "float",
+                 "description": "",
+                 "default": -9.8
+             },
+             "buoyancy": {
+                "type": "float",
+                 "description": "",
+                 "default": 15.0
+             },
+             "buoyancy_damp": {
+                "type": "float",
+                 "description": "",
+                 "default": 0.25
+             },
+             "buoyancy_offset": {
+                "type": "float",
+                 "description": "",
+                 "default": 0.0
              }
         },
         "outputs": {

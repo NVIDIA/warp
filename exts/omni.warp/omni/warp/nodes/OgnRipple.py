@@ -13,6 +13,7 @@ import omni.usd
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
+MAX_COLLIDERS = 4
 
 # helper to read a USD xform out of graph inputs
 def read_transform(input):
@@ -33,6 +34,16 @@ def read_bounds_bundle(bundle):
     prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
     
     return prim.ComputeLocalBound(0.0, purpose1="default")
+
+def translate_bundle(bundle, pos):
+    stage = omni.usd.get_context().get_stage()
+    xform = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
+
+    xform_ops = xform.GetOrderedXformOps()
+    p = xform_ops[0].Get()
+
+    xform_ops[0].Set(p + pos)
+
 
 
 #kernel definitions
@@ -232,6 +243,15 @@ class OgnRipple:
                 db.outputs.face_indices = state.indices
                 db.outputs.face_counts = state.counts
 
+
+
+                # state.collider_vel = []
+                # state.collider_pos = []
+
+                
+                state.collider_vel = Gf.Vec3d(0.0, 0.0, 0.0)
+                state.collider_pos = read_transform_bundle(db.inputs.collider).ExtractTranslation()
+
                 state.initialized = True
 
             if state.initialized:
@@ -246,13 +266,70 @@ class OgnRipple:
                         bounds = read_bounds_bundle(db.inputs.collider).ComputeAlignedBox()
                         radius = bounds.GetSize()[0]*0.5
 
+                        # get new collider pos, if it is different from previous
+                        # we assume it is being manipulated by the user and zero its velocity
+                        collider_pos = collider_xform.ExtractTranslation()
+                        if ((collider_pos - state.collider_pos).GetLength() > 1.e-3):
+                            state.collider_vel = Gf.Vec3d(0.0, 0.0, 0.0)
+                            state.collider_pos = collider_pos
+
                         # transform collider to grid local space
-                        local_pos = grid_xform.GetInverse().Transform(collider_xform.ExtractTranslation())
+                        local_pos = grid_xform.GetInverse().Transform(collider_pos)
 
                         # create surface displacment around a point
                         cx = float(local_pos[0])/grid_size + state.sim_width*0.5
                         cz = float(local_pos[1])/grid_size + state.sim_height*0.5
                         cr = float(radius)/grid_size
+
+                        # clamp coords to grid
+                        cx = max(0, min(state.sim_width-1, cx))
+                        cz = max(0, min(state.sim_width-1, cz))
+
+                        # sample height
+                        grid = state.sim_host.numpy()
+                        height = grid[int(cz)*state.sim_width + int(cx)]
+
+                        dt = 1.0/60.0
+
+                        gravity =  Gf.Vec3d(0.0, db.inputs.gravity, 0.0)
+                        buoyancy = Gf.Vec3d(0.0, 0.0, 0.0)
+                        damp = Gf.Vec3d(0.0, 0.0, 0.0)
+
+                        com = local_pos[2] - db.inputs.buoyancy_offset
+
+                        if (com < height):
+
+                            # linear buoyancy force (approximates volume term by depth)
+                            buoyancy= Gf.Vec3d(0.0, float(height-com)*db.inputs.buoyancy, 0.0)
+
+                            # linear drag model 
+                            v = state.collider_vel[1]
+                            f = abs(v)*db.inputs.buoyancy_damp
+
+                            # quadratic drag model
+                            # v = state.collider_vel[1]
+                            # f = v*v*db.inputs.buoyancy_damp
+                            
+                            # stability limit
+                            if (f*dt > abs(v)):
+                                f = abs(v)/dt
+
+                            # ensure drag opposes velocity
+                            if (v > 0.0):
+                                f = -f
+
+                            damp = Gf.Vec3d(0.0, f, 0.0)
+
+                        else:
+                            # disable displacment when body is above the water plane
+                            grid_displace = 0.0
+
+                        # integrate                                        
+                        state.collider_vel = state.collider_vel + (damp + gravity + buoyancy)*dt
+                        state.collider_pos = state.collider_pos + state.collider_vel*dt
+
+                        translate_bundle(db.inputs.collider, state.collider_vel*dt)
+
                     
                     else:
                         cx = 0.0
@@ -262,13 +339,13 @@ class OgnRipple:
                     for s in range(sim_substeps):
                     
                         # apply displacement
-                        wp.launch(
-                            kernel=wave_displace, 
-                            dim=state.sim_width*state.sim_height, 
-                            inputs=[state.sim_grid0, state.sim_grid1, state.sim_width, state.sim_height, cx, cz, cr, grid_displace, state.sim_time],  
-                            outputs=[],
-                            device="cuda")
-
+                        if (grid_displace > 0.0):
+                            wp.launch(
+                                kernel=wave_displace, 
+                                dim=state.sim_width*state.sim_height, 
+                                inputs=[state.sim_grid0, state.sim_grid1, state.sim_width, state.sim_height, cx, cz, cr, grid_displace, state.sim_time],  
+                                outputs=[],
+                                device="cuda")
 
                         # integrate wave equation
                         wp.launch(
@@ -292,6 +369,7 @@ class OgnRipple:
                                 device="cuda")
 
                     # copy data back to host
+                    wp.copy(dest=state.sim_host, src=state.sim_grid0)
                     wp.copy(dest=state.verts_host, src=state.verts_device)
                     wp.synchronize()
 
