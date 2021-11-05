@@ -312,6 +312,13 @@ class uint64:
         return ctypes.c_uint64
 
 
+# definition just for kernel type (cannot be a parameter), see hash_grid.h
+class hash_grid_query_t:
+
+    def __init__(self):
+        pass
+
+
 def type_length(dtype):
     if (dtype == float or dtype == int):
         return 1

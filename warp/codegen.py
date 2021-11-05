@@ -303,6 +303,23 @@ class Adjoint:
         adj.add_forward("}")
         adj.add_reverse("for (var_{0}=var_{2}-1; var_{0} >= var_{1}; --var_{0}) {{".format(iter, start, end))
 
+    # define a while loop, todo: reverse mode
+    def begin_while(adj, cond):
+
+        adj.add_forward("while (1) {")
+
+        adj.indent_count += 1
+
+        c = adj.eval(cond)
+        adj.add_forward(f"if (var_{c} == false) break;")
+
+    def end_while(adj):
+
+        adj.indent_count -= 1
+
+        adj.add_forward("}")
+
+
     # append a statement to the forward pass
     def add_forward(adj, statement, statement_replay=None):
 
@@ -477,6 +494,38 @@ class Adjoint:
 
                 out = adj.add_call(func, [arg])
                 return out
+
+            elif (isinstance(node, ast.While)):
+
+                adj.begin_while(node.test)
+
+                symbols_prev = adj.symbols.copy()
+
+                # eval body
+                for s in node.body:
+                    adj.eval(s)
+
+                
+                # detect symbols with conflicting definitions (assigned inside the for loop)
+                for items in symbols_prev.items():
+
+                    sym = items[0]
+                    var1 = items[1]
+                    var2 = adj.symbols[sym]
+
+                    if var1 != var2:
+
+                        if (warp.config.verbose):
+                            print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
+
+                        if (var1.constant is not None):
+                            raise Exception("Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
+                        
+                        # overwrite the old variable value (violates SSA)
+                        adj.add_call(adj.builtin_functions["copy"], [var1, var2])
+
+                adj.end_while()
+
 
             elif (isinstance(node, ast.For)):
 
