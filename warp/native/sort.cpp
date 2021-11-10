@@ -1,7 +1,7 @@
 #include "sort.h"
 #include "string.h"
 
-void radix_sort_pairs(int* keys, int* values, int n)
+void radix_sort_pairs_host(int* keys, int* values, int n)
 {
 	static int tables[2][1 << 16];
 	memset(tables, 0, sizeof(tables));

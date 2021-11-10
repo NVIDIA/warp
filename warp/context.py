@@ -377,6 +377,7 @@ add_builtin("mesh_eval_velocity", input_types={"id": uint64, "face": int, "bary_
 
 add_builtin("hash_grid_query", input_types={"id": uint64, "point": vec3, "max_dist": float}, value_type=hash_grid_query_t, doc="", group="Geometry")
 add_builtin("hash_grid_query_next", input_types={"id": hash_grid_query_t, "index": int}, value_type=bool, doc="", group="Geometry")
+add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, value_type=int, doc="", group="Geometry")
 
 
 # helpers
@@ -811,11 +812,10 @@ class Runtime:
         self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
 
-        # self.core.hash_grid_create_device.argtypes = [ctypes.int, ctypes.int, ctypes.int]
-        # self.core.hash_grid_create_device.restype = ctypes.c_uint64
-        # self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
-        # self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
-
+        self.core.hash_grid_create_device.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.hash_grid_create_device.restype = ctypes.c_uint64
+        self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
+        self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
 
 
 

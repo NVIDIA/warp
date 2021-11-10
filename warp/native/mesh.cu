@@ -2,7 +2,8 @@
 #include "mesh.h"
 #include "bvh.h"
 
-using namespace wp;
+namespace wp
+{
 
 __global__ void compute_triangle_bounds(int n, const vec3* points, const int* indices, bounds3* b)
 {
@@ -26,17 +27,19 @@ __global__ void compute_triangle_bounds(int n, const vec3* points, const int* in
     }
 }
 
+} // namespace wp
 
 void mesh_refit_device(uint64_t id)
 {
 
     // recompute triangle bounds
-    Mesh m;
+    wp::Mesh m;
     if (mesh_get_descriptor(id, m))
     {
-        launch_device(compute_triangle_bounds, m.num_tris, (cudaStream_t)cuda_get_stream(), (m.num_tris, m.points, m.indices, m.bounds));
+        wp_launch_device(wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.bounds));
 
         bvh_refit_device(m.bvh, m.bounds);
     }
 
 }
+

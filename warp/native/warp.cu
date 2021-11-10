@@ -133,8 +133,9 @@ void memset_device(void* dest, int value, size_t n)
     }
     else
     {
+        // custom kernel mostly to reduce launch overhead
         const int num_words = n/4;
-        launch_device(memset_kernel, num_words, g_cuda_stream, ((int*)dest, value, num_words));
+        wp_launch_device(memset_kernel, num_words, ((int*)dest, value, num_words));
     }
 }
 
@@ -355,6 +356,9 @@ size_t cuda_launch_kernel(void* kernel, int dim, void** args)
 // impl. files
 #include "bvh.cu"
 #include "mesh.cu"
+#include "sort.cu"
+#include "hashgrid.cu"
+
 //#include "spline.inl"
 //#include "volume.inl"
 
