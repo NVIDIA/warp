@@ -26,7 +26,7 @@ struct HashGrid
 CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int z)
 {
     // offset to ensure positive coordinates
-    const int origin = 16777216;
+    const int origin = 1<<24;
 
     x += origin;
     y += origin;
@@ -101,16 +101,6 @@ CUDA_CALLABLE inline hash_grid_query_t hash_grid_query(uint64_t id, wp::vec3 pos
     query.cell_index = query.grid.cell_starts[cell];
     query.cell_end = query.grid.cell_ends[cell];
 
-// #if __CUDACC__
-//     int tid = blockDim.x*blockIdx.x + threadIdx.x;
-
-//     if (tid == 6787)
-//     {
-//         printf("x_start: %d y_start: %d z_start: %d\n", query.x_start, query.y_start, query.z_start);
-//         printf("x_end: %d y_end: %d z_end: %d\n", query.x_end, query.y_end, query.z_end);
-//     }    
-// #endif
-
     return query;
 }
 
@@ -166,26 +156,6 @@ CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)
 CUDA_CALLABLE inline void adj_hash_grid_query(uint64_t id, wp::vec3 pos, float radius, uint64_t& adj_id, wp::vec3& adj_pos, float& adj_radius, hash_grid_query_t& adj_res) {}
 CUDA_CALLABLE inline void adj_hash_grid_query_next(hash_grid_query_t& query, int& index, hash_grid_query_t& adj_query, int& adj_index, bool& adj_res) {}
 CUDA_CALLABLE inline void adj_hash_grid_point_id(uint64_t id, int& index, uint64_t & adj_id, int& adj_index, int& adj_res) {}
-
-// CUDA_CALLABLE inline int hash_grid_query_current(HashGridQuery& query)
-// {
-//     return query.grid.cell_indices[query.cell_index];
-// }
-
-// query = hash_grid_query(grid, p);
-
-// while (hash_grid_query_next(query)):
-// {
-//     index = hash_grid_query_current(query)
-
-//     # compute position
-
-//     # compute kernel
-
-//     # apply force
-
-//     # bye-bye
-// }
 
 
 } // namespace wp
