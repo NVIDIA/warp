@@ -329,6 +329,7 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 #include "intersect.h"
 #include "mesh.h"
 #include "svd.h"
+#include "hashgrid.h"
 
 //--------------
 namespace wp

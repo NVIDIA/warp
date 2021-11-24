@@ -6,22 +6,22 @@
         #define check_cuda(code) { cuda_report_error(code, __FILE__, __LINE__); }
 
         // helper for launching kernels (synchronize + error checking after each kernel)
-        #define launch_device(kernel, dim, stream, args) { \
+        #define wp_launch_device(kernel, dim, args) { \
             if (dim) { \
             const int num_threads = 256; \
             const int num_blocks = (dim+num_threads-1)/num_threads; \
-            kernel<<<num_blocks, 256, 0, stream>>>args; \
+            kernel<<<num_blocks, 256, 0, (cudaStream_t)cuda_get_stream()>>>args; \
             check_cuda(cuda_check_device()); } }
 
     #else
         #define check_cuda(code) code;
 
         // helper for launching kernels (no error checking)
-        #define launch_device(kernel, dim, stream, args) { \
+        #define wp_launch_device(kernel, dim, args) { \
             if (dim) { \
             const int num_threads = 256; \
             const int num_blocks = (dim+num_threads-1)/num_threads; \
-            kernel<<<num_blocks, 256, 0, stream>>>args; } }
+            kernel<<<num_blocks, 256, 0, (cudaStream_t)cuda_get_stream()>>>args; } }
 
     #endif
 
@@ -62,6 +62,14 @@ extern "C"
 	WP_API uint64_t mesh_create_device(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
 	WP_API void mesh_destroy_device(uint64_t id);
     WP_API void mesh_refit_device(uint64_t id);
+
+    WP_API uint64_t hash_grid_create_host(int dim_x, int dim_y, int dim_z);
+    WP_API void hash_grid_destroy_host(uint64_t id);
+    WP_API void hash_grid_update_host(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
+
+    WP_API uint64_t hash_grid_create_device(int dim_x, int dim_y, int dim_z);
+    WP_API void hash_grid_destroy_device(uint64_t id);
+    WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
 
     WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_host(uint64_t a, uint64_t out, int len);

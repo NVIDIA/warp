@@ -68,9 +68,6 @@ def find_host_compiler():
                 if (len(pair) >= 2):
                     os.environ[pair[0]] = pair[1]
                     
-            # debugging
-            print(os.environ)
-
         # try and find cl.exe
         try:
             return subprocess.check_output("where cl.exe").decode()
@@ -124,6 +121,9 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
+
+    import pathlib
+    warp_home = pathlib.Path(__file__).parent.resolve()
 
     if (cu_path != None and cuda_home == None):
         print("CUDA toolchain not found, skipping CUDA build")
@@ -236,7 +236,13 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
 
             cu_out = cu_path + ".o"
 
-            cuda_cmd = '"{cuda_home}/bin/nvcc" -gencode=arch=compute_52,code=compute_52 -DWP_CUDA --use_fast_math --compiler-options -fPIC -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+            if (config == "debug"):
+                cuda_cmd = '"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -I{warp_home}/native/cub -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path, warp_home=warp_home)
+
+            elif (config == "release"):
+                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC -gencode=arch=compute_52,code=compute_52 --use_fast_math -DWP_CUDA -I{warp_home}/native/cub -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path, warp_home=warp_home)
+
+            #cuda_cmd = f'"{cuda_home}/bin/nvcc" -gencode=arch=compute_52,code=compute_52 -DWP_CUDA --use_fast_math -I{warp_home}/native/cub --compiler-options -fPIC -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)

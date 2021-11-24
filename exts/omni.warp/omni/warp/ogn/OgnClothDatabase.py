@@ -40,6 +40,7 @@ class OgnClothDatabase(og.Database):
     """
     # This is an internal object that provides per-class storage of a per-node data dictionary
     PER_NODE_DATA = {}
+
     # This is an internal object that describes unchanging attributes in a generic way
     # The values in this list are in no particular order, as a per-attribute tuple
     #     Name, Type, ExtendedTypeIndex, UiName, Description, Metadata, Is_Required, DefaultValue
@@ -68,6 +69,7 @@ class OgnClothDatabase(og.Database):
         ('inputs:num_substeps', 'int', 0, None, '', {}, True, 32),
         ('outputs:positions', 'point3f[]', 0, None, 'Particle positions', {}, True, None),
     ])
+
     @classmethod
     def _populate_role_data(cls):
         """Populate a role structure with the non-default roles on this node type"""
@@ -80,6 +82,7 @@ class OgnClothDatabase(og.Database):
         role_data.inputs.ground_plane = og.Database.ROLE_VECTOR
         role_data.outputs.positions = og.Database.ROLE_POINT
         return role_data
+
     class ValuesForInputs:
         """Helper class that creates natural hierarchical access to input attributes"""
         def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes):
@@ -88,220 +91,179 @@ class OgnClothDatabase(og.Database):
             self.node = node
             self.attributes = attributes
             self.setting_locked = False
-
         @property
         def cloth_indices(self):
             return self.context_helper.get_attr_value(self.attributes.cloth_indices)
-
         @cloth_indices.setter
         def cloth_indices(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.cloth_indices)
             self.context_helper.set_attr_value(value, self.attributes.cloth_indices)
             self.cloth_indices_size = self.context_helper.get_elem_count(self.attributes.cloth_indices)
-
         @property
         def cloth_positions(self):
             return self.context_helper.get_attr_value(self.attributes.cloth_positions)
-
         @cloth_positions.setter
         def cloth_positions(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.cloth_positions)
             self.context_helper.set_attr_value(value, self.attributes.cloth_positions)
             self.cloth_positions_size = self.context_helper.get_elem_count(self.attributes.cloth_positions)
-
         @property
         def cloth_transform(self):
             return self.context_helper.get_attr_value(self.attributes.cloth_transform)
-
         @cloth_transform.setter
         def cloth_transform(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.cloth_transform)
             self.context_helper.set_attr_value(value, self.attributes.cloth_transform)
-
         @property
         def collider_indices(self):
             return self.context_helper.get_attr_value(self.attributes.collider_indices)
-
         @collider_indices.setter
         def collider_indices(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.collider_indices)
             self.context_helper.set_attr_value(value, self.attributes.collider_indices)
             self.collider_indices_size = self.context_helper.get_elem_count(self.attributes.collider_indices)
-
         @property
         def collider_offset(self):
             return self.context_helper.get_attr_value(self.attributes.collider_offset)
-
         @collider_offset.setter
         def collider_offset(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.collider_offset)
             self.context_helper.set_attr_value(value, self.attributes.collider_offset)
-
         @property
         def collider_positions(self):
             return self.context_helper.get_attr_value(self.attributes.collider_positions)
-
         @collider_positions.setter
         def collider_positions(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.collider_positions)
             self.context_helper.set_attr_value(value, self.attributes.collider_positions)
             self.collider_positions_size = self.context_helper.get_elem_count(self.attributes.collider_positions)
-
         @property
         def collider_transform(self):
             return self.context_helper.get_attr_value(self.attributes.collider_transform)
-
         @collider_transform.setter
         def collider_transform(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.collider_transform)
             self.context_helper.set_attr_value(value, self.attributes.collider_transform)
-
         @property
         def density(self):
             return self.context_helper.get_attr_value(self.attributes.density)
-
         @density.setter
         def density(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.density)
             self.context_helper.set_attr_value(value, self.attributes.density)
-
         @property
         def gravity(self):
             return self.context_helper.get_attr_value(self.attributes.gravity)
-
         @gravity.setter
         def gravity(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.gravity)
             self.context_helper.set_attr_value(value, self.attributes.gravity)
-
         @property
         def ground(self):
             return self.context_helper.get_attr_value(self.attributes.ground)
-
         @ground.setter
         def ground(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.ground)
             self.context_helper.set_attr_value(value, self.attributes.ground)
-
         @property
         def ground_plane(self):
             return self.context_helper.get_attr_value(self.attributes.ground_plane)
-
         @ground_plane.setter
         def ground_plane(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.ground_plane)
             self.context_helper.set_attr_value(value, self.attributes.ground_plane)
-
         @property
         def k_contact_damp(self):
             return self.context_helper.get_attr_value(self.attributes.k_contact_damp)
-
         @k_contact_damp.setter
         def k_contact_damp(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_contact_damp)
             self.context_helper.set_attr_value(value, self.attributes.k_contact_damp)
-
         @property
         def k_contact_elastic(self):
             return self.context_helper.get_attr_value(self.attributes.k_contact_elastic)
-
         @k_contact_elastic.setter
         def k_contact_elastic(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_contact_elastic)
             self.context_helper.set_attr_value(value, self.attributes.k_contact_elastic)
-
         @property
         def k_contact_friction(self):
             return self.context_helper.get_attr_value(self.attributes.k_contact_friction)
-
         @k_contact_friction.setter
         def k_contact_friction(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_contact_friction)
             self.context_helper.set_attr_value(value, self.attributes.k_contact_friction)
-
         @property
         def k_contact_mu(self):
             return self.context_helper.get_attr_value(self.attributes.k_contact_mu)
-
         @k_contact_mu.setter
         def k_contact_mu(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_contact_mu)
             self.context_helper.set_attr_value(value, self.attributes.k_contact_mu)
-
         @property
         def k_edge_bend(self):
             return self.context_helper.get_attr_value(self.attributes.k_edge_bend)
-
         @k_edge_bend.setter
         def k_edge_bend(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_edge_bend)
             self.context_helper.set_attr_value(value, self.attributes.k_edge_bend)
-
         @property
         def k_edge_damp(self):
             return self.context_helper.get_attr_value(self.attributes.k_edge_damp)
-
         @k_edge_damp.setter
         def k_edge_damp(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_edge_damp)
             self.context_helper.set_attr_value(value, self.attributes.k_edge_damp)
-
         @property
         def k_tri_area(self):
             return self.context_helper.get_attr_value(self.attributes.k_tri_area)
-
         @k_tri_area.setter
         def k_tri_area(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_tri_area)
             self.context_helper.set_attr_value(value, self.attributes.k_tri_area)
-
         @property
         def k_tri_damp(self):
             return self.context_helper.get_attr_value(self.attributes.k_tri_damp)
-
         @k_tri_damp.setter
         def k_tri_damp(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_tri_damp)
             self.context_helper.set_attr_value(value, self.attributes.k_tri_damp)
-
         @property
         def k_tri_elastic(self):
             return self.context_helper.get_attr_value(self.attributes.k_tri_elastic)
-
         @k_tri_elastic.setter
         def k_tri_elastic(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.k_tri_elastic)
             self.context_helper.set_attr_value(value, self.attributes.k_tri_elastic)
-
         @property
         def num_substeps(self):
             return self.context_helper.get_attr_value(self.attributes.num_substeps)
-
         @num_substeps.setter
         def num_substeps(self, value):
             if self.setting_locked:
                 raise og.ReadOnlyError(self.attributes.num_substeps)
             self.context_helper.set_attr_value(value, self.attributes.num_substeps)
+
     class ValuesForOutputs:
         """Helper class that creates natural hierarchical access to output attributes"""
         def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes):
@@ -310,22 +272,18 @@ class OgnClothDatabase(og.Database):
             self.node = node
             self.attributes = attributes
             self.positions_size = None
-
         @property
         def positions(self):
             return self.context_helper.get_attr_value(self.attributes.positions,getForWrite=True,writeElemCount=self.positions_size)
-
         @positions.setter
         def positions(self, value):
             self.context_helper.set_attr_value(value, self.attributes.positions)
             self.positions_size = self.context_helper.get_elem_count(self.attributes.positions)
     def __init__(self, context_helper, node):
-        try:
-            super().__init__(node, context_helper)
-            self.inputs = OgnClothDatabase.ValuesForInputs(self.context_helper, node, self.attributes.inputs)
-            self.outputs = OgnClothDatabase.ValuesForOutputs(self.context_helper, node, self.attributes.outputs)
-        except AttributeError:
-            self.log_hot_reload_problem(node)
+        super().__init__(node)
+        self.context_helper = context_helper
+        self.inputs = OgnClothDatabase.ValuesForInputs(self.context_helper, node, self.attributes.inputs)
+        self.outputs = OgnClothDatabase.ValuesForOutputs(self.context_helper, node, self.attributes.outputs)
     class abi:
         @staticmethod
         def get_node_type():
@@ -338,16 +296,10 @@ class OgnClothDatabase(og.Database):
             db = OgnClothDatabase(context_helper, node)
             try:
                 compute_function = getattr(OgnClothDatabase.NODE_TYPE_CLASS, 'compute', None)
-                if callable(compute_function) and compute_function.__code__.co_argcount > 1:
+                if callable(compute_function) and len(getfullargspec(compute_function).args) > 1:
                     return compute_function(context_helper, node)
                 with suppress(AttributeError):
                     db.inputs.setting_locked = True
-                try:
-                    x = db.inputs
-                    x = db.outputs
-                except AttributeError:
-                    db.log_hot_reload_problem(node)
-                    return False
                 return OgnClothDatabase.NODE_TYPE_CLASS.compute(db)
             except Exception as error:
                 db.log_error(f'Assertion raised in compute - {error}')
@@ -355,9 +307,9 @@ class OgnClothDatabase(og.Database):
         @staticmethod
         def initialize(context_helper, node):
             OgnClothDatabase._initialize_per_node_data(node)
+            db = OgnClothDatabase(context_helper, node)
 
             # Set any default values the attributes have specified
-            db = OgnClothDatabase(context_helper, node)
             db.inputs.cloth_indices = []
             db.inputs.cloth_positions = []
             db.inputs.cloth_transform = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
@@ -414,7 +366,4 @@ class OgnClothDatabase(og.Database):
     @staticmethod
     def register(node_type_class):
         OgnClothDatabase.NODE_TYPE_CLASS = node_type_class
-        og.register_node_type(OgnClothDatabase.abi, 1)
-    @staticmethod
-    def deregister():
-        og.deregister_node_type("omni.warp.OgnCloth")
+        og.register_node(OgnClothDatabase.abi, 1)

@@ -23,7 +23,7 @@ omni.warp.OgnCloth Properties
 +---------------------------+------------------+
 | Generated Class Name      | OgnClothDatabase |
 +---------------------------+------------------+
-| Python Module             | omni.warp        |
+| Node Namespace            | omni.warp        |
 +---------------------------+------------------+
 
 

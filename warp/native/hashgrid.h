@@ -1,7 +1,5 @@
 #pragma once
 
-#include "builtin.h"
-
 namespace wp
 {
 
@@ -10,17 +8,60 @@ struct HashGrid
     float cell_width;
     float cell_width_inv;
 
-    int* cell_starts;
-    int* cell_indices;
+    int* point_cells;   // cell id of a point
+    int* point_ids;     // index to original point
+    
+    int* cell_starts;   // start index of a range of indices belonging to a cell, dim_x*dim_y*dim_z in length
+    int* cell_ends;     // end index of a range of indices belonging to a cell, dim_x*dim_y*dim_z in length
 
     int dim_x;
     int dim_y;
-    int dim_z;    
+    int dim_z;
+
+    int num_points;
+    int max_points;
 };
 
-struct HashGridQuery
+// convert a virtual (world) cell coordinate to a physical one
+CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int z)
 {
-    HashGridQuery(const HashGrid& grid) : grid(grid) {} 
+    // offset to ensure positive coordinates (means grid dim should be less than 4096^3)
+    const int origin = 1<<20;
+
+    x += origin;
+    y += origin;
+    z += origin;
+
+    assert(x >= 0);
+    assert(y >= 0);
+    assert(z >= 0);
+
+    // compute physical cell (assume pow2 grid dims)
+    // int cx = x & (grid.dim_x-1);
+    // int cy = y & (grid.dim_y-1);
+    // int cz = z & (grid.dim_z-1);
+
+    // compute physical cell (arbitrary grid dims)
+    int cx = x%grid.dim_x;
+    int cy = y%grid.dim_y;
+    int cz = z%grid.dim_z;
+
+    return cz*(grid.dim_x*grid.dim_y) + cy*grid.dim_x + cx;
+}
+
+CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, const vec3& p)
+{
+    return hash_grid_index(grid, 
+                           int(p.x*grid.cell_width_inv), 
+                           int(p.y*grid.cell_width_inv),
+                           int(p.z*grid.cell_width_inv));
+}
+
+// stores state required to traverse neighboring cells of a point
+struct hash_grid_query_t
+{
+    CUDA_CALLABLE hash_grid_query_t() {}
+    CUDA_CALLABLE hash_grid_query_t(int) {} // for backward pass
 
     int x_start;
     int y_start;
@@ -34,122 +75,92 @@ struct HashGridQuery
     int y;
     int z;
 
+    int cell;
     int cell_index;     // offset in the current cell (index into cell_indices)
     int cell_end;       // index following the end of this cell 
     
-    const HashGrid& grid;
+    HashGrid grid;
 };
 
-// convert a virtual (world) cell coordinate to a physical one
-CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int z)
+CUDA_CALLABLE inline hash_grid_query_t hash_grid_query(uint64_t id, wp::vec3 pos, float radius)
 {
-    assert(x >= 0);
-    assert(y >= 0);
-    assert(z >= 0);
+    hash_grid_query_t query;
 
-    // compute physical cell
-    int cx = x & (grid.dim_x-1);
-    int cy = y & (grid.dim_y-1);
-    int cz = z & (grid.dim_z-1);
-
-    return cz*(grid.dim_x*grid.dim_y) + cy*grid.dim_x + cx;
-
-}
-
-CUDA_CALLABLE inline HashGridQuery hash_grid_query(uint64_t id, wp::vec3 pos, float radius)
-{
-    const HashGrid&  grid = (const HashGrid&)(id);
-    
-    HashGridQuery query(grid);
-
-    // offset to ensure positive coordinates, todo: expose?
-    const int origin = 65536;
+    query.grid = *(const HashGrid*)(id);
 
     // convert coordinate to grid
-    query.x_start = int((pos.x-radius)*grid.cell_width_inv) + origin;
-    query.y_start = int((pos.y-radius)*grid.cell_width_inv) + origin;
-    query.z_start = int((pos.z-radius)*grid.cell_width_inv) + origin;
+    query.x_start = int((pos.x-radius)*query.grid.cell_width_inv);
+    query.y_start = int((pos.y-radius)*query.grid.cell_width_inv);
+    query.z_start = int((pos.z-radius)*query.grid.cell_width_inv);
 
-    query.x_end = int((pos.x+radius)*grid.cell_width_inv) + origin;
-    query.y_end = int((pos.y+radius)*grid.cell_width_inv) + origin;
-    query.z_end = int((pos.z+radius)*grid.cell_width_inv) + origin;
+    // do not want to visit any cells more than once, so limit large radius offset to one pass over each dimension
+    query.x_end = min(int((pos.x+radius)*query.grid.cell_width_inv), query.x_start + query.grid.dim_x-1);
+    query.y_end = min(int((pos.y+radius)*query.grid.cell_width_inv), query.y_start + query.grid.dim_y-1);
+    query.z_end = min(int((pos.z+radius)*query.grid.cell_width_inv), query.z_start + query.grid.dim_z-1);
 
     query.x = query.x_start;
     query.y = query.y_start;
     query.z = query.z_start;
 
     const int cell = hash_grid_index(query.grid, query.x, query.y, query.z);
+    query.cell_index = query.grid.cell_starts[cell];
+    query.cell_end = query.grid.cell_ends[cell];
 
-    query.cell_index = query.grid.cell_starts[cell] - 1;    // -1 so that the iterator returns the first item 
-    query.cell_end = query.grid.cell_starts[cell+1];
+    return query;
 }
 
 
-CUDA_CALLABLE inline bool hash_grid_query_next(HashGridQuery& query, int& index)
+CUDA_CALLABLE inline bool hash_grid_query_next(hash_grid_query_t& query, int& index)
 {
-    query.cell_index++;
+    const HashGrid& grid = query.grid;
 
-    if (query.cell_index >= query.cell_end)
+    while (1)
     {
-        query.x++;
-        if (query.x > query.x_end)
+        if (query.cell_index < query.cell_end)
         {
-            query.x = query.x_start;
-            query.y++;
+            // write output index
+            index = grid.point_ids[query.cell_index++];            
+            return true;
         }
-
-        if (query.y > query.y_end)
+        else
         {
-            query.y = query.y_start;
-            query.z++;
+            query.x++;
+            if (query.x > query.x_end)
+            {
+                query.x = query.x_start;
+                query.y++;
+            }
+
+            if (query.y > query.y_end)
+            {
+                query.y = query.y_start;
+                query.z++;
+            }
+
+            if (query.z > query.z_end)
+            {
+                // finished lookup grid
+                return false;
+            }
+
+            // update cell pointers
+            const int cell = hash_grid_index(grid, query.x, query.y, query.z);
+
+            query.cell_index = grid.cell_starts[cell];
+            query.cell_end = grid.cell_ends[cell];        
         }
-
-        if (query.z > query.z_end)
-        {
-            // finished lookup grid
-            return false;
-        }
-
-        // update cell pointers
-        const int cell = hash_grid_index(query.grid, query.x, query.y, query.z);
-
-        query.cell_index = query.grid.cell_starts[cell];
-        query.cell_end = query.grid.cell_starts[cell+1];
     }
-
-    // write output index
-    index = query.grid.cell_indices[query.cell_index];
-
-    return true;
 }
 
-// CUDA_CALLABLE inline int hash_grid_query_current(HashGridQuery& query)
-// {
-//     return query.grid.cell_indices[query.cell_index];
-// }
+CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)
+{
+    const HashGrid* grid = (const HashGrid*)(id);
+    return grid->point_ids[index];
+}
 
-// query = hash_grid_query(grid, p);
+CUDA_CALLABLE inline void adj_hash_grid_query(uint64_t id, wp::vec3 pos, float radius, uint64_t& adj_id, wp::vec3& adj_pos, float& adj_radius, hash_grid_query_t& adj_res) {}
+CUDA_CALLABLE inline void adj_hash_grid_query_next(hash_grid_query_t& query, int& index, hash_grid_query_t& adj_query, int& adj_index, bool& adj_res) {}
+CUDA_CALLABLE inline void adj_hash_grid_point_id(uint64_t id, int& index, uint64_t & adj_id, int& adj_index, int& adj_res) {}
 
-// while (hash_grid_query_next(query)):
-// {
-//     index = hash_grid_query_current(query)
-
-//     # compute position
-
-//     # compute kernel
-
-//     # apply force
-
-//     # bye-bye
-// }
-
-
-uint64_t hash_grid_create_host(int dim_x, int dim_y, int dim_z);
-void hash_grid_destroy_host(uint64_t id);
-void hash_grid_update_host(uint64_t id, float cell_width, const wp::vec3* positions);
-
-uint64_t hash_grid_create_device(int dim_x, int dim_y, int dim_z);
-void hash_grid_destroy_device(uint64_t id);
-void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions);
 
 } // namespace wp

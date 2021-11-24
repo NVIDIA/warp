@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [0.1.20] - 2021-11-02
+
+- Updates to the ripple solver for GTC (support for multiple colliders, buoyancy, etc)
+
+## [0.1.19] - 2021-10-15
+
+- Publish from 2021.3 to avoid omni.graph database incompatabilities
+
 ## [0.1.18] - 2021-10-08
 
 - Enable Linux support (tested on 20.04)

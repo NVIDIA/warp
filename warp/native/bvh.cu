@@ -97,7 +97,7 @@ void bvh_refit_device(BVH& bvh, const bounds3* b)
     // clear child counters
     memset_device(bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
 
-    launch_device(bvh_refit_kernel, bvh.max_nodes, (cudaStream_t)cuda_get_stream(), (bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
+    wp_launch_device(bvh_refit_kernel, bvh.max_nodes, (bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
 }
 
 } // namespace wp

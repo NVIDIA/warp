@@ -60,6 +60,8 @@ void array_sum_host(uint64_t a, uint64_t out, int len)
 // impl. files
 #include "bvh.cpp"
 #include "mesh.cpp"
+#include "hashgrid.cpp"
+#include "sort.cpp"
 //#include "spline.inl"
 //#include "volume.inl"
 

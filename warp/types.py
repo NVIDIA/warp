@@ -312,6 +312,13 @@ class uint64:
         return ctypes.c_uint64
 
 
+# definition just for kernel type (cannot be a parameter), see hash_grid.h
+class hash_grid_query_t:
+
+    def __init__(self):
+        pass
+
+
 def type_length(dtype):
     if (dtype == float or dtype == int):
         return 1
@@ -415,6 +422,9 @@ class array:
             except:
                 raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype.ctype}")
             
+            # ensure contiguous
+            arr = np.ascontiguousarray(arr)
+
             ptr = arr.__array_interface__["data"][0]
             shape = arr.__array_interface__["shape"]
             length = shape[0]
@@ -644,5 +654,36 @@ class Volume:
     def __init__(self, vdb):
         pass
 
+
+
+class HashGrid:
+
+    def __init__(self, dim_x, dim_y, dim_z, device):
+        
+        self.device = device
+
+        from warp.context import runtime
+        self.context = runtime
+        
+        if (device == "cpu"):
+            self.id = self.context.core.hash_grid_create_host(dim_x, dim_y, dim_z)
+        elif (device == "cuda"):
+            self.id = self.context.core.hash_grid_create_device(dim_x, dim_y, dim_z)
+
+
+    def build(self, points, radius):
+        
+        if (self.device == "cpu"):
+            self.context.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
+        else:
+            self.context.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
+
+
+    def __del__(self):
+
+        if (self.device == "cpu"):
+            self.context.core.hash_grid_destroy_host(self.id)
+        else:
+            self.context.core.hash_grid_destroy_device(self.id)
 
 
