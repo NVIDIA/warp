@@ -25,8 +25,8 @@ struct HashGrid
 // convert a virtual (world) cell coordinate to a physical one
 CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int z)
 {
-    // offset to ensure positive coordinates
-    const int origin = 1<<24;
+    // offset to ensure positive coordinates (means grid dim should be less than 4096^3)
+    const int origin = 1<<20;
 
     x += origin;
     y += origin;
@@ -36,10 +36,15 @@ CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int
     assert(y >= 0);
     assert(z >= 0);
 
-    // compute physical cell
-    int cx = x & (grid.dim_x-1);
-    int cy = y & (grid.dim_y-1);
-    int cz = z & (grid.dim_z-1);
+    // compute physical cell (assume pow2 grid dims)
+    // int cx = x & (grid.dim_x-1);
+    // int cy = y & (grid.dim_y-1);
+    // int cz = z & (grid.dim_z-1);
+
+    // compute physical cell (arbitrary grid dims)
+    int cx = x%grid.dim_x;
+    int cy = y%grid.dim_y;
+    int cz = z%grid.dim_z;
 
     return cz*(grid.dim_x*grid.dim_y) + cy*grid.dim_x + cx;
 }

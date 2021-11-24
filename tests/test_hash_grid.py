@@ -15,7 +15,7 @@ wp.config.mode = "release"
 
 wp.init()
 
-num_points = 32768
+num_points = 4096
 dim_x = 128
 dim_y = 128
 dim_z = 128
@@ -90,6 +90,16 @@ for i in range(num_runs):
 
     np.random.seed(532)
     points = np.random.rand(num_points, 3)*scale - np.array((scale, scale, scale))*0.5
+
+    def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
+        points = np.meshgrid(np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z))
+        points_t = np.array((points[0], points[1], points[2])).T*radius*2.0 + np.array(lower)
+        points_t = points_t + np.random.rand(*points_t.shape)*radius*jitter
+        
+        return points_t.reshape((-1, 3))
+
+    #points = particle_grid(16, 32, 16, (0.0, 0.3, 0.0), cell_radius*0.25, 0.1)
+    points = np.load("tests/outputs/dem.npy", allow_pickle=True)
 
     points_arr = wp.array(points, dtype=wp.vec3, device=device)
     counts_arr = wp.zeros(len(points), dtype=int, device=device)
