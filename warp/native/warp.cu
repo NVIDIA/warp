@@ -336,7 +336,7 @@ void* cuda_get_kernel(void* module, const char* name)
     return kernel;
 }
 
-size_t cuda_launch_kernel(void* kernel, int dim, void** args)
+size_t cuda_launch_kernel(void* kernel, size_t dim, void** args)
 {
     const int block_dim = 256;
     const int grid_dim = (dim + block_dim - 1)/block_dim;
