@@ -71,7 +71,7 @@ class OgnParticleVolume:
 
             def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
                 points = np.meshgrid(np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z))
-                points_t = np.array((points[0], points[1], points[2])).T*radius*2.0 + np.array(lower)
+                points_t = np.array((points[0], points[1], points[2])).T*radius + np.array(lower)
                 points_t = points_t + np.random.rand(*points_t.shape)*radius*jitter - radius*jitter*0.5
                 
                 return points_t.reshape((-1, 3))
