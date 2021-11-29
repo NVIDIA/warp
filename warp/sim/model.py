@@ -305,7 +305,7 @@ class Model:
         self.soft_contact_distance = 0.1
         self.soft_contact_margin = 0.2
         self.soft_contact_ke = 1.e+3
-        self.soft_contact_kd = 0.0
+        self.soft_contact_kd = 10.0
         self.soft_contact_kf = 1.e+3
         self.soft_contact_mu = 0.5
 
@@ -319,7 +319,16 @@ class Model:
         self.edge_ke = 100.0
         self.edge_kd = 0.0
 
-        self.particle_radius = 0.1
+        self.particle_radius = 0.0
+        self.particle_ke = 1.e+3
+        self.particle_kd = 1.e+3
+        self.particle_kf = 1.e+3
+        self.particle_mu = 0.5
+        self.particle_cohesion = 0.0
+        self.particle_adhesion = 0.0
+        self.particle_grid = None
+        self.particle_margin = 0.0  # fraction of radius to expand the grid cell size
+
         self.device = device
 
     def state(self, requires_grad=False) -> State:
@@ -1259,6 +1268,30 @@ class ModelBuilder:
 
             self.add_edge(e.o0, e.o1, e.v0, e.v1)
 
+    def add_particle_grid(self,
+                      pos: Vec3,
+                      rot: Quat,
+                      vel: Vec3,
+                      dim_x: int,
+                      dim_y: int,
+                      dim_z: int,
+                      cell_x: float,
+                      cell_y: float,
+                      cell_z: float,
+                      mass: float,
+                      jitter: float):
+
+        for z in range(dim_z):
+            for y in range(dim_y):
+                for x in range(dim_x):
+
+                    v = np.array((x * cell_x, y * cell_y, z * cell_z))
+                    m = mass
+
+                    p = wp.quat_rotate(rot, v) + pos + np.random.rand(3)*jitter
+
+                    self.add_particle(p, vel, m)
+
     def add_soft_grid(self,
                       pos: Vec3,
                       rot: Quat,
@@ -1748,6 +1781,9 @@ class ModelBuilder:
 
         m.contact_count = 0
         
+        # hash-grid for particle interactions
+        m.particle_grid = wp.HashGrid(128, 128, 128, device)
+
         # store refs to geometry
         m.geo_meshes = self.geo_meshes
         m.geo_sdfs = self.geo_sdfs

@@ -4,8 +4,8 @@
 """
 
 import omni.graph.core as og
-from contextlib import suppress
-from inspect import getfullargspec
+import sys
+import traceback
 class OgnRippleDatabase(og.Database):
     """Helper class providing simplified access to data on nodes of type omni.warp.OgnRipple
 
@@ -39,213 +39,254 @@ class OgnRippleDatabase(og.Database):
     """
     # This is an internal object that provides per-class storage of a per-node data dictionary
     PER_NODE_DATA = {}
-
     # This is an internal object that describes unchanging attributes in a generic way
     # The values in this list are in no particular order, as a per-attribute tuple
     #     Name, Type, ExtendedTypeIndex, UiName, Description, Metadata, Is_Required, DefaultValue
     # You should not need to access any of this data directly, use the defined database interfaces
     INTERFACE = og.Database._get_interface([
-        ('inputs:buoyancy', 'float', 0, None, '', {}, True, 15.0),
-        ('inputs:buoyancy_damp', 'float', 0, None, '', {}, True, 0.25),
-        ('inputs:buoyancy_enabled', 'bool', 0, None, '', {}, True, False),
+        ('inputs:buoyancy', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '15.0'}, True, 15.0),
+        ('inputs:buoyancy_damp', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '0.25'}, True, 0.25),
+        ('inputs:buoyancy_enabled', 'bool', 0, None, '', {og.MetadataKeys.DEFAULT: 'false'}, True, False),
         ('inputs:collider_0', 'bundle', 0, None, '', {}, True, None),
         ('inputs:collider_1', 'bundle', 0, None, '', {}, True, None),
         ('inputs:collider_2', 'bundle', 0, None, '', {}, True, None),
         ('inputs:collider_3', 'bundle', 0, None, '', {}, True, None),
-        ('inputs:damp', 'float', 0, None, '', {}, True, 0),
-        ('inputs:delay', 'float', 0, None, '', {}, True, 0.0),
-        ('inputs:density_0', 'float', 0, None, '', {}, True, 1.0),
-        ('inputs:density_1', 'float', 0, None, '', {}, True, 1.0),
-        ('inputs:density_2', 'float', 0, None, '', {}, True, 1.0),
-        ('inputs:density_3', 'float', 0, None, '', {}, True, 1.0),
-        ('inputs:displace', 'float', 0, None, '', {}, True, 1.0),
-        ('inputs:gravity', 'float', 0, None, '', {}, True, -9.8),
+        ('inputs:damp', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '0'}, True, 0),
+        ('inputs:delay', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '0.0'}, True, 0.0),
+        ('inputs:density_0', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '1.0'}, True, 1.0),
+        ('inputs:density_1', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '1.0'}, True, 1.0),
+        ('inputs:density_2', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '1.0'}, True, 1.0),
+        ('inputs:density_3', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '1.0'}, True, 1.0),
+        ('inputs:displace', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '1.0'}, True, 1.0),
+        ('inputs:gravity', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '-9.8'}, True, -9.8),
         ('inputs:grid', 'bundle', 0, None, '', {}, True, None),
-        ('inputs:resolution', 'float', 0, None, '', {}, True, 50.0),
-        ('inputs:speed', 'float', 0, None, '', {}, True, 100.0),
+        ('inputs:resolution', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '50.0'}, True, 50.0),
+        ('inputs:speed', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '100.0'}, True, 100.0),
         ('outputs:face_counts', 'int[]', 0, None, '', {}, True, None),
         ('outputs:face_indices', 'int[]', 0, None, '', {}, True, None),
         ('outputs:vertices', 'point3f[]', 0, None, '', {}, True, None),
     ])
-
     @classmethod
     def _populate_role_data(cls):
         """Populate a role structure with the non-default roles on this node type"""
         role_data = super()._populate_role_data()
         role_data.outputs.vertices = og.Database.ROLE_POINT
         return role_data
-
-    class ValuesForInputs:
+    class ValuesForInputs(og.DynamicAttributeAccess):
         """Helper class that creates natural hierarchical access to input attributes"""
-        def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes):
+        def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes, dynamic_attributes: og.DynamicAttributeInterface):
             """Initialize simplified access for the attribute data"""
-            self.context_helper = context_helper
-            self.node = node
-            self.attributes = attributes
-            self.bundles = og.BundleContainer(context_helper.context, node, attributes, read_only=True)
-            self.setting_locked = False
+            super().__init__(context_helper, node, attributes, dynamic_attributes)
+            self.__bundles = og.BundleContainer(context_helper.context, node, attributes, [], read_only=True)
+
         @property
         def buoyancy(self):
-            return self.context_helper.get_attr_value(self.attributes.buoyancy)
+            return self._context_helper.get(self._attributes.buoyancy)
+
         @buoyancy.setter
         def buoyancy(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.buoyancy)
-            self.context_helper.set_attr_value(value, self.attributes.buoyancy)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.buoyancy)
+            self._context_helper.set_attr_value(value, self._attributes.buoyancy)
+
         @property
         def buoyancy_damp(self):
-            return self.context_helper.get_attr_value(self.attributes.buoyancy_damp)
+            return self._context_helper.get(self._attributes.buoyancy_damp)
+
         @buoyancy_damp.setter
         def buoyancy_damp(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.buoyancy_damp)
-            self.context_helper.set_attr_value(value, self.attributes.buoyancy_damp)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.buoyancy_damp)
+            self._context_helper.set_attr_value(value, self._attributes.buoyancy_damp)
+
         @property
         def buoyancy_enabled(self):
-            return self.context_helper.get_attr_value(self.attributes.buoyancy_enabled)
+            return self._context_helper.get(self._attributes.buoyancy_enabled)
+
         @buoyancy_enabled.setter
         def buoyancy_enabled(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.buoyancy_enabled)
-            self.context_helper.set_attr_value(value, self.attributes.buoyancy_enabled)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.buoyancy_enabled)
+            self._context_helper.set_attr_value(value, self._attributes.buoyancy_enabled)
+
         @property
         def collider_0(self) -> og.BundleContents:
             """Get the bundle wrapper class for the attribute inputs.collider_0"""
-            return self.bundles.collider_0
+            return self.__bundles.collider_0
+
         @property
         def collider_1(self) -> og.BundleContents:
             """Get the bundle wrapper class for the attribute inputs.collider_1"""
-            return self.bundles.collider_1
+            return self.__bundles.collider_1
+
         @property
         def collider_2(self) -> og.BundleContents:
             """Get the bundle wrapper class for the attribute inputs.collider_2"""
-            return self.bundles.collider_2
+            return self.__bundles.collider_2
+
         @property
         def collider_3(self) -> og.BundleContents:
             """Get the bundle wrapper class for the attribute inputs.collider_3"""
-            return self.bundles.collider_3
+            return self.__bundles.collider_3
+
         @property
         def damp(self):
-            return self.context_helper.get_attr_value(self.attributes.damp)
+            return self._context_helper.get(self._attributes.damp)
+
         @damp.setter
         def damp(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.damp)
-            self.context_helper.set_attr_value(value, self.attributes.damp)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.damp)
+            self._context_helper.set_attr_value(value, self._attributes.damp)
+
         @property
         def delay(self):
-            return self.context_helper.get_attr_value(self.attributes.delay)
+            return self._context_helper.get(self._attributes.delay)
+
         @delay.setter
         def delay(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.delay)
-            self.context_helper.set_attr_value(value, self.attributes.delay)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.delay)
+            self._context_helper.set_attr_value(value, self._attributes.delay)
+
         @property
         def density_0(self):
-            return self.context_helper.get_attr_value(self.attributes.density_0)
+            return self._context_helper.get(self._attributes.density_0)
+
         @density_0.setter
         def density_0(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.density_0)
-            self.context_helper.set_attr_value(value, self.attributes.density_0)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.density_0)
+            self._context_helper.set_attr_value(value, self._attributes.density_0)
+
         @property
         def density_1(self):
-            return self.context_helper.get_attr_value(self.attributes.density_1)
+            return self._context_helper.get(self._attributes.density_1)
+
         @density_1.setter
         def density_1(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.density_1)
-            self.context_helper.set_attr_value(value, self.attributes.density_1)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.density_1)
+            self._context_helper.set_attr_value(value, self._attributes.density_1)
+
         @property
         def density_2(self):
-            return self.context_helper.get_attr_value(self.attributes.density_2)
+            return self._context_helper.get(self._attributes.density_2)
+
         @density_2.setter
         def density_2(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.density_2)
-            self.context_helper.set_attr_value(value, self.attributes.density_2)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.density_2)
+            self._context_helper.set_attr_value(value, self._attributes.density_2)
+
         @property
         def density_3(self):
-            return self.context_helper.get_attr_value(self.attributes.density_3)
+            return self._context_helper.get(self._attributes.density_3)
+
         @density_3.setter
         def density_3(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.density_3)
-            self.context_helper.set_attr_value(value, self.attributes.density_3)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.density_3)
+            self._context_helper.set_attr_value(value, self._attributes.density_3)
+
         @property
         def displace(self):
-            return self.context_helper.get_attr_value(self.attributes.displace)
+            return self._context_helper.get(self._attributes.displace)
+
         @displace.setter
         def displace(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.displace)
-            self.context_helper.set_attr_value(value, self.attributes.displace)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.displace)
+            self._context_helper.set_attr_value(value, self._attributes.displace)
+
         @property
         def gravity(self):
-            return self.context_helper.get_attr_value(self.attributes.gravity)
+            return self._context_helper.get(self._attributes.gravity)
+
         @gravity.setter
         def gravity(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.gravity)
-            self.context_helper.set_attr_value(value, self.attributes.gravity)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.gravity)
+            self._context_helper.set_attr_value(value, self._attributes.gravity)
+
         @property
         def grid(self) -> og.BundleContents:
             """Get the bundle wrapper class for the attribute inputs.grid"""
-            return self.bundles.grid
+            return self.__bundles.grid
+
         @property
         def resolution(self):
-            return self.context_helper.get_attr_value(self.attributes.resolution)
+            return self._context_helper.get(self._attributes.resolution)
+
         @resolution.setter
         def resolution(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.resolution)
-            self.context_helper.set_attr_value(value, self.attributes.resolution)
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.resolution)
+            self._context_helper.set_attr_value(value, self._attributes.resolution)
+
         @property
         def speed(self):
-            return self.context_helper.get_attr_value(self.attributes.speed)
+            return self._context_helper.get(self._attributes.speed)
+
         @speed.setter
         def speed(self, value):
-            if self.setting_locked:
-                raise og.ReadOnlyError(self.attributes.speed)
-            self.context_helper.set_attr_value(value, self.attributes.speed)
-
-    class ValuesForOutputs:
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.speed)
+            self._context_helper.set_attr_value(value, self._attributes.speed)
+    class ValuesForOutputs(og.DynamicAttributeAccess):
         """Helper class that creates natural hierarchical access to output attributes"""
-        def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes):
+        def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes, dynamic_attributes: og.DynamicAttributeInterface):
             """Initialize simplified access for the attribute data"""
-            self.context_helper = context_helper
-            self.node = node
-            self.attributes = attributes
+            super().__init__(context_helper, node, attributes, dynamic_attributes)
             self.face_counts_size = None
             self.face_indices_size = None
             self.vertices_size = None
+
         @property
         def face_counts(self):
-            return self.context_helper.get_attr_value(self.attributes.face_counts,getForWrite=True,writeElemCount=self.face_counts_size)
+            return self._context_helper.get_array(self._attributes.face_counts, get_for_write=True, reserved_element_count=self.face_counts_size)
+
         @face_counts.setter
         def face_counts(self, value):
-            self.context_helper.set_attr_value(value, self.attributes.face_counts)
-            self.face_counts_size = self.context_helper.get_elem_count(self.attributes.face_counts)
+            self._context_helper.set_attr_value(value, self._attributes.face_counts)
+            self.face_counts_size = self._context_helper.get_elem_count(self._attributes.face_counts)
+
         @property
         def face_indices(self):
-            return self.context_helper.get_attr_value(self.attributes.face_indices,getForWrite=True,writeElemCount=self.face_indices_size)
+            return self._context_helper.get_array(self._attributes.face_indices, get_for_write=True, reserved_element_count=self.face_indices_size)
+
         @face_indices.setter
         def face_indices(self, value):
-            self.context_helper.set_attr_value(value, self.attributes.face_indices)
-            self.face_indices_size = self.context_helper.get_elem_count(self.attributes.face_indices)
+            self._context_helper.set_attr_value(value, self._attributes.face_indices)
+            self.face_indices_size = self._context_helper.get_elem_count(self._attributes.face_indices)
+
         @property
         def vertices(self):
-            return self.context_helper.get_attr_value(self.attributes.vertices,getForWrite=True,writeElemCount=self.vertices_size)
+            return self._context_helper.get_array(self._attributes.vertices, get_for_write=True, reserved_element_count=self.vertices_size)
+
         @vertices.setter
         def vertices(self, value):
-            self.context_helper.set_attr_value(value, self.attributes.vertices)
-            self.vertices_size = self.context_helper.get_elem_count(self.attributes.vertices)
+            self._context_helper.set_attr_value(value, self._attributes.vertices)
+            self.vertices_size = self._context_helper.get_elem_count(self._attributes.vertices)
+    class ValuesForState(og.DynamicAttributeAccess):
+        """Helper class that creates natural hierarchical access to state attributes"""
+        def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes, dynamic_attributes: og.DynamicAttributeInterface):
+            """Initialize simplified access for the attribute data"""
+            super().__init__(context_helper, node, attributes, dynamic_attributes)
     def __init__(self, context_helper, node):
-        super().__init__(node)
-        self.context_helper = context_helper
-        self.inputs = OgnRippleDatabase.ValuesForInputs(self.context_helper, node, self.attributes.inputs)
-        self.outputs = OgnRippleDatabase.ValuesForOutputs(self.context_helper, node, self.attributes.outputs)
+        super().__init__(node, context_helper)
+        dynamic_attributes = self.dynamic_attribute_data(node, og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT)
+        self.inputs = OgnRippleDatabase.ValuesForInputs(context_helper, node, self.attributes.inputs, dynamic_attributes)
+        dynamic_attributes = self.dynamic_attribute_data(node, og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT)
+        self.outputs = OgnRippleDatabase.ValuesForOutputs(context_helper, node, self.attributes.outputs, dynamic_attributes)
+        dynamic_attributes = self.dynamic_attribute_data(node, og.AttributePortType.ATTRIBUTE_PORT_TYPE_STATE)
+        self.state = OgnRippleDatabase.ValuesForState(context_helper, node, self.attributes.state, dynamic_attributes)
+
+    @property
+    def context(self) -> og.GraphContext:
+        return self.context_helper.context
     class abi:
+        """Class defining the ABI interface for the node type"""
         @staticmethod
         def get_node_type():
             get_node_type_function = getattr(OgnRippleDatabase.NODE_TYPE_CLASS, 'get_node_type', None)
@@ -256,21 +297,23 @@ class OgnRippleDatabase(og.Database):
         def compute(context_helper, node):
             db = OgnRippleDatabase(context_helper, node)
             try:
+                db.inputs._setting_locked = True
                 compute_function = getattr(OgnRippleDatabase.NODE_TYPE_CLASS, 'compute', None)
-                if callable(compute_function) and len(getfullargspec(compute_function).args) > 1:
+                if callable(compute_function) and compute_function.__code__.co_argcount > 1:
                     return compute_function(context_helper, node)
-                with suppress(AttributeError):
-                    db.inputs.setting_locked = True
                 return OgnRippleDatabase.NODE_TYPE_CLASS.compute(db)
             except Exception as error:
-                db.log_error(f'Assertion raised in compute - {error}')
+                stack_trace = "".join(traceback.format_tb(sys.exc_info()[2].tb_next))
+                db.log_error(f'Assertion raised in compute - {error}\n{stack_trace}', add_context=False)
+            finally:
+                db.inputs._setting_locked = False
             return False
         @staticmethod
         def initialize(context_helper, node):
             OgnRippleDatabase._initialize_per_node_data(node)
-            db = OgnRippleDatabase(context_helper, node)
 
             # Set any default values the attributes have specified
+            db = OgnRippleDatabase(context_helper, node)
             db.inputs.buoyancy = 15.0
             db.inputs.buoyancy_damp = 0.25
             db.inputs.buoyancy_enabled = False
@@ -306,8 +349,9 @@ class OgnRippleDatabase(og.Database):
             if callable(initialize_type_function):
                 needs_initializing = initialize_type_function(node_type)
             if needs_initializing:
-                node_type.set_metadata('__extension', "omni.warp")
-                node_type.set_metadata("__description", "2D Wave equation solver")
+                node_type.set_metadata(og.MetadataKeys.EXTENSION, "omni.warp")
+                node_type.set_metadata(og.MetadataKeys.DESCRIPTION, "2D Wave equation solver")
+                node_type.set_metadata(og.MetadataKeys.LANGUAGE, "Python")
                 OgnRippleDatabase.INTERFACE.add_to_node_type(node_type)
                 node_type.set_has_state(True)
         @staticmethod
@@ -319,4 +363,7 @@ class OgnRippleDatabase(og.Database):
     @staticmethod
     def register(node_type_class):
         OgnRippleDatabase.NODE_TYPE_CLASS = node_type_class
-        og.register_node(OgnRippleDatabase.abi, 1)
+        og.register_node_type(OgnRippleDatabase.abi, 1)
+    @staticmethod
+    def deregister():
+        og.deregister_node_type("omni.warp.OgnRipple")

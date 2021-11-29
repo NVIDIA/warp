@@ -11,6 +11,7 @@ import numpy as np
 np.random.seed(532)
 
 wp.config.mode = "release"
+wp.config.verify_cuda = True
 
 wp.init()
 
@@ -133,8 +134,8 @@ grid_cell_size = point_radius*5.0
 # creates a grid of particles
 def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
     points = np.meshgrid(np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z))
-    points_t = np.array((points[0], points[1], points[2])).T*point_radius*2.0 + np.array(lower)
-    points_t = points_t + np.random.rand(*points_t.shape)*point_radius*jitter
+    points_t = np.array((points[0], points[1], points[2])).T*radius*2.0 + np.array(lower)
+    points_t = points_t + np.random.rand(*points_t.shape)*radius*jitter
     
     return points_t.reshape((-1, 3))
 
@@ -152,7 +153,7 @@ k_mu = 100000.0 # for cohesive materials
 
 renderer = UsdRenderer("tests/outputs/test_dem.usd")
 
-use_graph = True
+use_graph = False
 if (use_graph):
 
     wp.capture_begin()

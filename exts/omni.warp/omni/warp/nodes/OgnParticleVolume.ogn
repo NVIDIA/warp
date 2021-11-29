@@ -1,0 +1,51 @@
+{
+    "OgnParticleVolume": {
+        "version": 1,
+        "description": "Particle volume sampler",
+        "language": "Python",
+        "inputs": {
+            "execIn": {
+                "type": "int",
+                "description": "",
+                "default": 0
+            },
+            "volume": {
+                "type": "bundle",
+                "description": "Collision Prim"
+            },
+            "sample_volume": {
+                "type": "bool",
+                "description": "",
+                "default": true
+            },
+            "sample_surface": {
+                "type": "bool",
+                "description": "",
+                "default": true
+            },
+            "spacing": {
+                "type": "float",
+                "description": "",
+                "default": 10.0
+            },
+            "spacing_jitter": {
+                "type": "float",
+                "description": "",
+                "default": 0.0
+            }
+        },
+        "outputs": {
+            "positions": {
+                "type": "pointf[3][]",
+                "description": "Particle positions"
+            },
+            "protoIndices": {
+                "type": "int[]",
+                "description": "Protoindices"                
+            }
+        },
+        "state": {
+            "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
+        }
+    }
+}

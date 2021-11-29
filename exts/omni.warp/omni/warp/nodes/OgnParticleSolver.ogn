@@ -1,0 +1,100 @@
+{
+    "OgnParticleSolver": {
+        "version": 1,
+        "description": "Particle simulation node",
+        "language": "Python",
+        "inputs": {
+            "positions": {
+                "type": "pointf[3][]",
+                "description": "Particle positions",
+                "default": []
+            },
+            "collider": {
+                "type": "bundle",
+                "description": "Collision Prim"
+            },
+            "collider_offset": {
+                "type": "float",
+                "description": "",
+                "default": 0.01
+            },
+            "mass": {
+                "type": "float",
+                "description": "",
+                "default": 1.0
+            },
+            "radius": {
+                "type": "float",
+                "description": "",
+                "default": 10.0
+            },
+            "k_contact_elastic": {
+                "type": "float",
+                "description": "",
+                "default": 5000.0
+            },
+            "k_contact_damp": {
+                "type": "float",
+                "description": "",
+                "default": 100.0
+            },
+            "k_contact_friction": {
+                "type": "float",
+                "description": "",
+                "default": 2000.0
+            },
+            "k_contact_mu": {
+                "type": "float",
+                "description": "",
+                "default": 0.75
+            },
+            "k_contact_cohesion": {
+                "type": "float",
+                "description": "",
+                "default": 0.75
+            },
+            "k_contact_adhesion": {
+                "type": "float",
+                "description": "",
+                "default": 0.75
+            },                       
+            "num_substeps": {
+                "type": "int",
+                "description": "",
+                "default": 32
+            },
+            "gravity": {
+                "type": "vectorf[3]",
+                "description": "",
+                "default": [
+                    0.0,
+                    -9.8,
+                    0.0
+                ]
+            },
+            "ground": {
+                "type": "bool",
+                "description": "",
+                "default": false
+            },            
+            "ground_plane": {
+                "type": "vectorf[3]",
+                "description": "",
+                "default": [
+                    0.0,
+                    1.0,
+                    0.0
+                ]
+            }
+        },
+        "outputs": {
+            "positions": {
+                "type": "pointf[3][]",
+                "description": "Particle positions"
+            }
+        },
+        "state": {
+            "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
+        }
+    }
+}
