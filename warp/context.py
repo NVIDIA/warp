@@ -210,6 +210,9 @@ add_builtin("cos", input_types={"x": float}, value_type=float, doc="", group="Sc
 add_builtin("acos", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("asin", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("sqrt", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("tan", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("atan", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("atan2", input_types={"y": float, "x": float}, value_type=float, doc="", group="Scalar Math")
 
 add_builtin("log", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("log", input_types={"x": vec3}, value_type=vec3, doc="", group="Scalar Math")

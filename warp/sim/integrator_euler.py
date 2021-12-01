@@ -863,7 +863,8 @@ def eval_soft_contacts(
     body_com: wp.array(dtype=wp.vec3),
     ke: float,
     kd: float, 
-    kf: float, 
+    kf: float,
+    ka: float,
     mu: float,
     contact_count: wp.array(dtype=int),
     contact_particle: wp.array(dtype=int),
@@ -902,7 +903,7 @@ def eval_soft_contacts(
     n = contact_normal[tid]
     c = wp.dot(n, px-bx) - contact_distance
     
-    if (c > 0.0):
+    if (c > ka):
         return
 
     # body velocity
@@ -942,9 +943,9 @@ def eval_soft_contacts(
     #ft = wp.vec3(vx, 0.0, vz)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
-    ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*c*ke)
+    ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), abs(mu*c*ke))
 
-    f_total = fn + (fd + ft) * wp.step(c)
+    f_total = fn + (fd + ft)
     t_total = wp.cross(r, f_total)
 
     wp.atomic_sub(particle_f, particle_index, f_total)
@@ -1536,6 +1537,7 @@ def compute_forces(model, state, particle_f, body_f):
                         model.soft_contact_ke,
                         model.soft_contact_kd, 
                         model.soft_contact_kf, 
+                        model.particle_adhesion,
                         model.soft_contact_mu,
                         model.soft_contact_count,
                         model.soft_contact_particle,

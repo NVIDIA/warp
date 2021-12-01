@@ -105,9 +105,12 @@ inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
 inline CUDA_CALLABLE float acos(float x) { return ::acos(min(max(x, -1.0f), 1.0f)); }
 inline CUDA_CALLABLE float asin(float x) { return ::asin(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float atan(float x) { return ::atan(x); }
+inline CUDA_CALLABLE float atan2(float y, float x) { return ::atan2(y, x); }
 inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
 inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
 inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
+inline CUDA_CALLABLE float tan(float x) { return ::tan(x); }
 
 inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
 inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret/b; adj_b -= adj_ret*(a/b)/b; }
@@ -187,9 +190,9 @@ inline CUDA_CALLABLE void adj_sign(float x, float& adj_x, float adj_ret)
 inline CUDA_CALLABLE void adj_abs(float x, float& adj_x, float adj_ret)
 {
     if (x < 0.0f)
-        adj_x += adj_ret;
+        adj_x -= adj_ret;
     else
-        adj_x -= adj_ret;                
+        adj_x += adj_ret;                
 }
 
 inline CUDA_CALLABLE void adj_acos(float x, float& adj_x, float adj_ret)
@@ -204,6 +207,22 @@ inline CUDA_CALLABLE void adj_asin(float x, float& adj_x, float adj_ret)
     float d = sqrt(1.0f-x*x);
     if (d > 0.0f)
         adj_x += (1.0f/d)*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_tan(float x, float& adj_x, float adj_ret)
+{
+    float cos_x = cos(x);
+    adj_x += (1.0f/(cos_x*cos_x))*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_atan(float x, float& adj_x, float adj_ret)
+{
+    adj_x += (x*x + 1.0f)*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_atan2(float y, float x, float& adj_y, float& adj_x, float adj_ret)
+{
+    printf("arctan2 adjoint not implemented");
 }
 
 

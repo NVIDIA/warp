@@ -76,19 +76,21 @@ def eval_particle_forces_kernel(grid : wp.uint64,
 
 def eval_particle_forces(model, state, forces):
 
-    wp.launch(
-        kernel=eval_particle_forces_kernel,
-        dim=model.particle_count,
-        inputs=[
-            model.particle_grid.id,
-            state.particle_q,
-            state.particle_qd,
-            forces,
-            model.particle_radius,
-            model.particle_ke,
-            model.particle_kd,
-            model.particle_kf,
-            model.particle_mu,
-            model.particle_cohesion
-        ],
-        device=model.device)
+    if (model.particle_radius > 0.0):
+            
+        wp.launch(
+            kernel=eval_particle_forces_kernel,
+            dim=model.particle_count,
+            inputs=[
+                model.particle_grid.id,
+                state.particle_q,
+                state.particle_qd,
+                forces,
+                model.particle_radius,
+                model.particle_ke,
+                model.particle_kd,
+                model.particle_kf,
+                model.particle_mu,
+                model.particle_cohesion
+            ],
+            device=model.device)
