@@ -46,6 +46,7 @@
         },
         "state": {
             "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
-        }
+        },
+        "tokens": ["points", "worldMatrix", "primPath", "faceVertexCounts", "faceVertexIndices"]
     }
 }

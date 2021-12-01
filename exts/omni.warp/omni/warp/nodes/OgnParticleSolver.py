@@ -20,6 +20,38 @@ def read_transform(input):
     xform = Gf.Matrix4d(input.reshape((4,4)))
     return xform
 
+def read_transform_bundle(db, bundle):
+    # timeline =  omni.timeline.get_timeline_interface()
+    # time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
+
+    # stage = omni.usd.get_context().get_stage()
+    # prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
+    # return prim.ComputeLocalToWorldTransform(time)
+    #print(bundle.attribute_by_name(db.tokens.transform).value.reshape(4,4))
+
+    m = Gf.Matrix4d(bundle.attribute_by_name(db.tokens.transform).value.reshape(4,4))
+    return m
+
+
+def triangulate(counts, indices):
+
+    # triangulate
+    num_tris = np.sum(np.subtract(counts, 2))
+    num_tri_vtx = num_tris * 3
+    tri_indices = np.zeros(num_tri_vtx, dtype=int)
+    ctr = 0
+    wedgeIdx = 0
+    for nb in counts:
+        for i in range(nb-2):
+            tri_indices[ctr] = indices[wedgeIdx]
+            tri_indices[ctr + 1] = indices[wedgeIdx + i + 1]
+            tri_indices[ctr + 2] = indices[wedgeIdx + i + 2]
+            ctr+=3
+        wedgeIdx+=nb
+
+    return tri_indices
+
+
 
 # transform points from local space to world space given a mat44
 @wp.kernel
@@ -134,34 +166,48 @@ class OgnParticleSolver:
                                                      mass=db.inputs.mass)
 
 
-                    # # collision shape
-                    # with wp.ScopedTimer("Create Collider"):
+                    # collision shape
+                    with wp.ScopedTimer("Create Collider"):
 
-                    #     if (len(db.inputs.collider_positions) and len(db.inputs.collider_indices)):
+                        collider = db.inputs.collider
 
-                    #         collider_xform = read_transform(db.inputs.collider_transform)
-                    #         collider_positions = db.inputs.collider_positions
-                    #         collider_indices = db.inputs.collider_indices
+                        if (collider.valid):
 
-                    #         # save local copy
-                    #         state.collider_positions_current = wp.array(collider_positions, dtype=wp.vec3, device=device)
-                    #         state.collider_positions_previous = wp.array(collider_positions, dtype=wp.vec3, device=device)
+                            # for a in collider.attributes:
+                            #     print(a.name)
 
-                    #         world_positions = []
-                    #         for i in range(len(collider_positions)):
-                    #             world_positions.append(collider_xform.Transform(Gf.Vec3f(tuple(collider_positions[i]))))
+                            collider_points = collider.attribute_by_name(db.tokens.points).value
+                            collider_indices = collider.attribute_by_name(db.tokens.faceVertexIndices).value
+                            collider_counts = collider.attribute_by_name(db.tokens.faceVertexCounts).value
+                            collider_xform = read_transform_bundle(db, collider)
 
-                    #         state.mesh = wp.sim.Mesh(
-                    #             world_positions,
-                    #             collider_indices,
-                    #             compute_inertia=False)
+                            # save local copy
+                            state.collider_positions_current = wp.array(collider_points, dtype=wp.vec3, device=device)
+                            state.collider_positions_previous = wp.array(collider_points, dtype=wp.vec3, device=device)
 
-                    #         builder.add_shape_mesh(
-                    #             body=-1,
-                    #             mesh=state.mesh,
-                    #             pos=(0.0, 0.0, 0.0),
-                    #             rot=(0.0, 0.0, 0.0, 1.0),
-                    #             scale=(1.0, 1.0, 1.0))
+                            world_positions = []
+                            for i in range(len(collider_points)):
+                                world_positions.append(collider_xform.Transform(Gf.Vec3f(tuple(collider_points[i]))))
+
+                            state.mesh = wp.sim.Mesh(
+                                world_positions,
+                                triangulate(collider_counts, collider_indices),
+                                compute_inertia=False)
+
+                            builder.add_shape_mesh(
+                                body=-1,
+                                mesh=state.mesh,
+                                pos=(0.0, 0.0, 0.0),
+                                rot=(0.0, 0.0, 0.0, 1.0),
+                                scale=(1.0, 1.0, 1.0))
+
+                            # builder.add_shape_sphere(
+                            #     body=-1,
+                            #     pos=(0.0, 20.0, 250.0),
+                            #     rot=(0.0, 0.0, 0.0, 1.0),
+                            #     radius=50.0)
+
+                            state.collider_xform = read_transform_bundle(db, db.inputs.collider)
 
                     # finalize sim model
                     model = builder.finalize(device)
@@ -181,9 +227,7 @@ class OgnParticleSolver:
                     state.positions_host = wp.zeros(model.particle_count, dtype=wp.vec3, device="cpu")
                     state.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3, device=device)
 
-                    # state.collider_xform = read_transform(db.inputs.collider_transform)
-
-
+                    
                 # update dynamic properties
                 state.model.ground = db.inputs.ground
                 state.model.ground_plane = np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2], 0.0))
@@ -204,42 +248,43 @@ class OgnParticleSolver:
                 state.model.soft_contact_kf = db.inputs.k_contact_friction
                 state.model.soft_contact_mu = db.inputs.k_contact_mu
                 state.model.soft_contact_distance = db.inputs.collider_offset
-                state.model.soft_contact_margin = db.inputs.collider_offset*10.0
+                state.model.soft_contact_margin = db.inputs.collider_offset*100.0
 
-                # # update collider positions
-                # with wp.ScopedTimer("Refit", active=False):
+                # update collider positions
+                with wp.ScopedTimer("Refit", active=profile_enabled):
                     
-                #     if (state.mesh):
+                    if (state.mesh):
                         
-                #         # swap prev/curr mesh positions
-                #         state.swap()
+                        # swap prev/curr mesh positions
+                        state.swap()
 
-                #         # update current, todo: make this zero alloc and memcpy directly from numpy memory
-                #         collider_points_host = wp.array(db.inputs.collider_positions, dtype=wp.vec3, copy=False, device="cpu")
-                #         wp.copy(state.collider_positions_current, collider_points_host)
+                        collider_points = db.inputs.collider.attribute_by_name(db.tokens.points).value
+                        collider_points_host = wp.array(collider_points, dtype=wp.vec3, copy=False, device="cpu")
 
-                #         alpha = 1.0#(i+1)/sim_substeps
+                        wp.copy(state.collider_positions_current, collider_points_host)
 
-                #         previous_xform = state.collider_xform
-                #         current_xform = read_transform(db.inputs.collider_transform)
+                        alpha = 0.0#(i+1)/sim_substeps
 
-                #         wp.launch(
-                #             kernel=transform_mesh, 
-                #             dim=len(state.mesh.vertices), 
-                #             inputs=[state.collider_positions_current,
-                #                     state.collider_positions_previous,
-                #                     np.array(current_xform).T,
-                #                     np.array(previous_xform).T,
-                #                     state.mesh.mesh.points,
-                #                     state.mesh.mesh.velocities,
-                #                     1.0/60.0,
-                #                     alpha],
-                #                     device=device)
+                        previous_xform = state.collider_xform
+                        current_xform = read_transform_bundle(db, db.inputs.collider)
 
-                #         state.collider_xform = current_xform
+                        wp.launch(
+                            kernel=transform_mesh, 
+                            dim=len(state.mesh.vertices), 
+                            inputs=[state.collider_positions_current,
+                                    state.collider_positions_previous,
+                                    np.array(current_xform).T,
+                                    np.array(previous_xform).T,
+                                    state.mesh.mesh.points,
+                                    state.mesh.mesh.velocities,
+                                    1.0/60.0,
+                                    alpha],
+                                    device=device)
 
-                #         # refit bvh
-                #         state.mesh.mesh.refit()
+                        state.collider_xform = current_xform
+
+                        # refit bvh
+                        state.mesh.mesh.refit()
 
                 use_graph = True
                 if (use_graph):
@@ -252,7 +297,7 @@ class OgnParticleSolver:
                         sim_dt = (1.0/60)/sim_substeps
 
                         # run collision detection once per-frame
-                        # wp.sim.collide(state.model, state.state_0)
+                        wp.sim.collide(state.model, state.state_0)
 
                         for i in range(sim_substeps):
 
@@ -272,7 +317,7 @@ class OgnParticleSolver:
                 with wp.ScopedTimer("Simulate", active=profile_enabled):
                     
                     if (use_graph):
-                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*2.0)
+                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*3.0)
                         wp.capture_launch(state.capture)
                     else:
                         
@@ -281,8 +326,12 @@ class OgnParticleSolver:
                         sim_dt = (1.0/60)/sim_substeps
 
                         # run collision detection once per-frame
-                        # wp.sim.collide(state.model, state.state_0)
-                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*2.0)
+                        wp.sim.collide(state.model, state.state_0)
+
+                        # pos = read_transform_bundle(db.inputs.collider).ExtractTranslation()
+                        # state.model.shape_transform = wp.array([wp.transform((pos[0], pos[1], pos[2]), wp.quat_identity())], dtype=wp.transform, device=device)
+
+                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*2.5)
 
                         for i in range(sim_substeps):
 
@@ -326,7 +375,8 @@ class OgnParticleSolver:
                     
                     # timeline not playing and sim. not yet initialized, just pass through outputs
                     if state.model is None:
-                        db.outputs.positions = db.inputs.positions
+                        db.outputs.positions_size = len(db.inputs.positions)
+                        db.outputs.positions[:] = db.inputs.positions
 
 
         return True
