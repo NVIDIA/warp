@@ -263,13 +263,7 @@ template <typename T>
 CUDA_CALLABLE inline T operator*(float s, const T& a) { return mul(a, s); }
 
 template <typename T>
-CUDA_CALLABLE inline T operator*(const T& a, const T& b) { return mul(a, b); }
-
-template <typename T>
 CUDA_CALLABLE inline T operator/(const T& a, float s) { return div(a, s); }
-
-template <typename T>
-CUDA_CALLABLE inline T operator/(const T& a, const T& b) { return div(a, b); }
 
 template <typename T>
 CUDA_CALLABLE inline T operator+(const T& a, const T& b) { return add(a, b); }
