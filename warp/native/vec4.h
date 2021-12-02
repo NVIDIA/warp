@@ -54,11 +54,22 @@ inline CUDA_CALLABLE vec4 mul(float s, vec4 a)
     return mul(a, s);
 }
 
+inline CUDA_CALLABLE vec4 cw_mul(vec4 a, vec4 b)
+{
+    return { a.x*b.x, a.y*b.y, a.z*b.z, a.w*b.w };
+}
+
 
 inline CUDA_CALLABLE vec4 div(vec4 a, float s)
 {
     return { a.x/s, a.y/s, a.z/s, a.w/s };
 }
+
+inline CUDA_CALLABLE vec4 cw_div(vec4 a, vec4 b)
+{
+    return { a.x/b.x, a.y/b.y, a.z/b.z, a.w/b.w };
+}
+
 
 inline CUDA_CALLABLE vec4 add(vec4 a, vec4 b)
 {
@@ -162,6 +173,11 @@ inline CUDA_CALLABLE void adj_mul(float s, vec4 a, float& adj_s, vec4& adj_a, co
     adj_mul(a, s, adj_a, adj_s, adj_ret);
 }
 
+inline CUDA_CALLABLE void adj_cw_mul(vec4 a, vec4 b, vec4& adj_a, vec4& adj_b, const vec4& adj_ret)
+{
+  adj_a += cw_mul(b, adj_ret);
+  adj_b += cw_mul(a, adj_ret);
+}
 
 inline CUDA_CALLABLE void adj_div(vec4 a, float s, vec4& adj_a, float& adj_s, const vec4& adj_ret)
 {
@@ -176,6 +192,11 @@ inline CUDA_CALLABLE void adj_div(vec4 a, float s, vec4& adj_a, float& adj_s, co
     if (!isfinite(a) || !isfinite(s) || !isfinite(adj_a) || !isfinite(adj_s) || !isfinite(adj_ret))
         printf("adj_div((%f %f %f), %f, (%f %f %f), %f, (%f %f %f)\n", a.x, a.y, a.z, s, adj_a.x, adj_a.y, adj_a.z, adj_s, adj_ret.x, adj_ret.y, adj_ret.z);
 #endif
+}
+
+inline CUDA_CALLABLE void adj_cw_div(vec4 a, vec4 b, vec4& adj_a, vec4& adj_b, const vec4& adj_ret) {
+  adj_a += cw_div(adj_ret, b);
+  adj_b -= cw_mul(adj_ret, cw_div(cw_div(a, b), b));
 }
 
 inline CUDA_CALLABLE void adj_add(vec4 a, vec4 b, vec4& adj_a, vec4& adj_b, const vec4& adj_ret)

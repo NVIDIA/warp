@@ -277,12 +277,12 @@ void LinearBVHBuilderCPU::build(BVH& bvh, const bounds3* items, int n)
 	totalbounds3.expand(0.001f);
 
 	vec3 edges = totalbounds3.edges();
-	vec3 invEdges = vec3(1.0f)/edges;
+	vec3 invEdges = cw_div(vec3(1.0f), edges);
 
 	for (int i=0; i < n; ++i)
 	{
 		vec3 center = items[i].center();
-		vec3 local = (center-totalbounds3.lower)*invEdges;
+		vec3 local = cw_mul(center-totalbounds3.lower, invEdges);
 
 		KeyIndexPair l;
 		l.key = morton3<1024>(local.x, local.y, local.z);

@@ -67,6 +67,14 @@ def quat_from_axis_angle(axis, angle):
 
     return np.array((v[0], v[1], v[2], w))
 
+def quat_to_axis_angle(quat):
+    w2 = quat[3] * quat[3]
+    if w2 > 1-1e-7:
+        return np.zeros(3), 0.0
+
+    angle = 2 * np.arccos(quat[3])
+    xyz = quat[:3] / np.sqrt(1 - w2)
+    return xyz, angle
 
 # quat_rotate a vector
 def quat_rotate(q, x):
