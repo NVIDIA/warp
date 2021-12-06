@@ -98,6 +98,11 @@ inline CUDA_CALLABLE vec3 exp(vec3 a)
   return { expf(a.x), expf(a.y), expf(a.z) };
 }
 
+inline CUDA_CALLABLE vec3 pow(vec3 a, float b)
+{
+    return { powf(a.x, b), powf(a.y, b), powf(a.z, b) };
+}
+
 inline CUDA_CALLABLE float dot(vec3 a, vec3 b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z;
@@ -267,6 +272,13 @@ inline CUDA_CALLABLE void adj_log(vec3 a, vec3& adj_a, const vec3& adj_ret)
 inline CUDA_CALLABLE void adj_exp(vec3 a, vec3& adj_a, const vec3& adj_ret)
 {
   adj_a += vec3(adj_ret.x * expf(a.x), adj_ret.y * expf(a.y), adj_ret.z * expf(a.z));
+}
+
+// TODO: test
+inline CUDA_CALLABLE void adj_pow(vec3 a, float b, vec3& adj_a, float& adj_b, const vec3& adj_ret)
+{
+    adj_a += vec3(b*powf(a.x, b-1.f) * adj_ret.x, b*powf(a.y, b-1.f) * adj_ret.y, b*powf(a.z, b-1.f) * adj_ret.z);
+    adj_b += logf(a.x)*powf(a.x, b) * adj_ret.x + logf(a.y)*powf(a.y, b) * adj_ret.y + logf(a.z)*powf(a.z, b) * adj_ret.z;
 }
 
 inline CUDA_CALLABLE void adj_dot(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, const float adj_ret)
