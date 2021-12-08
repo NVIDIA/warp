@@ -456,6 +456,45 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 	// nop
 }
 
+// stores state required to traverse neighboring cells of a point
+struct mesh_query_t
+{
+    CUDA_CALLABLE mesh_query_t() {}
+    CUDA_CALLABLE mesh_query_t(int) {} // for backward pass
+
+	//Mesh Id
+    int mesh_id;
+	// BVH traversal stack:
+	int stack[32];
+	int count;
+};
+
+CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper, float max_dist, float& inside, int& face)
+{
+	//This routine traverses the BVH tree until it finds 
+	// the the first triangle with an overlapping bvh. 
+
+	//initialize empty 
+	mesh_query_t query;
+	query.mesh_id = id;
+	
+
+	Mesh mesh = mesh_get(id);
+	//if no bvh nodes, return empty query.
+	if(mesh.bvh.num_nodes == 0){
+		query.count = 0;
+		return query;
+	}
+	
+	query.stack[0] = mesh.bvh.root;
+	query.count = 1;
+	
+	int min_face;
+	
+
+	return query;
+}
+
 // // determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)
 // CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
 // {
