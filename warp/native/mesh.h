@@ -467,6 +467,9 @@ struct mesh_query_t
 	// BVH traversal stack:
 	int stack[32];
 	int count;
+
+	// Face
+	int face;
 };
 
 CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper, float max_dist, float& inside, int& face)
@@ -477,6 +480,7 @@ CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(uint64_t id, const vec3& lower
 	//initialize empty 
 	mesh_query_t query;
 	query.mesh_id = id;
+	query.face = -1;
 	
 
 	Mesh mesh = mesh_get(id);
@@ -485,12 +489,43 @@ CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(uint64_t id, const vec3& lower
 		query.count = 0;
 		return query;
 	}
+
+	//optimization: make the latest
 	
 	query.stack[0] = mesh.bvh.root;
 	query.count = 1;
 	
 	int min_face;
-	
+
+	wp::bounds3 input_bounds(lower, upper);
+
+	//Navigate through the bvh, find the first overlapping leaf node.
+	while(query.count){
+		const int nodeIndex = query.stack[--query.count];
+		BVHPackedNodeHalf node_lower = mesh.bvh.node_lowers[nodeIndex];
+		BVHPackedNodeHalf node_upper = mesh.bvh.node_uppers[nodeIndex];
+
+		wp::vec3 lower_pos(node_lower.x, node_lower.y, node_lower.z);
+		wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
+		wp::bounds3 current_bounds(lower_pos,upper_pos);
+		if(!input_bounds.overlaps(current_bounds)){
+			continue;
+		}
+
+		const int left_index = node_lower.i;
+		const int right_index = node_upper.i;
+
+		//Make bounds from this AABB
+		if(node_lower.b){
+			//found very first triangle index
+			query.face = left_index;
+			return query;
+		} else {
+			
+		  query.stack[query.count++] = left_index;
+		  query.stack[query.count++] = right_index;
+		}
+	}	
 
 	return query;
 }
