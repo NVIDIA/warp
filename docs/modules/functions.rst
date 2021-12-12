@@ -245,6 +245,19 @@ Scalar Math
 .. function:: float(x: float) -> float
 
 
+.. function:: pcg(x: uint32) -> uint32
+
+
+.. function:: srand(x: uint32, y: uint32) -> uint32
+
+
+.. function:: randi(x: uint32, y: uint32, z: uint32) -> uint32
+
+
+.. function:: randf(x: uint32) -> float
+
+
+.. function:: randf(x: uint32, y: float, z: float) -> float
 
 
 Vector Math
