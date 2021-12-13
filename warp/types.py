@@ -312,7 +312,7 @@ class uint64:
         return ctypes.c_uint64
 
 # definition just for kernel type (cannot be a parameter), see hash_grid.h
-class mesh_query_t:
+class mesh_query_aabb_t:
 
     def __init__(self):
         pass

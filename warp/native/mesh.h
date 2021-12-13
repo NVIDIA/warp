@@ -458,12 +458,12 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 
 // stores state required to traverse neighboring cells of a point
 // should rename to mesh_query_aabb_t
-struct mesh_query_t
+struct mesh_query_aabb_t
 {
-    CUDA_CALLABLE mesh_query_t()
+    CUDA_CALLABLE mesh_query_aabb_t()
     {
     }
-    CUDA_CALLABLE mesh_query_t(int)
+    CUDA_CALLABLE mesh_query_aabb_t(int)
     {
     } // for backward pass
 
@@ -481,14 +481,14 @@ struct mesh_query_t
 	int face;
 };
 
-CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(
+CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
     uint64_t id, const vec3& lower, const vec3& upper, float max_dist, float& inside, int& face)
 {
     // This routine traverses the BVH tree until it finds
 	// the the first triangle with an overlapping bvh. 
 
     // initialize empty
-	mesh_query_t query;
+	mesh_query_aabb_t query;
 	query.mesh_id = id;
 	query.face = -1;
 	
@@ -549,7 +549,7 @@ CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(
 	return query;
 }
 
-CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_t& query, int& index)
+CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
 {
     Mesh mesh = mesh_get(query.mesh_id);
 
