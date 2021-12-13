@@ -267,10 +267,13 @@ def unload_dll(dll):
     # platform dependent unload, removes *all* references to the dll
     # note this should only be performed if you know there are no dangling
     # refs to the dll inside the Python program
-    if (os.name == "nt"):
-        success = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
-        if success:
-            return
+    if (os.name == "nt"): 
+
+        max_attempts = 100
+        for i in range(max_attempts):
+            success = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
+            if (not success):
+                return
 
 def force_unload_dll(dll_path):
 

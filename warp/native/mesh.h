@@ -198,10 +198,20 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 			vec3 p = mesh.points[i];
 			vec3 q = mesh.points[j];
 			vec3 r = mesh.points[k];
+			
+			vec3 e0 = q-p;
+			vec3 e1 = r-p;
+			vec3 e2 = r-q;
+			vec3 normal = cross(e0, e1);
+			
+			// sliver detection
+			if (length(normal)/(dot(e0,e0) + dot(e1,e1) + dot(e2,e2)) < 1.e-6f)
+				continue;
 
 			float v, w;
 			vec3 c = closest_point_to_triangle(p, q, r, point, v, w);
 
+			float angle = dot(normal, point-c);
 			float dist_sq = length_sq(c-point);
 
 			if (dist_sq < min_dist_sq)
@@ -211,16 +221,14 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 				min_w = w;
 				min_face = left_index;
 				
-				// if this is a 'new point', i.e.: strictly closer than previous best then update sign
-				vec3 normal = cross(q-p, r-p);
-				min_inside = sign(dot(normal, point-c));
+				// this is a 'new point', i.e.: strictly closer than previous so update sign
+				min_inside = sign(angle);
 			}
 			else if (dist_sq == min_dist_sq)	// todo: should probably use fuzzy equality here
 			{
-				// if the test point is equal, then test if inside should be updated
-				// point considered inside if *any* of the incident faces enclose the point
-				vec3 normal = cross(q-p, r-p);
-				if (dot(normal, point-c) < 0.0f)
+				// if the test point is equally close, then the point is point considered 
+				// inside if *any* of the incident faces enclose the point
+				if (angle < 0.0f)
 					min_inside = -1.0f;
 			}
 

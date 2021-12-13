@@ -1,0 +1,58 @@
+{
+    "OgnParticleVolume": {
+        "version": 1,
+        "description": "Particle volume sampler",
+        "language": "Python",
+        "inputs": {
+            "execIn": {
+                "type": "int",
+                "description": "",
+                "default": 0
+            },
+            "shape": {
+                "type": "bundle",
+                "description": "Volume primitive"
+            },
+            "sdf_min": {
+                "type": "float",
+                "description": "",
+                "default": -10000.0
+            },
+            "sdf_max": {
+                "type": "float",
+                "description": "",
+                "default": 0.0
+            },
+            "spacing": {
+                "type": "float",
+                "description": "",
+                "default": 10.0
+            },
+            "spacing_jitter": {
+                "type": "float",
+                "description": "",
+                "default": 0.0
+            },
+            "velocity": {
+                "type": "vectorf[3]",
+                "description": "",
+                "default": [0.0, 0.0, 0.0]
+            },
+            "max_points": {
+                "type": "int",
+                "description": "",
+                "default": 262144
+            }
+        },
+        "outputs": {
+            "particles": {
+                "type": "bundle",
+                "description": "Particles bundle: points, velocities"
+            }
+        },
+        "state": {
+            "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
+        },
+        "tokens": ["points", "worldMatrix", "primPath", "faceVertexCounts", "faceVertexIndices"]
+    }
+}

@@ -14,6 +14,7 @@ import time
 import warp as wp
 
 from . optimizer import Optimizer
+from . particles import eval_particle_forces
 
 
 @wp.kernel
@@ -815,42 +816,41 @@ def eval_tetrahedra(x: wp.array(dtype=wp.vec3),
 
 
 @wp.kernel
-def eval_contacts(x: wp.array(dtype=wp.vec3), v: wp.array(dtype=wp.vec3), ke: float, kd: float, kf: float, mu: float, offset: float, ground: wp.vec4, f: wp.array(dtype=wp.vec3)):
+def eval_contacts(particle_x: wp.array(dtype=wp.vec3), particle_v: wp.array(dtype=wp.vec3), ke: float, kd: float, kf: float, mu: float, offset: float, ground: wp.vec4, f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()           
 
-    x0 = wp.load(x, tid)
-    v0 = wp.load(v, tid)
+    x = wp.load(particle_x, tid)
+    v = wp.load(particle_v, tid)
 
     n = wp.vec3(ground[0], ground[1], ground[2])
-    c = wp.min(dot(n, x0) + ground[3] - offset, 0.0)
+    c = wp.min(wp.dot(n, x) + ground[3] - offset, 0.0)
 
-    vn = dot(n, v0)
-    vt = v0 - n * vn
+    vn = wp.dot(n, v)
+    jn = c*ke
+    
+    if (c >= 0.0):
+        return
 
-    fn = n * c * ke
+    jd = min(vn, 0.0)*kd
 
-    # contact damping
-    fd = n * wp.min(vn, 0.0) * kd
+    # contact force
+    fn = jn + jd
 
-    # viscous friction
-    #ft = vt*kf
+    # friction force
+    vt = v - n*vn
+    vs = wp.length(vt)
+    
+    if (vs > 0.0):
+        vt = vt/vs
 
-    # Coulomb friction (box)
-    lower = mu * c * ke
-    upper = 0.0 - lower
+    # Coulomb condition
+    ft = wp.min(vs*kf, mu*wp.abs(fn))
 
-    vx = clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
-    vz = clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
+    # total force
+    f[tid] = f[tid] -n*fn - vt*ft
 
-    ft = wp.vec3(vx, 0.0, vz)
 
-    # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
-    #ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*c*ke)
-
-    ftotal = fn + (fd + ft) * wp.step(c)
-
-    wp.atomic_sub(f, tid, ftotal)
 
 
 
@@ -863,7 +863,8 @@ def eval_soft_contacts(
     body_com: wp.array(dtype=wp.vec3),
     ke: float,
     kd: float, 
-    kf: float, 
+    kf: float,
+    ka: float,
     mu: float,
     contact_count: wp.array(dtype=int),
     contact_particle: wp.array(dtype=int),
@@ -902,7 +903,7 @@ def eval_soft_contacts(
     n = contact_normal[tid]
     c = wp.dot(n, px-bx) - contact_distance
     
-    if (c > 0.0):
+    if (c > ka):
         return
 
     # body velocity
@@ -942,9 +943,9 @@ def eval_soft_contacts(
     #ft = wp.vec3(vx, 0.0, vz)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
-    ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*c*ke)
+    ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), abs(mu*c*ke))
 
-    f_total = fn + (fd + ft) * wp.step(c)
+    f_total = fn + (fd + ft)
     t_total = wp.cross(r, f_total)
 
     wp.atomic_sub(particle_f, particle_index, f_total)
@@ -1399,6 +1400,13 @@ def compute_forces(model, state, particle_f, body_f):
                     outputs=[particle_f],
                     device=model.device)
 
+    # particle-particle interactions
+    if (model.particle_count):
+        eval_particle_forces(
+            model, 
+            state, 
+            particle_f)
+
     # triangle elastic and lift/drag forces
     if (model.tri_count and model.tri_ke > 0.0):
 
@@ -1529,6 +1537,7 @@ def compute_forces(model, state, particle_f, body_f):
                         model.soft_contact_ke,
                         model.soft_contact_kd, 
                         model.soft_contact_kf, 
+                        model.particle_adhesion,
                         model.soft_contact_mu,
                         model.soft_contact_count,
                         model.soft_contact_particle,

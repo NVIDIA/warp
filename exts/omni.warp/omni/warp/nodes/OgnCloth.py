@@ -28,10 +28,11 @@ def transform_points(src: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    p = wp.load(src, tid)
+    p = src[tid]
     m = wp.transform_point(xform, p)
 
-    wp.store(dest, tid, m)
+    dest[tid] = m
+
 
 
 # update mesh data given two sets of collider positions

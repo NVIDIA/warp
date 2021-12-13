@@ -11,6 +11,7 @@ import numpy as np
 np.random.seed(532)
 
 wp.config.mode = "release"
+#wp.config.verify_cuda = True
 
 wp.init()
 
@@ -133,8 +134,8 @@ grid_cell_size = point_radius*5.0
 # creates a grid of particles
 def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
     points = np.meshgrid(np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z))
-    points_t = np.array((points[0], points[1], points[2])).T*point_radius*2.0 + np.array(lower)
-    points_t = points_t + np.random.rand(*points_t.shape)*point_radius*jitter
+    points_t = np.array((points[0], points[1], points[2])).T*radius*2.0 + np.array(lower)
+    points_t = points_t + np.random.rand(*points_t.shape)*radius*jitter
     
     return points_t.reshape((-1, 3))
 
@@ -190,8 +191,10 @@ for i in range(frame_count):
                     grid.build(x, point_radius)
 
                 with wp.ScopedTimer("forces", active=False):
-                    wp.launch(kernel=apply_forces, dim=len(x), inputs=[grid.id, x, v, f, point_radius, k_contact, k_damp, k_friction], device=device)
+                    wp.launch(kernel=apply_forces, dim=len(x), inputs=[grid.id, x, v, f, point_radius, k_contact, k_damp, k_friction, k_mu], device=device)
                     wp.launch(kernel=integrate, dim=len(x), inputs=[x, v, f, (0.0, -9.8, 0.0), sim_dt, 1.0], device=device)
+            
+            wp.synchronize()
         
     with wp.ScopedTimer("render", active=True):
         renderer.begin_frame(sim_time)

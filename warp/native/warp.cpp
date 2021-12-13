@@ -117,6 +117,6 @@ WP_API size_t cuda_compile_program(const char* cuda_src, const char* include_dir
 WP_API void* cuda_load_module(const char* ptx) { return NULL; }
 WP_API void cuda_unload_module(void* module) {}
 WP_API void* cuda_get_kernel(void* module, const char* name) { return NULL; }
-WP_API size_t cuda_launch_kernel(void* kernel, int dim, void** args) { return 0;}
+WP_API size_t cuda_launch_kernel(void* kernel, size_t dim, void** args) { return 0;}
 
 #endif // __APPLE__

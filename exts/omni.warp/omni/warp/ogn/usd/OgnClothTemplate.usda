@@ -14,22 +14,22 @@ def ComputeNode "Template_omni_warp_OgnCloth" (
     custom int node:typeVersion = 1
 
     # 21 attributes
-    custom int[] inputs:cloth_indices (
+    custom int[] inputs:cloth_indices = [] (
         docs="""Particle indices"""
     )
-    custom point3f[] inputs:cloth_positions (
+    custom point3f[] inputs:cloth_positions = [] (
         docs="""Particle positions"""
     )
     custom frame4d inputs:cloth_transform = ((1.0, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, 0.0, 0.0, 1.0)) (
         docs="""Local to World transform for cloth vertices"""
     )
-    custom int[] inputs:collider_indices (
+    custom int[] inputs:collider_indices = [] (
         docs="""Collision indices"""
     )
     custom float inputs:collider_offset = 0.01 (
         docs="""No documentation provided"""
     )
-    custom point3f[] inputs:collider_positions (
+    custom point3f[] inputs:collider_positions = [] (
         docs="""Collision positions"""
     )
     custom frame4d inputs:collider_transform = ((1.0, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, 0.0, 0.0, 1.0)) (

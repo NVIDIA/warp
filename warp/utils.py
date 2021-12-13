@@ -244,7 +244,7 @@ def transform_inertia(m, I, p, q):
     R = quat_to_matrix(q)
 
     # Steiner's theorem
-    return R * I * R.T + m * (np.dot(p, p) * np.eye(3) - np.outer(p, p))
+    return R @ I @ R.T + m * (np.dot(p, p) * np.eye(3) - np.outer(p, p))
 
 
 # spatial operators

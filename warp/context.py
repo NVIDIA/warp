@@ -209,6 +209,9 @@ add_builtin("cos", input_types={"x": float}, value_type=float, doc="", group="Sc
 add_builtin("acos", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("asin", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("sqrt", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("tan", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("atan", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("atan2", input_types={"y": float, "x": float}, value_type=float, doc="", group="Scalar Math")
 
 add_builtin("log", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("log", input_types={"x": vec3}, value_type=vec3, doc="", group="Scalar Math")
@@ -1107,6 +1110,9 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
+
+        if (len(fwd_args)) != (len(kernel.adj.args)): 
+            raise RuntimeError(f"Unable to launch kernel, passed {len(fwd_args)} args but kernel requires {len(kernel.adj.args)}")
 
         pack_args(fwd_args, params)
         pack_args(adj_args, params)
