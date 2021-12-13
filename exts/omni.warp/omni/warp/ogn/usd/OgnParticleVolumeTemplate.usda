@@ -13,15 +13,21 @@ def ComputeNode "Template_omni_warp_OgnParticleVolume" (
     custom token PythonNode:type = "omni.warp.OgnParticleVolume"
     custom int node:typeVersion = 1
 
-    # 6 attributes
+    # 8 attributes
     custom int inputs:execIn = 0 (
         docs="""No documentation provided"""
     )
-    custom bool inputs:sample_surface = true (
+    custom int inputs:max_points = 262144 (
         docs="""No documentation provided"""
     )
-    custom bool inputs:sample_volume = true (
+    custom float inputs:sdf_max = 0.0 (
         docs="""No documentation provided"""
+    )
+    custom float inputs:sdf_min = -10000.0 (
+        docs="""No documentation provided"""
+    )
+    custom rel inputs:shape (
+        docs="""Volume primitive"""
     )
     custom float inputs:spacing = 10.0 (
         docs="""No documentation provided"""
@@ -29,15 +35,14 @@ def ComputeNode "Template_omni_warp_OgnParticleVolume" (
     custom float inputs:spacing_jitter = 0.0 (
         docs="""No documentation provided"""
     )
-    custom rel inputs:volume (
-        docs="""Collision Prim"""
+    custom vector3f inputs:velocity = (0.0, 0.0, 0.0) (
+        docs="""No documentation provided"""
     )
 
-    # 2 attributes
-    custom point3f[] outputs:positions (
-        docs="""Particle positions"""
+    # 1 attribute
+    def Output "outputs_particles" (
+        docs="""Particles bundle: points, velocities"""
     )
-    custom int[] outputs:protoIndices (
-        docs="""Protoindices"""
-    )
+    {
+    }
 }
