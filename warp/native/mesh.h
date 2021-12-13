@@ -457,70 +457,89 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 }
 
 // stores state required to traverse neighboring cells of a point
+// should rename to mesh_query_aabb_t
 struct mesh_query_t
 {
-    CUDA_CALLABLE mesh_query_t() {}
-    CUDA_CALLABLE mesh_query_t(int) {} // for backward pass
+    CUDA_CALLABLE mesh_query_t()
+    {
+    }
+    CUDA_CALLABLE mesh_query_t(int)
+    {
+    } // for backward pass
 
-	//Mesh Id
+    // Mesh Id
     int mesh_id;
 	// BVH traversal stack:
 	int stack[32];
 	int count;
 
+    // inputs
+    wp::vec3 input_lower;
+    wp::vec3 input_upper;
+
 	// Face
 	int face;
 };
 
-CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper, float max_dist, float& inside, int& face)
+CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(
+    uint64_t id, const vec3& lower, const vec3& upper, float max_dist, float& inside, int& face)
 {
-	//This routine traverses the BVH tree until it finds 
+    // This routine traverses the BVH tree until it finds
 	// the the first triangle with an overlapping bvh. 
 
-	//initialize empty 
+    // initialize empty
 	mesh_query_t query;
 	query.mesh_id = id;
 	query.face = -1;
 	
 
 	Mesh mesh = mesh_get(id);
-	//if no bvh nodes, return empty query.
-	if(mesh.bvh.num_nodes == 0){
+    // if no bvh nodes, return empty query.
+    if (mesh.bvh.num_nodes == 0)
+    {
 		query.count = 0;
 		return query;
 	}
 
-	//optimization: make the latest
+    // optimization: make the latest
 	
 	query.stack[0] = mesh.bvh.root;
 	query.count = 1;
+    query.input_lower = lower;
+    query.input_upper = upper;
+
+    wp::bounds3 input_bounds(query.input_lower, query.input_upper);
 	
 	int min_face;
 
-	wp::bounds3 input_bounds(lower, upper);
-
-	//Navigate through the bvh, find the first overlapping leaf node.
-	while(query.count){
+    // Navigate through the bvh, find the first overlapping leaf node.
+    while (query.count)
+    {
 		const int nodeIndex = query.stack[--query.count];
 		BVHPackedNodeHalf node_lower = mesh.bvh.node_lowers[nodeIndex];
 		BVHPackedNodeHalf node_upper = mesh.bvh.node_uppers[nodeIndex];
 
 		wp::vec3 lower_pos(node_lower.x, node_lower.y, node_lower.z);
 		wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
-		wp::bounds3 current_bounds(lower_pos,upper_pos);
-		if(!input_bounds.overlaps(current_bounds)){
+        wp::bounds3 current_bounds(lower_pos, upper_pos);
+        if (!input_bounds.overlaps(current_bounds))
+        {
+            // Skip this box, it doesn't overlap with our target box.
 			continue;
 		}
 
 		const int left_index = node_lower.i;
 		const int right_index = node_upper.i;
 
-		//Make bounds from this AABB
-		if(node_lower.b){
-			//found very first triangle index
+        // Make bounds from this AABB
+        if (node_lower.b)
+        {
+            // found very first triangle index
 			query.face = left_index;
 			return query;
-		} else {
+        }
+        else
+        {
 			
 		  query.stack[query.count++] = left_index;
 		  query.stack[query.count++] = right_index;
@@ -528,6 +547,47 @@ CUDA_CALLABLE inline mesh_query_t mesh_query_aabb(uint64_t id, const vec3& lower
 	}	
 
 	return query;
+}
+
+CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_t& query, int& index)
+{
+    Mesh mesh = mesh_get(query.mesh_id);
+
+    wp::bounds3 input_bounds(query.input_lower, query.input_upper);
+    // Navigate through the bvh, find the first overlapping leaf node.
+    while (query.count)
+    {
+        const int nodeIndex = query.stack[--query.count];
+        BVHPackedNodeHalf node_lower = mesh.bvh.node_lowers[nodeIndex];
+        BVHPackedNodeHalf node_upper = mesh.bvh.node_uppers[nodeIndex];
+
+        wp::vec3 lower_pos(node_lower.x, node_lower.y, node_lower.z);
+        wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
+        wp::bounds3 current_bounds(lower_pos, upper_pos);
+        if (!input_bounds.overlaps(current_bounds))
+        {
+            // Skip this box, it doesn't overlap with our target box.
+            continue;
+        }
+
+        const int left_index = node_lower.i;
+        const int right_index = node_upper.i;
+
+        // Make bounds from this AABB
+        if (node_lower.b)
+        {
+            // found very first triangle index
+            query.face = left_index;
+            return true;
+        }
+        else
+        {
+
+            query.stack[query.count++] = left_index;
+            query.stack[query.count++] = right_index;
+        }
+    }
+    return false;
 }
 
 // // determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)
