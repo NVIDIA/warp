@@ -73,14 +73,6 @@ inline CUDA_CALLABLE int mod(int a, int b) { return a % b; }
 inline CUDA_CALLABLE int min(int a, int b) { return a<b?a:b; }
 inline CUDA_CALLABLE int max(int a, int b) { return a>b?a:b; }
 inline CUDA_CALLABLE int clamp(int x, int a, int b) { return min(max(a, x), b); }
-inline CUDA_CALLABLE uint32 pcg(uint32 a)
-{
-    uint32 b = a * 747796405u + 2891336453u;
-    uint32 c = ((b >> ((b >> 28u) + 4u)) ^ b) * 277803737u;
-    return (c >> 22u) ^ c;
-}
-inline CUDA_CALLABLE uint32 srand(uint32 a, uint32 b) { return pcg(a + pcg(b)); }
-inline CUDA_CALLABLE uint32 randi(uint32& seed, uint32 min, uint32 max) { seed = pcg(seed); return seed % (max - min) + min; }
 
 inline CUDA_CALLABLE void adj_mul(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_div(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
@@ -110,8 +102,6 @@ inline CUDA_CALLABLE float step(float x) { return x < 0.0f ? 1.0f : 0.0f; }
 inline CUDA_CALLABLE float sign(float x) { return x < 0.0f ? -1.0f : 1.0f; }
 inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
-inline CUDA_CALLABLE float randf(uint32& seed) { seed = pcg(seed); return float(seed) / UINT32_MAX; }
-inline CUDA_CALLABLE float randf(uint32& seed, float min, float max) { seed = pcg(seed); return (max - min) * randf(seed) + min; }
 
 inline CUDA_CALLABLE float acos(float x) { return ::acos(min(max(x, -1.0f), 1.0f)); }
 inline CUDA_CALLABLE float asin(float x) { return ::asin(min(max(x, -1.0f), 1.0f)); }
@@ -335,6 +325,7 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 #include "mesh.h"
 #include "svd.h"
 #include "hashgrid.h"
+#include "rand.h"
 
 //--------------
 namespace wp
