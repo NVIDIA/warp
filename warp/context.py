@@ -388,7 +388,7 @@ add_builtin("dense_solve_batched",
 add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, doc="", group="Geometry")
 add_builtin("mesh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3, "max_t": float, "t": float, "bary_u": float, "bary_v": float, "sign": float, "normal": vec3, "face": int}, value_type=bool, doc="", group="Geometry")
 
-add_builtin("mesh_query_aabb", input_types={"id": uint64, "lower": vec3, "upper": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=mesh_query_aabb_t, doc="", group="Geometry")
+add_builtin("mesh_query_aabb", input_types={"id": uint64, "lower": vec3, "upper": vec3, "max_dist": float, "inside": float, "face": int}, value_type=mesh_query_aabb_t, doc="", group="Geometry")
 add_builtin("mesh_query_aabb_next", input_types={"id": mesh_query_aabb_t, "index": int}, value_type=bool, doc="", group="Geometry")
 
 add_builtin("mesh_eval_position", input_types={"id": uint64, "face": int, "bary_u": float, "bary_v": float}, value_type=vec3, doc="", group="Geometry")
