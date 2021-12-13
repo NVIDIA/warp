@@ -34,16 +34,23 @@ class TestOgnParticleVolume(omni.kit.test.AsyncTestCase):
         input_attr = test_node.get_attribute("inputs:execIn")
         actual_input = helper.get_values(test_node, [input_attr])[0]
         verify_values(0, actual_input, "omni.warp.OgnParticleVolume USD load test - inputs:execIn attribute value error")
-        self.assertTrue(test_node.get_attribute_exists("inputs:sample_surface"))
+        self.assertTrue(test_node.get_attribute_exists("inputs:max_points"))
 
-        input_attr = test_node.get_attribute("inputs:sample_surface")
+        input_attr = test_node.get_attribute("inputs:max_points")
         actual_input = helper.get_values(test_node, [input_attr])[0]
-        verify_values(True, actual_input, "omni.warp.OgnParticleVolume USD load test - inputs:sample_surface attribute value error")
-        self.assertTrue(test_node.get_attribute_exists("inputs:sample_volume"))
+        verify_values(262144, actual_input, "omni.warp.OgnParticleVolume USD load test - inputs:max_points attribute value error")
+        self.assertTrue(test_node.get_attribute_exists("inputs:sdf_max"))
 
-        input_attr = test_node.get_attribute("inputs:sample_volume")
+        input_attr = test_node.get_attribute("inputs:sdf_max")
         actual_input = helper.get_values(test_node, [input_attr])[0]
-        verify_values(True, actual_input, "omni.warp.OgnParticleVolume USD load test - inputs:sample_volume attribute value error")
+        verify_values(0.0, actual_input, "omni.warp.OgnParticleVolume USD load test - inputs:sdf_max attribute value error")
+        self.assertTrue(test_node.get_attribute_exists("inputs:sdf_min"))
+
+        input_attr = test_node.get_attribute("inputs:sdf_min")
+        actual_input = helper.get_values(test_node, [input_attr])[0]
+        verify_values(-10000.0, actual_input, "omni.warp.OgnParticleVolume USD load test - inputs:sdf_min attribute value error")
+        self.assertTrue(test_node.get_attribute_exists("inputs:shape"))
+
         self.assertTrue(test_node.get_attribute_exists("inputs:spacing"))
 
         input_attr = test_node.get_attribute("inputs:spacing")
@@ -54,5 +61,8 @@ class TestOgnParticleVolume(omni.kit.test.AsyncTestCase):
         input_attr = test_node.get_attribute("inputs:spacing_jitter")
         actual_input = helper.get_values(test_node, [input_attr])[0]
         verify_values(0.0, actual_input, "omni.warp.OgnParticleVolume USD load test - inputs:spacing_jitter attribute value error")
-        self.assertTrue(test_node.get_attribute_exists("inputs:volume"))
+        self.assertTrue(test_node.get_attribute_exists("inputs:velocity"))
 
+        input_attr = test_node.get_attribute("inputs:velocity")
+        actual_input = helper.get_values(test_node, [input_attr])[0]
+        verify_values([0.0, 0.0, 0.0], actual_input, "omni.warp.OgnParticleVolume USD load test - inputs:velocity attribute value error")

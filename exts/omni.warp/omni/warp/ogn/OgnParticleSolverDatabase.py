@@ -15,6 +15,7 @@ class OgnParticleSolverDatabase(og.Database):
     Attribute Value Properties:
         Inputs:
             inputs.collider
+            inputs.collider_margin
             inputs.collider_offset
             inputs.gravity
             inputs.ground
@@ -27,10 +28,23 @@ class OgnParticleSolverDatabase(og.Database):
             inputs.k_contact_mu
             inputs.mass
             inputs.num_substeps
-            inputs.positions
+            inputs.particle_margin
             inputs.radius
+            inputs.spawn_exec
+            inputs.spawn_particles
         Outputs:
+            outputs.ids
             outputs.positions
+            outputs.widths
+
+    Predefined Tokens:
+        tokens.points
+        tokens.velocities
+        tokens.worldMatrix
+        tokens.primPath
+        tokens.faceVertexCounts
+        tokens.faceVertexIndices
+        tokens.transform
     """
     # This is an internal object that provides per-class storage of a per-node data dictionary
     PER_NODE_DATA = {}
@@ -40,7 +54,8 @@ class OgnParticleSolverDatabase(og.Database):
     # You should not need to access any of this data directly, use the defined database interfaces
     INTERFACE = og.Database._get_interface([
         ('inputs:collider', 'bundle', 0, None, 'Collision Prim', {}, True, None),
-        ('inputs:collider_offset', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '0.01'}, True, 0.01),
+        ('inputs:collider_margin', 'float', 0, None, 'Distance to generate contacts at, multiple of collider_offset ', {og.MetadataKeys.DEFAULT: '1.5'}, True, 1.5),
+        ('inputs:collider_offset', 'float', 0, None, 'Distance to maintain from collision primitive surface', {og.MetadataKeys.DEFAULT: '0.01'}, True, 0.01),
         ('inputs:gravity', 'vector3f', 0, None, '', {og.MetadataKeys.DEFAULT: '[0.0, -9.8, 0.0]'}, True, [0.0, -9.8, 0.0]),
         ('inputs:ground', 'bool', 0, None, '', {og.MetadataKeys.DEFAULT: 'false'}, True, False),
         ('inputs:ground_plane', 'vector3f', 0, None, '', {og.MetadataKeys.DEFAULT: '[0.0, 1.0, 0.0]'}, True, [0.0, 1.0, 0.0]),
@@ -52,17 +67,28 @@ class OgnParticleSolverDatabase(og.Database):
         ('inputs:k_contact_mu', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '0.75'}, True, 0.75),
         ('inputs:mass', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '1.0'}, True, 1.0),
         ('inputs:num_substeps', 'int', 0, None, '', {og.MetadataKeys.DEFAULT: '32'}, True, 32),
-        ('inputs:positions', 'point3f[]', 0, None, 'Particle positions', {og.MetadataKeys.DEFAULT: '[]'}, True, []),
+        ('inputs:particle_margin', 'float', 0, None, 'Amount to expand the grid cell size to accommodate caching neighbor grid between steps', {og.MetadataKeys.DEFAULT: '0.5'}, True, 0.5),
         ('inputs:radius', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '10.0'}, True, 10.0),
+        ('inputs:spawn_exec', 'int', 0, None, 'Spawn particles execution pin', {og.MetadataKeys.DEFAULT: '0'}, True, 0),
+        ('inputs:spawn_particles', 'bundle', 0, None, 'Spawn Particles bundle, can include position, velocity, mass', {}, True, None),
+        ('outputs:ids', 'int[]', 0, None, 'Particle ids', {}, True, None),
         ('outputs:positions', 'point3f[]', 0, None, 'Particle positions', {}, True, None),
+        ('outputs:widths', 'float[]', 0, None, 'Particle widths', {}, True, None),
     ])
+    class tokens:
+        points = "points"
+        velocities = "velocities"
+        worldMatrix = "worldMatrix"
+        primPath = "primPath"
+        faceVertexCounts = "faceVertexCounts"
+        faceVertexIndices = "faceVertexIndices"
+        transform = "transform"
     @classmethod
     def _populate_role_data(cls):
         """Populate a role structure with the non-default roles on this node type"""
         role_data = super()._populate_role_data()
         role_data.inputs.gravity = og.Database.ROLE_VECTOR
         role_data.inputs.ground_plane = og.Database.ROLE_VECTOR
-        role_data.inputs.positions = og.Database.ROLE_POINT
         role_data.outputs.positions = og.Database.ROLE_POINT
         return role_data
     class ValuesForInputs(og.DynamicAttributeAccess):
@@ -76,6 +102,16 @@ class OgnParticleSolverDatabase(og.Database):
         def collider(self) -> og.BundleContents:
             """Get the bundle wrapper class for the attribute inputs.collider"""
             return self.__bundles.collider
+
+        @property
+        def collider_margin(self):
+            return self._context_helper.get(self._attributes.collider_margin)
+
+        @collider_margin.setter
+        def collider_margin(self, value):
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.collider_margin)
+            self._context_helper.set_attr_value(value, self._attributes.collider_margin)
 
         @property
         def collider_offset(self):
@@ -198,15 +234,14 @@ class OgnParticleSolverDatabase(og.Database):
             self._context_helper.set_attr_value(value, self._attributes.num_substeps)
 
         @property
-        def positions(self):
-            return self._context_helper.get_array(self._attributes.positions)
+        def particle_margin(self):
+            return self._context_helper.get(self._attributes.particle_margin)
 
-        @positions.setter
-        def positions(self, value):
+        @particle_margin.setter
+        def particle_margin(self, value):
             if self._setting_locked:
-                raise og.ReadOnlyError(self._attributes.positions)
-            self._context_helper.set_attr_value(value, self._attributes.positions)
-            self.positions_size = self._context_helper.get_elem_count(self._attributes.positions)
+                raise og.ReadOnlyError(self._attributes.particle_margin)
+            self._context_helper.set_attr_value(value, self._attributes.particle_margin)
 
         @property
         def radius(self):
@@ -217,12 +252,38 @@ class OgnParticleSolverDatabase(og.Database):
             if self._setting_locked:
                 raise og.ReadOnlyError(self._attributes.radius)
             self._context_helper.set_attr_value(value, self._attributes.radius)
+
+        @property
+        def spawn_exec(self):
+            return self._context_helper.get(self._attributes.spawn_exec)
+
+        @spawn_exec.setter
+        def spawn_exec(self, value):
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.spawn_exec)
+            self._context_helper.set_attr_value(value, self._attributes.spawn_exec)
+
+        @property
+        def spawn_particles(self) -> og.BundleContents:
+            """Get the bundle wrapper class for the attribute inputs.spawn_particles"""
+            return self.__bundles.spawn_particles
     class ValuesForOutputs(og.DynamicAttributeAccess):
         """Helper class that creates natural hierarchical access to output attributes"""
         def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes, dynamic_attributes: og.DynamicAttributeInterface):
             """Initialize simplified access for the attribute data"""
             super().__init__(context_helper, node, attributes, dynamic_attributes)
+            self.ids_size = None
             self.positions_size = None
+            self.widths_size = None
+
+        @property
+        def ids(self):
+            return self._context_helper.get_array(self._attributes.ids, get_for_write=True, reserved_element_count=self.ids_size)
+
+        @ids.setter
+        def ids(self, value):
+            self._context_helper.set_attr_value(value, self._attributes.ids)
+            self.ids_size = self._context_helper.get_elem_count(self._attributes.ids)
 
         @property
         def positions(self):
@@ -232,6 +293,15 @@ class OgnParticleSolverDatabase(og.Database):
         def positions(self, value):
             self._context_helper.set_attr_value(value, self._attributes.positions)
             self.positions_size = self._context_helper.get_elem_count(self._attributes.positions)
+
+        @property
+        def widths(self):
+            return self._context_helper.get_array(self._attributes.widths, get_for_write=True, reserved_element_count=self.widths_size)
+
+        @widths.setter
+        def widths(self, value):
+            self._context_helper.set_attr_value(value, self._attributes.widths)
+            self.widths_size = self._context_helper.get_elem_count(self._attributes.widths)
     class ValuesForState(og.DynamicAttributeAccess):
         """Helper class that creates natural hierarchical access to state attributes"""
         def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes, dynamic_attributes: og.DynamicAttributeInterface):
@@ -278,6 +348,7 @@ class OgnParticleSolverDatabase(og.Database):
 
             # Set any default values the attributes have specified
             db = OgnParticleSolverDatabase(context_helper, node)
+            db.inputs.collider_margin = 1.5
             db.inputs.collider_offset = 0.01
             db.inputs.gravity = [0.0, -9.8, 0.0]
             db.inputs.ground = False
@@ -290,8 +361,9 @@ class OgnParticleSolverDatabase(og.Database):
             db.inputs.k_contact_mu = 0.75
             db.inputs.mass = 1.0
             db.inputs.num_substeps = 32
-            db.inputs.positions = []
+            db.inputs.particle_margin = 0.5
             db.inputs.radius = 10.0
+            db.inputs.spawn_exec = 0
             initialize_function = getattr(OgnParticleSolverDatabase.NODE_TYPE_CLASS, 'initialize', None)
             if callable(initialize_function):
                 initialize_function(context_helper, node)
@@ -315,6 +387,7 @@ class OgnParticleSolverDatabase(og.Database):
                 needs_initializing = initialize_type_function(node_type)
             if needs_initializing:
                 node_type.set_metadata(og.MetadataKeys.EXTENSION, "omni.warp")
+                node_type.set_metadata(og.MetadataKeys.TOKENS, "[\"points\", \"velocities\", \"worldMatrix\", \"primPath\", \"faceVertexCounts\", \"faceVertexIndices\", \"transform\"]")
                 node_type.set_metadata(og.MetadataKeys.DESCRIPTION, "Particle simulation node")
                 node_type.set_metadata(og.MetadataKeys.LANGUAGE, "Python")
                 OgnParticleSolverDatabase.INTERFACE.add_to_node_type(node_type)
@@ -325,6 +398,8 @@ class OgnParticleSolverDatabase(og.Database):
             if callable(on_connection_type_resolve_function):
                 on_connection_type_resolve_function(node)
     NODE_TYPE_CLASS = None
+    GENERATOR_VERSION = (1, 1, 2)
+    TARGET_VERSION = (2, 2, 0)
     @staticmethod
     def register(node_type_class):
         OgnParticleSolverDatabase.NODE_TYPE_CLASS = node_type_class

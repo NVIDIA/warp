@@ -15,14 +15,22 @@ class OgnParticleVolumeDatabase(og.Database):
     Attribute Value Properties:
         Inputs:
             inputs.execIn
-            inputs.sample_surface
-            inputs.sample_volume
+            inputs.max_points
+            inputs.sdf_max
+            inputs.sdf_min
+            inputs.shape
             inputs.spacing
             inputs.spacing_jitter
-            inputs.volume
+            inputs.velocity
         Outputs:
-            outputs.positions
-            outputs.protoIndices
+            outputs.particles
+
+    Predefined Tokens:
+        tokens.points
+        tokens.worldMatrix
+        tokens.primPath
+        tokens.faceVertexCounts
+        tokens.faceVertexIndices
     """
     # This is an internal object that provides per-class storage of a per-node data dictionary
     PER_NODE_DATA = {}
@@ -32,19 +40,26 @@ class OgnParticleVolumeDatabase(og.Database):
     # You should not need to access any of this data directly, use the defined database interfaces
     INTERFACE = og.Database._get_interface([
         ('inputs:execIn', 'int', 0, None, '', {og.MetadataKeys.DEFAULT: '0'}, True, 0),
-        ('inputs:sample_surface', 'bool', 0, None, '', {og.MetadataKeys.DEFAULT: 'true'}, True, True),
-        ('inputs:sample_volume', 'bool', 0, None, '', {og.MetadataKeys.DEFAULT: 'true'}, True, True),
+        ('inputs:max_points', 'int', 0, None, '', {og.MetadataKeys.DEFAULT: '262144'}, True, 262144),
+        ('inputs:sdf_max', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '0.0'}, True, 0.0),
+        ('inputs:sdf_min', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '-10000.0'}, True, -10000.0),
+        ('inputs:shape', 'bundle', 0, None, 'Volume primitive', {}, True, None),
         ('inputs:spacing', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '10.0'}, True, 10.0),
         ('inputs:spacing_jitter', 'float', 0, None, '', {og.MetadataKeys.DEFAULT: '0.0'}, True, 0.0),
-        ('inputs:volume', 'bundle', 0, None, 'Collision Prim', {}, True, None),
-        ('outputs:positions', 'point3f[]', 0, None, 'Particle positions', {}, True, None),
-        ('outputs:protoIndices', 'int[]', 0, None, 'Protoindices', {}, True, None),
+        ('inputs:velocity', 'vector3f', 0, None, '', {og.MetadataKeys.DEFAULT: '[0.0, 0.0, 0.0]'}, True, [0.0, 0.0, 0.0]),
+        ('outputs:particles', 'bundle', 0, None, 'Particles bundle: points, velocities', {}, True, None),
     ])
+    class tokens:
+        points = "points"
+        worldMatrix = "worldMatrix"
+        primPath = "primPath"
+        faceVertexCounts = "faceVertexCounts"
+        faceVertexIndices = "faceVertexIndices"
     @classmethod
     def _populate_role_data(cls):
         """Populate a role structure with the non-default roles on this node type"""
         role_data = super()._populate_role_data()
-        role_data.outputs.positions = og.Database.ROLE_POINT
+        role_data.inputs.velocity = og.Database.ROLE_VECTOR
         return role_data
     class ValuesForInputs(og.DynamicAttributeAccess):
         """Helper class that creates natural hierarchical access to input attributes"""
@@ -64,24 +79,39 @@ class OgnParticleVolumeDatabase(og.Database):
             self._context_helper.set_attr_value(value, self._attributes.execIn)
 
         @property
-        def sample_surface(self):
-            return self._context_helper.get(self._attributes.sample_surface)
+        def max_points(self):
+            return self._context_helper.get(self._attributes.max_points)
 
-        @sample_surface.setter
-        def sample_surface(self, value):
+        @max_points.setter
+        def max_points(self, value):
             if self._setting_locked:
-                raise og.ReadOnlyError(self._attributes.sample_surface)
-            self._context_helper.set_attr_value(value, self._attributes.sample_surface)
+                raise og.ReadOnlyError(self._attributes.max_points)
+            self._context_helper.set_attr_value(value, self._attributes.max_points)
 
         @property
-        def sample_volume(self):
-            return self._context_helper.get(self._attributes.sample_volume)
+        def sdf_max(self):
+            return self._context_helper.get(self._attributes.sdf_max)
 
-        @sample_volume.setter
-        def sample_volume(self, value):
+        @sdf_max.setter
+        def sdf_max(self, value):
             if self._setting_locked:
-                raise og.ReadOnlyError(self._attributes.sample_volume)
-            self._context_helper.set_attr_value(value, self._attributes.sample_volume)
+                raise og.ReadOnlyError(self._attributes.sdf_max)
+            self._context_helper.set_attr_value(value, self._attributes.sdf_max)
+
+        @property
+        def sdf_min(self):
+            return self._context_helper.get(self._attributes.sdf_min)
+
+        @sdf_min.setter
+        def sdf_min(self, value):
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.sdf_min)
+            self._context_helper.set_attr_value(value, self._attributes.sdf_min)
+
+        @property
+        def shape(self) -> og.BundleContents:
+            """Get the bundle wrapper class for the attribute inputs.shape"""
+            return self.__bundles.shape
 
         @property
         def spacing(self):
@@ -104,34 +134,32 @@ class OgnParticleVolumeDatabase(og.Database):
             self._context_helper.set_attr_value(value, self._attributes.spacing_jitter)
 
         @property
-        def volume(self) -> og.BundleContents:
-            """Get the bundle wrapper class for the attribute inputs.volume"""
-            return self.__bundles.volume
+        def velocity(self):
+            return self._context_helper.get(self._attributes.velocity)
+
+        @velocity.setter
+        def velocity(self, value):
+            if self._setting_locked:
+                raise og.ReadOnlyError(self._attributes.velocity)
+            self._context_helper.set_attr_value(value, self._attributes.velocity)
     class ValuesForOutputs(og.DynamicAttributeAccess):
         """Helper class that creates natural hierarchical access to output attributes"""
         def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes, dynamic_attributes: og.DynamicAttributeInterface):
             """Initialize simplified access for the attribute data"""
             super().__init__(context_helper, node, attributes, dynamic_attributes)
-            self.positions_size = None
-            self.protoIndices_size = None
+            self.__bundles = og.BundleContainer(context_helper.context, node, attributes, [], read_only=False)
 
         @property
-        def positions(self):
-            return self._context_helper.get_array(self._attributes.positions, get_for_write=True, reserved_element_count=self.positions_size)
+        def particles(self) -> og.BundleContents:
+            """Get the bundle wrapper class for the attribute outputs.particles"""
+            return self.__bundles.particles
 
-        @positions.setter
-        def positions(self, value):
-            self._context_helper.set_attr_value(value, self._attributes.positions)
-            self.positions_size = self._context_helper.get_elem_count(self._attributes.positions)
-
-        @property
-        def protoIndices(self):
-            return self._context_helper.get_array(self._attributes.protoIndices, get_for_write=True, reserved_element_count=self.protoIndices_size)
-
-        @protoIndices.setter
-        def protoIndices(self, value):
-            self._context_helper.set_attr_value(value, self._attributes.protoIndices)
-            self.protoIndices_size = self._context_helper.get_elem_count(self._attributes.protoIndices)
+        @particles.setter
+        def particles(self, bundle: og.BundleContents):
+            """Overwrite the bundle attribute outputs.particles with a new bundle"""
+            if not isinstance(bundle, og.BundleContents):
+                carb.log_error("Only bundle attributes can be assigned to another bundle attribute")
+            self.__bundles.particles.bundle = bundle
     class ValuesForState(og.DynamicAttributeAccess):
         """Helper class that creates natural hierarchical access to state attributes"""
         def __init__(self, context_helper: og.ContextHelper, node: og.Node, attributes, dynamic_attributes: og.DynamicAttributeInterface):
@@ -179,10 +207,12 @@ class OgnParticleVolumeDatabase(og.Database):
             # Set any default values the attributes have specified
             db = OgnParticleVolumeDatabase(context_helper, node)
             db.inputs.execIn = 0
-            db.inputs.sample_surface = True
-            db.inputs.sample_volume = True
+            db.inputs.max_points = 262144
+            db.inputs.sdf_max = 0.0
+            db.inputs.sdf_min = -10000.0
             db.inputs.spacing = 10.0
             db.inputs.spacing_jitter = 0.0
+            db.inputs.velocity = [0.0, 0.0, 0.0]
             initialize_function = getattr(OgnParticleVolumeDatabase.NODE_TYPE_CLASS, 'initialize', None)
             if callable(initialize_function):
                 initialize_function(context_helper, node)
@@ -206,6 +236,7 @@ class OgnParticleVolumeDatabase(og.Database):
                 needs_initializing = initialize_type_function(node_type)
             if needs_initializing:
                 node_type.set_metadata(og.MetadataKeys.EXTENSION, "omni.warp")
+                node_type.set_metadata(og.MetadataKeys.TOKENS, "[\"points\", \"worldMatrix\", \"primPath\", \"faceVertexCounts\", \"faceVertexIndices\"]")
                 node_type.set_metadata(og.MetadataKeys.DESCRIPTION, "Particle volume sampler")
                 node_type.set_metadata(og.MetadataKeys.LANGUAGE, "Python")
                 OgnParticleVolumeDatabase.INTERFACE.add_to_node_type(node_type)
@@ -216,6 +247,8 @@ class OgnParticleVolumeDatabase(og.Database):
             if callable(on_connection_type_resolve_function):
                 on_connection_type_resolve_function(node)
     NODE_TYPE_CLASS = None
+    GENERATOR_VERSION = (1, 1, 2)
+    TARGET_VERSION = (2, 2, 0)
     @staticmethod
     def register(node_type_class):
         OgnParticleVolumeDatabase.NODE_TYPE_CLASS = node_type_class

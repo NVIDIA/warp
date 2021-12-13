@@ -31,6 +31,11 @@ class TestOgnParticleSolver(omni.kit.test.AsyncTestCase):
         self.assertEqual(og.GraphRegistry().get_node_type_version(node_type_name), 1)
         self.assertTrue(test_node.get_attribute_exists("inputs:collider"))
 
+        self.assertTrue(test_node.get_attribute_exists("inputs:collider_margin"))
+
+        input_attr = test_node.get_attribute("inputs:collider_margin")
+        actual_input = helper.get_values(test_node, [input_attr])[0]
+        verify_values(1.5, actual_input, "omni.warp.OgnParticleSolver USD load test - inputs:collider_margin attribute value error")
         self.assertTrue(test_node.get_attribute_exists("inputs:collider_offset"))
 
         input_attr = test_node.get_attribute("inputs:collider_offset")
@@ -91,13 +96,20 @@ class TestOgnParticleSolver(omni.kit.test.AsyncTestCase):
         input_attr = test_node.get_attribute("inputs:num_substeps")
         actual_input = helper.get_values(test_node, [input_attr])[0]
         verify_values(32, actual_input, "omni.warp.OgnParticleSolver USD load test - inputs:num_substeps attribute value error")
-        self.assertTrue(test_node.get_attribute_exists("inputs:positions"))
+        self.assertTrue(test_node.get_attribute_exists("inputs:particle_margin"))
 
-        input_attr = test_node.get_attribute("inputs:positions")
+        input_attr = test_node.get_attribute("inputs:particle_margin")
         actual_input = helper.get_values(test_node, [input_attr])[0]
-        verify_values([], actual_input, "omni.warp.OgnParticleSolver USD load test - inputs:positions attribute value error")
+        verify_values(0.5, actual_input, "omni.warp.OgnParticleSolver USD load test - inputs:particle_margin attribute value error")
         self.assertTrue(test_node.get_attribute_exists("inputs:radius"))
 
         input_attr = test_node.get_attribute("inputs:radius")
         actual_input = helper.get_values(test_node, [input_attr])[0]
         verify_values(10.0, actual_input, "omni.warp.OgnParticleSolver USD load test - inputs:radius attribute value error")
+        self.assertTrue(test_node.get_attribute_exists("inputs:spawn_exec"))
+
+        input_attr = test_node.get_attribute("inputs:spawn_exec")
+        actual_input = helper.get_values(test_node, [input_attr])[0]
+        verify_values(0, actual_input, "omni.warp.OgnParticleSolver USD load test - inputs:spawn_exec attribute value error")
+        self.assertTrue(test_node.get_attribute_exists("inputs:spawn_particles"))
+

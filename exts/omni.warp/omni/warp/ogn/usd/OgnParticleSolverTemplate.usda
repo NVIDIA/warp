@@ -13,12 +13,15 @@ def ComputeNode "Template_omni_warp_OgnParticleSolver" (
     custom token PythonNode:type = "omni.warp.OgnParticleSolver"
     custom int node:typeVersion = 1
 
-    # 15 attributes
+    # 18 attributes
     custom rel inputs:collider (
         docs="""Collision Prim"""
     )
+    custom float inputs:collider_margin = 1.5 (
+        docs="""Distance to generate contacts at, multiple of collider_offset """
+    )
     custom float inputs:collider_offset = 0.01 (
-        docs="""No documentation provided"""
+        docs="""Distance to maintain from collision primitive surface"""
     )
     custom vector3f inputs:gravity = (0.0, -9.8, 0.0) (
         docs="""No documentation provided"""
@@ -53,15 +56,27 @@ def ComputeNode "Template_omni_warp_OgnParticleSolver" (
     custom int inputs:num_substeps = 32 (
         docs="""No documentation provided"""
     )
-    custom point3f[] inputs:positions = [] (
-        docs="""Particle positions"""
+    custom float inputs:particle_margin = 0.5 (
+        docs="""Amount to expand the grid cell size to accommodate caching neighbor grid between steps"""
     )
     custom float inputs:radius = 10.0 (
         docs="""No documentation provided"""
     )
+    custom int inputs:spawn_exec = 0 (
+        docs="""Spawn particles execution pin"""
+    )
+    custom rel inputs:spawn_particles (
+        docs="""Spawn Particles bundle, can include position, velocity, mass"""
+    )
 
-    # 1 attribute
+    # 3 attributes
+    custom int[] outputs:ids (
+        docs="""Particle ids"""
+    )
     custom point3f[] outputs:positions (
         docs="""Particle positions"""
+    )
+    custom float[] outputs:widths (
+        docs="""Particle widths"""
     )
 }
