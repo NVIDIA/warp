@@ -94,6 +94,7 @@ inline CUDA_CALLABLE float max(float a, float b) { return a>b?a:b; }
 inline CUDA_CALLABLE float mod(float a, float b) { return fmodf(a, b); }
 inline CUDA_CALLABLE float log(float a) { return logf(a); }
 inline CUDA_CALLABLE float exp(float a) { return expf(a); }
+inline CUDA_CALLABLE float pow(float a, float b) { return powf(a, b); }
 
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
@@ -122,6 +123,7 @@ inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, 
 }
 inline CUDA_CALLABLE void adj_log(float a, float& adj_a, float adj_ret) { adj_a += (1.f/a)*adj_ret; }
 inline CUDA_CALLABLE void adj_exp(float a, float& adj_a, float adj_ret) { adj_a += exp(a)*adj_ret; }
+inline CUDA_CALLABLE void adj_pow(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*pow(a, b-1.f)*adj_ret; adj_b += log(a)*pow(a, b)*adj_ret; }
 
 
 inline CUDA_CALLABLE void adj_min(float a, float b, float& adj_a, float& adj_b, float adj_ret)
@@ -282,13 +284,7 @@ template <typename T>
 CUDA_CALLABLE inline T operator*(float s, const T& a) { return mul(a, s); }
 
 template <typename T>
-CUDA_CALLABLE inline T operator*(const T& a, const T& b) { return mul(a, b); }
-
-template <typename T>
 CUDA_CALLABLE inline T operator/(const T& a, float s) { return div(a, s); }
-
-template <typename T>
-CUDA_CALLABLE inline T operator/(const T& a, const T& b) { return div(a, b); }
 
 template <typename T>
 CUDA_CALLABLE inline T operator+(const T& a, const T& b) { return add(a, b); }

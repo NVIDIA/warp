@@ -159,7 +159,6 @@ add_builtin("mul", input_types={"x": float, "y": float}, value_type=float, doc="
 add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
-add_builtin("mul", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")
 add_builtin("mul", input_types={"x": quat, "y": float}, value_type=quat, doc="", group="Operators")
 add_builtin("mul", input_types={"x": quat, "y": quat}, value_type=quat, doc="", group="Operators")
@@ -219,6 +218,11 @@ add_builtin("log", input_types={"x": vec3}, value_type=vec3, doc="", group="Scal
 
 add_builtin("exp", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("exp", input_types={"x": vec3}, value_type=vec3, doc="", group="Scalar Math")
+
+add_builtin("cw_mul", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("cw_mul", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Vector Math")
+add_builtin("cw_div", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec3, doc="", group="Vector Math")
 
 add_builtin("dot", input_types={"x": vec3, "y": vec3}, value_type=float, doc="", group="Vector Math")
 add_builtin("dot", input_types={"x": vec4, "y": vec4}, value_type=float, doc="", group="Vector Math")

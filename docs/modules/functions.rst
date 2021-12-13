@@ -227,6 +227,12 @@ Scalar Math
 .. function:: exp(x: vec3) -> vec3
 
 
+.. function:: pow(x: float, y: float) -> float
+
+
+.. function:: pow(x: vec3, y: float) -> vec3
+
+
 .. function:: int(x: int) -> int
 
 
