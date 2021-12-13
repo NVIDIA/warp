@@ -21,14 +21,6 @@ def read_transform(input):
     return xform
 
 def read_transform_bundle(db, bundle):
-    # timeline =  omni.timeline.get_timeline_interface()
-    # time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
-
-    # stage = omni.usd.get_context().get_stage()
-    # prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
-    # return prim.ComputeLocalToWorldTransform(time)
-    #print(bundle.attribute_by_name(db.tokens.transform).value.reshape(4,4))
-
     m = Gf.Matrix4d(bundle.attribute_by_name(db.tokens.transform).value.reshape(4,4))
     return m
 
@@ -52,21 +44,6 @@ def triangulate(counts, indices):
     return tri_indices
 
 
-
-# transform points from local space to world space given a mat44
-@wp.kernel
-def transform_points(src: wp.array(dtype=wp.vec3),
-                     dest: wp.array(dtype=wp.vec3),
-                     xform: wp.mat44):
-
-    tid = wp.tid()
-
-    p = wp.load(src, tid)
-    m = wp.transform_point(xform, p)
-
-    wp.store(dest, tid, m)
-
-
 # update mesh data given two sets of collider positions
 # computes velocities and transforms points to world-space
 @wp.kernel
@@ -81,8 +58,8 @@ def transform_mesh(collider_current: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    local_p1 = wp.load(collider_current, tid)
-    local_p0 = wp.load(collider_previous, tid)
+    local_p1 = collider_current[tid]
+    local_p0 = collider_previous[tid]
 
     world_p1 = wp.transform_point(xform_current, local_p1)
     world_p0 = wp.transform_point(xform_previous, local_p0)
@@ -90,14 +67,16 @@ def transform_mesh(collider_current: wp.array(dtype=wp.vec3),
     p = world_p1*alpha + world_p0*(1.0-alpha)
     v = (world_p1-world_p0)/dt
 
-    wp.store(mesh_points, tid, p)
-    wp.store(mesh_velocities, tid, v)
+    mesh_points[tid] = p
+    mesh_velocities[tid] = v
 
 
 class OgnParticleSolverState:
 
     def __init__(self):
-
+        self.reset()
+    
+    def reset(self):
         self.model = None
         self.state_0 = None
         self.state_1 = None
@@ -143,7 +122,11 @@ class OgnParticleSolver:
 
         with wp.ScopedCudaGuard():
 
-            # initialization
+            # reset on stop
+            if (timeline.is_stopped()):
+                state.reset()               
+
+            # initialize
             if (timeline.is_playing()):
             
                 if state.model is None:
@@ -152,17 +135,19 @@ class OgnParticleSolver:
                     builder = wp.sim.ModelBuilder()
 
                     # particles
-                    with wp.ScopedTimer("Create Particles", active=profile_enabled, detailed=False):
+                    with wp.ScopedTimer("Create Particles", active=profile_enabled):
 
-                        if (len(db.inputs.positions)):
+                        if (db.inputs.spawn_particles.valid):
+
+                            particle_points = db.inputs.spawn_particles.attribute_by_name(db.tokens.points).value
+                            particle_velocities = db.inputs.spawn_particles.attribute_by_name(db.tokens.velocities).value
 
                             # transform particles points to world-space
-                            points = db.inputs.positions
-                            points_count = len(points)
+                            points_count = len(particle_points)
                             
                             for i in range(points_count):
-                                builder.add_particle(pos=points[i],
-                                                     vel=(0.0, 0.0, 0.0),
+                                builder.add_particle(pos=particle_points[i],
+                                                     vel=particle_velocities[i],
                                                      mass=db.inputs.mass)
 
 
@@ -172,9 +157,6 @@ class OgnParticleSolver:
                         collider = db.inputs.collider
 
                         if (collider.valid):
-
-                            # for a in collider.attributes:
-                            #     print(a.name)
 
                             collider_points = collider.attribute_by_name(db.tokens.points).value
                             collider_indices = collider.attribute_by_name(db.tokens.faceVertexIndices).value
@@ -200,12 +182,6 @@ class OgnParticleSolver:
                                 pos=(0.0, 0.0, 0.0),
                                 rot=(0.0, 0.0, 0.0, 1.0),
                                 scale=(1.0, 1.0, 1.0))
-
-                            # builder.add_shape_sphere(
-                            #     body=-1,
-                            #     pos=(0.0, 20.0, 250.0),
-                            #     rot=(0.0, 0.0, 0.0, 1.0),
-                            #     radius=50.0)
 
                             state.collider_xform = read_transform_bundle(db, db.inputs.collider)
 
@@ -248,7 +224,7 @@ class OgnParticleSolver:
                 state.model.soft_contact_kf = db.inputs.k_contact_friction
                 state.model.soft_contact_mu = db.inputs.k_contact_mu
                 state.model.soft_contact_distance = db.inputs.collider_offset
-                state.model.soft_contact_margin = db.inputs.collider_offset*100.0
+                state.model.soft_contact_margin = db.inputs.collider_offset*db.inputs.collider_margin
 
                 # update collider positions
                 with wp.ScopedTimer("Refit", active=profile_enabled):
@@ -317,7 +293,7 @@ class OgnParticleSolver:
                 with wp.ScopedTimer("Simulate", active=profile_enabled):
                     
                     if (use_graph):
-                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*3.0)
+                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*(2.0 + db.inputs.particle_margin))
                         wp.capture_launch(state.capture)
                     else:
                         
@@ -328,10 +304,7 @@ class OgnParticleSolver:
                         # run collision detection once per-frame
                         wp.sim.collide(state.model, state.state_0)
 
-                        # pos = read_transform_bundle(db.inputs.collider).ExtractTranslation()
-                        # state.model.shape_transform = wp.array([wp.transform((pos[0], pos[1], pos[2]), wp.quat_identity())], dtype=wp.transform, device=device)
-
-                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*2.5)
+                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*(2.0 + db.inputs.particle_margin))
 
                         for i in range(sim_substeps):
 
@@ -344,19 +317,6 @@ class OgnParticleSolver:
                                 sim_dt)
 
                             (state.state_0, state.state_1) = (state.state_1, state.state_0)
-
-
-                # # transform particles posiitions back to local space
-                # with wp.ScopedTimer("Transform", active=False):
-                    
-                #     particles_xform_inv = read_transform(db.inputs.particles_transform).GetInverse()
-
-                #     wp.launch(kernel=transform_points, 
-                #               dim=state.model.particle_count, 
-                #               inputs=[state.state_0.particle_q, 
-                #                       state.positions_device, 
-                #                       np.array(particles_xform_inv).T],
-                #               device=device)
 
                 with wp.ScopedTimer("Synchronize", active=profile_enabled):
 
@@ -375,8 +335,18 @@ class OgnParticleSolver:
                     
                     # timeline not playing and sim. not yet initialized, just pass through outputs
                     if state.model is None:
-                        db.outputs.positions_size = len(db.inputs.positions)
-                        db.outputs.positions[:] = db.inputs.positions
+
+                        particle_points = db.inputs.spawn_particles.attribute_by_name(db.tokens.points).value
+                        particle_velocities = db.inputs.spawn_particles.attribute_by_name(db.tokens.velocities).value
+
+                        db.outputs.positions_size = len(particle_points)
+                        db.outputs.positions[:] = particle_points
+
+                        db.outputs.widths_size = len(particle_points)
+                        db.outputs.widths[:] = np.ones(len(particle_points))*db.inputs.radius*2.0
+
+                        db.outputs.ids_size = len(particle_points)
+                        db.outputs.ids[:] = [0]*len(particle_points)
 
 
         return True

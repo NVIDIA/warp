@@ -9,19 +9,19 @@
                 "description": "",
                 "default": 0
             },
-            "volume": {
+            "shape": {
                 "type": "bundle",
-                "description": "Collision Prim"
+                "description": "Volume primitive"
             },
-            "sample_volume": {
-                "type": "bool",
+            "sdf_min": {
+                "type": "float",
                 "description": "",
-                "default": true
+                "default": -10000.0
             },
-            "sample_surface": {
-                "type": "bool",
+            "sdf_max": {
+                "type": "float",
                 "description": "",
-                "default": true
+                "default": 0.0
             },
             "spacing": {
                 "type": "float",
@@ -32,16 +32,22 @@
                 "type": "float",
                 "description": "",
                 "default": 0.0
+            },
+            "velocity": {
+                "type": "vectorf[3]",
+                "description": "",
+                "default": [0.0, 0.0, 0.0]
+            },
+            "max_points": {
+                "type": "int",
+                "description": "",
+                "default": 262144
             }
         },
         "outputs": {
-            "positions": {
-                "type": "pointf[3][]",
-                "description": "Particle positions"
-            },
-            "protoIndices": {
-                "type": "int[]",
-                "description": "Protoindices"                
+            "particles": {
+                "type": "bundle",
+                "description": "Particles bundle: points, velocities"
             }
         },
         "state": {

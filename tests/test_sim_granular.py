@@ -32,21 +32,21 @@ device = "cuda"
 builder = wp.sim.ModelBuilder()
 
 builder.add_particle_grid(
-    dim_x=8,
-    dim_y=16,
-    dim_z=8,
+    dim_x=16,
+    dim_y=32,
+    dim_z=16,
     cell_x=radius*2.0,
     cell_y=radius*2.0,
     cell_z=radius*2.0,
     pos=(0.0, 1.0, 0.0),
     rot=wp.quat_identity(),
     vel=(5.0, 0.0, 0.0),
-    mass=1.0,
+    mass=0.1,
     jitter=radius*0.1)
 
 model = builder.finalize(device)
 model.particle_radius = radius
-model.particle_kf = 100.0
+model.particle_kf = 25.0
 
 model.soft_contact_kd = 100.0
 model.soft_contact_kf *= 2.0

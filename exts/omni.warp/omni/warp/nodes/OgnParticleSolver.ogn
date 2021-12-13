@@ -4,10 +4,14 @@
         "description": "Particle simulation node",
         "language": "Python",
         "inputs": {
-            "positions": {
-                "type": "pointf[3][]",
-                "description": "Particle positions",
-                "default": []
+            "spawn_particles": {
+                "type": "bundle",
+                "description": "Spawn Particles bundle, can include position, velocity, mass"
+            },
+            "spawn_exec": {
+                "type": "int",
+                "description": "Spawn particles execution pin",
+                "default": 0
             },
             "collider": {
                 "type": "bundle",
@@ -15,9 +19,14 @@
             },
             "collider_offset": {
                 "type": "float",
-                "description": "",
+                "description": "Distance to maintain from collision primitive surface",
                 "default": 0.01
             },
+            "collider_margin": {
+                "type": "float",
+                "description": "Distance to generate contacts at, multiple of collider_offset ",
+                "default": 1.5
+            },            
             "mass": {
                 "type": "float",
                 "description": "",
@@ -28,6 +37,11 @@
                 "description": "",
                 "default": 10.0
             },
+            "particle_margin": {
+                "type": "float",
+                "description": "Amount to expand the grid cell size to accommodate caching neighbor grid between steps",
+                "default": 0.5
+            },            
             "k_contact_elastic": {
                 "type": "float",
                 "description": "",
@@ -91,11 +105,19 @@
             "positions": {
                 "type": "pointf[3][]",
                 "description": "Particle positions"
+            },
+            "widths": {
+                "type": "float[]",
+                "description": "Particle widths"
+            },
+            "ids": {
+                "type": "int[]",
+                "description": "Particle ids"
             }
         },
         "state": {
             "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
         },
-        "tokens": ["points", "worldMatrix", "primPath", "faceVertexCounts", "faceVertexIndices", "transform"]
+        "tokens": ["points", "velocities", "worldMatrix", "primPath", "faceVertexCounts", "faceVertexIndices", "transform"]
     }
 }

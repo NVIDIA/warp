@@ -158,7 +158,7 @@ class UsdRenderer:
         mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
         mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
 
-        _usd_set_xform(mesh, wp.transform(pos, rot), scale, self.time)
+        _usd_set_xform(mesh, (pos, rot), scale, self.time)
 
 
     def render_line_list(self, name, vertices, indices, color, radius):

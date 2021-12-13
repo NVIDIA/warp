@@ -321,8 +321,8 @@ class Model:
 
         self.particle_radius = 0.0
         self.particle_ke = 1.e+3
-        self.particle_kd = 1.e+3
-        self.particle_kf = 1.e+3
+        self.particle_kd = 1.e+2
+        self.particle_kf = 1.e+2
         self.particle_mu = 0.5
         self.particle_cohesion = 0.0
         self.particle_adhesion = 0.0
@@ -1572,7 +1572,7 @@ class ModelBuilder:
             return self.compute_capsule_inertia(density, scale[0], scale[1] * 2.0)
         elif (type == GEO_MESH):
             #todo: non-uniform scale of inertia tensor
-            s = scale[0]     # eventually want to compute moment of inertia for mesh.
+            s = scale[0]
             return (density * src.mass * s * s * s, density * src.I * s * s * s * s * s)
 
     
