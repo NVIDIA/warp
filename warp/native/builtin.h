@@ -83,7 +83,6 @@ inline CUDA_CALLABLE void adj_min(int a, int b, int& adj_a, int& adj_b, int adj_
 inline CUDA_CALLABLE void adj_max(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_clamp(int x, int a, int b, int& adj_x, int& adj_a, int& adj_b, int adj_ret) { }
 
-
 // basic ops for float types
 inline CUDA_CALLABLE float mul(float a, float b) { return a*b; }
 inline CUDA_CALLABLE float div(float a, float b) { return a/b; }
@@ -345,6 +344,7 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 #include "mesh.h"
 #include "svd.h"
 #include "hashgrid.h"
+#include "rand.h"
 
 //--------------
 namespace wp
