@@ -245,13 +245,13 @@ Scalar Math
 .. function:: float(x: float) -> float
 
 
-.. function:: rand_init(seed: uint32, offset: uint32) -> uint32
+.. function:: rand_init(seed: int, offset: int) -> uint32
 
 
-.. function:: randi(state: uint32) -> uint32
+.. function:: randi(state: uint32) -> int
 
 
-.. function:: randi(state: uint32, min: uint32, max: uint32) -> uint32
+.. function:: randi(state: uint32, min: int, max: int) -> int
 
 
 .. function:: randf(state: uint32) -> float

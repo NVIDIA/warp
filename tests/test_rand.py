@@ -7,9 +7,9 @@ wp.init()
 
 @wp.kernel
 def test_kernel(
-    kernel_seed: wp.uint32,
-    int_a: wp.array(dtype=uint32),
-    int_ab: wp.array(dtype=uint32),
+    kernel_seed: int,
+    int_a: wp.array(dtype=int),
+    int_ab: wp.array(dtype=int),
     float_01: wp.array(dtype=float),
     float_ab: wp.array(dtype=float)):
 
@@ -20,14 +20,14 @@ def test_kernel(
     wp.store(int_a, tid, wp.randi(state))
     wp.store(int_ab, tid, wp.randi(state, 0, 100))
     wp.store(float_01, tid, wp.randf(state))
-    wp.store(float_ab, tid, wp.randf(state, 0, 100))
+    wp.store(float_ab, tid, wp.randf(state, 0.0, 100.0))
 
 N = 10
 
-int_a_host = wp.zeros(N, dtype=uint32, device="cpu")
-int_a_device = wp.zeros(N, dtype=uint32, device=device)
-int_ab_host = wp.zeros(N, dtype=uint32, device="cpu")
-int_ab_device = wp.zeros(N, dtype=uint32, device=device)
+int_a_host = wp.zeros(N, dtype=int, device="cpu")
+int_a_device = wp.zeros(N, dtype=int, device=device)
+int_ab_host = wp.zeros(N, dtype=int, device="cpu")
+int_ab_device = wp.zeros(N, dtype=int, device=device)
 
 float_01_host = wp.zeros(N, dtype=float, device="cpu")
 float_01_device = wp.zeros(N, dtype=float, device=device)
