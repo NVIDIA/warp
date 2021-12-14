@@ -87,6 +87,17 @@ CUDA_CALLABLE inline vec3 spatial_bottom(const spatial_vector& a)
     return a.v;
 }
 
+inline CUDA_CALLABLE float index(const spatial_vector& v, int i)
+{
+    return v[i];
+}
+
+inline void CUDA_CALLABLE adj_index(const spatial_vector& m, int i, spatial_vector& adj_v, int& adj_i, float adj_ret)
+{
+    adj_v[i] += adj_ret;
+}
+
+
 // adjoint methods
 CUDA_CALLABLE inline void adj_spatial_vector(
     float a, float b, float c, 
@@ -188,6 +199,20 @@ struct transform
 
     CUDA_CALLABLE inline transform(vec3 p=vec3(), quat q=quat()) : p(p), q(q) {}
     CUDA_CALLABLE inline transform(float)  {}  // helps uniform initialization
+
+    CUDA_CALLABLE inline float operator[](int index) const
+    {
+        assert(index < 7);
+
+        return (&p.x)[index];
+    }
+
+    CUDA_CALLABLE inline float& operator[](int index)
+    {
+        assert(index < 7);
+
+        return (&p.x)[index];
+    }    
 };
 
 CUDA_CALLABLE inline transform transform_identity()
@@ -274,6 +299,16 @@ CUDA_CALLABLE inline transform mul(const transform& a, float s)
 CUDA_CALLABLE inline transform mul(const transform& a, const transform& b)
 {
     return transform_multiply(a, b);
+}
+
+inline CUDA_CALLABLE float index(const transform& t, int i)
+{
+    return t[i];
+}
+
+inline void CUDA_CALLABLE adj_index(const transform& t, int i, transform& adj_t, int& adj_i, float adj_ret)
+{
+    adj_t[i] += adj_ret;
 }
 
 

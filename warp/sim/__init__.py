@@ -6,4 +6,4 @@ from . integrator_euler import VariationalImplicitIntegrator
 from . integrator_xpbd import XPBDIntegrator
 
 from . collide import collide
-from . articulation import eval_fk
+from . articulation import eval_fk, eval_ik

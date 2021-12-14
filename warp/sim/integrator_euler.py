@@ -39,7 +39,7 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
     inv_mass = w[tid]
 
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
-    v1 = v0 + ((fe + fi) * inv_mass + gravity * wp.step(0.0 - inv_mass)) * dt
+    v1 = v0 + ((fe + fi) * inv_mass + gravity * wp.step(0.0 - inv_mass)) *dt
     x1 = x0 + v1 * dt
 
     wp.store(x_new, tid, x1)
@@ -1228,12 +1228,12 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     # revolute
     if (type == 1):
         
-        axis_p = wp.transform_vector(X_wp, joint_axis[tid])
-        axis_c = wp.transform_vector(X_wc, joint_axis[tid])
+        axis_p = wp.transform_vector(X_wp, axis)
+        axis_c = wp.transform_vector(X_wc, axis)
 
         # swing twist decomposition
         q_pc = wp.quat_inverse(q_p)*q_c
-        twist = wp.quat_twist(axis_p, q_pc)
+        twist = wp.quat_twist(axis, q_pc)
 
         q = wp.acos(twist[3])*2.0*wp.sign(wp.dot(axis, wp.vec3(twist[0], twist[1], twist[2])))
         qd = wp.dot(w_err, axis_p)
@@ -1862,3 +1862,6 @@ class VariationalImplicitIntegrator:
   
 
             return state_out
+
+
+
