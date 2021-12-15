@@ -468,7 +468,7 @@ struct mesh_query_aabb_t
     } // for backward pass
 
     // Mesh Id
-    int mesh_id;
+    Mesh mesh;
 	// BVH traversal stack:
 	int stack[32];
 	int count;
@@ -489,11 +489,12 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
 
     // initialize empty
 	mesh_query_aabb_t query;
-	query.mesh_id = id;
 	query.face = -1;
-	
 
 	Mesh mesh = mesh_get(id);
+
+	query.mesh = mesh;
+	
     // if no bvh nodes, return empty query.
     if (mesh.bvh.num_nodes == 0)
     {
@@ -558,7 +559,7 @@ CUDA_CALLABLE inline void adj_mesh_query_aabb(uint64_t id, const vec3& lower, co
 
 CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
 {
-    Mesh mesh = mesh_get(query.mesh_id);
+    Mesh mesh = query.mesh;
 
     wp::bounds3 input_bounds(query.input_lower, query.input_upper);
     // Navigate through the bvh, find the first overlapping leaf node.
@@ -595,6 +596,12 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
         }
     }
     return false;
+}
+
+//Stub
+CUDA_CALLABLE inline void adj_mesh_query_aabb_next(mesh_query_aabb_t& query, int& index, mesh_query_aabb_t&, int&, bool&)
+{
+
 }
 
 // // determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)

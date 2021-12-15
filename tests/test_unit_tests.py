@@ -33,9 +33,7 @@ def compute_bounds(indices: wp.array(dtype=int), positions: wp.array(dtype=wp.ve
 
 
 @wp.kernel
-def compute_num_contacts(lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype=wp.vec3), shape_geo_id: wp.array(dtype=wp.uint64), shape_index: int):
-    
-    mesh = wp.load(shape_geo_id, shape_index)
+def compute_num_contacts(lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype=wp.vec3), mesh_id: wp.uint64, counts: wp.array(dtype=int)):
     
     face_index = int(0)
     face_u = float(0.0)  
@@ -47,11 +45,21 @@ def compute_num_contacts(lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype
     upper = uppers[tid]
     lower = lowers[tid]
 
-    counting=True
+    query = wp.mesh_query_aabb(mesh_id, lower, upper)
 
-    query = wp.mesh_query_aabb(mesh, lower, upper)
-
+    index = int(0)
+    count = int(0)
     
+    counts[tid] = int(10)
+
+    print(int(1291))
+    
+    # while(wp.mesh_query_aabb_next(query, index)):
+    #     count = count+1   
+        
+    # print(int(count))
+
+
 
 
 class TestStringMethods(unittest.TestCase):
@@ -100,7 +108,43 @@ class TestStringMethods(unittest.TestCase):
 
 
     def test_mesh_query_aabb(self):
-        self.assertTrue(True)
+        device = "cuda"
+        #create two triangles.
+        points = np.array([[0,0,0],[1,0,0],[0,1,0], [-1,-1,1]])
+        indices = np.array([0,1,2,1,2,3])
+        m = wp.Mesh(wp.array(points, dtype=wp.vec3, device=device), None, wp.array(indices, dtype=int, device=device))
+
+        num_tris = int(len(indices)/3)
+        
+        lowers = wp.empty(n=num_tris,dtype=wp.vec3,device=device)
+        uppers = wp.empty_like(lowers)
+        wp.launch(
+            kernel=compute_bounds, 
+            dim=num_tris, 
+            inputs=[m.indices, m.points],
+            outputs=[lowers,uppers],
+            device=device)
+
+        counts = wp.empty(n=num_tris,dtype=int,device=device)
+
+        print(type(m.id))
+
+        wp.launch(
+            kernel=compute_num_contacts, 
+            dim=num_tris, 
+            inputs=[lowers, uppers, m.id],
+            outputs=[counts],
+            device=device)
+
+        wp.synchronize()
+
+        view = counts.numpy()
+
+        print(view)
+
+        
+
+
         
 
 if __name__ == '__main__':
