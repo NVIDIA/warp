@@ -46,14 +46,11 @@ def compute_num_contacts(lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype
 
     upper = uppers[tid]
     lower = lowers[tid]
-    
-    max_dist = float(1.0)
-    inside = float(0.0)
-    face = int(-1)
 
     counting=True
 
-    #query = wp.mesh_query_aabb(mesh, lower, upper, face)
+    query = wp.mesh_query_aabb(mesh, lower, upper)
+
     
 
 

@@ -482,7 +482,7 @@ struct mesh_query_aabb_t
 };
 
 CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
-    uint64_t id, const vec3& lower, const vec3& upper, float max_dist, float& inside, int& face)
+    uint64_t id, const vec3& lower, const vec3& upper)
 {
     // This routine traverses the BVH tree until it finds
 	// the the first triangle with an overlapping bvh. 
@@ -547,6 +547,13 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
 	}	
 
 	return query;
+}
+
+//Stub
+CUDA_CALLABLE inline void adj_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper,
+											   uint64_t, vec3&, vec3&, mesh_query_aabb_t&)
+{
+
 }
 
 CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
