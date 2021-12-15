@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
-import warp.sim.render as render
+import warp.sim.render as renderer
 
 import numpy as np
 
@@ -84,7 +84,7 @@ class HumanoidSNU:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = render.SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
+            self.renderer = renderer.SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
 
 
     def run(self):
