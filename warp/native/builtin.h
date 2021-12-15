@@ -294,7 +294,7 @@ CUDA_CALLABLE inline T operator-(const T& a, const T& b) { return sub(a, b); }
 // unary negation implementated as negative multiply, not sure the fp implications of this
 // may be better as 0.0 - x?
 template <typename T>
-CUDA_CALLABLE inline T neg(const T& x) { return x*T(-1); }
+CUDA_CALLABLE inline T neg(const T& x) { return T(0.0) - x; }
 template <typename T>
 CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(-adj_ret); }
 
