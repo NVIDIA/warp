@@ -28,7 +28,7 @@ class Robot:
     sim_time = 0.0
     render_time = 0.0
 
-    name = "ant"
+    name = "humanoid"
 
     def __init__(self, render=True, num_envs=1, device='cpu'):
 
@@ -52,22 +52,27 @@ class Robot:
                 limit_ke=1.e+4,
                 limit_kd=1.e+1)
 
-            coord_count = 15
-            dof_count = 14
+            coord_count = 28
+            dof_count = 27
             
             coord_start = i*coord_count
             dof_start = i*dof_count
 
             # set joint targets to rest pose in mjcf
-            if (self.name == "ant"):
 
-                # base
-                builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
-                builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
+                # # base
+                # builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
+                # builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
 
-                # joints
-                builder.joint_q[coord_start+7:coord_start+coord_count] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
+                # # joints
+                # builder.joint_q[coord_start+7:coord_start+coord_count] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
 
+
+            builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
+            builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
+
+            # builder.joint_q[coord_start:coord_start + 3] = self.start_pos[-1]
+            # builder.joint_q[coord_start + 3:coord_start + 7] = self.start_rot
 
         # finalize model
         self.model = builder.finalize(device)
@@ -184,5 +189,5 @@ if profile:
 
 else:
 
-    robot = Robot(render=True, device='cuda', num_envs=64)
+    robot = Robot(render=True, device='cuda', num_envs=1)
     robot.run()
