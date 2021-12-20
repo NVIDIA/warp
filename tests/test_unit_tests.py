@@ -3,6 +3,10 @@ import unittest
 import warp as wp
 import numpy as np
 
+wp.config.verbose = True
+wp.config.mode = "debug"
+wp.config.verify_cuda = True
+
 wp.init()
 
 @wp.func
@@ -47,19 +51,30 @@ def compute_num_contacts(lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype
 
     query = wp.mesh_query_aabb(mesh_id, lower, upper)
 
-    index = int(0)
+    index = int(-1)
     count = int(0)
     
     counts[tid] = int(10)
 
-    print(int(1291))
+    # t = wp.mesh_query_aabb_next(query,index)
+    # print(int(index))
+    # if(t):
+    #     print(int(123))
+    # else: 
+    #     print(int(321))
+    # t = wp.mesh_query_aabb_next(query,index)
+    # print(int(index))
+    # if(t):
+    #     print(int(234))
+    # else: 
+    #     print(int(432))
     
-    # while(wp.mesh_query_aabb_next(query, index)):
-    #     count = count+1   
+    while(wp.mesh_query_aabb_next(query, index)):
+        print(int(index))
+        count = count+1
         
-    # print(int(count))
-
-
+    print(int(count))
+    counts[tid] = count
 
 
 class TestStringMethods(unittest.TestCase):
@@ -107,7 +122,7 @@ class TestStringMethods(unittest.TestCase):
         self.assertTrue(upper_view[1][2] == 1)
 
 
-    def test_mesh_query_aabb(self):
+    def test_mesh_query_aabb_count_overlap(self):
         device = "cuda"
         #create two triangles.
         points = np.array([[0,0,0],[1,0,0],[0,1,0], [-1,-1,1]])
@@ -140,8 +155,44 @@ class TestStringMethods(unittest.TestCase):
 
         view = counts.numpy()
 
-        print(view)
+        for c in view:
+            self.assertTrue(c == 2)
+        
+    def test_mesh_query_aabb_count_nonoverlap(self):
+        device = "cuda"
+        #create two triangles.
+        points = np.array([[0,0,0],[1,0,0],[0,1,0], [10,0,0], [10,1,0], [10,0,1]])
+        indices = np.array([0,1,2,3,4,5])
+        m = wp.Mesh(wp.array(points, dtype=wp.vec3, device=device), None, wp.array(indices, dtype=int, device=device))
 
+        num_tris = int(len(indices)/3)
+        
+        lowers = wp.empty(n=num_tris,dtype=wp.vec3,device=device)
+        uppers = wp.empty_like(lowers)
+        wp.launch(
+            kernel=compute_bounds, 
+            dim=num_tris, 
+            inputs=[m.indices, m.points],
+            outputs=[lowers,uppers],
+            device=device)
+
+        counts = wp.empty(n=num_tris,dtype=int,device=device)
+
+        print(type(m.id))
+
+        wp.launch(
+            kernel=compute_num_contacts, 
+            dim=num_tris, 
+            inputs=[lowers, uppers, m.id],
+            outputs=[counts],
+            device=device)
+
+        wp.synchronize()
+
+        view = counts.numpy()
+
+        for c in view:
+            self.assertTrue(c == 1)
         
 
 

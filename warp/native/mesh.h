@@ -535,8 +535,11 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
         // Make bounds from this AABB
         if (node_lower.b)
         {
-            // found very first triangle index
-			query.face = left_index;
+			
+            // found very first triangle index.
+			// Backup one level and return 
+			query.stack[query.count++] = nodeIndex;
+			// query.face = left_index;
 			return query;
         }
         else
@@ -560,7 +563,7 @@ CUDA_CALLABLE inline void adj_mesh_query_aabb(uint64_t id, const vec3& lower, co
 CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
 {
     Mesh mesh = query.mesh;
-
+	printf("mesh: %d %d\n", mesh.num_points, mesh.num_tris);
     wp::bounds3 input_bounds(query.input_lower, query.input_upper);
     // Navigate through the bvh, find the first overlapping leaf node.
     while (query.count)
@@ -586,6 +589,7 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
         {
             // found very first triangle index
             query.face = left_index;
+			index = left_index;
             return true;
         }
         else
