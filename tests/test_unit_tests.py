@@ -3,9 +3,9 @@ import unittest
 import warp as wp
 import numpy as np
 
-wp.config.verbose = True
-wp.config.mode = "debug"
-wp.config.verify_cuda = True
+# wp.config.verbose = True
+# wp.config.mode = "debug"
+# wp.config.verify_cuda = True
 
 wp.init()
 
@@ -54,26 +54,9 @@ def compute_num_contacts(lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype
     index = int(-1)
     count = int(0)
     
-    counts[tid] = int(10)
-
-    # t = wp.mesh_query_aabb_next(query,index)
-    # print(int(index))
-    # if(t):
-    #     print(int(123))
-    # else: 
-    #     print(int(321))
-    # t = wp.mesh_query_aabb_next(query,index)
-    # print(int(index))
-    # if(t):
-    #     print(int(234))
-    # else: 
-    #     print(int(432))
-    
     while(wp.mesh_query_aabb_next(query, index)):
-        print(int(index))
         count = count+1
         
-    print(int(count))
     counts[tid] = count
 
 
@@ -100,10 +83,6 @@ class TestStringMethods(unittest.TestCase):
         lower_view = lowers.numpy()
         upper_view = uppers.numpy()
         wp.synchronize()
-
-        print(lower_view)
-
-        print(upper_view)
 
         self.assertTrue(lower_view[0][0] == 0)
         self.assertTrue(lower_view[0][1] == 0)
@@ -142,8 +121,6 @@ class TestStringMethods(unittest.TestCase):
 
         counts = wp.empty(n=num_tris,dtype=int,device=device)
 
-        print(type(m.id))
-
         wp.launch(
             kernel=compute_num_contacts, 
             dim=num_tris, 
@@ -177,8 +154,6 @@ class TestStringMethods(unittest.TestCase):
             device=device)
 
         counts = wp.empty(n=num_tris,dtype=int,device=device)
-
-        print(type(m.id))
 
         wp.launch(
             kernel=compute_num_contacts, 
