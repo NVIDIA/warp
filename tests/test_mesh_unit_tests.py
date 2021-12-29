@@ -60,7 +60,7 @@ def compute_num_contacts(lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype
     counts[tid] = count
 
 
-class TestStringMethods(unittest.TestCase):
+class TestMeshQueryAABBMethods(unittest.TestCase):
 
     def test_compute_bounds(self):
         device = "cuda"
