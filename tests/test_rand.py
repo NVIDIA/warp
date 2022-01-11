@@ -24,14 +24,10 @@ def test_kernel(
 
 N = 10
 
-int_a_host = wp.zeros(N, dtype=int, device="cpu")
 int_a_device = wp.zeros(N, dtype=int, device=device)
-int_ab_host = wp.zeros(N, dtype=int, device="cpu")
 int_ab_device = wp.zeros(N, dtype=int, device=device)
 
-float_01_host = wp.zeros(N, dtype=float, device="cpu")
 float_01_device = wp.zeros(N, dtype=float, device=device)
-float_ab_host = wp.zeros(N, dtype=float, device="cpu")
 float_ab_device = wp.zeros(N, dtype=float, device=device)
 
 seed = 42
@@ -44,18 +40,14 @@ wp.launch(
     device=device
 )
 
-wp.copy(dest=int_a_host, src=int_a_device)
-wp.copy(dest=int_ab_host, src=int_ab_device)
-wp.copy(dest=float_01_host, src=float_01_device)
-wp.copy(dest=float_ab_host, src=float_ab_device)
 wp.synchronize()
 
 print("Test Rand")
 print("randi(state) array")
-print(int_a_host)
+print(int_a_device)
 print("randi(state, 0, 100) array")
-print(int_ab_host)
+print(int_ab_device)
 print("randf(state) array")
-print(float_01_host)
+print(float_01_device)
 print("randf(state, 0, 100) array")
-print(float_ab_host)
+print(float_ab_device)
