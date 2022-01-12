@@ -24,19 +24,19 @@ def compute_bounds(
     uppers: wp.array(dtype=wp.vec3),
 ):
     tid = wp.tid()
-    i = wp.load(indices, tid * 3 + 0)
-    j = wp.load(indices, tid * 3 + 1)
-    k = wp.load(indices, tid * 3 + 2)
+    i = indices[tid * 3 + 0]
+    j = indices[tid * 3 + 1]
+    k = indices[tid * 3 + 2]
 
-    x0 = wp.load(positions, i)  # point zero
-    x1 = wp.load(positions, j)  # point one
-    x2 = wp.load(positions, k)  # point two
+    x0 = positions[i]  # point zero
+    x1 = positions[j]  # point one
+    x2 = positions[k]  # point two
 
     lower = min_vec3(min_vec3(x0, x1), x2)
     upper = max_vec3(max_vec3(x0, x1), x2)
 
-    wp.store(lowers, tid, lower)
-    wp.store(uppers, tid, upper)
+    lowers[tid] = lower
+    uppers[tid] = upper
 
 
 @wp.kernel
