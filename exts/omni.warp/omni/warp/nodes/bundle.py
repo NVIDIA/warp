@@ -1,3 +1,10 @@
+"""Helper functions to parse primitves and meshes coming from an 'import USD prim data'.
+
+Use shapeinfos_from_bundle for initial parsing and update_shapeinfos_from_bundle for subsequent updates
+
+Supported types are mesh, sphere, box, and capsule
+"""
+
 import math
 import numpy as np
 import warp as wp
@@ -19,8 +26,8 @@ def transform_mesh(collider_current: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    local_p1 = wp.load(collider_current, tid)
-    local_p0 = wp.load(collider_previous, tid)
+    local_p1 = collider_current[tid]
+    local_p0 = collider_previous[tid]
 
     world_p1 = wp.transform_point(xform_current, local_p1)
     world_p0 = wp.transform_point(xform_previous, local_p0)
@@ -28,8 +35,8 @@ def transform_mesh(collider_current: wp.array(dtype=wp.vec3),
     p = world_p1 * alpha + world_p0 * (1.0 - alpha)
     v = (world_p1 - world_p0) / dt
 
-    wp.store(mesh_points, tid, p)
-    wp.store(mesh_velocities, tid, v)
+    mesh_points[tid] = p
+    mesh_velocities[tid] = v
 
 
 def triangulate(counts, indices):
@@ -46,10 +53,6 @@ def triangulate(counts, indices):
             ctr += 3
         wedgeIdx += nb
     return tri_indices
-
-
-def transform_from_prim(prim):
-    return Gf.Matrix4d(prim["transform"].reshape(4,4))
 
 
 class ShapeInfo:
@@ -75,7 +78,7 @@ class ShapeInfo:
     def add_to(self, builder: wp.sim.ModelBuilder):
         builder._add_shape(self.body, self.pos, self.rot, self.type, self.scale, self.mesh, self.density, self.ke, self.kd, self.kf, self.mu)
 
-def bundle_to_priminfo(bundle):
+def _bundle_to_priminfo(bundle):
     names_of_interest = {
         'Mesh': {"faceVertexCounts", "faceVertexIndices", "points", "xformOp", },
         'Sphere': {"radius", "xformOp", },
@@ -111,6 +114,11 @@ def bundle_to_priminfo(bundle):
 
     return priminfos
 
+
+def _transform_from_prim(prim):
+    return Gf.Matrix4d(prim["transform"].reshape(4,4))
+
+
 def shapeinfos_from_bundle(bundle, device):
     """Helper function to describe USD primitives in a bundle as Warp shapes.
     Returns a list of ShapeInfos, each having all the parameters needed by ModelBuilder._add_shape
@@ -119,7 +127,7 @@ def shapeinfos_from_bundle(bundle, device):
         bundle: output of an 'import USD prim data' node from omni.graph.io
     """
 
-    priminfos = bundle_to_priminfo(bundle)
+    priminfos = _bundle_to_priminfo(bundle)
 
     shape_infos = []
     for prim in priminfos:
@@ -132,7 +140,7 @@ def shapeinfos_from_bundle(bundle, device):
                 points = prim["points"]
                 indices = prim["faceVertexIndices"]
                 counts = prim["faceVertexCounts"]
-                xform = transform_from_prim(prim)
+                xform = _transform_from_prim(prim)
 
                 shape.current_positions = wp.array(points, dtype=wp.vec3, device=device)
                 shape.previous_positions = wp.array(points, dtype=wp.vec3, device=device)
@@ -179,7 +187,7 @@ def shapeinfos_from_bundle(bundle, device):
 def update_shapeinfos_from_bundle(shapeinfos, bundle, dt, device):
     """
     """
-    priminfos = bundle_to_priminfo(bundle)
+    priminfos = _bundle_to_priminfo(bundle)
     prim_dict = {}
     for prim in priminfos:
         prim_dict[prim["path"]] = prim
@@ -195,7 +203,7 @@ def update_shapeinfos_from_bundle(shapeinfos, bundle, dt, device):
             if shape.type == wp.sim.GEO_MESH:
                 # everywhere: if dirty
                 shape.previous_transform = shape.current_transform
-                shape.current_transform = transform_from_prim(prim).GetTranspose()
+                shape.current_transform = _transform_from_prim(prim).GetTranspose()
 
                 shape.current_positions, shape.previous_positions = shape.previous_positions, shape.current_positions
                 points_host = wp.array(prim["points"], dtype=wp.vec3, copy=False, device="cpu")
