@@ -8,3 +8,7 @@ call %PYTHON% -m pip install numpy
 
 REM WinSDK
 call %PYTHON% build_lib.py
+
+REM copy linux dependencies to bin dir
+copy _build\target-deps\cuda\bin\nvrtc*.dll warp\bin
+copy _build\target-deps\cuda\bin\cudart64*.dll warp\bin
