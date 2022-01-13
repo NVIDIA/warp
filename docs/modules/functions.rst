@@ -82,9 +82,6 @@ Operators
 .. function:: mul(x: vec3, y: float) -> vec3
 
 
-.. function:: mul(x: vec3, y: vec3) -> vec3
-
-
 .. function:: mul(x: vec4, y: float) -> vec4
 
 
@@ -215,6 +212,15 @@ Scalar Math
 .. function:: sqrt(x: float) -> float
 
 
+.. function:: tan(x: float) -> float
+
+
+.. function:: atan(x: float) -> float
+
+
+.. function:: atan2(y: float, x: float) -> float
+
+
 .. function:: log(x: float) -> float
 
 
@@ -233,19 +239,7 @@ Scalar Math
 .. function:: pow(x: vec3, y: float) -> vec3
 
 
-.. function:: int(x: int) -> int
-
-
-.. function:: int(x: float) -> int
-
-
-.. function:: float(x: int) -> float
-
-
-.. function:: float(x: float) -> float
-
-
-.. function:: rand_init(seed: int, offset: int) -> uint32
+.. function:: rand_init(state: int, offset: int) -> uint32
 
 
 .. function:: randi(state: uint32) -> int
@@ -260,8 +254,34 @@ Scalar Math
 .. function:: randf(state: uint32, min: float, max: float) -> float
 
 
+.. function:: int(x: int) -> int
+
+
+.. function:: int(x: float) -> int
+
+
+.. function:: float(x: int) -> float
+
+
+.. function:: float(x: float) -> float
+
+
+
+
 Vector Math
 ---------------
+.. function:: cw_mul(x: vec3, y: vec3) -> vec3
+
+
+.. function:: cw_mul(x: vec4, y: vec4) -> vec4
+
+
+.. function:: cw_div(x: vec3, y: vec3) -> vec3
+
+
+.. function:: cw_div(x: vec4, y: vec4) -> vec3
+
+
 .. function:: dot(x: vec3, y: vec3) -> float
 
 
@@ -494,10 +514,25 @@ Geometry
 .. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float, t: float, bary_u: float, bary_v: float, sign: float, normal: vec3, face: int) -> bool
 
 
+.. function:: mesh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> mesh_query_aabb_t
+
+
+.. function:: mesh_query_aabb_next(id: mesh_query_aabb_t, index: int) -> bool
+
+
 .. function:: mesh_eval_position(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
 
 
 .. function:: mesh_eval_velocity(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
+
+
+.. function:: hash_grid_query(id: uint64, point: vec3, max_dist: float) -> hash_grid_query_t
+
+
+.. function:: hash_grid_query_next(id: hash_grid_query_t, index: int) -> bool
+
+
+.. function:: hash_grid_point_id(id: uint64, index: int) -> int
 
 
 
