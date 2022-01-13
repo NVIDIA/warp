@@ -12,7 +12,7 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 # copy linux dependencies to bin dir
 cp _build/target-deps/cuda/lib64/libcudart.so.10.1 warp/bin
 cp _build/target-deps/cuda/lib64/libnvrtc.so.10.1 warp/bin
-cp _build/target-deps/cuda/lib64/libnvrtc-builtins.so.10.1 warp/bin
+cp _build/target-deps/cuda/lib64/libnvrtc-builtins.so warp/bin
 
 # set rpath on libnvrtc so we can distribute without the CUDA SDK
 # this allows libnvrtc to find libnvrtc-builtins without a CUDA install
