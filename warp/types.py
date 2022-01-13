@@ -6,6 +6,27 @@ import numpy as np
 # built-in types
 
 
+class vec2(ctypes.Array):
+    
+    _length_ = 2
+    _type_ = ctypes.c_float
+    
+    def __init__(self, x, y):
+        self[0] = x
+        self[1] = y
+
+    @staticmethod
+    def length():
+        return 2
+
+    @staticmethod
+    def size():
+        return 8
+
+    @staticmethod
+    def ctype():
+        return ctypes.c_float
+
 class vec3(ctypes.Array):
     
     _length_ = 3

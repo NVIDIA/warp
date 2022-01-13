@@ -10,6 +10,9 @@ Operators
 .. function:: add(x: float, y: float) -> float
 
 
+.. function:: add(x: vec2, y: vec2) -> vec2
+
+
 .. function:: add(x: vec3, y: vec3) -> vec3
 
 
@@ -43,6 +46,9 @@ Operators
 .. function:: sub(x: float, y: float) -> float
 
 
+.. function:: sub(x: vec2, y: vec2) -> vec2
+
+
 .. function:: sub(x: vec3, y: vec3) -> vec3
 
 
@@ -73,10 +79,16 @@ Operators
 .. function:: mul(x: float, y: float) -> float
 
 
+.. function:: mul(x: float, y: vec2) -> vec2
+
+
 .. function:: mul(x: float, y: vec3) -> vec3
 
 
 .. function:: mul(x: float, y: vec4) -> vec4
+
+
+.. function:: mul(x: vec2, y: float) -> vec2
 
 
 .. function:: mul(x: vec3, y: float) -> vec3
@@ -92,6 +104,9 @@ Operators
 
 
 .. function:: mul(x: mat22, y: float) -> mat22
+
+
+.. function:: mul(x: mat22, y: vec2) -> vec2
 
 
 .. function:: mul(x: mat33, y: float) -> mat33
@@ -136,6 +151,9 @@ Operators
 .. function:: div(x: float, y: float) -> float
 
 
+.. function:: div(x: vec2, y: float) -> vec2
+
+
 .. function:: div(x: vec3, y: float) -> vec3
 
 
@@ -143,6 +161,9 @@ Operators
 
 
 .. function:: neg(x: float) -> float
+
+
+.. function:: neg(x: vec2) -> vec2
 
 
 .. function:: neg(x: vec3) -> vec3
@@ -270,16 +291,25 @@ Scalar Math
 
 Vector Math
 ---------------
+.. function:: cw_mul(x: vec2, y: vec2) -> vec2
+
+
 .. function:: cw_mul(x: vec3, y: vec3) -> vec3
 
 
 .. function:: cw_mul(x: vec4, y: vec4) -> vec4
 
 
+.. function:: cw_div(x: vec2, y: vec2) -> vec2
+
+
 .. function:: cw_div(x: vec3, y: vec3) -> vec3
 
 
 .. function:: cw_div(x: vec4, y: vec4) -> vec3
+
+
+.. function:: dot(x: vec2, y: vec2) -> float
 
 
 .. function:: dot(x: vec3, y: vec3) -> float
@@ -291,6 +321,9 @@ Vector Math
 .. function:: dot(x: quat, y: quat) -> float
 
 
+.. function:: outer(x: vec2, y: vec2) -> mat22
+
+
 .. function:: outer(x: vec3, y: vec3) -> mat33
 
 
@@ -300,7 +333,16 @@ Vector Math
 .. function:: skew(x: vec3) -> mat33
 
 
+.. function:: length(x: vec2) -> float
+
+
 .. function:: length(x: vec3) -> float
+
+
+.. function:: length(x: vec4) -> float
+
+
+.. function:: normalize(x: vec2) -> vec2
 
 
 .. function:: normalize(x: vec3) -> vec3
@@ -330,10 +372,22 @@ Vector Math
 .. function:: transpose(m: spatial_matrix) -> spatial_matrix
 
 
+.. function:: diag(d: vec2) -> mat22
+
+
 .. function:: diag(d: vec3) -> mat33
 
 
 .. function:: diag(d: vec4) -> mat44
+
+
+.. function:: vec2() -> vec2
+
+
+.. function:: vec2(x: float, y: float) -> vec2
+
+
+.. function:: vec2(s: float) -> vec2
 
 
 .. function:: vec3() -> vec3
@@ -354,19 +408,22 @@ Vector Math
 .. function:: vec4(s: float) -> vec4
 
 
+.. function:: mat22(c0: vec2, c1: vec2) -> mat22
+
+
 .. function:: mat22(m00: float, m01: float, m10: float, m11: float) -> mat22
 
 
 .. function:: mat33(c0: vec3, c1: vec3, c2: vec3) -> mat33
 
 
-.. function:: mat33() -> mat33
-
-
 .. function:: mat33(m00: float, m01: float, m02: float, m10: float, m11: float, m12: float, m20: float, m21: float, m22: float) -> mat33
 
 
 .. function:: mat44(c0: vec4, c1: vec4, c2: vec4, c3: vec4) -> mat44
+
+
+.. function:: mat44(m00: float, m01: float, m02: float, m03: float, m10: float, m11: float, m12: float, m13: float, m20: float, m21: float, m22: float, m23: float, m30: float, m31: float, m32: float, m33: float) -> mat44
 
 
 .. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None

@@ -13,6 +13,26 @@ import warp as wp
 wp.init()
 
 @wp.kernel
+def add_vec2(dest: wp.array(dtype=wp.vec2),
+             c: wp.vec2):
+
+    tid = wp.tid()
+    print(c)
+    wp.store(dest, tid, c)
+
+
+@wp.kernel
+def transform_vec2(dest: wp.array(dtype=wp.vec2),
+    m: wp.mat22,
+    v: wp.vec2):
+
+    tid = wp.tid()
+
+    p = wp.mul(m, v)
+    wp.store(dest, tid, p)
+
+
+@wp.kernel
 def add_vec3(dest: wp.array(dtype=wp.vec3),
              c: wp.vec3):
 
@@ -43,6 +63,23 @@ def transform_multiply(xforms: wp.array(dtype=wp.transform),
 device = "cuda"
 n = 32
 
+# vec2 tests
+dest = wp.zeros(n=32, dtype=wp.vec2, device=device)
+c = np.array((1.0, 2.0))
+m = np.array(((3.0, 0.0),
+              (0.0, 3.0)))
+
+
+print("add_vec2")
+wp.launch(add_vec2, dim=n, inputs=[dest, c], device=device)
+print(dest)
+
+
+print("transform_vec2")
+wp.launch(transform_vec2, dim=n, inputs=[dest, m, c], device=device)
+print(dest)
+
+# vec3 tests
 dest = wp.zeros(n=32, dtype=wp.vec3, device=device)
 c = np.array((1.0, 2.0, 3.0))
 m = np.array(((1.0, 0.0, 0.0, 1.0),

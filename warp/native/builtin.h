@@ -461,6 +461,11 @@ inline CUDA_CALLABLE void print(float f)
     printf("%f\n", f);
 }
 
+inline CUDA_CALLABLE void print(vec2 v)
+{
+    printf("%f %f\n", v.x, v.y);
+}
+
 inline CUDA_CALLABLE void print(vec3 v)
 {
     printf("%f %f %f\n", v.x, v.y, v.z);
@@ -526,6 +531,7 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float i, float& adj_i) { printf("%f adj: %f\n", i, adj_i); }
+inline CUDA_CALLABLE void adj_print(vec2 v, vec2& adj_v) { printf("%f %f adj: %f %f \n", v.x, v.y, adj_v.x, adj_v.y); }
 inline CUDA_CALLABLE void adj_print(vec3 v, vec3& adj_v) { printf("%f %f %f adj: %f %f %f \n", v.x, v.y, v.z, adj_v.x, adj_v.y, adj_v.z); }
 inline CUDA_CALLABLE void adj_print(vec4 v, vec4& adj_v) { printf("%f %f %f %f adj: %f %f %f %f\n", v.x, v.y, v.z, v.w, adj_v.x, adj_v.y, adj_v.z, adj_v.w); }
 inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%f %f %f %f adj: %f %f %f %f\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }

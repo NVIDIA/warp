@@ -133,6 +133,7 @@ def add_builtin(key, input_types={}, value_type=None, doc="", group="Other"):
 
 add_builtin("add", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
 add_builtin("add", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
+add_builtin("add", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("add", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("add", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("add", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Operators")
@@ -145,6 +146,7 @@ add_builtin("add", input_types={"x": spatial_matrix, "y": spatial_matrix}, value
 
 add_builtin("sub", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
 add_builtin("sub", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
+add_builtin("sub", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("sub", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("sub", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("sub", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Operators")
@@ -156,13 +158,16 @@ add_builtin("sub", input_types={"x": spatial_matrix, "y": spatial_matrix}, value
 
 add_builtin("mul", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="", group="Operators")
+add_builtin("mul", input_types={"x": vec2, "y": float}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")
 add_builtin("mul", input_types={"x": quat, "y": float}, value_type=quat, doc="", group="Operators")
 add_builtin("mul", input_types={"x": quat, "y": quat}, value_type=quat, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat22, "y": float}, value_type=mat22, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat22, "y": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat33, "y": float}, value_type=mat33, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat33, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="", group="Operators")
@@ -179,10 +184,12 @@ add_builtin("mod", input_types={"x": float, "y": float}, value_type=float, doc="
 
 add_builtin("div", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
 add_builtin("div", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
+add_builtin("div", input_types={"x": vec2, "y": float}, value_type=vec2, doc="", group="Operators")
 add_builtin("div", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 
 add_builtin("neg", input_types={"x": int}, value_type=int, doc="", group="Operators")
 add_builtin("neg", input_types={"x": float}, value_type=float, doc="", group="Operators")
+add_builtin("neg", input_types={"x": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("neg", input_types={"x": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("neg", input_types={"x": vec4}, value_type=vec4, doc="", group="Operators")
 add_builtin("neg", input_types={"x": quat}, value_type=quat, doc="", group="Operators")
@@ -228,21 +235,28 @@ add_builtin("randi", input_types={"state": uint32, "min": int, "max": int}, valu
 add_builtin("randf", input_types={"state": uint32}, value_type=float, doc="", group="Scalar Math")
 add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, value_type=float, doc="", group="Scalar Math")
 
+add_builtin("cw_mul", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Vector Math")
 add_builtin("cw_mul", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
 add_builtin("cw_mul", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Vector Math")
+add_builtin("cw_div", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Vector Math")
 add_builtin("cw_div", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
 add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec3, doc="", group="Vector Math")
 
+add_builtin("dot", input_types={"x": vec2, "y": vec2}, value_type=float, doc="", group="Vector Math")
 add_builtin("dot", input_types={"x": vec3, "y": vec3}, value_type=float, doc="", group="Vector Math")
 add_builtin("dot", input_types={"x": vec4, "y": vec4}, value_type=float, doc="", group="Vector Math")
 add_builtin("dot", input_types={"x": quat, "y": quat}, value_type=float, doc="", group="Vector Math")
 
+add_builtin("outer", input_types={"x": vec2, "y": vec2}, value_type=mat22, doc="", group="Vector Math")
 add_builtin("outer", input_types={"x": vec3, "y": vec3}, value_type=mat33, doc="", group="Vector Math")
 
 add_builtin("cross", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
 add_builtin("skew", input_types={"x": vec3}, value_type=mat33, doc="", group="Vector Math"),
 
+add_builtin("length", input_types={"x": vec2}, value_type=float, doc="", group="Vector Math")
 add_builtin("length", input_types={"x": vec3}, value_type=float, doc="", group="Vector Math")
+add_builtin("length", input_types={"x": vec4}, value_type=float, doc="", group="Vector Math")
+add_builtin("normalize", input_types={"x": vec2}, value_type=vec2, doc="", group="Vector Math")
 add_builtin("normalize", input_types={"x": vec3}, value_type=vec3, doc="", group="Vector Math")
 add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, doc="", group="Vector Math")
 add_builtin("normalize", input_types={"x": quat}, value_type=quat, doc="", group="Vector Math")
@@ -254,6 +268,7 @@ add_builtin("transpose", input_types={"m": mat33}, value_type=mat33, doc="", gro
 add_builtin("transpose", input_types={"m": mat44}, value_type=mat44, doc="", group="Vector Math")
 add_builtin("transpose", input_types={"m": spatial_matrix}, value_type=spatial_matrix, doc="", group="Vector Math")
 
+add_builtin("diag", input_types={"d": vec2}, value_type=mat22, doc="", group="Vector Math")
 add_builtin("diag", input_types={"d": vec3}, value_type=mat33, doc="", group="Vector Math")
 add_builtin("diag", input_types={"d": vec4}, value_type=mat44, doc="", group="Vector Math")
 
@@ -264,6 +279,10 @@ add_builtin("int", input_types={"x": float}, value_type=int, doc="", group="Scal
 add_builtin("float", input_types={"x": int}, value_type=float, doc="", group="Scalar Math")
 add_builtin("float", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
 
+add_builtin("vec2", input_types={}, value_type=vec2, doc="", group="Vector Math")
+add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="", group="Vector Math")
+add_builtin("vec2", input_types={"s": float}, value_type=vec2, doc="", group="Vector Math")
+
 add_builtin("vec3", input_types={}, value_type=vec3, doc="", group="Vector Math")
 add_builtin("vec3", input_types={"x": float, "y": float, "z": float}, value_type=vec3, doc="", group="Vector Math")
 add_builtin("vec3", input_types={"s": float}, value_type=vec3, doc="", group="Vector Math")
@@ -272,14 +291,20 @@ add_builtin("vec4", input_types={}, value_type=vec4, doc="", group="Vector Math"
 add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="", group="Vector Math")
 add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="", group="Vector Math")
 
+add_builtin("mat22", input_types={"c0": vec2, "c1": vec2 }, value_type=mat22, doc="", group="Vector Math")
 add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="", group="Vector Math")
-add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="", group="Vector Math")
-add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="", group="Vector Math")
 
-add_builtin("mat33", input_types={}, value_type=mat33, doc="", group="Vector Math")
+add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="", group="Vector Math")
 add_builtin("mat33", input_types={"m00": float, "m01": float, "m02": float,
                                   "m10": float, "m11": float, "m12": float,
                                   "m20": float, "m21": float, "m22": float}, value_type=mat33, doc="", group="Vector Math")
+
+add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="", group="Vector Math")
+add_builtin("mat44", input_types={"m00": float, "m01": float, "m02": float, "m03": float,
+                                  "m10": float, "m11": float, "m12": float, "m13": float,
+                                  "m20": float, "m21": float, "m22": float, "m23": float,
+                                  "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="", group="Vector Math")
+
 
 add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, doc="", group="Vector Math")
 

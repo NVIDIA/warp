@@ -8,6 +8,15 @@ namespace wp
 
 struct mat22
 {
+    inline CUDA_CALLABLE mat22(vec2 c0, vec2 c1)
+    {
+        data[0][0] = c0.x;
+        data[1][0] = c0.y;
+
+        data[0][1] = c1.x;
+        data[1][1] = c1.y;
+    }
+
     inline CUDA_CALLABLE mat22(float m00=0.0f, float m01=0.0f, float m10=0.0f, float m11=0.0f) 
     {
         data[0][0] = m00;
@@ -15,6 +24,28 @@ struct mat22
         data[0][1] = m01;
         data[1][1] = m11;
     }
+
+    CUDA_CALLABLE vec2 get_row(int index) const
+    {
+        return (vec2&)data[index]; 
+    }
+
+    CUDA_CALLABLE void set_row(int index, const vec2& v)
+    {
+        (vec2&)data[index] = v;
+    }
+
+    CUDA_CALLABLE vec2 get_col(int index) const
+    {
+        return vec2(data[0][index], data[1][index]);
+    }
+
+    CUDA_CALLABLE void set_col(int index, const vec2& v)
+    {
+        data[0][index] = v.x;
+        data[1][index] = v.y;
+    }
+
 
     // row major storage assumed to be compatible with PyTorch
     float data[2][2];
@@ -69,6 +100,14 @@ inline CUDA_CALLABLE mat22 mul(const mat22& a, float b)
 
     return t;
 }
+inline CUDA_CALLABLE vec2 mul(const mat22& a, const vec2& b)
+{
+    vec2 r = a.get_col(0)*b.x +
+             a.get_col(1)*b.y;
+    
+    return r;
+}
+
 
 inline CUDA_CALLABLE mat22 mul(const mat22& a, const mat22& b)
 {
@@ -107,6 +146,24 @@ inline CUDA_CALLABLE float determinant(const mat22& m)
     return m.data[0][0]*m.data[1][1] - m.data[1][0]*m.data[0][1];
 }
 
+inline CUDA_CALLABLE mat22 diag(const vec2& d) 
+{
+    return mat22(d.x, 0.f, 
+                 0.f, d.y);
+}
+
+inline CUDA_CALLABLE mat22 outer(const vec2& a, const vec2& b)
+{
+    return mat22(a*b.x, a*b.y);
+}
+
+inline CUDA_CALLABLE void adj_outer(const vec2& a, const vec2& b, vec2& adj_a, vec2& adj_b, const mat22& adj_ret)
+{
+    adj_a += mul(adj_ret, b);
+    adj_b += mul(transpose(adj_ret), a);
+}
+
+
 
 inline void CUDA_CALLABLE adj_index(const mat22& m, int row, int col, mat22& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {
@@ -125,20 +182,33 @@ inline CUDA_CALLABLE void adj_add(const mat22& a, const mat22& b, mat22& adj_a, 
     }
 }
 
-inline CUDA_CALLABLE void adj_mul(const mat22& a, const mat22& b, mat22& adj_a, mat22& adj_b, const mat22& adj_ret)
-{
-    printf("todo\n");
-}
-
 inline CUDA_CALLABLE void adj_mul(const mat22& a, float b, mat22& adj_a, float& adj_b, mat22& adj_ret)
 {
-    printf("todo\n");
+    for (int i=0; i < 2; ++i)
+    {
+        for (int j=0; j < 2; ++j)
+        {
+            adj_a.data[i][j] += b*adj_ret.data[i][j];
+            adj_b += a.data[i][j]*adj_ret.data[i][j];
+        }
+    }
 }
 
+inline CUDA_CALLABLE void adj_mul(const mat22& a, const vec2& b, mat22& adj_a, vec2& adj_b, const vec2& adj_ret)
+{
+    adj_a += outer(adj_ret, b);
+    adj_b += mul(transpose(a), adj_ret);
+}
+
+inline CUDA_CALLABLE void adj_mul(const mat22& a, const mat22& b, mat22& adj_a, mat22& adj_b, const mat22& adj_ret)
+{
+    adj_a += mul(adj_ret, transpose(b));
+    adj_b += mul(transpose(a), adj_ret);
+}
 
 inline CUDA_CALLABLE void adj_transpose(const mat22& a, mat22& adj_a, const mat22& adj_ret)
 {
-    printf("todo\n");
+    adj_a += transpose(adj_ret);
 }
 
 inline CUDA_CALLABLE void adj_determinant(const mat22& m, mat22& adj_m, float adj_ret)
@@ -148,5 +218,12 @@ inline CUDA_CALLABLE void adj_determinant(const mat22& m, mat22& adj_m, float ad
     adj_m.data[0][1] -= m.data[1][0]*adj_ret;
     adj_m.data[1][0] -= m.data[0][1]*adj_ret;
 }
+
+
+inline CUDA_CALLABLE void adj_diag(const vec2& d, vec2& adj_d, const mat22& adj_ret) 
+{
+    adj_d += vec2(adj_ret.data[0][0], adj_ret.data[1][1]);
+}
+
 
 } // namespace wp
