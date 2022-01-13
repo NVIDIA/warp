@@ -511,8 +511,6 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
 
     wp::bounds3 input_bounds(query.input_lower, query.input_upper);
 	
-	int min_face;
-
     // Navigate through the bvh, find the first overlapping leaf node.
     while (query.count)
     {

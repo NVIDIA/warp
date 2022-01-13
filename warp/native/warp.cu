@@ -23,9 +23,21 @@ typedef CUresult CUDAAPI cuCtxSetCurrent_t(CUcontext ctx);
 typedef CUresult CUDAAPI cuCtxCreate_t(CUcontext* pctx, unsigned int flags, CUdevice dev);
 typedef CUresult CUDAAPI cuCtxDestroy_t(CUcontext pctx);
 
+typedef CUresult CUDAAPI cuModuleUnload_t(CUmodule hmod);
+typedef CUresult CUDAAPI cuModuleLoadDataEx_t(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues);
+typedef CUresult CUDAAPI cuModuleGetFunction_t(CUfunction *hfunc, CUmodule hmod, const char *name);
+
+typedef CUresult CUDAAPI cuLaunchKernel_t(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra);
+
 static cuInit_t* cuInit_f;
 static cuCtxGetCurrent_t* cuCtxGetCurrent_f;
 static cuCtxSetCurrent_t* cuCtxSetCurrent_f;
+
+static cuModuleUnload_t* cuModuleUnload_f;
+static cuModuleLoadDataEx_t* cuModuleLoadDataEx_f;
+static cuModuleGetFunction_t* cuModuleGetFunction_f;
+static cuLaunchKernel_t* cuLaunchKernel_f;
+
 //static cuCtxCreate_t* cuCtxCreate_f;
 //static cuCtxDestroy_t* cuCtxDestroy_f;
 //static cuDeviceGet_t* cuDeviceGet_f;
@@ -49,11 +61,15 @@ int cuda_init()
 	cuInit_f = (cuInit_t*)GetProcAddress(hCudaDriver, "cuInit");
 	cuCtxSetCurrent_f = (cuCtxSetCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxSetCurrent");
 	cuCtxGetCurrent_f = (cuCtxGetCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxGetCurrent");
+    cuModuleUnload_f = (cuModuleUnload_t*)GetProcAddress(hCudaDriver, "cuModuleUnload");
+    cuModuleLoadDataEx_f = (cuModuleLoadDataEx_t*)GetProcAddress(hCudaDriver, "cuModuleLoadDataEx");
+    cuModuleGetFunction_f = (cuModuleGetFunction_t*)GetProcAddress(hCudaDriver, "cuModuleGetFunction");
+    cuLaunchKernel_f = (cuLaunchKernel_t*)GetProcAddress(hCudaDriver, "cuLaunchKernel");
 
     if (cuInit_f == NULL)
         return -1;
 
-    CUresult err = cuInit_f(0);    
+    CUresult err = cuInit_f(0);
     if (err != CUDA_SUCCESS)
 		return err;
 
@@ -308,11 +324,11 @@ void* cuda_load_module(const char* path)
     fseek(file, 0, SEEK_SET);
 
     char* buf = (char*)malloc(length);
-    fread(buf, length, 1, file);
+    (void)fread(buf, length, 1, file);      // suppress unused result warning
     fclose(file);
 
     CUmodule module = NULL;
-    CUresult res = cuModuleLoadDataEx(&module, buf, 0, 0, 0);
+    CUresult res = cuModuleLoadDataEx_f(&module, buf, 0, 0, 0);
     if (res != CUDA_SUCCESS)
         printf("Warp: Loading PTX module failed with error: %d\n", res);
 
@@ -323,13 +339,13 @@ void* cuda_load_module(const char* path)
 
 void cuda_unload_module(void* module)
 {
-    cuModuleUnload((CUmodule)module);
+    cuModuleUnload_f((CUmodule)module);
 }
 
 void* cuda_get_kernel(void* module, const char* name)
 {
     CUfunction kernel = NULL;
-    CUresult res = cuModuleGetFunction(&kernel, (CUmodule)module, name);
+    CUresult res = cuModuleGetFunction_f(&kernel, (CUmodule)module, name);
     if (res != CUDA_SUCCESS)
         printf("Warp: Failed to lookup kernel function %s in module\n", name);
 
@@ -341,7 +357,7 @@ size_t cuda_launch_kernel(void* kernel, size_t dim, void** args)
     const int block_dim = 256;
     const int grid_dim = (dim + block_dim - 1)/block_dim;
 
-    CUresult res = cuLaunchKernel(
+    CUresult res = cuLaunchKernel_f(
         (CUfunction)kernel,
         grid_dim, 1, 1,
         block_dim, 1, 1,
