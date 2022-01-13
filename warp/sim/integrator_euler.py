@@ -1027,7 +1027,7 @@ def eval_body_contacts(body_q: wp.array(dtype=wp.transform),
     # ft = wp.vec3(vx, 0.0, vz) * wp.step(c)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
-    ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*c*ke)
+    ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*(fn + fd))
 
     f_total = n * (fn + fd) + ft
     t_total = wp.cross(r, f_total)
