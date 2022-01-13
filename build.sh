@@ -16,9 +16,7 @@ cp _build/target-deps/cuda/lib64/libnvrtc-builtins.so.10.1 warp/bin
 
 # set rpath on libnvrtc so we can distribute without the CUDA SDK
 # this allows libnvrtc to find libnvrtc-builtins without a CUDA install
-readelf -d warp/bin/warp.so | grep ORIGIN
-readelf -d warp/bin/libnvrtc.so | grep runpath
 
 sudo apt-get install patchelf
 
-patchelf --set-rpath '$ORIGIN' warp/bin/libnvrtc.so
+patchelf --set-rpath '$ORIGIN' warp/bin/libnvrtc.so.10.1
