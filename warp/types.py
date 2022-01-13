@@ -390,6 +390,9 @@ class array:
 
     def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
         
+        self.owner = False
+        self.context = None
+
         # convert built-in numeric type to wp type
         if (dtype == int):
             dtype = int32
