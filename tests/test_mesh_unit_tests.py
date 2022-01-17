@@ -69,6 +69,7 @@ def compute_num_contacts(
 
 
 class TestMeshQueryAABBMethods(unittest.TestCase):
+    
     def test_compute_bounds(self):
         device = "cuda"
         # create two touching triangles.

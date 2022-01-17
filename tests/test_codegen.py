@@ -7,32 +7,34 @@ import ctypes
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import unittest
+import test_base
 
 import warp as wp
 
 wp.init()
-wp.config.verify_cuda = True
 
 @wp.kernel
-def test_rename(n: int):
+def test_rename():
 
     a = 0
     b = 1
-
+    
     a = b
     a = 2
 
     wp.expect_eq(a, 2)
     wp.expect_eq(b, 1)
+    
 
 @wp.kernel
-def test_inplace(n: int):
+def test_inplace():
 
     a = 1.0
-    
     a += 2.0
     
     wp.expect_eq(a, 3.0)
+
 
 @wp.kernel
 def test_constant(c: float):
@@ -69,7 +71,7 @@ def test_dynamic_for_inplace(n: int):
 
 
 @wp.kernel
-def test_reassign(n: int):
+def test_reassign():
 
     f0 = 1.0
     f1 = f0
@@ -92,35 +94,62 @@ def test_dynamic_reassign(n: int):
     wp.expect_eq(f0, wp.vec3(0.0, 0.0, 0.0))
 
 
-device = "cpu"
+@wp.kernel
+def test_range_static(result: wp.array(dtype=int)):
 
-print("test_inplace")
-wp.launch(test_inplace, dim=1, inputs=[], device=device)
+    a = int(0)
+    for i in range(10):
+        a = a + 1
 
-print("test_rename")
-wp.launch(test_rename, dim=1, inputs=[], device=device)
+    b = int(0)
+    for i in range(0, 10):
+        b = b + 1
 
-print("test_constant")
-wp.launch(test_constant, dim=1, inputs=[1.0], device=device)
+    c = int(0)
+    for i in range(0, 20, 2):
+        c = c + 1
 
-print("test_dynamic_for_rename")
-wp.launch(test_dynamic_for_rename, dim=1, inputs=[10], device=device)
-
-print("test_dynamic_for_inplace")
-wp.launch(test_dynamic_for_inplace, dim=1, inputs=[10], device=device)
-
-print("test_reassign")
-wp.launch(test_reassign, dim=1, inputs=[], device=device)
-
-print("test_dynamic_reassign")
-wp.launch(test_dynamic_reassign, dim=1, inputs=[2], device=device)
+    result[0] = a
+    result[1] = b
+    result[2] = c
 
 
-print("passed")
+@wp.kernel
+def test_range_dynamic(start: int, end: int, step: int, result: wp.array(dtype=int)):
 
-# print("transform_vec3")
-# wp.launch(transform_vec3, dim=n, inputs=[dest, m, c], device=device)
-# print(dest)
+    a = int(0)
+    for i in range(end):
+        a = a + 1
 
+    b = int(0)
+    for i in range(start, end):
+        b = b + 1
+
+    c = int(0)
+    for i in range(start, end*step, step):
+        c = c + 1
+
+    result[0] = a
+    result[1] = b
+    result[2] = c
+
+
+devices = ["cpu", "cuda"]
+
+class TestCodeGen(test_base.TestBase):   
+    pass
+
+TestCodeGen.add_kernel_test(name="test_inplace", kernel=test_inplace, dim=1, devices=devices)
+TestCodeGen.add_kernel_test(name="test_rename", kernel=test_rename, dim=1, devices=devices)
+TestCodeGen.add_kernel_test(name="test_constant", kernel=test_constant, inputs=[1.0], dim=1, devices=devices)
+TestCodeGen.add_kernel_test(name="test_dynamic_for_rename", kernel=test_dynamic_for_rename, inputs=[10], dim=1, devices=devices)
+TestCodeGen.add_kernel_test(name="test_dynamic_for_inplace", kernel=test_dynamic_for_inplace, inputs=[10], dim=1, devices=devices)
+TestCodeGen.add_kernel_test(name="test_reassign", kernel=test_reassign, dim=1, devices=devices)
+TestCodeGen.add_kernel_test(name="test_dynamic_reassign", kernel=test_dynamic_reassign, inputs=[2], dim=1, devices=devices)
+TestCodeGen.add_kernel_test(name="test_range_static", kernel=test_range_static, dim=1, expect=[10, 10, 10], devices=devices)
+TestCodeGen.add_kernel_test(name="test_range_dynamic", kernel=test_range_dynamic, dim=1, inputs=[0, 10, 2], expect=[10, 10, 10], devices=devices)
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
 
 

@@ -1196,6 +1196,14 @@ def synchronize():
     runtime.core.synchronize()
 
 
+def force_load():
+    """Force all user-defined kernels to be compiled
+    """
+
+    for m in user_modules.values():
+        if (m.loaded == False):
+            m.load()
+
 def capture_begin():
     """Begin capture of a CUDA graph
 
@@ -1208,9 +1216,7 @@ def capture_begin():
 
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
-    for m in user_modules.values():
-        if (m.loaded == False):
-            m.load()
+    force_load()
 
     runtime.core.cuda_graph_begin_capture()
 

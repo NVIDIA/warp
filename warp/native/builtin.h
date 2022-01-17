@@ -544,13 +544,13 @@ inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
 
 
 template <typename T>
-inline CUDA_CALLABLE void expect_eq(const T& a, const T& b)
+inline CUDA_CALLABLE void expect_eq(const T& actual, const T& expected)
 {
-    if (!(a == b))
+    if (!(actual == expected))
     {
-        printf("Error, expected equal failed:\n");
-        printf("\t Expected: "); print(b); 
-        printf("\t Actual: "); print(a);
+        printf("Error, expect_eq() failed:\n");
+        printf("\t Expected: "); print(expected); 
+        printf("\t Actual: "); print(actual);
     }
 }
 

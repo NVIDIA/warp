@@ -270,11 +270,11 @@ class Adjoint:
         adj.indent_count -= 1
 
         adj.add_forward("}")
-        adj.add_reverse("if (var_{}) {{".format(cond))
+        adj.add_reverse(f"if (var_{cond}) {{")
 
     def begin_else(adj, cond):
 
-        adj.add_forward("if (!var_{}) {{".format(cond))
+        adj.add_forward(f"if (!var_{cond}) {{")
         adj.add_reverse("}")
 
         adj.indent_count += 1
@@ -284,24 +284,24 @@ class Adjoint:
         adj.indent_count -= 1
 
         adj.add_forward("}")
-        adj.add_reverse("if (!var_{}) {{".format(cond))
+        adj.add_reverse(f"if (!var_{cond}) {{")
 
 
     # define a for-loop
-    def begin_for(adj, iter, start, end):
+    def begin_for(adj, iter, start, end, step):
 
         # note that dynamic for-loops must not mutate any previous state, so we don't need to re-run them in the reverse pass
-        adj.add_forward("for (var_{0}=var_{1}; var_{0} < var_{2}; ++var_{0}) {{".format(iter, start, end), "if (false) {")
+        adj.add_forward(f"for (var_{iter}=var_{start}; var_{iter} < var_{end}; var_{iter} += var_{step}) {{", "if (false) {")
         adj.add_reverse("}")
 
         adj.indent_count += 1
 
-    def end_for(adj, iter, start, end):
+    def end_for(adj, iter, start, end, step):
 
         adj.indent_count -= 1
 
         adj.add_forward("}")
-        adj.add_reverse("for (var_{0}=var_{2}-1; var_{0} >= var_{1}; --var_{0}) {{".format(iter, start, end))
+        adj.add_reverse(f"for (var_{iter}=var_{end}-1; var_{iter} >= var_{start}; var_{iter} -= var_{step}) {{")
 
     # define a while loop, todo: reverse mode
     def begin_while(adj, cond):
@@ -529,10 +529,7 @@ class Adjoint:
 
             elif (isinstance(node, ast.For)):
 
-                if (len(node.iter.args) != 2):
-                    raise Exception("For loop ranges must be of form range(start, end) with both start and end specified and no skip specifier.")
-
-                # check if loop range is compile time constant
+                # if all range() arguments are numeric constants we will unroll
                 unroll = True
                 for a in node.iter.args:
                     if (isinstance(a, ast.Num) == False):
@@ -541,11 +538,26 @@ class Adjoint:
 
                 if (unroll):
 
-                    # constant loop, unroll
-                    start = node.iter.args[0].n
-                    end = node.iter.args[1].n
+                    # range(end)
+                    if len(node.iter.args) == 1:
+                        start = 0
+                        end = node.iter.args[0].n
+                        step = 1
 
-                    for i in range(start, end):
+                    # range(start, end)
+                    elif len(node.iter.args) == 2:
+                        start = node.iter.args[0].n
+                        end = node.iter.args[1].n
+                        step = 1
+
+                    # range(start, end, step)
+                    elif len(node.iter.args) == 3:
+                        start = node.iter.args[0].n
+                        end = node.iter.args[1].n
+                        step = node.iter.args[2].n
+                        
+
+                    for i in range(start, end, step):
 
                         var_iter = adj.add_constant(i)
                         adj.symbols[node.target.id] = var_iter
@@ -557,8 +569,24 @@ class Adjoint:
 
                     # dynamic loop, body must be side-effect free, i.e.: not
                     # overwrite memory locations used by previous operations
-                    start = adj.eval(node.iter.args[0])
-                    end = adj.eval(node.iter.args[1])
+
+                    # range(end)
+                    if len(node.iter.args) == 1:                        
+                        start = adj.add_constant(0)
+                        end = adj.eval(node.iter.args[0])
+                        step = adj.add_constant(1)
+
+                    # range(start, end)
+                    elif len(node.iter.args) == 2:
+                        start = adj.eval(node.iter.args[0])
+                        end = adj.eval(node.iter.args[1])
+                        step = adj.add_constant(1)
+
+                    # range(start, end, step)
+                    elif len(node.iter.args) == 3:
+                        start = adj.eval(node.iter.args[0])
+                        end = adj.eval(node.iter.args[1])
+                        step = adj.eval(node.iter.args[2])
 
                     # add iterator variable
                     iter = adj.add_var(int)
@@ -567,7 +595,7 @@ class Adjoint:
                     # save symbol table
                     symbols_prev = adj.symbols.copy()
 
-                    adj.begin_for(iter, start, end)
+                    adj.begin_for(iter, start, end, step)
 
                     # eval body
                     for s in node.body:
@@ -591,7 +619,7 @@ class Adjoint:
                             # overwrite the old variable value (violates SSA)
                             adj.add_call(adj.builtin_functions["copy"], [var1, var2])
 
-                    adj.end_for(iter, start, end)
+                    adj.end_for(iter, start, end, step)
 
             elif (isinstance(node, ast.Expr)):
                 return adj.eval(node.value)
@@ -791,7 +819,7 @@ static {return_type} {name}({forward_args})
     {forward_body}
 }}
 
-static void adj_{name}({forward_args}, {reverse_args})
+static void adj_{name}({reverse_args})
 {{
     {reverse_body}
 }}
@@ -804,7 +832,7 @@ static CUDA_CALLABLE {return_type} {name}({forward_args})
     {forward_body}
 }}
 
-static CUDA_CALLABLE void adj_{name}({forward_args}, {reverse_args})
+static CUDA_CALLABLE void adj_{name}({reverse_args})
 {{
     {reverse_body}
 }}
@@ -813,12 +841,12 @@ static CUDA_CALLABLE void adj_{name}({forward_args}, {reverse_args})
 
 cuda_kernel_template = '''
 
-extern "C" __global__ void {name}_cuda_kernel_forward(int dim, {forward_args})
+extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 {{
     {forward_body}
 }}
 
-extern "C" __global__ void {name}_cuda_kernel_backward(int dim, {forward_args}, {reverse_args})
+extern "C" __global__ void {name}_cuda_kernel_backward({reverse_args})
 {{
     {reverse_body}
 }}
@@ -832,7 +860,7 @@ void {name}_cpu_kernel_forward({forward_args})
     {forward_body}
 }}
 
-void {name}_cpu_kernel_backward({forward_args}, {reverse_args})
+void {name}_cpu_kernel_backward({reverse_args})
 {{
     {reverse_body}
 }}
@@ -844,14 +872,14 @@ cuda_module_template = '''
 extern "C" {{
 
 // Python entry points
-WP_API void {name}_cuda_forward(void* stream, int dim, {forward_args})
+WP_API void {name}_cuda_forward(void* stream, {forward_args})
 {{
-    {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(dim, {forward_params});
+    {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({forward_params});
 }}
 
-WP_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse_args})
+WP_API void {name}_cuda_backward(void* stream, {reverse_args})
 {{
-    {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(dim, {forward_params}, {reverse_params});
+    {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({reverse_params});
 }}
 
 }} // extern C
@@ -861,7 +889,7 @@ WP_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse
 cpu_module_template = '''
 
 // Python CPU entry points
-WP_API void {name}_cpu_forward(int dim, {forward_args})
+WP_API void {name}_cpu_forward({forward_args})
 {{
     for (int i=0; i < dim; ++i)
     {{
@@ -871,13 +899,13 @@ WP_API void {name}_cpu_forward(int dim, {forward_args})
     }}
 }}
 
-WP_API void {name}_cpu_backward(int dim, {forward_args}, {reverse_args})
+WP_API void {name}_cpu_backward({reverse_args})
 {{
     for (int i=0; i < dim; ++i)
     {{
         s_threadIdx = i;
 
-        {name}_cpu_kernel_backward({forward_params}, {reverse_params});
+        {name}_cpu_kernel_backward({reverse_params});
     }}
 }}
 
@@ -888,9 +916,9 @@ cuda_module_header_template = '''
 extern "C" {{
 
 // Python CUDA entry points
-WP_API void {name}_cuda_forward(void* stream, int dim, {forward_args});
+WP_API void {name}_cuda_forward(void* stream, {forward_args});
 
-WP_API void {name}_cuda_backward(void* stream, int dim, {forward_args}, {reverse_args});
+WP_API void {name}_cuda_backward(void* stream, {reverse_args});
 
 }} // extern C
 '''
@@ -900,9 +928,9 @@ cpu_module_header_template = '''
 extern "C" {{
 
 // Python CPU entry points
-WP_API void {name}_cpu_forward(int dim, {forward_args});
+WP_API void {name}_cpu_forward({forward_args});
 
-WP_API void {name}_cpu_backward(int dim, {forward_args}, {reverse_args});
+WP_API void {name}_cpu_backward({reverse_args});
 
 }} // extern C
 '''
@@ -1056,10 +1084,11 @@ def codegen_func(adj, device='cpu'):
     sep = ""
     for arg in adj.args:
         forward_args += sep + arg.ctype() + " var_" + arg.label
+        reverse_args += sep + arg.ctype() + " var_" + arg.label
         sep = ", "
 
     # reverse args
-    sep = ""
+    sep = ","
     for arg in adj.args:
         if "*" in arg.ctype():
             reverse_args += sep + arg.ctype() + " adj_" + arg.label
@@ -1111,17 +1140,18 @@ def codegen_func(adj, device='cpu'):
 
 def codegen_kernel(adj, device='cpu'):
 
-    forward_args = ""
-    reverse_args = ""
+    forward_args = "int dim"
+    reverse_args = "int dim"
 
     # forward args
-    sep = ""
+    sep = ","
     for arg in adj.args:
         forward_args += sep + arg.ctype() + " var_" + arg.label
+        reverse_args += sep + arg.ctype() + " var_" + arg.label
         sep = ", "
 
     # reverse args
-    sep = ""
+    sep = ","
     for arg in adj.args:
         reverse_args += sep + arg.ctype() + " adj_" + arg.label
         sep = ", "
@@ -1151,13 +1181,11 @@ def codegen_kernel(adj, device='cpu'):
 
 def codegen_module(adj, device='cpu'):
 
-    forward_args = ""
-    reverse_args = ""
+    # build forward signature
+    forward_args = "int dim"
+    forward_params = "dim"
 
-    forward_params = ""
-    reverse_params = ""
-
-    sep = ""
+    sep = ","
     for arg in adj.args:
         if (isinstance(arg.type, array)):
             forward_args += sep + "wp::array var_" + arg.label
@@ -1168,7 +1196,12 @@ def codegen_module(adj, device='cpu'):
 
         sep = ", "
 
-    sep = ""
+
+    # build reverse signature
+    reverse_args = forward_args
+    reverse_params = forward_params
+
+    sep = ","
     for arg in adj.args:
         if (isinstance(arg.type, array)):
             reverse_args += sep + "wp::array adj_" + arg.label
@@ -1196,13 +1229,11 @@ def codegen_module(adj, device='cpu'):
 
 def codegen_module_decl(adj, device='cpu'):
 
-    forward_args = ""
-    reverse_args = ""
+    # build forward signature
+    forward_args = "int dim"
+    forward_params = "dim"
 
-    forward_params = ""
-    reverse_params = ""
-
-    sep = ""
+    sep = ","
     for arg in adj.args:
         if (isinstance(arg.type, array)):
             forward_args += sep + "wp::array var_" + arg.label
@@ -1213,7 +1244,11 @@ def codegen_module_decl(adj, device='cpu'):
 
         sep = ", "
 
-    sep = ""
+    # build reverse signature
+    reverse_args = forward_args
+    reverse_params = forward_params
+
+    sep = ","
     for arg in adj.args:
         if (isinstance(arg.type, array)):
             reverse_args += sep + "wp::array adj_" + arg.label
