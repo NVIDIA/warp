@@ -3,8 +3,6 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#include <string>
-
 #if defined(__linux__)
 #include <dlfcn.h>
 static void* GetProcAddress(void* handle, const char* name) { return dlsym(handle, name); }
@@ -265,7 +263,17 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
     if (res != NVRTC_SUCCESS)
         return res;
 
-    std::string include_opt = std::string("--include-path=") + include_dir;
+    // check include dir path len (path + option)
+    const int max_path = 4096 + 16;
+    if (strlen(include_dir) > max_path)
+    {
+        printf("Include path too long\n");
+        return size_t(-1);
+    }
+
+    char include_opt[max_path];
+    strcpy(include_opt, "--include-path=");
+    strcat(include_opt, include_dir);
 
     const char *opts[] = 
     {   
@@ -276,7 +284,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
         "--define-macro=WP_CUDA",
         "--define-macro=WP_NO_CRT",
         "--define-macro=NDEBUG",
-        include_opt.c_str()
+        include_opt
     };
 
     res = nvrtcCompileProgram(prog, 7, opts);
@@ -318,14 +326,20 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
 
 void* cuda_load_module(const char* path)
 {
-    FILE* file = fopen(path, "r");
+    FILE* file = fopen(path, "rb");
     fseek(file, 0, SEEK_END);
     size_t length = ftell(file);
     fseek(file, 0, SEEK_SET);
 
     char* buf = (char*)malloc(length);
-    (void)fread(buf, length, 1, file);      // suppress unused result warning
+    size_t result = fread(buf, 1, length, file);
     fclose(file);
+
+    if (result != length)
+    {
+        printf("Warp: Failed to load PTX from disk, unexpected number of bytes\n");
+        return NULL;
+    }
 
     CUmodule module = NULL;
     CUresult res = cuModuleLoadDataEx_f(&module, buf, 0, 0, 0);
