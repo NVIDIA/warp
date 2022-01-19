@@ -19,30 +19,6 @@ import omni.graph.core as og
 
 profile_enabled = False
 
-# # helper to get the transform for a bundle prim
-# def read_transform_bundle(bundle):   
-#     # xform = bundle.attribute_by_name("transform").value.reshape(4,4)
-#     # return Gf.Matrix4d(xform)
-#     stage = omni.usd.get_context().get_stage()
-#     prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
-#     return prim.ComputeLocalToWorldTransform(0.0)
-
-# def read_world_bounds_bundle(bundle):
-#     stage = omni.usd.get_context().get_stage()
-#     prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
-#     return prim.ComputeLocalToWorldTransform(0.0)
-
-#     # lower = bundle.attribute_by_name("bboxMinCorner").value
-#     # upper = bundle.attribute_by_name("bboxMaxCorner").value
-#     # bbox_xform = bundle.attribute_by_name("bboxTransform").value.reshape(4,4)
-
-#     # box = Gf.BBox3d(Gf.Range3d(Gf.Vec3d(lower[0], lower[1], lower[2]),
-#     #                            Gf.Vec3d(upper[0], upper[1], upper[2])),
-#     #                            Gf.Matrix4d(bbox_xform))
-    
-#     return box
-
-
 def read_transform_bundle(bundle):
     timeline =  omni.timeline.get_timeline_interface()
     time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
@@ -109,6 +85,7 @@ def transform_points(src: wp.array(dtype=wp.vec3),
 def sample_mesh(mesh: wp.uint64,
                 lower: wp.vec3,
                 spacing: float,
+                jitter: float,
                 dim_x: int,
                 dim_y: int,
                 dim_z: int,
@@ -142,17 +119,18 @@ def sample_mesh(mesh: wp.uint64,
 
         p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
 
-        delta = grid_pos-p
-        
+        delta = grid_pos-p        
         dist = wp.length(delta)*sign
 
+        rng = wp.rand_init(5483, wp.tid())
+        offset = (wp.vec3(0.5, 0.5, 0.5) - wp.vec3(wp.randf(rng), wp.randf(rng), wp.randf(rng)))*jitter
+
         # mesh collision
-        #if (dist < 10.0):
         if (dist >= sdf_min and dist <= sdf_max):
             point_index = wp.atomic_add(point_count, 0, 1)
             
             if (point_index < point_max):
-                points[point_index] = grid_pos
+                points[point_index] = grid_pos + offset
 
 
 
@@ -246,6 +224,7 @@ class OgnParticleVolume:
                                 state.mesh.id,
                                 lower,
                                 db.inputs.spacing,
+                                db.inputs.spacing_jitter,                                
                                 dim_x,
                                 dim_y,
                                 dim_z,
@@ -260,9 +239,6 @@ class OgnParticleVolume:
                     
                     # bring back to host
                     points = points.numpy()[0:num_points]
-
-                    # jitter
-                    points = points + np.random.rand(*points.shape)*db.inputs.spacing*db.inputs.spacing_jitter
                     velocities = np.tile(db.inputs.velocity, (len(points), 1))
 
                     state.initialized = True

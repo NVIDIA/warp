@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [0.1.21] - 2022-01-19
+
+### Warp Core
+
+- Fix for exception on shutdown in empty wp.array objects
+- Fix for hot reload of CPU kernels in Kit
+- Add hash grid primitive for point-based spatial queries, see hash_grid_query(), hash_grid_query_next()
+- Add new PRNG methods using PCG-based generators, see rand_init(), randf(), randi()
+- Add support for AABB mesh queries, see mesh_query_aabb(), mesh_query_aabb_next()
+- Add support for all Python range() loop variants
+- Add builtin vec2 type and additional math operators, pow(), tan(), atan(), atan2()
+- Remove dependency on CUDA driver library at build time
+- Remove unused NVRTC binary dependencies (50mb smaller Linux distribution)
+
+### Warp Sim
+
+- Bundle import of multiple shapes for simulation nodes
+- New OgnParticleVolume node for sampling shapes -> particles
+- New OgnParticleSolver node for DEM style granular materials
+
 ## [0.1.20] - 2021-11-02
 
 - Updates to the ripple solver for GTC (support for multiple colliders, buoyancy, etc)
