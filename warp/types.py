@@ -85,6 +85,42 @@ class float64:
     _type_ = ctypes.c_double
 
 
+class int8:
+
+    def __init__(self, x=0):
+        self.value = x
+
+    @staticmethod
+    def length():
+        return 1
+    
+    @staticmethod
+    def size():
+        return 1
+
+    @staticmethod
+    def ctype():
+        return ctypes.c_int8
+
+
+class uint8:
+
+    def __init__(self, x=0):
+        self.value = x
+
+    @staticmethod
+    def length():
+        return 1
+    
+    @staticmethod
+    def size():
+        return 1
+
+    @staticmethod
+    def ctype():
+        return ctypes.c_uint8
+
+
 class int32:
 
     _length_ = 1
@@ -160,6 +196,10 @@ def type_typestr(ctype):
         return "<f4"
     elif (ctype == ctypes.c_double):
         return "<f8"
+    elif (ctype == ctypes.c_int8):
+        return "b"
+    elif (ctype == ctypes.c_uint8):
+        return "B"
     elif (ctype == ctypes.c_int32):
         return "<i4"
     elif (ctype == ctypes.c_uint32):
@@ -499,9 +539,59 @@ class Mesh:
 
 class Volume:
 
-    def __init__(self, vdb):
-        pass
+    CLOSEST = 0
 
+    def __init__(self, array, device, copy = True):
+
+        self.id = 0
+
+        from warp.context import runtime
+        self.context = runtime
+
+        if device != "cpu" and device != "cuda":
+            raise RuntimeError(f"Unknown device type '{device}'")
+        self.device = device
+
+        if array is None:
+            return
+
+        if self.device == "cpu":
+            raise RuntimeError(f"Not implemented")
+        else:
+            on_device = (array.device == "cuda")
+            self.id = self.context.core.volume_create_device(array.data, array.length, on_device, copy)
+
+    def __del__(self):
+
+        if self.id == 0:
+            return
+        
+        if self.device == "cpu":
+            raise RuntimeError(f"Not implemented")
+        else:
+            self.context.core.volume_destroy_device(self.id)
+
+
+    def array(self):
+
+        if self.device == "cpu":
+            raise RuntimeError(f"Not implemented")
+        else:
+            buf = ctypes.c_void_p(0)
+            size = ctypes.c_uint64(0)
+            self.context.core.volume_get_buffer_info(self.id, ctypes.byref(buf), ctypes.byref(size))
+            return array(data=buf.value, dtype=uint8, length=size.value, device="cuda", owner=False)
+
+    @classmethod
+    def create_sphere(cls, radius, center_x, center_y, center_z, voxel_size, device):
+
+        if device == "cpu":
+            raise RuntimeError(f"Not implemented")
+        else:
+            volume = cls(None, device)
+            volume.id = volume.context.core.volume_create_sphere_device(radius, center_x, center_y, center_z, voxel_size)
+            return volume
+        
 
 
 class HashGrid:

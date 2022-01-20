@@ -71,6 +71,11 @@ extern "C"
     WP_API void hash_grid_destroy_device(uint64_t id);
     WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
 
+    WP_API uint64_t volume_create_device(void* buf, uint64_t size, bool on_device, bool cop);
+    WP_API void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size);
+    WP_API void volume_destroy_device(uint64_t id);
+    WP_API uint64_t volume_create_sphere_device(float radius, float center_x, float center_y, float center_z, float voxel_size);
+
     WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
 

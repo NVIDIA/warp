@@ -380,6 +380,7 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 #include "hashgrid.h"
 #include "rand.h"
 #include "noise.h"
+#include "volume.h"
 
 //--------------
 namespace wp

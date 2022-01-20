@@ -493,6 +493,8 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
     doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.""")
 
+add_builtin("volume_sample", input_types={"id": uint64, "point": vec3, "sampling_mode": int}, value_type=float, doc="", group="Geometry")
+
 #---------------------------------
 # Random 
 
@@ -824,7 +826,7 @@ class Module:
             # test cache
             module_hash = self.hash_module()
 
-            if (os.path.exists(cache_path)):
+            if warp.config.cache_kernels and os.path.exists(cache_path):
 
                 f = open(cache_path, 'rb')
                 cache_hash = f.read()
@@ -1048,6 +1050,15 @@ class Runtime:
         self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
 
+        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
+        self.core.volume_create_device.restype = ctypes.c_uint64
+
+        self.core.volume_get_buffer_info.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+
+        self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+
+        self.core.volume_create_sphere_device.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float]
+        self.core.volume_create_sphere_device.restype = ctypes.c_uint64
 
 
         # load CUDA entry points on supported platforms
