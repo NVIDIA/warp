@@ -32,6 +32,7 @@ JOINT_REVOLUTE = 1
 JOINT_BALL = 2
 JOINT_FIXED = 3
 JOINT_FREE = 4
+JOINT_COMPOUND = 5
 
 class Mesh:
     """Describes a triangle collision mesh for simulation
@@ -627,7 +628,8 @@ class ModelBuilder:
         self, 
         origin : Transform, 
         parent : int=-1,
-        joint_xform : Transform=wp.transform_identity(),    # transform of joint in parent space, child joint xform is assumed to align with origin
+        joint_xform : Transform=wp.transform_identity(),    # transform of joint in parent space
+        joint_xform_child: Transform=wp.transform_identity(),
         joint_axis : Vec3=(0.0, 0.0, 0.0),
         joint_type : int=JOINT_FREE,
         joint_target_ke: float=0.0,
@@ -675,31 +677,13 @@ class ModelBuilder:
 
         # joint data
         self.joint_type.append(joint_type)
-        self.joint_axis.append(np.array(joint_axis))
         self.joint_parent.append(parent)
         self.joint_child.append(child)
         self.joint_X_p.append(joint_xform)
-        self.joint_X_c.append(wp.transform_identity())
+        self.joint_X_c.append(joint_xform_child)
 
-        self.joint_target_ke.append(joint_target_ke)
-        self.joint_target_kd.append(joint_target_kd)
-        self.joint_limit_ke.append(joint_limit_ke)
-        self.joint_limit_kd.append(joint_limit_kd)
         self.joint_armature.append(joint_armature)
-        self.joint_act.append(0.0)
-
-        # pd targets (use 3 for each even if it's redundant for 1D joints just to make indexing simpler)
-        self.joint_target.append(0.0)
-        self.joint_target.append(0.0)
-        self.joint_target.append(0.0)
-
-        self.joint_limit_lower.append(joint_limit_lower)
-        self.joint_limit_lower.append(joint_limit_lower)
-        self.joint_limit_lower.append(joint_limit_lower)
-        
-        self.joint_limit_upper.append(joint_limit_upper)
-        self.joint_limit_upper.append(joint_limit_upper)
-        self.joint_limit_upper.append(joint_limit_upper)
+        self.joint_axis.append(np.array(joint_axis))
 
         if (joint_type == JOINT_PRISMATIC):
             dof_count = 1
@@ -716,12 +700,33 @@ class ModelBuilder:
         elif (joint_type == JOINT_FIXED):
             dof_count = 0
             coord_count = 0
+        elif (joint_type == JOINT_COMPOUND):
+            dof_count = 3
+            coord_count = 3
 
+        # convert coefficients to np.arrays() so we can index into them for 
+        # compound joints, this just allows user to pass scalars or arrays
+        # coefficients will be automatically padded to number of dofs
+        joint_target_ke = np.resize(np.atleast_1d(joint_target_ke), dof_count)
+        joint_target_kd = np.resize(np.atleast_1d(joint_target_kd), dof_count)
+        joint_limit_ke = np.resize(np.atleast_1d(joint_limit_ke), dof_count)
+        joint_limit_kd = np.resize(np.atleast_1d(joint_limit_kd), dof_count)
+        joint_limit_lower = np.resize(np.atleast_1d(joint_limit_lower), dof_count)
+        joint_limit_upper = np.resize(np.atleast_1d(joint_limit_upper), dof_count)
+       
         for i in range(coord_count):
             self.joint_q.append(0.0)
 
         for i in range(dof_count):
             self.joint_qd.append(0.0)
+            self.joint_act.append(0.0)
+            self.joint_limit_lower.append(joint_limit_lower[i])
+            self.joint_limit_upper.append(joint_limit_upper[i])
+            self.joint_limit_ke.append(joint_limit_ke[i])
+            self.joint_limit_kd.append(joint_limit_kd[i])
+            self.joint_target_ke.append(joint_target_ke[i])
+            self.joint_target_kd.append(joint_target_kd[i])
+            self.joint_target.append(0.0)
 
         self.joint_q_start.append(self.joint_coord_count)
         self.joint_qd_start.append(self.joint_dof_count)

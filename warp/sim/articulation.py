@@ -1,5 +1,22 @@
 import warp as wp
 
+
+# decompose a quaternion into a sequence of 3 rotations around x,y',z' respectively, i.e.: q = q_z''q_y'q_x
+@wp.func
+def quat_decompose(q: wp.quat):
+
+    R = wp.mat33(
+            wp.quat_rotate(q, wp.vec3(1.0, 0.0, 0.0)),
+            wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0)),
+            wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0)))
+
+    # https://www.sedris.org/wg8home/Documents/WG80485.pdf
+    a_0 = wp.atan2(R[1, 2], R[2, 2])
+    a_1 = wp.asin(-R[0, 2])
+    a_2 = wp.atan2(R[0, 1], R[0, 0])
+
+    return -wp.vec3(a_0, a_1, a_2)
+
 @wp.kernel
 def eval_articulation_fk(
     articulation_start: wp.array(dtype=int),
@@ -97,6 +114,28 @@ def eval_articulation_fk(
             v = wp.spatial_vector(
                     wp.vec3(joint_qd[qd_start+0], joint_qd[qd_start+1], joint_qd[qd_start+2]),
                     wp.vec3(joint_qd[qd_start+3], joint_qd[qd_start+4], joint_qd[qd_start+5]))
+
+            X_jc = t
+            v_jc = v
+
+        # compound
+        if type == 5:
+
+            # reconstruct rotation axes
+            axis_0 = wp.vec3(1.0, 0.0, 0.0)
+            q_0 = wp.quat_from_axis_angle(axis_0, joint_q[q_start+0])
+
+            axis_1 = wp.quat_rotate(q_0, wp.vec3(0.0, 1.0, 0.0))
+            q_1 = wp.quat_from_axis_angle(axis_1, joint_q[q_start+1])
+
+            axis_2 = wp.quat_rotate(q_1*q_0, wp.vec3(0.0, 0.0, 1.0))
+            q_2 = wp.quat_from_axis_angle(axis_2, joint_q[q_start+2])
+
+            t = wp.transform(wp.vec3(0.0, 0.0, 0.0), q_2*q_1*q_0)
+
+            v = wp.spatial_vector(axis_0*joint_qd[qd_start+0] + 
+                                  axis_1*joint_qd[qd_start+1] + 
+                                  axis_2*joint_qd[qd_start+2], wp.vec3(0.0, 0.0, 0.0))
 
             X_jc = t
             v_jc = v
@@ -289,6 +328,32 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
         joint_qd[qd_start + 3] = v_err[0]
         joint_qd[qd_start + 4] = v_err[1]
         joint_qd[qd_start + 5] = v_err[2]
+
+    # compound
+    if (type == 5):
+
+        q_pc = wp.quat_inverse(q_p)*q_c
+
+        # decompose to a compound rotation each axis 
+        angles = wp.quat_decompose(q_pc)
+
+        # reconstruct rotation axes
+        axis_0 = wp.vec3(1.0, 0.0, 0.0)
+        q_0 = wp.quat_from_axis_angle(axis_0, angles[0])
+
+        axis_1 = wp.quat_rotate(q_0, wp.vec3(0.0, 1.0, 0.0))
+        q_1 = wp.quat_from_axis_angle(axis_1, angles[1])
+
+        axis_2 = wp.quat_rotate(q_1*q_0, wp.vec3(0.0, 0.0, 1.0))
+        q_2 = wp.quat_from_axis_angle(axis_2, angles[2])
+
+        joint_q[q_start+0] = angles[0]
+        joint_q[q_start+1] = angles[1]
+        joint_q[q_start+2] = angles[2]
+
+        joint_qd[qd_start+0] = wp.dot(wp.quat_rotate(q_p, axis_0), w_err)
+        joint_qd[qd_start+1] = wp.dot(wp.quat_rotate(q_p, axis_1), w_err)
+        joint_qd[qd_start+2] = wp.dot(wp.quat_rotate(q_p, axis_2), w_err)
 
         return
 
