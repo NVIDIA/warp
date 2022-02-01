@@ -260,6 +260,38 @@ Scalar Math
 .. function:: pow(x: vec3, y: float) -> vec3
 
 
+.. function:: round(x: float) -> float
+
+   Calculate the nearest integer value, rounding halfway cases away from zero.
+   This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
+   Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
+
+
+.. function:: rint(x: float) -> float
+
+   Calculate the nearest integer value, rounding halfway cases to nearest even integer.
+   It is generally faster than ``warp.round()``.
+   Equivalent to ``numpy.rint()``.
+
+
+.. function:: trunc(x: float) -> float
+
+   Calculate the nearest integer that is closer to zero than x.
+   In other words, it discards the fractional part of x.
+   It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+   Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
+
+
+.. function:: floor(x: float) -> float
+
+   Calculate the largest integer that is less than or equal to x.
+
+
+.. function:: ceil(x: float) -> float
+
+   Calculate the smallest integer that is greater than or equal to x.
+
+
 .. function:: rand_init(state: int, offset: int) -> uint32
 
 

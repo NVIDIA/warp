@@ -144,8 +144,6 @@ typedef unsigned long long uintmax_t;
 // template<typename T> inline T modf(T x, T* intpart) { return ::modf(x, intpart); }
 // template<typename T> inline T pow(T x, T y) { return ::pow(x, y); }
 // DEFINE_MATH_UNARY_FUNC_WRAPPER(sqrt)
-// DEFINE_MATH_UNARY_FUNC_WRAPPER(ceil)
-// DEFINE_MATH_UNARY_FUNC_WRAPPER(floor)
 // template<typename T> inline T fmod(T n, T d) { return ::fmod(n, d); }
 // DEFINE_MATH_UNARY_FUNC_WRAPPER(fabs)
 // template<typename T> inline T abs(T x) { return ::abs(x); }
@@ -167,8 +165,11 @@ typedef unsigned long long uintmax_t;
 // DEFINE_MATH_UNARY_FUNC_WRAPPER(erfc)
 // DEFINE_MATH_UNARY_FUNC_WRAPPER(tgamma)
 // DEFINE_MATH_UNARY_FUNC_WRAPPER(lgamma)
-// DEFINE_MATH_UNARY_FUNC_WRAPPER(trunc)
 // DEFINE_MATH_UNARY_FUNC_WRAPPER(round)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(rint)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(trunc)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(floor)
+// DEFINE_MATH_UNARY_FUNC_WRAPPER(ceil)
 // template<typename T> inline long lround(T x) { return ::lround(x); }
 // template<typename T> inline long long llround(T x) { return ::llround(x); }
 // DEFINE_MATH_UNARY_FUNC_WRAPPER(rint)
