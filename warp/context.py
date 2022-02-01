@@ -229,6 +229,28 @@ add_builtin("exp", input_types={"x": vec3}, value_type=vec3, doc="", group="Scal
 add_builtin("pow", input_types={"x": float, "y": float}, value_type=float, doc="", group="Scalar Math")
 add_builtin("pow", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Scalar Math")
 
+add_builtin("round", input_types={"x": float}, value_type=float, group="Scalar Math",
+    doc="""Calculate the nearest integer value, rounding halfway cases away from zero.
+   This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
+   Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.""")
+
+add_builtin("rint", input_types={"x": float}, value_type=float, group="Scalar Math",
+    doc="""Calculate the nearest integer value, rounding halfway cases to nearest even integer.
+   It is generally faster than ``warp.round()``.
+   Equivalent to ``numpy.rint()``.""")
+
+add_builtin("trunc", input_types={"x": float}, value_type=float, group="Scalar Math",
+    doc="""Calculate the nearest integer that is closer to zero than x.
+   In other words, it discards the fractional part of x.
+   It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+   Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.""")
+
+add_builtin("floor", input_types={"x": float}, value_type=float, group="Scalar Math",
+    doc="""Calculate the largest integer that is less than or equal to x.""")
+
+add_builtin("ceil", input_types={"x": float}, value_type=float, group="Scalar Math",
+    doc="""Calculate the smallest integer that is greater than or equal to x.""")
+
 add_builtin("rand_init", input_types={"state": int, "offset": int}, value_type=uint32, doc="", group="Scalar Math")
 add_builtin("randi", input_types={"state": uint32}, value_type=int, doc="", group="Scalar Math")
 add_builtin("randi", input_types={"state": uint32, "min": int, "max": int}, value_type=int, doc="", group="Scalar Math")

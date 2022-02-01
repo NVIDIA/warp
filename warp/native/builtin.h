@@ -112,6 +112,12 @@ inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
 inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
 inline CUDA_CALLABLE float tan(float x) { return ::tan(x); }
 
+inline CUDA_CALLABLE float round(float x) { return ::roundf(x); }
+inline CUDA_CALLABLE float rint(float x) { return ::rintf(x); }
+inline CUDA_CALLABLE float trunc(float x) { return ::truncf(x); }
+inline CUDA_CALLABLE float floor(float x) { return ::floorf(x); }
+inline CUDA_CALLABLE float ceil(float x) { return ::ceilf(x); }
+
 inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
 inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret/b; adj_b -= adj_ret*(a/b)/b; }
 inline CUDA_CALLABLE void adj_add(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b += adj_ret; }
@@ -240,6 +246,31 @@ inline CUDA_CALLABLE void adj_cos(float x, float& adj_x, float adj_ret)
 inline CUDA_CALLABLE void adj_sqrt(float x, float& adj_x, float adj_ret)
 {
     adj_x += 0.5f*(1.0f/sqrt(x))*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_round(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_rint(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_trunc(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_floor(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_ceil(float x, float& adj_x, float adj_ret)
+{
+    // nop
 }
 
 
