@@ -4,6 +4,7 @@ import sys
 import imp
 import subprocess
 import ctypes
+import _ctypes
 
 import warp.config
 from warp.utils import ScopedTimer
@@ -161,8 +162,8 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
                 
                 return True
 
-            # ensure that dll is not loaded in the process
-            force_unload_dll(dll_path)
+    # ensure that dll is not loaded in the process
+    force_unload_dll(dll_path)
 
     # output stale, rebuild
     if (warp.config.verbose):
@@ -274,6 +275,9 @@ def unload_dll(dll):
             success = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
             if (not success):
                 return
+    else:
+        _ctypes.dlclose(handle)
+
 
 def force_unload_dll(dll_path):
 
