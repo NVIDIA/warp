@@ -27,8 +27,8 @@ def test_pnoise(
 
 
 # period
-px = 256
-py = 256
+px = 128
+py = 512
 
 # image dim
 W = 1024

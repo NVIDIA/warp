@@ -83,9 +83,9 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, float x, int px)
 {
     float dx = x - floor(x);
 
-    int x0 = ((int)floor(x)) & px;
+    int x0 = mod(((int)floor(x)), px);
 
-    int x1 = (x0 + 1) & px;
+    int x1 = mod((x0 + 1), px);
 
     float v0 = dotGridGradient1D(seed, x0, dx);
     float v1 = dotGridGradient1D(seed, x1, dx-1.f);
@@ -100,11 +100,11 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec2& xy, int px, int py)
     float dx = xy.x - floor(xy.x);
     float dy = xy.y - floor(xy.y);
 
-    int x0 = ((int)floor(xy.x)) & px; 
-    int y0 = ((int)floor(xy.y)) & py; 
+    int x0 = mod(((int)floor(xy.x)), px); 
+    int y0 = mod(((int)floor(xy.y)), py); 
 
-    int x1 = (x0 + 1) & px;
-    int y1 = (y0 + 1) & py;
+    int x1 = mod((x0 + 1), px);
+    int y1 = mod((y0 + 1), py);
 
     //vXY
     float v00 = dotGridGradient2D(seed, x0, y0, dx, dy, px);
@@ -115,8 +115,7 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec2& xy, int px, int py)
     float v11 = dotGridGradient2D(seed, x1, y1, dx-1.f, dy-1.f, px);
     float xi1 = interpolate(v01, v11, dx);
 
-    // return interpolate(xi0, xi1, dy);
-    return 1.0;
+    return interpolate(xi0, xi1, dy);
 }
 
 inline CUDA_CALLABLE void adj_pnoise(uint32 seed, const vec2& xy, int px, int py, uint32& adj_seed, const vec2& adj_xy, int& adj_px, int& adj_py, const float adj_ret) {}
@@ -127,13 +126,13 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec3& xyz, int px, int py, 
     float dy = xyz.y - floor(xyz.y);
     float dz = xyz.z - floor(xyz.z);
 
-    int x0 = ((int)floor(xyz.x)) & px; 
-    int y0 = ((int)floor(xyz.y)) & py; 
-    int z0 = ((int)floor(xyz.z)) & pz; 
+    int x0 = mod(((int)floor(xyz.x)), px); 
+    int y0 = mod(((int)floor(xyz.y)), py); 
+    int z0 = mod(((int)floor(xyz.z)), pz); 
 
-    int x1 = (x0 + 1) & px;
-    int y1 = (y0 + 1) & py;
-    int z1 = (z0 + 1) & pz;
+    int x1 = mod((x0 + 1), px);
+    int y1 = mod((y0 + 1), py);
+    int z1 = mod((z0 + 1), pz);
 
     //vXYZ
     float v000 = dotGridGradient3D(seed, x0, y0, z0, dx, dy, dz, px, py);
@@ -168,15 +167,15 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec4& xyzt, int px, int py,
     float dz = xyzt.z - floor(xyzt.z);
     float dt = xyzt.w - floor(xyzt.w);
 
-    int x0 = ((int)floor(xyzt.x)) & px; 
-    int y0 = ((int)floor(xyzt.y)) & py; 
-    int z0 = ((int)floor(xyzt.z)) & pz;
-    int t0 = ((int)floor(xyzt.w)) & pt;
+    int x0 = mod(((int)floor(xyzt.x)), px);
+    int y0 = mod(((int)floor(xyzt.y)), py);
+    int z0 = mod(((int)floor(xyzt.z)), pz);
+    int t0 = mod(((int)floor(xyzt.w)), pt);
 
-    int x1 = (x0 + 1) & px;
-    int y1 = (y0 + 1) & py;
-    int z1 = (z0 + 1) & pz;
-    int t1 = (t0 + 1) & pt;
+    int x1 = mod((x0 + 1), px);
+    int y1 = mod((y0 + 1), py);
+    int z1 = mod((z0 + 1), pz);
+    int t1 = mod((t0 + 1), pt);
 
     //vXYZT
     float v0000 = dotGridGradient4D(seed, x0, y0, z0, t0, dx, dy, dz, dt, px, py, pz);
