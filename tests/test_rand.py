@@ -1,5 +1,4 @@
 import warp as wp
-from warp.types import uint32
 
 device = "cuda"
 

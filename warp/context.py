@@ -257,6 +257,15 @@ add_builtin("randi", input_types={"state": uint32, "min": int, "max": int}, valu
 add_builtin("randf", input_types={"state": uint32}, value_type=float, doc="", group="Scalar Math")
 add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, value_type=float, doc="", group="Scalar Math")
 
+add_builtin("pnoise", input_types={"seed": uint32, "x": float, "px": int}, value_type=float, group="Scalar Math",
+    doc="""Periodic Perlin-style noise in 1D.""")
+add_builtin("pnoise", input_types={"seed": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Scalar Math",
+    doc="""Periodic Perlin-style noise in 2D.""")
+add_builtin("pnoise", input_types={"seed": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Scalar Math",
+    doc="""Periodic Perlin-style noise in 3D.""")
+add_builtin("pnoise", input_types={"seed": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Scalar Math",
+    doc="""Periodic Perlin-style noise in 4D.""")
+
 add_builtin("cw_mul", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Vector Math")
 add_builtin("cw_mul", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
 add_builtin("cw_mul", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Vector Math")

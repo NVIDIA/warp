@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
+#define M_PI 3.14159265358979323846f
 #endif
 
 namespace wp
@@ -23,7 +23,7 @@ inline CUDA_CALLABLE vec2 randomGradient2D(uint32 seed, int ix, int iy, int px)
 {
     int idx = ix + px * iy;
     uint32 state = seed + uint32(idx);
-    float phi = randf(state, 0.0, 2*M_PI);
+    float phi = randf(state, 0.f, 2.f*M_PI);
     float x = cos(phi);
     float y = sin(phi);
     return vec2(x, y);
@@ -33,8 +33,8 @@ inline CUDA_CALLABLE vec3 randomGradient3D(uint32 seed, int ix, int iy, int iz, 
 {
     int idx = ix + px * (iy + py * iz);
     uint32 state = seed + uint32(idx);
-    float theta = randf(state, 0.0, M_PI);
-    float phi = randf(state, 0.0, 2*M_PI);
+    float theta = randf(state, 0.f, M_PI);
+    float phi = randf(state, 0.f, 2.f*M_PI);
     float x = sin(theta) * cos(phi);
     float y = sin(theta) * sin(phi);
     float z = cos(theta);
@@ -45,9 +45,9 @@ inline CUDA_CALLABLE vec4 randomGradient4D(uint32 seed, int ix, int iy, int iz, 
 {
     int idx = ix + px * (iy + py * (iz + it * pz));
     uint32 state = seed + uint32(idx);
-    float psi = randf(state, 0.0, M_PI);
-    float theta = randf(state, 0.0, M_PI);
-    float phi = randf(state, 0.0, 2*M_PI);
+    float psi = randf(state, 0.f, M_PI);
+    float theta = randf(state, 0.f, M_PI);
+    float phi = randf(state, 0.f, 2.f*M_PI);
     float x = sin(psi) * sin(theta) * cos(phi);
     float y = sin(psi) * sin(theta) * sin(phi);
     float z = sin(psi) * cos(theta);
@@ -93,6 +93,8 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, float x, int px)
     return interpolate(v0, v1, dx);
 }
 
+inline CUDA_CALLABLE void adj_pnoise(uint32 seed, float x, int px, uint32& adj_seed, float& adj_x, int& adj_px, const float adj_ret) {}
+
 inline CUDA_CALLABLE float pnoise(uint32 seed, const vec2& xy, int px, int py)
 {
     float dx = xy.x - floor(xy.x);
@@ -113,8 +115,11 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec2& xy, int px, int py)
     float v11 = dotGridGradient2D(seed, x1, y1, dx-1.f, dy-1.f, px);
     float xi1 = interpolate(v01, v11, dx);
 
-    return interpolate(xi0, xi1, dy);
+    // return interpolate(xi0, xi1, dy);
+    return 1.0;
 }
+
+inline CUDA_CALLABLE void adj_pnoise(uint32 seed, const vec2& xy, int px, int py, uint32& adj_seed, const vec2& adj_xy, int& adj_px, int& adj_py, const float adj_ret) {}
 
 inline CUDA_CALLABLE float pnoise(uint32 seed, const vec3& xyz, int px, int py, int pz)
 {
@@ -153,6 +158,8 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec3& xyz, int px, int py, 
 
     return interpolate(yi0, yi1, dz);
 }
+
+inline CUDA_CALLABLE void adj_pnoise(uint32 seed, const vec3& xyz, int px, int py, int pz, uint32& adj_seed, const vec3& adj_xyz, int& adj_px, int& adj_py, int& adj_pz, const float adj_ret) {}
 
 inline CUDA_CALLABLE float pnoise(uint32 seed, const vec4& xyzt, int px, int py, int pz, int pt)
 {
@@ -218,6 +225,8 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec4& xyzt, int px, int py,
 
     return interpolate(zi0, zi1, dt);
 }
+
+inline CUDA_CALLABLE void adj_pnoise(uint32 seed, const vec4& xyzt, int px, int py, int pz, int pt, uint32& adj_seed, const vec4& adj_xyzt, int& adj_px, int& adj_py, int& adj_pz, int& adj_pt, const float adj_ret) {}
 
 inline CUDA_CALLABLE vec2 curlnoise(const vec2& p) { return vec2(); }
 inline CUDA_CALLABLE vec3 curlnoise(const vec3& p) { return vec3(); }
