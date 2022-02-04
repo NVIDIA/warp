@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 namespace wp
 {
 
@@ -9,9 +13,9 @@ inline CUDA_CALLABLE float interpolate(float a0, float a1, float t)
     return (a1 - a0) * ((t * (t * 6.f - 15.f) + 10.f) * t * t * t) + a0;
 }
 
-inline CUDA_CALLABLE float randomGradient1D(int ix)
+inline CUDA_CALLABLE float randomGradient1D(uint32 seed, int ix)
 {
-    uint32 state = uint32(ix);
+    uint32 state = seed + uint32(ix);
     return randf(state, -1.f, 1.f);
 }
 
@@ -19,55 +23,67 @@ inline CUDA_CALLABLE vec2 randomGradient2D(uint32 seed, int ix, int iy, int px)
 {
     int idx = ix + px * iy;
     uint32 state = seed + uint32(idx);
-    // M_PI
-    return vec2();
+    float phi = randf(state, 0.0, 2*M_PI);
+    float x = cos(phi);
+    float y = sin(phi);
+    return vec2(x, y);
 }
 
 inline CUDA_CALLABLE vec3 randomGradient3D(uint32 seed, int ix, int iy, int iz, int px, int py)
 {
     int idx = ix + px * (iy + py * iz);
     uint32 state = seed + uint32(idx);
-    return vec3();
+    float theta = randf(state, 0.0, M_PI);
+    float phi = randf(state, 0.0, 2*M_PI);
+    float x = sin(theta) * cos(phi);
+    float y = sin(theta) * sin(phi);
+    float z = cos(theta);
+    return vec3(x, y, z);
 }
 
 inline CUDA_CALLABLE vec4 randomGradient4D(uint32 seed, int ix, int iy, int iz, int it, int px, int py, int pz)
 {
     int idx = ix + px * (iy + py * (iz + it * pz));
     uint32 state = seed + uint32(idx);
-    return vec4();
+    float psi = randf(state, 0.0, M_PI);
+    float theta = randf(state, 0.0, M_PI);
+    float phi = randf(state, 0.0, 2*M_PI);
+    float x = sin(psi) * sin(theta) * cos(phi);
+    float y = sin(psi) * sin(theta) * sin(phi);
+    float z = sin(psi) * cos(theta);
+    float t = cos(psi);
+    return vec4(x, y, z, t);
 }
 
 inline CUDA_CALLABLE float dotGridGradient1D(uint32 seed, int ix, float dx)
 {
-    float gradient = randomGradient1D(ix);
+    float gradient = randomGradient1D(seed, ix);
     return dx*gradient;
 }
 
 inline CUDA_CALLABLE float dotGridGradient2D(uint32 seed, int ix, int iy, float dx, float dy, int px)
 {
-    vec2 gradient = randomGradient2D(seed, ix, iy);
+    vec2 gradient = randomGradient2D(seed, ix, iy, px);
     return (dx*gradient.x + dy*gradient.y);
 }
 
 inline CUDA_CALLABLE float dotGridGradient3D(uint32 seed, int ix, int iy, int iz, float dx, float dy, float dz, int px, int py)
 {
-    vec3 gradient = randomGradient3D(seed, ix, iy, iz);
+    vec3 gradient = randomGradient3D(seed, ix, iy, iz, px, py);
     return (dx*gradient.x + dy*gradient.y + dz*gradient.z);
 }
 
 inline CUDA_CALLABLE float dotGridGradient4D(uint32 seed, int ix, int iy, int iz, int it, float dx, float dy, float dz, float dt, int px, int py, int pz)
 {
-    vec4 gradient = randomGradient4D(seed, ix, iy, iz, it);
+    vec4 gradient = randomGradient4D(seed, ix, iy, iz, it, px, py, pz);
     return (dx*gradient.x + dy*gradient.y + dz*gradient.z + dt*gradient.w);
 }
 
 inline CUDA_CALLABLE float pnoise(uint32 seed, float x, int px)
 {
-    float dx = x - std::floorf(x);
+    float dx = x - floor(x);
 
-    int x0 = ((int)std::floorf(x)) & px;
-
-    float x = float(x0) + dx;
+    int x0 = ((int)floor(x)) & px;
 
     int x1 = (x0 + 1) & px;
 
@@ -79,14 +95,11 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, float x, int px)
 
 inline CUDA_CALLABLE float pnoise(uint32 seed, const vec2& xy, int px, int py)
 {
-    float dx = xy.x - std::floorf(xy.x);
-    float dy = xy.y - std::floorf(xy.y);
+    float dx = xy.x - floor(xy.x);
+    float dy = xy.y - floor(xy.y);
 
-    int x0 = ((int)std::floorf(xy.x)) & px; 
-    int y0 = ((int)std::floorf(xy.y)) & py; 
-
-    float x = float(x0) + dx;
-    float y = float(y0) + dy;
+    int x0 = ((int)floor(xy.x)) & px; 
+    int y0 = ((int)floor(xy.y)) & py; 
 
     int x1 = (x0 + 1) & px;
     int y1 = (y0 + 1) & py;
@@ -105,17 +118,13 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec2& xy, int px, int py)
 
 inline CUDA_CALLABLE float pnoise(uint32 seed, const vec3& xyz, int px, int py, int pz)
 {
-    float dx = xyz.x - std::floorf(xyz.x);
-    float dy = xyz.y - std::floorf(xyz.y);
-    float dz = xyz.z - std::floorf(xyz.z);
+    float dx = xyz.x - floor(xyz.x);
+    float dy = xyz.y - floor(xyz.y);
+    float dz = xyz.z - floor(xyz.z);
 
-    int x0 = ((int)std::floorf(xyz.x)) & px; 
-    int y0 = ((int)std::floorf(xyz.y)) & py; 
-    int z0 = ((int)std::floorf(xyz.z)) & pz; 
-
-    float x = float(x0) + dx;
-    float y = float(y0) + dy;
-    float z = float(z0) + dz;
+    int x0 = ((int)floor(xyz.x)) & px; 
+    int y0 = ((int)floor(xyz.y)) & py; 
+    int z0 = ((int)floor(xyz.z)) & pz; 
 
     int x1 = (x0 + 1) & px;
     int y1 = (y0 + 1) & py;
@@ -147,20 +156,15 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec3& xyz, int px, int py, 
 
 inline CUDA_CALLABLE float pnoise(uint32 seed, const vec4& xyzt, int px, int py, int pz, int pt)
 {
-    float dx = xyzt.x - std::floorf(xyzt.x);
-    float dy = xyzt.y - std::floorf(xyzt.y);
-    float dz = xyzt.z - std::floorf(xyzt.z);
-    float dt = xyzt.w - std::floorf(xyzt.w);
+    float dx = xyzt.x - floor(xyzt.x);
+    float dy = xyzt.y - floor(xyzt.y);
+    float dz = xyzt.z - floor(xyzt.z);
+    float dt = xyzt.w - floor(xyzt.w);
 
-    int x0 = ((int)std::floorf(xyzt.x)) & px; 
-    int y0 = ((int)std::floorf(xyzt.y)) & py; 
-    int z0 = ((int)std::floorf(xyzt.z)) & pz;
-    int t0 = ((int)std::floorf(xyzt.w)) & pt;
-
-    float x = float(x0) + dx;
-    float y = float(y0) + dy;
-    float z = float(z0) + dz;
-    float t = float(t0) + dt;
+    int x0 = ((int)floor(xyzt.x)) & px; 
+    int y0 = ((int)floor(xyzt.y)) & py; 
+    int z0 = ((int)floor(xyzt.z)) & pz;
+    int t0 = ((int)floor(xyzt.w)) & pt;
 
     int x1 = (x0 + 1) & px;
     int y1 = (y0 + 1) & py;
