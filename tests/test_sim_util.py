@@ -1,4 +1,5 @@
 
+from warp.sim.model import JOINT_COMPOUND, JOINT_REVOLUTE, JOINT_UNIVERSAL
 from warp.utils import transform_identity
 
 try:
@@ -28,7 +29,8 @@ def parse_mjcf(
     contact_mu=0.5,
     limit_ke=10000.0,
     limit_kd=1000.0,
-    armature=0.0):
+    armature=0.0,
+    armature_scale=1.0):
 
     file = ET.parse(filename)
     root = file.getroot()
@@ -66,22 +68,26 @@ def parse_mjcf(
 
         #-----------------
         # add body for each joint
-        
-        for i, joint in enumerate(body.findall("joint")):
+        joints = body.findall("joint")
+
+        if (parent == -1):
+            body_pos = np.array((0.0, 0.0, 0.0))
+
+        start_dof = builder.joint_dof_count
+        start_coord = builder.joint_coord_count
+
+        if (len(joints) == 1):
+
+            joint = joints[0]
 
             joint_name = joint.attrib["name"],
             joint_type = type_map[joint.attrib["type"]]
-            joint_axis = parse_vec(joint, "axis", (0.0, 0.0, 0.0))
+            joint_axis = wp.normalize(parse_vec(joint, "axis", (0.0, 0.0, 0.0)))
             joint_pos = parse_vec(joint, "pos", (0.0, 0.0, 0.0))
             joint_range = parse_vec(joint, "range", (-3.0, 3.0))
-            joint_armature = parse_float(joint, "armature", armature)
+            joint_armature = parse_float(joint, "armature", armature)*armature_scale
             joint_stiffness = parse_float(joint, "stiffness", stiffness)
             joint_damping = parse_float(joint, "damping", damping)
-
-            joint_axis = wp.normalize(joint_axis)
-
-            if (parent == -1):
-                body_pos = np.array((0.0, 0.0, 0.0))
 
             link = builder.add_body(
                 parent=parent,
@@ -97,9 +103,64 @@ def parse_mjcf(
                 joint_target_kd=joint_damping,
                 joint_armature=joint_armature)
 
-            parent = link
-            body_pos = [0.0, 0.0, 0.0]  # todo: assumes that serial joints are all aligned at the same point
+            #print(f"{joint_name} coord: {start_coord} dof: {start_dof} body index: {link}")
 
+        else:
+            
+            if (len(joints) == 2):
+                type = JOINT_UNIVERSAL
+            elif (len(joints) == 3):
+                type = JOINT_COMPOUND
+            else:
+                print("Bodies must have 1-3 joints")
+
+            # universal / compound joint
+            joint_stiffness = []
+            joint_damping = []
+            joint_lower = []
+            joint_upper = []
+            joint_armature = []
+            joint_axis = []
+
+            for i, joint in enumerate(joints):
+                
+                if (joint.attrib["type"] != "hinge"):
+                    print("Compound joints must all be hinges")
+
+                joint_name = joint.attrib["name"],
+                joint_pos = parse_vec(joint, "pos", (0.0, 0.0, 0.0))
+                joint_range = parse_vec(joint, "range", (-3.0, 3.0))
+                joint_lower.append(np.deg2rad(joint_range[0]))
+                joint_upper.append(np.deg2rad(joint_range[1]))
+                joint_armature.append(parse_float(joint, "armature", armature)*armature_scale)
+                joint_stiffness.append(parse_float(joint, "stiffness", stiffness))
+                joint_damping.append(parse_float(joint, "damping", damping))
+                joint_axis.append(wp.normalize(parse_vec(joint, "axis", (0.0, 0.0, 0.0))))
+
+            # align MuJoCo axes with joint coordinates
+
+            if len(joints) == 2:
+                M = np.array([joint_axis[0], joint_axis[1], wp.cross(joint_axis[0], joint_axis[1])]).T
+
+            elif len(joints) == 3:
+                M = np.array([joint_axis[0], joint_axis[1], joint_axis[2]]).T
+            
+            q = wp.quat_from_matrix(M)            
+
+            link = builder.add_body(
+                parent=parent,
+                origin=wp.transform_identity(),  # will be evaluated in fk()
+                joint_xform=wp.transform(body_pos, wp.quat_identity()),
+                joint_xform_child=wp.transform([0.0, 0.0, 0.0], q),
+                joint_type=type,
+                joint_limit_lower=joint_lower,
+                joint_limit_upper=joint_upper,
+                joint_limit_ke=limit_ke,
+                joint_limit_kd=limit_kd,
+                joint_target_ke=joint_stiffness,
+                joint_target_kd=joint_damping,
+                joint_armature=joint_armature[0])
+            
         #-----------------
         # add shapes
 
