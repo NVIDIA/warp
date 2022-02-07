@@ -28,7 +28,7 @@ class Robot:
     sim_time = 0.0
     render_time = 0.0
 
-    name = "humanoid_brax"
+    name = "humanoid"
 
     def __init__(self, render=True, num_envs=1, device='cpu'):
 
@@ -50,36 +50,26 @@ class Robot:
                 contact_kd=1.e+2,
                 contact_kf=1.e+2,
                 contact_mu=0.5,
-                limit_ke=1.e+3,
+                limit_ke=1.e+2,
                 limit_kd=1.e+1)
-
-            coord_count = 33 
-            dof_count = 32
+ 
+            coord_count = 28 
+            dof_count = 27
             
             coord_start = i*coord_count
             dof_start = i*dof_count
 
-            # set joint targets to rest pose in mjcf
-
-                # # base
-                # builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
-                # builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
-
-                # # joints
-                # builder.joint_q[coord_start+7:coord_start+coord_count] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
-
-
+            # position above ground and rotate to +y up
             builder.joint_q[coord_start:coord_start+3] = [i*2.0, 1.70, 0.0]
             builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
 
-            # builder.joint_q[coord_start:coord_start + 3] = self.start_pos[-1]
-            # builder.joint_q[coord_start + 3:coord_start + 7] = self.start_rot
 
         # finalize model
         self.model = builder.finalize(device)
         self.model.ground = True
         self.model.joint_attach_ke *= 8.0
         self.model.joint_attach_kd *= 2.0
+
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
@@ -104,17 +94,6 @@ class Robot:
             None,
             self.state)
 
-        # print(self.model.joint_q)
-
-        # wp.sim.eval_ik(
-        #     self.model,
-        #     self.state,
-        #     self.model.joint_q,
-        #     self.model.joint_qd)
-        
-        # print(self.model.joint_q)
-
-
         if (self.model.ground):
             self.model.collide(self.state)
 
@@ -132,7 +111,7 @@ class Robot:
         graph = wp.capture_end()
 
 
-        # simulate
+        # simulate 
         with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
 
             for f in range(0, self.episode_frames):
@@ -141,6 +120,7 @@ class Robot:
                 #     self.state.clear_forces()
                 #     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
                 #     self.sim_time += self.sim_dt
+
 
                 if (self.render):
 
@@ -158,7 +138,6 @@ class Robot:
 
                 wp.capture_launch(graph)
                 self.sim_time += self.frame_dt
-
 
             wp.synchronize()
 

@@ -33,6 +33,7 @@ JOINT_BALL = 2
 JOINT_FIXED = 3
 JOINT_FREE = 4
 JOINT_COMPOUND = 5
+JOINT_UNIVERSAL = 6
 
 class Mesh:
     """Describes a triangle collision mesh for simulation
@@ -703,6 +704,9 @@ class ModelBuilder:
         elif (joint_type == JOINT_COMPOUND):
             dof_count = 3
             coord_count = 3
+        elif (joint_type == JOINT_UNIVERSAL):
+            dof_count = 2
+            coord_count = 2
 
         # convert coefficients to np.arrays() so we can index into them for 
         # compound joints, this just allows user to pass scalars or arrays

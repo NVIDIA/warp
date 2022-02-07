@@ -1,5 +1,5 @@
 
-from warp.sim.model import JOINT_REVOLUTE
+from warp.sim.model import JOINT_COMPOUND, JOINT_REVOLUTE, JOINT_UNIVERSAL
 from warp.utils import transform_identity
 
 try:
@@ -73,6 +73,9 @@ def parse_mjcf(
         if (parent == -1):
             body_pos = np.array((0.0, 0.0, 0.0))
 
+        start_dof = builder.joint_dof_count
+        start_coord = builder.joint_coord_count
+
         if (len(joints) == 1):
 
             joint = joints[0]
@@ -100,49 +103,56 @@ def parse_mjcf(
                 joint_target_kd=joint_damping,
                 joint_armature=joint_armature)
 
+            #print(f"{joint_name} coord: {start_coord} dof: {start_dof} body index: {link}")
+
         else:
             
-            # compound joint
-            joint_stiffness = [0.0, 0.0, 0.0]
-            joint_damping = [0.0, 0.0, 0.0]
-            joint_lower = [0.0, 0.0, 0.0]
-            joint_upper = [0.0, 0.0, 0.0]
-            joint_armature = [0.0, 0.0, 0.0]
+            if (len(joints) == 2):
+                type = JOINT_UNIVERSAL
+            elif (len(joints) == 3):
+                type = JOINT_COMPOUND
+            else:
+                print("Bodies must have 1-3 joints")
+
+            # universal / compound joint
+            joint_stiffness = []
+            joint_damping = []
+            joint_lower = []
+            joint_upper = []
+            joint_armature = []
             joint_axis = []
 
             for i, joint in enumerate(joints):
                 
-                joint_name = joint.attrib["name"],
-
-                joint_type = type_map[joint.attrib["type"]]
-                if (joint_type != wp.sim.JOINT_REVOLUTE):
+                if (joint.attrib["type"] != "hinge"):
                     print("Compound joints must all be hinges")
 
+                joint_name = joint.attrib["name"],
                 joint_pos = parse_vec(joint, "pos", (0.0, 0.0, 0.0))
                 joint_range = parse_vec(joint, "range", (-3.0, 3.0))
-                joint_lower[i] = np.deg2rad(joint_range[0])
-                joint_upper[i] = np.deg2rad(joint_range[1])
-                joint_armature[i] = parse_float(joint, "armature", armature)*armature_scale
-                joint_stiffness[i] = parse_float(joint, "stiffness", stiffness)
-                joint_damping[i] = parse_float(joint, "damping", damping)
+                joint_lower.append(np.deg2rad(joint_range[0]))
+                joint_upper.append(np.deg2rad(joint_range[1]))
+                joint_armature.append(parse_float(joint, "armature", armature)*armature_scale)
+                joint_stiffness.append(parse_float(joint, "stiffness", stiffness))
+                joint_damping.append(parse_float(joint, "damping", damping))
                 joint_axis.append(wp.normalize(parse_vec(joint, "axis", (0.0, 0.0, 0.0))))
 
-            # TODO: align MuJoCo axes with joint coordinates, currently requires editing the file
-            # # derive joint transform from compound axes
-            # if len(joints) == 2:
-            #     M = np.array([joint_axis[0], joint_axis[1], wp.cross(joint_axis[0], joint_axis[1])]).T
+            # align MuJoCo axes with joint coordinates
 
-            # elif len(joints) == 3:
-            #     M = np.array([joint_axis[0], joint_axis[1], joint_axis[2]]).T
+            if len(joints) == 2:
+                M = np.array([joint_axis[0], joint_axis[1], wp.cross(joint_axis[0], joint_axis[1])]).T
+
+            elif len(joints) == 3:
+                M = np.array([joint_axis[0], joint_axis[1], joint_axis[2]]).T
             
-            # q = wp.quat_from_matrix(M)            
-            # #q = wp.quat_identity()
+            q = wp.quat_from_matrix(M)            
 
             link = builder.add_body(
                 parent=parent,
                 origin=wp.transform_identity(),  # will be evaluated in fk()
                 joint_xform=wp.transform(body_pos, wp.quat_identity()),
-                joint_type=wp.sim.JOINT_COMPOUND,
+                joint_xform_child=wp.transform([0.0, 0.0, 0.0], q),
+                joint_type=type,
                 joint_limit_lower=joint_lower,
                 joint_limit_upper=joint_upper,
                 joint_limit_ke=limit_ke,
