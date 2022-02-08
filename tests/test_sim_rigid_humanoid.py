@@ -142,7 +142,7 @@ class Robot:
                                     200.0])
 
                     act = np.zeros(len(self.model.joint_qd))
-                    act[6:] = (np.random.rand((len(self.model.joint_qd)-6))*2.0 - 1.0)*scale
+                    act[6:] = np.clip((np.random.rand(len(self.model.joint_qd)-6)*2.0 - 1.0)*1000.0, a_min=-1.0, a_max=1.0)*scale*0.35
                     self.model.joint_act.assign(act)
 
                     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
@@ -150,7 +150,7 @@ class Robot:
 
 
                 if (self.render):
-
+ 
                     with wp.ScopedTimer("render", False):
 
                         if (self.render):
