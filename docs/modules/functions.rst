@@ -667,3 +667,24 @@ Utility
 .. function:: expect_eq() -> None
 
 
+Noise
+---------------
+.. function:: pnoise(seed: uint32, x: float, px: int) -> float
+
+
+.. function:: pnoise(seed: uint32, xy: vec2, px: int, py: int) -> float
+
+
+.. function:: pnoise(seed: uint32, xyz: vec3, px: int, py: int, pz: int) -> float
+
+
+.. function:: pnoise(seed: uint32, xyzt: vec4, px: int, py: int, pz: int, pt: int) -> float
+
+
+.. function:: curlnoise(seed: uint32, xy: vec2) -> vec2
+
+
+.. function:: curlnoise(seed: uint32, xyz: vec3) -> vec3
+
+
+.. function:: curlnoise(seed: uint32, xyzt: vec4) -> vec3

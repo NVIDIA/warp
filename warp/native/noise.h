@@ -323,8 +323,13 @@ inline CUDA_CALLABLE float pnoise(uint32 seed, const vec4& xyzt, int px, int py,
 
 inline CUDA_CALLABLE void adj_pnoise(uint32 seed, const vec4& xyzt, int px, int py, int pz, int pt, uint32& adj_seed, vec4& adj_xyzt, int& adj_px, int& adj_py, int& adj_pz, int& adj_pt, const float adj_ret) {}
 
-inline CUDA_CALLABLE vec2 curlnoise(const vec2& p) { return vec2(); }
-inline CUDA_CALLABLE vec3 curlnoise(const vec3& p) { return vec3(); }
-inline CUDA_CALLABLE vec3 curlnoise(const vec4& p) { return vec3(); }
+inline CUDA_CALLABLE vec2 curlnoise(uint32 seed, const vec2& xy) { return vec2(); }
+inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec2& xy, uint32& adj_seed, vec2& adj_xy, const float adj_ret) {}
+
+inline CUDA_CALLABLE vec3 curlnoise(uint32 seed, const vec3& xyz) { return vec3(); }
+inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec3& xyz, uint32& adj_seed, vec3& adj_xyz, const float adj_ret) {}
+
+inline CUDA_CALLABLE vec3 curlnoise(uint32 seed, const vec4& xyzt) { return vec3(); }
+inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec4& xyzt, uint32& adj_seed, vec4& adj_xyzt, const float adj_ret) {}
 
 } // namespace wp

@@ -1,6 +1,6 @@
 import warp as wp
 import numpy as np
-from PIL import Image
+import matplotlib.pyplot as plt
 
 device = "cuda"
 
@@ -58,5 +58,5 @@ wp.synchronize()
 img = pixels_host.numpy()
 img = np.reshape(img, (W, H))
 img = img.astype(np.uint8)
-img = Image.fromarray(img)
-img.show()
+imgplot = plt.imshow(img, 'gray')
+# plt.savefig("noise_test.png")
