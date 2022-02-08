@@ -116,10 +116,37 @@ class Robot:
 
             for f in range(0, self.episode_frames):
                 
-                # for i in range(0, self.sim_substeps):
-                #     self.state.clear_forces()
-                #     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
-                #     self.sim_time += self.sim_dt
+                for i in range(0, self.sim_substeps):
+                    self.state.clear_forces()
+                    
+                    scale = np.array([200.0,
+                                    200.0,
+                                    200.0,
+                                    200.0,
+                                    200.0,
+                                    600.0,
+                                    400.0,
+                                    100.0,
+                                    100.0,
+                                    200.0,
+                                    200.0,
+                                    600.0,
+                                    400.0,
+                                    100.0,
+                                    100.0,
+                                    100.0,
+                                    100.0,
+                                    200.0,
+                                    100.0,
+                                    100.0,
+                                    200.0])
+
+                    act = np.zeros(len(self.model.joint_qd))
+                    act[6:] = (np.random.rand((len(self.model.joint_qd)-6))*2.0 - 1.0)*scale
+                    self.model.joint_act.assign(act)
+
+                    self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+                    self.sim_time += self.sim_dt
 
 
                 if (self.render):
@@ -136,8 +163,8 @@ class Robot:
                     self.renderer.save()
 
 
-                wp.capture_launch(graph)
-                self.sim_time += self.frame_dt
+                # wp.capture_launch(graph)
+                # self.sim_time += self.frame_dt
 
             wp.synchronize()
 
