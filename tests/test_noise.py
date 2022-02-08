@@ -16,13 +16,18 @@ def test_pnoise(
 
     tid = wp.tid()
 
-    state = wp.rand_init(kernel_seed, kernel_seed)
-    x = float(tid % W) + 0.5
-    y = float(tid / W) + 0.5
+    state = wp.rand_init(kernel_seed)
+
+    x = (float(tid % W) + 0.5) * 0.02
+    y = (float(tid / W) + 0.5) * 0.02
     p = wp.vec2(x, y)
 
     n = wp.pnoise(state, p, px, py)
+    n = n + 1.0
+    n = n / 2.0
+
     g = n * 255.0
+
     wp.store(noise_values, tid, g)
 
 

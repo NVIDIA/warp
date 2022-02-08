@@ -292,6 +292,9 @@ Scalar Math
    Calculate the smallest integer that is greater than or equal to x.
 
 
+.. function:: rand_init(state: int) -> uint32
+
+
 .. function:: rand_init(state: int, offset: int) -> uint32
 
 

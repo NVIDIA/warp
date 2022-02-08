@@ -251,6 +251,7 @@ add_builtin("floor", input_types={"x": float}, value_type=float, group="Scalar M
 add_builtin("ceil", input_types={"x": float}, value_type=float, group="Scalar Math",
     doc="""Calculate the smallest integer that is greater than or equal to x.""")
 
+add_builtin("rand_init", input_types={"state": int}, value_type=uint32, doc="", group="Scalar Math")
 add_builtin("rand_init", input_types={"state": int, "offset": int}, value_type=uint32, doc="", group="Scalar Math")
 add_builtin("randi", input_types={"state": uint32}, value_type=int, doc="", group="Scalar Math")
 add_builtin("randi", input_types={"state": uint32, "min": int, "max": int}, value_type=int, doc="", group="Scalar Math")
