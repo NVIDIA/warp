@@ -25,7 +25,7 @@ import warp.config
 # represents either a built-in or user-defined function
 class Function:
 
-    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, doc="", group=""):
+    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, variadic=False, doc="", group=""):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -35,6 +35,7 @@ class Function:
         self.doc = doc
         self.group = group
         self.module = module
+        self.variadic = variadic    # function can take arbitrary inputs, e.g.: printf()
 
         if (func):
             self.adj = warp.codegen.Adjoint(func)
@@ -106,7 +107,7 @@ def kernel(f):
 
 builtin_functions = {}
 
-# decorator to register a built-in function @builtin
+# decorator to register a built-in function with @builtin
 def builtin(key):
     def insert(c):
         
@@ -115,17 +116,19 @@ def builtin(key):
 
     return insert
 
-def add_builtin(key, input_types={}, value_type=None, doc="", group="Other"):
+def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other"):
 
     # lambda to return a constant type for an overload
     def value_func(arg):
         return value_type
 
-    func = Function(func=None, key=key, namespace="wp::", input_types=input_types, value_type=value_func, doc=doc, group=group)
+    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group)
 
     if key in builtin_functions:
+        # if key exists we add overload
         builtin_functions[key].append(func)
     else:
+        # insert into dict
         builtin_functions[key] = [func]
 
 #---------------------------------
@@ -135,7 +138,6 @@ add_builtin("add", input_types={"x": int, "y": int}, value_type=int, doc="", gro
 add_builtin("add", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
 add_builtin("add", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("add", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Operators")
-add_builtin("add", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("add", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Operators")
 add_builtin("add", input_types={"x": quat, "y": quat}, value_type=quat, doc="", group="Operators")
 add_builtin("add", input_types={"x": mat22, "y": mat22}, value_type=mat22, doc="", group="Operators")
@@ -148,7 +150,6 @@ add_builtin("sub", input_types={"x": int, "y": int}, value_type=int, doc="", gro
 add_builtin("sub", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
 add_builtin("sub", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("sub", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Operators")
-add_builtin("sub", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("sub", input_types={"x": vec4, "y": vec4}, value_type=vec4, doc="", group="Operators")
 add_builtin("sub", input_types={"x": mat22, "y": mat22}, value_type=mat22, doc="", group="Operators")
 add_builtin("sub", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="", group="Operators")
@@ -445,9 +446,10 @@ add_builtin("hash_grid_query", input_types={"id": uint64, "point": vec3, "max_di
 add_builtin("hash_grid_query_next", input_types={"id": hash_grid_query_t, "index": int}, value_type=bool, doc="", group="Geometry")
 add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, value_type=int, doc="", group="Geometry")
 
+# note printf calls directly to global CRT printf (no wp:: namespace prefix)
+add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility")
 
 # helpers
-
 add_builtin("tid", input_types={}, value_type=int, doc="Return the current thread id.", group="Utility")
 
 @builtin("select")
@@ -472,7 +474,6 @@ class LoadFunc:
             raise Exception("load() argument input 1 must be an integer type")
 
         return args[0].type.dtype
-
 
 @builtin("store")
 class StoreFunc:
@@ -530,6 +531,7 @@ class PrintFunc:
     @staticmethod
     def value_type(args):
         return None
+
 
 @builtin("expect_eq")
 class ExpectEqFunc:

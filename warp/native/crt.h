@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <math.h>
 #include <assert.h>
 #include <float.h>
@@ -186,7 +187,10 @@ typedef unsigned long long uintmax_t;
 
 
 // stdio
-int printf (const char * format, ... );
+extern "C"
+{
+  __device__ int printf(const char * format, ... );
+}
 
 // assert.h
 //#ifndef __CUDACC__
