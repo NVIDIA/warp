@@ -269,11 +269,11 @@ add_builtin("pnoise", input_types={"seed": uint32, "xyzt": vec4, "px": int, "py"
     doc="""Periodic Perlin-style noise in 4D.""")
 
 add_builtin("curlnoise", input_types={"seed": uint32, "xy": vec2}, value_type=vec2, group="Scalar Math",
-    doc="""Divergence-free vector field based on the cross product of the derivatives of two Perlin noise functions.""")
+    doc="""Divergence-free vector field based on the gradient of a Perlin noise function.""")
 add_builtin("curlnoise", input_types={"seed": uint32, "xyz": vec3}, value_type=vec3, group="Scalar Math",
-    doc="""Divergence-free vector field based on the cross product of the derivatives of three Perlin noise functions.""")
+    doc="""Divergence-free vector field based on the cross product of the derivatives of two Perlin noise functions.""")
 add_builtin("curlnoise", input_types={"seed": uint32, "xyzt": vec4}, value_type=vec3, group="Scalar Math",
-    doc="""Divergence-free vector field based on the cross product of the derivatives of three Perlin noise functions.""")
+    doc="""Divergence-free vector field based on the cross product of the derivatives of two Perlin noise functions.""")
 
 add_builtin("cw_mul", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Vector Math")
 add_builtin("cw_mul", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
