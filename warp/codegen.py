@@ -56,12 +56,14 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            if self.type.dtype == vec3:
-                return str("wp::" + self.type.dtype.__name__) + "*"
+            # if self.type.dtype == vec3:
+            #     return str("wp::" + self.type.dtype.__name__) + "*"
 
             return str(self.type.dtype.__name__) + "*"
-        elif self.type == vec3:
-            return "wp::" + str(self.type.__name__)
+        # elif self.type == vec3:
+        #     return "wp::" + str(self.type.__name__)
+        # elif (self.type == str):
+        #     return "str"
         else:
             return str(self.type.__name__)
 
@@ -185,7 +187,7 @@ class Adjoint:
 
     def add_call(adj, func, inputs):
 
-        # if func is overloaded then perform resolution here, this is just to try and catch
+        # if func is overloaded then perform overload resolution here, this is just to try and catch
         # argument errors before they go to generated native code
 
         if (isinstance(func, list)):
@@ -194,17 +196,19 @@ class Adjoint:
 
             for f in func:
                 match = True
-    
-                # check argument counts match (todo: default arguments?)
-                if len(f.input_types) != len(inputs):
-                    math = False
-                    continue
 
-                # check argument types equal
-                for i, a in enumerate(f.input_types.values()):
-                    if not types_equal(a, inputs[i].type):
+                if (f.variadic == False):
+                  
+                    # check argument counts match (todo: default arguments?)
+                    if len(f.input_types) != len(inputs):
                         match = False
-                        break
+                        continue
+
+                    # check argument types equal
+                    for i, a in enumerate(f.input_types.values()):
+                        if not types_equal(a, inputs[i].type):
+                            match = False
+                            break
 
                 # found a match, use it
                 if (match):
@@ -458,10 +462,14 @@ class Adjoint:
                 else:
                     raise KeyError("Referencing undefined symbol: " + str(node.id))
 
+            elif (isinstance(node, ast.Str)):
+
+                # string constant
+                return adj.add_constant(node.s)
+
             elif (isinstance(node, ast.Num)):
 
                 # lookup constant, if it has already been assigned then return existing var
-                # currently disabled, since assigning constant in a branch means it 
                 key = (node.n, type(node.n))
 
                 if (key in adj.symbols):
@@ -471,8 +479,6 @@ class Adjoint:
                     adj.symbols[key] = out
                     return out
 
-                #out = adj.add_constant(node.n)
-                #return out
 
             elif (isinstance(node, ast.BinOp)):
                 # evaluate binary operator arguments
@@ -935,13 +941,21 @@ WP_API void {name}_cpu_backward({reverse_args});
 }} // extern C
 '''
 
+# converts a constant Python value to equivalent C-repr
 def constant_str(value):
+    
     if (type(value) == bool):
         if value:
             return "true"
         else:
             return "false"
+
+    elif (type(value) == str):
+        # ensure constant strings are correctly escaped
+        return "\"" + str(value.encode("unicode-escape").decode()) + "\""
+
     else:
+        # otherwise just convert constant to string
         return str(value)
 
 def indent(args, stops=1):

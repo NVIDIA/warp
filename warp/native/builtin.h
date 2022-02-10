@@ -1,7 +1,7 @@
 #pragma once
 
 // All built-in types and functions. To be compatible with runtime NVRTC compilation
-// this header must be independently compilable (without external headers)
+// this header must be independently compilable (i.e.: without external SDK headers)
 // to achieve this we redefine a subset of CRT functions (printf, pow, sin, cos, etc)
 
 #include "crt.h"
@@ -61,6 +61,9 @@ typedef int32_t int32;
 
 typedef uint64_t uint64;
 typedef uint32_t uint32;
+
+// matches Python string type for constant strings
+typedef char* str;
 
 #define kEps 0.0f
 
@@ -472,16 +475,10 @@ inline CUDA_CALLABLE void adj_sdf_grad(vec3 x, vec3& adj_x, vec3& adj_ret)
 
 }
 
-// // based on https://arxiv.org/abs/2004.06278
-// inline CUDA_CALLABLE int rand_int(int count)
-// {
-//     return clock()
-// }
-
-// inline CUDA_CALLABLE float rand_float(int count)
-// {
-
-// }
+inline CUDA_CALLABLE void print(const str s)
+{
+    printf("%s\n", s);
+}
 
 inline CUDA_CALLABLE void print(int i)
 {
@@ -573,6 +570,10 @@ inline CUDA_CALLABLE void adj_print(mat44 m, mat44& adj_m) { }
 inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
+inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
+
+// printf defined globally in crt.h
+inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
 
 
 template <typename T>

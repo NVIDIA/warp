@@ -21,7 +21,7 @@ class Robot:
     episode_duration = 5.0      # seconds
     episode_frames = int(episode_duration/frame_dt)
 
-    sim_substeps = 10
+    sim_substeps = 16
     sim_dt = frame_dt / sim_substeps
     sim_steps = int(episode_duration / sim_dt)
    
@@ -43,42 +43,33 @@ class Robot:
 
             util.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
                 stiffness=0.0,
-                damping=1.0,
-                armature=0.1,
-                contact_ke=1.e+4,
+                damping=0.1,
+                armature=0.0,
+                armature_scale=10.0,
+                contact_ke=1.e+3*2.0,
                 contact_kd=1.e+2,
-                contact_kf=1.e+4,
-                contact_mu=1.0,
-                limit_ke=1.e+4,
+                contact_kf=1.e+2,
+                contact_mu=0.5,
+                limit_ke=1.e+2,
                 limit_kd=1.e+1)
-
-            coord_count = 28
+ 
+            coord_count = 28 
             dof_count = 27
             
             coord_start = i*coord_count
             dof_start = i*dof_count
 
-            # set joint targets to rest pose in mjcf
-
-                # # base
-                # builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
-                # builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
-
-                # # joints
-                # builder.joint_q[coord_start+7:coord_start+coord_count] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
-
-
-            builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
+            # position above ground and rotate to +y up
+            builder.joint_q[coord_start:coord_start+3] = [i*2.0, 1.70, 0.0]
             builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
 
-            # builder.joint_q[coord_start:coord_start + 3] = self.start_pos[-1]
-            # builder.joint_q[coord_start + 3:coord_start + 7] = self.start_rot
 
         # finalize model
         self.model = builder.finalize(device)
         self.model.ground = True
-        self.model.joint_attach_ke *= 16.0
-        self.model.joint_attach_kd *= 4.0
+        self.model.joint_attach_ke *= 8.0
+        self.model.joint_attach_kd *= 2.0
+
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
@@ -120,21 +111,46 @@ class Robot:
         graph = wp.capture_end()
 
 
-        # simulate
+        # simulate 
         with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
 
             for f in range(0, self.episode_frames):
                 
-                # for i in range(0, self.sim_substeps):
-                #     self.state.clear_forces()
-                #     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
-                #     self.sim_time += self.sim_dt
+                for i in range(0, self.sim_substeps):
+                    self.state.clear_forces()
+                    
+                    scale = np.array([200.0,
+                                    200.0,
+                                    200.0,
+                                    200.0,
+                                    200.0,
+                                    600.0,
+                                    400.0,
+                                    100.0,
+                                    100.0,
+                                    200.0,
+                                    200.0,
+                                    600.0,
+                                    400.0,
+                                    100.0,
+                                    100.0,
+                                    100.0,
+                                    100.0,
+                                    200.0,
+                                    100.0,
+                                    100.0,
+                                    200.0])
 
-                wp.capture_launch(graph)
-                self.sim_time += self.frame_dt
+                    act = np.zeros(len(self.model.joint_qd))
+                    act[6:] = np.clip((np.random.rand(len(self.model.joint_qd)-6)*2.0 - 1.0)*1000.0, a_min=-1.0, a_max=1.0)*scale*0.35
+                    self.model.joint_act.assign(act)
+
+                    self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+                    self.sim_time += self.sim_dt
+
 
                 if (self.render):
-
+ 
                     with wp.ScopedTimer("render", False):
 
                         if (self.render):
@@ -145,6 +161,10 @@ class Robot:
                             self.renderer.end_frame()
 
                     self.renderer.save()
+
+
+                # wp.capture_launch(graph)
+                # self.sim_time += self.frame_dt
 
             wp.synchronize()
 
