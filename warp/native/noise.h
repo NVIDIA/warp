@@ -880,7 +880,7 @@ inline CUDA_CALLABLE vec2 curlnoise(uint32 seed, const vec2& xy)
     vec2 grad_field = noise_2d_gradient(seed, x0, y0, x1, y1, dx, dy, heaviside_x, heaviside_y);
     return vec2(-grad_field.y, grad_field.x);
 }
-inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec2& xy, uint32& adj_seed, vec2& adj_xy, const float adj_ret) {}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec2& xy, uint32& adj_seed, vec2& adj_xy, const vec2& adj_ret) {}
 
 inline CUDA_CALLABLE vec3 curlnoise(uint32 seed, const vec3& xyz)
 {
@@ -912,7 +912,7 @@ inline CUDA_CALLABLE vec3 curlnoise(uint32 seed, const vec3& xyz)
         grad_field_1.z * grad_field_2.x - grad_field_1.x * grad_field_2.z,
         grad_field_1.x * grad_field_2.y - grad_field_1.y * grad_field_2.x);
 }
-inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec3& xyz, uint32& adj_seed, vec3& adj_xyz, const float adj_ret) {}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec3& xyz, uint32& adj_seed, vec3& adj_xyz, const vec3& adj_ret) {}
 
 inline CUDA_CALLABLE vec3 curlnoise(uint32 seed, const vec4& xyzt)
 {
@@ -949,6 +949,6 @@ inline CUDA_CALLABLE vec3 curlnoise(uint32 seed, const vec4& xyzt)
         grad_field_1.z * grad_field_2.x - grad_field_1.x * grad_field_2.z,
         grad_field_1.x * grad_field_2.y - grad_field_1.y * grad_field_2.x);
 }
-inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec4& xyzt, uint32& adj_seed, vec4& adj_xyzt, const float adj_ret) {}
+inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec4& xyzt, uint32& adj_seed, vec4& adj_xyzt, const vec3& adj_ret) {}
 
 } // namespace wp
