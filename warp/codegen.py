@@ -450,10 +450,46 @@ class Adjoint:
 
             elif (isinstance(node, ast.Name)):
                 # lookup symbol, if it has already been assigned to a variable then return the existing mapping
-                if (node.id in adj.symbols):
+                if node.id in adj.symbols:
                     return adj.symbols[node.id]
+                elif node.id in adj.func.__globals__:
+                    obj = adj.func.__globals__[node.id]
+                    if not isinstance(obj, warp.constant):
+                        raise TypeError(f"'{node.id}' is not a local variable or of type warp.constant")
+                    out = adj.add_constant(obj.val)
+                    adj.symbols[node.id] = out
+                    return out
                 else:
                     raise KeyError("Referencing undefined symbol: " + str(node.id))
+
+            elif (isinstance(node, ast.Attribute)):
+                def attribute_to_str(node):
+                    if isinstance(node, ast.Name):
+                        return node.id
+                    elif isinstance(node, ast.Attribute):
+                        return attribute_to_str(node.value) + "." + node.attr
+                    else:
+                        raise RuntimeError(f"Failed to parse attribute")
+
+                def attribute_to_val(node, context):
+                    if isinstance(node, ast.Name):
+                        return context[node.id]
+                    elif isinstance(node, ast.Attribute):
+                        return getattr(attribute_to_val(node.value, context), node.attr)
+                    else:
+                        raise RuntimeError(f"Failed to parse attribute")
+
+                key = attribute_to_str(node)
+
+                if key in adj.symbols:
+                    return adj.symbols[key]
+                else:
+                    obj = attribute_to_val(node, adj.func.__globals__)
+                    if not isinstance(obj, warp.constant):
+                        raise TypeError(f"'{key}' is not a local variable or of type warp.constant")
+                    out = adj.add_constant(obj.val)
+                    adj.symbols[key] = out
+                    return out
 
             elif (isinstance(node, ast.Str)):
 

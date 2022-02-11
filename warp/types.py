@@ -1,6 +1,28 @@
 
 import ctypes 
+import hashlib
+import inspect
 import numpy as np
+
+class constant:
+    """Class to declare compile-time constants accessible from Warp kernels"""
+    _hash = hashlib.sha256()
+    _hash_digest = None
+
+    def __init__(self, x):
+
+        self.val = x
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe)
+        line_src = calframe[1][4][0]
+        constant._hash.update(bytes(line_src, 'utf-8'))
+
+    @classmethod
+    def get_hash(cls):
+
+        if cls._hash_digest is None:
+            cls._hash_digest = cls._hash.digest()
+        return cls._hash_digest
 
 #----------------------
 # built-in types

@@ -788,6 +788,8 @@ class Module:
         # append any configuration parameters
         h.update(bytes(warp.config.mode, 'utf-8'))
 
+        h.update(constant.get_hash())
+
         return h.digest()
 
         # s = ""
