@@ -56,14 +56,7 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            # if self.type.dtype == vec3:
-            #     return str("wp::" + self.type.dtype.__name__) + "*"
-
             return str(self.type.dtype.__name__) + "*"
-        # elif self.type == vec3:
-        #     return "wp::" + str(self.type.__name__)
-        # elif (self.type == str):
-        #     return "str"
         else:
             return str(self.type.__name__)
 
@@ -530,6 +523,10 @@ class Adjoint:
                         # overwrite the old variable value (violates SSA)
                         adj.add_call(adj.builtin_functions["copy"], [var1, var2])
 
+                        # reset the symbol to point to the original variable
+                        adj.symbols[sym] = var1
+
+                
                 adj.end_while()
 
 

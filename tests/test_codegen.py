@@ -134,6 +134,17 @@ def test_range_dynamic(start: int, end: int, step: int, result: wp.array(dtype=i
     result[2] = c
 
 
+@wp.kernel
+def test_while(n: int):
+
+    i = int(0)
+
+    while i < n:
+        i = i + 1
+ 
+    wp.expect_eq(i, n)
+
+
 devices = ["cpu", "cuda"]
 
 class TestCodeGen(test_base.TestBase):   
@@ -148,6 +159,10 @@ TestCodeGen.add_kernel_test(name="test_reassign", kernel=test_reassign, dim=1, d
 TestCodeGen.add_kernel_test(name="test_dynamic_reassign", kernel=test_dynamic_reassign, inputs=[2], dim=1, devices=devices)
 TestCodeGen.add_kernel_test(name="test_range_static", kernel=test_range_static, dim=1, expect=[10, 10, 10], devices=devices)
 TestCodeGen.add_kernel_test(name="test_range_dynamic", kernel=test_range_dynamic, dim=1, inputs=[0, 10, 2], expect=[10, 10, 10], devices=devices)
+TestCodeGen.add_kernel_test(name="test_range_dynamic_zero", kernel=test_range_dynamic, dim=1, inputs=[0, 0, 1], expect=[0, 0, 0], devices=devices)
+TestCodeGen.add_kernel_test(name="test_while_zero", kernel=test_while, dim=1, inputs=[0], devices=devices)
+TestCodeGen.add_kernel_test(name="test_while_positive", kernel=test_while, dim=1, inputs=[16], devices=devices)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
