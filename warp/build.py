@@ -71,7 +71,21 @@ def find_host_compiler():
                     
         # try and find cl.exe
         try:
-            return subprocess.check_output("where cl.exe").decode()
+            cl_path = subprocess.check_output("where cl.exe").decode()
+            cl_version = os.environ["VCToolsVersion"].split(".")
+
+            # ensure at least VS2017 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
+            cl_required_major = 14
+            cl_required_minor = 1
+
+            if ((int(cl_version[0]) < cl_required_major) or
+                (int(cl_version[0]) == cl_required_major) and int(cl_version[1]) < cl_required_minor):
+                
+                print(f"Warp: MSVC found but compiler version too old, found {cl_version[0]}.{cl_version[1]}, but must be {cl_required_major}.{cl_required_minor} or higher, kernel host compilation will be disabled.")
+                return None
+                
+            return cl_path
+        
         except:
             return None
     else:
