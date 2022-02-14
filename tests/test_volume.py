@@ -33,7 +33,7 @@ def analytical_distance(points: wp.array(dtype=wp.vec3),
     values[tid] = sqrt(dot(p, p)) - radius
 
 @wp.kernel
-def sample_volume(volume: wp.uint64,
+def volume_sample(volume: wp.uint64,
                   points: wp.array(dtype=wp.vec3),
                   values: wp.array(dtype=float),
                   sampling_mode: int):
@@ -42,7 +42,22 @@ def sample_volume(volume: wp.uint64,
 
     p = points[tid]
 
-    values[tid] = wp.volume_sample(volume, p, sampling_mode)
+    values[tid] = wp.volume_sample_world(volume, p, sampling_mode)
+
+@wp.kernel
+def volume_lookup(volume: wp.uint64,
+                  points: wp.array(dtype=wp.vec3),
+                  values: wp.array(dtype=float)):
+
+    tid = wp.tid()
+
+    p = points[tid]
+    r = wp.volume_transform_inv(volume, p)
+    i = int(round(r[0]))
+    j = int(round(r[1]))
+    k = int(round(r[2]))
+
+    values[tid] = wp.volume_lookup(volume, i, j, k)
 
 
 sphere = None
@@ -57,6 +72,8 @@ if magic != "NanoVDB0":
 
 volume = wp.Volume(data, device)
 
+test_names = ["closest", "linear", "lookup"]
+
 np.random.seed(1008)
 for i in range(num_runs):
 
@@ -66,28 +83,42 @@ for i in range(num_runs):
     # seeding points in the narrowband
     phi = np.random.uniform(0, 2*math.pi, num_points)
     theta = np.random.uniform(0, math.pi, num_points)
-    d = np.random.uniform(-2*voxel_size, 2*voxel_size, num_points)
+    d = np.random.uniform(-1*voxel_size, 1*voxel_size, num_points)
 
     points = ((radius + d) * np.stack((np.cos(phi) * np.sin(theta), np.sin(phi) * np.sin(theta), np.cos(theta)))).transpose()
-    points = np.round(points/voxel_size) * voxel_size
+    # points = np.round(points/voxel_size) * voxel_size
 
     points_arr = wp.array(points, dtype=wp.vec3, device=device)
-    sdf_arr = wp.array(np.random.rand(len(points)), dtype=float, device=device)
+    sdf_arr = [
+        wp.array(np.random.rand(len(points)), dtype=float, device=device),
+        wp.array(np.random.rand(len(points)), dtype=float, device=device),
+        wp.array(np.random.rand(len(points)), dtype=float, device=device),
+    ]
     sdf_arr_ref = wp.zeros(len(points), dtype=float, device=device)
 
     wp.launch(kernel=analytical_distance, dim=len(points), inputs=[points_arr, sdf_arr_ref, radius], device=device)
     wp.synchronize()
 
-    with wp.ScopedTimer("sample volume"):
-        wp.launch(kernel=sample_volume, dim=len(points), inputs=[volume.id, points_arr, sdf_arr, wp.Volume.CLOSEST], device=device)
+    with wp.ScopedTimer("volume sample: closest point"):
+        wp.launch(kernel=volume_sample, dim=len(points), inputs=[volume.id, points_arr, sdf_arr[0], wp.Volume.CLOSEST], device=device)
+        wp.synchronize()
+
+    with wp.ScopedTimer("volume sample: linear sampling"):
+        wp.launch(kernel=volume_sample, dim=len(points), inputs=[volume.id, points_arr, sdf_arr[1], wp.Volume.LINEAR], device=device)
+        wp.synchronize()
+
+    with wp.ScopedTimer("volume lookup"):
+        wp.launch(kernel=volume_lookup, dim=len(points), inputs=[volume.id, points_arr, sdf_arr[2]], device=device)
         wp.synchronize()
 
 
-    sdf = sdf_arr.numpy()
-    sdf_ref = sdf_arr_ref.numpy()
-    error = np.max(np.abs(sdf-sdf_ref))
 
-    if error < 1e-6:
-        print(f"Pass! Max error in SDF values: {error}")
-    else:
-        print(f"FAIL! Max error in SDF values: {error}")
+    sdf_ref = sdf_arr_ref.numpy().T
+    for test, sdf_res in zip(test_names, sdf_arr):
+        sdf = sdf_res.numpy().T
+        error = np.max(np.abs(sdf-sdf_ref))
+
+        if error < 1e-6:
+            print(f"Pass! [{test}] Max error in SDF values: {error}")
+        else:
+            print(f"FAIL! [{test}] Max error in SDF values: {error}")

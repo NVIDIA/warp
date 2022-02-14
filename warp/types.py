@@ -540,6 +540,7 @@ class Mesh:
 class Volume:
 
     CLOSEST = 0
+    LINEAR = 1
 
     def __init__(self, array, device, copy = True):
 

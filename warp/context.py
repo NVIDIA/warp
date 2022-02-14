@@ -493,7 +493,13 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
     doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.""")
 
-add_builtin("volume_sample", input_types={"id": uint64, "point": vec3, "sampling_mode": int}, value_type=float, doc="", group="Geometry")
+add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, doc="", group="Volume")
+add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, doc="", group="Volume")
+add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, doc="", group="Volume")
+add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, doc="", group="Volume")
+add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, doc="", group="Volume")
+
+
 
 #---------------------------------
 # Random 
