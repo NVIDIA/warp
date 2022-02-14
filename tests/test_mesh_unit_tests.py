@@ -1,7 +1,13 @@
 import unittest
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
 import numpy as np
+
+import test_base
 
 wp.init()
 
@@ -68,138 +74,146 @@ def compute_num_contacts(
     counts[tid] = count
 
 
-class TestMeshQueryAABBMethods(unittest.TestCase):
+
+def test_compute_bounds(test, device):
     
-    def test_compute_bounds(self):
-        device = "cuda"
-        # create two touching triangles.
-        points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, -1, 1]])
-        indices = np.array([0, 1, 2, 1, 2, 3])
-        m = wp.Mesh(
-            wp.array(points, dtype=wp.vec3, device=device),
-            None,
-            wp.array(indices, dtype=int, device=device),
-        )
+    # create two touching triangles.
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, -1, 1]])
+    indices = np.array([0, 1, 2, 1, 2, 3])
+    m = wp.Mesh(
+        wp.array(points, dtype=wp.vec3, device=device),
+        None,
+        wp.array(indices, dtype=int, device=device),
+    )
 
-        num_tris = int(len(indices) / 3)
+    num_tris = int(len(indices) / 3)
 
-        # First compute bounds of each of the triangles.
-        lowers = wp.empty(n=num_tris, dtype=wp.vec3, device=device)
-        uppers = wp.empty_like(lowers)
-        wp.launch(
-            kernel=compute_bounds,
-            dim=num_tris,
-            inputs=[m.indices, m.points],
-            outputs=[lowers, uppers],
-            device=device,
-        )
+    # First compute bounds of each of the triangles.
+    lowers = wp.empty(n=num_tris, dtype=wp.vec3, device=device)
+    uppers = wp.empty_like(lowers)
+    wp.launch(
+        kernel=compute_bounds,
+        dim=num_tris,
+        inputs=[m.indices, m.points],
+        outputs=[lowers, uppers],
+        device=device,
+    )
 
-        lower_view = lowers.numpy()
-        upper_view = uppers.numpy()
-        wp.synchronize()
+    lower_view = lowers.numpy()
+    upper_view = uppers.numpy()
+    wp.synchronize()
 
-        # Confirm the bounds of each triangle are correct.
-        self.assertTrue(lower_view[0][0] == 0)
-        self.assertTrue(lower_view[0][1] == 0)
-        self.assertTrue(lower_view[0][2] == 0)
+    # Confirm the bounds of each triangle are correct.
+    test.assertTrue(lower_view[0][0] == 0)
+    test.assertTrue(lower_view[0][1] == 0)
+    test.assertTrue(lower_view[0][2] == 0)
 
-        self.assertTrue(upper_view[0][0] == 1)
-        self.assertTrue(upper_view[0][1] == 1)
-        self.assertTrue(upper_view[0][2] == 0)
+    test.assertTrue(upper_view[0][0] == 1)
+    test.assertTrue(upper_view[0][1] == 1)
+    test.assertTrue(upper_view[0][2] == 0)
 
-        self.assertTrue(lower_view[1][0] == -1)
-        self.assertTrue(lower_view[1][1] == -1)
-        self.assertTrue(lower_view[1][2] == 0)
+    test.assertTrue(lower_view[1][0] == -1)
+    test.assertTrue(lower_view[1][1] == -1)
+    test.assertTrue(lower_view[1][2] == 0)
 
-        self.assertTrue(upper_view[1][0] == 1)
-        self.assertTrue(upper_view[1][1] == 1)
-        self.assertTrue(upper_view[1][2] == 1)
+    test.assertTrue(upper_view[1][0] == 1)
+    test.assertTrue(upper_view[1][1] == 1)
+    test.assertTrue(upper_view[1][2] == 1)
 
-    def test_mesh_query_aabb_count_overlap(self):
-        device = "cuda"
-        # create two touching triangles.
-        points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, -1, 1]])
-        indices = np.array([0, 1, 2, 1, 2, 3])
-        m = wp.Mesh(
-            wp.array(points, dtype=wp.vec3, device=device),
-            None,
-            wp.array(indices, dtype=int, device=device),
-        )
+def test_mesh_query_aabb_count_overlap(test, device):
+    
+    # create two touching triangles.
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, -1, 1]])
+    indices = np.array([0, 1, 2, 1, 2, 3])
+    m = wp.Mesh(
+        wp.array(points, dtype=wp.vec3, device=device),
+        None,
+        wp.array(indices, dtype=int, device=device),
+    )
 
-        num_tris = int(len(indices) / 3)
+    num_tris = int(len(indices) / 3)
 
-        # Compute AABB of each of the triangles.
-        lowers = wp.empty(n=num_tris, dtype=wp.vec3, device=device)
-        uppers = wp.empty_like(lowers)
-        wp.launch(
-            kernel=compute_bounds,
-            dim=num_tris,
-            inputs=[m.indices, m.points],
-            outputs=[lowers, uppers],
-            device=device,
-        )
+    # Compute AABB of each of the triangles.
+    lowers = wp.empty(n=num_tris, dtype=wp.vec3, device=device)
+    uppers = wp.empty_like(lowers)
+    wp.launch(
+        kernel=compute_bounds,
+        dim=num_tris,
+        inputs=[m.indices, m.points],
+        outputs=[lowers, uppers],
+        device=device,
+    )
 
-        counts = wp.empty(n=num_tris, dtype=int, device=device)
+    counts = wp.empty(n=num_tris, dtype=int, device=device)
 
-        wp.launch(
-            kernel=compute_num_contacts,
-            dim=num_tris,
-            inputs=[lowers, uppers, m.id],
-            outputs=[counts],
-            device=device,
-        )
+    wp.launch(
+        kernel=compute_num_contacts,
+        dim=num_tris,
+        inputs=[lowers, uppers, m.id],
+        outputs=[counts],
+        device=device,
+    )
 
-        wp.synchronize()
+    wp.synchronize()
 
-        view = counts.numpy()
+    view = counts.numpy()
 
-        # 2 triangles that share a vertex having overlapping AABBs.
-        for c in view:
-            self.assertTrue(c == 2)
+    # 2 triangles that share a vertex having overlapping AABBs.
+    for c in view:
+        test.assertTrue(c == 2)
 
-    def test_mesh_query_aabb_count_nonoverlap(self):
-        device = "cuda"
-        # create two separate triangles.
-        points = np.array(
-            [[0, 0, 0], [1, 0, 0], [0, 1, 0], [10, 0, 0], [10, 1, 0], [10, 0, 1]]
-        )
-        indices = np.array([0, 1, 2, 3, 4, 5])
-        m = wp.Mesh(
-            wp.array(points, dtype=wp.vec3, device=device),
-            None,
-            wp.array(indices, dtype=int, device=device),
-        )
+def test_mesh_query_aabb_count_nonoverlap(test, device):
+    
+    # create two separate triangles.
+    points = np.array(
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0], [10, 0, 0], [10, 1, 0], [10, 0, 1]]
+    )
+    indices = np.array([0, 1, 2, 3, 4, 5])
+    m = wp.Mesh(
+        wp.array(points, dtype=wp.vec3, device=device),
+        None,
+        wp.array(indices, dtype=int, device=device),
+    )
 
-        num_tris = int(len(indices) / 3)
+    num_tris = int(len(indices) / 3)
 
-        lowers = wp.empty(n=num_tris, dtype=wp.vec3, device=device)
-        uppers = wp.empty_like(lowers)
-        wp.launch(
-            kernel=compute_bounds,
-            dim=num_tris,
-            inputs=[m.indices, m.points],
-            outputs=[lowers, uppers],
-            device=device,
-        )
+    lowers = wp.empty(n=num_tris, dtype=wp.vec3, device=device)
+    uppers = wp.empty_like(lowers)
+    wp.launch(
+        kernel=compute_bounds,
+        dim=num_tris,
+        inputs=[m.indices, m.points],
+        outputs=[lowers, uppers],
+        device=device,
+    )
 
-        counts = wp.empty(n=num_tris, dtype=int, device=device)
+    counts = wp.empty(n=num_tris, dtype=int, device=device)
 
-        wp.launch(
-            kernel=compute_num_contacts,
-            dim=num_tris,
-            inputs=[lowers, uppers, m.id],
-            outputs=[counts],
-            device=device,
-        )
+    wp.launch(
+        kernel=compute_num_contacts,
+        dim=num_tris,
+        inputs=[lowers, uppers, m.id],
+        outputs=[counts],
+        device=device,
+    )
 
-        wp.synchronize()
+    wp.synchronize()
 
-        view = counts.numpy()
+    view = counts.numpy()
 
-        # AABB query only returns one triangle at a time, the triangles are not close enough to overlap.
-        for c in view:
-            self.assertTrue(c == 1)
+    # AABB query only returns one triangle at a time, the triangles are not close enough to overlap.
+    for c in view:
+        test.assertTrue(c == 1)
 
 
-if __name__ == "__main__":
-    unittest.main()
+devices = wp.get_devices()
+
+class TestMeshQueryAABBMethods(test_base.TestBase):
+    pass
+
+TestMeshQueryAABBMethods.add_function_test("test_compute_bounds", test_compute_bounds, devices=devices)
+TestMeshQueryAABBMethods.add_function_test("test_mesh_query_aabb_count_overlap", test_mesh_query_aabb_count_overlap, devices=devices)
+TestMeshQueryAABBMethods.add_function_test("test_mesh_query_aabb_count_nonoverlap", test_mesh_query_aabb_count_nonoverlap, devices=devices)
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
