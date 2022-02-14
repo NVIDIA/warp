@@ -906,11 +906,14 @@ inline CUDA_CALLABLE vec3 curlnoise(uint32 seed, const vec3& xyz)
     vec3 grad_field_1 = noise_3d_gradient(seed, x0, y0, z0, x1, y1, z1, dx, dy, dz, heaviside_x, heaviside_y, heaviside_z);
     seed = rand_init(seed, 10019689);
     vec3 grad_field_2 = noise_3d_gradient(seed, x0, y0, z0, x1, y1, z1, dx, dy, dz, heaviside_x, heaviside_y, heaviside_z);
+    seed = rand_init(seed, 13112221);
+    vec3 grad_field_3 = noise_3d_gradient(seed, x0, y0, z0, x1, y1, z1, dx, dy, dz, heaviside_x, heaviside_y, heaviside_z);
+
     
     return vec3(
-        grad_field_1.y * grad_field_2.z - grad_field_1.z * grad_field_2.y,
-        grad_field_1.z * grad_field_2.x - grad_field_1.x * grad_field_2.z,
-        grad_field_1.x * grad_field_2.y - grad_field_1.y * grad_field_2.x);
+        grad_field_3.y - grad_field_2.z,
+        grad_field_1.z - grad_field_3.x,
+        grad_field_2.x - grad_field_1.y);
 }
 inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec3& xyz, uint32& adj_seed, vec3& adj_xyz, const vec3& adj_ret) {}
 
@@ -943,11 +946,13 @@ inline CUDA_CALLABLE vec3 curlnoise(uint32 seed, const vec4& xyzt)
     vec4 grad_field_1 = noise_4d_gradient(seed, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt, heaviside_x, heaviside_y, heaviside_z, heaviside_t);
     seed = rand_init(seed, 10019689);
     vec4 grad_field_2 = noise_4d_gradient(seed, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt, heaviside_x, heaviside_y, heaviside_z, heaviside_t);
+    seed = rand_init(seed, 13112221);
+    vec4 grad_field_3 = noise_4d_gradient(seed, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt, heaviside_x, heaviside_y, heaviside_z, heaviside_t);
 
     return vec3(
-        grad_field_1.y * grad_field_2.z - grad_field_1.z * grad_field_2.y,
-        grad_field_1.z * grad_field_2.x - grad_field_1.x * grad_field_2.z,
-        grad_field_1.x * grad_field_2.y - grad_field_1.y * grad_field_2.x);
+        grad_field_3.y - grad_field_2.z,
+        grad_field_1.z - grad_field_3.x,
+        grad_field_2.x - grad_field_1.y);
 }
 inline CUDA_CALLABLE void adj_curlnoise(uint32 seed, const vec4& xyzt, uint32& adj_seed, vec4& adj_xyzt, const vec3& adj_ret) {}
 
