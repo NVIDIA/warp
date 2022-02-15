@@ -3,7 +3,7 @@ import sys
 import os
 import warp as wp
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import test_base
 
 
