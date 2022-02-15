@@ -102,7 +102,8 @@ class mat22(ctypes.Array):
     _length_ = 4
     _type_ = ctypes.c_float
     
-    def __init__(self):
+    def __init__(self, *args):
+        ctypes.Array.__init__(self, *args)
         pass
     
     @staticmethod
@@ -115,7 +116,7 @@ class mat22(ctypes.Array):
 
     @staticmethod
     def ctype():
-        return ctypes.c_float        
+        return ctypes.c_float
 
 class mat33(ctypes.Array):
     
