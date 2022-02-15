@@ -5,10 +5,9 @@ import numpy as np
 import math
 import ctypes
 
-import unittest
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import unittest
 import test_base
 
 import warp as wp
@@ -24,10 +23,12 @@ def test_operators_scalar():
     c = a*b
     d = a+b
     e = a/b
+    f = a-b
 
     expect_eq(c, 2.0)
     expect_eq(d, 3.0)
     expect_eq(e, 0.5)
+    expect_eq(f, -1.0)
     
 
 
@@ -81,33 +82,6 @@ def test_operators_vec4():
     two = vec4(1.0)*2.0
     expect_eq(two, vec4(2.0, 2.0, 2.0, 2.0))
        
-
-    
-
-
-# device = "cpu"
-
-# wp.launch(
-#     kernel=test_operators_scalar,
-#     dim=1,
-#     inputs=[],
-#     device=device)
-
-
-# wp.launch(
-#     kernel=test_operators_vec3,
-#     dim=1,
-#     inputs=[],
-#     device=device)
-
-# wp.launch(
-#     kernel=test_operators_vec4,
-#     dim=1,
-#     inputs=[],
-#     device=device)
-
-
-# wp.synchronize()
 
 
 devices = wp.get_devices()

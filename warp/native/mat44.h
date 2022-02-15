@@ -85,6 +85,17 @@ struct mat44
     float data[4][4];
 };
 
+inline CUDA_CALLABLE bool operator==(const mat44& a, const mat44& b)
+{
+    for(int i=0; i < 4; ++i)
+        for (int j=0; j < 4; ++j)
+            if (a.data[i][j] != b.data[i][j])
+                return false;
+
+    return true;
+}
+
+
 inline CUDA_CALLABLE mat44 diag(const vec4& d) {
   return mat44(d.x, 0.f, 0.f, 0.f,
                0.f, d.y, 0.f, 0.f,
