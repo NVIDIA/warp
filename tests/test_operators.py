@@ -1,6 +1,3 @@
-
-
-
 # include parent path
 import os
 import sys
@@ -8,15 +5,18 @@ import numpy as np
 import math
 import ctypes
 
+import unittest
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import test_base
+
 import warp as wp
-np.random.seed(42)
 
 wp.init()
 
 @wp.kernel
-def test_operators_scalar(dt: float):
+def test_operators_scalar():
 
     a = 1.0
     b = 2.0
@@ -32,7 +32,7 @@ def test_operators_scalar(dt: float):
 
 
 @wp.kernel
-def test_operators_vec3(dt: float):
+def test_operators_vec3():
     
     v = vec3(1.0, 2.0, 3.0)
 
@@ -56,7 +56,7 @@ def test_operators_vec3(dt: float):
     expect_eq(two, vec3(2.0, 2.0, 2.0))
 
 @wp.kernel
-def test_operators_vec4(dt: float):
+def test_operators_vec4():
     
     v = vec4(1.0, 2.0, 3.0, 4.0)
 
@@ -85,27 +85,39 @@ def test_operators_vec4(dt: float):
     
 
 
-device = "cpu"
+# device = "cpu"
 
-wp.launch(
-    kernel=test_operators_scalar,
-    dim=1,
-    inputs=[],
-    device=device)
-
-
-wp.launch(
-    kernel=test_operators_vec3,
-    dim=1,
-    inputs=[],
-    device=device)
-
-wp.launch(
-    kernel=test_operators_vec4,
-    dim=1,
-    inputs=[],
-    device=device)
+# wp.launch(
+#     kernel=test_operators_scalar,
+#     dim=1,
+#     inputs=[],
+#     device=device)
 
 
-wp.synchronize()
+# wp.launch(
+#     kernel=test_operators_vec3,
+#     dim=1,
+#     inputs=[],
+#     device=device)
 
+# wp.launch(
+#     kernel=test_operators_vec4,
+#     dim=1,
+#     inputs=[],
+#     device=device)
+
+
+# wp.synchronize()
+
+
+devices = wp.get_devices()
+
+class TestOperators(test_base.TestBase):
+    pass
+
+TestOperators.add_kernel_test(test_operators_scalar, dim=1, devices=devices)
+TestOperators.add_kernel_test(test_operators_vec3, dim=1, devices=devices)
+TestOperators.add_kernel_test(test_operators_vec4, dim=1, devices=devices)
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

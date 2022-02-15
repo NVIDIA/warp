@@ -211,3 +211,16 @@ void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* poin
     }
 }
 
+#if __APPLE__
+
+namespace wp
+{
+
+void hash_grid_rebuild_device(const HashGrid& grid, const wp::vec3* points, int num_points)
+{
+
+}
+
+} // namespace wp
+
+#endif // __APPLE__

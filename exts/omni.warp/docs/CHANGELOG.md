@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [0.1.22] - 2022-02-14
+
+### Warp Core
+
+- Fix for .so reloading on Linux
+- Fix for while loop code-gen in some edge cases
+- Add rounding functions round(), rint(), trunc(), floor(), ceil() 
+- Add support for printing strings and formatted strings from kernels
+- Add MSVC compiler version detection and require minimum
+
+### Warp Sim
+
+- Add support for universal and compound joint types
+
 ## [0.1.21] - 2022-01-19
 
 ### Warp Core

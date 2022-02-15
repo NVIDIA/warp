@@ -3,6 +3,7 @@
 # as part of the user runtime (since it requires CUDA toolkit, etc)
 
 import os
+import sys
 import warp.config
 import warp.build
 
@@ -28,7 +29,11 @@ warp.config.mode = "release"
 if os.name == 'nt':
     warp.build.set_msvc_compiler(msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.16.27023", sdk_path="_build/host-deps/winsdk")
 
-# no CUDA toolchain not found
+# disable CUDA on osx
+if sys.platform == 'darwin':
+    warp.config.cuda_path = None
+
+# no CUDA toolchain found
 if (warp.config.cuda_path == None):
     print("Warning: building without CUDA support")
 
