@@ -1152,8 +1152,8 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
                     # flatten to 1D array
                     v = a.flatten()
-                    if (len(v) != arg_type.length()):
-                        raise RuntimeError(f"Kernel parameter {kernel.adj.args[i].label} has incorrect value length {len(v)}, expected {arg_type.length()}")
+                    if (len(v) != arg_type._length_):
+                        raise RuntimeError(f"Kernel parameter {kernel.adj.args[i].label} has incorrect value length {len(v)}, expected {arg_type._length_}")
 
                     # wrap the arg_type (which is an ctypes.Array) in a structure
                     # to ensure parameter is passed to the .dll by value rather than reference
@@ -1161,7 +1161,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                         _fields_ = [ ('value', arg_type)]
 
                     x = ValueArg()
-                    for i in range(arg_type.length()):
+                    for i in range(arg_type._length_):
                         x.value[i] = v[i]
 
                     params.append(x)

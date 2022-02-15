@@ -21,25 +21,24 @@ def test_args(v1: float,
               v4: wp.vec4,
               m22: wp.mat22,
               m33: wp.mat33,
-              m44: wp.mat44,
-              xform: wp.transform):
+              m44: wp.mat44):
 
     wp.expect_eq(v1, 1.0)
     wp.expect_eq(v2, wp.vec2(1.0, 2.0))
     wp.expect_eq(v3, wp.vec3(1.0, 2.0, 3.0))
     wp.expect_eq(v4, wp.vec4(1.0, 2.0, 3.0, 4.0))
     
-    # wp.expect_eq(m22, wp.mat22(1.0, 2.0, 
-    #                            3.0, 4.0))
+    wp.expect_eq(m22, wp.mat22(1.0, 2.0, 
+                               3.0, 4.0))
     
-    # wp.expect_eq(m33, wp.mat33(1.0, 2.0, 3.0,
-    #                            4.0, 5.0, 6.0,
-    #                            7.0, 8.0, 9.0))
+    wp.expect_eq(m33, wp.mat33(1.0, 2.0, 3.0,
+                               4.0, 5.0, 6.0,
+                               7.0, 8.0, 9.0))
 
-    # wp.expect_eq(m44, wp.mat44(1.0, 2.0, 3.0, 4.0,
-    #                            5.0, 6.0, 7.0, 8.0,
-    #                            9.0, 10.0, 11.0, 12.0,
-    #                            13.0, 14.0, 15.0, 16.0))
+    wp.expect_eq(m44, wp.mat44(1.0, 2.0, 3.0, 4.0,
+                               5.0, 6.0, 7.0, 8.0,
+                               9.0, 10.0, 11.0, 12.0,
+                               13.0, 14.0, 15.0, 16.0))
 
 @wp.kernel
 def add_vec2(dest: wp.array(dtype=wp.vec2),
@@ -85,26 +84,7 @@ def transform_multiply(xforms: wp.array(dtype=wp.transform),
     tid = wp.tid()
 
     xforms[tid] = wp.transform_multiply(xforms[tid], a)
-   
-def test_args(test, device):
 
-    wp.launch(all_types, dim=1, 
-        inputs=[1.0,
-                wp.vec2(1.0, 2.0),
-                wp.vec3(1.0, 2.0, 3.0),
-                wp.vec4(1.0, 2.0, 3.0, 4.0),
-
-                wp.mat22(1.0, 2.0,
-                         3.0, 4.0),
-
-                wp.mat33(1.0, 2.0, 3.0,
-                         4.0, 5.0, 6.0,
-                         7.0, 8.0, 9.0),
-
-                wp.mat44(1.0, 2.0, 3.0, 4.0,
-                         5.0, 6.0, 7.0, 8.0,
-                         9.0, 10.0, 11.0, 12.0,
-                         13.0, 14.0, 15.0, 16.0)], device=device)
 
 def test_vec2_arg(test, device, n):
     
@@ -154,9 +134,7 @@ def test_transform_multiply(test, device, n):
         x.append(wp.transform_identity())
 
     xforms = wp.array(x, dtype=wp.transform, device=device)
-
     wp.launch(transform_multiply, dim=n, inputs=[xforms, a], device=device)
-    print(xforms)
 
 
 devices = wp.get_devices()
@@ -184,13 +162,12 @@ inputs = [1.0,
                    9.0, 10.0, 11.0, 12.0,
                    13.0, 14.0, 15.0, 16.0)]
 
-TestCTypes.add_kernel_test("test_args", test_args, dim=1, inputs=inputs, devices=devices)
+TestCTypes.add_kernel_test(name="test_args", kernel=test_args, dim=1, inputs=inputs, devices=devices)
 TestCTypes.add_function_test("test_vec2_arg", test_vec2_arg, devices=devices, n=8)
 TestCTypes.add_function_test("test_vec2_transform", test_vec2_transform, devices=devices, n=8)
 TestCTypes.add_function_test("test_vec3_arg", test_vec3_arg, devices=devices, n=8)
 TestCTypes.add_function_test("test_vec3_transform", test_vec3_transform, devices=devices, n=8)
 TestCTypes.add_function_test("test_transform_multiply", test_transform_multiply, devices=devices, n=8)
-
 
 
 if __name__ == '__main__':

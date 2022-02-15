@@ -11,193 +11,45 @@ class vec2(ctypes.Array):
     _length_ = 2
     _type_ = ctypes.c_float
     
-    def __init__(self, x, y):
-        self[0] = x
-        self[1] = y
-
-    @staticmethod
-    def length():
-        return 2
-
-    @staticmethod
-    def size():
-        return 8
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
 class vec3(ctypes.Array):
     
     _length_ = 3
     _type_ = ctypes.c_float
     
-    def __init__(self, x, y, z):
-        self[0] = x
-        self[1] = y
-        self[2] = z
-
-    @staticmethod
-    def length():
-        return 3
-
-    @staticmethod
-    def size():
-        return 12
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
-
 class vec4(ctypes.Array):
     
     _length_ = 4
     _type_ = ctypes.c_float
 
-    def __init__(self, x, y, z, w):
-        self[0] = x
-        self[1] = y
-        self[2] = z
-        self[3] = w
-
-    @staticmethod
-    def length():
-        return 4
-
-    @staticmethod
-    def size():
-        return 16
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
 class quat(ctypes.Array):
     
     _length_ = 4
     _type_ = ctypes.c_float
-
-    def __init__(self, i, j, k, r):
-        self[0] = i
-        self[1] = j
-        self[2] = k
-        self[3] = r
     
-    @staticmethod
-    def length():
-        return 4
-
-    @staticmethod
-    def size():
-        return 16
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
-
-
 class mat22(ctypes.Array):
     
     _length_ = 4
     _type_ = ctypes.c_float
     
-    def __init__(self, *args):
-        ctypes.Array.__init__(self, *args)
-        pass
-    
-    @staticmethod
-    def length():
-        return 4
-
-    @staticmethod
-    def size():
-        return 16
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
 class mat33(ctypes.Array):
     
     _length_ = 9
     _type_ = ctypes.c_float
-    
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 9
-
-    @staticmethod
-    def size():
-        return 36
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
 
 class mat44(ctypes.Array):
     
     _length_ = 16
     _type_ = ctypes.c_float
 
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 16
-
-    @staticmethod
-    def size():
-        return 64
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
-
 class spatial_vector(ctypes.Array):
     
     _length_ = 6
     _type_ = ctypes.c_float
 
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 6
-
-    @staticmethod
-    def size():
-        return 24
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
-
 class spatial_matrix(ctypes.Array):
     
     _length_ = 36
     _type_ = ctypes.c_float
-
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 36
-
-    @staticmethod
-    def size():
-        return 144
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
 
 class transform(ctypes.Array):
     
@@ -207,18 +59,6 @@ class transform(ctypes.Array):
     def __init__(self, p, q):
         self[0:3] = vec3(*p)
         self[3:7] = quat(*q)
-
-    @staticmethod
-    def length():
-        return 7
-    
-    @staticmethod
-    def size():
-        return 28
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
 
     @property 
     def p(self):
@@ -235,103 +75,51 @@ class void:
 
 class float32:
 
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 4
+    _length_ = 1
+    _type_ = ctypes.c_float
 
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
 
 class float64:
 
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 8
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_double
+    _length_ = 1
+    _type_ = ctypes.c_double
 
 
 class int32:
 
+    _length_ = 1
+    _type_ = ctypes.c_int32
+
     def __init__(self, x=0):
         self.value = x
-
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 4
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_int32
 
 
 class uint32:
 
+    _length_ = 1
+    _type_ = ctypes.c_uint32
+
     def __init__(self, x=0):
         self.value = x
-
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 4
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_uint32
 
 
 class int64:
 
+    _length_ = 1
+    _type_ = ctypes.c_int64   
+
     def __init__(self, x=0):
         self.value = x
-
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 8
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_int64
-
 
 class uint64:
 
+    _length_ = 1
+    _type_ = ctypes.c_uint64   
+
     def __init__(self, x=0):
         self.value = x
 
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 8
 
-    @staticmethod
-    def ctype():
-        return ctypes.c_uint64
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class mesh_query_aabb_t:
@@ -350,13 +138,13 @@ def type_length(dtype):
     if (dtype == float or dtype == int):
         return 1
     else:
-        return dtype.length()
+        return dtype._length_
 
 def type_size_in_bytes(dtype):
     if (dtype == float or dtype == int):
         return 4
     else:
-        return dtype.size()
+        return dtype._length_*ctypes.sizeof(dtype._type_)
 
 def type_ctype(dtype):
     if (dtype == float):
@@ -364,7 +152,7 @@ def type_ctype(dtype):
     elif (dtype == int):
         return ctypes.c_int32
     else:
-        return dtype.ctype()
+        return dtype._type_
 
 def type_typestr(ctype):
    
@@ -448,9 +236,9 @@ class array:
 
             # try to convert src array to destination type
             try:
-                arr = arr.astype(dtype=type_typestr(dtype.ctype()))
+                arr = arr.astype(dtype=type_typestr(dtype._type_))
             except:
-                raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype.ctype}")
+                raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
             
             # ensure contiguous
             arr = np.ascontiguousarray(arr)
