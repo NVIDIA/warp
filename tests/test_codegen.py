@@ -145,9 +145,9 @@ def test_while(n: int):
     wp.expect_eq(i, n)
 
 
-devices = ["cpu", "cuda"]
+devices = wp.get_devices()
 
-class TestCodeGen(test_base.TestBase):   
+class TestCodeGen(test_base.TestBase):
     pass
 
 TestCodeGen.add_kernel_test(name="test_inplace", kernel=test_inplace, dim=1, devices=devices)

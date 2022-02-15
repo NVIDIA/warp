@@ -50,9 +50,28 @@ class TestBase(unittest.TestCase):
         if ((a == b).all() == False):
             raise AssertionError(f"Unexpected result, got: {a} expected: {b}")
 
+    def assert_np_equal(self, result, expect):
+    
+        a = result
+        b = expect
+
+        if ((a == b).all() == False):
+            raise AssertionError(f"Unexpected result, got: {a} expected: {b}")
+
 
     @classmethod
-    def add_kernel_test(cls, name, kernel, dim, expect=None, inputs=None, devices=["cpu"]):
+    def add_function_test(cls, name, func, devices=["cpu"], **kwargs):
+        
+        for device in devices:
+
+            # pass args to func
+            def test_func(self):
+                func(self, device, **kwargs)
+            
+            setattr(cls, name + "_" + device, test_func)
+
+    @classmethod
+    def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=["cpu"]):
         
         for device in devices:
 
@@ -89,4 +108,7 @@ class TestBase(unittest.TestCase):
                     self.assert_array_equal(output, result)
 
             # register test func with class
+            if (name == None):
+                name = kernel.key
+
             setattr(cls, name + "_" + device, test_func)

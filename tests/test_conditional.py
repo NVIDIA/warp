@@ -8,13 +8,15 @@ import ctypes
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
-np.random.seed(42)
+
+import unittest
+import test_base
 
 wp.init()
 
 
 @wp.kernel
-def test_conditional_if_else(dt: float):
+def test_conditional_if_else():
 
     a = 0.5
     b = 2.0
@@ -28,7 +30,7 @@ def test_conditional_if_else(dt: float):
     
 
 @wp.kernel
-def test_conditional_if_else_nested(dt: float):
+def test_conditional_if_else_nested():
 
     a = 1.0
     b = 2.0
@@ -56,7 +58,7 @@ def test_conditional_if_else_nested(dt: float):
     wp.expect_eq(e, -2.0)
 
 @wp.kernel
-def test_boolean_and(dt: float):
+def test_boolean_and():
 
     a = 1.0
     b = 2.0
@@ -68,7 +70,7 @@ def test_boolean_and(dt: float):
     wp.expect_eq(c, -1.0)
 
 @wp.kernel
-def test_boolean_or(dt: float):
+def test_boolean_or():
 
     a = 1.0
     b = 2.0
@@ -81,7 +83,7 @@ def test_boolean_or(dt: float):
     
 
 @wp.kernel
-def test_boolean_compound(dt: float):
+def test_boolean_compound():
 
     a = 1.0
     b = 2.0
@@ -95,7 +97,7 @@ def test_boolean_compound(dt: float):
     wp.expect_eq(d, -1.0)
 
 @wp.kernel
-def test_boolean_literal(dt: float):
+def test_boolean_literal():
 
     t = True
     f = False
@@ -109,48 +111,61 @@ def test_boolean_literal(dt: float):
 
 
 
-device = "cpu"
+devices = wp.get_devices()
 
-wp.launch(
-    kernel=test_conditional_if_else,
-    dim=1,
-    inputs=[],
-    device=device)
+class TestConditional(test_base.TestBase):
+    pass
 
-wp.launch(
-    kernel=test_conditional_if_else_nested,
-    dim=1,
-    inputs=[],
-    device=device)
+TestConditional.add_kernel_test(kernel=test_conditional_if_else, dim=1, devices=devices)
+TestConditional.add_kernel_test(kernel=test_conditional_if_else_nested, dim=1, devices=devices)
+TestConditional.add_kernel_test(kernel=test_boolean_and, dim=1, devices=devices)
+TestConditional.add_kernel_test(kernel=test_boolean_or, dim=1, devices=devices)
+TestConditional.add_kernel_test(kernel=test_boolean_compound, dim=1, devices=devices)
+TestConditional.add_kernel_test(kernel=test_boolean_literal, dim=1, devices=devices)
+TestConditional.add_kernel_test(kernel=test_boolean_and, dim=1, devices=devices)
 
-wp.launch(
-    kernel=test_boolean_and,
-    dim=1,
-    inputs=[],
-    device=device)
+# wp.launch( 
+#     kernel=test_conditional_if_else,
+#     dim=1,
+#     inputs=[],
+#     device=device)
 
-wp.launch(
-    kernel=test_boolean_or,
-    dim=1,
-    inputs=[],
-    device=device)
+# wp.launch(
+#     kernel=test_conditional_if_else_nested,
+#     dim=1,
+#     inputs=[],
+#     device=device)
 
-wp.launch(
-    kernel=test_boolean_compound,
-    dim=1,
-    inputs=[],
-    device=device)    
+# wp.launch(
+#     kernel=test_boolean_and,
+#     dim=1,
+#     inputs=[],
+#     device=device)
 
-wp.launch(
-    kernel=test_boolean_literal,
-    dim=1,
-    inputs=[],
-    device=device)
+# wp.launch(
+#     kernel=test_boolean_or,
+#     dim=1,
+#     inputs=[],
+#     device=device)
+
+# wp.launch(
+#     kernel=test_boolean_compound,
+#     dim=1,
+#     inputs=[],
+#     device=device)    
+
+# wp.launch(
+#     kernel=test_boolean_literal,
+#     dim=1,
+#     inputs=[],
+#     device=device)
 
 
-wp.synchronize()
+# wp.synchronize()
 
 
-print("passed")
+# print("passed")
 
 
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

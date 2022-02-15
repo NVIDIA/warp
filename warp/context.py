@@ -1264,6 +1264,18 @@ def capture_launch(graph: int):
     runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
 
 
+def get_devices():
+    """Returns a list of device strings supported by in this environment.
+    """
+    devices = []
+    if (is_cpu_available()):
+        devices.append("cpu")
+    if (is_cuda_available()):
+        devices.append("cuda")
+
+    return devices
+
+
 def copy(dest: warp.array, src: warp.array):
     """Copy array contents from src to dest
 
