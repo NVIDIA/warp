@@ -669,6 +669,18 @@ Utility
 
 Noise
 ---------------
+.. function:: noise(seed: uint32, x: float) -> float
+
+
+.. function:: noise(seed: uint32, xy: vec2) -> float
+
+
+.. function:: noise(seed: uint32, xyz: vec3) -> float
+
+
+.. function:: noise(seed: uint32, xyzt: vec4) -> float
+
+
 .. function:: pnoise(seed: uint32, x: float, px: int) -> float
 
 
