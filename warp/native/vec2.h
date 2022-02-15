@@ -171,7 +171,7 @@ inline bool CUDA_CALLABLE isfinite(vec2 x)
 }
 
 // adjoint vec2 constructors
-inline CUDA_CALLABLE void adj_vec2(float x, float y, float z, float& adj_x, float& adj_y, float& adj_z, const vec2& adj_ret)
+inline CUDA_CALLABLE void adj_vec2(float x, float y, float& adj_x, float& adj_y, const vec2& adj_ret)
 {
     adj_x += adj_ret.x;
     adj_y += adj_ret.y;

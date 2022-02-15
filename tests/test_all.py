@@ -15,12 +15,16 @@ import test_mesh_unit_tests
 import test_conditional
 import test_operators
 import test_rounding
+import test_rand
+import test_noise
 
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_codegen))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_mesh_unit_tests))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_conditional))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_operators))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_rounding))
+tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_rand))
+tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_noise))
 
 
 # load all modules

@@ -252,11 +252,37 @@ add_builtin("floor", input_types={"x": float}, value_type=float, group="Scalar M
 add_builtin("ceil", input_types={"x": float}, value_type=float, group="Scalar Math",
     doc="""Calculate the smallest integer that is greater than or equal to x.""")
 
+add_builtin("rand_init", input_types={"state": int}, value_type=uint32, doc="", group="Scalar Math")
 add_builtin("rand_init", input_types={"state": int, "offset": int}, value_type=uint32, doc="", group="Scalar Math")
 add_builtin("randi", input_types={"state": uint32}, value_type=int, doc="", group="Scalar Math")
 add_builtin("randi", input_types={"state": uint32, "min": int, "max": int}, value_type=int, doc="", group="Scalar Math")
 add_builtin("randf", input_types={"state": uint32}, value_type=float, doc="", group="Scalar Math")
 add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, value_type=float, doc="", group="Scalar Math")
+
+add_builtin("noise", input_types={"seed": uint32, "x": float}, value_type=float, group="Scalar Math",
+    doc="""Non-periodic Perlin-style noise in 1D.""")
+add_builtin("noise", input_types={"seed": uint32, "xy": vec2}, value_type=float, group="Scalar Math",
+    doc="""Non-periodic Perlin-style noise in 2D.""")
+add_builtin("noise", input_types={"seed": uint32, "xyz": vec3}, value_type=float, group="Scalar Math",
+    doc="""Non-periodic Perlin-style noise in 3D.""")
+add_builtin("noise", input_types={"seed": uint32, "xyzt": vec4}, value_type=float, group="Scalar Math",
+    doc="""Non-periodic Perlin-style noise in 4D.""")
+
+add_builtin("pnoise", input_types={"seed": uint32, "x": float, "px": int}, value_type=float, group="Scalar Math",
+    doc="""Periodic Perlin-style noise in 1D.""")
+add_builtin("pnoise", input_types={"seed": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Scalar Math",
+    doc="""Periodic Perlin-style noise in 2D.""")
+add_builtin("pnoise", input_types={"seed": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Scalar Math",
+    doc="""Periodic Perlin-style noise in 3D.""")
+add_builtin("pnoise", input_types={"seed": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Scalar Math",
+    doc="""Periodic Perlin-style noise in 4D.""")
+
+add_builtin("curlnoise", input_types={"seed": uint32, "xy": vec2}, value_type=vec2, group="Scalar Math",
+    doc="""Divergence-free vector field based on the gradient of a Perlin noise function.""")
+add_builtin("curlnoise", input_types={"seed": uint32, "xyz": vec3}, value_type=vec3, group="Scalar Math",
+    doc="""Divergence-free vector field based on the curl of three Perlin noise functions.""")
+add_builtin("curlnoise", input_types={"seed": uint32, "xyzt": vec4}, value_type=vec3, group="Scalar Math",
+    doc="""Divergence-free vector field based on the curl of three Perlin noise functions.""")
 
 add_builtin("cw_mul", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Vector Math")
 add_builtin("cw_mul", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
