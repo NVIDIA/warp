@@ -8,8 +8,6 @@ import numpy as np
 import warp as wp
 import warp.sim.render as renderer
 
-import tests.test_sim_util as util
-
 import matplotlib.pyplot as plt
 
 wp.init()
@@ -41,7 +39,7 @@ class Robot:
 
         for i in range(num_envs):
 
-            util.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
+            wp.sim.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
                 stiffness=0.0,
                 damping=1.0,
                 armature=0.1,

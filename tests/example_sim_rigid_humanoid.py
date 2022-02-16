@@ -8,8 +8,6 @@ import numpy as np
 import warp as wp
 import warp.sim.render as renderer
 
-import tests.test_sim_util as util
-
 import matplotlib.pyplot as plt
 
 wp.init()
@@ -41,7 +39,7 @@ class Robot:
 
         for i in range(num_envs):
 
-            util.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
+            wp.sim.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
                 stiffness=0.0,
                 damping=0.1,
                 armature=0.0,
@@ -119,31 +117,34 @@ class Robot:
                 for i in range(0, self.sim_substeps):
                     self.state.clear_forces()
                     
-                    scale = np.array([200.0,
-                                    200.0,
-                                    200.0,
-                                    200.0,
-                                    200.0,
-                                    600.0,
-                                    400.0,
-                                    100.0,
-                                    100.0,
-                                    200.0,
-                                    200.0,
-                                    600.0,
-                                    400.0,
-                                    100.0,
-                                    100.0,
-                                    100.0,
-                                    100.0,
-                                    200.0,
-                                    100.0,
-                                    100.0,
-                                    200.0])
+                    random_actions = False
+                    
+                    if (random_actions):
+                        scale = np.array([200.0,
+                                        200.0,
+                                        200.0,
+                                        200.0,
+                                        200.0,
+                                        600.0,
+                                        400.0,
+                                        100.0,
+                                        100.0,
+                                        200.0,
+                                        200.0,
+                                        600.0,
+                                        400.0,
+                                        100.0,
+                                        100.0,
+                                        100.0,
+                                        100.0,
+                                        200.0,
+                                        100.0,
+                                        100.0,
+                                        200.0])
 
-                    act = np.zeros(len(self.model.joint_qd))
-                    act[6:] = np.clip((np.random.rand(len(self.model.joint_qd)-6)*2.0 - 1.0)*1000.0, a_min=-1.0, a_max=1.0)*scale*0.35
-                    self.model.joint_act.assign(act)
+                        act = np.zeros(len(self.model.joint_qd))
+                        act[6:] = np.clip((np.random.rand(len(self.model.joint_qd)-6)*2.0 - 1.0)*1000.0, a_min=-1.0, a_max=1.0)*scale*0.35
+                        self.model.joint_act.assign(act)
 
                     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
                     self.sim_time += self.sim_dt

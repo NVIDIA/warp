@@ -10,8 +10,6 @@ import warp.sim.render as renderer
 
 import numpy as np
 
-import tests.test_sim_util as util
-
 wp.init()
 
 class HumanoidSNU:
@@ -64,7 +62,7 @@ class HumanoidSNU:
 
         for i in range(10):
             
-            skeleton = util.Skeleton(wp.transform((i*2.0, 0.0, 0.0), wp.quat_identity()), "./tests/assets/snu/arm.xml", "./tests/assets/snu/muscle284.xml", builder, self.filter, armature=0.05)
+            skeleton = wp.sim.parse_snu(wp.transform((i*2.0, 0.0, 0.0), wp.quat_identity()), "./tests/assets/snu/arm.xml", "./tests/assets/snu/muscle284.xml", builder, self.filter, armature=0.05)
 
             self.skeletons.append(skeleton)
 
