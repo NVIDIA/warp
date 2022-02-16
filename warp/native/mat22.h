@@ -51,6 +51,17 @@ struct mat22
     float data[2][2];
 };
 
+inline CUDA_CALLABLE bool operator==(const mat22& a, const mat22& b)
+{
+    for(int i=0; i < 2; ++i)
+        for (int j=0; j < 2; ++j)
+            if (a.data[i][j] != b.data[i][j])
+                return false;
+
+    return true;
+}
+
+
 inline CUDA_CALLABLE mat22 atomic_add(mat22 * addr, mat22 value) {
     // *addr += value;
     mat22 m;
