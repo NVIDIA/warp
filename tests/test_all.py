@@ -36,5 +36,6 @@ wp.force_load()
 
 if __name__ == '__main__':
     runner = unittest.TextTestRunner(verbosity=2, failfast=False)
-    runner.run(tests)
+    ret = not runner.run(tests).wasSuccessful()
+    sys.exit(ret)
 
