@@ -1,7 +1,7 @@
 
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "0.1.22"
+version = "0.1.23"
 authors = ["Miles Macklin"]
 title = "Warp"
 description="Python DSL for high performance graphics and simulation"

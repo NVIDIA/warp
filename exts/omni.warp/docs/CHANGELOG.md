@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [0.1.23] - 2022-02-17
+
+### Warp Core
+
+- Fix for generated code folder being removed during Showroom installation
+- Fix for macOS support
+- Fix for dynamic for-loop code gen edge case
+- Add procedural noise primitives, see noise(), pnoise(), curlnoise()
+- Move simulation helpers our of test into warp.sim module
+
 ## [0.1.22] - 2022-02-14
 
 ### Warp Core
