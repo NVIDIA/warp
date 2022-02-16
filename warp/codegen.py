@@ -622,6 +622,9 @@ class Adjoint:
                             # overwrite the old variable value (violates SSA)
                             adj.add_call(adj.builtin_functions["copy"], [var1, var2])
 
+                            # reset the symbol to point to the original variable
+                            adj.symbols[sym] = var1
+
                     adj.end_for(iter, start, end, step)
 
             elif (isinstance(node, ast.Expr)):
