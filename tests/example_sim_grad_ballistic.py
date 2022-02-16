@@ -118,12 +118,12 @@ class Ballistic:
                          ctx.env.states[-1].particle_qd: wp.torch.from_torch(grads[1], dtype=wp.vec3) }
 
             # back-prop
-            tape.backward(adj_user)
+            tape.backward(grads=adj_user)
  
             # copy grad back to Torch
-            grads = (None, wp.torch.to_torch(tape.adjoints[ctx.env.states[0].particle_q]),
-                           wp.torch.to_torch(tape.adjoints[ctx.env.states[0].particle_qd]),
-                           wp.torch.to_torch(tape.adjoints[ctx.env.states[0].particle_f]))
+            grads = (None, wp.torch.to_torch(tape.gradients[ctx.env.states[0].particle_q]),
+                           wp.torch.to_torch(tape.gradients[ctx.env.states[0].particle_qd]),
+                           wp.torch.to_torch(tape.gradients[ctx.env.states[0].particle_f]))
 
             return grads
 
