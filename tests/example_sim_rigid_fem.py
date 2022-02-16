@@ -16,7 +16,7 @@ from warp.utils import quat_identity
 
 wp.init()
 
-import render
+import warp.render
 
 np.random.seed(42)
 np.set_printoptions(threshold=sys.maxsize)

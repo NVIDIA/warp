@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import warp as wp
 import warp.sim
-import warp.sim.render as render
+import warp.sim.render
 
 wp.config.mode = "debug"
 
@@ -103,7 +103,7 @@ wp.sim.eval_fk(
     None,
     state)
 
-renderer = render.SimRenderer(model, "tests/outputs/test_sim_rigid_chain.usda")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_chain.usda")
 
 for i in range(sim_steps):
 

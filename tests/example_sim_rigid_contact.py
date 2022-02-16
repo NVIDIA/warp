@@ -11,7 +11,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
-import warp.sim.render as render
+import warp.sim.render
 
 from warp.utils import quat_identity
 
@@ -89,7 +89,7 @@ state = model.state()
 model.collide(state)
 
 # one time collide for ground contact
-renderer = render.SimRenderer(model, "tests/outputs/test_sim_rigid_contact.usda")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_contact.usda")
 
 for i in range(sim_steps):
 

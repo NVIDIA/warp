@@ -11,8 +11,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
-import warp.sim.render as render
-
+import warp.sim.render
 
 wp.init()
 
@@ -58,7 +57,7 @@ model.ground = False
 integrator = wp.sim.SemiImplicitIntegrator()
 state = model.state()
 
-renderer = render.SimRenderer(model, "tests/outputs/test_sim_rigid_gyroscopic.usda")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_gyroscopic.usda")
 
 for i in range(sim_steps):
 

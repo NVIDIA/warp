@@ -1,12 +1,11 @@
 import os
 import sys
 
-from warp.render import UsdRenderer
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
 import warp.sim
+import warp.render
 
 import numpy as np
 
@@ -56,7 +55,7 @@ state_1 = model.state()
 
 integrator = wp.sim.SemiImplicitIntegrator()
 
-renderer = UsdRenderer("tests/outputs/test_sim_granular.usd")
+renderer = wp.render.UsdRenderer("tests/outputs/test_sim_granular.usd")
 
 for i in range(frame_count):
 
