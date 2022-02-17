@@ -221,6 +221,7 @@ class array:
         """
         
         self.owner = False
+        self.context = None
 
         # convert built-in numeric type to wp type
         if (dtype == int):
@@ -261,10 +262,11 @@ class array:
             shape = arr.__array_interface__["shape"]
             length = shape[0]
 
-            if (device == "cpu" and copy == False):
+            from warp.context import runtime
+            self.context = runtime
 
-                from warp.context import runtime
-                
+            if (device == "cpu" and copy == False):
+               
                 # ref numpy memory directly
                 self.data = ptr
                 self.dtype=dtype
@@ -295,7 +297,9 @@ class array:
            
             
         else:
-            
+           
+            assert(owner == False, "Should not try to deallocate external memory")
+
             # explicit construction, data is interpreted as the address for raw memory 
             self.length = length
             self.capacity = capacity
@@ -303,6 +307,7 @@ class array:
             self.data = data
             self.device = device
             self.owner = owner
+            self.context = None
 
             self.__name__ = "array<" + type.__name__ + ">"
 
@@ -330,15 +335,13 @@ class array:
         # since this may be called during destruction / shutdown
         # even ctypes module may no longer exist
 
-        if (self.owner):
+        if (self.owner and self.context):
 
             # todo: check this is OK during shutdown
-            from warp.context import runtime
-
             if (self.device == "cpu"):
-                runtime.host_allocator.free(self.ptr, self.capacity)
+                self.context.host_allocator.free(self.ptr, self.capacity)
             else:
-                runtime.device_allocator.free(self.ptr, self.capacity)
+                self.context.device_allocator.free(self.ptr, self.capacity)
                 
 
     def __len__(self):
