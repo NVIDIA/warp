@@ -252,37 +252,47 @@ add_builtin("floor", input_types={"x": float}, value_type=float, group="Scalar M
 add_builtin("ceil", input_types={"x": float}, value_type=float, group="Scalar Math",
     doc="""Calculate the smallest integer that is greater than or equal to x.""")
 
-add_builtin("rand_init", input_types={"state": int}, value_type=uint32, doc="", group="Scalar Math")
-add_builtin("rand_init", input_types={"state": int, "offset": int}, value_type=uint32, doc="", group="Scalar Math")
-add_builtin("randi", input_types={"state": uint32}, value_type=int, doc="", group="Scalar Math")
-add_builtin("randi", input_types={"state": uint32, "min": int, "max": int}, value_type=int, doc="", group="Scalar Math")
-add_builtin("randf", input_types={"state": uint32}, value_type=float, doc="", group="Scalar Math")
-add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("rand_init", input_types={"seed": int}, value_type=uint32, group="Scalar Math", 
+    doc="Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.")
+
+add_builtin("rand_init", input_types={"seed": int, "offset": int}, value_type=uint32, group="Scalar Math", 
+    doc="""Initialize a new random number generator given a user-defined seed and an offset. 
+   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
+   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``""")
+
+add_builtin("randi", input_types={"state": uint32}, value_type=int, group="Scalar Math", 
+    doc="Return a random integer between [0, 2^32)")
+add_builtin("randi", input_types={"state": uint32, "min": int, "max": int}, value_type=int, group="Scalar Math", 
+    doc="Return a random integer between [min, max)")
+add_builtin("randf", input_types={"state": uint32}, value_type=float, group="Scalar Math", 
+    doc="Return a random float between [0.0, 1.0)")
+add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, value_type=float, group="Scalar Math", 
+    doc="Return a random float between [min, max)")
 
 add_builtin("noise", input_types={"seed": uint32, "x": float}, value_type=float, group="Scalar Math",
-    doc="""Non-periodic Perlin-style noise in 1D.""")
+    doc="Non-periodic Perlin-style noise in 1d.")
 add_builtin("noise", input_types={"seed": uint32, "xy": vec2}, value_type=float, group="Scalar Math",
-    doc="""Non-periodic Perlin-style noise in 2D.""")
+    doc="Non-periodic Perlin-style noise in 2d.")
 add_builtin("noise", input_types={"seed": uint32, "xyz": vec3}, value_type=float, group="Scalar Math",
-    doc="""Non-periodic Perlin-style noise in 3D.""")
+    doc="Non-periodic Perlin-style noise in 3d.")
 add_builtin("noise", input_types={"seed": uint32, "xyzt": vec4}, value_type=float, group="Scalar Math",
-    doc="""Non-periodic Perlin-style noise in 4D.""")
+    doc="Non-periodic Perlin-style noise in 4d.")
 
 add_builtin("pnoise", input_types={"seed": uint32, "x": float, "px": int}, value_type=float, group="Scalar Math",
-    doc="""Periodic Perlin-style noise in 1D.""")
+    doc="Periodic Perlin-style noise in 1d.")
 add_builtin("pnoise", input_types={"seed": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Scalar Math",
-    doc="""Periodic Perlin-style noise in 2D.""")
+    doc="Periodic Perlin-style noise in 2d.")
 add_builtin("pnoise", input_types={"seed": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Scalar Math",
-    doc="""Periodic Perlin-style noise in 3D.""")
+    doc="Periodic Perlin-style noise in 3d.")
 add_builtin("pnoise", input_types={"seed": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Scalar Math",
-    doc="""Periodic Perlin-style noise in 4D.""")
+    doc="Periodic Perlin-style noise in 4d.")
 
 add_builtin("curlnoise", input_types={"seed": uint32, "xy": vec2}, value_type=vec2, group="Scalar Math",
-    doc="""Divergence-free vector field based on the gradient of a Perlin noise function.""")
+    doc="Divergence-free vector field based on the gradient of a Perlin noise function.")
 add_builtin("curlnoise", input_types={"seed": uint32, "xyz": vec3}, value_type=vec3, group="Scalar Math",
-    doc="""Divergence-free vector field based on the curl of three Perlin noise functions.""")
+    doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
 add_builtin("curlnoise", input_types={"seed": uint32, "xyzt": vec4}, value_type=vec3, group="Scalar Math",
-    doc="""Divergence-free vector field based on the curl of three Perlin noise functions.""")
+    doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
 
 add_builtin("cw_mul", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="", group="Vector Math")
 add_builtin("cw_mul", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
@@ -291,35 +301,61 @@ add_builtin("cw_div", input_types={"x": vec2, "y": vec2}, value_type=vec2, doc="
 add_builtin("cw_div", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
 add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec3, doc="", group="Vector Math")
 
-add_builtin("dot", input_types={"x": vec2, "y": vec2}, value_type=float, doc="", group="Vector Math")
-add_builtin("dot", input_types={"x": vec3, "y": vec3}, value_type=float, doc="", group="Vector Math")
-add_builtin("dot", input_types={"x": vec4, "y": vec4}, value_type=float, doc="", group="Vector Math")
-add_builtin("dot", input_types={"x": quat, "y": quat}, value_type=float, doc="", group="Vector Math")
+add_builtin("dot", input_types={"x": vec2, "y": vec2}, value_type=float, group="Vector Math",
+    doc="Compute the dot product between two 2d vectors.")
+add_builtin("dot", input_types={"x": vec3, "y": vec3}, value_type=float, group="Vector Math",
+    doc="Compute the dot product between two 3d vectors.")
+add_builtin("dot", input_types={"x": vec4, "y": vec4}, value_type=float, group="Vector Math",
+    doc="Compute the dot product between two 4d vectors.")
+add_builtin("dot", input_types={"x": quat, "y": quat}, value_type=float, group="Vector Math",
+    doc="Compute the dot product between two quaternions.")
 
-add_builtin("outer", input_types={"x": vec2, "y": vec2}, value_type=mat22, doc="", group="Vector Math")
-add_builtin("outer", input_types={"x": vec3, "y": vec3}, value_type=mat33, doc="", group="Vector Math")
+add_builtin("outer", input_types={"x": vec2, "y": vec2}, value_type=mat22, group="Vector Math",
+    doc="Compute the outer product x*y^T for two vec2 objects.")
+add_builtin("outer", input_types={"x": vec3, "y": vec3}, value_type=mat33, group="Vector Math",
+    doc="Compute the outer product x*y^T for two vec3 objects.")
 
-add_builtin("cross", input_types={"x": vec3, "y": vec3}, value_type=vec3, doc="", group="Vector Math")
-add_builtin("skew", input_types={"x": vec3}, value_type=mat33, doc="", group="Vector Math"),
+add_builtin("cross", input_types={"x": vec3, "y": vec3}, value_type=vec3, group="Vector Math",
+    doc="Compute the cross product of two 3d vectors.")
+add_builtin("skew", input_types={"x": vec3}, value_type=mat33, group="Vector Math",
+    doc="Compute the skew symmetric matrix for a 3d vector.")
 
-add_builtin("length", input_types={"x": vec2}, value_type=float, doc="", group="Vector Math")
-add_builtin("length", input_types={"x": vec3}, value_type=float, doc="", group="Vector Math")
-add_builtin("length", input_types={"x": vec4}, value_type=float, doc="", group="Vector Math")
-add_builtin("normalize", input_types={"x": vec2}, value_type=vec2, doc="", group="Vector Math")
-add_builtin("normalize", input_types={"x": vec3}, value_type=vec3, doc="", group="Vector Math")
-add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, doc="", group="Vector Math")
-add_builtin("normalize", input_types={"x": quat}, value_type=quat, doc="", group="Vector Math")
+add_builtin("length", input_types={"x": vec2}, value_type=float, group="Vector Math",
+    doc="Compute the length of a 2d vector.")
+add_builtin("length", input_types={"x": vec3}, value_type=float, group="Vector Math",
+    doc="Compute the length of a 3d vector.")
+add_builtin("length", input_types={"x": vec4}, value_type=float, group="Vector Math",
+    doc="Compute the length of a 4d vector.")
+add_builtin("normalize", input_types={"x": vec2}, value_type=vec2, group="Vector Math",
+    doc="Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.")
+add_builtin("normalize", input_types={"x": vec3}, value_type=vec3, group="Vector Math",
+    doc="Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.")
+add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, group="Vector Math",
+    doc="Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.")
+add_builtin("normalize", input_types={"x": quat}, value_type=quat, group="Vector Math",
+    doc="Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.")
 
-add_builtin("determinant", input_types={"m": mat22}, value_type=float, doc="", group="Vector Math")
-add_builtin("determinant", input_types={"m": mat33}, value_type=float, doc="", group="Vector Math")
-add_builtin("transpose", input_types={"m": mat22}, value_type=mat22, doc="", group="Vector Math")
-add_builtin("transpose", input_types={"m": mat33}, value_type=mat33, doc="", group="Vector Math")
-add_builtin("transpose", input_types={"m": mat44}, value_type=mat44, doc="", group="Vector Math")
-add_builtin("transpose", input_types={"m": spatial_matrix}, value_type=spatial_matrix, doc="", group="Vector Math")
+add_builtin("determinant", input_types={"m": mat22}, value_type=float, group="Vector Math", 
+    doc="Compute the determinant of a 2x2 matrix.")
 
-add_builtin("diag", input_types={"d": vec2}, value_type=mat22, doc="", group="Vector Math")
-add_builtin("diag", input_types={"d": vec3}, value_type=mat33, doc="", group="Vector Math")
-add_builtin("diag", input_types={"d": vec4}, value_type=mat44, doc="", group="Vector Math")
+add_builtin("determinant", input_types={"m": mat33}, value_type=float, group="Vector Math", 
+    doc="Compute the determinant of a 3x3 matrix.")
+
+add_builtin("transpose", input_types={"m": mat22}, value_type=mat22, group="Vector Math",
+    doc="Return the transpose of the matrix m")
+add_builtin("transpose", input_types={"m": mat33}, value_type=mat33, group="Vector Math",
+    doc="Return the transpose of the matrix m")
+add_builtin("transpose", input_types={"m": mat44}, value_type=mat44, group="Vector Math",
+    doc="Return the transpose of the matrix m")
+add_builtin("transpose", input_types={"m": spatial_matrix}, value_type=spatial_matrix, group="Vector Math",
+    doc="Return the transpose of the matrix m")
+
+add_builtin("diag", input_types={"d": vec2}, value_type=mat22, group="Vector Math",
+    doc="Returns a matrix with the components of the vector d on the diagonal")
+add_builtin("diag", input_types={"d": vec3}, value_type=mat33, group="Vector Math",
+    doc="Returns a matrix with the components of the vector d on the diagonal")
+add_builtin("diag", input_types={"d": vec4}, value_type=mat44, group="Vector Math",
+    doc="Returns a matrix with the components of the vector d on the diagonal")
 
 # type construtors
 add_builtin("int", input_types={"x": int}, value_type=int, doc="", group="Scalar Math")
@@ -355,39 +391,69 @@ add_builtin("mat44", input_types={"m00": float, "m01": float, "m02": float, "m03
                                   "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="", group="Vector Math")
 
 
-add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, doc="", group="Vector Math")
+add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, group="Vector Math",
+    doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
+   while the left and right basis vectors are returned in U and V.""")
 
-add_builtin("quat", input_types={}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat", input_types={"i": vec3, "r": float}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat_identity", input_types={}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, doc="", group="Quaternion Math")
-add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Quaternion Math")
-add_builtin("quat_rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, doc="", group="Quaternion Math")
+add_builtin("quat", input_types={}, value_type=quat, group="Quaternion Math", 
+    doc="""Construct a zero-initialized quaternion, quaternions are laid out as
+   [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.""")
+add_builtin("quat", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=quat, group="Quaternion Math",
+    doc="Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.")
+add_builtin("quat", input_types={"i": vec3, "r": float}, value_type=quat, group="Quaternion Math",
+    doc="Construct a quaternion from it's imaginary components i, and real part r")
+add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion Math",
+    doc="Construct an identity quaternion with zero imaginary part and real part of 1.0")
+add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, group="Quaternion Math",
+    doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
+add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, group="Quaternion Math",
+    doc="Compute quaternion conjugate.")
+add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
+    doc="Rotate a vector by a quaternion.")
+add_builtin("quat_rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
+    doc="Rotate a vector the inverse of a quaternion.")
 
-add_builtin("transform", input_types={"p": vec3, "q": quat}, value_type=transform, doc="", group="Transformations")
-add_builtin("transform_identity", input_types={}, value_type=transform, doc="", group="Transformations")
-add_builtin("transform_get_translation", input_types={"t": transform}, value_type=vec3, doc="", group="Transformations")
-add_builtin("transform_get_rotation", input_types={"t": transform}, value_type=quat, doc="", group="Transformations")
-add_builtin("transform_multiply", input_types={"a": transform, "b": transform}, value_type=transform, doc="", group="Transformations")
-add_builtin("transform_point", input_types={"t": transform, "p": vec3}, value_type=vec3, doc="Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)", group="Transformations")
-add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, doc="Apply the transform to p treating the homogenous coordinate as w=1 (translation and rotation)", group="Vector Math")
-add_builtin("transform_vector", input_types={"t": transform, "v": vec3}, value_type=vec3, doc="Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)", group="Transformations")
-add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, doc="Apply the transform to v treating the homogenous coordinate as w=0 (rotation only)", group="Vector Math")
+add_builtin("transform", input_types={"p": vec3, "q": quat}, value_type=transform, group="Transformations",
+    doc="Construct a rigid body transformation with translation part p and rotation q.")
+add_builtin("transform_identity", input_types={}, value_type=transform, group="Transformations",
+    doc="Construct an identity transform with zero translation and identity rotation.")
+add_builtin("transform_get_translation", input_types={"t": transform}, value_type=vec3, group="Transformations",
+    doc="Return the translational part of a transform.")
+add_builtin("transform_get_rotation", input_types={"t": transform}, value_type=quat, group="Transformations",
+    doc="Return the rotational part of a transform.")
+add_builtin("transform_multiply", input_types={"a": transform, "b": transform}, value_type=transform, group="Transformations",
+    doc="Multiply two rigid body transformations together.")
+add_builtin("transform_point", input_types={"t": transform, "p": vec3}, value_type=vec3, group="Transformations",
+    doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).")
+add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, group="Vector Math",
+    doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation)")
+add_builtin("transform_vector", input_types={"t": transform, "v": vec3}, value_type=vec3, group="Transformations",
+    doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
+add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, group="Vector Math",
+    doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
 
-add_builtin("spatial_vector", input_types={}, value_type=spatial_vector, doc="", group="Spatial Math")
-add_builtin("spatial_vector", input_types={"a": float, "b": float, "c": float, "d": float, "e": float, "f": float}, value_type=spatial_vector, doc="", group="Spatial Math")
-add_builtin("spatial_vector", input_types={"w": vec3, "v": vec3}, value_type=spatial_vector, doc="", group="Spatial Math")
-add_builtin("spatial_vector", input_types={"s": float}, value_type=spatial_vector, doc="", group="Spatial Math"),
+add_builtin("spatial_vector", input_types={}, value_type=spatial_vector, group="Spatial Math",
+    doc="Construct a zero-initialized 6d screw vector. Screw vectors may be used to represent rigid body wrenches and twists (velocites).")
+add_builtin("spatial_vector", input_types={"a": float, "b": float, "c": float, "d": float, "e": float, "f": float}, value_type=spatial_vector, group="Spatial Math",
+    doc="Construct a 6d screw vector from it's components.")
+add_builtin("spatial_vector", input_types={"w": vec3, "v": vec3}, value_type=spatial_vector, group="Spatial Math",
+    doc="Construct a 6d screw vector from two 3d vectors.")
+add_builtin("spatial_vector", input_types={"s": float}, value_type=spatial_vector, group="Spatial Math",
+    doc="Construct a 6d screw vector with all components set to s")
 
-add_builtin("spatial_adjoint", input_types={"r": mat33, "s": mat33}, value_type=spatial_matrix, doc="", group="Spatial Math")
-add_builtin("spatial_dot", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=float, doc="", group="Spatial Math")
-add_builtin("spatial_cross", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="", group="Spatial Math")
-add_builtin("spatial_cross_dual", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, doc="", group="Spatial Math")
+add_builtin("spatial_adjoint", input_types={"r": mat33, "s": mat33}, value_type=spatial_matrix, group="Spatial Math",
+    doc="Constructs a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.")
+add_builtin("spatial_dot", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=float, group="Spatial Math",
+    doc="Compute the dot product of two 6d screw vectors.")
+add_builtin("spatial_cross", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, group="Spatial Math",
+    doc="Compute the cross-product of two 6d screw vectors.")
+add_builtin("spatial_cross_dual", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, group="Spatial Math",
+    doc="Compute the dual cross-product of two 6d screw vectors.")
 
-add_builtin("spatial_top", input_types={"a": spatial_vector}, value_type=vec3, doc="", group="Spatial Math")
-add_builtin("spatial_bottom", input_types={"a": spatial_vector}, value_type=vec3, doc="", group="Spatial Math")
+add_builtin("spatial_top", input_types={"a": spatial_vector}, value_type=vec3, group="Spatial Math",
+    doc="Return the top (first) part of a 6d screw vector.")
+add_builtin("spatial_bottom", input_types={"a": spatial_vector}, value_type=vec3, group="Spatial Math",
+    doc="Return the bottom (second) part of a 6d screw vector.")
 
 add_builtin("spatial_jacobian",
      input_types={"S": array(dtype=spatial_vector), 
@@ -459,7 +525,13 @@ add_builtin("dense_solve_batched",
                  "b": array(dtype=float),
                  "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
-add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, doc="", group="Geometry")
+add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, group="Geometry",
+    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust""")
 add_builtin("mesh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3, "max_t": float, "t": float, "bary_u": float, "bary_v": float, "sign": float, "normal": vec3, "face": int}, value_type=bool, doc="", group="Geometry")
 
 add_builtin("mesh_query_aabb", input_types={"id": uint64, "lower": vec3, "upper": vec3}, value_type=mesh_query_aabb_t, doc="", group="Geometry")
