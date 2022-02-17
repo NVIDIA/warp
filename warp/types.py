@@ -203,10 +203,24 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
+    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
+        """ Constructs a new Warp array object 
+
+        This method allows manually constructing an array from existing data. 
+
+        Args:
+            data (Union[list, tuple, iterable], wp.uint64) 
+            dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`
+            length (int): Number of elements (rows) of the data type
+            capacity (int): Maximum size in bytes of the `data` allocation
+            device (str): Device the allocation lives on
+            copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified
+            owner (bool): Should the array object try to deallocate memory when it is deleted
+            requires_grad (bool): Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
+
+        """
         
         self.owner = False
-        self.context = None
 
         # convert built-in numeric type to wp type
         if (dtype == int):
@@ -257,7 +271,6 @@ class array:
                 self.length=length
                 self.capacity=length*type_size_in_bytes(dtype)
                 self.device = device
-                self.context = runtime  # todo: if runtime is global do we really need to store it per-array?
                 self.owner = False
 
                 # keep a ref to source array to keep allocation alive
@@ -267,7 +280,7 @@ class array:
 
                 # otherwise, create a host wrapper around the numpy
                 #  array and a new destination array to copy it to
-                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
+                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', copy=False, owner=False)
                 dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
@@ -289,7 +302,6 @@ class array:
             self.dtype = dtype
             self.data = data
             self.device = device
-            self.context = context
             self.owner = owner
 
             self.__name__ = "array<" + type.__name__ + ">"
@@ -318,12 +330,15 @@ class array:
         # since this may be called during destruction / shutdown
         # even ctypes module may no longer exist
 
-        if (self.owner and self.context):
+        if (self.owner):
+
+            # todo: check this is OK during shutdown
+            from warp.context import runtime
 
             if (self.device == "cpu"):
-                self.context.host_allocator.free(self.ptr, self.capacity)
+                runtime.host_allocator.free(self.ptr, self.capacity)
             else:
-                self.context.device_allocator.free(self.ptr, self.capacity)
+                runtime.device_allocator.free(self.ptr, self.capacity)
                 
 
     def __len__(self):
@@ -340,11 +355,13 @@ class array:
 
     def zero_(self):
 
+        from warp.context import runtime
+
         if (self.device == "cpu"):
-            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+            runtime.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
 
         if(self.device == "cuda"):
-            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+            runtime.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
 
 
 
@@ -403,7 +420,6 @@ class array:
             length=int(dst_length),
             capacity=int(dst_capacity),
             device=self.device,
-            context=self.context,
             owner=False)
 
         return arr
@@ -412,7 +428,18 @@ class array:
 class Mesh:
 
     def __init__(self, points, velocities, indices):
-        
+        """ Class representing a triangle mesh.
+
+        Attributes:
+            id: Unique identifier for this mesh object, can be passed to kernels.
+            device: Device this object lives on, all buffers must live on the same device.
+
+        Args:
+            points (:class:`warp.array`): Array of vertex positions of type :class:`wp.vec3`
+            velocities (:class:`warp.array`): Array of vertex velocities of type :class:`wp.vec3`
+            indices (:class:`warp.array`): Array of triangle indices of type :class:`wp.int32`, should be length 3*number of triangles
+        """
+
         self.points = points
         self.velocities = velocities
         self.indices = indices
@@ -458,7 +485,8 @@ class Mesh:
             self.context.core.mesh_destroy_device(self.id)
 
     def refit(self):
-        
+        """ Refit the BVH to points. This should be called after users modify the `points` data."""
+                
         if (self.device == "cpu"):
             self.context.core.mesh_refit_host(self.id)
         else:
@@ -477,7 +505,18 @@ class Volume:
 class HashGrid:
 
     def __init__(self, dim_x, dim_y, dim_z, device):
-        
+        """ Class representing a triangle mesh.
+
+        Attributes:
+            id: Unique identifier for this mesh object, can be passed to kernels.
+            device: Device this object lives on, all buffers must live on the same device.
+
+        Args:
+            dim_x (int): Number of cells in x-axis
+            dim_y (int): Number of cells in y-axis
+            dim_z (int): Number of cells in z-axis
+        """
+
         self.device = device
 
         from warp.context import runtime
@@ -490,7 +529,23 @@ class HashGrid:
 
 
     def build(self, points, radius):
+        """ Updates the hash grid data structure.
+
+        This method rebuilds the underlying datastructure and should be called any time the set
+        of points changes.
+
+        Attributes:
+            id: Unique identifier for this mesh object, can be passed to kernels.
+            device: Device this object lives on, all buffers must live on the same device.
+
+        Args:
+            points (:class:`warp.array`): Array of points of type :class:`warp.vec3`
+            radius (float): The cell size to use for bucketing points, cells are cubes with edges of this width.
+                            For best performance the radius used to construct the grid should match closely to
+                            the radius used when performing queries.                          
+        """
         
+
         if (self.device == "cpu"):
             self.context.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
         else:

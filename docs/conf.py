@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'Warp'
-copyright = '2021, NVIDIA'
+copyright = '2022, NVIDIA'
 author = 'NVIDIA'
 
 
@@ -43,7 +43,7 @@ autoclass_content = 'both' #
 
 autodoc_member_order = 'bysource'
 
-
+#autodoc_typehints_format
 #add_module_names = False
 
 todo_include_todos = True

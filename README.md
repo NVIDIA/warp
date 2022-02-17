@@ -4,11 +4,18 @@ Warp is a Python framework for writing high-performance simulation and graphics 
 
 ## Building
 
-After cloning the repository, developers should run `build.bat` or `build.sh` to generate the `warp.dll` / `warp.so` core library respectively. CUDA dependencies will automatically be fetched.
+Requirements:
 
-## Pre-built Binaries
+* Microsoft Visual Studio 2017 upwards (Windows)
+* GCC 4.0 upwards (Linux)
 
-Pre-built binaries for Windows and Linux are available as artifacts on the following TeamCity instance:
+After cloning the repository, developers should run `build.bat` or `build.sh` to generate the `warp.dll` / `warp.so` core library respectively. CUDA dependencies will automatically be downloaded.
+
+To run built-in tests you should install the USD Core library to your Python environment using: ``pip install usd-core``
+
+## Releases
+
+Pre-built packages for Windows and Linux are available as artifacts on the following TeamCity instance:
 
 https://teamcity.nvidia.com/project/Sandbox_mmacklin_Warp?mode=builds
 
@@ -17,8 +24,6 @@ https://teamcity.nvidia.com/project/Sandbox_mmacklin_Warp?mode=builds
 To install in your local Python environment use:
 
     pip install -e .
-
-To run built-in tests you should install the USD Core library to your Python environment using `pip install usd-core`.
 
 ## Omniverse
 

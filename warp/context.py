@@ -1070,7 +1070,7 @@ def empty(n: int, dtype=float, device:str="cpu", requires_grad:bool=False) -> wa
 
     Args:
         n: Number of elements
-        dtype: Type of each element, e.g.: warp.vec3, warp.mat33, etc
+        dtype: Type of each element, e.g.: `warp.vec3`, `warp.mat33`, etc
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
 
@@ -1363,6 +1363,8 @@ def print_function(f, file):
     
 def print_builtins(file):
 
+    print("... functions:", file=file)
+    print("", file=file)
     print("Language Reference", file=file)
     print("==================", file=file)
 
