@@ -643,6 +643,13 @@ class ExpectEqFunc:
         return None
 
 
+@builtin("expect_near")
+class ExpectEqFunc:
+    @staticmethod
+    def value_type(args):
+        return None
+
+
 def wrap(adj):
     def value_type(args):
         if (adj.return_var):
@@ -1058,16 +1065,15 @@ class Runtime:
         self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
 
-        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
+        self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self.core.volume_create_host.restype = ctypes.c_uint64
+        self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+        self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
+
+        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
         self.core.volume_create_device.restype = ctypes.c_uint64
-
-        self.core.volume_get_buffer_info.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
-
+        self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
-
-        self.core.volume_create_sphere_device.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float]
-        self.core.volume_create_sphere_device.restype = ctypes.c_uint64
-
 
         # load CUDA entry points on supported platforms
         self.core.cuda_check_device.restype = ctypes.c_uint64

@@ -3,122 +3,104 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import unittest
+import test_base
+
 import warp as wp
 import numpy as np
 
-import math
-
-wp.config.mode = "release"
-wp.config.verbose = True
-wp.config.cache_kernels = False
-wp.config.verify_cuda = True
-
 wp.init()
 
-num_points = 1000
-num_runs = 16
-
-radius = 1.0
-voxel_size = 0.1
-
-device = "cuda"
 
 @wp.kernel
-def analytical_distance(points: wp.array(dtype=wp.vec3),
-                        values: wp.array(dtype=float),
-                        radius: float):
-    tid = wp.tid()
-
-    p = points[tid]
-    values[tid] = sqrt(dot(p, p)) - radius
-
-@wp.kernel
-def volume_sample(volume: wp.uint64,
-                  points: wp.array(dtype=wp.vec3),
-                  values: wp.array(dtype=float),
-                  sampling_mode: int):
+def test_volume_lookup(volume: wp.uint64,
+                       points: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
     p = points[tid]
+    expected = p[0] * p[1] * p[2]
+    if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
+        expected = 10.0
 
-    values[tid] = wp.volume_sample_world(volume, p, sampling_mode)
+    i = int(p[0])
+    j = int(p[1])
+    k = int(p[2])
+
+    expect_eq(wp.volume_lookup(volume, i, j, k), expected)
+
 
 @wp.kernel
-def volume_lookup(volume: wp.uint64,
-                  points: wp.array(dtype=wp.vec3),
-                  values: wp.array(dtype=float)):
+def test_volume_sample_closest(volume: wp.uint64,
+                               points: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
     p = points[tid]
-    r = wp.volume_transform_inv(volume, p)
-    i = int(round(r[0]))
-    j = int(round(r[1]))
-    k = int(round(r[2]))
+    i = round(p[0])
+    j = round(p[1])
+    k = round(p[2])
+    expected = i * j * k
+    if abs(i) > 10.0 or abs(j) > 10.0 or abs(k) > 10.0:
+        expected = 10.0
 
-    values[tid] = wp.volume_lookup(volume, i, j, k)
+    expect_eq(wp.volume_sample_local(volume, p, wp.Volume.CLOSEST), expected)
 
+    q = wp.volume_transform(volume, p)
+    expect_eq(wp.volume_sample_world(volume, q, wp.Volume.CLOSEST), expected)
 
-sphere = None
-with wp.ScopedTimer("creating volume"):
-    sphere = wp.Volume.create_sphere(radius, 0, 0, 0, voxel_size, device)
-
-data = sphere.array()
-data_np = data.numpy()
-magic = ''.join([chr(x) for x in data_np[0:8]])
-if magic != "NanoVDB0":
-    print("FAILED: NanoVDB signature doesn't match!")
-
-volume = wp.Volume(data, device)
-
-test_names = ["closest", "linear", "lookup"]
-
-np.random.seed(1008)
-for i in range(num_runs):
-
-    print(f"Run: {i+1}")
-    print("---------")
-
-    # seeding points in the narrowband
-    phi = np.random.uniform(0, 2*math.pi, num_points)
-    theta = np.random.uniform(0, math.pi, num_points)
-    d = np.random.uniform(-1*voxel_size, 1*voxel_size, num_points)
-
-    points = ((radius + d) * np.stack((np.cos(phi) * np.sin(theta), np.sin(phi) * np.sin(theta), np.cos(theta)))).transpose()
-    # points = np.round(points/voxel_size) * voxel_size
-
-    points_arr = wp.array(points, dtype=wp.vec3, device=device)
-    sdf_arr = [
-        wp.array(np.random.rand(len(points)), dtype=float, device=device),
-        wp.array(np.random.rand(len(points)), dtype=float, device=device),
-        wp.array(np.random.rand(len(points)), dtype=float, device=device),
-    ]
-    sdf_arr_ref = wp.zeros(len(points), dtype=float, device=device)
-
-    wp.launch(kernel=analytical_distance, dim=len(points), inputs=[points_arr, sdf_arr_ref, radius], device=device)
-    wp.synchronize()
-
-    with wp.ScopedTimer("volume sample: closest point"):
-        wp.launch(kernel=volume_sample, dim=len(points), inputs=[volume.id, points_arr, sdf_arr[0], wp.Volume.CLOSEST], device=device)
-        wp.synchronize()
-
-    with wp.ScopedTimer("volume sample: linear sampling"):
-        wp.launch(kernel=volume_sample, dim=len(points), inputs=[volume.id, points_arr, sdf_arr[1], wp.Volume.LINEAR], device=device)
-        wp.synchronize()
-
-    with wp.ScopedTimer("volume lookup"):
-        wp.launch(kernel=volume_lookup, dim=len(points), inputs=[volume.id, points_arr, sdf_arr[2]], device=device)
-        wp.synchronize()
+    q_inv = wp.volume_transform_inv(volume, q)
+    expect_eq(p, q_inv)
 
 
+@wp.kernel
+def test_volume_sample_linear(volume: wp.uint64,
+                              points: wp.array(dtype=wp.vec3)):
 
-    sdf_ref = sdf_arr_ref.numpy().T
-    for test, sdf_res in zip(test_names, sdf_arr):
-        sdf = sdf_res.numpy().T
-        error = np.max(np.abs(sdf-sdf_ref))
+    tid = wp.tid()
 
-        if error < 1e-6:
-            print(f"Pass! [{test}] Max error in SDF values: {error}")
-        else:
-            print(f"FAIL! [{test}] Max error in SDF values: {error}")
+    p = points[tid]
+
+    expected = p[0] * p[1] * p[2]
+    if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
+        return  # not testing against background values
+
+    expect_near(wp.volume_sample_local(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
+
+    q = wp.volume_transform(volume, p)
+    expect_near(wp.volume_sample_world(volume, q, wp.Volume.LINEAR), expected, 2.0e-4)
+
+
+class TestVolumes(test_base.TestBase):
+    pass
+
+
+devices = ["cpu", "cuda"]
+
+volume_data = np.fromfile("tests/assets/test_grid.nvdbraw", dtype=np.byte)
+volume_array = wp.array(volume_data, dtype=wp.uint8, device="cpu")
+
+volumes = {}
+points = {}
+points_jittered = {}
+for device in devices:
+    volumes[device] = wp.Volume(volume_array, device)
+
+    data_np = volumes[device].array().numpy()
+    magic = ''.join([chr(x) for x in data_np[0:8]])
+    if magic != "NanoVDB0":
+        print(f"FAILED: NanoVDB signature doesn't match!\nFound \"{magic}\"")
+        sys.exit()
+
+    axis = np.linspace(-11, 11, 23)
+    points_np = np.array([[x, y, z] for x in axis for y in axis for z in axis])
+    points_jittered_np = points_np + np.random.uniform(-0.5, 0.5, size=points_np.shape)
+    points[device] = wp.array(points_np, dtype=wp.vec3, device=device)
+    points_jittered[device] = wp.array(points_jittered_np, dtype=wp.vec3, device=device)
+
+    TestVolumes.add_kernel_test(test_volume_lookup, dim=len(points_np), inputs=[volumes[device].id, points[device]], devices=[device])
+    TestVolumes.add_kernel_test(test_volume_sample_closest, dim=len(points), inputs=[volumes[device].id, points_jittered[device]], devices=[device])
+    TestVolumes.add_kernel_test(test_volume_sample_linear, dim=len(points), inputs=[volumes[device].id, points_jittered[device]], devices=[device])
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
