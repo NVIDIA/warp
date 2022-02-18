@@ -78,7 +78,7 @@ class TestVolumes(test_base.TestBase):
 devices = ["cpu", "cuda"]
 
 volume_data = np.fromfile("tests/assets/test_grid.nvdbraw", dtype=np.byte)
-volume_array = wp.array(volume_data, dtype=wp.uint8, device="cpu")
+volume_array = wp.array(volume_data, device="cpu")
 
 volumes = {}
 points = {}

@@ -20,6 +20,8 @@ import test_ctypes
 import test_rand
 import test_noise
 import test_tape
+import test_compile_consts
+import test_volume
 
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_codegen))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_mesh_query_aabb))
@@ -31,6 +33,8 @@ tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_ctypes))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_rand))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_noise))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_tape))
+tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_compile_consts))
+tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_volume))
 
 
 # load all modules

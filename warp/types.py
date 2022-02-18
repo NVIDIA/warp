@@ -157,6 +157,18 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
+dtype_to_warp_type = {
+    np.dtype(np.float32): float32,
+    np.dtype(np.float64): float64,
+    np.dtype(np.int8): int8,
+    np.dtype(np.int32): int32,
+    np.dtype(np.int64): int64,
+    np.dtype(np.uint8): uint8,
+    np.dtype(np.uint32): uint32,
+    np.dtype(np.uint64): uint64,
+    np.dtype(np.byte): int8,
+    np.dtype(np.ubyte): uint8,
+}
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
@@ -245,7 +257,7 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
+    def __init__(self, data=None, dtype=None, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
         """ Constructs a new Warp array object 
 
         This method allows manually constructing an array from existing data. 
@@ -271,6 +283,13 @@ class array:
 
         elif (dtype == float):
             dtype = float32
+
+        elif dtype is None:
+            # if type is not defined, then try to match the type of the source
+            try:
+                dtype = dtype_to_warp_type[data.dtype]
+            except (AttributeError, KeyError):
+                raise RuntimeError("Unable to deduce target data type")
 
         # save flag, controls if gradients will be computed in by wp.Tape
         self.requires_grad = requires_grad

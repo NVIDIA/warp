@@ -25,7 +25,7 @@ class Foobar:
     TWO = wp.constant(2)
 
 @wp.kernel
-def test(x: int):
+def test_constants(x: int):
     if Foobar.ONE > 0:
         x = 123 + Foobar.TWO + test_compile_consts_dummy.MINUS_ONE
     else:
@@ -37,7 +37,7 @@ x = 0
 class TestConstants(test_base.TestBase):
     pass
 
-TestConstants.add_kernel_test(test, dim=1, inputs=[x], devices=["cpu", "cuda"])
+TestConstants.add_kernel_test(test_constants, dim=1, inputs=[x], devices=["cpu", "cuda"])
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
