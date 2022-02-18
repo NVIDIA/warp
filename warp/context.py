@@ -1121,7 +1121,6 @@ class Runtime:
         # global tape
         self.tape = None
 
-
     def verify_device(self):
 
         if warp.config.verify_cuda:
@@ -1171,7 +1170,7 @@ def zeros(n: int, dtype=float, device:str="cpu", requires_grad:bool=False)-> war
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
         # construct array
-        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, context=runtime, device=device, owner=True, requires_grad=requires_grad)
+        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, device=device, owner=True, requires_grad=requires_grad)
 
 def zeros_like(src: warp.array, requires_grad:bool=False) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array

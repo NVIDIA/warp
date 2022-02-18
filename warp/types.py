@@ -1,5 +1,5 @@
 
-import ctypes 
+import ctypes
 import numpy as np
 
 #----------------------
@@ -203,7 +203,7 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
+    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
         """ Constructs a new Warp array object 
 
         This method allows manually constructing an array from existing data. 
@@ -219,9 +219,7 @@ class array:
             requires_grad (bool): Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
 
         """
-        
         self.owner = False
-        self.context = None
 
         # convert built-in numeric type to wp type
         if (dtype == int):
@@ -262,18 +260,14 @@ class array:
             shape = arr.__array_interface__["shape"]
             length = shape[0]
 
-            from warp.context import runtime
-            self.context = runtime
-
             if (device == "cpu" and copy == False):
-               
+
                 # ref numpy memory directly
                 self.data = ptr
                 self.dtype=dtype
                 self.length=length
                 self.capacity=length*type_size_in_bytes(dtype)
                 self.device = device
-                self.context = context
                 self.owner = False
 
                 # keep a ref to source array to keep allocation alive
@@ -283,7 +277,7 @@ class array:
 
                 # otherwise, create a host wrapper around the numpy
                 #  array and a new destination array to copy it to
-                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
+                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', copy=False, owner=False)
                 dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
@@ -298,7 +292,7 @@ class array:
            
             
         else:
-           
+            
             # explicit construction, data is interpreted as the address for raw memory 
             self.length = length
             self.capacity = capacity
@@ -306,7 +300,6 @@ class array:
             self.data = data
             self.device = device
             self.owner = owner
-            self.context = context
 
             self.__name__ = "array<" + type.__name__ + ">"
 
@@ -327,20 +320,21 @@ class array:
                 "version": 3 
             }
 
-
     def __del__(self):
         
-        # must be careful to not call any globals here
-        # since this may be called during destruction / shutdown
-        # even ctypes module may no longer exist
+        try:
+            if (self.owner):
 
-        if (self.owner and self.context):
+                # this import can fail during process destruction
+                # in this case we allow OS to clean up allocations
+                from warp.context import runtime
 
-            # todo: check this is OK during shutdown
-            if (self.device == "cpu"):
-                self.context.host_allocator.free(self.ptr, self.capacity)
-            else:
-                self.context.device_allocator.free(self.ptr, self.capacity)
+                if (self.device == "cpu"):
+                    runtime.host_allocator.free(self.ptr, self.capacity)
+                else:
+                    runtime.device_allocator.free(self.ptr, self.capacity)
+        except:
+            pass
                 
 
     def __len__(self):
@@ -449,8 +443,6 @@ class Mesh:
         if (points.device != indices.device):
             raise RuntimeError("Points and indices must live on the same device")
 
-        # inherit context from points, todo: find this globally
-        self.context = points.context
         self.device = points.device
 
         def get_data(array):
@@ -459,16 +451,17 @@ class Mesh:
             else:
                 return ctypes.c_void_p(0)
 
+        from warp.context import runtime
 
         if (self.device == "cpu"):
-            self.id = self.context.core.mesh_create_host(
+            self.id = runtime.core.mesh_create_host(
                 get_data(points), 
                 get_data(velocities), 
                 get_data(indices), 
                 int(points.length), 
                 int(indices.length/3))
         else:
-            self.id = self.context.core.mesh_create_device(
+            self.id = runtime.core.mesh_create_device(
                 get_data(points), 
                 get_data(velocities), 
                 get_data(indices), 
@@ -478,22 +471,28 @@ class Mesh:
 
     def __del__(self):
 
-        # we need to make sure correct CUDA device is set even during GC
-        self.context.verify_device()
+        try:
+                
+            from warp.context import runtime
 
-        if (self.device == "cpu"):
-            self.context.core.mesh_destroy_host(self.id)
-        else:
-            self.context.core.mesh_destroy_device(self.id)
+            if (self.device == "cpu"):
+                runtime.core.mesh_destroy_host(self.id)
+            else:
+                runtime.core.mesh_destroy_device(self.id)
+        
+        except:
+            pass
 
     def refit(self):
         """ Refit the BVH to points. This should be called after users modify the `points` data."""
                 
+        from warp.context import runtime
+
         if (self.device == "cpu"):
-            self.context.core.mesh_refit_host(self.id)
+            runtime.core.mesh_refit_host(self.id)
         else:
-            self.context.core.mesh_refit_device(self.id)
-            self.context.verify_device()
+            runtime.core.mesh_refit_device(self.id)
+            runtime.verify_device()
 
 
 
@@ -522,12 +521,11 @@ class HashGrid:
         self.device = device
 
         from warp.context import runtime
-        self.context = runtime
-        
+       
         if (device == "cpu"):
-            self.id = self.context.core.hash_grid_create_host(dim_x, dim_y, dim_z)
+            self.id = runtime.core.hash_grid_create_host(dim_x, dim_y, dim_z)
         elif (device == "cuda"):
-            self.id = self.context.core.hash_grid_create_device(dim_x, dim_y, dim_z)
+            self.id = runtime.core.hash_grid_create_device(dim_x, dim_y, dim_z)
 
 
     def build(self, points, radius):
@@ -547,18 +545,26 @@ class HashGrid:
                             the radius used when performing queries.                          
         """
         
+        from warp.context import runtime
 
         if (self.device == "cpu"):
-            self.context.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
+            runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
         else:
-            self.context.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
+            runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
 
 
     def __del__(self):
 
-        if (self.device == "cpu"):
-            self.context.core.hash_grid_destroy_host(self.id)
-        else:
-            self.context.core.hash_grid_destroy_device(self.id)
+        try:
+
+            from warp.context import runtime
+
+            if (self.device == "cpu"):
+                runtime.core.hash_grid_destroy_host(self.id)
+            else:
+                runtime.core.hash_grid_destroy_device(self.id)
+
+        except:
+            pass
 
 
