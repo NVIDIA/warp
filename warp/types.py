@@ -203,7 +203,7 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
+    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
         """ Constructs a new Warp array object 
 
         This method allows manually constructing an array from existing data. 
@@ -273,6 +273,7 @@ class array:
                 self.length=length
                 self.capacity=length*type_size_in_bytes(dtype)
                 self.device = device
+                self.context = context
                 self.owner = False
 
                 # keep a ref to source array to keep allocation alive
@@ -282,7 +283,7 @@ class array:
 
                 # otherwise, create a host wrapper around the numpy
                 #  array and a new destination array to copy it to
-                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', copy=False, owner=False)
+                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
                 dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
@@ -298,8 +299,6 @@ class array:
             
         else:
            
-            assert(owner == False, "Should not try to deallocate external memory")
-
             # explicit construction, data is interpreted as the address for raw memory 
             self.length = length
             self.capacity = capacity
@@ -307,7 +306,7 @@ class array:
             self.data = data
             self.device = device
             self.owner = owner
-            self.context = None
+            self.context = context
 
             self.__name__ = "array<" + type.__name__ + ">"
 
