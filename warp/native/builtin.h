@@ -619,7 +619,7 @@ inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const 
     if (abs(actual - expected) > tolerance)
     {
         printf("Error, expect_near() failed with torerance "); print(tolerance);
-        printf(":\n\t Expected: "); print(expected); 
+        printf("\t Expected: "); print(expected); 
         printf("\t Actual: "); print(actual);
     }
 }
