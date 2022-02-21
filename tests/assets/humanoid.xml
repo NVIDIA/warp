@@ -66,7 +66,7 @@
                     <body name='right_thigh' pos='0 -0.1 -0.04' >
                         <joint name='right_hip_x' type='hinge' pos='0 0 0' axis='1 0 0' range='-25 5'   damping='5' stiffness='10' armature='0.01' />
                         <joint name='right_hip_z' type='hinge' pos='0 0 0' axis='0 0 1' range='-60 35'  damping='5' stiffness='10' armature='0.01' />
-                        <joint name='right_hip_y' type='hinge' pos='0 0 0' axis='0 1 0' range='-120 20' damping='5' stiffness='20' armature='0.01' />
+                        <joint name='right_hip_y' type='hinge' pos='0 0 0' axis='0 1 0' range='-80 20' damping='5' stiffness='20' armature='0.01' />
                         <geom name='right_thigh1' type='capsule' fromto='0 0 0 0 0.01 -.34'  size='0.06' />
                         <body name='right_shin' pos='0 0.01 -0.403' >
                             <joint name='right_knee' type='hinge' pos='0 0 .02' axis='0 -1 0' range='-160 -2' stiffness='1' armature='0.006' />
@@ -82,7 +82,7 @@
                     <body name='left_thigh' pos='0 0.1 -0.04' >
                         <joint name='left_hip_x' type='hinge' pos='0 0 0' axis='-1 0 0' range='-25 5'  damping='5' stiffness='10' armature='0.01' />
                         <joint name='left_hip_z' type='hinge' pos='0 0 0' axis='0 0 -1' range='-60 35' damping='5' stiffness='10' armature='0.01' />
-                        <joint name='left_hip_y' type='hinge' pos='0 0 0' axis='0 1 0' range='-120 20' damping='5' stiffness='20' armature='0.01' />
+                        <joint name='left_hip_y' type='hinge' pos='0 0 0' axis='0 1 0' range='-80 20' damping='5' stiffness='20' armature='0.01' />
                         <geom name='left_thigh1' type='capsule' fromto='0 0 0 0 -0.01 -.34'  size='0.06' />
                         <body name='left_shin' pos='0 -0.01 -0.403' >
                             <joint name='left_knee' type='hinge' pos='0 0 .02' axis='0 -1 0' range='-160 -2' stiffness='1' armature='0.006' />
@@ -98,8 +98,8 @@
                 </body>
             </body>
             <body name='right_upper_arm' pos='0 -0.17 0.06' >
-                <joint name='right_shoulder1' type='hinge' pos='0 0 0' axis='2 1 1'  range='-85 60' stiffness='1' armature='0.0068' />
-                <joint name='right_shoulder2' type='hinge' pos='0 0 0' axis='0 -1 1' range='-85 60' stiffness='1' armature='0.0051' />
+                <joint name='right_shoulder1' type='hinge' pos='0 0 0' axis='2 1 1'  range='-60 60' stiffness='1' armature='0.0068' />
+                <joint name='right_shoulder2' type='hinge' pos='0 0 0' axis='0 -1 1' range='-60 60' stiffness='1' armature='0.0051' />
                 <geom name='right_uarm1' type='capsule' fromto='0 0 0 .16 -.16 -.16'  size='0.04 0.16' />
                 <body name='right_lower_arm' pos='.18 -.18 -.18' >
                     <joint name='right_elbow' type='hinge' pos='0 0 0' axis='0 -1 1' range='-90 50'  stiffness='0' armature='0.0028' />
@@ -108,8 +108,8 @@
                 </body>
             </body>
             <body name='left_upper_arm' pos='0 0.17 0.06' >
-                <joint name='left_shoulder1' type='hinge' pos='0 0 0' axis='2 -1 1' range='-60 85' stiffness='1' armature='0.0068' />
-                <joint name='left_shoulder2' type='hinge' pos='0 0 0' axis='0 1 1' range='-60 85'  stiffness='1' armature='0.0051' />
+                <joint name='left_shoulder1' type='hinge' pos='0 0 0' axis='2 -1 1' range='-60 60' stiffness='1' armature='0.0068' />
+                <joint name='left_shoulder2' type='hinge' pos='0 0 0' axis='0 1 1' range='-60 60'  stiffness='1' armature='0.0051' />
                 <geom name='left_uarm1' type='capsule' fromto='0 0 0 .16 .16 -.16'  size='0.04 0.16' />
                 <body name='left_lower_arm' pos='.18 .18 -.18' >
                     <joint name='left_elbow' type='hinge' pos='0 0 0' axis='0 -1 -1' range='-90 50' stiffness='0' armature='0.0028' />

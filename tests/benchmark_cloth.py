@@ -155,7 +155,7 @@ def run_benchmark(mode, dim, timers, render=False):
 
     if (render):
         # set up grid for visualization
-        stage = Usd.Stage.CreateNew("cloth.usd")
+        stage = Usd.Stage.CreateNew("outputs/cloth.usd")
         stage.SetStartTimeCode(0.0)
         stage.SetEndTimeCode(sim_duration*sim_fps)
         stage.SetTimeCodesPerSecond(sim_fps)
@@ -263,7 +263,7 @@ import csv
 for k, v in timers.items():
     print("{:16} min: {:8.2f} max: {:8.2f} avg: {:8.2f}".format(k, np.min(v), np.max(v), np.mean(v)))
 
-report = open("report.csv", 'a')
+report = open("outputs/report.csv", 'a')
 writer = csv.writer(report,  delimiter=',')
 
 if (report.tell() == 0):

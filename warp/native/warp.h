@@ -71,6 +71,14 @@ extern "C"
     WP_API void hash_grid_destroy_device(uint64_t id);
     WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
 
+    WP_API uint64_t volume_create_host(void* buf, uint64_t size);
+    WP_API void volume_get_buffer_info_host(uint64_t id, void** buf, uint64_t* size);
+    WP_API void volume_destroy_host(uint64_t id);
+
+    WP_API uint64_t volume_create_device(void* buf, uint64_t size);
+    WP_API void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size);
+    WP_API void volume_destroy_device(uint64_t id);
+
     WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
 
@@ -104,4 +112,20 @@ extern "C"
 
 } // extern "C"
 
+namespace wp {
+enum class Device { CPU, CUDA };
 
+template<Device Source, Device Target> void memcpy(void* dest, void* src, size_t n);
+template<> inline void memcpy<Device::CPU, Device::CPU>(void* dest, void* src, size_t n)   { memcpy_h2h(dest, src, n); }
+template<> inline void memcpy<Device::CPU, Device::CUDA>(void* dest, void* src, size_t n)  { memcpy_h2d(dest, src, n); }
+template<> inline void memcpy<Device::CUDA, Device::CPU>(void* dest, void* src, size_t n)  { memcpy_d2h(dest, src, n); }
+template<> inline void memcpy<Device::CUDA, Device::CUDA>(void* dest, void* src, size_t n) { memcpy_d2d(dest, src, n); }
+
+template<Device device> void* alloc(size_t s);
+template<> inline void* alloc<Device::CPU>(size_t s)  { return alloc_host(s); }
+template<> inline void* alloc<Device::CUDA>(size_t s) { return alloc_device(s); }
+
+template<Device device> void free(void* ptr);
+template<> inline void free<Device::CPU>(void* ptr)  { free_host(ptr); }
+template<> inline void free<Device::CUDA>(void* ptr) { free_device(ptr); }
+} // namespace wp

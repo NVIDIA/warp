@@ -67,6 +67,17 @@ struct mat33
     float data[3][3];
 };
 
+inline CUDA_CALLABLE bool operator==(const mat33& a, const mat33& b)
+{
+    for(int i=0; i < 3; ++i)
+        for (int j=0; j < 3; ++j)
+            if (a.data[i][j] != b.data[i][j])
+                return false;
+
+    return true;
+}
+
+
 inline CUDA_CALLABLE mat33 diag(const vec3& d) {
   return mat33(d.x, 0.f, 0.f, 0.f, d.y, 0.f, 0.f, 0.f, d.z);
 }

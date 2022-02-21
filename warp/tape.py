@@ -1,10 +1,11 @@
+import numpy as np
 import warp as wp
 
 class Tape:
 
     def __init__(self):
 
-        self.adjoints = {}
+        self.gradients = {}
         self.launches = []
 
     def __enter__(self):      
@@ -25,15 +26,22 @@ class Tape:
 
 
     # adj_outputs is a mapping from output tensor -> adjoint of the output
-    # after running backward the adjoints of tensors may be retrieved by:
+    # after running backward the gradients of tensors may be retrieved by:
     #
-    #  adj_tensor = tape.adjoints[tensor]
+    #  adj_tensor = tape.gradients[tensor]
     #
-    def backward(self, adj_user: dict):
+    def backward(self, loss: wp.array=None, grads: dict=None):
 
-        # insert user specified adjoints (e.g.: from loss function inputs) into our lookup
-        self.adjoints = {}
-        self.adjoints.update(adj_user)
+        self.gradients = {}
+        
+        # if scalar loss is specified then allocate 
+        # a 'seed' array for it, with gradient of one
+        if (loss):
+            self.gradients[loss] = wp.array(np.ones(1), dtype=wp.float32, device=loss.device)
+
+        # insert any user specified gradients (e.g.: from Torch)
+        if (grads):
+            self.gradients.update(grads)
 
         # run launches backwards
         for launch in reversed(self.launches):
@@ -73,26 +81,16 @@ class Tape:
             # if input is a simple type (e.g.: float, vec3, etc) just return a value copy
             return a
 
+        elif a in self.gradients:
+            # try and find adjoint array in map
+            return self.gradients[a]
+                    
         elif wp.type_is_int(a.dtype) or a.requires_grad == False:
             # otherwise if input is an array that is integer typed or doesn't require grad then return null array
             return None
 
-        elif a in self.adjoints:
-            # try and find adjoint array in map
-            return self.adjoints[a]
-        
         else:
             # otherwise allocate a zero array for the array adjoint
             adj = wp.zeros_like(a)
-            self.adjoints[a] = adj
+            self.gradients[a] = adj
             return adj
-
-    def zero(self):
-        self.adjoints = {}
-
-    def reset(self):
-
-        self.adjoints = {}
-        self.launches = []
-        
-   

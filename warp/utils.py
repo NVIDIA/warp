@@ -136,11 +136,11 @@ def quat_from_matrix(m):
 
     else:
 
-        i = 0;
+        i = 0
         if(m[1, 1] > m[0, 0]):
-            i = 1;
+            i = 1
         if(m[2, 2] > m[i, i]):
-            i = 2;
+            i = 2
         
         if (i == 0):
 
@@ -154,7 +154,7 @@ def quat_from_matrix(m):
             
         elif (i == 1):
 
-            h = sqrtf((m[1, 1] - (m[2, 2] + m[0, 0])) + 1.0)
+            h = math.sqrt((m[1, 1] - (m[2, 2] + m[0, 0])) + 1.0)
             y = 0.5 * h
             h = 0.5 / h
 
@@ -164,7 +164,7 @@ def quat_from_matrix(m):
         
         elif (i == 2):
 
-            h = sqrtf((m[2, 2] - (m[0, 0] + m[1, 1])) + 1.0)
+            h = math.sqrt((m[2, 2] - (m[0, 0] + m[1, 1])) + 1.0)
             z = 0.5 * h
             h = 0.5 / h
 

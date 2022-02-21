@@ -23,8 +23,7 @@ def from_torch(t, dtype=warp.types.float32):
         length=rows,
         copy=False,
         owner=False,
-        requires_grad=True,#t.requires_grad,
-        context=warp.context.runtime,
+        requires_grad=True,
         device=t.device.type)
 
     # save a reference to the source tensor, otherwise it will be deallocated

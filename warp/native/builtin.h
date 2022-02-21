@@ -1,7 +1,7 @@
 #pragma once
 
 // All built-in types and functions. To be compatible with runtime NVRTC compilation
-// this header must be independently compilable (without external headers)
+// this header must be independently compilable (i.e.: without external SDK headers)
 // to achieve this we redefine a subset of CRT functions (printf, pow, sin, cos, etc)
 
 #include "crt.h"
@@ -62,6 +62,9 @@ typedef int32_t int32;
 typedef uint64_t uint64;
 typedef uint32_t uint32;
 
+// matches Python string type for constant strings
+typedef char* str;
+
 #define kEps 0.0f
 
 // basic ops for integer types
@@ -72,7 +75,23 @@ inline CUDA_CALLABLE int sub(int a, int b) { return a-b; }
 inline CUDA_CALLABLE int mod(int a, int b) { return a % b; }
 inline CUDA_CALLABLE int min(int a, int b) { return a<b?a:b; }
 inline CUDA_CALLABLE int max(int a, int b) { return a>b?a:b; }
+inline CUDA_CALLABLE int abs(int x) { return ::abs(x); }
+inline CUDA_CALLABLE int sign(int x) { return x < 0 ? -1 : 1; }
 inline CUDA_CALLABLE int clamp(int x, int a, int b) { return min(max(a, x), b); }
+
+// implements for-loop comparison to emulate Python range() loops with negative arguments
+inline CUDA_CALLABLE bool cmp(int iter, int end, int step)
+{
+    if (step == 0)
+        // degenerate case where step == 0
+        return false;
+    if (step > 0)
+        // normal case where step > 0
+        return iter < end;
+    else
+        // reverse case where step < 0
+        return iter > end;
+}
 
 inline CUDA_CALLABLE void adj_mul(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_div(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
@@ -81,6 +100,8 @@ inline CUDA_CALLABLE void adj_sub(int a, int b, int& adj_a, int& adj_b, int adj_
 inline CUDA_CALLABLE void adj_mod(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_min(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_max(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
+inline CUDA_CALLABLE void adj_abs(int x, int adj_x, int& adj_ret) { }
+inline CUDA_CALLABLE void adj_sign(int x, int adj_x, int& adj_ret) { }
 inline CUDA_CALLABLE void adj_clamp(int x, int a, int b, int& adj_x, int& adj_a, int& adj_b, int adj_ret) { }
 
 // basic ops for float types
@@ -111,6 +132,12 @@ inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
 inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
 inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
 inline CUDA_CALLABLE float tan(float x) { return ::tan(x); }
+
+inline CUDA_CALLABLE float round(float x) { return ::roundf(x); }
+inline CUDA_CALLABLE float rint(float x) { return ::rintf(x); }
+inline CUDA_CALLABLE float trunc(float x) { return ::truncf(x); }
+inline CUDA_CALLABLE float floor(float x) { return ::floorf(x); }
+inline CUDA_CALLABLE float ceil(float x) { return ::ceilf(x); }
 
 inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
 inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret/b; adj_b -= adj_ret*(a/b)/b; }
@@ -242,6 +269,31 @@ inline CUDA_CALLABLE void adj_sqrt(float x, float& adj_x, float adj_ret)
     adj_x += 0.5f*(1.0f/sqrt(x))*adj_ret;
 }
 
+inline CUDA_CALLABLE void adj_round(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_rint(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_trunc(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_floor(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_ceil(float x, float& adj_x, float adj_ret)
+{
+    // nop
+}
+
 
 template <typename T>
 CUDA_CALLABLE inline T select(bool cond, const T& a, const T& b) { return cond?b:a; }
@@ -345,6 +397,8 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 #include "svd.h"
 #include "hashgrid.h"
 #include "rand.h"
+#include "noise.h"
+#include "volume.h"
 
 //--------------
 namespace wp
@@ -440,16 +494,10 @@ inline CUDA_CALLABLE void adj_sdf_grad(vec3 x, vec3& adj_x, vec3& adj_ret)
 
 }
 
-// // based on https://arxiv.org/abs/2004.06278
-// inline CUDA_CALLABLE int rand_int(int count)
-// {
-//     return clock()
-// }
-
-// inline CUDA_CALLABLE float rand_float(int count)
-// {
-
-// }
+inline CUDA_CALLABLE void print(const str s)
+{
+    printf("%s\n", s);
+}
 
 inline CUDA_CALLABLE void print(int i)
 {
@@ -458,40 +506,45 @@ inline CUDA_CALLABLE void print(int i)
 
 inline CUDA_CALLABLE void print(float f)
 {
-    printf("%f\n", f);
+    printf("%g\n", f);
+}
+
+inline CUDA_CALLABLE void print(vec2 v)
+{
+    printf("%g %g\n", v.x, v.y);
 }
 
 inline CUDA_CALLABLE void print(vec3 v)
 {
-    printf("%f %f %f\n", v.x, v.y, v.z);
+    printf("%g %g %g\n", v.x, v.y, v.z);
 }
 
 inline CUDA_CALLABLE void print(vec4 v)
 {
-    printf("%f %f %f %f\n", v.x, v.y, v.z, v.w);
+    printf("%g %g %g %g\n", v.x, v.y, v.z, v.w);
 }
 
 inline CUDA_CALLABLE void print(quat i)
 {
-    printf("%f %f %f %f\n", i.x, i.y, i.z, i.w);
+    printf("%g %g %g %g\n", i.x, i.y, i.z, i.w);
 }
 
 inline CUDA_CALLABLE void print(mat22 m)
 {
-    printf("%f %f\n%f %f\n", m.data[0][0], m.data[0][1], 
+    printf("%g %g\n%g %g\n", m.data[0][0], m.data[0][1], 
                              m.data[1][0], m.data[1][1]);
 }
 
 inline CUDA_CALLABLE void print(mat33 m)
 {
-    printf("%f %f %f\n%f %f %f\n%f %f %f\n", m.data[0][0], m.data[0][1], m.data[0][2], 
+    printf("%g %g %g\n%g %g %g\n%g %g %g\n", m.data[0][0], m.data[0][1], m.data[0][2], 
                                              m.data[1][0], m.data[1][1], m.data[1][2], 
                                              m.data[2][0], m.data[2][1], m.data[2][2]);
 }
 
 inline CUDA_CALLABLE void print(mat44 m)
 {
-    printf("%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n", m.data[0][0], m.data[0][1], m.data[0][2], m.data[0][3],
+    printf("%g %g %g %g\n%g %g %g %g\n%g %g %g %g\n%g %g %g %g\n", m.data[0][0], m.data[0][1], m.data[0][2], m.data[0][3],
                                                                    m.data[1][0], m.data[1][1], m.data[1][2], m.data[1][3],
                                                                    m.data[2][0], m.data[2][1], m.data[2][2], m.data[2][3],
                                                                    m.data[3][0], m.data[3][1], m.data[3][2], m.data[3][3]);
@@ -499,22 +552,22 @@ inline CUDA_CALLABLE void print(mat44 m)
 
 inline CUDA_CALLABLE void print(transform t)
 {
-    printf("(%f %f %f) (%f %f %f %f)\n", t.p.x, t.p.y, t.p.z, t.q.x, t.q.y, t.q.z, t.q.w);
+    printf("(%g %g %g) (%g %g %g %g)\n", t.p.x, t.p.y, t.p.z, t.q.x, t.q.y, t.q.z, t.q.w);
 }
 
 inline CUDA_CALLABLE void print(spatial_vector v)
 {
-    printf("(%f %f %f) (%f %f %f)\n", v.w.x, v.w.y, v.w.z, v.v.x, v.v.y, v.v.z);
+    printf("(%g %g %g) (%g %g %g)\n", v.w.x, v.w.y, v.w.z, v.v.x, v.v.y, v.v.z);
 }
 
 inline CUDA_CALLABLE void print(spatial_matrix m)
 {
-    printf("%f %f %f %f %f %f\n"
-           "%f %f %f %f %f %f\n"
-           "%f %f %f %f %f %f\n"
-           "%f %f %f %f %f %f\n"
-           "%f %f %f %f %f %f\n"
-           "%f %f %f %f %f %f\n", 
+    printf("%g %g %g %g %g %g\n"
+           "%g %g %g %g %g %g\n"
+           "%g %g %g %g %g %g\n"
+           "%g %g %g %g %g %g\n"
+           "%g %g %g %g %g %g\n"
+           "%g %g %g %g %g %g\n", 
            m.data[0][0], m.data[0][1], m.data[0][2],  m.data[0][3], m.data[0][4], m.data[0][5], 
            m.data[1][0], m.data[1][1], m.data[1][2],  m.data[1][3], m.data[1][4], m.data[1][5], 
            m.data[2][0], m.data[2][1], m.data[2][2],  m.data[2][3], m.data[2][4], m.data[2][5], 
@@ -525,31 +578,54 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
 
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
-inline CUDA_CALLABLE void adj_print(float i, float& adj_i) { printf("%f adj: %f\n", i, adj_i); }
-inline CUDA_CALLABLE void adj_print(vec3 v, vec3& adj_v) { printf("%f %f %f adj: %f %f %f \n", v.x, v.y, v.z, adj_v.x, adj_v.y, adj_v.z); }
-inline CUDA_CALLABLE void adj_print(vec4 v, vec4& adj_v) { printf("%f %f %f %f adj: %f %f %f %f\n", v.x, v.y, v.z, v.w, adj_v.x, adj_v.y, adj_v.z, adj_v.w); }
-inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%f %f %f %f adj: %f %f %f %f\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
+inline CUDA_CALLABLE void adj_print(float i, float& adj_i) { printf("%g adj: %g\n", i, adj_i); }
+inline CUDA_CALLABLE void adj_print(vec2 v, vec2& adj_v) { printf("%g %g adj: %g %g \n", v.x, v.y, adj_v.x, adj_v.y); }
+inline CUDA_CALLABLE void adj_print(vec3 v, vec3& adj_v) { printf("%g %g %g adj: %g %g %g \n", v.x, v.y, v.z, adj_v.x, adj_v.y, adj_v.z); }
+inline CUDA_CALLABLE void adj_print(vec4 v, vec4& adj_v) { printf("%g %g %g %g adj: %g %g %g %g\n", v.x, v.y, v.z, v.w, adj_v.x, adj_v.y, adj_v.z, adj_v.w); }
+inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%g %g %g %g adj: %g %g %g %g\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
 inline CUDA_CALLABLE void adj_print(mat22 m, mat22& adj_m) { }
 inline CUDA_CALLABLE void adj_print(mat33 m, mat33& adj_m) { }
 inline CUDA_CALLABLE void adj_print(mat44 m, mat44& adj_m) { }
 inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
+inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
+
+// printf defined globally in crt.h
+inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
 
 
 template <typename T>
-inline CUDA_CALLABLE void expect_eq(const T& a, const T& b)
+inline CUDA_CALLABLE void expect_eq(const T& actual, const T& expected)
 {
-    if (!(a == b))
+    if (!(actual == expected))
     {
-        printf("Error, expected equal failed:\n");
-        printf("\t Expected: "); print(b); 
-        printf("\t Actual: "); print(a);
+        printf("Error, expect_eq() failed:\n");
+        printf("\t Expected: "); print(expected); 
+        printf("\t Actual: "); print(actual);
     }
 }
 
 template <typename T>
 inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj_b)
+{
+    // nop
+}
+
+
+template <typename T>
+inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const T& tolerance)
+{
+    if (abs(actual - expected) > tolerance)
+    {
+        printf("Error, expect_near() failed with torerance "); print(tolerance);
+        printf("\t Expected: "); print(expected); 
+        printf("\t Actual: "); print(actual);
+    }
+}
+
+template <typename T>
+inline CUDA_CALLABLE void adj_expect_near(const T& actual, const T& expected, const T& tolerance, T& adj_actual, T& adj_expected, T& adj_tolerance)
 {
     // nop
 }

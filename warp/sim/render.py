@@ -69,7 +69,7 @@ class SimRenderer(warp.render.UsdRenderer):
                     mesh.GetRadiusAttr().Set(float(geo_scale[0]))
 
                     wp.render._usd_add_xform(mesh)
-                    wp.render._usd_set_xform(mesh, X_bs, (1.0, 1.0, 1.0), 0.0)
+                    wp.render._usd_set_xform(mesh, X_bs.p, X_bs.q, (1.0, 1.0, 1.0), 0.0)
 
                 elif (geo_type == warp.sim.GEO_CAPSULE):
                     mesh = UsdGeom.Capsule.Define(self.stage, parent_path.AppendChild("capsule_" + str(s)))
@@ -81,14 +81,14 @@ class SimRenderer(warp.render.UsdRenderer):
                     X_bg = warp.utils.transform_multiply(X_bs, X_sg)
 
                     wp.render._usd_add_xform(mesh)
-                    wp.render._usd_set_xform(mesh, X_bg, (1.0, 1.0, 1.0), 0.0)
+                    wp.render._usd_set_xform(mesh, X_bg.p, X_bg.q, (1.0, 1.0, 1.0), 0.0)
 
                 elif (geo_type == warp.sim.GEO_BOX):
                     mesh = UsdGeom.Cube.Define(self.stage, parent_path.AppendChild("box_" + str(s)))
                     #mesh.GetSizeAttr().Set((geo_scale[0], geo_scale[1], geo_scale[2]))
 
                     wp.render._usd_add_xform(mesh)
-                    wp.render._usd_set_xform(mesh, X_bs, (geo_scale[0], geo_scale[1], geo_scale[2]), 0.0)
+                    wp.render._usd_set_xform(mesh, X_bs.p, X_bs.q, (geo_scale[0], geo_scale[1], geo_scale[2]), 0.0)
 
                 elif (geo_type == warp.sim.GEO_MESH):
 
@@ -98,7 +98,7 @@ class SimRenderer(warp.render.UsdRenderer):
                     mesh.GetFaceVertexCountsAttr().Set([3] * int(len(geo_src.indices) / 3))
 
                     wp.render._usd_add_xform(mesh)
-                    wp.render._usd_set_xform(mesh, X_bs, (geo_scale[0], geo_scale[1], geo_scale[2]), 0.0)
+                    wp.render._usd_set_xform(mesh, X_bs.p, X_bs.q, (geo_scale[0], geo_scale[1], geo_scale[2]), 0.0)
 
                 elif (geo_type == warp.sim.GEO_SDF):
                     pass
@@ -173,6 +173,6 @@ class SimRenderer(warp.render.UsdRenderer):
                 # unpack rigid transform
                 X_sb = warp.utils.transform_expand(body_q[b])
 
-                wp.render._usd_set_xform(node, X_sb, (1.0, 1.0, 1.0), self.time)
+                wp.render._usd_set_xform(node, X_sb.p, X_sb.q, (1.0, 1.0, 1.0), self.time)
 
 

@@ -4,6 +4,7 @@ import sys
 import imp
 import subprocess
 import ctypes
+import _ctypes
 
 import warp.config
 from warp.utils import ScopedTimer
@@ -70,7 +71,21 @@ def find_host_compiler():
                     
         # try and find cl.exe
         try:
-            return subprocess.check_output("where cl.exe").decode()
+            cl_path = subprocess.check_output("where cl.exe").decode()
+            cl_version = os.environ["VCToolsVersion"].split(".")
+
+            # ensure at least VS2017 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
+            cl_required_major = 14
+            cl_required_minor = 1
+
+            if ((int(cl_version[0]) < cl_required_major) or
+                (int(cl_version[0]) == cl_required_major) and int(cl_version[1]) < cl_required_minor):
+                
+                print(f"Warp: MSVC found but compiler version too old, found {cl_version[0]}.{cl_version[1]}, but must be {cl_required_major}.{cl_required_minor} or higher, kernel host compilation will be disabled.")
+                return None
+                
+            return cl_path
+        
         except:
             return None
     else:
@@ -123,7 +138,9 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
     cuda_cmd = None
 
     import pathlib
-    warp_home = pathlib.Path(__file__).parent.resolve()
+    warp_home_path = pathlib.Path(__file__).parent
+    warp_home = warp_home_path.resolve()
+    nanovdb_home = (warp_home_path.parent / "_build/host-deps/nanovdb/include")
 
     if (cu_path != None and cuda_home == None):
         print("CUDA toolchain not found, skipping CUDA build")
@@ -161,8 +178,8 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
                 
                 return True
 
-            # ensure that dll is not loaded in the process
-            force_unload_dll(dll_path)
+    # ensure that dll is not loaded in the process
+    force_unload_dll(dll_path)
 
     # output stale, rebuild
     if (warp.config.verbose):
@@ -173,12 +190,12 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
         cpp_out = cpp_path + ".obj"
 
         if (config == "debug"):
-            cpp_flags = '/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" '
+            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{nanovdb_home}"'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = '/Ox /D "NDEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast'
+            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{nanovdb_home}"'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -197,10 +214,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I{warp_home}/native/cub -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I{warp_home}/native/cub -I"{nanovdb_home}" -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, nanovdb_home=nanovdb_home, cu_out=cu_out, cu_path=cu_path)
 
             elif (config == "release"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52 -I{warp_home}/native/cub --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52 -I{warp_home}/native/cub -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, nanovdb_home=nanovdb_home, cu_out=cu_out, cu_path=cu_path)
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -247,10 +264,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
                 run_cmd(cuda_cmd)
 
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append('-L"{cuda_home}/lib64" -lcudart -lcuda -lnvrtc'.format(cuda_home=cuda_home))
+                ld_inputs.append('-L"{cuda_home}/lib64" -lcudart -lnvrtc'.format(cuda_home=cuda_home))
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = "g++ -shared -Wl,-rpath,'$ORIGIN' -Wl,-z,origin -o '{dll_path}' {inputs}".format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)            
+            link_cmd = "g++ -shared -Wl,-rpath,'$ORIGIN' -o '{dll_path}' {inputs}".format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)            
             run_cmd(link_cmd)
 
     
@@ -274,6 +291,9 @@ def unload_dll(dll):
             success = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
             if (not success):
                 return
+    else:
+        _ctypes.dlclose(handle)
+
 
 def force_unload_dll(dll_path):
 

@@ -1,5 +1,22 @@
 import warp as wp
 
+
+# decompose a quaternion into a sequence of 3 rotations around x,y',z' respectively, i.e.: q = q_z''q_y'q_x
+@wp.func
+def quat_decompose(q: wp.quat):
+
+    R = wp.mat33(
+            wp.quat_rotate(q, wp.vec3(1.0, 0.0, 0.0)),
+            wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0)),
+            wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0)))
+
+    # https://www.sedris.org/wg8home/Documents/WG80485.pdf
+    phi = wp.atan2(R[1, 2], R[2, 2])
+    theta = wp.asin(-R[0, 2])
+    psi = wp.atan2(R[0, 1], R[0, 0])
+
+    return -wp.vec3(phi, theta, psi)
+
 @wp.kernel
 def eval_articulation_fk(
     articulation_start: wp.array(dtype=int),
@@ -43,12 +60,12 @@ def eval_articulation_fk(
         axis = joint_axis[i]
 
         X_pj = joint_X_p[i]
-        #X_cj = joint_X_c[i]  # todo: assuming child origin is aligned with child joint
+        X_cj = joint_X_c[i]  
         
         q_start = joint_q_start[i]
         qd_start = joint_qd_start[i]
 
-        # prismatic
+        # JOINT_PRISMATIC
         if type == 0:
 
             q = joint_q[q_start]
@@ -57,7 +74,7 @@ def eval_articulation_fk(
             X_jc = wp.transform(axis*q, wp.quat_identity())
             v_jc = wp.spatial_vector(wp.vec3(0.0, 0.0, 0.0), axis*qd)
 
-        # revolute
+        # JOINT_REVOLUTE
         if type == 1:
 
             q = joint_q[q_start]
@@ -66,7 +83,7 @@ def eval_articulation_fk(
             X_jc = wp.transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_from_axis_angle(axis, q))
             v_jc = wp.spatial_vector(axis*qd, wp.vec3(0.0, 0.0, 0.0))
 
-        # ball
+        # JOINT_BALL
         if type == 2:
 
             r = wp.quat(joint_q[q_start+0],
@@ -81,13 +98,13 @@ def eval_articulation_fk(
             X_jc = wp.transform(wp.vec3(0.0, 0.0, 0.0), r)
             v_jc = wp.spatial_vector(w, wp.vec3(0.0, 0.0, 0.0))
 
-        # fixed
+        # JOINT_FIXED
         if type == 3:
             
             X_jc = wp.transform_identity()
             v_jc = wp.spatial_vector(wp.vec3(0.0, 0.0, 0.0), wp.vec3(0.0, 0.0, 0.0))
 
-        # free
+        # JOINT_FREE
         if type == 4:
 
             t = wp.transform(
@@ -100,6 +117,60 @@ def eval_articulation_fk(
 
             X_jc = t
             v_jc = v
+
+        # JOINT_COMPOUND
+        if type == 5:
+
+            q_c = wp.transform_get_rotation(X_cj)
+
+            # body local axes
+            local_0 = wp.quat_rotate(q_c, wp.vec3(1.0, 0.0, 0.0))
+            local_1 = wp.quat_rotate(q_c, wp.vec3(0.0, 1.0, 0.0))
+            local_2 = wp.quat_rotate(q_c, wp.vec3(0.0, 0.0, 1.0))
+
+            # reconstruct rotation axes, todo: can probably use fact that rz'*ry'*rx' == rx*ry*rz to avoid some work here
+            axis_0 = local_0
+            q_0 = wp.quat_from_axis_angle(axis_0, joint_q[q_start+0])
+
+            axis_1 = wp.quat_rotate(q_0, local_1)
+            q_1 = wp.quat_from_axis_angle(axis_1, joint_q[q_start+1])
+
+            axis_2 = wp.quat_rotate(q_1*q_0, local_2)
+            q_2 = wp.quat_from_axis_angle(axis_2, joint_q[q_start+2])
+
+            t = wp.transform(wp.vec3(0.0, 0.0, 0.0), q_2*q_1*q_0)
+
+            v = wp.spatial_vector(axis_0*joint_qd[qd_start+0] + 
+                                  axis_1*joint_qd[qd_start+1] + 
+                                  axis_2*joint_qd[qd_start+2], wp.vec3(0.0, 0.0, 0.0))
+
+            X_jc = t
+            v_jc = v
+
+        # JOINT_UNIVERSAL
+        if type == 6:
+
+            q_c = wp.transform_get_rotation(X_cj)
+
+            # body local axes
+            local_0 = wp.quat_rotate(q_c, wp.vec3(1.0, 0.0, 0.0))
+            local_1 = wp.quat_rotate(q_c, wp.vec3(0.0, 1.0, 0.0))
+
+            # reconstruct rotation axes
+            axis_0 = local_0
+            q_0 = wp.quat_from_axis_angle(axis_0, joint_q[q_start+0])
+
+            axis_1 = wp.quat_rotate(q_0, local_1)
+            q_1 = wp.quat_from_axis_angle(axis_1, joint_q[q_start+1])
+
+            t = wp.transform(wp.vec3(0.0, 0.0, 0.0), q_1*q_0)
+
+            v = wp.spatial_vector(axis_0*joint_qd[qd_start+0] + 
+                                  axis_1*joint_qd[qd_start+1], wp.vec3(0.0, 0.0, 0.0))
+
+            X_jc = t
+            v_jc = v
+
 
         X_wj = X_wp*X_pj
         X_wc = X_wj*X_jc
@@ -188,7 +259,7 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
         v_p = wp.spatial_bottom(twist_p) + wp.cross(w_p, r_wp)
 
     # child transform and moment arm
-    X_wc = body_q[c_child]*joint_X_c[tid]
+    X_wc = body_q[c_child]#*joint_X_c[tid]
     r_c = wp.transform_get_translation(X_wc) - wp.transform_point(body_q[c_child], body_com[c_child])
     
     twist_c = body_qd[c_child]
@@ -214,7 +285,7 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
     q_start = joint_q_start[tid]
     qd_start = joint_qd_start[tid]
 
-     # prismatic
+     # JOINT_PRISMATIC
     if (type == 0):
         
         # world space joint axis
@@ -229,7 +300,7 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
         
         return
    
-    # revolute
+    # JOINT_REVOLUTE
     if (type == 1):
         
         axis_p = wp.transform_vector(X_wp, axis)
@@ -248,7 +319,7 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
         return
 
     
-    # ball
+    # JOINT_BALL
     if (type == 2):
         
         q_pc = wp.quat_inverse(q_p)*q_c
@@ -264,11 +335,11 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
 
         return
 
-    # fixed
+    # JOINT_FIXED
     if (type == 3):
         return
 
-    # free joint 
+    # JOINT_FREE
     if (type == 4):
         
         q_pc = wp.quat_inverse(q_p)*q_c
@@ -290,7 +361,63 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
         joint_qd[qd_start + 4] = v_err[1]
         joint_qd[qd_start + 5] = v_err[2]
 
+    # JOINT_COMPOUND
+    if (type == 5):
+
+        q_off = wp.transform_get_rotation(X_cj)
+        q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
+
+        # decompose to a compound rotation each axis 
+        angles = wp.quat_decompose(q_pc)
+
+        # reconstruct rotation axes
+        axis_0 = wp.vec3(1.0, 0.0, 0.0)
+        q_0 = wp.quat_from_axis_angle(axis_0, angles[0])
+
+        axis_1 = wp.quat_rotate(q_0, wp.vec3(0.0, 1.0, 0.0))
+        q_1 = wp.quat_from_axis_angle(axis_1, angles[1])
+
+        axis_2 = wp.quat_rotate(q_1*q_0, wp.vec3(0.0, 0.0, 1.0))
+        q_2 = wp.quat_from_axis_angle(axis_2, angles[2])
+
+        q_w = q_p*q_off
+
+        joint_q[q_start+0] = angles[0]
+        joint_q[q_start+1] = angles[1]
+        joint_q[q_start+2] = angles[2]
+
+        joint_qd[qd_start+0] = wp.dot(wp.quat_rotate(q_w, axis_0), w_err)
+        joint_qd[qd_start+1] = wp.dot(wp.quat_rotate(q_w, axis_1), w_err)
+        joint_qd[qd_start+2] = wp.dot(wp.quat_rotate(q_w, axis_2), w_err)
+
         return
+
+    # JOINT_UNIVERSAL
+    if (type == 6):
+
+        q_off = wp.transform_get_rotation(X_cj)
+        q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
+
+        # decompose to a compound rotation each axis 
+        angles = wp.quat_decompose(q_pc)
+
+        # reconstruct rotation axes
+        axis_0 = wp.vec3(1.0, 0.0, 0.0)
+        q_0 = wp.quat_from_axis_angle(axis_0, angles[0])
+
+        axis_1 = wp.quat_rotate(q_0, wp.vec3(0.0, 1.0, 0.0))
+        q_1 = wp.quat_from_axis_angle(axis_1, angles[1])
+
+        q_w = q_p*q_off
+
+        joint_q[q_start+0] = angles[0]
+        joint_q[q_start+1] = angles[1]
+
+        joint_qd[qd_start+0] = wp.dot(wp.quat_rotate(q_w, axis_0), w_err)
+        joint_qd[qd_start+1] = wp.dot(wp.quat_rotate(q_w, axis_1), w_err)
+
+        return
+
 
 
 # given maximal coordinate model computes ik (closest point projection)

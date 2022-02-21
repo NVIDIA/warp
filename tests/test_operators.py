@@ -1,6 +1,3 @@
-
-
-
 # include parent path
 import os
 import sys
@@ -10,13 +7,15 @@ import ctypes
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import unittest
+import test_base
+
 import warp as wp
-np.random.seed(42)
 
 wp.init()
 
 @wp.kernel
-def test_operators_scalar(dt: float):
+def test_operators_scalar():
 
     a = 1.0
     b = 2.0
@@ -24,15 +23,17 @@ def test_operators_scalar(dt: float):
     c = a*b
     d = a+b
     e = a/b
+    f = a-b
 
     expect_eq(c, 2.0)
     expect_eq(d, 3.0)
     expect_eq(e, 0.5)
+    expect_eq(f, -1.0)
     
 
 
 @wp.kernel
-def test_operators_vec3(dt: float):
+def test_operators_vec3():
     
     v = vec3(1.0, 2.0, 3.0)
 
@@ -56,7 +57,7 @@ def test_operators_vec3(dt: float):
     expect_eq(two, vec3(2.0, 2.0, 2.0))
 
 @wp.kernel
-def test_operators_vec4(dt: float):
+def test_operators_vec4():
     
     v = vec4(1.0, 2.0, 3.0, 4.0)
 
@@ -82,30 +83,15 @@ def test_operators_vec4(dt: float):
     expect_eq(two, vec4(2.0, 2.0, 2.0, 2.0))
        
 
-    
 
+devices = wp.get_devices()
 
-device = "cpu"
+class TestOperators(test_base.TestBase):
+    pass
 
-wp.launch(
-    kernel=test_operators_scalar,
-    dim=1,
-    inputs=[],
-    device=device)
+TestOperators.add_kernel_test(test_operators_scalar, dim=1, devices=devices)
+TestOperators.add_kernel_test(test_operators_vec3, dim=1, devices=devices)
+TestOperators.add_kernel_test(test_operators_vec4, dim=1, devices=devices)
 
-
-wp.launch(
-    kernel=test_operators_vec3,
-    dim=1,
-    inputs=[],
-    device=device)
-
-wp.launch(
-    kernel=test_operators_vec4,
-    dim=1,
-    inputs=[],
-    device=device)
-
-
-wp.synchronize()
-
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

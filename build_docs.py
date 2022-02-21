@@ -19,7 +19,10 @@ function_ref.close()
 
 # run Sphinx build
 try:
-    subprocess.check_output("make.bat html", cwd="docs", shell=True)
+    if os.name == 'nt':
+        subprocess.check_output("make.bat html", cwd="docs", shell=True)
+    else:
+        subprocess.check_output("make html", cwd="docs", shell=True)
 except subprocess.CalledProcessError as e:
     print(e.output.decode())
     raise(e)

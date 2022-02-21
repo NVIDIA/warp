@@ -456,6 +456,153 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 	// nop
 }
 
+// stores state required to traverse the BVH nodes that 
+// overlap with a query AABB.
+struct mesh_query_aabb_t
+{
+    CUDA_CALLABLE mesh_query_aabb_t()
+    {
+    }
+    CUDA_CALLABLE mesh_query_aabb_t(int)
+    {
+    } // for backward pass
+
+    // Mesh Id
+    Mesh mesh;
+	// BVH traversal stack:
+	int stack[32];
+	int count;
+
+    // inputs
+    wp::vec3 input_lower;
+    wp::vec3 input_upper;
+
+	// Face
+	int face;
+};
+
+CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
+    uint64_t id, const vec3& lower, const vec3& upper)
+{
+    // This routine traverses the BVH tree until it finds
+	// the first triangle with an overlapping bvh. 
+
+    // initialize empty
+	mesh_query_aabb_t query;
+	query.face = -1;
+
+	Mesh mesh = mesh_get(id);
+
+	query.mesh = mesh;
+	
+    // if no bvh nodes, return empty query.
+    if (mesh.bvh.num_nodes == 0)
+    {
+		query.count = 0;
+		return query;
+	}
+
+    // optimization: make the latest
+	
+	query.stack[0] = mesh.bvh.root;
+	query.count = 1;
+    query.input_lower = lower;
+    query.input_upper = upper;
+
+    wp::bounds3 input_bounds(query.input_lower, query.input_upper);
+	
+    // Navigate through the bvh, find the first overlapping leaf node.
+    while (query.count)
+    {
+		const int nodeIndex = query.stack[--query.count];
+		BVHPackedNodeHalf node_lower = mesh.bvh.node_lowers[nodeIndex];
+		BVHPackedNodeHalf node_upper = mesh.bvh.node_uppers[nodeIndex];
+
+		wp::vec3 lower_pos(node_lower.x, node_lower.y, node_lower.z);
+		wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
+        wp::bounds3 current_bounds(lower_pos, upper_pos);
+        if (!input_bounds.overlaps(current_bounds))
+        {
+            // Skip this box, it doesn't overlap with our target box.
+			continue;
+		}
+
+		const int left_index = node_lower.i;
+		const int right_index = node_upper.i;
+
+        // Make bounds from this AABB
+        if (node_lower.b)
+        {
+			// found very first triangle index.
+			// Back up one level and return 
+			query.stack[query.count++] = nodeIndex;
+			return query;
+        }
+        else
+        {	
+		  query.stack[query.count++] = left_index;
+		  query.stack[query.count++] = right_index;
+		}
+	}	
+
+	return query;
+}
+
+//Stub
+CUDA_CALLABLE inline void adj_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper,
+											   uint64_t, vec3&, vec3&, mesh_query_aabb_t&)
+{
+
+}
+
+CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
+{
+    Mesh mesh = query.mesh;
+	
+	wp::bounds3 input_bounds(query.input_lower, query.input_upper);
+    // Navigate through the bvh, find the first overlapping leaf node.
+    while (query.count)
+    {
+        const int nodeIndex = query.stack[--query.count];
+        BVHPackedNodeHalf node_lower = mesh.bvh.node_lowers[nodeIndex];
+        BVHPackedNodeHalf node_upper = mesh.bvh.node_uppers[nodeIndex];
+
+        wp::vec3 lower_pos(node_lower.x, node_lower.y, node_lower.z);
+        wp::vec3 upper_pos(node_upper.x, node_upper.y, node_upper.z);
+        wp::bounds3 current_bounds(lower_pos, upper_pos);
+        if (!input_bounds.overlaps(current_bounds))
+        {
+            // Skip this box, it doesn't overlap with our target box.
+            continue;
+        }
+
+        const int left_index = node_lower.i;
+        const int right_index = node_upper.i;
+
+        // Make bounds from this AABB
+        if (node_lower.b)
+        {
+            // found very first triangle index
+            query.face = left_index;
+			index = left_index;
+            return true;
+        }
+        else
+        {
+
+            query.stack[query.count++] = left_index;
+            query.stack[query.count++] = right_index;
+        }
+    }
+    return false;
+}
+
+//Stub
+CUDA_CALLABLE inline void adj_mesh_query_aabb_next(mesh_query_aabb_t& query, int& index, mesh_query_aabb_t&, int&, bool&)
+{
+
+}
+
 // // determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)
 // CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
 // {

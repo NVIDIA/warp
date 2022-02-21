@@ -3,10 +3,12 @@ call "%~dp0repo" build --fetch-only %*
 
 SET PYTHON="%~dp0\_build\target-deps\python\python.exe"
 
-cd _build\packages
+echo "Installing test dependencies"
+call %PYTHON% -m pip install matplotlib
+call %PYTHON% -m pip install usd-core
 
 echo "Installing Warp to Python"
 call %PYTHON% -m pip install -e .
 
 echo "Running tests"
-call %PYTHON% tests\test_ctypes.py
+call %PYTHON% tests\test_all.py

@@ -2,32 +2,40 @@
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
-##  Installation
+Please refer to the project [documentation](https://mmacklin.gitlab-master-pages.nvidia.com/warp/) for detailed API and language reference.
 
-### Local Python
+Please see `#omni-warp` on Slack for discussion and reporting bugs.
+
+## Installing
+
+Pre-built packages for Windows and Linux are available as artifacts on the following TeamCity instance:
+
+https://teamcity.nvidia.com/project/Sandbox_mmacklin_Warp?mode=builds
 
 To install in your local Python environment use:
 
     pip install -e .
 
-
-## Requirements
-
-For developers writing their own kernels the following are required:
-
-    * Microsoft Visual Studio 2015 upwards (Windows)
-    * GCC 4.0 upwards (Linux)
-    * CUDA 11.0 upwards
-
-To run built-in tests you should install the USD Core library to your Python environment using `pip install usd-core`.
-
 ## Building
 
-Developers should run `build.sh` to build the `warp.dll` / `warp.so` core library. 
+For developers looking to build the library themselves the following are required:
 
-## Documentation
+* Microsoft Visual Studio 2017 upwards (Windows)
+* GCC 4.0 upwards (Linux)
 
-Please refer to the project [documentation](https://mmacklin.gitlab-master-pages.nvidia.com/warp/) for detailed language reference.
+After cloning the repository, developers should run `build.bat` or `build.sh` to generate the `warp.dll` / `warp.so` core library respectively. CUDA dependencies will automatically be downloaded.
+
+To run built-in tests users should install the USD Core library to your Python environment using: ``pip install usd-core``
+
+## Omniverse
+
+The Warp Omniverse extension is available in the extension registry inside Kit or Create daily builds. 
+
+![](./docs/img/omniverse.png)
+
+Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment.
+
+If the Warp extension is not visible, (e.g.: for in public or non-daily builds) then you need to add the NVIDIA internal extension registry to your extensions settings: `omniverse://kit-extensions.ov.nvidia.com/exts/kit/default`.
 
 ## Source
 
