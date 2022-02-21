@@ -5,7 +5,7 @@ import numpy as np
 
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels"""
-    
+
     _hash = hashlib.sha256()
     _hash_digest = None
 
@@ -562,25 +562,28 @@ class Volume:
     CLOSEST = constant(0)
     LINEAR = constant(1)
 
-    def __init__(self, data: array, device: str, copy: bool = True):
+    def __init__(self, data: array):
+        """ Class representing a sparse grid.
+
+        Args:
+            data (:class:`warp.array`): Array of bytes representing the volume in NanoVDB format
+        """
 
         self.id = 0
 
         from warp.context import runtime
         self.context = runtime
 
-        if device != "cpu" and device != "cuda":
-            raise RuntimeError(f"Unknown device type '{device}'")
-        self.device = device
+        if data.device != "cpu" and data.device != "cuda":
+            raise RuntimeError(f"Unknown device type '{data.device}'")
+        self.device = data.device
 
         if data is None:
             return
 
         if self.device == "cpu":
-            data = data.to("cpu")
             self.id = self.context.core.volume_create_host(ctypes.cast(data.data, ctypes.c_void_p), data.length)
         else:
-            data = data.to("cuda")
             self.id = self.context.core.volume_create_device(ctypes.cast(data.data, ctypes.c_void_p), data.length)
 
         if self.id == 0:
