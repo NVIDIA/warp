@@ -9,4 +9,7 @@
     <package name="linbuild" version="1.10.112-044606b-aarch64" platforms="linux-aarch64" />
     <package name="linbuild" version="1.10.112-044606b-x86_64" platforms="linux-x86_64" />
   </dependency>
+  <dependency name="nanovdb" linkPath="../_build/host-deps/nanovdb">
+    <package name="nanovdb" version="32.3.3-34-${platform}-release" platforms="windows-x86_64 linux-x86_64 linux-aarch64" />
+  </dependency>
 </project>

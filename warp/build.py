@@ -138,7 +138,9 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
     cuda_cmd = None
 
     import pathlib
-    warp_home = pathlib.Path(__file__).parent.resolve()
+    warp_home_path = pathlib.Path(__file__).parent
+    warp_home = warp_home_path.resolve()
+    nanovdb_home = (warp_home_path.parent / "_build/host-deps/nanovdb/include")
 
     if (cu_path != None and cuda_home == None):
         print("CUDA toolchain not found, skipping CUDA build")
@@ -188,12 +190,12 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
         cpp_out = cpp_path + ".obj"
 
         if (config == "debug"):
-            cpp_flags = '/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" '
+            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{nanovdb_home}"'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = '/Ox /D "NDEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast'
+            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{nanovdb_home}"'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -212,10 +214,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I{warp_home}/native/cub -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I{warp_home}/native/cub -I"{nanovdb_home}" -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, nanovdb_home=nanovdb_home, cu_out=cu_out, cu_path=cu_path)
 
             elif (config == "release"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52 -I{warp_home}/native/cub --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52 -I{warp_home}/native/cub -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, nanovdb_home=nanovdb_home, cu_out=cu_out, cu_path=cu_path)
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)

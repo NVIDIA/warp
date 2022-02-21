@@ -15,3 +15,5 @@ mode = "release"
 verbose = False
 
 host_compiler = None    # user can specify host compiler here, otherwise will attempt to find one automatically
+
+cache_kernels = True

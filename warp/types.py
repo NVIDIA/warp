@@ -1,6 +1,28 @@
-
-import ctypes
+import ctypes 
+import hashlib
+import inspect
 import numpy as np
+
+class constant:
+    """Class to declare compile-time constants accessible from Warp kernels"""
+    
+    _hash = hashlib.sha256()
+    _hash_digest = None
+
+    def __init__(self, x):
+
+        self.val = x
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe)
+        line_src = calframe[1][4][0]
+        constant._hash.update(bytes(line_src, 'utf-8'))
+
+    @classmethod
+    def get_hash(cls):
+
+        if cls._hash_digest is None:
+            cls._hash_digest = cls._hash.digest()
+        return cls._hash_digest
 
 #----------------------
 # built-in types
@@ -85,6 +107,22 @@ class float64:
     _type_ = ctypes.c_double
 
 
+class int8:
+
+    _length_ = 1
+    _type_ = ctypes.c_int8
+
+    def __init__(self, x=0):
+        self.value = x
+class uint8:
+
+    _length_ = 1
+    _type_ = ctypes.c_uint8
+
+    def __init__(self, x=0):
+        self.value = x
+
+
 class int32:
 
     _length_ = 1
@@ -119,6 +157,18 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
+dtype_to_warp_type = {
+    np.dtype(np.float32): float32,
+    np.dtype(np.float64): float64,
+    np.dtype(np.int8): int8,
+    np.dtype(np.int32): int32,
+    np.dtype(np.int64): int64,
+    np.dtype(np.uint8): uint8,
+    np.dtype(np.uint32): uint32,
+    np.dtype(np.uint64): uint64,
+    np.dtype(np.byte): int8,
+    np.dtype(np.ubyte): uint8,
+}
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
@@ -160,6 +210,10 @@ def type_typestr(ctype):
         return "<f4"
     elif (ctype == ctypes.c_double):
         return "<f8"
+    elif (ctype == ctypes.c_int8):
+        return "b"
+    elif (ctype == ctypes.c_uint8):
+        return "B"
     elif (ctype == ctypes.c_int32):
         return "<i4"
     elif (ctype == ctypes.c_uint32):
@@ -203,14 +257,14 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
+    def __init__(self, data=None, dtype=None, length=0, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
         """ Constructs a new Warp array object 
 
         This method allows manually constructing an array from existing data. 
 
         Args:
             data (Union[list, tuple, iterable], wp.uint64) 
-            dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`
+            dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is None and data an ndarray then it will be inferred from the array data type
             length (int): Number of elements (rows) of the data type
             capacity (int): Maximum size in bytes of the `data` allocation
             device (str): Device the allocation lives on
@@ -227,6 +281,13 @@ class array:
 
         elif (dtype == float):
             dtype = float32
+
+        elif dtype is None:
+            # if type is not defined, then try to match the type of the source
+            try:
+                dtype = dtype_to_warp_type[data.dtype]
+            except (AttributeError, KeyError):
+                raise RuntimeError("Unable to deduce target data type")
 
         # save flag, controls if gradients will be computed in by wp.Tape
         self.requires_grad = requires_grad
@@ -498,9 +559,54 @@ class Mesh:
 
 class Volume:
 
-    def __init__(self, vdb):
-        pass
+    CLOSEST = constant(0)
+    LINEAR = constant(1)
 
+    def __init__(self, data: array, device: str, copy: bool = True):
+
+        self.id = 0
+
+        from warp.context import runtime
+        self.context = runtime
+
+        if device != "cpu" and device != "cuda":
+            raise RuntimeError(f"Unknown device type '{device}'")
+        self.device = device
+
+        if data is None:
+            return
+
+        if self.device == "cpu":
+            data = data.to("cpu")
+            self.id = self.context.core.volume_create_host(ctypes.cast(data.data, ctypes.c_void_p), data.length)
+        else:
+            data = data.to("cuda")
+            self.id = self.context.core.volume_create_device(ctypes.cast(data.data, ctypes.c_void_p), data.length)
+
+        if self.id == 0:
+            raise RuntimeError("Failed to create volume from input array")
+
+    def __del__(self):
+
+        if self.id == 0:
+            return
+        
+        self.context.verify_device()
+        if self.device == "cpu":
+            self.context.core.volume_destroy_host(self.id)
+        else:
+            self.context.core.volume_destroy_device(self.id)
+
+
+    def array(self):
+
+        buf = ctypes.c_void_p(0)
+        size = ctypes.c_uint64(0)
+        if self.device == "cpu":
+            self.context.core.volume_get_buffer_info_host(self.id, ctypes.byref(buf), ctypes.byref(size))
+        else:
+            self.context.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
+        return array(data=buf.value, dtype=uint8, length=size.value, device=self.device, owner=False)
 
 
 class HashGrid:

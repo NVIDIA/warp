@@ -495,6 +495,14 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
     doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.""")
 
+add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, doc="", group="Volume")
+add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, doc="", group="Volume")
+add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, doc="", group="Volume")
+add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, doc="", group="Volume")
+add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, doc="", group="Volume")
+
+
+
 #---------------------------------
 # Random 
 
@@ -631,6 +639,13 @@ class PrintFunc:
 
 
 @builtin("expect_eq")
+class ExpectEqFunc:
+    @staticmethod
+    def value_type(args):
+        return None
+
+
+@builtin("expect_near")
 class ExpectEqFunc:
     @staticmethod
     def value_type(args):
@@ -782,6 +797,8 @@ class Module:
         # append any configuration parameters
         h.update(bytes(warp.config.mode, 'utf-8'))
 
+        h.update(constant.get_hash())
+
         return h.digest()
 
         # s = ""
@@ -826,7 +843,7 @@ class Module:
             # test cache
             module_hash = self.hash_module()
 
-            if (os.path.exists(cache_path)):
+            if warp.config.cache_kernels and os.path.exists(cache_path):
 
                 f = open(cache_path, 'rb')
                 cache_hash = f.read()
@@ -1050,7 +1067,15 @@ class Runtime:
         self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
 
+        self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self.core.volume_create_host.restype = ctypes.c_uint64
+        self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+        self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
+        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self.core.volume_create_device.restype = ctypes.c_uint64
+        self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+        self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
 
         # load CUDA entry points on supported platforms
         self.core.cuda_check_device.restype = ctypes.c_uint64

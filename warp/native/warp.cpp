@@ -62,8 +62,8 @@ void array_sum_host(uint64_t a, uint64_t out, int len)
 #include "mesh.cpp"
 #include "hashgrid.cpp"
 #include "sort.cpp"
+#include "volume.cpp"
 //#include "spline.inl"
-//#include "volume.inl"
 
 
 // stubs for MacOS where there is no CUDA
