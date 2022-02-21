@@ -167,7 +167,40 @@ Users may update mesh vertex positions at runtime simply by modifying the points
 Volumes
 -------
 
+Warp supports reading sparse volumes defined stored using the NanoVDB standard. Users can access voxels directly, or use built-in closest point or tri-linear interpolation to access grid data from world or local-space.
 
+Below we give an example of creating a Volume object from an existing NanoVDB file::
+
+   # load NanoVDB bytes from disk
+   file = np.fromfile("mygrid.nvdbraw", dtype=np.byte)
+
+   # create Volume object
+   volume = wp.Volume(wp.array(file, device="cpu"))
+
+To sample the volume inside a kernel we pass a reference to it by id, and use the built-in sampling modes::
+
+   @wp.kernel
+   def sample_grid(volume: wp.uint64,
+                   points: wp.array(dtype=wp.vec3),
+                   samples: wp.array(dtype=float)):
+
+      tid = wp.tid()
+
+      # load sample point in world-space
+      p = points[tid]
+
+      # sample grid with tri-linear interpolation     
+      f = wp.volume_sample_world(volume, p, wp.Volume.LINEAR)
+
+      # write result
+      samples[tid] = f
+
+
+
+.. note:: Warp does not currently support modifying sparse-volumes. We expect to address this in a future update. Users should create volumes using standard VDB tools such as OpenVDB, Houdini, etc.
+
+.. autoclass:: Volume
+   :members:
 
 Hash Grids
 ----------

@@ -258,37 +258,37 @@ add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec3, group
     doc="Component wise division of two 4d vectors.")
 
 # type construtors
-add_builtin("int", input_types={"x": int}, value_type=int, doc="", group="Scalar Math")
-add_builtin("int", input_types={"x": float}, value_type=int, doc="", group="Scalar Math")
+add_builtin("int", input_types={"x": int}, value_type=int, group="Scalar Math", doc="Construct an integer variable.")
+add_builtin("int", input_types={"x": float}, value_type=int, group="Scalar Math", doc="Construct an integer from float truncating the input value.")
 
-add_builtin("float", input_types={"x": int}, value_type=float, doc="", group="Scalar Math")
-add_builtin("float", input_types={"x": float}, value_type=float, doc="", group="Scalar Math")
+add_builtin("float", input_types={"x": int}, value_type=float, doc="Construct a float from integer.", group="Scalar Math")
+add_builtin("float", input_types={"x": float}, value_type=float, doc="Construct a float variable.", group="Scalar Math")
 
-add_builtin("vec2", input_types={}, value_type=vec2, doc="", group="Vector Math")
-add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="", group="Vector Math")
-add_builtin("vec2", input_types={"s": float}, value_type=vec2, doc="", group="Vector Math")
+add_builtin("vec2", input_types={}, value_type=vec2, doc="Construct a zero-initialized 2d vector.", group="Vector Math")
+add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="Construct a 2d vector with compontents x, y.", group="Vector Math")
+add_builtin("vec2", input_types={"s": float}, value_type=vec2, doc="Construct a 2d vector with all components set to s.", group="Vector Math")
 
-add_builtin("vec3", input_types={}, value_type=vec3, doc="", group="Vector Math")
-add_builtin("vec3", input_types={"x": float, "y": float, "z": float}, value_type=vec3, doc="", group="Vector Math")
-add_builtin("vec3", input_types={"s": float}, value_type=vec3, doc="", group="Vector Math")
+add_builtin("vec3", input_types={}, value_type=vec3, doc="Construct a zero-initialized 3d vector.", group="Vector Math")
+add_builtin("vec3", input_types={"x": float, "y": float, "z": float}, value_type=vec3, doc="Construct a 3d vector with compontents x, y, z.", group="Vector Math")
+add_builtin("vec3", input_types={"s": float}, value_type=vec3, doc="Construct a 3d vector with all components set to s.", group="Vector Math")
 
-add_builtin("vec4", input_types={}, value_type=vec4, doc="", group="Vector Math")
-add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="", group="Vector Math")
-add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="", group="Vector Math")
+add_builtin("vec4", input_types={}, value_type=vec4, doc="Construct a zero-initialized 4d vector.", group="Vector Math")
+add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="Construct a 4d vector with compontents x, y, z, w.", group="Vector Math")
+add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="Construct a 4d vector with all components set to s.", group="Vector Math")
 
-add_builtin("mat22", input_types={"c0": vec2, "c1": vec2 }, value_type=mat22, doc="", group="Vector Math")
-add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="", group="Vector Math")
+add_builtin("mat22", input_types={"c0": vec2, "c1": vec2 }, value_type=mat22, doc="Construct a 2x2 matrix from column vectors c0, c1.", group="Vector Math")
+add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="Construct a 2x2 matrix from components.", group="Vector Math")
 
-add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="", group="Vector Math")
+add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="Construct a 3x3 matrix from column vectors c0, c1, c2.", group="Vector Math")
 add_builtin("mat33", input_types={"m00": float, "m01": float, "m02": float,
                                   "m10": float, "m11": float, "m12": float,
-                                  "m20": float, "m21": float, "m22": float}, value_type=mat33, doc="", group="Vector Math")
+                                  "m20": float, "m21": float, "m22": float}, value_type=mat33, doc="Construct a 3x3 matrix from components.", group="Vector Math")
 
-add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="", group="Vector Math")
+add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="Construct a 4x4 matrix from column vectors c0, c1, c2, c4.", group="Vector Math")
 add_builtin("mat44", input_types={"m00": float, "m01": float, "m02": float, "m03": float,
                                   "m10": float, "m11": float, "m12": float, "m13": float,
                                   "m20": float, "m21": float, "m22": float, "m23": float,
-                                  "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="", group="Vector Math")
+                                  "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="Construct a 4x4 matrix from components.", group="Vector Math")
 
 
 add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, group="Vector Math",
@@ -350,8 +350,11 @@ add_builtin("spatial_vector", input_types={"w": vec3, "v": vec3}, value_type=spa
 add_builtin("spatial_vector", input_types={"s": float}, value_type=spatial_vector, group="Spatial Math",
     doc="Construct a 6d screw vector with all components set to s")
 
+add_builtin("spatial_matrix", input_types={}, value_type=spatial_matrix, group="Spatial Math",
+    doc="Construct a 6x6 zero-initialized spatial inertia matrix")
 add_builtin("spatial_adjoint", input_types={"r": mat33, "s": mat33}, value_type=spatial_matrix, group="Spatial Math",
-    doc="Constructs a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.")
+    doc="Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.")
+    
 add_builtin("spatial_dot", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=float, group="Spatial Math",
     doc="Compute the dot product of two 6d screw vectors.")
 add_builtin("spatial_cross", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=spatial_vector, group="Spatial Math",
@@ -495,12 +498,21 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
     doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.""")
 
-add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, doc="", group="Volume")
-add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, doc="", group="Volume")
-add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, doc="", group="Volume")
-add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, doc="", group="Volume")
-add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, doc="", group="Volume")
+#---------------------------------
+# Volumes 
 
+add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
+    doc="""Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
+    doc="""Sample the volume given by ``id`` at the volume local-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+
+add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
+    doc="""Returns the voxel with coordinates ``i``, ``j``, ``k``, if the cell at this index does not exist this function returns the background value""")
+
+add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic 4x4 transformation.""")
+add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic 4x4 transformation.""")
 
 
 #---------------------------------
