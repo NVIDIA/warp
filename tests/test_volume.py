@@ -84,7 +84,7 @@ volumes = {}
 points = {}
 points_jittered = {}
 for device in devices:
-    volumes[device] = wp.Volume(volume_array, device)
+    volumes[device] = wp.Volume(volume_array.to(device))
 
     data_np = volumes[device].array().numpy()
     magic = ''.join([chr(x) for x in data_np[0:8]])
