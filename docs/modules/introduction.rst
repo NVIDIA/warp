@@ -87,7 +87,7 @@ All copy operations are performed asynchronously and must be synchronized explic
 Memory Model
 ------------
 
-Memory allocations are exposed via the ``wp.array`` type. Arrays wrap an underlying piece of memory that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (``vec3``, ``matrix33``, etc).
+Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (``vec3``, ``matrix33``, etc).
 
 Arrays may be constructed from Python lists or numpy arrays; by default data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the array constructor.
 

@@ -118,10 +118,37 @@ Warp provides built-in math and geometry types for common simulation and graphic
 .. autoclass:: spatial_vector
 .. autoclass:: spatial_matrix
 
+
+Constants
+----------
+
+In general, Warp kernels cannot access variables in the global Python interpreter state. One exception to this is for compile-time constants, which may be declared globally (or as class attributes) and folded into the kernel definition.
+
+Constants are defined using the ``warp.constant`` type. An example is shown below::
+
+   TYPE_SPHERE = wp.constant(0)
+   TYPE_CUBE = wp.constant(1)
+   TYPE_CAPSULE = wp.constant(2)
+
+   @wp.kernel
+   def collide(geometry: wp.array(dtype=int)):
+
+      t = geometry[wp.tid()]
+
+      if (t == TYPE_SPHERE):
+         print("sphere")
+      if (t == TYPE_CUBE):
+         print("cube")
+      if (t == TYPE_CAPSULE):
+         print("capsule")
+
+
+.. autoclass:: constant
+
 Meshes
 ------
 
-Warp provides a ``wp.Mesh`` class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array::
+Warp provides a ``warp.Mesh`` class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array::
 
    mesh = wp.Mesh(points, velocities, indices)
 
@@ -219,7 +246,7 @@ By default Warp generates a foward and backward (adjoint) version of each kernel
 
    a = wp.zeros(1024, dtype=wp.vec3, device="cuda", requires_grad=True)
 
-The ``wp.Tape`` class can then be used to record kernel launches, and replay them to compute the gradient of a scalar loss function with respect to the kernel inputs::
+The ``warp.Tape`` class can then be used to record kernel launches, and replay them to compute the gradient of a scalar loss function with respect to the kernel inputs::
 
    tape = wp.Tape()
 
@@ -245,7 +272,7 @@ CUDA Graphs
 
 Launching kernels from Python introduces significant additional overhead compared to C++ or native programs. To address this, Warp exposes the concept of `CUDA graphs <https://developer.nvidia.com/blog/cuda-graphs/>`_ to allow recording large batches of kernels and replaying them with very little CPU overhead.
 
-To record a series of kernel launches use the ``wp.capture_begin()`` and ``wp.capture_end()`` API as follows: ::
+To record a series of kernel launches use the ``warp.capture_begin()`` and ``warp.capture_end()`` API as follows: ::
 
    # begin capture
    wp.capture_begin()
