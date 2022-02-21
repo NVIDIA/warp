@@ -91,7 +91,7 @@ class Kernel:
 def func(f):
 
     m = get_module(f.__module__)
-    f = Function(func=f, key=f.__name__, namespace="", module=m, value_type=None)   # value_type not known yet, will be infered during code-gen
+    f = Function(func=f, key=f.__name__, namespace="", module=m, value_type=None)   # value_type not known yet, will be inferred during code-gen
 
     return f
 
@@ -532,7 +532,7 @@ class Module:
         if kernel.key in self.kernels:
             
             # if kernel is replacing an old one then assume it has changed and 
-            # force a rebuild / reload of the dynamic libary 
+            # force a rebuild / reload of the dynamic library 
             if (self.dll):
                 warp.build.unload_dll(self.dll)
 
@@ -662,7 +662,7 @@ class Module:
                 if (enable_cuda):
                     cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
 
-                # complete the function return type after we have analyzed it (infered from return statement in ast)
+                # complete the function return type after we have analyzed it (inferred from return statement in ast)
                 func.value_type = wrap(func.adj)
 
 
@@ -1028,7 +1028,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
     Kernel launches are asynchronous with respect to the calling Python thread. 
 
     Args:
-        kernel: The name of a Warp kenel function, decorated with the @warp.kernel decorator
+        kernel: The name of a Warp kernel function, decorated with the @warp.kernel decorator
         dim: The number of threads to launch the kernel with
         inputs: The input parameters to the kernel
         outputs: The output parameters (optional)
