@@ -38,21 +38,21 @@ builtin_operators[ast.NotEq] = "!="
 
 
 class Var:
-    def __init__(adj, label, type, requires_grad=False, constant=None):
+    def __init__(self, label, type, requires_grad=False, constant=None):
 
         # convert built-in types to wp types
-        if (type == float):
+        if type == float:
             type = float32
-        elif (type == int):
+        elif type == int:
             type = int32
 
-        adj.label = label
-        adj.type = type
-        adj.requires_grad = requires_grad
-        adj.constant = constant
+        self.label = label
+        self.type = type
+        self.requires_grad = requires_grad
+        self.constant = constant
 
-    def __str__(adj):
-        return adj.label
+    def __str__(self):
+        return self.label
 
     def ctype(self):
         if (isinstance(self.type, array)):
@@ -984,15 +984,18 @@ WP_API void {name}_cpu_backward({reverse_args});
 # converts a constant Python value to equivalent C-repr
 def constant_str(value):
     
-    if (type(value) == bool):
+    if type(value) == bool:
         if value:
             return "true"
         else:
             return "false"
 
-    elif (type(value) == str):
+    elif type(value) == str:
         # ensure constant strings are correctly escaped
         return "\"" + str(value.encode("unicode-escape").decode()) + "\""
+
+    elif isinstance(value, ctypes.Array):
+        return "{" + ", ".join(map(str, value)) + "}"
 
     else:
         # otherwise just convert constant to string
