@@ -3,7 +3,6 @@
 #include "warp.h"
 
 #ifndef WP_CUDA
-#include <nanovdb/util/Primitives.h>
 
 using namespace wp;
 
@@ -15,7 +14,7 @@ uint64_t volume_create(void* buf, uint64_t size)
     { // Checking for a valid NanoVDB buffer
         uint64_t nanovdb_magic;
         memcpy<device, Device::CPU>(&nanovdb_magic, buf, sizeof(uint64_t));
-        if (nanovdb_magic != NANOVDB_MAGIC_NUMBER) {
+        if (nanovdb_magic != PNANOVDB_MAGIC_NUMBER) {
             return 0; // NanoVDB signature missing!
         }
     }
