@@ -75,7 +75,7 @@ class TestVolumes(test_base.TestBase):
     pass
 
 
-devices = ["cpu", "cuda"]
+devices = wp.get_devices()
 
 volume_data = np.fromfile("tests/assets/test_grid.nvdbraw", dtype=np.byte)
 volume_array = wp.array(volume_data, device="cpu")
