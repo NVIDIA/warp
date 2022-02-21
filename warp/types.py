@@ -565,6 +565,10 @@ class Volume:
     def __init__(self, data: array):
         """ Class representing a sparse grid.
 
+        Attributes:
+            CLOSEST (int): Enum value to specify nearest-neighbor interpolation during sampling
+            LINEAR (int): Enum value to specify trilinear interpolation during sampling
+            
         Args:
             data (:class:`warp.array`): Array of bytes representing the volume in NanoVDB format
         """
