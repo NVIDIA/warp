@@ -4,7 +4,11 @@ import inspect
 import numpy as np
 
 class constant:
-    """Class to declare compile-time constants accessible from Warp kernels"""
+    """Class to declare compile-time constants accessible from Warp kernels
+    
+    Args:
+        x: Compile-time constant value, can be any of the built-in math types.    
+    """
 
     _hash = hashlib.sha256()
     _hash_digest = None
