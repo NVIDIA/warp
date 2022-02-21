@@ -287,8 +287,8 @@ class Adjoint:
     # define a for-loop
     def begin_for(adj, iter, start, end, step):
 
-        # note that dynamic for-loops must not mutate any previous state, so we don't need to re-run them in the reverse pass
-        adj.add_forward(f"for (var_{iter}=var_{start}; var_{iter} < var_{end}; var_{iter} += var_{step}) {{", "if (false) {")
+        # note that dynamic for-loops must not mutate any previous state, so we don't need to re-run them in the reverse pass        
+        adj.add_forward(f"for (var_{iter}=var_{start}; cmp(var_{iter}, var_{end}, var_{step}); var_{iter} += var_{step}) {{""", statement_replay="if (false) {")
         adj.add_reverse("}")
 
         adj.indent_count += 1
@@ -297,8 +297,9 @@ class Adjoint:
 
         adj.indent_count -= 1
 
+        # run loop in reverse order for gradient computation
         adj.add_forward("}")
-        adj.add_reverse(f"for (var_{iter}=var_{end}-1; var_{iter} >= var_{start}; var_{iter} -= var_{step}) {{")
+        adj.add_reverse(f"for (var_{iter}=var_{end}-1; cmp(var_{iter}, var_{start}, -var_{step}); var_{iter} -= var_{step}) {{")
 
     # define a while loop, todo: reverse mode
     def begin_while(adj, cond):
@@ -533,8 +534,11 @@ class Adjoint:
             elif (isinstance(node, ast.For)):
 
                 # if all range() arguments are numeric constants we will unroll
+                # note that this only handles trivial constants, it will not unroll
+                # constant-time expressions (e.g.: range(0, 3*2))
                 unroll = True
                 for a in node.iter.args:
+
                     if (isinstance(a, ast.Num) == False):
                         unroll = False
                         break

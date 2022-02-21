@@ -75,7 +75,23 @@ inline CUDA_CALLABLE int sub(int a, int b) { return a-b; }
 inline CUDA_CALLABLE int mod(int a, int b) { return a % b; }
 inline CUDA_CALLABLE int min(int a, int b) { return a<b?a:b; }
 inline CUDA_CALLABLE int max(int a, int b) { return a>b?a:b; }
+inline CUDA_CALLABLE int abs(int x) { return ::abs(x); }
+inline CUDA_CALLABLE int sign(int x) { return x < 0 ? -1 : 1; }
 inline CUDA_CALLABLE int clamp(int x, int a, int b) { return min(max(a, x), b); }
+
+// implements for-loop comparison to emulate Python range() loops with negative arguments
+inline CUDA_CALLABLE bool cmp(int iter, int end, int step)
+{
+    if (step == 0)
+        // degenerate case where step == 0
+        return false;
+    if (step > 0)
+        // normal case where step > 0
+        return iter < end;
+    else
+        // reverse case where step < 0
+        return iter > end;
+}
 
 inline CUDA_CALLABLE void adj_mul(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_div(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
@@ -84,6 +100,8 @@ inline CUDA_CALLABLE void adj_sub(int a, int b, int& adj_a, int& adj_b, int adj_
 inline CUDA_CALLABLE void adj_mod(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_min(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_max(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
+inline CUDA_CALLABLE void adj_abs(int x, int adj_x, int& adj_ret) { }
+inline CUDA_CALLABLE void adj_sign(int x, int adj_x, int& adj_ret) { }
 inline CUDA_CALLABLE void adj_clamp(int x, int a, int b, int& adj_x, int& adj_a, int& adj_b, int adj_ret) { }
 
 // basic ops for float types
