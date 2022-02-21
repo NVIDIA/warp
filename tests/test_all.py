@@ -12,6 +12,7 @@ import warp as wp
 
 import test_codegen
 import test_mesh_query_aabb
+import test_mesh_query_point
 import test_conditional
 import test_operators
 import test_rounding
@@ -23,8 +24,10 @@ import test_tape
 import test_compile_consts
 import test_volume
 
+
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_codegen))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_mesh_query_aabb))
+tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_mesh_query_point))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_conditional))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_operators))
 tests.addTests(unittest.defaultTestLoader.loadTestsFromModule(test_rounding))

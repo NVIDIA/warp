@@ -5,6 +5,10 @@ import numpy as np
 import math
 import ctypes
 
+import unittest
+import test_base
+
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
@@ -13,7 +17,6 @@ import warp.render
 np.random.seed(42)
 
 wp.init()
-wp.config.verify_cuda = True
 
 @wp.kernel
 def sample_mesh_query(mesh: wp.uint64,
@@ -147,61 +150,7 @@ def sample_mesh_brute(
     query_dist[tid] = min_dist
 
 
-device = "cuda"
-num_particles = 1000
-
-sim_steps = 500
-sim_dt = 1.0/60.0
-
-sim_time = 0.0
-sim_timers = {}
-sim_render = True
-
-sim_restitution = 0.0
-sim_margin = 0.1
-
-from pxr import Usd, UsdGeom, Gf, Sdf
-
-# mesh = Usd.Stage.Open("./tests/assets/sphere.usda")
-# mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/Sphere/Sphere"))
-
-# mesh = Usd.Stage.Open("./tests/assets/torus.usda")
-# mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/torus_obj/torus_obj"))
-
-# mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
-# mesh_indices = wp.array(np.array(mesh_geom.GetFaceVertexIndicesAttr().Get()), dtype=int, device=device)
-
-mesh = Usd.Stage.Open("./tests/assets/torus_ov.usda")
-mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
-# mesh = Usd.Stage.Open("./tests/assets/torus_ov_weld.usda")
-# mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/root/World/Torus/Torus"))
-mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
-mesh_indices = mesh_geom.GetFaceVertexIndicesAttr().Get()
-
-num_tris = np.sum(np.subtract(mesh_counts, 2))
-num_tri_vtx = num_tris * 3
-tri_indices = np.zeros(num_tri_vtx, dtype=int)
-ctr = 0
-wedgeIdx = 0
-
-for nb in mesh_counts:
-    for i in range(nb-2):
-        tri_indices[ctr] = mesh_indices[wedgeIdx]
-        tri_indices[ctr + 1] = mesh_indices[wedgeIdx + i + 1]
-        tri_indices[ctr + 2] = mesh_indices[wedgeIdx + i + 2]
-        ctr+=3
-    wedgeIdx+=nb
-
-mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
-mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
-
-
-# create wp mesh
-mesh = wp.Mesh(
-    points=mesh_points, 
-    velocities=None,
-    indices=mesh_indices)
-
+# constructs a grid of evenly spaced particles
 def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
     points = np.meshgrid(np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z))
     points_t = np.array((points[0], points[1], points[2])).T*radius*2.0 + np.array(lower)
@@ -209,60 +158,113 @@ def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
 
     return points_t.reshape((-1, 3))
 
-#p = ((np.random.rand(1000, 3) - np.array([0.5, 0.5, 0.5])))*10.0
-p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
-#p = particle_grid(32, 32, 32, np.array([-75.0, -25.0, -75.0]), 10.0, 0.0)
-radius = 10.0
+# triangulate a list of polygon face indices
+def triangulate(face_counts, face_indices):
+    num_tris = np.sum(np.subtract(mesh_counts, 2))
+    num_tri_vtx = num_tris * 3
+    tri_indices = np.zeros(num_tri_vtx, dtype=int)
+    ctr = 0
+    wedgeIdx = 0
 
-query_count = len(p)
+    for nb in mesh_counts:
+        for i in range(nb-2):
+            tri_indices[ctr] = mesh_indices[wedgeIdx]
+            tri_indices[ctr + 1] = mesh_indices[wedgeIdx + i + 1]
+            tri_indices[ctr + 2] = mesh_indices[wedgeIdx + i + 2]
+            ctr+=3
+        wedgeIdx+=nb
 
-query_points = wp.array(p, dtype=wp.vec3, device=device)
-
-signs_query = wp.zeros(query_count, dtype=float, device=device)
-faces_query = wp.zeros(query_count, dtype=int, device=device)
-dist_query = wp.zeros(query_count, dtype=float, device=device)
-
-signs_brute = wp.zeros(query_count, dtype=float, device=device)
-faces_brute = wp.zeros(query_count, dtype=int, device=device)
-dist_brute = wp.zeros(query_count, dtype=float, device=device)
-
-wp.launch(kernel=sample_mesh_query, dim=query_count, inputs=[mesh.id, query_points, faces_query, signs_query, dist_query], device=device)
-wp.launch(kernel=sample_mesh_brute, dim=query_count, inputs=[mesh_points, mesh_indices, int(len(mesh_indices)/3), query_points, faces_brute, signs_brute, dist_brute], device=device)
-
-signs_query = signs_query.numpy()
-faces_query = faces_query.numpy()
-dist_query = dist_query.numpy()
-
-signs_brute = signs_brute.numpy()
-faces_brute = faces_brute.numpy()
-dist_brute = dist_brute.numpy()
-
-query_points = query_points.numpy()
-
-#print(signs_query.numpy() - signs_brute.numpy())
-#print(np.hstack([faces_query.numpy(), faces_brute.numpy()]))
-#print(np.hstack([dist_query.numpy(), dist_brute.numpy()]))
-print(np.hstack([signs_query, signs_brute]))
-
-inside_query = []
-inside_brute = []
-
-for i in range(query_count):
-
-    if (signs_query[i] < 0.0):
-        inside_query.append(query_points[i].tolist())
-    
-    if (signs_brute[i] > 6.0):
-        inside_brute.append(query_points[i].tolist())
+    return tri_indices
 
 
-stage = render.UsdRenderer("tests/outputs/test_mesh_query_point.usd")
+from pxr import Usd, UsdGeom, Gf, Sdf
 
-stage.begin_frame(0.0)
-stage.render_mesh(points=mesh_points.numpy(), indices=mesh_indices.numpy(), name="mesh")
-stage.render_points(points=inside_query, radius=radius, name="query")
-stage.render_points(points=inside_brute, radius=radius, name="brute")
-stage.render_points(points=query_points, radius=radius, name="all")
-stage.end_frame()
+mesh = Usd.Stage.Open("./tests/assets/torus.usda")
+mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
 
-stage.save()
+mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
+mesh_indices = mesh_geom.GetFaceVertexIndicesAttr().Get()
+
+tri_indices = triangulate(mesh_counts, mesh_indices)
+
+def test_mesh_query_point(test, device):
+
+    mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
+    mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
+
+    # create mesh
+    mesh = wp.Mesh(
+        points=mesh_points, 
+        velocities=None,
+        indices=mesh_indices)
+
+    num_particles = 1000
+    p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
+
+    query_count = len(p)
+    query_points = wp.array(p, dtype=wp.vec3, device=device)
+
+    signs_query = wp.zeros(query_count, dtype=float, device=device)
+    faces_query = wp.zeros(query_count, dtype=int, device=device)
+    dist_query = wp.zeros(query_count, dtype=float, device=device)
+
+    signs_brute = wp.zeros(query_count, dtype=float, device=device)
+    faces_brute = wp.zeros(query_count, dtype=int, device=device)
+    dist_brute = wp.zeros(query_count, dtype=float, device=device)
+
+    wp.launch(kernel=sample_mesh_query, dim=query_count, inputs=[mesh.id, query_points, faces_query, signs_query, dist_query], device=device)
+    wp.launch(kernel=sample_mesh_brute, dim=query_count, inputs=[mesh_points, mesh_indices, int(len(mesh_indices)/3), query_points, faces_brute, signs_brute, dist_brute], device=device)
+
+    signs_query = signs_query.numpy()
+    faces_query = faces_query.numpy()
+    dist_query = dist_query.numpy()
+
+    signs_brute = signs_brute.numpy()
+    faces_brute = faces_brute.numpy()
+    dist_brute = dist_brute.numpy()
+
+    query_points = query_points.numpy()
+
+    inside_query = []
+    inside_brute = []
+
+    for i in range(query_count):
+
+        if (signs_query[i] < 0.0):
+            inside_query.append(query_points[i].tolist())
+        
+        if (signs_brute[i] > 6.0):
+            inside_brute.append(query_points[i].tolist())
+
+    inside_query = np.array(inside_query)
+    inside_brute = np.array(inside_brute)
+
+    dist_error = np.max(np.abs(dist_query - dist_brute))
+    sign_error = np.max(np.abs(inside_query - inside_brute))
+
+    test.assertTrue(dist_error < 1.e-4)
+    test.assertTrue(sign_error < 1.e-4)
+
+    stage = warp.render.UsdRenderer("tests/outputs/test_mesh_query_point.usd")
+
+    radius = 10.0
+    stage.begin_frame(0.0)
+    stage.render_mesh(points=mesh_points.numpy(), indices=mesh_indices.numpy(), name="mesh")
+    stage.render_points(points=inside_query, radius=radius, name="query")
+    stage.render_points(points=inside_brute, radius=radius, name="brute")
+    stage.render_points(points=query_points, radius=radius, name="all")
+    stage.end_frame()
+
+    stage.save()
+
+
+
+devices = wp.get_devices()
+
+class TestTape(test_base.TestBase):
+    pass
+
+TestTape.add_function_test("test_mesh_query_point", test_mesh_query_point, devices=devices)
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

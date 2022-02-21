@@ -88,7 +88,6 @@ model.tri_kb = 1.0
 model.tri_kd = 1.e+1
 
 model.soft_contact_kd = 1.e+2
-#model.soft_contact_ke = 
 
 integrator = wp.sim.SemiImplicitIntegrator()
 #integrator = wp.sim.VariationalImplicitIntegrator(model)

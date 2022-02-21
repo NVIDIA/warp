@@ -7,6 +7,10 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 
 cd _build/packages
 
+echo "Installing test dependencies"
+./_build/target-deps/python/python -m pip install matplotlib
+./_build/target-deps/python/python -m pip install usd-core
+
 echo "Installing Warp to Python"
 ../target-deps/python/python -m pip install -e .
 

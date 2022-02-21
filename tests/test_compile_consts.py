@@ -24,7 +24,7 @@ class Foobar:
     TWO = wp.constant(2)
 
 @wp.kernel
-def test_constants0(a: int):
+def test_constants_int(a: int):
     if Foobar.ONE > 0:
         a = 123 + Foobar.TWO + test_compile_consts_dummy.MINUS_ONE
     else:
@@ -32,7 +32,7 @@ def test_constants0(a: int):
     expect_eq(a, 124)
 
 @wp.kernel
-def test_constants1(x: float):
+def test_constants_float(x: float):
     x = SQRT3_OVER_3
     for i in range(3):
         expect_eq(UNIT_VEC[i], x)
@@ -46,8 +46,8 @@ x = 0.0
 class TestConstants(test_base.TestBase):
     pass
 
-TestConstants.add_kernel_test(test_constants0, dim=1, inputs=[a], devices=["cpu", "cuda"])
-TestConstants.add_kernel_test(test_constants1, dim=1, inputs=[x], devices=["cpu", "cuda"])
+TestConstants.add_kernel_test(test_constants_int, dim=1, inputs=[a], devices=wp.get_devices())
+TestConstants.add_kernel_test(test_constants_float, dim=1, inputs=[x], devices=wp.get_devices())
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
