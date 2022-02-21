@@ -64,4 +64,4 @@ except Exception as e:
     print(e)
 
     # report error
-    sys.exit("Compilation failed")
+    sys.exit(1)
