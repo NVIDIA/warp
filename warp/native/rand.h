@@ -1,5 +1,9 @@
 # pragma once
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
+
 namespace wp
 {
 
@@ -19,6 +23,9 @@ inline CUDA_CALLABLE int randi(uint32& state, int min, int max) { state = rand_p
 inline CUDA_CALLABLE float randf(uint32& state) { state = rand_pcg(state); return float(state) / 0xffffffff; }
 inline CUDA_CALLABLE float randf(uint32& state, float min, float max) { return (max - min) * randf(state) + min; }
 
+// Box-Muller method
+inline CUDA_CALLABLE float randn(uint32& state) { return sqrt(-2.f * log(randf(state))) * cos(2.f * M_PI * randf(state)); }
+
 inline CUDA_CALLABLE void adj_rand_init(int seed, int& adj_seed, float adj_ret) {}
 inline CUDA_CALLABLE void adj_rand_init(int seed, int offset, int& adj_seed, int& adj_offset, float adj_ret) {}
 
@@ -27,5 +34,7 @@ inline CUDA_CALLABLE void adj_randi(uint32& state, int min, int max, uint32& adj
 
 inline CUDA_CALLABLE void adj_randf(uint32& state, uint32& adj_state, float adj_ret) {}
 inline CUDA_CALLABLE void adj_randf(uint32& state, float min, float max, uint32& adj_state, float& adj_min, float& adj_max, float adj_ret) {}
+
+inline CUDA_CALLABLE void adj_randn(uint32& state, uint32& adj_state, float adj_ret) {}
 
 } // namespace wp

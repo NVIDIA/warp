@@ -536,6 +536,8 @@ add_builtin("randf", input_types={"state": uint32}, value_type=float, group="Ran
     doc="Return a random float between [0.0, 1.0)")
 add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, value_type=float, group="Random", 
     doc="Return a random float between [min, max)")
+add_builtin("randn", input_types={"state": uint32}, value_type=float, group="Random", 
+    doc="Sample a normal distribution")
 
 add_builtin("noise", input_types={"seed": uint32, "x": float}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 1d.")
