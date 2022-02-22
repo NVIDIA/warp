@@ -803,29 +803,25 @@ class Module:
         
         h = hashlib.sha256()
 
+        # functions source
         for func in self.functions.values():
             s = func.adj.source
             h.update(bytes(s, 'utf-8'))
             
+        # kernel source
         for kernel in self.kernels.values():       
             s = kernel.adj.source
             h.update(bytes(s, 'utf-8'))
 
-        # append any configuration parameters
-        h.update(bytes(warp.config.mode, 'utf-8'))
-
+        # configuration parameters
+        for k in sorted(self.options.keys()):
+            s = f"{k}={self.options[k]}"
+            h.update(bytes(s, 'utf-8'))
+        
+        # compile-time constants (global)
         h.update(constant.get_hash())
 
         return h.digest()
-
-        # s = ""
-        # for func in self.functions.values():
-        #     s +=func.adj.source
-            
-        # for kernel in self.kernels.values():       
-        #     s += kernel.adj.source
-
-        # return s.encode('utf-8')
 
     def load(self):
 
