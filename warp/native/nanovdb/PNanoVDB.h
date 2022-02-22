@@ -73,7 +73,7 @@
 
 #if defined(PNANOVDB_BUF_C)
 // #include <stdint.h>
-#ifndef _STDINT
+#if !defined(_STDINT) && !defined(__GNUC__)
 typedef signed char      int8_t;
 typedef signed short     int16_t;
 typedef signed int       int32_t;
@@ -103,7 +103,7 @@ typedef unsigned long long uint_least64_t;
 //typedef unsigned long long uintmax_t;
 #endif
 #if defined(__CUDACC__)
-#define PNANOVDB_BUF_FORCE_INLINE __host__ __device__ static inline __forceinline__
+#define PNANOVDB_BUF_FORCE_INLINE __host__ __device__ static __forceinline__
 #elif defined(_WIN32)
 #define PNANOVDB_BUF_FORCE_INLINE static inline __forceinline
 #else
@@ -225,7 +225,7 @@ uvec2 pnanovdb_buf_read_uint64(pnanovdb_buf_t buf, uint byte_offset)
 // force inline
 #if defined(PNANOVDB_C)
 #if defined(__CUDACC__)
-#define PNANOVDB_FORCE_INLINE __host__ __device__ static inline __forceinline__
+#define PNANOVDB_FORCE_INLINE __host__ __device__ static __forceinline__
 #elif defined(_WIN32)
 #define PNANOVDB_FORCE_INLINE static inline __forceinline
 #else
