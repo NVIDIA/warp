@@ -18,22 +18,22 @@ Transform = Tuple[Vec3, Quat]
 
 
 # shape geometry types
-GEO_SPHERE = 0
-GEO_BOX = 1
-GEO_CAPSULE = 2
-GEO_MESH = 3
-GEO_SDF = 4
-GEO_PLANE = 5
-GEO_NONE = 6
+GEO_SPHERE = wp.constant(0)
+GEO_BOX = wp.constant(1)
+GEO_CAPSULE = wp.constant(2)
+GEO_MESH = wp.constant(3)
+GEO_SDF = wp.constant(4)
+GEO_PLANE = wp.constant(5)
+GEO_NONE = wp.constant(6)
 
 # body joint types
-JOINT_PRISMATIC = 0 
-JOINT_REVOLUTE = 1
-JOINT_BALL = 2
-JOINT_FIXED = 3
-JOINT_FREE = 4
-JOINT_COMPOUND = 5
-JOINT_UNIVERSAL = 6
+JOINT_PRISMATIC = wp.constant(0)
+JOINT_REVOLUTE = wp.constant(1)
+JOINT_BALL = wp.constant(2)
+JOINT_FIXED = wp.constant(3)
+JOINT_FREE = wp.constant(4)
+JOINT_COMPOUND = wp.constant(5)
+JOINT_UNIVERSAL = wp.constant(6)
 
 class Mesh:
     """Describes a triangle collision mesh for simulation
@@ -632,7 +632,7 @@ class ModelBuilder:
         joint_xform : Transform=wp.transform_identity(),    # transform of joint in parent space
         joint_xform_child: Transform=wp.transform_identity(),
         joint_axis : Vec3=(0.0, 0.0, 0.0),
-        joint_type : int=JOINT_FREE,
+        joint_type : wp.constant=JOINT_FREE,
         joint_target_ke: float=0.0,
         joint_target_kd: float=0.0,
         joint_limit_ke: float=100.0,
@@ -677,7 +677,7 @@ class ModelBuilder:
         self.body_qd.append(wp.spatial_vector())
 
         # joint data
-        self.joint_type.append(joint_type)
+        self.joint_type.append(joint_type.val)
         self.joint_parent.append(parent)
         self.joint_child.append(child)
         self.joint_X_p.append(joint_xform)
@@ -899,7 +899,7 @@ class ModelBuilder:
     def _add_shape(self, body , pos, rot, type, scale, src, density, ke, kd, kf, mu):
         self.shape_body.append(body)
         self.shape_transform.append(wp.transform(pos, rot))
-        self.shape_geo_type.append(type)
+        self.shape_geo_type.append(type.val)
         self.shape_geo_scale.append((scale[0], scale[1], scale[2]))
         self.shape_geo_src.append(src)
         self.shape_materials.append((ke, kd, kf, mu))

@@ -1237,12 +1237,11 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     # reduce angular damping stiffness for stability
     angular_damping_scale = 0.01
 
-    # JOINT_FREE
-    if (type == 4):
+    # early out for free joints
+    if (type == wp.sim.JOINT_FREE):
         return
 
-    # JOINT_PRISMATIC
-    if (type == 0):
+    if type == wp.sim.JOINT_PRISMATIC:
         
         # world space joint axis
         axis_p = wp.transform_vector(X_wp, joint_axis[tid])
@@ -1271,8 +1270,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         f_total += (x_err - q*axis_p)*joint_attach_ke + (v_err - qd*axis_p)*joint_attach_kd
         t_total += ang_err*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
     
-    # JOINT_REVOLUTE
-    if (type == 1):
+    if type == wp.sim.JOINT_REVOLUTE:
         
         axis_p = wp.transform_vector(X_wp, axis)
         axis_c = wp.transform_vector(X_wc, axis)
@@ -1301,9 +1299,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
         t_total += swing_err*joint_attach_ke + (w_err - qd*axis_p)*joint_attach_kd*angular_damping_scale
  
-    
-    # JOINT_BALL
-    if (type == 2):
+    if type == wp.sim.JOINT_BALL:
         
         q_pc = wp.quat_inverse(q_p)*q_c
         ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
@@ -1313,8 +1309,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         t_total += target_kd*w_err + target_ke*ang_err
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
     
-    # JOINT_FIXED
-    if (type == 3):
+    if type == wp.sim.JOINT_FIXED:
 
         q_pc = wp.quat_inverse(q_p)*q_c
         ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
@@ -1323,8 +1318,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
         t_total += ang_err*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
     
-    # JOINT_COMPOUND
-    if (type == 5):
+    if type == wp.sim.JOINT_COMPOUND:
 
         q_off = wp.transform_get_rotation(X_cj)
         q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
@@ -1352,8 +1346,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
 
-    # JOINT_UNIVERSAL
-    if (type == 6):
+    if type == wp.sim.JOINT_UNIVERSAL:
 
         q_off = wp.transform_get_rotation(X_cj)
         q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off

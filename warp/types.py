@@ -21,6 +21,9 @@ class constant:
         line_src = calframe[1][4][0]
         constant._hash.update(bytes(line_src, 'utf-8'))
 
+    def __eq__(self, other):
+        return self.val == other
+
     @classmethod
     def get_hash(cls):
 
