@@ -1,5 +1,4 @@
 REM @echo off
-call "%~dp0repo" build --fetch-only %*
 
 SET PYTHON="%~dp0\_build\target-deps\python\python.exe"
 
@@ -9,8 +8,6 @@ call %PYTHON% -m pip install usd-core
 
 echo "Installing Warp to Python"
 call %PYTHON% -m pip install -e .
-
-dir warp\bin
 
 echo "Running tests"
 call %PYTHON% tests\test_all.py
