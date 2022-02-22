@@ -737,6 +737,11 @@ Random
    Return a random float between [min, max)
 
 
+.. function:: randn(state: uint32) -> float
+
+   Sample a normal distribution
+
+
 .. function:: noise(seed: uint32, x: float) -> float
 
    Non-periodic Perlin-style noise in 1d.

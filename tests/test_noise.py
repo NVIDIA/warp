@@ -82,9 +82,9 @@ def test_pnoise(test, device):
 
     img = pixels_host.numpy()
     img = np.reshape(img, (W, H))
-    img = img.astype(np.uint8)
 
     ### Figure viewing ###
+    # img = img.astype(np.uint8)
     # imgplot = plt.imshow(img, 'gray')
     # plt.savefig("pnoise_test.png")
 

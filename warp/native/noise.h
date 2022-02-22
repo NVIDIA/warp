@@ -62,21 +62,6 @@ inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 seed, int ix, int iy, int iz
     return vec3(x, y, z);
 }
 
-inline CUDA_CALLABLE float cdf_root_4d(float rand)
-{
-    // newton-raphson on CDF of third 4d hypersphere angular coordinate
-    float psi = M_PI / 2.f;
-    float f = (1.f / 2.f * M_PI) * (2.f * psi - sin(2.f * psi)) - rand;
-    float f_gradient = _EPSILON;
-    while (f > _EPSILON)
-    {
-        f_gradient = (1.f / M_PI) * (1.f - cos(2.f * psi));
-        psi = psi - f / f_gradient;
-        f = (1.f / 2.f * M_PI) * (2.f * psi - sin(2.f * psi)) - rand;
-    }
-    return psi;
-}
-
 inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 seed, int ix, int iy, int iz, int it)
 {
     const uint32 p1 = 73856093;
@@ -85,14 +70,13 @@ inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 seed, int ix, int iy, int iz
     const uint32 p4 = 10000019;
     uint32 idx = ix*p1 ^ iy*p2 ^ iz*p3 ^ it*p4;
     uint32 state = seed + idx;
-    float psi = cdf_root_4d(randf(state));
-    float theta = acos(1.f - 2.f * randf(state));
-    float phi = randf(state, 0.f, 2.f*M_PI);
-    float x = sin(psi) * sin(theta) * cos(phi);
-    float y = sin(psi) * sin(theta) * sin(phi);
-    float z = sin(psi) * cos(theta);
-    float t = cos(psi);
-    return vec4(x, y, z, t);
+
+    float x = randn(state);
+    float y = randn(state);
+    float z = randn(state);
+    float t = randn(state);
+
+    return normalize(vec4(x, y, z, t));
 }
 
 inline CUDA_CALLABLE float dot_grid_gradient_1d(uint32 seed, int ix, float dx)
