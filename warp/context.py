@@ -504,15 +504,15 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
 add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
     doc="""Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
-    doc="""Sample the volume given by ``id`` at the volume local-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+    doc="""Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 
 add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
-    doc="""Returns the voxel with coordinates ``i``, ``j``, ``k``, if the cell at this index does not exist this function returns the background value""")
+    doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
 add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic 4x4 transformation.""")
+    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.""")
 add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic 4x4 transformation.""")
+    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.""")
 
 
 #---------------------------------
