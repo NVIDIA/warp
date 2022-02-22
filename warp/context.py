@@ -11,6 +11,8 @@ import hashlib
 
 from typing import Tuple
 from typing import List
+from typing import Dict
+from typing import Any
 
 #from ctypes import*
 import ctypes
@@ -771,6 +773,9 @@ class Module:
         self.loaded = False
         self.build_failed = False
 
+        self.options = {"max_unroll": 16,
+                        "mode": warp.config.mode}
+
     def register_kernel(self, kernel):
 
         if kernel.key in self.kernels:
@@ -900,7 +905,7 @@ class Module:
             # functions
             for name, func in self.functions.items():
             
-                func.adj.build(builtin_functions, self.functions)
+                func.adj.build(builtin_functions, self.functions, self.options)
                 
                 if (enable_cpu):
                     cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
@@ -915,7 +920,7 @@ class Module:
             # kernels
             for kernel in self.kernels.values():
 
-                kernel.adj.build(builtin_functions, self.functions)
+                kernel.adj.build(builtin_functions, self.functions, self.options)
 
                 # each kernel gets an entry point in the module
                 if (enable_cpu):
@@ -950,11 +955,11 @@ class Module:
                 
                 if (enable_cpu):
                     with ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(cpp_path, None, dll_path, config=warp.config.mode)
+                        warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"])
 
                 if (enable_cuda):
                     with ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, ptx_path, config=warp.config.mode)
+                        warp.build.build_cuda(cu_path, ptx_path, config=self.options["mode"])
 
                 # update cached output
                 f = open(cache_path, 'wb')
@@ -1428,6 +1433,34 @@ def force_load():
     for m in user_modules.values():
         if (m.loaded == False):
             m.load()
+
+def set_module_options(options: Dict[str, Any]):
+    """Set options for the current module.
+
+    Options can be used to control runtime compilation and code-generation
+    for the current module individually. Available options are listed below.
+
+    * **mode**: The compilation mode to use, can be "debug", or "release", defaults to the value of ``warp.config.mode``.
+    * **max_unroll**: The maximum fixed-size loop to unroll (default 16)
+
+    Args:
+
+        options: Set of key-value option pairs
+    """
+   
+    import inspect
+    m = inspect.getmodule(inspect.stack()[1][0])
+
+    get_module(m.__name__).options.update(options)
+
+def get_module_options() -> Dict[str, Any]:
+    """Returns a list of options for the current module.
+    """
+    import inspect
+    m = inspect.getmodule(inspect.stack()[1][0])
+
+    return get_module(m.__name__).options
+
 
 def capture_begin():
     """Begin capture of a CUDA graph

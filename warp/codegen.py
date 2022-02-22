@@ -106,10 +106,11 @@ class Adjoint:
         adj.label_count = 0
 
     # generate function ssa form and adjoint
-    def build(adj, builtin_fuctions, user_functions):
+    def build(adj, builtin_fuctions, user_functions, options):
 
         adj.builtin_functions = builtin_fuctions
         adj.user_functions = user_functions
+        adj.options = options
 
         # recursively evaluate function body
         adj.eval(adj.tree.body[0])
@@ -569,12 +570,12 @@ class Adjoint:
 
             elif (isinstance(node, ast.For)):
 
-                # if all range() arguments are numeric constants we will unroll
-                # note that this only handles trivial constants, it will not unroll
-                # constant-time expressions (e.g.: range(0, 3*2))
                 unroll = True
                 for a in node.iter.args:
 
+                    # if all range() arguments are numeric constants we will unroll
+                    # note that this only handles trivial constants, it will not unroll
+                    # constant-time expressions (e.g.: range(0, 3*2))
                     if (isinstance(a, ast.Num) == False):
                         unroll = False
                         break
@@ -598,17 +599,29 @@ class Adjoint:
                         start = node.iter.args[0].n
                         end = node.iter.args[1].n
                         step = node.iter.args[2].n
-                        
 
-                    for i in range(start, end, step):
+                    # test if we're above max unroll count
+                    max_iters = abs(end-start)//abs(step)
+                    max_unroll = adj.options["max_unroll"]
 
-                        var_iter = adj.add_constant(i)
-                        adj.symbols[node.target.id] = var_iter
+                    if max_iters > max_unroll:
+                        unroll = False
 
-                        # eval body
-                        for s in node.body:
-                            adj.eval(s)
-                else:
+                        if (warp.config.verbose):
+                            print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
+                    else:
+
+                        # unroll
+                        for i in range(start, end, step):
+
+                            var_iter = adj.add_constant(i)
+                            adj.symbols[node.target.id] = var_iter
+
+                            # eval body
+                            for s in node.body:
+                                adj.eval(s)
+              
+                if unroll == False:
 
                     # dynamic loop, body must be side-effect free, i.e.: not
                     # overwrite memory locations used by previous operations
