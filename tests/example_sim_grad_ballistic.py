@@ -9,14 +9,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import warp as wp
 import warp.sim
-from warp.torch import from_torch, to_torch
-
-import render as renderer
+import warp.render
+import warp.torch
 
 wp.init()
 
 from pxr import Usd, UsdGeom, Gf
-
 
 #---------------------------------
 
@@ -53,10 +51,10 @@ class Ballistic:
         self.target = torch.tensor((2.0, 1.0, 0.0), device=adapter)
         self.control = torch.zeros((self.frame_steps, 3), dtype=torch.float32, device=adapter, requires_grad=True)
 
-        self.integrator = warp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.SemiImplicitIntegrator()
 
         if (self.render):
-            self.stage = renderer.UsdRenderer("tests/outputs/test_sim_grad_ballistic.usda")
+            self.stage = wp.render.UsdRenderer("tests/outputs/test_sim_grad_ballistic.usda")
 
         # allocate input/output states
         self.states = []
@@ -120,12 +118,12 @@ class Ballistic:
                          ctx.env.states[-1].particle_qd: wp.torch.from_torch(grads[1], dtype=wp.vec3) }
 
             # back-prop
-            tape.backward(adj_user)
+            tape.backward(grads=adj_user)
  
             # copy grad back to Torch
-            grads = (None, wp.torch.to_torch(tape.adjoints[ctx.env.states[0].particle_q]),
-                           wp.torch.to_torch(tape.adjoints[ctx.env.states[0].particle_qd]),
-                           wp.torch.to_torch(tape.adjoints[ctx.env.states[0].particle_f]))
+            grads = (None, wp.torch.to_torch(tape.gradients[ctx.env.states[0].particle_q]),
+                           wp.torch.to_torch(tape.gradients[ctx.env.states[0].particle_qd]),
+                           wp.torch.to_torch(tape.gradients[ctx.env.states[0].particle_f]))
 
             return grads
 

@@ -1,6 +1,6 @@
 import os
 
-version = "0.1.22"
+version = "0.1.23"
 
 cuda_path = None        # path to local CUDA toolchain, if None at init time warp will attempt to find the SDK using CUDA_PATH env var
 host_path = None        # path to local x86 toolchain, if None at init time warp will attempt to find MSVC toolchain
@@ -15,3 +15,5 @@ mode = "release"
 verbose = False
 
 host_compiler = None    # user can specify host compiler here, otherwise will attempt to find one automatically
+
+cache_kernels = True

@@ -33,27 +33,35 @@ if os.name == 'nt':
 if sys.platform == 'darwin':
     warp.config.cuda_path = None
 
-# no CUDA toolchain found
-if (warp.config.cuda_path == None):
-    print("Warning: building without CUDA support")
+try:
 
-    warp.build.build_dll(
-                    cpp_path=build_path + "/native/warp.cpp", 
-                    cu_path=None, 
-                    dll_path=build_path + "/bin/warp.so",
-                    config=warp.config.mode,
-                    force=True)
+    # no CUDA toolchain found
+    if (warp.config.cuda_path == None):
+        print("Warning: building without CUDA support")
 
-else:
-    if (os.name == 'nt'):
-        dll_path = build_path + "/bin/warp.dll"
+        warp.build.build_dll(
+                        cpp_path=build_path + "/native/warp.cpp", 
+                        cu_path=None, 
+                        dll_path=build_path + "/bin/warp.so",
+                        config=warp.config.mode,
+                        force=True)
+
     else:
-        dll_path = build_path + "/bin/warp.so"
+        if (os.name == 'nt'):
+            dll_path = build_path + "/bin/warp.dll"
+        else:
+            dll_path = build_path + "/bin/warp.so"
 
-    warp.build.build_dll(
-                    cpp_path=build_path + "/native/warp.cpp", 
-                    cu_path=build_path + "/native/warp.cu", 
-                    dll_path=dll_path,
-                    config=warp.config.mode,
-                    force=True)
+        warp.build.build_dll(
+                        cpp_path=build_path + "/native/warp.cpp", 
+                        cu_path=build_path + "/native/warp.cu", 
+                        dll_path=dll_path, 
+                        force=True)
                     
+except Exception as e:
+
+    # output build error
+    print(e)
+
+    # report error
+    sys.exit(1)

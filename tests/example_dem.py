@@ -1,12 +1,12 @@
 import os
 import sys
 
-from warp.render import UsdRenderer
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
 import numpy as np
+
+from warp.render import UsdRenderer
 
 np.random.seed(532)
 

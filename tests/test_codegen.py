@@ -95,7 +95,7 @@ def test_dynamic_reassign(n: int):
 
 
 @wp.kernel
-def test_range_static(result: wp.array(dtype=int)):
+def test_range_static_sum(result: wp.array(dtype=int)):
 
     a = int(0)
     for i in range(10):
@@ -115,7 +115,7 @@ def test_range_static(result: wp.array(dtype=int)):
 
 
 @wp.kernel
-def test_range_dynamic(start: int, end: int, step: int, result: wp.array(dtype=int)):
+def test_range_dynamic_sum(start: int, end: int, step: int, result: wp.array(dtype=int)):
 
     a = int(0)
     for i in range(end):
@@ -129,9 +129,22 @@ def test_range_dynamic(start: int, end: int, step: int, result: wp.array(dtype=i
     for i in range(start, end*step, step):
         c = c + 1
 
+    d = int(0)
+    for i in range(end*step, start, -step):
+        d = d + 1
+
     result[0] = a
     result[1] = b
     result[2] = c
+    result[3] = d
+
+@wp.kernel
+def test_range_dynamic(start: int, end: int, step: int, result: wp.array(dtype=int)):
+
+    output = int(0)
+    for i in range(start, end, step):
+        result[output] = i
+        output += 1
 
 
 @wp.kernel
@@ -141,7 +154,7 @@ def test_while(n: int):
 
     while i < n:
         i = i + 1
- 
+
     wp.expect_eq(i, n)
 
 
@@ -157,9 +170,16 @@ TestCodeGen.add_kernel_test(name="test_dynamic_for_rename", kernel=test_dynamic_
 TestCodeGen.add_kernel_test(name="test_dynamic_for_inplace", kernel=test_dynamic_for_inplace, inputs=[10], dim=1, devices=devices)
 TestCodeGen.add_kernel_test(name="test_reassign", kernel=test_reassign, dim=1, devices=devices)
 TestCodeGen.add_kernel_test(name="test_dynamic_reassign", kernel=test_dynamic_reassign, inputs=[2], dim=1, devices=devices)
-TestCodeGen.add_kernel_test(name="test_range_static", kernel=test_range_static, dim=1, expect=[10, 10, 10], devices=devices)
-TestCodeGen.add_kernel_test(name="test_range_dynamic", kernel=test_range_dynamic, dim=1, inputs=[0, 10, 2], expect=[10, 10, 10], devices=devices)
-TestCodeGen.add_kernel_test(name="test_range_dynamic_zero", kernel=test_range_dynamic, dim=1, inputs=[0, 0, 1], expect=[0, 0, 0], devices=devices)
+
+TestCodeGen.add_kernel_test(name="test_range_dynamic_forward", kernel=test_range_dynamic, dim=1, inputs=[0, 4, 1], expect=[0, 1, 2, 3], devices=devices)
+TestCodeGen.add_kernel_test(name="test_range_dynamic_reverse", kernel=test_range_dynamic, dim=1, inputs=[4, 0, -1], expect=[4, 3, 2, 1], devices=devices)
+TestCodeGen.add_kernel_test(name="test_range_dynamic_foward_step", kernel=test_range_dynamic, dim=1, inputs=[0, 8, 2], expect=[0, 2, 4, 6], devices=devices)
+TestCodeGen.add_kernel_test(name="test_range_dynamic_reverse_step", kernel=test_range_dynamic, dim=1, inputs=[8, 0, -2], expect=[8, 6, 4, 2], devices=devices)
+
+TestCodeGen.add_kernel_test(name="test_range_static_sum", kernel=test_range_static_sum, dim=1, expect=[10, 10, 10], devices=devices)
+TestCodeGen.add_kernel_test(name="test_range_dynamic_sum", kernel=test_range_dynamic_sum, dim=1, inputs=[0, 10, 2], expect=[10, 10, 10, 10], devices=devices)
+TestCodeGen.add_kernel_test(name="test_range_dynamic_sum_zero", kernel=test_range_dynamic_sum, dim=1, inputs=[0, 0, 1], expect=[0, 0, 0, 0], devices=devices)
+
 TestCodeGen.add_kernel_test(name="test_while_zero", kernel=test_while, dim=1, inputs=[0], devices=devices)
 TestCodeGen.add_kernel_test(name="test_while_positive", kernel=test_while, dim=1, inputs=[16], devices=devices)
 

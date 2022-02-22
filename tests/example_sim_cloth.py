@@ -11,11 +11,9 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
-
-import render
+import warp.render
 
 wp.init()
-#wp.config.verify_cuda = True
 
 # params
 sim_width = 64
@@ -90,7 +88,6 @@ model.tri_kb = 1.0
 model.tri_kd = 1.e+1
 
 model.soft_contact_kd = 1.e+2
-#model.soft_contact_ke = 
 
 integrator = wp.sim.SemiImplicitIntegrator()
 #integrator = wp.sim.VariationalImplicitIntegrator(model)
@@ -99,7 +96,7 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-stage = render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
+stage = wp.render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
 
 
 if (sim_use_graph):

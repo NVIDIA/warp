@@ -1,19 +1,15 @@
+
+from warp.sim.model import JOINT_COMPOUND, JOINT_REVOLUTE, JOINT_UNIVERSAL
+from warp.utils import transform_identity
+
+import math
+import numpy as np
+import os
+
 import xml.etree.ElementTree as ET
 
-import numpy as np
-import math
-
 import warp as wp
-import warp.sim
-
-class MJCF:
-
-    def __init__(self):
-        
-        # map node names to link indices
-        self.node_map = {}
-        self.xform_map = {}
-        self.mesh_map = {}
+import warp.sim 
 
 def parse_mjcf(
     filename, 
@@ -25,27 +21,33 @@ def parse_mjcf(
     contact_kd=100.0,
     contact_kf=100.0,
     contact_mu=0.5,
-    limit_ke=100.0,
-    limit_kd=10.0):
+    limit_ke=10000.0,
+    limit_kd=1000.0,
+    armature=0.0,
+    armature_scale=1.0):
 
     file = ET.parse(filename)
     root = file.getroot()
 
-    mjcf = MJCF()
-
     # map node names to link indices
-    mjcf.node_map = {}
-    mjcf.xform_map = {}
-    mjcf.mesh_map = {}
-
+    node_map = {}
+    xform_map = {}
+    mesh_map = {}
+    
     type_map = { 
-        "ball": wp.JOINT_BALL, 
-        "hinge": wp.JOINT_REVOLUTE, 
-        "slide": wp.JOINT_PRISMATIC, 
-        "free": wp.JOINT_FREE, 
-        "fixed": wp.JOINT_FIXED
+        "ball": wp.sim.JOINT_BALL, 
+        "hinge": wp.sim.JOINT_REVOLUTE, 
+        "slide": wp.sim.JOINT_PRISMATIC, 
+        "free": wp.sim.JOINT_FREE, 
+        "fixed": wp.sim.JOINT_FIXED
     }
 
+
+    def parse_float(node, key, default):
+        if key in node.attrib:
+            return float(node.attrib[key])
+        else:
+            return default
 
     def parse_vec(node, key, default):
         if key in node.attrib:
@@ -58,36 +60,101 @@ def parse_mjcf(
         body_name = body.attrib["name"]
         body_pos = np.fromstring(body.attrib["pos"], sep=" ")
 
-        # note: only supports single joint per-body
-        joint = body.find("joint")
-        
-        joint_name = joint.attrib["name"],
-        joint_type = type_map[joint.attrib["type"]]
-        joint_axis = parse_vec(joint, "axis", (0.0, 0.0, 0.0))
-        joint_pos = parse_vec(joint, "pos", (0.0, 0.0, 0.0))
-        joint_range = parse_vec(joint, "range", (-3.0, 3.0))
-
-        joint_axis = wp.normalize(joint_axis)
+        #-----------------
+        # add body for each joint
+        joints = body.findall("joint")
 
         if (parent == -1):
             body_pos = np.array((0.0, 0.0, 0.0))
 
-        #-----------------
-        # add body
-        
-        link = builder.add_link(
-            parent, 
-            origin=wp.transform(body_pos, wp.quat_identity()), 
-            axis=joint_axis, 
-            type=joint_type,
-            limit_lower=np.deg2rad(joint_range[0]),
-            limit_upper=np.deg2rad(joint_range[1]),
-            limit_ke=limit_ke,
-            limit_kd=limit_kd,
-            stiffness=stiffness,
-            damping=damping,
-            armature=0.0)
+        start_dof = builder.joint_dof_count
+        start_coord = builder.joint_coord_count
 
+        if (len(joints) == 1):
+
+            joint = joints[0]
+
+            joint_name = joint.attrib["name"],
+            joint_type = type_map[joint.attrib["type"]]
+            joint_axis = wp.normalize(parse_vec(joint, "axis", (0.0, 0.0, 0.0)))
+            joint_pos = parse_vec(joint, "pos", (0.0, 0.0, 0.0))
+            joint_range = parse_vec(joint, "range", (-3.0, 3.0))
+            joint_armature = parse_float(joint, "armature", armature)*armature_scale
+            joint_stiffness = parse_float(joint, "stiffness", stiffness)
+            joint_damping = parse_float(joint, "damping", damping)
+
+            link = builder.add_body(
+                parent=parent,
+                origin=wp.transform_identity(),  # will be evaluated in fk()
+                joint_xform=wp.transform(body_pos, wp.quat_identity()), 
+                joint_axis=joint_axis, 
+                joint_type=joint_type,
+                joint_limit_lower=np.deg2rad(joint_range[0]),
+                joint_limit_upper=np.deg2rad(joint_range[1]),
+                joint_limit_ke=limit_ke,
+                joint_limit_kd=limit_kd,
+                joint_target_ke=joint_stiffness,
+                joint_target_kd=joint_damping,
+                joint_armature=joint_armature)
+
+            #print(f"{joint_name} coord: {start_coord} dof: {start_dof} body index: {link}")
+
+        else:
+            
+            if (len(joints) == 2):
+                type = JOINT_UNIVERSAL
+            elif (len(joints) == 3):
+                type = JOINT_COMPOUND
+            else:
+                print("Bodies must have 1-3 joints")
+
+            # universal / compound joint
+            joint_stiffness = []
+            joint_damping = []
+            joint_lower = []
+            joint_upper = []
+            joint_armature = []
+            joint_axis = []
+
+            for i, joint in enumerate(joints):
+                
+                if (joint.attrib["type"] != "hinge"):
+                    print("Compound joints must all be hinges")
+
+                joint_name = joint.attrib["name"],
+                joint_pos = parse_vec(joint, "pos", (0.0, 0.0, 0.0))
+                joint_range = parse_vec(joint, "range", (-3.0, 3.0))
+                joint_lower.append(np.deg2rad(joint_range[0]))
+                joint_upper.append(np.deg2rad(joint_range[1]))
+                joint_armature.append(parse_float(joint, "armature", armature)*armature_scale)
+                joint_stiffness.append(parse_float(joint, "stiffness", stiffness))
+                joint_damping.append(parse_float(joint, "damping", damping))
+                joint_axis.append(wp.normalize(parse_vec(joint, "axis", (0.0, 0.0, 0.0))))
+
+            # align MuJoCo axes with joint coordinates
+
+            if len(joints) == 2:
+                M = np.array([joint_axis[0], joint_axis[1], wp.cross(joint_axis[0], joint_axis[1])]).T
+
+            elif len(joints) == 3:
+                M = np.array([joint_axis[0], joint_axis[1], joint_axis[2]]).T
+            
+            q = wp.quat_from_matrix(M)            
+
+            link = builder.add_body(
+                parent=parent,
+                origin=wp.transform_identity(),  # will be evaluated in fk()
+                joint_xform=wp.transform(body_pos, wp.quat_identity()),
+                joint_xform_child=wp.transform([0.0, 0.0, 0.0], q),
+                joint_type=type,
+                joint_limit_lower=joint_lower,
+                joint_limit_upper=joint_upper,
+                joint_limit_ke=limit_ke,
+                joint_limit_kd=limit_kd,
+                joint_target_ke=joint_stiffness,
+                joint_target_kd=joint_damping,
+                joint_armature=joint_armature[0])
+            
         #-----------------
         # add shapes
 
@@ -121,7 +188,7 @@ def parse_mjcf(
                     start = geom_fromto[0:3]
                     end = geom_fromto[3:6]
 
-                    # compute rotation to align wplex capsule (along x-axis), with mjcf fromto direction                        
+                    # compute rotation to align dflex capsule (along x-axis), with mjcf fromto direction                        
                     axis = wp.normalize(end-start)
                     angle = math.acos(np.dot(axis, (1.0, 0.0, 0.0)))
                     axis = wp.normalize(np.cross(axis, (1.0, 0.0, 0.0)))
@@ -161,7 +228,6 @@ def parse_mjcf(
         for child in body.findall("body"):
             parse_body(child, link)
 
-
     #-----------------
     # start articulation
 
@@ -170,6 +236,3 @@ def parse_mjcf(
     world = root.find("worldbody")
     for body in world.findall("body"):
         parse_body(body, -1)
-
-
-    return mjcf

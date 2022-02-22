@@ -10,11 +10,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
-import warp.sim as wpsim
+import warp.sim
+import warp.render
 
 wp.init()
-
-import render
 
 np.random.seed(42)
 np.set_printoptions(threshold=sys.maxsize)
@@ -35,7 +34,7 @@ sim_relaxation = 1.0
 
 device = "cuda"
 
-builder = wpsim.ModelBuilder()
+builder = wp.sim.ModelBuilder()
 
 
 cell_dim = 15
@@ -65,7 +64,7 @@ model.ground = False
 model.gravity[1] = 0.0
 
 #integrator = wpsim.SemiImplicitIntegrator()
-integrator = wpsim.XPBDIntegrator(iterations=sim_iterations, relaxation=sim_relaxation)
+integrator = wp.sim.XPBDIntegrator(iterations=sim_iterations, relaxation=sim_relaxation)
 
 rest = model.state()
 rest_vol = (cell_size*cell_dim)**3
@@ -73,7 +72,7 @@ rest_vol = (cell_size*cell_dim)**3
 state_0 = model.state()
 state_1 = model.state()
 
-stage = render.UsdRenderer("tests/outputs/test_sim_neo_hookean_twist.usd")
+stage = wp.render.UsdRenderer("tests/outputs/test_sim_neo_hookean_twist.usd")
 
 @wp.kernel
 def twist_points(rest: wp.array(dtype=wp.vec3),

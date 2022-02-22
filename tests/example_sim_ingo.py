@@ -11,8 +11,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
-
-import render
+import warp.render
 
 wp.init()
 
@@ -99,7 +98,7 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-stage = render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
+stage = wp.render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
 
 if (sim_use_graph):
     # create update graph

@@ -11,11 +11,9 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
-import warp.sim.render as render
-
+import warp.sim.render
 
 wp.init()
-#wp.config.verify_cuda = True
 
 # params
 sim_width = 64
@@ -49,7 +47,7 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-renderer = render.SimRenderer(model, "tests/outputs/test_sim_rope.usd")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rope.usd")
 
 # launch simulation
 for i in range(sim_frames):

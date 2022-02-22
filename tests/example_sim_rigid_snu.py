@@ -6,11 +6,10 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
-import warp.sim.render as renderer
+import warp.sim
+import warp.sim.render
 
 import numpy as np
-
-import tests.test_sim_util as util
 
 wp.init()
 
@@ -64,7 +63,7 @@ class HumanoidSNU:
 
         for i in range(10):
             
-            skeleton = util.Skeleton(wp.transform((i*2.0, 0.0, 0.0), wp.quat_identity()), "./tests/assets/snu/arm.xml", "./tests/assets/snu/muscle284.xml", builder, self.filter, armature=0.05)
+            skeleton = wp.sim.parse_snu(wp.transform((i*2.0, 0.0, 0.0), wp.quat_identity()), "./tests/assets/snu/arm.xml", "./tests/assets/snu/muscle284.xml", builder, self.filter, armature=0.05)
 
             self.skeletons.append(skeleton)
 
@@ -84,7 +83,7 @@ class HumanoidSNU:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = renderer.SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
+            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
 
 
     def run(self):

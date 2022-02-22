@@ -38,21 +38,21 @@ builtin_operators[ast.NotEq] = "!="
 
 
 class Var:
-    def __init__(adj, label, type, requires_grad=False, constant=None):
+    def __init__(self, label, type, requires_grad=False, constant=None):
 
         # convert built-in types to wp types
-        if (type == float):
+        if type == float:
             type = float32
-        elif (type == int):
+        elif type == int:
             type = int32
 
-        adj.label = label
-        adj.type = type
-        adj.requires_grad = requires_grad
-        adj.constant = constant
+        self.label = label
+        self.type = type
+        self.requires_grad = requires_grad
+        self.constant = constant
 
-    def __str__(adj):
-        return adj.label
+    def __str__(self):
+        return self.label
 
     def ctype(self):
         if (isinstance(self.type, array)):
@@ -106,10 +106,11 @@ class Adjoint:
         adj.label_count = 0
 
     # generate function ssa form and adjoint
-    def build(adj, builtin_fuctions, user_functions):
+    def build(adj, builtin_fuctions, user_functions, options):
 
         adj.builtin_functions = builtin_fuctions
         adj.user_functions = user_functions
+        adj.options = options
 
         # recursively evaluate function body
         adj.eval(adj.tree.body[0])
@@ -287,8 +288,8 @@ class Adjoint:
     # define a for-loop
     def begin_for(adj, iter, start, end, step):
 
-        # note that dynamic for-loops must not mutate any previous state, so we don't need to re-run them in the reverse pass
-        adj.add_forward(f"for (var_{iter}=var_{start}; var_{iter} < var_{end}; var_{iter} += var_{step}) {{", "if (false) {")
+        # note that dynamic for-loops must not mutate any previous state, so we don't need to re-run them in the reverse pass        
+        adj.add_forward(f"for (var_{iter}=var_{start}; cmp(var_{iter}, var_{end}, var_{step}); var_{iter} += var_{step}) {{""", statement_replay="if (false) {")
         adj.add_reverse("}")
 
         adj.indent_count += 1
@@ -297,8 +298,9 @@ class Adjoint:
 
         adj.indent_count -= 1
 
+        # run loop in reverse order for gradient computation
         adj.add_forward("}")
-        adj.add_reverse(f"for (var_{iter}=var_{end}-1; var_{iter} >= var_{start}; var_{iter} -= var_{step}) {{")
+        adj.add_reverse(f"for (var_{iter}=var_{end}-1; cmp(var_{iter}, var_{start}, -var_{step}); var_{iter} -= var_{step}) {{")
 
     # define a while loop, todo: reverse mode
     def begin_while(adj, cond):
@@ -450,10 +452,46 @@ class Adjoint:
 
             elif (isinstance(node, ast.Name)):
                 # lookup symbol, if it has already been assigned to a variable then return the existing mapping
-                if (node.id in adj.symbols):
+                if node.id in adj.symbols:
                     return adj.symbols[node.id]
+                elif node.id in adj.func.__globals__:
+                    obj = adj.func.__globals__[node.id]
+                    if not isinstance(obj, warp.constant):
+                        raise TypeError(f"'{node.id}' is not a local variable or of type warp.constant")
+                    out = adj.add_constant(obj.val)
+                    adj.symbols[node.id] = out
+                    return out
                 else:
                     raise KeyError("Referencing undefined symbol: " + str(node.id))
+
+            elif (isinstance(node, ast.Attribute)):
+                def attribute_to_str(node):
+                    if isinstance(node, ast.Name):
+                        return node.id
+                    elif isinstance(node, ast.Attribute):
+                        return attribute_to_str(node.value) + "." + node.attr
+                    else:
+                        raise RuntimeError(f"Failed to parse attribute")
+
+                def attribute_to_val(node, context):
+                    if isinstance(node, ast.Name):
+                        return context[node.id]
+                    elif isinstance(node, ast.Attribute):
+                        return getattr(attribute_to_val(node.value, context), node.attr)
+                    else:
+                        raise RuntimeError(f"Failed to parse attribute")
+
+                key = attribute_to_str(node)
+
+                if key in adj.symbols:
+                    return adj.symbols[key]
+                else:
+                    obj = attribute_to_val(node, adj.func.__globals__)
+                    if not isinstance(obj, warp.constant):
+                        raise TypeError(f"'{key}' is not a local variable or of type warp.constant")
+                    out = adj.add_constant(obj.val)
+                    adj.symbols[key] = out
+                    return out
 
             elif (isinstance(node, ast.Str)):
 
@@ -532,9 +570,12 @@ class Adjoint:
 
             elif (isinstance(node, ast.For)):
 
-                # if all range() arguments are numeric constants we will unroll
                 unroll = True
                 for a in node.iter.args:
+
+                    # if all range() arguments are numeric constants we will unroll
+                    # note that this only handles trivial constants, it will not unroll
+                    # constant-time expressions (e.g.: range(0, 3*2))
                     if (isinstance(a, ast.Num) == False):
                         unroll = False
                         break
@@ -558,17 +599,29 @@ class Adjoint:
                         start = node.iter.args[0].n
                         end = node.iter.args[1].n
                         step = node.iter.args[2].n
-                        
 
-                    for i in range(start, end, step):
+                    # test if we're above max unroll count
+                    max_iters = abs(end-start)//abs(step)
+                    max_unroll = adj.options["max_unroll"]
 
-                        var_iter = adj.add_constant(i)
-                        adj.symbols[node.target.id] = var_iter
+                    if max_iters > max_unroll:
+                        unroll = False
 
-                        # eval body
-                        for s in node.body:
-                            adj.eval(s)
-                else:
+                        if (warp.config.verbose):
+                            print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
+                    else:
+
+                        # unroll
+                        for i in range(start, end, step):
+
+                            var_iter = adj.add_constant(i)
+                            adj.symbols[node.target.id] = var_iter
+
+                            # eval body
+                            for s in node.body:
+                                adj.eval(s)
+              
+                if unroll == False:
 
                     # dynamic loop, body must be side-effect free, i.e.: not
                     # overwrite memory locations used by previous operations
@@ -621,6 +674,9 @@ class Adjoint:
                             
                             # overwrite the old variable value (violates SSA)
                             adj.add_call(adj.builtin_functions["copy"], [var1, var2])
+
+                            # reset the symbol to point to the original variable
+                            adj.symbols[sym] = var1
 
                     adj.end_for(iter, start, end, step)
 
@@ -941,15 +997,18 @@ WP_API void {name}_cpu_backward({reverse_args});
 # converts a constant Python value to equivalent C-repr
 def constant_str(value):
     
-    if (type(value) == bool):
+    if type(value) == bool:
         if value:
             return "true"
         else:
             return "false"
 
-    elif (type(value) == str):
+    elif type(value) == str:
         # ensure constant strings are correctly escaped
         return "\"" + str(value.encode("unicode-escape").decode()) + "\""
+
+    elif isinstance(value, ctypes.Array):
+        return "{" + ", ".join(map(str, value)) + "}"
 
     else:
         # otherwise just convert constant to string

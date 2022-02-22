@@ -13,12 +13,9 @@ def _usd_add_xform(prim):
     s = prim.AddScaleOp()
 
 
-def _usd_set_xform(xform, transform, scale, time):
+def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
     xform_ops = xform.GetOrderedXformOps()
-
-    pos = tuple(transform.p)
-    rot = tuple(transform.q)
 
     xform_ops[0].Set(Gf.Vec3d(pos), time)
     xform_ops[1].Set(Gf.Quatf(float(rot[3]), float(rot[0]), float(rot[1]), float(rot[2])), time)
@@ -109,7 +106,7 @@ class UsdRenderer:
 
         # op = sphere.MakeMatrixXform()
         # op.Set(mat, self.time)
-        _usd_set_xform(sphere, (pos, rot), (1.0, 1.0, 1.0), self.time)
+        _usd_set_xform(sphere, pos, rot, (1.0, 1.0, 1.0), self.time)
 
 
     def render_box(self, name: str, pos: tuple, rot: tuple, extents: tuple):
@@ -128,10 +125,10 @@ class UsdRenderer:
             _usd_add_xform(box)
 
         # update transform        
-        _usd_set_xform(box, (pos, rot), extents, self.time)
+        _usd_set_xform(box, pos, rot, extents, self.time)
     
 
-    def render_ref(self, name: str, path: str, pos, rot, scale):
+    def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple):
 
         ref_path = "/root/" + name
 
@@ -142,7 +139,7 @@ class UsdRenderer:
             _usd_add_xform(ref)
 
         # update transform
-        _usd_set_xform(ref, (pos, rot), scale, self.time)
+        _usd_set_xform(ref, pos, rot, scale, self.time)
 
 
     def render_mesh(self, name: str, points, indices, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0)):
@@ -158,7 +155,7 @@ class UsdRenderer:
         mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
         mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
 
-        _usd_set_xform(mesh, wp.transform(pos, rot), scale, self.time)
+        _usd_set_xform(mesh, pos, rot, scale, self.time)
 
 
     def render_line_list(self, name, vertices, indices, color, radius):

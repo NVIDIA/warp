@@ -1,6 +1,35 @@
-
 import ctypes 
+import hashlib
+import inspect
 import numpy as np
+
+class constant:
+    """Class to declare compile-time constants accessible from Warp kernels
+    
+    Args:
+        x: Compile-time constant value, can be any of the built-in math types.    
+    """
+
+    _hash = hashlib.sha256()
+    _hash_digest = None
+
+    def __init__(self, x):
+
+        self.val = x
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe)
+        line_src = calframe[1][4][0]
+        constant._hash.update(bytes(line_src, 'utf-8'))
+
+    def __eq__(self, other):
+        return self.val == other
+
+    @classmethod
+    def get_hash(cls):
+
+        if cls._hash_digest is None:
+            cls._hash_digest = cls._hash.digest()
+        return cls._hash_digest
 
 #----------------------
 # built-in types
@@ -11,192 +40,45 @@ class vec2(ctypes.Array):
     _length_ = 2
     _type_ = ctypes.c_float
     
-    def __init__(self, x, y):
-        self[0] = x
-        self[1] = y
-
-    @staticmethod
-    def length():
-        return 2
-
-    @staticmethod
-    def size():
-        return 8
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
 class vec3(ctypes.Array):
     
     _length_ = 3
     _type_ = ctypes.c_float
     
-    def __init__(self, x, y, z):
-        self[0] = x
-        self[1] = y
-        self[2] = z
-
-    @staticmethod
-    def length():
-        return 3
-
-    @staticmethod
-    def size():
-        return 12
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
-
 class vec4(ctypes.Array):
     
     _length_ = 4
     _type_ = ctypes.c_float
 
-    def __init__(self, x, y, z, w):
-        self[0] = x
-        self[1] = y
-        self[2] = z
-        self[3] = w
-
-    @staticmethod
-    def length():
-        return 4
-
-    @staticmethod
-    def size():
-        return 16
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
 class quat(ctypes.Array):
     
     _length_ = 4
     _type_ = ctypes.c_float
-
-    def __init__(self, i, j, k, r):
-        self[0] = i
-        self[1] = j
-        self[2] = k
-        self[3] = r
     
-    @staticmethod
-    def length():
-        return 4
-
-    @staticmethod
-    def size():
-        return 16
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
-
-
 class mat22(ctypes.Array):
     
     _length_ = 4
     _type_ = ctypes.c_float
     
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 4
-
-    @staticmethod
-    def size():
-        return 16
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
-
 class mat33(ctypes.Array):
     
     _length_ = 9
     _type_ = ctypes.c_float
-    
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 9
-
-    @staticmethod
-    def size():
-        return 36
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
 
 class mat44(ctypes.Array):
     
     _length_ = 16
     _type_ = ctypes.c_float
 
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 16
-
-    @staticmethod
-    def size():
-        return 64
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
-
-
 class spatial_vector(ctypes.Array):
     
     _length_ = 6
     _type_ = ctypes.c_float
 
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 6
-
-    @staticmethod
-    def size():
-        return 24
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
-
 class spatial_matrix(ctypes.Array):
     
     _length_ = 36
     _type_ = ctypes.c_float
-
-    def __init__(self):
-        pass
-    
-    @staticmethod
-    def length():
-        return 36
-
-    @staticmethod
-    def size():
-        return 144
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float
 
 class transform(ctypes.Array):
     
@@ -206,18 +88,6 @@ class transform(ctypes.Array):
     def __init__(self, p, q):
         self[0:3] = vec3(*p)
         self[3:7] = quat(*q)
-
-    @staticmethod
-    def length():
-        return 7
-    
-    @staticmethod
-    def size():
-        return 28
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
 
     @property 
     def p(self):
@@ -234,103 +104,79 @@ class void:
 
 class float32:
 
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 4
+    _length_ = 1
+    _type_ = ctypes.c_float
 
-    @staticmethod
-    def ctype():
-        return ctypes.c_float        
 
 class float64:
 
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 8
+    _length_ = 1
+    _type_ = ctypes.c_double
 
-    @staticmethod
-    def ctype():
-        return ctypes.c_double
+
+class int8:
+
+    _length_ = 1
+    _type_ = ctypes.c_int8
+
+    def __init__(self, x=0):
+        self.value = x
+class uint8:
+
+    _length_ = 1
+    _type_ = ctypes.c_uint8
+
+    def __init__(self, x=0):
+        self.value = x
 
 
 class int32:
 
+    _length_ = 1
+    _type_ = ctypes.c_int32
+
     def __init__(self, x=0):
         self.value = x
-
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 4
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_int32
 
 
 class uint32:
 
+    _length_ = 1
+    _type_ = ctypes.c_uint32
+
     def __init__(self, x=0):
         self.value = x
-
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 4
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_uint32
 
 
 class int64:
 
+    _length_ = 1
+    _type_ = ctypes.c_int64   
+
     def __init__(self, x=0):
         self.value = x
-
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 8
-
-    @staticmethod
-    def ctype():
-        return ctypes.c_int64
-
 
 class uint64:
 
+    _length_ = 1
+    _type_ = ctypes.c_uint64   
+
     def __init__(self, x=0):
         self.value = x
 
-    @staticmethod
-    def length():
-        return 1
-    
-    @staticmethod
-    def size():
-        return 8
+dtype_to_warp_type = {
+    np.dtype(np.float32): float32,
+    np.dtype(np.float64): float64,
+    np.dtype(np.int8): int8,
+    np.dtype(np.int32): int32,
+    np.dtype(np.int64): int64,
+    np.dtype(np.uint8): uint8,
+    np.dtype(np.uint32): uint32,
+    np.dtype(np.uint64): uint64,
+    np.dtype(np.byte): int8,
+    np.dtype(np.ubyte): uint8,
+}
 
-    @staticmethod
-    def ctype():
-        return ctypes.c_uint64
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class mesh_query_aabb_t:
@@ -349,13 +195,13 @@ def type_length(dtype):
     if (dtype == float or dtype == int):
         return 1
     else:
-        return dtype.length()
+        return dtype._length_
 
 def type_size_in_bytes(dtype):
     if (dtype == float or dtype == int):
         return 4
     else:
-        return dtype.size()
+        return dtype._length_*ctypes.sizeof(dtype._type_)
 
 def type_ctype(dtype):
     if (dtype == float):
@@ -363,7 +209,7 @@ def type_ctype(dtype):
     elif (dtype == int):
         return ctypes.c_int32
     else:
-        return dtype.ctype()
+        return dtype._type_
 
 def type_typestr(ctype):
    
@@ -371,6 +217,10 @@ def type_typestr(ctype):
         return "<f4"
     elif (ctype == ctypes.c_double):
         return "<f8"
+    elif (ctype == ctypes.c_int8):
+        return "b"
+    elif (ctype == ctypes.c_uint8):
+        return "B"
     elif (ctype == ctypes.c_int32):
         return "<i4"
     elif (ctype == ctypes.c_uint32):
@@ -414,10 +264,23 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=float32, length=0, capacity=0, device=None, context=None, copy=True, owner=True, requires_grad=False):
-        
+    def __init__(self, data=None, dtype=None, length=0, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
+        """ Constructs a new Warp array object 
+
+        This method allows manually constructing an array from existing data. 
+
+        Args:
+            data (Union[list, tuple, iterable], wp.uint64) 
+            dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is None and data an ndarray then it will be inferred from the array data type
+            length (int): Number of elements (rows) of the data type
+            capacity (int): Maximum size in bytes of the `data` allocation
+            device (str): Device the allocation lives on
+            copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified
+            owner (bool): Should the array object try to deallocate memory when it is deleted
+            requires_grad (bool): Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
+
+        """
         self.owner = False
-        self.context = None
 
         # convert built-in numeric type to wp type
         if (dtype == int):
@@ -425,6 +288,13 @@ class array:
 
         elif (dtype == float):
             dtype = float32
+
+        elif dtype is None:
+            # if type is not defined, then try to match the type of the source
+            try:
+                dtype = dtype_to_warp_type[data.dtype]
+            except (AttributeError, KeyError):
+                raise RuntimeError("Unable to deduce target data type")
 
         # save flag, controls if gradients will be computed in by wp.Tape
         self.requires_grad = requires_grad
@@ -447,9 +317,9 @@ class array:
 
             # try to convert src array to destination type
             try:
-                arr = arr.astype(dtype=type_typestr(dtype.ctype()))
+                arr = arr.astype(dtype=type_typestr(dtype._type_))
             except:
-                raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype.ctype}")
+                raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
             
             # ensure contiguous
             arr = np.ascontiguousarray(arr)
@@ -460,15 +330,12 @@ class array:
 
             if (device == "cpu" and copy == False):
 
-                from warp.context import runtime
-                
                 # ref numpy memory directly
                 self.data = ptr
                 self.dtype=dtype
                 self.length=length
                 self.capacity=length*type_size_in_bytes(dtype)
                 self.device = device
-                self.context = runtime  # todo: if runtime is global do we really need to store it per-array?
                 self.owner = False
 
                 # keep a ref to source array to keep allocation alive
@@ -478,7 +345,7 @@ class array:
 
                 # otherwise, create a host wrapper around the numpy
                 #  array and a new destination array to copy it to
-                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', context=context, copy=False, owner=False)
+                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', copy=False, owner=False)
                 dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
@@ -500,7 +367,6 @@ class array:
             self.dtype = dtype
             self.data = data
             self.device = device
-            self.context = context
             self.owner = owner
 
             self.__name__ = "array<" + type.__name__ + ">"
@@ -522,19 +388,21 @@ class array:
                 "version": 3 
             }
 
-
     def __del__(self):
         
-        # must be careful to not call any globals here
-        # since this may be called during destruction / shutdown
-        # even ctypes module may no longer exist
+        try:
+            if (self.owner):
 
-        if (self.owner and self.context):
+                # this import can fail during process destruction
+                # in this case we allow OS to clean up allocations
+                from warp.context import runtime
 
-            if (self.device == "cpu"):
-                self.context.host_allocator.free(self.ptr, self.capacity)
-            else:
-                self.context.device_allocator.free(self.ptr, self.capacity)
+                if (self.device == "cpu"):
+                    runtime.host_allocator.free(self.ptr, self.capacity)
+                else:
+                    runtime.device_allocator.free(self.ptr, self.capacity)
+        except:
+            pass
                 
 
     def __len__(self):
@@ -551,11 +419,13 @@ class array:
 
     def zero_(self):
 
+        from warp.context import runtime
+
         if (self.device == "cpu"):
-            self.context.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+            runtime.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
 
         if(self.device == "cuda"):
-            self.context.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+            runtime.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
 
 
 
@@ -614,7 +484,6 @@ class array:
             length=int(dst_length),
             capacity=int(dst_capacity),
             device=self.device,
-            context=self.context,
             owner=False)
 
         return arr
@@ -623,7 +492,18 @@ class array:
 class Mesh:
 
     def __init__(self, points, velocities, indices):
-        
+        """ Class representing a triangle mesh.
+
+        Attributes:
+            id: Unique identifier for this mesh object, can be passed to kernels.
+            device: Device this object lives on, all buffers must live on the same device.
+
+        Args:
+            points (:class:`warp.array`): Array of vertex positions of type :class:`wp.vec3`
+            velocities (:class:`warp.array`): Array of vertex velocities of type :class:`wp.vec3`
+            indices (:class:`warp.array`): Array of triangle indices of type :class:`wp.int32`, should be length 3*number of triangles
+        """
+
         self.points = points
         self.velocities = velocities
         self.indices = indices
@@ -631,8 +511,6 @@ class Mesh:
         if (points.device != indices.device):
             raise RuntimeError("Points and indices must live on the same device")
 
-        # inherit context from points, todo: find this globally
-        self.context = points.context
         self.device = points.device
 
         def get_data(array):
@@ -641,16 +519,17 @@ class Mesh:
             else:
                 return ctypes.c_void_p(0)
 
+        from warp.context import runtime
 
         if (self.device == "cpu"):
-            self.id = self.context.core.mesh_create_host(
+            self.id = runtime.core.mesh_create_host(
                 get_data(points), 
                 get_data(velocities), 
                 get_data(indices), 
                 int(points.length), 
                 int(indices.length/3))
         else:
-            self.id = self.context.core.mesh_create_device(
+            self.id = runtime.core.mesh_create_device(
                 get_data(points), 
                 get_data(velocities), 
                 get_data(indices), 
@@ -660,59 +539,152 @@ class Mesh:
 
     def __del__(self):
 
-        # we need to make sure correct CUDA device is set even during GC
-        self.context.verify_device()
+        try:
+                
+            from warp.context import runtime
 
-        if (self.device == "cpu"):
-            self.context.core.mesh_destroy_host(self.id)
-        else:
-            self.context.core.mesh_destroy_device(self.id)
+            if (self.device == "cpu"):
+                runtime.core.mesh_destroy_host(self.id)
+            else:
+                runtime.core.mesh_destroy_device(self.id)
+        
+        except:
+            pass
 
     def refit(self):
-        
+        """ Refit the BVH to points. This should be called after users modify the `points` data."""
+                
+        from warp.context import runtime
+
         if (self.device == "cpu"):
-            self.context.core.mesh_refit_host(self.id)
+            runtime.core.mesh_refit_host(self.id)
         else:
-            self.context.core.mesh_refit_device(self.id)
-            self.context.verify_device()
+            runtime.core.mesh_refit_device(self.id)
+            runtime.verify_device()
 
 
 
 class Volume:
 
-    def __init__(self, vdb):
-        pass
+    CLOSEST = constant(0)
+    LINEAR = constant(1)
 
+    def __init__(self, data: array):
+        """ Class representing a sparse grid.
+
+        Attributes:
+            CLOSEST (int): Enum value to specify nearest-neighbor interpolation during sampling
+            LINEAR (int): Enum value to specify trilinear interpolation during sampling
+            
+        Args:
+            data (:class:`warp.array`): Array of bytes representing the volume in NanoVDB format
+        """
+
+        self.id = 0
+
+        from warp.context import runtime
+        self.context = runtime
+
+        if data.device != "cpu" and data.device != "cuda":
+            raise RuntimeError(f"Unknown device type '{data.device}'")
+        self.device = data.device
+
+        if data is None:
+            return
+
+        if self.device == "cpu":
+            self.id = self.context.core.volume_create_host(ctypes.cast(data.data, ctypes.c_void_p), data.length)
+        else:
+            self.id = self.context.core.volume_create_device(ctypes.cast(data.data, ctypes.c_void_p), data.length)
+
+        if self.id == 0:
+            raise RuntimeError("Failed to create volume from input array")
+
+    def __del__(self):
+
+        if self.id == 0:
+            return
+        
+        self.context.verify_device()
+        if self.device == "cpu":
+            self.context.core.volume_destroy_host(self.id)
+        else:
+            self.context.core.volume_destroy_device(self.id)
+
+
+    def array(self):
+
+        buf = ctypes.c_void_p(0)
+        size = ctypes.c_uint64(0)
+        if self.device == "cpu":
+            self.context.core.volume_get_buffer_info_host(self.id, ctypes.byref(buf), ctypes.byref(size))
+        else:
+            self.context.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
+        return array(data=buf.value, dtype=uint8, length=size.value, device=self.device, owner=False)
 
 
 class HashGrid:
 
     def __init__(self, dim_x, dim_y, dim_z, device):
-        
+        """ Class representing a triangle mesh.
+
+        Attributes:
+            id: Unique identifier for this mesh object, can be passed to kernels.
+            device: Device this object lives on, all buffers must live on the same device.
+
+        Args:
+            dim_x (int): Number of cells in x-axis
+            dim_y (int): Number of cells in y-axis
+            dim_z (int): Number of cells in z-axis
+        """
+
         self.device = device
 
         from warp.context import runtime
-        self.context = runtime
-        
+       
         if (device == "cpu"):
-            self.id = self.context.core.hash_grid_create_host(dim_x, dim_y, dim_z)
+            self.id = runtime.core.hash_grid_create_host(dim_x, dim_y, dim_z)
         elif (device == "cuda"):
-            self.id = self.context.core.hash_grid_create_device(dim_x, dim_y, dim_z)
+            self.id = runtime.core.hash_grid_create_device(dim_x, dim_y, dim_z)
 
 
     def build(self, points, radius):
+        """ Updates the hash grid data structure.
+
+        This method rebuilds the underlying datastructure and should be called any time the set
+        of points changes.
+
+        Attributes:
+            id: Unique identifier for this mesh object, can be passed to kernels.
+            device: Device this object lives on, all buffers must live on the same device.
+
+        Args:
+            points (:class:`warp.array`): Array of points of type :class:`warp.vec3`
+            radius (float): The cell size to use for bucketing points, cells are cubes with edges of this width.
+                            For best performance the radius used to construct the grid should match closely to
+                            the radius used when performing queries.                          
+        """
         
+        from warp.context import runtime
+
         if (self.device == "cpu"):
-            self.context.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
+            runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
         else:
-            self.context.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
+            runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
 
 
     def __del__(self):
 
-        if (self.device == "cpu"):
-            self.context.core.hash_grid_destroy_host(self.id)
-        else:
-            self.context.core.hash_grid_destroy_device(self.id)
+        try:
+
+            from warp.context import runtime
+
+            if (self.device == "cpu"):
+                runtime.core.hash_grid_destroy_host(self.id)
+            else:
+                runtime.core.hash_grid_destroy_device(self.id)
+
+        except:
+            pass
 
 

@@ -14,7 +14,7 @@ import warp.sim as wpsim
 
 wp.init()
 
-import render
+import warp.render
 
 np.random.seed(42)
 np.set_printoptions(threshold=sys.maxsize)

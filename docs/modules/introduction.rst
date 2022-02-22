@@ -5,19 +5,10 @@ Warp is a Python framework for writing high-performance simulation and graphics 
 
 Installation
 ------------
-To install in your local Python environment use: ``pip install -e .``
 
+See `README.md <https://gitlab-master.nvidia.com/mmacklin/warp/README.md>`_ for building instructions and where to download pre-built packages.
 
-Requirements
-------------
-
-For developers writing their own kernels the following are required:
-
-* Microsoft Visual Studio 2015 upwards (Windows)
-* GCC 4.0 upwards (Linux)
-* CUDA 11.0 upwards
-
-To run built-in tests you should install the USD Core library to your Python environment using: ``pip install usd-core``
+To install in your local Python environment, use: ``pip install -e .``
 
 Example Usage
 -------------
@@ -28,7 +19,7 @@ Before use Warp should be explicitly initialized as follows: ::
 
     wp.init()
 
-To define a computational kernel use the following syntax with the ``@wp.kernel`` decorator. Note that all input arguments must be typed, and that the function can not access any global state.::
+To define a computational kernel use the following syntax with the ``@wp.kernel`` decorator. Note that all input arguments must be typed, and that the function cannot access any global state::
 
     @wp.kernel
     def simple_kernel(a: wp.array(dtype=wp.vec3),
@@ -85,7 +76,7 @@ This pattern will allocate a temporary CPU buffer, perform a copy from device->h
 
     view = host_array.numpy()
 
-All copy operations are performed asynchronously and must be synchronized explicitly to ensure data is visible. For best performance multiple copies should be queued twpether: ::
+All copy operations are performed asynchronously and must be synchronized explicitly to ensure data is visible. For best performance multiple copies should be queued together: ::
 
     # launch multiple copy operations asynchronously
     wp.copy(dest=host_array_0, src=device_array_0)
@@ -96,9 +87,9 @@ All copy operations are performed asynchronously and must be synchronized explic
 Memory Model
 ------------
 
-Memory allocations are exposed via. the ``wp.array`` type. Arrays wrap an underlying piece of memory that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (``vec3``, ``matrix33``, etc).
+Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (``vec3``, ``matrix33``, etc).
 
-Arrays may be constructed from Python lists or numpy arrays, by default data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the array constructor.
+Arrays may be constructed from Python lists or numpy arrays; by default data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the array constructor.
 
 Compilation Model
 -----------------
@@ -112,7 +103,7 @@ Note that compilation is triggered on the first kernel launch for that module. A
 Language Details
 ----------------
 
-To support GPU computation and differentiability there are some differences from the CPython runtime.
+To support GPU computation and differentiability, there are some differences from the CPython runtime.
 
 Built-in Types
 ^^^^^^^^^^^^^^
@@ -140,7 +131,7 @@ Tuple initialization is not supported, instead variables should be explicitly ty
 Immutable Types
 ^^^^^^^^^^^^^^^
 
-Similar to Python tuples, built-in value types are immutable, and users should use construction syntax to mutate existing variables i.e.: ::
+Similar to Python tuples, built-in value types are immutable, and users should use construction syntax to mutate existing variables, for example: ::
 
     a = wp.vec3(0.0, 0.0, 0.0)
 

@@ -1,9 +1,14 @@
 #!/bin/bash
-#set -e
+set -e
+
 SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 #source "$SCRIPT_DIR/repo.sh" build --fetch-only $@ || exit $?
 
 "$SCRIPT_DIR/repo.sh" build --fetch-only --no-docker $@ 
+
+# host deps
+# tools/packman/packman pull -p linux-x86_64 deps/host-deps.packman.xml
+# tools/packman/packman pull -p linux-x86_64 deps/target-deps.packman.xml
 
 # pip deps
 ./_build/target-deps/python/python -m pip install numpy
@@ -16,7 +21,7 @@ cp _build/target-deps/cuda/lib64/libnvrtc-builtins.so warp/bin
 
 # set rpath on libnvrtc so we can distribute without the CUDA SDK
 # this allows libnvrtc to find libnvrtc-builtins without a CUDA install
-
+# requires the patchelf package
 sudo apt-get install patchelf
 
 patchelf --set-rpath '$ORIGIN' warp/bin/libnvrtc.so.10.1
