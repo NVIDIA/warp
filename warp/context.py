@@ -95,7 +95,7 @@ class Kernel:
 def func(f):
 
     m = get_module(f.__module__)
-    f = Function(func=f, key=f.__name__, namespace="", module=m, value_type=None)   # value_type not known yet, will be infered during code-gen
+    f = Function(func=f, key=f.__name__, namespace="", module=m, value_type=None)   # value_type not known yet, will be inferred during code-gen
 
     return f
 
@@ -507,15 +507,15 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
 add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
     doc="""Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
-    doc="""Sample the volume given by ``id`` at the volume local-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+    doc="""Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 
 add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
-    doc="""Returns the voxel with coordinates ``i``, ``j``, ``k``, if the cell at this index does not exist this function returns the background value""")
+    doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
 add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic 4x4 transformation.""")
+    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.""")
 add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic 4x4 transformation.""")
+    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.""")
 
 
 #---------------------------------
@@ -537,6 +537,8 @@ add_builtin("randf", input_types={"state": uint32}, value_type=float, group="Ran
     doc="Return a random float between [0.0, 1.0)")
 add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, value_type=float, group="Random", 
     doc="Return a random float between [min, max)")
+add_builtin("randn", input_types={"state": uint32}, value_type=float, group="Random", 
+    doc="Sample a normal distribution")
 
 add_builtin("noise", input_types={"seed": uint32, "x": float}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 1d.")
@@ -780,7 +782,7 @@ class Module:
         if kernel.key in self.kernels:
             
             # if kernel is replacing an old one then assume it has changed and 
-            # force a rebuild / reload of the dynamic libary 
+            # force a rebuild / reload of the dynamic library 
             if (self.dll):
                 warp.build.unload_dll(self.dll)
 
@@ -908,7 +910,7 @@ class Module:
                 if (enable_cuda):
                     cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
 
-                # complete the function return type after we have analyzed it (infered from return statement in ast)
+                # complete the function return type after we have analyzed it (inferred from return statement in ast)
                 func.value_type = wrap(func.adj)
 
 
@@ -1281,7 +1283,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
     Kernel launches are asynchronous with respect to the calling Python thread. 
 
     Args:
-        kernel: The name of a Warp kenel function, decorated with the @warp.kernel decorator
+        kernel: The name of a Warp kernel function, decorated with the @warp.kernel decorator
         dim: The number of threads to launch the kernel with
         inputs: The input parameters to the kernel
         outputs: The output parameters (optional)

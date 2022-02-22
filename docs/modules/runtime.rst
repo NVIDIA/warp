@@ -204,6 +204,14 @@ Below we give an example of creating a Volume object from an existing NanoVDB fi
    # create Volume object
    volume = wp.Volume(wp.array(file, device="cpu"))
 
+.. note::
+   Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension,  can contain multiple grids, but a ``Volume`` object represents a single NanoVDB grid and requires an ``array`` of bytes for a single grid at initialization.
+
+   Because of this, when ``.nvdb`` files are used as data source, the individual grids need to be extracted for the ``Volume`` objects.
+
+   Alternatively, grid data saved directly can be passed in without modification. 
+
+
 To sample the volume inside a kernel we pass a reference to it by id, and use the built-in sampling modes::
 
    @wp.kernel
@@ -228,6 +236,8 @@ To sample the volume inside a kernel we pass a reference to it by id, and use th
 
 .. autoclass:: Volume
    :members:
+
+.. seealso:: `Reference <functions.html#volumes>`__ of the volume functions available in kernels.
 
 Hash Grids
 ----------
