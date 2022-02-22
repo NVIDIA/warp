@@ -54,12 +54,12 @@ inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 seed, int ix, int iy, int iz
     const uint32 p3 = 53471161;
     uint32 idx = ix*p1 ^ iy*p2 ^ iz*p3;
     uint32 state = seed + idx;
-    float theta = acos(1.f - 2.f * randf(state));
-    float phi = randf(state, 0.f, 2.f*M_PI);
-    float x = sin(theta) * cos(phi);
-    float y = sin(theta) * sin(phi);
-    float z = cos(theta);
-    return vec3(x, y, z);
+
+    float x = randn(state);
+    float y = randn(state);
+    float z = randn(state);
+
+    return normalize(vec3(x, y, z));
 }
 
 inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 seed, int ix, int iy, int iz, int it)
