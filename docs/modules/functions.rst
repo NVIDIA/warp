@@ -683,7 +683,7 @@ Volumes
 
 .. function:: volume_sample_local(id: uint64, uvw: vec3, sampling_mode: int) -> float
 
-   Sample the volume given by ``id`` at the volume local-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+   Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
 .. function:: volume_lookup(id: uint64, i: int, j: int, k: int) -> float
@@ -693,12 +693,12 @@ Volumes
 
 .. function:: volume_transform(id: uint64, uvw: vec3) -> vec3
 
-   Transform a point defined in volume local-space to world space given the volume's intrinsic 4x4 transformation.
+   Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.
 
 
 .. function:: volume_transform_inv(id: uint64, xyz: vec3) -> vec3
 
-   Transform a point defined in world-space to the volume's local space, given the volume's intrinsic 4x4 transformation.
+   Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.
 
 
 
