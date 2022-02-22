@@ -5,11 +5,10 @@ import numpy as np
 import math
 import ctypes
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import unittest
 import test_base
-
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
 import warp.render
@@ -242,8 +241,8 @@ def test_mesh_query_point(test, device):
     dist_error = np.max(np.abs(dist_query - dist_brute))
     sign_error = np.max(np.abs(inside_query - inside_brute))
 
-    test.assertTrue(dist_error < 1.e-4)
-    test.assertTrue(sign_error < 1.e-4)
+    test.assertTrue(dist_error < 1.e-3)
+    test.assertTrue(sign_error < 1.e-3)
 
     stage = warp.render.UsdRenderer("tests/outputs/test_mesh_query_point.usd")
 

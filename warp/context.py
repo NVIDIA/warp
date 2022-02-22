@@ -27,7 +27,7 @@ import warp.config
 # represents either a built-in or user-defined function
 class Function:
 
-    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, variadic=False, doc="", group=""):
+    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, variadic=False, doc="", group="", hidden=False):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -37,7 +37,8 @@ class Function:
         self.doc = doc
         self.group = group
         self.module = module
-        self.variadic = variadic    # function can take arbitrary inputs, e.g.: printf()
+        self.variadic = variadic    # function can take arbitrary number of inputs, e.g.: printf()
+        self.hidden = hidden        # function will not be listed in docs
 
         if (func):
             self.adj = warp.codegen.Adjoint(func)
@@ -110,21 +111,21 @@ def kernel(f):
 builtin_functions = {}
 
 # decorator to register a built-in function with @builtin
-def builtin(key):
+def builtin(key, input_types={}, doc="", group="", hidden=False):
     def insert(c):
         
-        func = Function(func=None, key=key, namespace="wp::", value_type=c.value_type)
+        func = Function(func=None, input_types=input_types, key=key, namespace="wp::", value_type=c.value_type, doc=doc, group=group, hidden=hidden)
         builtin_functions[key] = func
 
     return insert
 
-def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other"):
+def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False):
 
-    # lambda to return a constant type for an overload
+    # wrap value type in a lambda
     def value_func(arg):
         return value_type
-
-    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group)
+        
+    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden)
 
     if key in builtin_functions:
         # if key exists we add overload
@@ -566,24 +567,30 @@ add_builtin("curlnoise", input_types={"seed": uint32, "xyzt": vec4}, value_type=
 add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility",
     doc="Allows printing formatted strings, using C-style format specifiers.")
 
+@builtin("print", input_types={"value": Any}, doc="Print variable to stdout", group="Utility")
+class PrintFunc:
+    @staticmethod
+    def value_type(args):
+        return None
+
 # helpers
 add_builtin("tid", input_types={}, value_type=int, group="Utility",
     doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.""")
 
-@builtin("select")
-class SelectFunc:
-    @staticmethod
-    def value_type(args):
-        return args[1].type
-
-@builtin("copy")
+@builtin("copy", input_types={}, hidden=True, group="Utility")
 class CopyFunc:
     @staticmethod
     def value_type(args):
         return None
 
-@builtin("load")
+@builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
+class SelectFunc:
+    @staticmethod
+    def value_type(args):
+        return args[1].type
+
+@builtin("load", hidden=True)
 class LoadFunc:
     @staticmethod
     def value_type(args):
@@ -594,7 +601,7 @@ class LoadFunc:
 
         return args[0].type.dtype
 
-@builtin("store")
+@builtin("store", hidden=True)
 class StoreFunc:
     @staticmethod
     def value_type(args):
@@ -607,8 +614,7 @@ class StoreFunc:
 
         return None
 
-
-@builtin("atomic_add")
+@builtin("atomic_add", input_types={"array": wp.array, "index": int, "value": Any}, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility")
 class AtomicAddFunc:
     @staticmethod
     def value_type(args):
@@ -623,7 +629,7 @@ class AtomicAddFunc:
         return args[0].type.dtype
 
 
-@builtin("atomic_sub")
+@builtin("atomic_sub", input_types={"array": wp.array, "index": int, "value": Any}, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility")
 class AtomicSubFunc:
     @staticmethod
     def value_type(args):
@@ -638,28 +644,21 @@ class AtomicSubFunc:
         return args[0].type.dtype
 
 
-@builtin("index")
+# used to index into builtin types, i.e.: y = vec3[1]
+@builtin("index", hidden=True)
 class IndexFunc:
     @staticmethod
     def value_type(args):
         return float
 
-
-@builtin("print")
-class PrintFunc:
-    @staticmethod
-    def value_type(args):
-        return None
-
-
-@builtin("expect_eq")
+@builtin("expect_eq", input_types={"arg1": Any, "arg2": Any}, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 class ExpectEqFunc:
     @staticmethod
     def value_type(args):
         return None
 
 
-@builtin("expect_near")
+@builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 class ExpectEqFunc:
     @staticmethod
     def value_type(args):
@@ -1540,13 +1539,18 @@ def copy(dest: warp.array, src: warp.array):
 def type_str(t):
     if (t == None):
         return "None"
-    if (isinstance(t, array)):
-        #s = type(t.dtype)
+    elif t == Any:
+        return "Any"
+    elif (isinstance(t, array)):
         return f"array({t.dtype.__name__})"
     else:
         return t.__name__
-        
+
 def print_function(f, file):
+
+    if f.hidden:
+        return
+
     args = ", ".join(f"{k}: {type_str(v)}" for k,v in f.input_types.items())
 
     return_type = ""
@@ -1585,7 +1589,8 @@ def print_builtins(file):
         g = None
 
         if (isinstance(f, list)):
-            g = f[0].group  # assumes all overloads have the same group
+            # assumes all overloads have the same group
+            g = f[0].group
         else:
             g = f.group
 
