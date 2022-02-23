@@ -683,7 +683,7 @@ Volumes
 
 .. function:: volume_sample_local(id: uint64, uvw: vec3, sampling_mode: int) -> float
 
-   Sample the volume given by ``id`` at the volume local-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+   Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
 .. function:: volume_lookup(id: uint64, i: int, j: int, k: int) -> float
@@ -693,12 +693,12 @@ Volumes
 
 .. function:: volume_transform(id: uint64, uvw: vec3) -> vec3
 
-   Transform a point defined in volume local-space to world space given the volume's intrinsic 4x4 transformation.
+   Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.
 
 
 .. function:: volume_transform_inv(id: uint64, xyz: vec3) -> vec3
 
-   Transform a point defined in world-space to the volume's local space, given the volume's intrinsic 4x4 transformation.
+   Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.
 
 
 
@@ -735,6 +735,11 @@ Random
 .. function:: randf(state: uint32, min: float, max: float) -> float
 
    Return a random float between [min, max)
+
+
+.. function:: randn(state: uint32) -> float
+
+   Sample a normal distribution
 
 
 .. function:: noise(seed: uint32, x: float) -> float
@@ -801,46 +806,46 @@ Utility
    Allows printing formatted strings, using C-style format specifiers.
 
 
+.. function:: print(value: Any) -> None
+
+   Print variable to stdout
+
+
 .. function:: tid() -> int
 
    Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.
 
 
+.. function:: select(cond: bool, arg1: Any, arg2: Any)
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: atomic_add(array: array, index: int, value: Any)
+
+   Atomically add ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_sub(array: array, index: int, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by index.
+
+
+.. function:: expect_eq(arg1: Any, arg2: Any) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_near(arg1: float, arg2: float, tolerance: float) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
+
+
 
 
 
 ---------------
-.. function:: select()
-
-
-.. function:: copy() -> None
-
-
-.. function:: load()
-
-
-.. function:: store()
-
-
-.. function:: atomic_add()
-
-
-.. function:: atomic_sub()
-
-
-.. function:: index() -> float
-
-
-.. function:: print() -> None
-
-
-.. function:: expect_eq() -> None
-
-
-.. function:: expect_near() -> None
-
-
 
 
 Operators

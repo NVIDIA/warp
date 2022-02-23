@@ -7,9 +7,14 @@ import inspect
 import typing
 import weakref
 import ctypes
+import copy
+
 import numpy as np
 
-import copy
+from typing import Tuple
+from typing import List
+from typing import Dict
+from typing import Any
 
 from warp.types import *
 import warp.config
@@ -200,6 +205,13 @@ class Adjoint:
 
                     # check argument types equal
                     for i, a in enumerate(f.input_types.values()):
+                        
+                        # if arg type registered as None, treat as 
+                        # template allowing any type to match
+                        if inputs[i].type == Any:
+                            continue
+
+                        # otherwise check args match signature
                         if not types_equal(a, inputs[i].type):
                             match = False
                             break

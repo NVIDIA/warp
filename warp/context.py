@@ -27,7 +27,7 @@ import warp.config
 # represents either a built-in or user-defined function
 class Function:
 
-    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, variadic=False, doc="", group=""):
+    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, variadic=False, doc="", group="", hidden=False):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -37,7 +37,8 @@ class Function:
         self.doc = doc
         self.group = group
         self.module = module
-        self.variadic = variadic    # function can take arbitrary inputs, e.g.: printf()
+        self.variadic = variadic    # function can take arbitrary number of inputs, e.g.: printf()
+        self.hidden = hidden        # function will not be listed in docs
 
         if (func):
             self.adj = warp.codegen.Adjoint(func)
@@ -94,7 +95,7 @@ class Kernel:
 def func(f):
 
     m = get_module(f.__module__)
-    f = Function(func=f, key=f.__name__, namespace="", module=m, value_type=None)   # value_type not known yet, will be infered during code-gen
+    f = Function(func=f, key=f.__name__, namespace="", module=m, value_type=None)   # value_type not known yet, will be inferred during code-gen
 
     return f
 
@@ -110,21 +111,21 @@ def kernel(f):
 builtin_functions = {}
 
 # decorator to register a built-in function with @builtin
-def builtin(key):
+def builtin(key, input_types={}, doc="", group="", hidden=False):
     def insert(c):
         
-        func = Function(func=None, key=key, namespace="wp::", value_type=c.value_type)
+        func = Function(func=None, input_types=input_types, key=key, namespace="wp::", value_type=c.value_type, doc=doc, group=group, hidden=hidden)
         builtin_functions[key] = func
 
     return insert
 
-def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other"):
+def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False):
 
-    # lambda to return a constant type for an overload
+    # wrap value type in a lambda
     def value_func(arg):
         return value_type
-
-    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group)
+        
+    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden)
 
     if key in builtin_functions:
         # if key exists we add overload
@@ -506,15 +507,15 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
 add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
     doc="""Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
-    doc="""Sample the volume given by ``id`` at the volume local-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+    doc="""Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 
 add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
-    doc="""Returns the voxel with coordinates ``i``, ``j``, ``k``, if the cell at this index does not exist this function returns the background value""")
+    doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
 add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic 4x4 transformation.""")
+    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.""")
 add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic 4x4 transformation.""")
+    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.""")
 
 
 #---------------------------------
@@ -536,6 +537,8 @@ add_builtin("randf", input_types={"state": uint32}, value_type=float, group="Ran
     doc="Return a random float between [0.0, 1.0)")
 add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, value_type=float, group="Random", 
     doc="Return a random float between [min, max)")
+add_builtin("randn", input_types={"state": uint32}, value_type=float, group="Random", 
+    doc="Sample a normal distribution")
 
 add_builtin("noise", input_types={"seed": uint32, "x": float}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 1d.")
@@ -566,24 +569,30 @@ add_builtin("curlnoise", input_types={"seed": uint32, "xyzt": vec4}, value_type=
 add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility",
     doc="Allows printing formatted strings, using C-style format specifiers.")
 
+@builtin("print", input_types={"value": Any}, doc="Print variable to stdout", group="Utility")
+class PrintFunc:
+    @staticmethod
+    def value_type(args):
+        return None
+
 # helpers
 add_builtin("tid", input_types={}, value_type=int, group="Utility",
     doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.""")
 
-@builtin("select")
-class SelectFunc:
-    @staticmethod
-    def value_type(args):
-        return args[1].type
-
-@builtin("copy")
+@builtin("copy", input_types={}, hidden=True, group="Utility")
 class CopyFunc:
     @staticmethod
     def value_type(args):
         return None
 
-@builtin("load")
+@builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
+class SelectFunc:
+    @staticmethod
+    def value_type(args):
+        return args[1].type
+
+@builtin("load", hidden=True)
 class LoadFunc:
     @staticmethod
     def value_type(args):
@@ -594,7 +603,7 @@ class LoadFunc:
 
         return args[0].type.dtype
 
-@builtin("store")
+@builtin("store", hidden=True)
 class StoreFunc:
     @staticmethod
     def value_type(args):
@@ -607,8 +616,7 @@ class StoreFunc:
 
         return None
 
-
-@builtin("atomic_add")
+@builtin("atomic_add", input_types={"array": wp.array, "index": int, "value": Any}, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility")
 class AtomicAddFunc:
     @staticmethod
     def value_type(args):
@@ -623,7 +631,7 @@ class AtomicAddFunc:
         return args[0].type.dtype
 
 
-@builtin("atomic_sub")
+@builtin("atomic_sub", input_types={"array": wp.array, "index": int, "value": Any}, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility")
 class AtomicSubFunc:
     @staticmethod
     def value_type(args):
@@ -638,28 +646,21 @@ class AtomicSubFunc:
         return args[0].type.dtype
 
 
-@builtin("index")
+# used to index into builtin types, i.e.: y = vec3[1]
+@builtin("index", hidden=True)
 class IndexFunc:
     @staticmethod
     def value_type(args):
         return float
 
-
-@builtin("print")
-class PrintFunc:
-    @staticmethod
-    def value_type(args):
-        return None
-
-
-@builtin("expect_eq")
+@builtin("expect_eq", input_types={"arg1": Any, "arg2": Any}, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 class ExpectEqFunc:
     @staticmethod
     def value_type(args):
         return None
 
 
-@builtin("expect_near")
+@builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 class ExpectEqFunc:
     @staticmethod
     def value_type(args):
@@ -781,7 +782,7 @@ class Module:
         if kernel.key in self.kernels:
             
             # if kernel is replacing an old one then assume it has changed and 
-            # force a rebuild / reload of the dynamic libary 
+            # force a rebuild / reload of the dynamic library 
             if (self.dll):
                 warp.build.unload_dll(self.dll)
 
@@ -909,7 +910,7 @@ class Module:
                 if (enable_cuda):
                     cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
 
-                # complete the function return type after we have analyzed it (infered from return statement in ast)
+                # complete the function return type after we have analyzed it (inferred from return statement in ast)
                 func.value_type = wrap(func.adj)
 
 
@@ -1298,7 +1299,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
     Kernel launches are asynchronous with respect to the calling Python thread. 
 
     Args:
-        kernel: The name of a Warp kenel function, decorated with the @warp.kernel decorator
+        kernel: The name of a Warp kernel function, decorated with the @warp.kernel decorator
         dim: The number of threads to launch the kernel with
         inputs: The input parameters to the kernel
         outputs: The output parameters (optional)
@@ -1547,13 +1548,18 @@ def copy(dest: warp.array, src: warp.array):
 def type_str(t):
     if (t == None):
         return "None"
-    if (isinstance(t, array)):
-        #s = type(t.dtype)
+    elif t == Any:
+        return "Any"
+    elif (isinstance(t, array)):
         return f"array({t.dtype.__name__})"
     else:
         return t.__name__
-        
+
 def print_function(f, file):
+
+    if f.hidden:
+        return
+
     args = ", ".join(f"{k}: {type_str(v)}" for k,v in f.input_types.items())
 
     return_type = ""
@@ -1592,7 +1598,8 @@ def print_builtins(file):
         g = None
 
         if (isinstance(f, list)):
-            g = f[0].group  # assumes all overloads have the same group
+            # assumes all overloads have the same group
+            g = f[0].group
         else:
             g = f.group
 

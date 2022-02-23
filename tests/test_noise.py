@@ -82,9 +82,9 @@ def test_pnoise(test, device):
 
     img = pixels_host.numpy()
     img = np.reshape(img, (W, H))
-    img = img.astype(np.uint8)
 
     ### Figure viewing ###
+    # img = img.astype(np.uint8)
     # imgplot = plt.imshow(img, 'gray')
     # plt.savefig("pnoise_test.png")
 
@@ -95,7 +95,8 @@ def test_pnoise(test, device):
     img_true = np.load(os.path.join(os.path.dirname(__file__), "assets/pnoise_test_result_true.npy"))
     test.assertTrue(img.shape == img_true.shape)
     err = np.max(np.abs(img - img_true))
-    test.assertTrue(err < 1e-04)
+    tolerance = 1.5e-4
+    test.assertTrue(err < tolerance, f"err is {err} which is >= {tolerance}")
 
 def test_curlnoise(test, device):
     # image dim
