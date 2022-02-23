@@ -688,7 +688,7 @@ Volumes
 
 .. function:: volume_lookup(id: uint64, i: int, j: int, k: int) -> float
 
-   Returns the voxel with coordinates ``i``, ``j``, ``k``, if the cell at this index does not exist this function returns the background value
+   Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
 .. function:: volume_transform(id: uint64, uvw: vec3) -> vec3

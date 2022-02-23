@@ -21,6 +21,7 @@ project = 'Warp'
 copyright = '2022, NVIDIA'
 author = 'NVIDIA'
 
+version = '0.1.24'
 
 # -- General configuration ---------------------------------------------------
 
@@ -81,7 +82,8 @@ html_static_path = ['_static']
 html_theme_options = {
     "collapse_navigation": True,
     "display_version": True,
-    "sticky_navigation": True,  
+    "sticky_navigation": True,
+    'display_version': True
 }
 
 html_style = "css/nvidia.css"
