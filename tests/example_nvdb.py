@@ -90,14 +90,14 @@ positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device=dev
 velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=device)
 positions_host = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device="cpu")
 
-# load collision volume
-file = np.fromfile("C:/Dev/usd/rocks/rocks.nvdb_grid", dtype=np.byte)
+# load collision volume, todo: replace with a simpler (smaller NVDB grid)
+file = np.fromfile("tests/assets/rocks.nvdb_grid", dtype=np.byte)
 
 # create Volume object
 volume = wp.Volume(wp.array(file, device=device))
 
 if (sim_render):
-    stage = warp.render.UsdRenderer("C:/Dev/usd/rocks/example_nvdb.usd")    
+    stage = warp.render.UsdRenderer("tests/outputs/example_nvdb.usd")    
 
 for i in range(sim_steps):
 
@@ -121,7 +121,7 @@ for i in range(sim_steps):
 
             stage.begin_frame(sim_time)
 
-            stage.render_ref(name="collision", path="./Rock.usd", pos=(0.0, 0.0, 0.0), rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi), scale=(1.0, 1.0, 1.0))
+            stage.render_ref(name="collision", path="../assets/rocks.usd", pos=(0.0, 0.0, 0.0), rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi), scale=(1.0, 1.0, 1.0))
             stage.render_points(name="points", points=positions_host.numpy(), radius=sim_margin)
 
             stage.end_frame()
