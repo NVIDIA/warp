@@ -91,7 +91,7 @@ velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=de
 positions_host = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device="cpu")
 
 # load collision volume, todo: replace with a simpler (smaller NVDB grid)
-file = np.fromfile("tests/assets/rocks.nvdb_grid", dtype=np.byte)
+file = np.fromfile("tests/assets/rocks.nvdb.grid", dtype=np.byte)
 
 # create Volume object
 volume = wp.Volume(wp.array(file, device=device))

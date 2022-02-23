@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.1.24] - 2022-02-23
+
+### Warp Core
+
+- Add NanoVDB support, see wp.volume_sample*() methods
+- Add support for reading compile-time constants in kernels, see wp.constant()
+- Add better checks for device strings
+- Add support for sampling random numbers with a normal distribution, see wp.randn()
+- Deduce array dtype from np.array when one is not provided
+- Fix for ranged loops with negative step sizes
+- Fix for 3d and 4d spherical gradient distributions
+
 ## [0.1.23] - 2022-02-17
 
 ### Warp Core
