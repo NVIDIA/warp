@@ -1182,8 +1182,22 @@ def is_cpu_available():
 def is_cuda_available():
     return runtime.cuda_device != None
 
+def is_device_available(device):
+    return device in wp.get_devices()
 
-def zeros(n: int, dtype=float, device:str="cpu", requires_grad:bool=False)-> warp.array:
+def get_devices():
+    """Returns a list of device strings supported by in this environment.
+    """
+    devices = []
+    if (is_cpu_available()):
+        devices.append("cpu")
+    if (is_cuda_available()):
+        devices.append("cuda")
+
+    return devices
+
+
+def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> warp.array:
     """Return a zero-initialized array
 
     Args:
@@ -1196,13 +1210,15 @@ def zeros(n: int, dtype=float, device:str="cpu", requires_grad:bool=False)-> war
         A warp.array object representing the allocation                
     """
 
+    assert(is_device_available(device))
+
     num_bytes = n*warp.types.type_size_in_bytes(dtype)
 
-    if (device == "cpu"):
+    if device == "cpu":
         ptr = runtime.host_allocator.alloc(num_bytes) 
         runtime.core.memset_host(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(num_bytes))
 
-    if( device == "cuda"):
+    elif device == "cuda":
         ptr = runtime.device_allocator.alloc(num_bytes)
         runtime.core.memset_device(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(num_bytes))
 
@@ -1210,7 +1226,7 @@ def zeros(n: int, dtype=float, device:str="cpu", requires_grad:bool=False)-> war
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
         # construct array
-        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, data=ptr, device=device, owner=True, requires_grad=requires_grad)
+        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
 
 def zeros_like(src: warp.array, requires_grad:bool=False) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
@@ -1292,6 +1308,8 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
         adjoint: Whether to run forward or backward pass (typically use False)
     """
 
+    assert(is_device_available(device))
+
     if (warp.config.print_launches):
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
@@ -1316,7 +1334,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
                 if (isinstance(arg_type, warp.types.array)):
 
-                    if (a is None or a.data is None):
+                    if (a is None or a.ptr is None):
                         
                         # allow for NULL arrays
                         params.append(ctypes.c_int64(0))
@@ -1331,7 +1349,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                         if (a.device != device):
                             raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, a.device))
             
-                        params.append(ctypes.c_int64(a.data))
+                        params.append(ctypes.c_int64(a.ptr))
 
                 # try and convert scalar arg to correct type
                 elif (arg_type == warp.types.float32):
@@ -1393,7 +1411,8 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                 kernel.forward_cpu(*params)
 
         
-        elif device.startswith("cuda"):
+        elif device == "cuda":
+
             kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
@@ -1494,18 +1513,6 @@ def capture_launch(graph: int):
     runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
 
 
-def get_devices():
-    """Returns a list of device strings supported by in this environment.
-    """
-    devices = []
-    if (is_cpu_available()):
-        devices.append("cpu")
-    if (is_cuda_available()):
-        devices.append("cuda")
-
-    return devices
-
-
 def copy(dest: warp.array, src: warp.array):
     """Copy array contents from src to dest
 
@@ -1522,16 +1529,16 @@ def copy(dest: warp.array, src: warp.array):
         raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")
 
     if (src.device == "cpu" and dest.device == "cuda"):
-        runtime.core.memcpy_h2d(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_h2d(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
 
     elif (src.device == "cuda" and dest.device == "cpu"):
-        runtime.core.memcpy_d2h(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_d2h(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
 
     elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.core.memcpy_h2h(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_h2h(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
 
     elif (src.device == "cuda" and dest.device == "cuda"):
-        runtime.core.memcpy_d2d(ctypes.c_void_p(dest.data), ctypes.c_void_p(src.data), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_d2d(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
     
     else:
         raise RuntimeError("Unexpected source and destination combination")

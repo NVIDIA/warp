@@ -264,16 +264,24 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=None, length=0, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
-        """ Constructs a new Warp array object 
+    def __init__(self, data=None, dtype=None, length=0, capacity=0, ptr=None, device=None, copy=True, owner=True, requires_grad=False):
+        """ Constructs a new Warp array object from existing data.
 
-        This method allows manually constructing an array from existing data. 
+        When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
+        For objects that are not stored sequentially in memory (e.g.: a list), then the data will first 
+        be flattened to an ndarray before being transferred to the memory space given by device.
+
+        The second construction path occurs when the ``ptr`` argument is a non-zero uint64 value representing the
+        start address in memory where existing array data resides, e.g.: from an external or C-library. The memory
+        allocation should reside on the same device given by the device argument, and the user should set the length
+        and dtype parameter appropriately.
 
         Args:
-            data (Union[list, tuple, iterable], wp.uint64) 
+            data (Union[list, tuple, ndarray]) 
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is None and data an ndarray then it will be inferred from the array data type
             length (int): Number of elements (rows) of the data type
             capacity (int): Maximum size in bytes of the `data` allocation
+            ptr (uint64): Address of an external memory address to alias
             device (str): Device the allocation lives on
             copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified
             owner (bool): Should the array object try to deallocate memory when it is deleted
@@ -281,6 +289,9 @@ class array:
 
         """
         self.owner = False
+
+        if data is not None and ptr is not None:
+            raise RuntimeError("Should only construct arrays with either data or ptr arguments, not both")
 
         # convert built-in numeric type to wp type
         if (dtype == int):
@@ -299,73 +310,79 @@ class array:
         # save flag, controls if gradients will be computed in by wp.Tape
         self.requires_grad = requires_grad
 
-        # construct from numpy array, list, tuple
-        if (isinstance(data, np.ndarray) or 
-            isinstance(data, list) or 
-            isinstance(data, tuple)):
+        if data is not None:
 
-            from warp.context import empty, copy, synchronize
+            # construct from numpy array, list, tuple
+            if (isinstance(data, np.ndarray) or 
+                isinstance(data, list) or 
+                isinstance(data, tuple)):
 
-            # convert lists / tuples to ndarrays if necessary
-            arr = np.array(data, copy=False)
+                from warp.context import empty, copy, synchronize
 
-            # try to convert src array to destination shape
-            try:
-                arr = arr.reshape((-1, type_length(dtype)))
-            except:
-                raise RuntimeError(f"Could not reshape input data with shape {arr.shape} to array with shape (*, {type_length(dtype)}")
+                # convert lists / tuples to ndarrays if necessary
+                arr = np.array(data, copy=False)
 
-            # try to convert src array to destination type
-            try:
-                arr = arr.astype(dtype=type_typestr(dtype._type_))
-            except:
-                raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
-            
-            # ensure contiguous
-            arr = np.ascontiguousarray(arr)
+                # try to convert src array to destination shape
+                try:
+                    arr = arr.reshape((-1, type_length(dtype)))
+                except:
+                    raise RuntimeError(f"Could not reshape input data with shape {arr.shape} to array with shape (*, {type_length(dtype)}")
 
-            ptr = arr.__array_interface__["data"][0]
-            shape = arr.__array_interface__["shape"]
-            length = shape[0]
-
-            if (device == "cpu" and copy == False):
-
-                # ref numpy memory directly
-                self.data = ptr
-                self.dtype=dtype
-                self.length=length
-                self.capacity=length*type_size_in_bytes(dtype)
-                self.device = device
-                self.owner = False
-
-                # keep a ref to source array to keep allocation alive
-                self.ref = arr
-
-            else:
-
-                # otherwise, create a host wrapper around the numpy
-                #  array and a new destination array to copy it to
-                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), data=ptr, device='cpu', copy=False, owner=False)
-                dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
-                dest.owner = False
+                # try to convert src array to destination type
+                try:
+                    arr = arr.astype(dtype=type_typestr(dtype._type_))
+                except:
+                    raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
                 
-                # data copy
-                copy(dest, src)
+                # ensure contiguous
+                arr = np.ascontiguousarray(arr)
 
-                # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
-                from copy import copy as shallowcopy
+                ptr = arr.__array_interface__["data"][0]
+                shape = arr.__array_interface__["shape"]
+                length = shape[0]
 
-                self.__dict__ = shallowcopy(dest.__dict__)
-                self.owner = True
+                if (device == "cpu" and copy == False):
+
+                    # ref numpy memory directly
+                    self.ptr = ptr
+                    self.dtype=dtype
+                    self.length=length
+                    self.capacity=length*type_size_in_bytes(dtype)
+                    self.device = device
+                    self.owner = False
+
+                    # keep a ref to source array to keep allocation alive
+                    self.ref = arr
+
+                else:
+
+                    # otherwise, we must transfer to device memory
+                    # create a host wrapper around the numpy array
+                    # and a new destination array to copy it to
+                    src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
+                    dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
+                    dest.owner = False
+                    
+                    # data copy
+                    copy(dest, src)
+
+                    # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
+                    from copy import copy as shallowcopy
+
+                    self.__dict__ = shallowcopy(dest.__dict__)
+                    self.owner = True
            
+            else:
+                raise RuntimeError("When constructing an array the data argument must be of List, Tuple, or ndarray type.")
             
+
         else:
             
-            # explicit construction, data is interpreted as the address for raw memory 
+            # explicit construction from ptr to external memory
             self.length = length
             self.capacity = capacity
             self.dtype = dtype
-            self.data = data
+            self.ptr = ptr
             self.device = device
             self.owner = owner
 
@@ -375,14 +392,11 @@ class array:
         # store 2D shape (useful for interop with tensor frameworks)
         self.shape = (self.length, type_length(self.dtype))
         
-        # store a ptr cast of the data address (to avoid accessing ctypes during destruction)
-        self.ptr = ctypes.cast(self.data, ctypes.POINTER(ctypes.c_int))
-
         # set up array interface access so we can treat this object as a read-only numpy array
         if (device == "cpu"):
 
             self.__array_interface__ = { 
-                "data": (self.data, False), 
+                "data": (self.ptr, False), 
                 "shape": self.shape,  
                 "typestr": type_typestr(type_ctype(self.dtype)), 
                 "version": 3 
@@ -393,15 +407,18 @@ class array:
         try:
             if (self.owner):
 
+                addr = ctypes.cast(self.ptr, ctypes.POINTER(ctypes.c_int))
+
                 # this import can fail during process destruction
                 # in this case we allow OS to clean up allocations
                 from warp.context import runtime
 
                 if (self.device == "cpu"):
-                    runtime.host_allocator.free(self.ptr, self.capacity)
+                    runtime.host_allocator.free(addr, self.capacity)
                 else:
-                    runtime.device_allocator.free(self.ptr, self.capacity)
-        except:
+                    runtime.device_allocator.free(addr, self.capacity)
+        
+        except Exception as e:
             pass
                 
 
@@ -422,11 +439,10 @@ class array:
         from warp.context import runtime
 
         if (self.device == "cpu"):
-            runtime.core.memset_host(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+            runtime.core.memset_host(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
 
         if(self.device == "cuda"):
-            runtime.core.memset_device(ctypes.cast(self.data,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
-
+            runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
 
 
     # equivalent to wrapping src data in an array and copying to self
@@ -434,23 +450,13 @@ class array:
         from warp.context import copy
         copy(self, array(src, dtype=self.dtype, copy=False, device=self.device))
 
+
+    # convert array to ndarray (alias memory through array interface)
     def numpy(self):
-
-        if (self.device == "cpu"):
-
-            # todo: make each wp type return it's corresponding ctype
-            # ptr_type = ctypes.POINTER(type_ctype(self.dtype))
-            # ptr = ctypes.cast(self.data, ptr_type)
-
-            # view = np.ctypeslib.as_array(ptr, shape=(self.length, type_length(self.dtype)))
-            # return view
-            return np.array(self, copy=False)
+        return np.array(self.to("cpu"), copy=False)
         
-        else:
-            # bring back to CPU
-            return self.to("cpu").numpy()
 
-
+    # convert data from one device to another, nop if already on device
     def to(self, device):
 
         if (self.device == device):
@@ -479,7 +485,7 @@ class array:
             raise RuntimeError("Dimensions are incompatible for type cast")
 
         arr = array(
-            data=self.data, 
+            ptr=self.ptr, 
             dtype=dtype,
             length=int(dst_length),
             capacity=int(dst_capacity),
@@ -499,23 +505,22 @@ class Mesh:
             device: Device this object lives on, all buffers must live on the same device.
 
         Args:
-            points (:class:`warp.array`): Array of vertex positions of type :class:`wp.vec3`
-            velocities (:class:`warp.array`): Array of vertex velocities of type :class:`wp.vec3`
-            indices (:class:`warp.array`): Array of triangle indices of type :class:`wp.int32`, should be length 3*number of triangles
+            points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
+            velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3`
+            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be length 3*number of triangles
         """
-
-        self.points = points
-        self.velocities = velocities
-        self.indices = indices
 
         if (points.device != indices.device):
             raise RuntimeError("Points and indices must live on the same device")
 
         self.device = points.device
+        self.points = points
+        self.velocities = velocities
+        self.indices = indices
 
         def get_data(array):
             if (array):
-                return ctypes.c_void_p(array.data)
+                return ctypes.c_void_p(array.ptr)
             else:
                 return ctypes.c_void_p(0)
 
@@ -593,9 +598,9 @@ class Volume:
             return
 
         if self.device == "cpu":
-            self.id = self.context.core.volume_create_host(ctypes.cast(data.data, ctypes.c_void_p), data.length)
+            self.id = self.context.core.volume_create_host(ctypes.cast(data.ptr, ctypes.c_void_p), data.length)
         else:
-            self.id = self.context.core.volume_create_device(ctypes.cast(data.data, ctypes.c_void_p), data.length)
+            self.id = self.context.core.volume_create_device(ctypes.cast(data.ptr, ctypes.c_void_p), data.length)
 
         if self.id == 0:
             raise RuntimeError("Failed to create volume from input array")
@@ -620,7 +625,7 @@ class Volume:
             self.context.core.volume_get_buffer_info_host(self.id, ctypes.byref(buf), ctypes.byref(size))
         else:
             self.context.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
-        return array(data=buf.value, dtype=uint8, length=size.value, device=self.device, owner=False)
+        return array(ptr=buf.value, dtype=uint8, length=size.value, device=self.device, owner=False)
 
 
 class HashGrid:
@@ -668,9 +673,9 @@ class HashGrid:
         from warp.context import runtime
 
         if (self.device == "cpu"):
-            runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
+            runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
         else:
-            runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.data, ctypes.c_void_p), len(points))
+            runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
 
 
     def __del__(self):

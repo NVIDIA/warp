@@ -18,7 +18,7 @@ def from_torch(t, dtype=warp.types.float32):
         raise RuntimeError("Error aliasing Torch tensor to Warp array. Torch tensor must be float32 or int32 type")
 
     a = warp.types.array(
-        data=t.data_ptr(),
+        ptr=t.data_ptr(),
         dtype=dtype,
         length=rows,
         copy=False,
