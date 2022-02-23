@@ -393,13 +393,23 @@ class array:
         self.shape = (self.length, type_length(self.dtype))
         
         # set up array interface access so we can treat this object as a read-only numpy array
-        if (device == "cpu"):
+        if device == "cpu":
 
             self.__array_interface__ = { 
                 "data": (self.ptr, False), 
                 "shape": self.shape,  
                 "typestr": type_typestr(type_ctype(self.dtype)), 
                 "version": 3 
+            }
+
+        # set up cuda array interface access so we can treat this object as a read-only numpy array
+        if device == "cuda":
+
+            self.__cuda_array_interface__ = {
+                "data": (self.ptr, False),
+                "shape": self.shape,
+                "typestr": type_typestr(type_ctype(self.dtype)),
+                "version": 2
             }
 
     def __del__(self):
@@ -433,6 +443,7 @@ class array:
             return f"array{self.dtype}"
         else:
             return str(self.to("cpu").numpy())
+
 
     def zero_(self):
 

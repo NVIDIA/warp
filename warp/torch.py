@@ -31,15 +31,12 @@ def from_torch(t, dtype=warp.types.float32):
     
     return a
 
-# wrap a wp array to a tensor, data is copied
+# wrap a wp array to a tensor throug CUDA array interface protocol
+# note that users must maintain reference to original Warp array
+# to ensure that memory is not deallocated underneath the tensor
 def to_torch(a):
     
-    t = torch.empty(a.shape, dtype=torch.float32, device=a.device)
+    return torch.as_tensor(a, device=a.device)
 
-    # alias as a wp array to use built-in copy
-    dest = from_torch(t)
-    warp.copy(dest, a)
-        
-    return t
 
 

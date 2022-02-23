@@ -12,7 +12,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 import torch
 
 import warp as wp
-from warp.torch import torch_to_wp
+import warp.torch
 
 device = "cuda"
 
@@ -44,8 +44,8 @@ class TestFunc(torch.autograd.Function):
         wp.launch(
             kernel=test_kernel, 
             dim=len(x), 
-            inputs=[torch_to_wp(x)], 
-            outputs=[torch_to_wp(y)], 
+            inputs=[wp.torch.from_torch(x)], 
+            outputs=[wp.torch.from_torch(y)], 
             device=device)
 
         return y
@@ -62,12 +62,12 @@ class TestFunc(torch.autograd.Function):
             dim=len(ctx.x), 
 
             # fwd inputs
-            inputs=[torch_to_wp(ctx.x)],
+            inputs=[wp.torch.from_torch(ctx.x)],
             outputs=[None], 
 
             # adj inputs
-            adj_inputs=[torch_to_wp(adj_x)],
-            adj_outputs=[torch_to_wp(adj_y)],
+            adj_inputs=[wp.torch.from_torch(adj_x)],
+            adj_outputs=[wp.torch.from_torch(adj_y)],
 
             device=device,
             adjoint=True)
@@ -75,6 +75,15 @@ class TestFunc(torch.autograd.Function):
         return adj_x
 
 
+a = wp.array(np.ones(10), dtype=wp.float32, device="cuda")
+print(a)
+print(a.ptr)
+
+t = wp.torch.to_torch(a)
+print(t)
+print(t.data_ptr())
+
+assert(a.ptr == t.data_ptr())
 
 # input data
 x = torch.ones(16, dtype=torch.float32, device=device, requires_grad=True).contiguous()
