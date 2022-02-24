@@ -6,7 +6,8 @@
 
 - Add NanoVDB support, see wp.volume_sample*() methods
 - Add support for reading compile-time constants in kernels, see wp.constant()
-- Add better checks for device strings
+- Add support for __cuda_array_interface__ protocol for zero-copy interop with PyTorch, see wp.torch.to_torch()
+- Add better checks for device strings during allocation / launch
 - Add support for sampling random numbers with a normal distribution, see wp.randn()
 - Deduce array dtype from np.array when one is not provided
 - Fix for ranged loops with negative step sizes
