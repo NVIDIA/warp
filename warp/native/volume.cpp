@@ -4,39 +4,84 @@
 
 #ifndef WP_CUDA
 
+#include "nanovdb/NanoVDB.h"
+#include <map>
+
 using namespace wp;
 
-// Creates a Volume on the specified device
+namespace
+{
+struct VolumeDesc
+{
+    // NanoVDB buffer either in device or host memory
+    void* buffer; 
+    uint64_t size_in_bytes;
+
+    // offset to the voxel values of the first leaf node realtive to buffer
+    uint64_t first_voxel_data_offs;
+
+    // copy of the grids's metadata to keep on the host for device volumes, matches NanoVDB's definition
+    nanovdb::GridData grid_data;
+
+    // copy of the tree's metadata to keep on the host for device volumes, matches NanoVDB's definition
+    nanovdb::TreeData<3> tree_data;
+};
+
+// Host-side volume desciptors. Maps each CPU/GPU volume buffer address (id) to a CPU desc
+std::map<uint64_t, VolumeDesc> g_volume_descriptors;
+
+bool volume_get_descriptor(uint64_t id, VolumeDesc& volumeDesc)
+{
+    if (id == 0) return false;
+
+    const auto& iter = g_volume_descriptors.find(id);
+    if (iter == g_volume_descriptors.end())
+        return false;
+    else
+        volumeDesc = iter->second;
+    return true;
+}
+
+void volume_add_descriptor(uint64_t id, const VolumeDesc& volumeDesc)
+{
+    g_volume_descriptors[id] = volumeDesc;
+}
+
+void volume_rem_descriptor(uint64_t id)
+{
+    g_volume_descriptors.erase(id);
+}
+} // anonymous namespace
+
+// Creates a volume on the specified device
 // NB: buf must be a pointer on the same device
 template<Device device>
 uint64_t volume_create(void* buf, uint64_t size)
 {
-    { // Checking for a valid NanoVDB buffer
-        uint64_t nanovdb_magic;
-        memcpy<device, Device::CPU>(&nanovdb_magic, buf, sizeof(uint64_t));
-        if (nanovdb_magic != PNANOVDB_MAGIC_NUMBER) {
-            return 0; // NanoVDB signature missing!
-        }
-    }
-    
-    void* target_buf = alloc<device>(size);
-    memcpy<device, device>(target_buf, buf, size);
-
-    Volume *volume = new Volume;
-    volume->buf = pnanovdb_make_buf((pnanovdb_uint32_t*)target_buf, size / sizeof(uint32_t));
-    volume->grid = { 0u };
-    volume->tree = pnanovdb_grid_get_tree(volume->buf, volume->grid);
-    volume->size_in_bytes = size;
-
-    Volume *volume_result = volume;
-
-    if (device == Device::CUDA) {
-        volume_result = (Volume*)alloc<device>(sizeof(Volume));
-        memcpy<Device::CPU, device>(volume_result, volume, sizeof(Volume));
-        delete volume;
+    if (size < sizeof(nanovdb::GridData) + sizeof(nanovdb::TreeData<3>)) { // This cannot be a valid NanoVDB grid with data
+        return 0;
     }
 
-    return (uint64_t)volume_result;
+    VolumeDesc volumeDesc;
+    memcpy<device, Device::CPU>(&volumeDesc.grid_data, buf, sizeof(nanovdb::GridData));
+    memcpy<device, Device::CPU>(&volumeDesc.tree_data, (nanovdb::GridData*)buf + 1, sizeof(nanovdb::TreeData<3>));
+
+    if (volumeDesc.grid_data.mMagic != NANOVDB_MAGIC_NUMBER) {
+        return 0;
+    }
+
+    volumeDesc.size_in_bytes = size;
+    volumeDesc.buffer = alloc<device>(size);
+    memcpy<device, device>(volumeDesc.buffer, buf, size);
+
+    volumeDesc.first_voxel_data_offs =
+        sizeof(nanovdb::GridData) + volumeDesc.tree_data.mNodeOffset[0] + PNANOVDB_GRID_TYPE_GET(PNANOVDB_GRID_TYPE_FLOAT, leaf_off_table);
+
+    const uint64_t id = (uint64_t)volumeDesc.buffer;
+
+    volume_add_descriptor(id, volumeDesc);
+
+    return id;
 }
 
 uint64_t volume_create_host(void* buf, uint64_t size)
@@ -53,21 +98,13 @@ uint64_t volume_create_device(void* buf, uint64_t size)
 template<Device device>
 void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 {
-    if (!id) {
-        *buf = 0;
-        *size = 0;
-        return;
-    }
+    *buf = 0;
+    *size = 0;
 
-    Volume* volume_src = (Volume*)(id);
-    if (device == Device::CUDA) {
-        Volume volume;
-        memcpy_d2h(&volume, volume_src, sizeof(Volume));
-        *buf = volume.buf.data;
-        *size = volume.size_in_bytes;
-    } else {
-        *buf = volume_src->buf.data;
-        *size = volume_src->size_in_bytes;
+    VolumeDesc volumeDesc;
+    if (volume_get_descriptor(id, volumeDesc)) {
+        *buf = volumeDesc.buffer;
+        *size = volumeDesc.size_in_bytes;
     }
 }
 
@@ -84,17 +121,8 @@ void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size)
 template<Device device>
 void volume_destroy(uint64_t id)
 {
-    if (!id) return;
-
-    Volume* volume_src = (Volume*)(id);
-    if (device == Device::CUDA) {
-        Volume volume;
-        memcpy_d2h(&volume, volume_src, sizeof(Volume));
-        free_device(volume.buf.data);
-    } else {
-        free_host(volume_src->buf.data);
-    }
-    free<device>(volume_src);
+    free<device>((void*)id);
+    volume_rem_descriptor(id);
 }
 
 void volume_destroy_host(uint64_t id)
