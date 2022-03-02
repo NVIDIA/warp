@@ -15,8 +15,8 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 ./_build/target-deps/python/python build_lib.py
 
 # copy linux dependencies to bin dir
-cp _build/target-deps/cuda/lib64/libcudart.so.10.1 warp/bin
-cp _build/target-deps/cuda/lib64/libnvrtc.so.10.1 warp/bin
+cp _build/target-deps/cuda/lib64/libcudart.so warp/bin
+cp _build/target-deps/cuda/lib64/libnvrtc.so warp/bin
 cp _build/target-deps/cuda/lib64/libnvrtc-builtins.so warp/bin
 
 # set rpath on libnvrtc so we can distribute without the CUDA SDK
@@ -24,4 +24,4 @@ cp _build/target-deps/cuda/lib64/libnvrtc-builtins.so warp/bin
 # requires the patchelf package
 sudo apt-get install patchelf
 
-patchelf --set-rpath '$ORIGIN' warp/bin/libnvrtc.so.10.1
+patchelf --set-rpath '$ORIGIN' warp/bin/libnvrtc.so
