@@ -36,8 +36,8 @@ def simulate(positions: wp.array(dtype=wp.vec3),
     
     tid = wp.tid()
 
-    x = wp.load(positions, tid)
-    v = wp.load(velocities, tid) 
+    x = positions[tid]
+    v = velocities[tid]
 
     v = v + wp.vec3(0.0, 0.0, -980.0)*dt - v*0.1*dt
     xpred = x + v*dt
@@ -61,8 +61,8 @@ def simulate(positions: wp.array(dtype=wp.vec3),
     v = (xpred - x)*(1.0/dt)
     x = xpred
 
-    wp.store(positions, tid, x)
-    wp.store(velocities, tid, v)
+    positions[tid] = x
+    velocities[tid] = v
 
 
 device = "cuda"
