@@ -94,7 +94,7 @@ Arrays may be constructed from Python lists or numpy arrays; by default data wil
 Compilation Model
 -----------------
 
-Warp uses a Python->C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries (.dll/.so) and cached between application restarts.
+Warp uses a Python->C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries and PTX, the result is then cached between application restarts for fast startup times.
 
 Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with ``@wp.kernel`` will be included in the shared library.
 

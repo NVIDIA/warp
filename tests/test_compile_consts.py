@@ -10,8 +10,6 @@ import warp as wp
 
 import test_compile_consts_dummy
 
-wp.config.cache_kernels = False
-
 wp.init()
 
 LOCAL_ONE = wp.constant(1)

@@ -260,12 +260,15 @@ add_builtin("cw_div", input_types={"x": vec3, "y": vec3}, value_type=vec3, group
 add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec3, group="Vector Math",
     doc="Component wise division of two 4d vectors.")
 
-# type construtors
-add_builtin("int", input_types={"x": int}, value_type=int, group="Scalar Math", doc="Construct an integer variable.")
-add_builtin("int", input_types={"x": float}, value_type=int, group="Scalar Math", doc="Construct an integer from float truncating the input value.")
+# type construtors for compute types (int, float)
+for t in warp.types.scalar_types:
+    add_builtin("int", input_types={"x": t}, value_type=int, doc="Construct an 32-bit signed integer variable, larger precision types will be truncated.", hidden=True, group="Scalar Math")
+    add_builtin("float", input_types={"x": t}, value_type=float, doc="Construct a 32-bit floating point variable, larger precision types will be truncated.", hidden=True, group="Scalar Math")
 
-add_builtin("float", input_types={"x": int}, value_type=float, doc="Construct a float from integer.", group="Scalar Math")
-add_builtin("float", input_types={"x": float}, value_type=float, doc="Construct a float variable.", group="Scalar Math")
+# type construtors for storage types 
+for t in warp.types.scalar_types:
+    add_builtin(t.__name__, input_types={"x": int}, value_type=t, doc="", hidden=True, group="Scalar Math")
+    add_builtin(t.__name__, input_types={"x": float}, value_type=t, doc="", hidden=True, group="Scalar Math")
 
 add_builtin("vec2", input_types={}, value_type=vec2, doc="Construct a zero-initialized 2d vector.", group="Vector Math")
 add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="Construct a 2d vector with compontents x, y.", group="Vector Math")
@@ -479,7 +482,7 @@ add_builtin("mesh_query_aabb", input_types={"id": uint64, "lower": vec3, "upper"
    :param lower: The lower bound of the bounding box in mesh space
    :param upper: The upper bound of the bounding box in mesh space""")
 
-add_builtin("mesh_query_aabb_next", input_types={"id": mesh_query_aabb_t, "index": int}, value_type=bool, group="Geometry",
+add_builtin("mesh_query_aabb_next", input_types={"query": mesh_query_aabb_t, "index": int}, value_type=bool, group="Geometry",
     doc="""Move to the next triangle overlapping the query bounding box. The index of the current face is stored in ``index``, returns ``False``
    if there are no more overlapping triangles.""")
 
@@ -493,7 +496,7 @@ add_builtin("hash_grid_query", input_types={"id": uint64, "point": vec3, "max_di
     doc="""Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
    fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.""")
 
-add_builtin("hash_grid_query_next", input_types={"id": hash_grid_query_t, "index": int}, value_type=bool, group="Geometry",
+add_builtin("hash_grid_query_next", input_types={"query": hash_grid_query_t, "index": int}, value_type=bool, group="Geometry",
     doc="""Move to the next point in the hash grid query. The index of the current neighbor is stored in ``index``, returns ``False``
    if there are no more neighbors.""")
 
@@ -653,28 +656,13 @@ class IndexFunc:
     def value_type(args):
         return float
 
-@builtin("expect_eq", input_types={"arg1": Any, "arg2": Any}, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
-class ExpectEqFunc:
-    @staticmethod
-    def value_type(args):
-        return None
 
+for t in warp.types.scalar_types + warp.types.vector_types:
+    add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 
-@builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
-class ExpectEqFunc:
-    @staticmethod
-    def value_type(args):
-        return None
+# fuzzy compare for float values
+add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 
-
-def wrap(adj):
-    def value_type(args):
-        if (adj.return_var):
-            return adj.return_var.type
-        else:
-            return None
-
-    return value_type
 
 #---------------------------------
 # Operators
@@ -911,6 +899,15 @@ class Module:
                     cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
 
                 # complete the function return type after we have analyzed it (inferred from return statement in ast)
+                def wrap(adj):
+                    def value_type(args):
+                        if (adj.return_var):
+                            return adj.return_var.type
+                        else:
+                            return None
+
+                    return value_type
+
                 func.value_type = wrap(func.adj)
 
 
@@ -1211,7 +1208,11 @@ def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> w
         A warp.array object representing the allocation                
     """
 
-    assert(is_device_available(device))
+    if device != "cpu" and device != "cuda":
+        raise RuntimeError(f"Trying to allocate array on unknown device {device}")
+
+    if device == "cuda" and not is_cuda_available():
+        raise RuntimeError("Trying to allocate CUDA buffer without GPU support")
 
     num_bytes = n*warp.types.type_size_in_bytes(dtype)
 
@@ -1352,19 +1353,6 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
             
                         params.append(ctypes.c_int64(a.ptr))
 
-                # try and convert scalar arg to correct type
-                elif (arg_type == warp.types.float32):
-                    params.append(ctypes.c_float(a))
-
-                elif (arg_type == warp.types.int32):
-                    params.append(ctypes.c_int32(a))
-
-                elif (arg_type == warp.types.int64):
-                    params.append(ctypes.c_int64(a))
-
-                elif (arg_type == warp.types.uint64):
-                    params.append(ctypes.c_uint64(a))
-                
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):
 
@@ -1388,7 +1376,12 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                     params.append(x)
 
                 else:
-                    raise RuntimeError(f"Unable to pack kernel parameter type {type(a)} for param {kernel.adj.args[i].label}, expected {arg_type}")
+                    try:
+                        # try to pack as a scalar type
+                        params.append(arg_type._type_(a))
+                    except:
+                        raise RuntimeError(f"Unable to pack kernel parameter type {type(a)} for param {kernel.adj.args[i].label}, expected {arg_type}")
+
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
@@ -1584,11 +1577,26 @@ def print_builtins(file):
               "   Autogenerated File - Do not edit. Run build_docs.py to generate.\n"
               "\n"
               ".. functions:\n"
+              ".. currentmodule:: warp\n"
               "\n"
               "Language Reference\n"
               "==================")
 
     print(header, file=file)
+
+    # type definitions of all functions by group
+    print("Scalar Types", file=file)
+    print("------------", file=file)
+
+    for t in warp.types.scalar_types:
+        print(f".. autoclass:: {t.__name__}", file=file)
+
+    print("Vector Types", file=file)
+    print("------------", file=file)
+
+    for t in warp.types.vector_types:
+        print(f".. autoclass:: {t.__name__}", file=file)
+
 
     # build dictionary of all functions by group
     groups = {}

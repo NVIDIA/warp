@@ -30,19 +30,6 @@
 namespace wp
 {
 
-template <typename T>
-CUDA_CALLABLE float cast_float(T x) { return (float)(x); }
-
-template <typename T>
-CUDA_CALLABLE int cast_int(T x) { return (int)(x); }
-
-template <typename T>
-CUDA_CALLABLE void adj_cast_float(T x, T& adj_x, float adj_ret) { adj_x += adj_ret; }
-
-template <typename T>
-CUDA_CALLABLE void adj_cast_int(T x, T& adj_x, int adj_ret) { adj_x += adj_ret; }
-
-
 // 64bit address for an array
 typedef uint64_t array;
 
@@ -56,14 +43,57 @@ CUDA_CALLABLE T cast(wp::array addr)
 typedef float float32;
 typedef double float64;
 
-typedef int64_t int64;
-typedef int32_t int32;
+typedef int8_t int8;
+typedef uint8_t uint8;
 
-typedef uint64_t uint64;
+typedef int16_t int16;
+typedef uint16_t uint16;
+
+typedef int32_t int32;
 typedef uint32_t uint32;
+
+typedef int64_t int64;
+typedef uint64_t uint64;
 
 // matches Python string type for constant strings
 typedef char* str;
+
+
+
+template <typename T>
+CUDA_CALLABLE float cast_float(T x) { return (float)(x); }
+
+template <typename T>
+CUDA_CALLABLE int cast_int(T x) { return (int)(x); }
+
+template <typename T>
+CUDA_CALLABLE void adj_cast_float(T x, T& adj_x, float adj_ret) { adj_x += adj_ret; }
+
+template <typename T>
+CUDA_CALLABLE void adj_cast_int(T x, T& adj_x, int adj_ret) { adj_x += adj_ret; }
+
+template <typename T>
+CUDA_CALLABLE inline void adj_int8(T, T&, int8) {}
+template <typename T>
+CUDA_CALLABLE inline void adj_uint8(T, T&, uint8) {}
+template <typename T>
+CUDA_CALLABLE inline void adj_int16(T, T&, int16) {}
+template <typename T>
+CUDA_CALLABLE inline void adj_uint16(T, T&, uint16) {}
+template <typename T>
+CUDA_CALLABLE inline void adj_int32(T, T&, int32) {}
+template <typename T>
+CUDA_CALLABLE inline void adj_uint32(T, T&, uint32) {}
+template <typename T>
+CUDA_CALLABLE inline void adj_int64(T, T&, int64) {}
+template <typename T>
+CUDA_CALLABLE inline void adj_uint64(T, T&, uint64) {}
+
+template <typename T>
+CUDA_CALLABLE inline void adj_float32(T x, T& adj_x, float32 adj_ret) { adj_x += adj_ret; }
+template <typename T>
+CUDA_CALLABLE inline void adj_float64(T x, T& adj_x, float64 adj_ret) { adj_x += adj_ret; }
+
 
 #define kEps 0.0f
 
@@ -72,7 +102,7 @@ inline CUDA_CALLABLE int mul(int a, int b) { return a*b; }
 inline CUDA_CALLABLE int div(int a, int b) { return a/b; }
 inline CUDA_CALLABLE int add(int a, int b) { return a+b; }
 inline CUDA_CALLABLE int sub(int a, int b) { return a-b; }
-inline CUDA_CALLABLE int mod(int a, int b) { return a % b; }
+inline CUDA_CALLABLE int mod(int a, int b) { return a%b; }
 inline CUDA_CALLABLE int min(int a, int b) { return a<b?a:b; }
 inline CUDA_CALLABLE int max(int a, int b) { return a>b?a:b; }
 inline CUDA_CALLABLE int abs(int x) { return ::abs(x); }
@@ -449,6 +479,18 @@ inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index
 
     }
 }
+
+// overloads for integer types where we do not want to store gradients
+inline CUDA_CALLABLE void adj_load(int8* buf, int index, int8* adj_buf, int& adj_index, const int8& adj_output) {}
+inline CUDA_CALLABLE void adj_load(uint8* buf, int index, uint8* adj_buf, int& adj_index, const uint8& adj_output) {}
+inline CUDA_CALLABLE void adj_load(int16* buf, int index, int16* adj_buf, int& adj_index, const int16& adj_output) {}
+inline CUDA_CALLABLE void adj_load(uint16* buf, int index, uint16* adj_buf, int& adj_index, const uint16& adj_output) {}
+inline CUDA_CALLABLE void adj_load(int32* buf, int index, int32* adj_buf, int& adj_index, const int32& adj_output) {}
+inline CUDA_CALLABLE void adj_load(uint32* buf, int index, uint32* adj_buf, int& adj_index, const uint32& adj_output) {}
+inline CUDA_CALLABLE void adj_load(int64* buf, int index, int64* adj_buf, int& adj_index, const int64& adj_output) {}
+inline CUDA_CALLABLE void adj_load(uint64* buf, int index, uint64* adj_buf, int& adj_index, const uint64& adj_output) {}
+inline CUDA_CALLABLE void adj_load(float64* buf, int index, float64* adj_buf, int& adj_index, const float64& adj_output) {}
+
 
 template <typename T>
 inline CUDA_CALLABLE void adj_store(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value)

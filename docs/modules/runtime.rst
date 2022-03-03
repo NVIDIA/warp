@@ -105,22 +105,84 @@ Additionally, arrays can be copied directly between memory spaces: ::
 Data Types
 ----------
 
+Scalar Types
+############
+
+The following scalar types are supported for array structures:
+
++---------+------------------------+
+| int8    | signed byte            |
++---------+------------------------+
+| uint8   | unsigned byte          |
++---------+------------------------+
+| int16   | signed short           |
++---------+------------------------+
+| uint16  | unsigned short         |
++---------+------------------------+
+| int32   | signed integer         |
++---------+------------------------+
+| uint32  | unsigned integer       |
++---------+------------------------+
+| int64   | signed long integer    |
++---------+------------------------+
+| uint64  | unsigned long integer  |
++---------+------------------------+
+| float32 | single precision float |
++---------+------------------------+
+| float64 | double precision float |
++---------+------------------------+
+
+Warp supports ``float`` and ``int`` as aliases for ``wp.float32`` and ``wp.int32`` respectively.
+
+.. note:: 
+   Currently Warp treats ``int32`` and ``float32`` as the two basic scalar *compute types*, and all other types as *storage types*. Storage types can be loaded and stored to arrays, but not participate in arithmetic operations directly. Users should cast storage types to a compute type (``int`` or ``float``) to perform computations.
+
+
+Vector Types
+############
+
 Warp provides built-in math and geometry types for common simulation and graphics problems. A full reference for operators and functions for these types is available in the :any:`functions`.
 
-.. autoclass:: vec2
-.. autoclass:: vec3
-.. autoclass:: vec4
-.. autoclass:: quat
-.. autoclass:: mat22
-.. autoclass:: mat33
-.. autoclass:: mat44
-.. autoclass:: transform
-.. autoclass:: spatial_vector
-.. autoclass:: spatial_matrix
 
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| int8            | signed byte                                                                                                           |
++=================+=======================================================================================================================+
+| uint8           | unsigned byte                                                                                                         |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| int16           | signed short                                                                                                          |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| vec2            | 2d vector of floats                                                                                                   |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| vec3            | 3d vector of floats                                                                                                   |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| vec4            | 4d vector of floats                                                                                                   |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| mat22           | 2x2 matrix of floats                                                                                                  |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| mat33           | 3x3 matrix of floats                                                                                                  |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| mat44           | 4x4 matrix of floats                                                                                                  |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| quat            | Quaternion in form i,j,k,w where w is the real part                                                                   |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| transform       | Spatial transform representing a rigid body transformation in format (p, q) where p is a vec3, and q is a quaternion  |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| spatial_vector  | 6d vector of floats, see wp.spatial_top(), wp.spatial_bottom(), useful for representing rigid body twists             |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+| spatial_matrix  | 6x6 matrix of floats used to represent spatial inertia matrices                                                       |
++-----------------+-----------------------------------------------------------------------------------------------------------------------+
+
+Type Conversions
+################
+
+Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetric operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error. This can be surprising for users that are accustomed to C-type conversions but avoids a class of common bugs that result from implicit conversions.
+
+In addition, users should always cast storage types to a compute type (``int`` or ``float``) before computation. Compute types can be converted back to storage types through explicit casting, e.g.: ``byte_array[index] = wp.uint8(i)``.
+
+.. note:: Warp does not currently perform implicit type conversions between numeric types.
 
 Constants
-----------
+---------
 
 In general, Warp kernels cannot access variables in the global Python interpreter state. One exception to this is for compile-time constants, which may be declared globally (or as class attributes) and folded into the kernel definition.
 
@@ -144,6 +206,44 @@ Constants are defined using the ``warp.constant`` type. An example is shown belo
 
 
 .. autoclass:: constant
+
+
+Operators
+----------
+
+Boolean Operators
+#################
+
++----------+--------------------------------------+
+| a and b  | True if a and b are True             |
++----------+--------------------------------------+
+| a or b   | True if a or b is true               |
++----------+--------------------------------------+
+| not a    | True if a is False, otherwise False  |
++----------+--------------------------------------+
+
+.. note:: 
+
+   Expressions such as ``if (a and b):`` currently do not perform short-circuit evaluation. In this case ``b`` will also be evaluated even when ``a`` is ``False``. Users should take care to ensure that secondary conditions are safe to evaluate (e.g.: do not index out of bounds) in all cases.
+
+
+Comparison Operators
+####################
+
++--------+---------------------------------------+
+| a > b  | True if a strictly greater than b     |
++--------+---------------------------------------+
+| a < b  | True if a strictly less than b        |
++--------+---------------------------------------+
+| a >= b | True if a greater than or equal to b  |
++--------+---------------------------------------+
+| a <= b | True if a less than or equal to b     |
++--------+---------------------------------------+
+| a == b | True if a equals b                    |
++--------+---------------------------------------+
+| a != b | True if a not equal to b              |
++--------+---------------------------------------+
+
 
 Meshes
 ------
@@ -194,7 +294,7 @@ Users may update mesh vertex positions at runtime simply by modifying the points
 Volumes
 -------
 
-Warp supports reading sparse volumetric grids stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.
+Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.
 
 Below we give an example of creating a Volume object from an existing NanoVDB file::
 
@@ -237,12 +337,48 @@ To sample the volume inside a kernel we pass a reference to it by id, and use th
 .. autoclass:: Volume
    :members:
 
-.. seealso:: `Reference <functions.html#volumes>`__ of the volume functions available in kernels.
+.. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
 
 Hash Grids
 ----------
 
-Warp provides a hash-grid data structure for performing fast spatial nearest neighbor queries. Hash grids are created as follows:
+Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.
+
+To support spatial neighbor queries Warp provides a ``HashGrid`` object that may be created as follows:: 
+
+   grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128, device="cuda")
+
+   grid.build(points=p, radius=r)
+
+Where ``p`` is an array of ``warp.vec3`` point positions, and ``r`` is the radius to use when building the grid. Neighbors can then be iterated over inside the kernel code as follows::
+
+   @wp.kernel
+   def sum(grid : wp.uint64,
+         points: wp.array(dtype=wp.vec3),
+         output: wp.array(dtype=wp.vec3),
+         radius: float):
+
+      tid = wp.tid()
+
+      # query point
+      p = points[tid]
+
+      # create grid query around point
+      query = wp.hash_grid_query(grid, p, radius)
+      index = int(0)
+
+      sum = wp.vec3()
+
+      while(wp.hash_grid_query_next(query, index)):
+            
+         neighbor = points[index]
+         
+         # compute distance to neighbor point
+         dist = wp.length(p-neighbor)
+         if (dist <= radius):
+               sum += neighbor
+
+      output[tid] = sum
 
 
 

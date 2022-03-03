@@ -107,12 +107,16 @@ class float32:
     _length_ = 1
     _type_ = ctypes.c_float
 
+    def __init__(self, x=0.0):
+        self.value = x
 
 class float64:
 
     _length_ = 1
     _type_ = ctypes.c_double
 
+    def __init__(self, x=0.0):
+        self.value = x
 
 class int8:
 
@@ -121,6 +125,7 @@ class int8:
 
     def __init__(self, x=0):
         self.value = x
+
 class uint8:
 
     _length_ = 1
@@ -129,6 +134,21 @@ class uint8:
     def __init__(self, x=0):
         self.value = x
 
+class int16:
+
+    _length_ = 1
+    _type_ = ctypes.c_int16
+
+    def __init__(self, x=0):
+        self.value = x
+
+class uint16:
+
+    _length_ = 1
+    _type_ = ctypes.c_uint16
+
+    def __init__(self, x=0):
+        self.value = x
 
 class int32:
 
@@ -138,7 +158,6 @@ class int32:
     def __init__(self, x=0):
         self.value = x
 
-
 class uint32:
 
     _length_ = 1
@@ -146,7 +165,6 @@ class uint32:
 
     def __init__(self, x=0):
         self.value = x
-
 
 class int64:
 
@@ -164,10 +182,16 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
-dtype_to_warp_type = {
-    np.dtype(np.float32): float32,
-    np.dtype(np.float64): float64,
+               
+scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64]
+vector_types = [vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix]
+
+
+np_dtype_to_warp_type = {
     np.dtype(np.int8): int8,
+    np.dtype(np.uint8): uint8,
+    np.dtype(np.int16): int16,
+    np.dtype(np.uint16): uint16,
     np.dtype(np.int32): int32,
     np.dtype(np.int64): int64,
     np.dtype(np.uint8): uint8,
@@ -175,6 +199,8 @@ dtype_to_warp_type = {
     np.dtype(np.uint64): uint64,
     np.dtype(np.byte): int8,
     np.dtype(np.ubyte): uint8,
+    np.dtype(np.float32): float32,
+    np.dtype(np.float64): float64
 }
 
 
@@ -221,6 +247,10 @@ def type_typestr(ctype):
         return "b"
     elif (ctype == ctypes.c_uint8):
         return "B"
+    elif (ctype == ctypes.c_int16):
+        return "<i2"
+    elif (ctype == ctypes.c_uint16):
+        return "<u2"
     elif (ctype == ctypes.c_int32):
         return "<i4"
     elif (ctype == ctypes.c_uint32):
@@ -233,7 +263,15 @@ def type_typestr(ctype):
         raise Exception("Unknown ctype")
 
 def type_is_int(t):
-    if (t == int or t == int32 or t == int64 or t == uint32 or t == uint64):
+    if (t == int or
+        t == int8 or
+        t == uint8 or
+        t == int16 or
+        t == uint16 or
+        t == int32 or 
+        t == uint32 or 
+        t == int64 or         
+        t == uint64):
         return True
     else:
         return False
@@ -264,12 +302,12 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=None, length=0, capacity=0, ptr=None, device=None, copy=True, owner=True, requires_grad=False):
+    def __init__(self, data=None, dtype=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
         """ Constructs a new Warp array object from existing data.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
         For objects that are not stored sequentially in memory (e.g.: a list), then the data will first 
-        be flattened to an ndarray before being transferred to the memory space given by device.
+        be flattened before being transferred to the memory space given by device.
 
         The second construction path occurs when the ``ptr`` argument is a non-zero uint64 value representing the
         start address in memory where existing array data resides, e.g.: from an external or C-library. The memory
@@ -280,101 +318,90 @@ class array:
             data (Union[list, tuple, ndarray]) 
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is None and data an ndarray then it will be inferred from the array data type
             length (int): Number of elements (rows) of the data type
-            capacity (int): Maximum size in bytes of the `data` allocation
-            ptr (uint64): Address of an external memory address to alias
-            device (str): Device the allocation lives on
-            copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified
+            ptr (uint64): Address of an external memory address to alias (data should be None)
+            capacity (int): Maximum size in bytes of the ptr allocation (data should be None)
+            device (str): Device the array lives on
+            copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified and types match
             owner (bool): Should the array object try to deallocate memory when it is deleted
             requires_grad (bool): Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
 
         """
+
         self.owner = False
 
-        if data is not None and ptr is not None:
-            raise RuntimeError("Should only construct arrays with either data or ptr arguments, not both")
-
-        # convert built-in numeric type to wp type
+        # canonicalize dtype
         if (dtype == int):
             dtype = int32
-
         elif (dtype == float):
             dtype = float32
 
-        elif dtype is None:
-            # if type is not defined, then try to match the type of the source
-            try:
-                dtype = dtype_to_warp_type[data.dtype]
-            except (AttributeError, KeyError):
-                raise RuntimeError("Unable to deduce target data type")
-
-        # save flag, controls if gradients will be computed in by wp.Tape
-        self.requires_grad = requires_grad
-
         if data is not None:
 
-            # construct from numpy array, list, tuple
-            if (isinstance(data, np.ndarray) or 
-                isinstance(data, list) or 
-                isinstance(data, tuple)):
+            if ptr is not None:
+                # data or ptr, not both
+                raise RuntimeError("Should only construct arrays with either data or ptr arguments, not both")
 
-                from warp.context import empty, copy, synchronize
-
-                # convert lists / tuples to ndarrays if necessary
+            try:
+                # force convert tuples and lists (or any array type) to ndarray
                 arr = np.array(data, copy=False)
-
-                # try to convert src array to destination shape
-                try:
-                    arr = arr.reshape((-1, type_length(dtype)))
-                except:
-                    raise RuntimeError(f"Could not reshape input data with shape {arr.shape} to array with shape (*, {type_length(dtype)}")
-
-                # try to convert src array to destination type
-                try:
-                    arr = arr.astype(dtype=type_typestr(dtype._type_))
-                except:
-                    raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
-                
-                # ensure contiguous
-                arr = np.ascontiguousarray(arr)
-
-                ptr = arr.__array_interface__["data"][0]
-                shape = arr.__array_interface__["shape"]
-                length = shape[0]
-
-                if (device == "cpu" and copy == False):
-
-                    # ref numpy memory directly
-                    self.ptr = ptr
-                    self.dtype=dtype
-                    self.length=length
-                    self.capacity=length*type_size_in_bytes(dtype)
-                    self.device = device
-                    self.owner = False
-
-                    # keep a ref to source array to keep allocation alive
-                    self.ref = arr
-
-                else:
-
-                    # otherwise, we must transfer to device memory
-                    # create a host wrapper around the numpy array
-                    # and a new destination array to copy it to
-                    src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
-                    dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
-                    dest.owner = False
-                    
-                    # data copy
-                    copy(dest, src)
-
-                    # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
-                    from copy import copy as shallowcopy
-
-                    self.__dict__ = shallowcopy(dest.__dict__)
-                    self.owner = True
-           
-            else:
-                raise RuntimeError("When constructing an array the data argument must be of List, Tuple, or ndarray type.")
+            except Exception as e:
+                raise RuntimeError("When constructing an array the data argument must be convertable to ndarray type type. Encountered an error while converting:" + str(e))
             
+            if dtype == None:
+                # infer dtype from the source data array
+                dtype = np_dtype_to_warp_type[arr.dtype]
+
+            try:
+                # try to convert src array to destination shape, e.g.: (n*3) -> (n, vec3)
+                arr = arr.reshape((-1, type_length(dtype)))
+            except:
+                raise RuntimeError(f"Could not reshape input data with shape {arr.shape} to array with shape (*, {type_length(dtype)}")
+
+            try:
+                # try to convert src array to destination type
+                arr = arr.astype(dtype=type_typestr(dtype._type_))
+            except:
+                raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
+            
+            # ensure contiguous
+            arr = np.ascontiguousarray(arr)
+
+            ptr = arr.__array_interface__["data"][0]
+            shape = arr.__array_interface__["shape"]
+            length = shape[0]
+
+            if (device == "cpu" and copy == False):
+
+                # ref numpy memory directly
+                self.ptr = ptr
+                self.dtype=dtype
+                self.length=length
+                self.capacity=length*type_size_in_bytes(dtype)
+                self.device = device
+                self.owner = False
+
+                # keep a ref to source array to keep allocation alive
+                self.ref = arr
+
+            else:
+
+                from warp.context import empty, copy
+
+                # otherwise, we must transfer to device memory
+                # create a host wrapper around the numpy array
+                # and a new destination array to copy it to
+                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
+                dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
+                dest.owner = False
+                
+                # data copy
+                copy(dest, src)
+
+                # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
+                from copy import copy as shallowcopy
+
+                self.__dict__ = shallowcopy(dest.__dict__)
+                self.owner = True
 
         else:
             
@@ -389,10 +416,19 @@ class array:
             self.__name__ = "array<" + type.__name__ + ">"
 
 
-        # store 2D shape (useful for interop with tensor frameworks)
-        self.shape = (self.length, type_length(self.dtype))
+        # save flag, controls if gradients will be computed in by wp.Tape
+        self.requires_grad = requires_grad
+
+        # store shape (useful for interop with tensor frameworks)
+        dims = type_length(self.dtype)
+        if dims == 1:
+            # scalar type, ensures arrays are 1d for simple types
+            self.shape = (self.length,)
+        else:
+            # vector type
+            self.shape = (self.length, dims)
         
-        # set up array interface access so we can treat this object as a read-only numpy array
+        # set up array interface access so we can treat this object as a numpy array
         if device == "cpu":
 
             self.__array_interface__ = { 
@@ -402,7 +438,7 @@ class array:
                 "version": 3 
             }
 
-        # set up cuda array interface access so we can treat this object as a read-only numpy array
+        # set up cuda array interface access so we can treat this object as a Torch tensor
         if device == "cuda":
 
             self.__cuda_array_interface__ = {
