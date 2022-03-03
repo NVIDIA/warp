@@ -11,8 +11,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import warp as wp
 import warp.render
 
-np.random.seed(42)
-
 wp.init()
 
 @wp.func
@@ -88,7 +86,6 @@ init_vel = np.random.rand(num_particles, 3)
 
 positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device=device)
 velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=device)
-positions_host = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device="cpu")
 
 # load collision volume, todo: replace with a simpler (smaller NVDB grid)
 file = np.fromfile("tests/assets/rocks.nvdb.grid", dtype=np.byte)
@@ -117,12 +114,10 @@ for i in range(sim_steps):
 
         with wp.ScopedTimer("render", detailed=False):
 
-            wp.copy(positions_host, positions)
-
             stage.begin_frame(sim_time)
 
             stage.render_ref(name="collision", path="../assets/rocks.usd", pos=(0.0, 0.0, 0.0), rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi), scale=(1.0, 1.0, 1.0))
-            stage.render_points(name="points", points=positions_host.numpy(), radius=sim_margin)
+            stage.render_points(name="points", points=positions.numpy(), radius=sim_margin)
 
             stage.end_frame()
 
