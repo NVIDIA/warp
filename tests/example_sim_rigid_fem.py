@@ -72,13 +72,13 @@ state_1 = model.state()
 
 model.collide(state_0)
 
-stage = render.UsdRenderer("tests/outputs/test_sim_rigid_fem.usd")
+stage = warp.render.UsdRenderer("tests/outputs/test_sim_rigid_fem.usd")
 
 for i in range(sim_frames):
     
     if (sim_render):
     
-        with wp.ScopedTimer("render"):
+        with wp.ScopedTimer("render"): 
 
             stage.begin_frame(sim_time)
             stage.render_ground()

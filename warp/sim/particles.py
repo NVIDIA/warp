@@ -39,8 +39,7 @@ def eval_particle_forces_kernel(grid : wp.uint64,
                  k_damp: float,
                  k_friction: float,
                  k_mu: float,
-                 k_cohesion: float,
-                 margin: float):
+                 k_cohesion: float):
 
     tid = wp.tid()
 
@@ -53,8 +52,10 @@ def eval_particle_forces_kernel(grid : wp.uint64,
     f = wp.vec3(0.0, 0.0, 0.0)
 
     # particle contact
-    query = wp.hash_grid_query(grid, x, radius*2.0+k_cohesion+margin)
+    query = wp.hash_grid_query(grid, x, radius*2.0+k_cohesion)
     index = int(0)
+
+    count = int(0)
 
     while(wp.hash_grid_query_next(query, index)):
 
@@ -65,8 +66,10 @@ def eval_particle_forces_kernel(grid : wp.uint64,
             d = wp.length(n)
             err = d - radius*2.0
 
+            count += 1
+
             if (err <= k_cohesion):
-                
+
                 n = n/d
                 vrel = v - particle_v[index]
 
@@ -78,7 +81,7 @@ def eval_particle_forces_kernel(grid : wp.uint64,
 def eval_particle_forces(model, state, forces):
 
     if (model.particle_radius > 0.0):
-            
+                        
         wp.launch(
             kernel=eval_particle_forces_kernel,
             dim=model.particle_count,
@@ -92,7 +95,6 @@ def eval_particle_forces(model, state, forces):
                 model.particle_kd,
                 model.particle_kf,
                 model.particle_mu,
-                model.particle_cohesion,
-                model.particle_margin
+                model.particle_cohesion
             ],
             device=model.device)

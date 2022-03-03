@@ -329,7 +329,6 @@ class Model:
         self.particle_cohesion = 0.0
         self.particle_adhesion = 0.0
         self.particle_grid = None
-        self.particle_margin = 0.0  # fraction of radius to expand the grid cell size
 
         self.device = device
 

@@ -17,7 +17,7 @@ def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
     xform_ops = xform.GetOrderedXformOps()
 
-    xform_ops[0].Set(Gf.Vec3d(pos), time)
+    xform_ops[0].Set(Gf.Vec3d(float(pos[0]), float(pos[1]), float(pos[2])), time)
     xform_ops[1].Set(Gf.Quatf(float(rot[3]), float(rot[0]), float(rot[1]), float(rot[2])), time)
     xform_ops[2].Set(Gf.Vec3d(float(scale[0]), float(scale[1]), float(scale[2])), time)
 
