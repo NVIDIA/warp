@@ -119,7 +119,7 @@ class OgnParticleSolver:
         timeline =  omni.timeline.get_timeline_interface()
         state = db.internal_state
         device = "cuda"
-
+       
         with wp.ScopedCudaGuard():
 
             # reset on stop
@@ -194,9 +194,6 @@ class OgnParticleSolver:
 
                     # save model and state
                     state.model = model
-                    print("------------------------------------------------------------")
-                    print(state.model)
-
                     state.state_0 = model.state()
                     state.state_1 = model.state()
 
@@ -293,7 +290,8 @@ class OgnParticleSolver:
                 with wp.ScopedTimer("Simulate", active=profile_enabled):
                     
                     if (use_graph):
-                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*(2.0 + db.inputs.particle_margin))
+
+                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius + db.inputs.particle_margin)
                         wp.capture_launch(state.capture)
                     else:
                         
@@ -301,10 +299,7 @@ class OgnParticleSolver:
                         sim_substeps = db.inputs.num_substeps
                         sim_dt = (1.0/60)/sim_substeps
 
-                        # run collision detection once per-frame
-                        wp.sim.collide(state.model, state.state_0)
-
-                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius*(2.0 + db.inputs.particle_margin))
+                        state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius + db.inputs.particle_margin)
 
                         for i in range(sim_substeps):
 
@@ -322,6 +317,7 @@ class OgnParticleSolver:
 
                     # back to host for OG outputs
                     wp.copy(state.positions_host, state.state_0.particle_q)
+
                     wp.synchronize()
 
                 with wp.ScopedTimer("Write", active=profile_enabled):
@@ -330,7 +326,6 @@ class OgnParticleSolver:
                     db.outputs.positions[:] = state.positions_host.numpy()
 
             else:
-                
                 with wp.ScopedTimer("Write", active=profile_enabled):
                     
                     # timeline not playing and sim. not yet initialized, just pass through outputs

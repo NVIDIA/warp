@@ -158,93 +158,95 @@ class OgnParticleVolume:
 
         device = "cuda"
 
-        if mesh.valid and (state.initialized == False or db.inputs.execIn):
+        with wp.ScopedCudaGuard():
 
-            mesh_points = mesh.attribute_by_name(db.tokens.points).value
-            mesh_indices = mesh.attribute_by_name(db.tokens.faceVertexIndices).value
-            mesh_counts =  mesh.attribute_by_name(db.tokens.faceVertexCounts).value
-            mesh_xform = read_transform_bundle(mesh)
+            if mesh.valid and (state.initialized == False or db.inputs.execIn):
 
-            num_points = len(mesh_points)
+                mesh_points = mesh.attribute_by_name(db.tokens.points).value
+                mesh_indices = mesh.attribute_by_name(db.tokens.faceVertexIndices).value
+                mesh_counts =  mesh.attribute_by_name(db.tokens.faceVertexCounts).value
+                mesh_xform = read_transform_bundle(mesh)
 
-            if (num_points):
-                
-                with wp.ScopedTimer("Prepare Mesh", active=profile_enabled):
+                num_points = len(mesh_points)
 
-                    # triangulate
-                    mesh_tri_indices = triangulate(mesh_counts, mesh_indices)
+                if (num_points):
                     
-                    # transform to world space
-                    mesh_points_local = wp.array(mesh_points, dtype=wp.vec3, device=device)
-                    mesh_points_world = wp.empty(num_points, dtype=wp.vec3, device=device)
-                    
-                    wp.launch(
-                        kernel=transform_points, 
-                        dim=num_points, 
-                        inputs=[
-                            mesh_points_local,
-                            mesh_points_world, 
-                            np.array(mesh_xform).T], 
-                        device=device)
+                    with wp.ScopedTimer("Prepare Mesh", active=profile_enabled):
 
-                    # create Warp mesh
-                    state.mesh = wp.Mesh(
-                        points=mesh_points_world,
-                        velocities=wp.zeros(num_points, dtype=wp.vec3, device=device),
-                        indices=wp.array(mesh_tri_indices, dtype=int, device=device))
+                        # triangulate
+                        mesh_tri_indices = triangulate(mesh_counts, mesh_indices)
+                        
+                        # transform to world space
+                        mesh_points_local = wp.array(mesh_points, dtype=wp.vec3, device=device)
+                        mesh_points_world = wp.empty(num_points, dtype=wp.vec3, device=device)
 
-                with wp.ScopedTimer("Sample Mesh", active=profile_enabled):
-
-                    bounds = read_bounds_bundle(mesh).ComputeAlignedBox()
-                    lower = bounds.GetMin()
-                    size = bounds.GetSize()
-
-                    if (db.inputs.spacing <= 0.0):
-                        print("Spacing must be positive")
-                        return False
-
-                    dim_x = int(size[0]/db.inputs.spacing)+1
-                    dim_y = int(size[1]/db.inputs.spacing)+1
-                    dim_z = int(size[2]/db.inputs.spacing)+1
-
-                    points_max = db.inputs.max_points
-
-                    #print(f"Creating particle grid with dim {dim_x}x{dim_y}x{dim_z}, lower {lower[0]}, {lower[1]}, {lower[2]} size {size[0]}, {size[1]}, {size[2]}, spacing {db.inputs.spacing}")
-
-                    if (dim_x*dim_y*dim_z > points_max):
-                        print(f"Trying to create particle volume with > {points_max} particles, increase spacing or geometry size")
-                        return False
-
-                    points = wp.zeros(points_max, dtype=wp.vec3, device=device)
-                    points_counter = wp.zeros(1, dtype=int, device=device)
-                
-                    wp.launch(kernel=sample_mesh, 
-                            dim=dim_x*dim_y*dim_z, 
+                        wp.launch(
+                            kernel=transform_points, 
+                            dim=num_points, 
                             inputs=[
-                                state.mesh.id,
-                                lower,
-                                db.inputs.spacing,
-                                db.inputs.spacing_jitter,                                
-                                dim_x,
-                                dim_y,
-                                dim_z,
-                                db.inputs.sdf_min,
-                                db.inputs.sdf_max,
-                                points,
-                                points_counter,
-                                points_max], 
-                            device="cuda")
-                    
-                    num_points = min(int(points_counter.numpy()[0]), points_max)
-                    
-                    # bring back to host
-                    points = points.numpy()[0:num_points]
-                    velocities = np.tile(db.inputs.velocity, (len(points), 1))
+                                mesh_points_local,
+                                mesh_points_world, 
+                                np.array(mesh_xform).T], 
+                            device=device)
 
-                    state.initialized = True
+                        # create Warp mesh
+                        state.mesh = wp.Mesh(
+                            points=mesh_points_world,
+                            velocities=wp.zeros(num_points, dtype=wp.vec3, device=device),
+                            indices=wp.array(mesh_tri_indices, dtype=int, device=device))
 
-                    add_bundle_data(db.outputs.particles, name="points", data=points, type=og.Type(og.BaseDataType.FLOAT, tuple_count=3, array_depth=1))
-                    add_bundle_data(db.outputs.particles, name="velocities", data=velocities, type=og.Type(og.BaseDataType.FLOAT, tuple_count=3, array_depth=1))
+                    with wp.ScopedTimer("Sample Mesh", active=profile_enabled):
+
+                        bounds = read_bounds_bundle(mesh).ComputeAlignedBox()
+                        lower = bounds.GetMin()
+                        size = bounds.GetSize()
+
+                        if (db.inputs.spacing <= 0.0):
+                            print("Spacing must be positive")
+                            return False
+
+                        dim_x = int(size[0]/db.inputs.spacing)+1
+                        dim_y = int(size[1]/db.inputs.spacing)+1
+                        dim_z = int(size[2]/db.inputs.spacing)+1
+
+                        points_max = db.inputs.max_points
+
+                        #print(f"Creating particle grid with dim {dim_x}x{dim_y}x{dim_z}, lower {lower[0]}, {lower[1]}, {lower[2]} size {size[0]}, {size[1]}, {size[2]}, spacing {db.inputs.spacing}")
+
+                        if (dim_x*dim_y*dim_z > points_max):
+                            print(f"Trying to create particle volume with {dim_x*dim_y*dim_z} > {points_max} particles, increase spacing or geometry size")
+                            return False
+
+                        points = wp.zeros(points_max, dtype=wp.vec3, device=device)
+                        points_counter = wp.zeros(1, dtype=int, device=device)
+                    
+                        wp.launch(kernel=sample_mesh, 
+                                dim=dim_x*dim_y*dim_z, 
+                                inputs=[
+                                    state.mesh.id,
+                                    lower,
+                                    db.inputs.spacing,
+                                    db.inputs.spacing_jitter,                                
+                                    dim_x,
+                                    dim_y,
+                                    dim_z,
+                                    db.inputs.sdf_min,
+                                    db.inputs.sdf_max,
+                                    points,
+                                    points_counter,
+                                    points_max], 
+                                device="cuda")
+                        
+                        num_points = min(int(points_counter.numpy()[0]), points_max)
+                        
+                        # bring back to host
+                        points = points.numpy()[0:num_points]
+                        velocities = np.tile(db.inputs.velocity, (len(points), 1))
+
+                        state.initialized = True
+
+                        add_bundle_data(db.outputs.particles, name="points", data=points, type=og.Type(og.BaseDataType.FLOAT, tuple_count=3, array_depth=1))
+                        add_bundle_data(db.outputs.particles, name="velocities", data=velocities, type=og.Type(og.BaseDataType.FLOAT, tuple_count=3, array_depth=1))
 
 
         return True

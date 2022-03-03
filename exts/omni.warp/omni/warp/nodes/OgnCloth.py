@@ -15,10 +15,23 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 
 # helper to read a USD xform out of graph inputs
-def read_transform(input):
-    xform = Gf.Matrix4d(input.reshape((4,4)))
-    return xform
+# helper to get the transform for a bundle prim
+def read_transform_bundle(bundle):
 
+    timeline =  omni.timeline.get_timeline_interface()
+    time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
+
+    stage = omni.usd.get_context().get_stage()
+    prim_path = bundle.attribute_by_name("sourcePrimPath").value
+    prim = UsdGeom.Xformable(stage.GetPrimAtPath(prim_path))
+
+    return prim.ComputeLocalToWorldTransform(time)
+
+def read_points_bundle(bundle):
+    return bundle.attribute_by_name("points").value
+
+def read_indices_bundle(bundle):
+    return bundle.attribute_by_name("faceVertexIndices").value
 
 # transform points from local space to world space given a mat44
 @wp.kernel
@@ -32,6 +45,8 @@ def transform_points(src: wp.array(dtype=wp.vec3),
     m = wp.transform_point(xform, p)
 
     dest[tid] = m
+
+
 
 
 
@@ -65,7 +80,9 @@ def transform_mesh(collider_current: wp.array(dtype=wp.vec3),
 class OgnClothState:
 
     def __init__(self):
+        self.reset()
 
+    def reset(self):
         self.model = None
         self.state_0 = None
         self.state_1 = None
@@ -73,10 +90,6 @@ class OgnClothState:
 
         self.integrator = None
         
-        # local space copy of cloth positions (used when updating the output mesh)
-        self.cloth_positions_device = None
-        self.cloth_positions_host = None
-
         # local space copy of collider positions and velocities on the device
         self.collider_positions_current = None
         self.collider_positions_previous = None
@@ -111,6 +124,10 @@ class OgnCloth:
 
         with wp.ScopedCudaGuard():
 
+            # reset on stop
+            if (timeline.is_stopped()):
+                context.reset()               
+
             # initialization
             if (timeline.is_playing()):
             
@@ -122,12 +139,12 @@ class OgnCloth:
                     # cloth
                     with wp.ScopedTimer("Create Cloth", detailed=False):
 
-                        if (len(db.inputs.cloth_positions) and len(db.inputs.cloth_indices)):
+                        if (db.inputs.cloth.valid):
 
                             # transform cloth points to world-space
-                            cloth_xform = read_transform(db.inputs.cloth_transform)
-                            cloth_positions = db.inputs.cloth_positions
-                            cloth_indices = db.inputs.cloth_indices
+                            cloth_xform = read_transform_bundle(db.inputs.cloth)
+                            cloth_positions = read_points_bundle(db.inputs.cloth)
+                            cloth_indices = read_indices_bundle(db.inputs.cloth)
 
                             density = db.inputs.density
 
@@ -150,20 +167,15 @@ class OgnCloth:
                             # set uniform mass to average mass to avoid large mass ratios
                             builder.particle_mass = np.array([avg_mass]*len(builder.particle_mass))
 
-                            # # temp: fix top half of the dress
-                            # for i in range(len(builder.particle_mass)):
-                            #     if (cloth_positions[i][2] > 100):
-                            #         builder.particle_mass[i] = 0.0
-
 
                     # collision shape
                     with wp.ScopedTimer("Create Collider"):
 
-                        if (len(db.inputs.collider_positions) and len(db.inputs.collider_indices)):
+                        if (db.inputs.collider.valid):
 
-                            collider_xform = read_transform(db.inputs.collider_transform)
-                            collider_positions = db.inputs.collider_positions
-                            collider_indices = db.inputs.collider_indices
+                            collider_xform = read_transform_bundle(db.inputs.collider)
+                            collider_positions = read_points_bundle(db.inputs.collider)
+                            collider_indices = read_indices_bundle(db.inputs.collider)
 
                             # save local copy
                             context.collider_positions_current = wp.array(collider_positions, dtype=wp.vec3, device=device)
@@ -200,7 +212,7 @@ class OgnCloth:
                     context.positions_host = wp.zeros(model.particle_count, dtype=wp.vec3, device="cpu")
                     context.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3, device=device)
 
-                    context.collider_xform = read_transform(db.inputs.collider_transform)
+                    context.collider_xform = read_transform_bundle(db.inputs.collider)
 
 
                 # update dynamic properties
@@ -234,13 +246,14 @@ class OgnCloth:
                         context.swap()
 
                         # update current, todo: make this zero alloc and memcpy directly from numpy memory
-                        collider_points_host = wp.array(db.inputs.collider_positions, dtype=wp.vec3, copy=False, device="cpu")
+
+                        collider_points_host = wp.array(read_points_bundle(db.inputs.collider), dtype=wp.vec3, copy=False, device="cpu")
                         wp.copy(context.collider_positions_current, collider_points_host)
 
                         alpha = 1.0#(i+1)/sim_substeps
 
                         previous_xform = context.collider_xform
-                        current_xform = read_transform(db.inputs.collider_transform)
+                        current_xform = read_transform_bundle(db.inputs.collider)
 
                         wp.launch(
                             kernel=transform_mesh, 
@@ -317,7 +330,7 @@ class OgnCloth:
                 # transform cloth posiitions back to local space
                 with wp.ScopedTimer("Transform", active=False):
                     
-                    cloth_xform_inv = read_transform(db.inputs.cloth_transform).GetInverse()
+                    cloth_xform_inv = read_transform_bundle(db.inputs.cloth).GetInverse()
 
                     wp.launch(kernel=transform_points, 
                               dim=context.model.particle_count, 
@@ -343,7 +356,7 @@ class OgnCloth:
                     
                     # timeline not playing and sim. not yet initialized, just pass through outputs
                     if context.model is None:
-                        db.outputs.positions = db.inputs.cloth_positions
+                        db.outputs.positions = read_points_bundle(db.inputs.cloth)
 
 
         return True

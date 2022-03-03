@@ -20,26 +20,31 @@ def read_transform(input):
     xform = Gf.Matrix4d(input.reshape((4,4)))
     return xform
 
+def read_xformable_bundle(bundle):
+    stage = omni.usd.get_context().get_stage()
+    prim_path = bundle.attribute_by_name("sourcePrimPath").value
+    prim = UsdGeom.Xformable(stage.GetPrimAtPath(prim_path))
+
+    return prim
+
 # helper to get the transform for a bundle prim
 def read_transform_bundle(bundle):
+
     timeline =  omni.timeline.get_timeline_interface()
     time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
 
-    stage = omni.usd.get_context().get_stage()
-    prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
+    prim = read_xformable_bundle(bundle)
     return prim.ComputeLocalToWorldTransform(time)
 
 def read_bounds_bundle(bundle):
-    stage = omni.usd.get_context().get_stage()
-    prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
-    
+
+    prim = read_xformable_bundle(bundle)
     return prim.ComputeLocalBound(0.0, purpose1="default")
 
 def translate_bundle(bundle, pos):
-    stage = omni.usd.get_context().get_stage()
-    xform = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
 
-    xform_ops = xform.GetOrderedXformOps()
+    prim = read_xformable_bundle(bundle)   
+    xform_ops = prim.GetOrderedXformOps()
     p = xform_ops[0].Get()
 
     xform_ops[0].Set(p + pos)

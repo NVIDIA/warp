@@ -4,89 +4,31 @@
         "description": "Cloth simulation node",
         "language": "Python",
         "inputs": {
-            "cloth_positions": {
-                "type": "pointf[3][]",
-                "description": "Particle positions",
-                "default": []
+            "cloth": {
+                "type": "bundle",
+                "description": "Cloth geometry"
             },
-            "cloth_indices": {
-                "type": "int[]",
-                "description": "Particle indices",
-                "default": []
+            "collider": {
+                "type": "bundle",
+                "description": "Collider mesh"
+            },
+            "collider_offset": {
+                "type": "float",
+                "description": "",
+                "default": 0.01
             },
             "ground": {
                 "type": "bool",
                 "description": "",
                 "default": false
             },
-            "collider_positions": {
-                "type": "pointf[3][]",
-                "description": "Collision positions",
-                "default": []
-            },
-            "collider_indices": {
-                "type": "int[]",
-                "description": "Collision indices",
-                "default": []
-            },
-            "cloth_transform": {
-                "type": "transform[4]",
-                "description": "Local to World transform for cloth vertices",
+            "ground_plane": {
+                "type": "vectorf[3]",
+                "description": "",
                 "default": [
-                    [
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    [
-                        0.0,
-                        1.0,
-                        0.0,
-                        0.0
-                    ],
-                    [
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0
-                    ],
-                    [
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0
-                    ]
-                ]
-            },
-            "collider_transform": {
-                "type": "transform[4]",
-                "description": "Local to world transform for collider vertices",
-                "default": [
-                    [
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0
-                    ],
-                    [
-                        0.0,
-                        1.0,
-                        0.0,
-                        0.0
-                    ],
-                    [
-                        0.0,
-                        0.0,
-                        1.0,
-                        0.0
-                    ],
-                    [
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0
-                    ]
+                    0.0,
+                    1.0,
+                    0.0
                 ]
             },
             "density": {
@@ -152,20 +94,6 @@
                     -9.8,
                     0.0
                 ]
-            },
-            "ground_plane": {
-                "type": "vectorf[3]",
-                "description": "",
-                "default": [
-                    0.0,
-                    1.0,
-                    0.0
-                ]
-            },
-            "collider_offset": {
-                "type": "float",
-                "description": "",
-                "default": 0.01
             }
         },
         "outputs": {

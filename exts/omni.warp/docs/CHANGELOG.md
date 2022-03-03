@@ -1,16 +1,19 @@
 # CHANGELOG
 
-## [0.1.24] - 2022-02-23
+## [0.1.24] - 2022-03-03
 
 ### Warp Core
 
 - Add NanoVDB support, see wp.volume_sample*() methods
 - Add support for reading compile-time constants in kernels, see wp.constant()
 - Add support for __cuda_array_interface__ protocol for zero-copy interop with PyTorch, see wp.torch.to_torch()
+- Add support for additional numeric types, i8, u8, i16, u16, etc
 - Add better checks for device strings during allocation / launch
 - Add support for sampling random numbers with a normal distribution, see wp.randn()
+- Upgrade to CUDA 11.3
+- Update example scenes to Kit 103.1
 - Deduce array dtype from np.array when one is not provided
-- Fix for ranged loops with negative step sizes
+- Fix for ranged for loops with negative step sizes
 - Fix for 3d and 4d spherical gradient distributions
 
 ## [0.1.23] - 2022-02-17

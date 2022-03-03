@@ -16,3 +16,5 @@ tests/outputs/.thumbs
 tests/outputs
 _build
 _repo
+exts/omni.warp/omni/warp/ogn
+tests/assets/.thumbs
