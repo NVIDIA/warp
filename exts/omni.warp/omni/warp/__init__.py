@@ -16,16 +16,7 @@ class OmniWarpExtension(omni.ext.IExt):
     def on_startup(self, ext_id):
         print("[omni.warp] OmniWarpExtension startup", flush=True)
 
-        # try and find CUDA toolchain in target-deps
-        # note this is only valid for developer machines
-        # end users need the CUDA_SDK installed to create nodes
-        cuda_path = os.path.dirname(sys.argv[0]) + "/../../target-deps/cuda"
-
-        if (os.path.exists(cuda_path)):
-            wp.config.cuda_path = cuda_path
-
         wp.init()
-
 
     def on_shutdown(self):
         print("[omni.warp] OmniWarpExtension shutdown", flush=True)
