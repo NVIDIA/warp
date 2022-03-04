@@ -24,8 +24,8 @@ dirs = ["warp/*.py",
         "warp/native/*.h",
         "warp/native/*.cpp",
         "warp/native/*.cu",
-        "warp/exts/omni.warp/omni/warp/*.py",
-        "warp/exts/omni.warp/omni/warp/nodes/*.py",
+        "exts/omni.warp/omni/warp/*.py",
+        "exts/omni.warp/omni/warp/nodes/*.py",
         "tests/*.py"]
 
 import glob
