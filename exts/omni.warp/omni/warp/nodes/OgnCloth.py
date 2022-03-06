@@ -71,8 +71,8 @@ def transform_mesh(collider_current: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    local_p1 = wp.load(collider_current, tid)
-    local_p0 = wp.load(collider_previous, tid)
+    local_p1 = collider_current[tid]
+    local_p0 = collider_previous[tid]
 
     world_p1 = wp.transform_point(xform_current, local_p1)
     world_p0 = wp.transform_point(xform_previous, local_p0)
@@ -80,8 +80,8 @@ def transform_mesh(collider_current: wp.array(dtype=wp.vec3),
     p = world_p1*alpha + world_p0*(1.0-alpha)
     v = (world_p1-world_p0)/dt
 
-    wp.store(mesh_points, tid, p)
-    wp.store(mesh_velocities, tid, v)
+    mesh_points[tid]= p
+    mesh_velocities[tid] = v
 
 
 class OgnClothState:

@@ -26,16 +26,16 @@ def deform(positions: wp.array(dtype=wp.vec3), t: float):
     
     tid = wp.tid()
 
-    x = wp.load(positions, tid)
+    x = positions[tid]
     
 #    a = 2.0 + 3.0
 
-    offset = -sin(x[0])*0.02
-    scale = sin(t)
+    offset = -wp.sin(x[0])*0.02
+    scale = wp.sin(t)
 
     x = x + wp.vec3(0.0, offset*scale, 0.0)
 
-    wp.store(positions, tid, x)
+    positions[tid] = x
 
 
 @wp.kernel
@@ -49,8 +49,8 @@ def simulate(positions: wp.array(dtype=wp.vec3),
     
     tid = wp.tid()
 
-    x = wp.load(positions, tid)
-    v = wp.load(velocities, tid)
+    x = positions[tid]
+    v = velocities[tid]
 
     v = v + wp.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
     xpred = x + v*dt
@@ -84,8 +84,8 @@ def simulate(positions: wp.array(dtype=wp.vec3),
     v = (xpred - x)*(1.0/dt)
     x = xpred
 
-    wp.store(positions, tid, x)
-    wp.store(velocities, tid, v)
+    positions[tid] = x
+    velocities[tid] = v
 
 
 device = "cuda"

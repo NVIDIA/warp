@@ -26,10 +26,10 @@ def test_kernel(
 
     state = wp.rand_init(kernel_seed, tid)
 
-    wp.store(int_a, tid, wp.randi(state))
-    wp.store(int_ab, tid, wp.randi(state, 0, 100))
-    wp.store(float_01, tid, wp.randf(state))
-    wp.store(float_ab, tid, wp.randf(state, 0.0, 100.0))
+    int_a[tid] = wp.randi(state)
+    int_ab[tid] = wp.randi(state, 0, 100)
+    float_01[tid] = wp.randf(state)
+    float_ab[tid] = wp.randf(state, 0.0, 100.0)
 
 def test_rand(test, device):
 

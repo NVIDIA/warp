@@ -51,7 +51,7 @@ def render(mesh: wp.uint64,
     if wp.mesh_query_ray(mesh, ro, rd, 1.e+6, t, u, v, sign, n, f):
         color = n*0.5 + wp.vec3(0.5, 0.5, 0.5)
         
-    wp.store(pixels, tid, color)
+    pixels[tid] = color
 
 
 device = "cuda"

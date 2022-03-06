@@ -26,7 +26,7 @@ def add_vec2(dest: wp.array(dtype=wp.vec2),
              c: wp.vec2):
 
     tid = wp.tid()
-    wp.store(dest, tid, c)
+    dest[tid] = c
 
 
 @wp.kernel
@@ -37,7 +37,7 @@ def transform_vec2(dest: wp.array(dtype=wp.vec2),
     tid = wp.tid()
 
     p = wp.mul(m, v)
-    wp.store(dest, tid, p)
+    dest[tid] = p
 
 
 @wp.kernel
@@ -45,7 +45,7 @@ def add_vec3(dest: wp.array(dtype=wp.vec3),
              c: wp.vec3):
 
     tid = wp.tid()
-    wp.store(dest, tid, c)
+    dest[tid] = c
 
 @wp.kernel
 def transform_vec3(dest: wp.array(dtype=wp.vec3),
@@ -55,7 +55,7 @@ def transform_vec3(dest: wp.array(dtype=wp.vec3),
     tid = wp.tid()
 
     p = wp.mul(m, v)
-    wp.store(dest, tid, p)
+    dest[tid] = p
 
 
 @wp.kernel

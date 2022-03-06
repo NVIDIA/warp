@@ -20,17 +20,17 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    x0 = wp.load(x, tid)
-    v0 = wp.load(v, tid)
-    f0 = wp.load(f, tid)
-    inv_mass = wp.load(w, tid)
+    x0 = x[tid]
+    v0 = v[tid]
+    f0 = f[tid]
+    inv_mass = w[tid]
 
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
     v1 = v0 + (f0 * inv_mass + gravity * wp.step(0.0 - inv_mass)) * dt
     x1 = x0 + v1 * dt
 
-    wp.store(x_new, tid, x1)
-    wp.store(v_new, tid, v1)
+    x_new[tid] = x1
+    v_new[tid] = v1
 
 
 @wp.kernel
@@ -46,18 +46,18 @@ def solve_springs(x: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    i = wp.load(spring_indices, tid * 2 + 0)
-    j = wp.load(spring_indices, tid * 2 + 1)
+    i = spring_indices[tid * 2 + 0]
+    j = spring_indices[tid * 2 + 1]
 
-    ke = wp.load(spring_stiffness, tid)
-    kd = wp.load(spring_damping, tid)
-    rest = wp.load(spring_rest_lengths, tid)
+    ke = spring_stiffness[tid]
+    kd = spring_damping[tid]
+    rest = spring_rest_lengths[tid]
 
-    xi = wp.load(x, i)
-    xj = wp.load(x, j)
+    xi = x[i]
+    xj = x[j]
 
-    vi = wp.load(v, i)
-    vj = wp.load(v, j)
+    vi = v[i]
+    vj = v[j]
 
     xij = xi - xj
     vij = vi - vj
@@ -74,8 +74,8 @@ def solve_springs(x: wp.array(dtype=wp.vec3),
     # damping based on relative velocity.
     #fs = dir * (ke * c + kd * dcdt)
 
-    wi = wp.load(invmass, i)
-    wj = wp.load(invmass, j)
+    wi = invmass[i]
+    wj = invmass[j]
 
     denom = wi + wj
     alpha = 1.0/(ke*dt*dt)
@@ -103,31 +103,31 @@ def solve_tetrahedra(x: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    i = wp.load(indices, tid * 4 + 0)
-    j = wp.load(indices, tid * 4 + 1)
-    k = wp.load(indices, tid * 4 + 2)
-    l = wp.load(indices, tid * 4 + 3)
+    i = indices[tid * 4 + 0]
+    j = indices[tid * 4 + 1]
+    k = indices[tid * 4 + 2]
+    l = indices[tid * 4 + 3]
 
-    act = wp.load(activation, tid)
+    act = activation[tid]
 
-    k_mu = wp.load(materials, tid * 3 + 0)
-    k_lambda = wp.load(materials, tid * 3 + 1)
-    k_damp = wp.load(materials, tid * 3 + 2)
+    k_mu = materials[tid * 3 + 0]
+    k_lambda = materials[tid * 3 + 1]
+    k_damp = materials[tid * 3 + 2]
 
-    x0 = wp.load(x, i)
-    x1 = wp.load(x, j)
-    x2 = wp.load(x, k)
-    x3 = wp.load(x, l)
+    x0 = x[i]
+    x1 = x[j]
+    x2 = x[k]
+    x3 = x[l]
 
-    v0 = wp.load(v, i)
-    v1 = wp.load(v, j)
-    v2 = wp.load(v, k)
-    v3 = wp.load(v, l)
+    v0 = v[i]
+    v1 = v[j]
+    v2 = v[k]
+    v3 = v[l]
 
-    w0 = wp.load(inv_mass, i)
-    w1 = wp.load(inv_mass, j)
-    w2 = wp.load(inv_mass, k)
-    w3 = wp.load(inv_mass, l)
+    w0 = inv_mass[i]
+    w1 = inv_mass[j]
+    w2 = inv_mass[k]
+    w3 = inv_mass[l]
 
     x10 = x1 - x0
     x20 = x2 - x0
@@ -138,7 +138,7 @@ def solve_tetrahedra(x: wp.array(dtype=wp.vec3),
     v30 = v3 - v0
 
     Ds = wp.mat33(x10, x20, x30)
-    Dm = wp.load(pose, tid)
+    Dm = pose[tid]
 
     inv_rest_volume = wp.determinant(Dm) * 6.0
     rest_volume = 1.0 / inv_rest_volume
@@ -243,20 +243,20 @@ def apply_deltas(x_orig: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    x0 = wp.load(x_orig, tid)
-    xp = wp.load(x_pred, tid)
+    x0 = x_orig[tid]
+    xp = x_pred[tid]
 
     # constraint deltas
-    d = wp.load(delta, tid)
+    d = delta[tid]
 
     x_new = xp + d
     v_new = (x_new - x0)/dt
 
-    wp.store(x_out, tid, x_new)
-    wp.store(v_out, tid, v_new)
+    x_out[tid] = x_new
+    v_out[tid] = v_new
 
     # clear forces
-    wp.store(delta, tid, vec3(0.0, 0.0, 0.0))
+    delta[tid] = wp.vec3(0.0, 0.0, 0.0)
 
 
 class XPBDIntegrator:

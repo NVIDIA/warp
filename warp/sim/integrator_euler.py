@@ -45,8 +45,8 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
     v1 = v0 + ((fe + fi) * inv_mass + gravity * wp.step(0.0 - inv_mass)) *dt
     x1 = x0 + v1 * dt
 
-    wp.store(x_new, tid, x1)
-    wp.store(v_new, tid, v1)
+    x_new[tid] = x1
+    v_new[tid] = v1
 
 
 # semi-implicit Euler integration
@@ -124,30 +124,30 @@ def eval_springs(x: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    i = wp.load(spring_indices, tid * 2 + 0)
-    j = wp.load(spring_indices, tid * 2 + 1)
+    i = spring_indices[tid * 2 + 0]
+    j = spring_indices[tid * 2 + 1]
 
-    ke = wp.load(spring_stiffness, tid)
-    kd = wp.load(spring_damping, tid)
-    rest = wp.load(spring_rest_lengths, tid)
+    ke = spring_stiffness[tid]
+    kd = spring_damping[tid]
+    rest = spring_rest_lengths[tid]
 
-    xi = wp.load(x, i)
-    xj = wp.load(x, j)
+    xi = x[i]
+    xj = x[j]
 
-    vi = wp.load(v, i)
-    vj = wp.load(v, j)
+    vi = v[i]
+    vj = v[j]
 
     xij = xi - xj
     vij = vi - vj
 
-    l = length(xij)
+    l = wp.length(xij)
     l_inv = 1.0 / l
 
     # normalized spring direction
     dir = xij * l_inv
 
     c = l - rest
-    dcdt = dot(dir, vij)
+    dcdt = wp.dot(dir, vij)
 
     # damping based on relative velocity.
     fs = dir * (ke * c + kd * dcdt)
@@ -170,17 +170,17 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
                    f: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
 
-    i = wp.load(indices, tid * 3 + 0)
-    j = wp.load(indices, tid * 3 + 1)
-    k = wp.load(indices, tid * 3 + 2)
+    i = indices[tid * 3 + 0]
+    j = indices[tid * 3 + 1]
+    k = indices[tid * 3 + 2]
 
-    x0 = wp.load(x, i)        # point zero
-    x1 = wp.load(x, j)        # point one
-    x2 = wp.load(x, k)        # point two
+    x0 = x[i]        # point zero
+    x1 = x[j]        # point one
+    x2 = x[k]        # point two
 
-    v0 = wp.load(v, i)       # vel zero
-    v1 = wp.load(v, j)       # vel one
-    v2 = wp.load(v, k)       # vel two
+    v0 = v[i]       # vel zero
+    v1 = v[j]       # vel one
+    v2 = v[k]       # vel two
 
     x10 = x1 - x0     # barycentric coordinates (centered at p)
     x20 = x2 - x0
@@ -188,7 +188,7 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
     v10 = v1 - v0
     v20 = v2 - v0
 
-    Dm = wp.load(pose, tid)
+    Dm = pose[tid]
 
     inv_rest_area = wp.determinant(Dm) * 2.0     # 1 / det(A) = det(A^-1)
     rest_area = 1.0 / inv_rest_area
@@ -256,7 +256,7 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
     area = wp.length(n) * 0.5
 
     # actuation
-    act = wp.load(activation, tid)
+    act = activation[tid]
 
     # J-alpha
     c = area * inv_rest_area - alpha + act
@@ -413,24 +413,23 @@ def eval_triangles_contact(
     face_no = tid // num_particles     # which face
     particle_no = tid % num_particles  # which particle
 
-    # index = wp.load(idx, tid)
-    pos = wp.load(x, particle_no)      # at the moment, just one particle
-                                       # vel0 = wp.load(v, 0)
+    # at the moment, just one particle
+    pos = x[particle_no]
 
-    i = wp.load(indices, face_no * 3 + 0)
-    j = wp.load(indices, face_no * 3 + 1)
-    k = wp.load(indices, face_no * 3 + 2)
+    i = indices[face_no * 3 + 0]
+    j = indices[face_no * 3 + 1]
+    k = indices[face_no * 3 + 2]
 
     if (i == particle_no or j == particle_no or k == particle_no):
         return
 
-    p = wp.load(x, i)        # point zero
-    q = wp.load(x, j)        # point one
-    r = wp.load(x, k)        # point two
+    p = x[i]        # point zero
+    q = x[j]        # point one
+    r = x[k]        # point two
 
-    # vp = wp.load(v, i) # vel zero
-    # vq = wp.load(v, j) # vel one
-    # vr = wp.load(v, k)  # vel two
+    # vp = v[i] # vel zero
+    # vq = v[j] # vel one
+    # vr = v[k] # vel two
 
     # qp = q-p # barycentric coordinates (centered at p)
     # rp = r-p
@@ -479,22 +478,22 @@ def eval_triangles_body_contacts(
 
     # -----------------------
     # load body body point
-    c_body = wp.load(contact_body, particle_no)
-    c_point = wp.load(contact_point, particle_no)
-    c_dist = wp.load(contact_dist, particle_no)
-    c_mat = wp.load(contact_mat, particle_no)
+    c_body = contact_body[particle_no]
+    c_point = contact_point[particle_no]
+    c_dist = contact_dist[particle_no]
+    c_mat = contact_mat[particle_no]
 
     # hard coded surface parameter tensor layout (ke, kd, kf, mu)
-    ke = wp.load(materials, c_mat * 4 + 0)       # restitution coefficient
-    kd = wp.load(materials, c_mat * 4 + 1)       # damping coefficient
-    kf = wp.load(materials, c_mat * 4 + 2)       # friction coefficient
-    mu = wp.load(materials, c_mat * 4 + 3)       # coulomb friction
+    ke = materials[c_mat * 4 + 0]       # restitution coefficient
+    kd = materials[c_mat * 4 + 1]       # damping coefficient
+    kf = materials[c_mat * 4 + 2]       # friction coefficient
+    mu = materials[c_mat * 4 + 3]       # coulomb friction
 
-    x0 = wp.load(body_x, c_body)      # position of colliding body
-    r0 = wp.load(body_r, c_body)      # orientation of colliding body
+    x0 = body_x[c_body]      # position of colliding body
+    r0 = body_r[c_body]      # orientation of colliding body
 
-    v0 = wp.load(body_v, c_body)
-    w0 = wp.load(body_w, c_body)
+    v0 = body_v[c_body]
+    w0 = body_w[c_body]
 
     # transform point to world space
     pos = x0 + wp.quat_rotate(r0, c_point)
@@ -510,17 +509,17 @@ def eval_triangles_body_contacts(
 
     # -----------------------
     # load triangle
-    i = wp.load(indices, face_no * 3 + 0)
-    j = wp.load(indices, face_no * 3 + 1)
-    k = wp.load(indices, face_no * 3 + 2)
+    i = indices[face_no * 3 + 0]
+    j = indices[face_no * 3 + 1]
+    k = indices[face_no * 3 + 2]
 
-    p = wp.load(x, i)        # point zero
-    q = wp.load(x, j)        # point one
-    r = wp.load(x, k)        # point two
+    p = x[i]        # point zero
+    q = x[j]        # point one
+    r = x[k]        # point two
 
-    vp = wp.load(v, i)       # vel zero
-    vq = wp.load(v, j)       # vel one
-    vr = wp.load(v, k)       # vel two
+    vp = v[i]       # vel zero
+    vq = v[j]       # vel one
+    vr = v[k]       # vel two
 
     bary = triangle_closest_point_barycentric(p, q, r, pos)
     closest = p * bary[0] + q * bary[1] + r * bary[2]
@@ -576,22 +575,22 @@ def eval_bending(
 
     tid = wp.tid()
 
-    i = wp.load(indices, tid * 4 + 0)
-    j = wp.load(indices, tid * 4 + 1)
-    k = wp.load(indices, tid * 4 + 2)
-    l = wp.load(indices, tid * 4 + 3)
+    i = indices[tid * 4 + 0]
+    j = indices[tid * 4 + 1]
+    k = indices[tid * 4 + 2]
+    l = indices[tid * 4 + 3]
 
-    rest_angle = wp.load(rest, tid)
+    rest_angle = rest[tid]
 
-    x1 = wp.load(x, i)
-    x2 = wp.load(x, j)
-    x3 = wp.load(x, k)
-    x4 = wp.load(x, l)
+    x1 = x[i]
+    x2 = x[j]
+    x3 = x[k]
+    x4 = x[l]
 
-    v1 = wp.load(v, i)
-    v2 = wp.load(v, j)
-    v3 = wp.load(v, k)
-    v4 = wp.load(v, l)
+    v1 = v[i]
+    v2 = v[j]
+    v3 = v[k]
+    v4 = v[l]
 
     n1 = wp.cross(x3 - x1, x4 - x1)    # normal to face 1
     n2 = wp.cross(x4 - x2, x3 - x2)    # normal to face 2
@@ -648,26 +647,26 @@ def eval_tetrahedra(x: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    i = wp.load(indices, tid * 4 + 0)
-    j = wp.load(indices, tid * 4 + 1)
-    k = wp.load(indices, tid * 4 + 2)
-    l = wp.load(indices, tid * 4 + 3)
+    i = indices[tid * 4 + 0]
+    j = indices[tid * 4 + 1]
+    k = indices[tid * 4 + 2]
+    l = indices[tid * 4 + 3]
 
-    act = wp.load(activation, tid)
+    act = activation[tid]
 
-    k_mu = wp.load(materials, tid * 3 + 0)
-    k_lambda = wp.load(materials, tid * 3 + 1)
-    k_damp = wp.load(materials, tid * 3 + 2)
+    k_mu = materials[tid * 3 + 0]
+    k_lambda = materials[tid * 3 + 1]
+    k_damp = materials[tid * 3 + 2]
 
-    x0 = wp.load(x, i)
-    x1 = wp.load(x, j)
-    x2 = wp.load(x, k)
-    x3 = wp.load(x, l)
+    x0 = x[i]
+    x1 = x[j]
+    x2 = x[k]
+    x3 = x[l]
 
-    v0 = wp.load(v, i)
-    v1 = wp.load(v, j)
-    v2 = wp.load(v, k)
-    v3 = wp.load(v, l)
+    v0 = v[i]
+    v1 = v[j]
+    v2 = v[k]
+    v3 = v[l]
 
     x10 = x1 - x0
     x20 = x2 - x0
@@ -678,7 +677,7 @@ def eval_tetrahedra(x: wp.array(dtype=wp.vec3),
     v30 = v3 - v0
 
     Ds = wp.mat33(x10, x20, x30)
-    Dm = wp.load(pose, tid)
+    Dm = pose[tid]
 
     inv_rest_volume = wp.determinant(Dm) * 6.0
     rest_volume = 1.0 / inv_rest_volume
@@ -823,8 +822,8 @@ def eval_contacts(particle_x: wp.array(dtype=wp.vec3), particle_v: wp.array(dtyp
 
     tid = wp.tid()           
 
-    x = wp.load(particle_x, tid)
-    v = wp.load(particle_v, tid)
+    x = particle_x[tid]
+    v = particle_v[tid]
 
     n = wp.vec3(ground[0], ground[1], ground[2])
     c = wp.min(wp.dot(n, x) + ground[3] - offset, 0.0)
@@ -889,14 +888,14 @@ def eval_soft_contacts(
     body_index = contact_body[tid]
     particle_index = contact_particle[tid]
 
-    px = wp.load(particle_x, particle_index)
-    pv = wp.load(particle_v, particle_index)
+    px = particle_x[particle_index]
+    pv = particle_v[particle_index]
 
     X_wb = wp.transform_identity()
     X_com = wp.vec3(0.0, 0.0, 0.0)
     
     if (body_index >= 0):
-        X_wb = wp.load(body_q, body_index)
+        X_wb = body_q[body_index]
         X_com = body_com[body_index]
 
     # body position in world space
@@ -912,7 +911,7 @@ def eval_soft_contacts(
     # body velocity
     body_v_s = wp.spatial_vector()
     if (body_index >= 0):
-        body_v_s = wp.load(body_qd, body_index)
+        body_v_s = body_qd[body_index]
     
     body_w = wp.spatial_top(body_v_s)
     body_v = wp.spatial_bottom(body_v_s)
@@ -1404,17 +1403,17 @@ def compute_muscle_force(
     muscle_activation: float,
     body_f_s: wp.array(dtype=wp.spatial_vector)):
 
-    link_0 = wp.load(muscle_links, i)
-    link_1 = wp.load(muscle_links, i+1)
+    link_0 = muscle_links[i]
+    link_1 = muscle_links[i+1]
 
     if (link_0 == link_1):
         return 0
 
-    r_0 = wp.load(muscle_points, i)
-    r_1 = wp.load(muscle_points, i+1)
+    r_0 = muscle_points[i]
+    r_1 = muscle_points[i+1]
 
-    xform_0 = wp.load(body_X_s, link_0)
-    xform_1 = wp.load(body_X_s, link_1)
+    xform_0 = body_X_s[link_0]
+    xform_1 = body_X_s[link_1]
 
     pos_0 = wp.transform_point(xform_0, r_0-body_com[link_0])
     pos_1 = wp.transform_point(xform_1, r_1-body_com[link_1])
@@ -1445,10 +1444,10 @@ def eval_muscles(
 
     tid = wp.tid()
 
-    m_start = wp.load(muscle_start, tid)
-    m_end = wp.load(muscle_start, tid+1) - 1
+    m_start = muscle_start[tid]
+    m_end = muscle_start[tid+1] - 1
 
-    activation = wp.load(muscle_activation, tid)
+    activation = muscle_activation[tid]
 
     for i in range(m_start, m_end):
         compute_muscle_force(i, body_X_s, body_v_s, body_com, muscle_links, muscle_points, activation, body_f_s)
@@ -1829,10 +1828,10 @@ def compute_particle_residual(particle_qd_0: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    m = wp.load(particle_m, tid)
-    v1 = wp.load(particle_qd_1, tid)
-    v0 = wp.load(particle_qd_0, tid)
-    f = wp.load(particle_f, tid)
+    m = particle_m[tid]
+    v1 = particle_qd_1[tid]
+    v0 = particle_qd_0[tid]
+    f = particle_f[tid]
 
     err = wp.vec3()
 
@@ -1843,7 +1842,7 @@ def compute_particle_residual(particle_qd_0: wp.array(dtype=wp.vec3),
         #err = err*invm
         err = (v1-v0)*m - f*dt - gravity*dt*m
 
-    wp.store(residual, tid, err)
+    residual[tid] = err
  
 
 @wp.kernel
@@ -1856,13 +1855,13 @@ def update_particle_position(
 
     tid = wp.tid()
 
-    qd_1 = wp.load(x, tid)
+    qd_1 = x[tid]
     
-    q_0 = wp.load(particle_q_0, tid)
+    q_0 = particle_q_0[tid]
     q_1 = q_0 + qd_1*dt
 
-    wp.store(particle_q_1, tid, q_1)
-    wp.store(particle_qd_1, tid, qd_1)
+    particle_q_1[tid] = q_1
+    particle_qd_1[tid] = qd_1
 
 
 

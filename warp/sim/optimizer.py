@@ -18,12 +18,12 @@ def gd_step(arr_x: wp.array(dtype=float),
 
     tid = wp.tid()
 
-    x = wp.load(arr_x, tid)
-    dfdx = wp.load(arr_dfdx, tid)
+    x = arr_x[tid]
+    dfdx = arr_dfdx[tid]
 
     x = x - dfdx*alpha
 
-    wp.store(arr_x, tid, x)
+    arr_x[tid] = x
 
 @wp.kernel
 def nesterov1(beta: float,

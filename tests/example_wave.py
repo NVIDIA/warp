@@ -33,7 +33,7 @@ def sample(f: wp.array(dtype=float),
     x = wp.clamp(x, 0, width-1)
     y = wp.clamp(y, 0, height-1)
     
-    s = wp.load(f, y*width + x)
+    s = f[y*width + x]
     return s
 
 @wp.func
@@ -72,8 +72,8 @@ def wave_displace(hcurrent: wp.array(dtype=float),
     if (dist_sq < r*r):
         h = mag*wp.sin(t)
     
-        wp.store(hcurrent, tid, h)
-        wp.store(hprevious, tid, h)
+        hcurrent[tid] = h
+        hprevious[tid] = h
 
 
 @wp.kernel
@@ -94,13 +94,13 @@ def wave_solve(hprevious: wp.array(dtype=float),
     l = laplacian(hcurrent, x, y, width, height)*inv_cell*inv_cell
 
     # integrate 
-    h1 = wp.load(hcurrent, tid)
-    h0 = wp.load(hprevious, tid)
+    h1 = hcurrent[tid]
+    h0 = hprevious[tid]
     
     h = 2.0*h1 - h0 + dt*dt*(k_speed*l - k_damp*(h1-h0))
 
     # buffers get swapped each iteration
-    wp.store(hprevious, tid, h)
+    hprevious[tid] = h
 
 
 # simple kernel to apply height deltas to a vertex array
@@ -110,12 +110,12 @@ def grid_update(heights: wp.array(dtype=float),
 
     tid = wp.tid()
 
-    h = wp.load(heights, tid)
-    v = wp.load(vertices, tid)
+    h = heights[tid]
+    v = vertices[tid]
 
     v_new = wp.vec3(v[0], h, v[2])
 
-    wp.store(vertices, tid, v_new)
+    vertices[tid] = v_new
 
 
 # params

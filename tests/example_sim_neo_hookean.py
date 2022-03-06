@@ -104,15 +104,15 @@ def compute_volume(points: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
 
-    i = wp.load(indices, tid * 4 + 0)
-    j = wp.load(indices, tid * 4 + 1)
-    k = wp.load(indices, tid * 4 + 2)
-    l = wp.load(indices, tid * 4 + 3)
+    i = indices[tid * 4 + 0]
+    j = indices[tid * 4 + 1]
+    k = indices[tid * 4 + 2]
+    l = indices[tid * 4 + 3]
 
-    x0 = wp.load(points, i)
-    x1 = wp.load(points, j)
-    x2 = wp.load(points, k)
-    x3 = wp.load(points, l)
+    x0 = points[i]
+    x1 = points[j]
+    x2 = points[k]
+    x3 = points[l]
 
     x10 = x1 - x0
     x20 = x2 - x0

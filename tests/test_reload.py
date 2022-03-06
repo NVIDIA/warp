@@ -24,7 +24,7 @@ def basic(x: wp.array(dtype=float)):
     
     tid = wp.tid()
 
-    wp.store(x, tid, float(tid)*1.0)
+    x[tid] = float(tid)*1.0
 
 
 device = "cuda"
@@ -46,7 +46,7 @@ def basic(x: wp.array(dtype=float)):
     
     tid = wp.tid()
 
-    wp.store(x, tid, float(tid)*2.0)
+    x[tid] = float(tid)*2.0
     
 
 wp.launch(

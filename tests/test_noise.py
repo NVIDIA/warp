@@ -40,7 +40,7 @@ def pnoise(
 
     g = n * 255.0
 
-    wp.store(noise_values, tid, g)
+    noise_values[tid] = g
 
 @wp.kernel
 def curlnoise(
@@ -59,8 +59,8 @@ def curlnoise(
     p = wp.vec2(x, y)
     v = wp.curlnoise(state, p)
 
-    wp.store(noise_coords, tid, p)
-    wp.store(noise_vectors, tid, v)
+    noise_coords[tid] = p
+    noise_vectors[tid] = v
 
 def test_pnoise(test, device):
     # image dim

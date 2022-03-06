@@ -26,7 +26,7 @@ def add_vec3(dest: wp.array(dtype=wp.vec3),
 
     tid = wp.tid()
     print(c)
-    wp.store(dest, tid, c)
+    dest[tid] = c
 """
 
 # fails since we can't getsource() / AST for an exec'd Python function: https://stackoverflow.com/a/67898427

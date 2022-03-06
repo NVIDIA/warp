@@ -127,15 +127,15 @@ def create_soft_contacts(
 
     shape_index = tid // num_particles     # which shape
     particle_index = tid % num_particles   # which particle
-    rigid_index = wp.load(shape_body, shape_index)    
+    rigid_index = shape_body[shape_index]
 
-    px = wp.load(particle_x, particle_index)
+    px = particle_x[particle_index]
 
     X_sc = wp.transform_identity()
     if (rigid_index >= 0):
-        X_sc = wp.load(body_X_sc, rigid_index)
+        X_sc = body_X_sc[rigid_index]
     
-    X_co = wp.load(shape_X_co, shape_index)
+    X_co = shape_X_co[shape_index]
 
     X_so = wp.transform_multiply(X_sc, X_co)
     X_os = wp.transform_inverse(X_so)
@@ -144,8 +144,8 @@ def create_soft_contacts(
     x_local = wp.transform_point(X_os, px)
 
     # geo description
-    geo_type = wp.load(shape_geo_type, shape_index)
-    geo_scale = wp.load(shape_geo_scale, shape_index)
+    geo_type = shape_geo_type[shape_index]
+    geo_scale = shape_geo_scale[shape_index]
 
    # evaluate shape sdf
     d = 1.e+6 
@@ -169,7 +169,7 @@ def create_soft_contacts(
 
     # GEO_MESH (3)
     if (geo_type == 3):
-        mesh = wp.load(shape_geo_id, shape_index)
+        mesh = shape_geo_id[shape_index]
 
         face_index = int(0)
         face_u = float(0.0)  
