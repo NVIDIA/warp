@@ -443,9 +443,16 @@ class Runtime:
         
         if (os.name == 'nt'):
 
-            # in Python 3.8 we should use os.add_dll_directory() 
-            # since adding to the PATH is not supported
-            os.environ["PATH"] += os.pathsep + bin_path
+            if (sys.version_info[0] > 3 or
+                sys.version_info[0] == 3 and sys.version_info[1] >= 8):
+                
+                # Python 3.8 adds this method to add dll search paths
+                os.add_dll_directory(bin_path)
+
+            else:
+                # Python 3.8 we add dll directory to path
+                os.environ["PATH"] += os.pathsep + bin_path
+
 
             warp_lib = "warp.dll"
             self.core = warp.build.load_dll(warp_lib)

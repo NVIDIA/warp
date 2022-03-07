@@ -88,9 +88,8 @@ def test_compute_bounds(test, device):
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, -1, 1]])
     indices = np.array([0, 1, 2, 1, 2, 3])
     m = wp.Mesh(
-        wp.array(points, dtype=wp.vec3, device=device),
-        None,
-        wp.array(indices, dtype=int, device=device),
+        points=wp.array(points, dtype=wp.vec3, device=device),
+        indices=wp.array(indices, dtype=int, device=device),
     )
 
     num_tris = int(len(indices) / 3)
@@ -133,9 +132,8 @@ def test_mesh_query_aabb_count_overlap(test, device):
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, -1, 1]])
     indices = np.array([0, 1, 2, 1, 2, 3])
     m = wp.Mesh(
-        wp.array(points, dtype=wp.vec3, device=device),
-        None,
-        wp.array(indices, dtype=int, device=device),
+        points=wp.array(points, dtype=wp.vec3, device=device),        
+        indices=wp.array(indices, dtype=int, device=device),
     )
 
     num_tris = int(len(indices) / 3)
@@ -177,9 +175,8 @@ def test_mesh_query_aabb_count_nonoverlap(test, device):
     )
     indices = np.array([0, 1, 2, 3, 4, 5])
     m = wp.Mesh(
-        wp.array(points, dtype=wp.vec3, device=device),
-        None,
-        wp.array(indices, dtype=int, device=device),
+        points=wp.array(points, dtype=wp.vec3, device=device),
+        indices=wp.array(indices, dtype=int, device=device),
     )
 
     num_tris = int(len(indices) / 3)

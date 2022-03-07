@@ -734,6 +734,12 @@ class Adjoint:
                 out = adj.add_call(func, args)
                 return out
 
+            elif (isinstance(node, ast.Index)):
+                # the ast.Index node appears in 3.7 versions 
+                # when performing array slices, e.g.: x = arr[i]
+                # but in version 3.8 and higher it does not appear
+                return adj.eval(node.value)
+
             elif (isinstance(node, ast.Subscript)):
 
                 target = adj.eval(node.value)
@@ -741,7 +747,7 @@ class Adjoint:
                 if isinstance(target.type, array):
                     
                     # handles the case where we are indexing into an array, e.g.: x = arr[i]
-                    index = adj.eval(node.slice.value)
+                    index = adj.eval(node.slice)
                     out = adj.add_call(adj.builtin_functions["load"], [target, index])
                     return out
 
