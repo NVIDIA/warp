@@ -78,15 +78,15 @@ def eval_articulation_fk(
             qd = joint_qd[qd_start]
 
             X_jc = wp.transform(axis*q, wp.quat_identity())
-            v_jc = wp.spatial_vector(wp.vec3(0.0, 0.0, 0.0), axis*qd)
+            v_jc = wp.spatial_vector(wp.vec3(), axis*qd)
 
         if type == wp.sim.JOINT_REVOLUTE:
 
             q = joint_q[q_start]
             qd = joint_qd[qd_start]
 
-            X_jc = wp.transform(wp.vec3(0.0, 0.0, 0.0), wp.quat_from_axis_angle(axis, q))
-            v_jc = wp.spatial_vector(axis*qd, wp.vec3(0.0, 0.0, 0.0))
+            X_jc = wp.transform(wp.vec3(), wp.quat_from_axis_angle(axis, q))
+            v_jc = wp.spatial_vector(axis*qd, wp.vec3())
 
         if type == wp.sim.JOINT_BALL:
 
@@ -96,16 +96,18 @@ def eval_articulation_fk(
                         joint_q[q_start+3])
 
             w = wp.vec3(joint_qd[qd_start+0],
-                         joint_qd[qd_start+1],
-                         joint_qd[qd_start+2])
+                        joint_qd[qd_start+1],
+                        joint_qd[qd_start+2])
 
-            X_jc = wp.transform(wp.vec3(0.0, 0.0, 0.0), r)
-            v_jc = wp.spatial_vector(w, wp.vec3(0.0, 0.0, 0.0))
+            print(r)
+            
+            X_jc = wp.transform(wp.vec3(), r)
+            v_jc = wp.spatial_vector(w, wp.vec3())
 
         if type == wp.sim.JOINT_FIXED:
             
             X_jc = wp.transform_identity()
-            v_jc = wp.spatial_vector(wp.vec3(0.0, 0.0, 0.0), wp.vec3(0.0, 0.0, 0.0))
+            v_jc = wp.spatial_vector(wp.vec3(), wp.vec3())
 
         if type == wp.sim.JOINT_FREE:
 
@@ -139,11 +141,11 @@ def eval_articulation_fk(
             axis_2 = wp.quat_rotate(q_1*q_0, local_2)
             q_2 = wp.quat_from_axis_angle(axis_2, joint_q[q_start+2])
 
-            t = wp.transform(wp.vec3(0.0, 0.0, 0.0), q_2*q_1*q_0)
+            t = wp.transform(wp.vec3(), q_2*q_1*q_0)
 
             v = wp.spatial_vector(axis_0*joint_qd[qd_start+0] + 
                                   axis_1*joint_qd[qd_start+1] + 
-                                  axis_2*joint_qd[qd_start+2], wp.vec3(0.0, 0.0, 0.0))
+                                  axis_2*joint_qd[qd_start+2], wp.vec3())
 
             X_jc = t
             v_jc = v
@@ -163,10 +165,10 @@ def eval_articulation_fk(
             axis_1 = wp.quat_rotate(q_0, local_1)
             q_1 = wp.quat_from_axis_angle(axis_1, joint_q[q_start+1])
 
-            t = wp.transform(wp.vec3(0.0, 0.0, 0.0), q_1*q_0)
+            t = wp.transform(wp.vec3(), q_1*q_0)
 
             v = wp.spatial_vector(axis_0*joint_qd[qd_start+0] + 
-                                  axis_1*joint_qd[qd_start+1], wp.vec3(0.0, 0.0, 0.0))
+                                  axis_1*joint_qd[qd_start+1], wp.vec3())
 
             X_jc = t
             v_jc = v
@@ -244,9 +246,9 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
     X_cj = joint_X_c[tid]
 
     X_wp = X_pj
-    r_p = wp.vec3(0.0, 0.0, 0.0)
-    w_p = wp.vec3(0.0, 0.0, 0.0)
-    v_p = wp.vec3(0.0, 0.0, 0.0)
+    r_p = wp.vec3()
+    w_p = wp.vec3()
+    v_p = wp.vec3()
 
     # parent transform and moment arm
     if (c_parent >= 0):

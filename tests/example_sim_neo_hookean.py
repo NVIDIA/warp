@@ -8,9 +8,7 @@
 # include parent path
 import os
 import sys
-import numpy as np
 import math
-import ctypes
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -18,12 +16,11 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
-import warp.render
+import warp.sim.render
+
+import numpy as np
 
 wp.init()
-
-np.random.seed(42)
-np.set_printoptions(threshold=sys.maxsize)
 
 # params
 sim_width = 8
@@ -39,10 +36,9 @@ sim_render = True
 sim_iterations = 1
 sim_relaxation = 1.0
 
-device = "cuda"
+device = wp.get_preferred_device()
 
 builder = wp.sim.ModelBuilder()
-
 
 cell_dim = 15
 cell_size = 2.0/cell_dim
@@ -70,8 +66,8 @@ model = builder.finalize(device=device)
 model.ground = False
 model.gravity[1] = 0.0
 
-#integrator = wpsim.SemiImplicitIntegrator()
-integrator = wp.sim.XPBDIntegrator(iterations=sim_iterations, relaxation=sim_relaxation)
+integrator = wp.sim.SemiImplicitIntegrator()
+#integrator = wp.sim.XPBDIntegrator(iterations=sim_iterations, relaxation=sim_relaxation)
 
 rest = model.state()
 rest_vol = (cell_size*cell_dim)**3
@@ -79,7 +75,7 @@ rest_vol = (cell_size*cell_dim)**3
 state_0 = model.state()
 state_1 = model.state()
 
-stage = wp.render.UsdRenderer("tests/outputs/test_sim_neo_hookean_twist.usd")
+stage = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_neo_hookean_twist.usd")
 
 @wp.kernel
 def twist_points(rest: wp.array(dtype=wp.vec3),
@@ -126,23 +122,12 @@ def compute_volume(points: wp.array(dtype=wp.vec3),
 volume = wp.zeros(1, dtype=wp.float32, device=device)
 
 lift_speed = 2.5/sim_duration*2.0 # from Smith et al.
-rot_speed = 0.0 #math.pi/sim_duration
+rot_speed = math.pi/sim_duration
 
 with wp.ScopedTimer("Total"):
     
     for i in range(sim_frames):
         
-        if (sim_render):
-        
-            with wp.ScopedTimer("render"):
-
-                stage.begin_frame(sim_time)
-                stage.render_mesh(name="cloth", points=state_0.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
-                #stage.render_points(name="points", points=state_0.particle_q.to("cpu").numpy(), radius=0.1)
-                #stage.render_
-
-                stage.end_frame()
-
         with wp.ScopedTimer("simulate"):
 
             xform = (*(0.0, lift_speed*sim_time, 0.0), *wp.quat_from_axis_angle((0.0, 1.0, 0.0), rot_speed*sim_time))
@@ -162,28 +147,12 @@ with wp.ScopedTimer("Total"):
             volume.zero_()
             wp.launch(kernel=compute_volume, dim=model.tet_count, inputs=[state_0.particle_q, model.tet_indices, volume], device=device)
 
-            v = volume.to("cpu").numpy()
-            print(v[0]/rest_vol)
+        if (sim_render):
+        
+            with wp.ScopedTimer("render"):
 
-            wp.synchronize()
+                stage.begin_frame(sim_time)
+                stage.render(state_0)
+                stage.end_frame()
 
 stage.save()
-
-
-
-# Pixar ref.
-
-# lambda, time, err
-# 5000, 1m, 1.24
-# 10000, 1m20, 1.13
-# 50000, 3m20, 1.02 * (solver failed)
-# 100000, 7m10, 1.013 * (solver failed)
-
-# Ours
-
-# lambda, time, err
-# 5000, 28s, 1.2
-# 10000, 28s 1.13
-# 50000, 28s, 1.02
-# 100000, 28s, 1.01
-# 1000000, 28s, 1.001

@@ -24,7 +24,7 @@ class SimRenderer(warp.render.UsdRenderer):
 
         # add ground plane
         if (self.model.ground):
-            self.render_ground(size=10.0)
+            self.render_ground(size=20.0)
 
         # create rigid body root node
         for b in range(model.body_count):

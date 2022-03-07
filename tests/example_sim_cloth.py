@@ -18,7 +18,7 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
-import warp.render
+import warp.sim.render
 
 wp.init()
 
@@ -83,7 +83,7 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-stage = wp.render.UsdRenderer("tests/outputs/example_sim_cloth.usd")
+stage = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_cloth.usd")
 
 if (sim_use_graph):
 
@@ -131,14 +131,7 @@ for i in range(sim_frames):
         with wp.ScopedTimer("render", active=True):
 
             stage.begin_frame(sim_time)
-            
-            stage.render_mesh(name="cloth", points=state_0.particle_q.numpy(), indices=model.tri_indices.numpy())
-            stage.render_points(name="points", points=state_0.particle_q.numpy(), radius=0.1)
-            
-            # render static geometry once
-            if (i == 0):
-                stage.render_mesh(name="mesh", points=mesh_points, indices=mesh_indices, pos=(1.0, 0.0, 1.0), rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5), scale=(2.0, 2.0, 2.0))
-
+            stage.render(state_0)
             stage.end_frame()
 
     sim_time += 1.0/sim_fps

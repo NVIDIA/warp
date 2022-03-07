@@ -12,14 +12,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import warp as wp
 import warp.sim
-import warp.render
+import warp.sim.render
 
 import numpy as np
-
-np.random.seed(532)
-
-wp.config.mode = "release"
-wp.config.verify_cuda = False
 
 wp.init()
 
@@ -33,7 +28,7 @@ sim_time = 0.0
 
 radius = 0.1
 
-device = "cuda"
+device = wp.get_preferred_device()
 
 builder = wp.sim.ModelBuilder()
 
@@ -62,7 +57,7 @@ state_1 = model.state()
 
 integrator = wp.sim.SemiImplicitIntegrator()
 
-renderer = wp.render.UsdRenderer("tests/outputs/test_sim_granular.usd")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_granular.usd")
 
 for i in range(frame_count):
 
@@ -85,7 +80,7 @@ for i in range(frame_count):
 
     with wp.ScopedTimer("render", active=True):
         renderer.begin_frame(sim_time)
-        renderer.render_points(points=p, radius=radius, name="points")
+        renderer.render(state_0)
         renderer.end_frame()
 
     sim_time += frame_dt

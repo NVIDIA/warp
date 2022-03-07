@@ -17,8 +17,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-import matplotlib.pyplot as plt
-
 wp.init()
 
 class Robot:
@@ -87,7 +85,7 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
+            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/example_sim_" + self.name + ".usd")
 
 
     def run(self, render=True):
@@ -127,11 +125,6 @@ class Robot:
 
             for f in range(0, self.episode_frames):
                 
-                # for i in range(0, self.sim_substeps):
-                #     self.state.clear_forces()
-                #     self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
-                #     self.sim_time += self.sim_dt
-
                 wp.capture_launch(graph)
                 self.sim_time += self.frame_dt
 
@@ -181,6 +174,8 @@ if profile:
         print(f"envs: {env_size[i]} steps/second: {env_times[i]}")
 
     # plot
+    import matplotlib.pyplot as plt
+
     plt.figure(1)
     plt.plot(env_size, env_times)
     plt.xscale('log')
