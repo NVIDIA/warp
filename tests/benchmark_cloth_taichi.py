@@ -8,15 +8,6 @@
 import taichi as ti
 import numpy as np
 
-# Notes
-
-# Pro: Easy installation
-# Pro: Good debugging, seemed to propagate exceptions back to Python debugger
-# Con: Slightly obtuse field/vector memory management
-# Con: Taichi context is either CUDA only or CPU only, no mixed-mode execution
-# Con: Inputs outputs are global vars
-# Con: Show startup due to lack of binary caching
-
 
 @ti.func
 def step(x):

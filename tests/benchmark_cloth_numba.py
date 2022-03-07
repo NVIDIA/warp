@@ -8,16 +8,6 @@
 from numba import jit, prange
 import numpy as np
 
-# Notes:
-# 
-# * Pro: Easy installation
-
-# * Con: Pain due to random unsupported parts of numpy in JIT compiler, e.g.: np.linalg.norm with axis param,  no np.einsum spuport, have to workaround these things in weird ways
-# * Con: No unified way to write CPU/CUDA kernels
-# * Con: Fragile support for parallel reductions, e.g.: y[i] += x from multiple threads may/may result in a race depending on compiler, no explicit atomics support
-# * Con: Incorrect type promotions from f32->f64 that differ from numpy semantics, e.g. 1.0 / tensor_f32 -> tensor_f64
-# * Con: Doesn't correctly handle bool * float conversions like numpy, see gravity computation
-# * Con: Bad performance out of the box
 
 @jit(nopython=True, parallel=True)
 def eval_springs(num_springs,

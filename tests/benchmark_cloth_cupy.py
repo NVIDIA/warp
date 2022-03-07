@@ -8,12 +8,6 @@
 import cupy as cp
 import cupyx as cpx
 
-# Notes
-#
-# * Pro: Good almost drop-in support for numpy
-# * Con: Requires CUDA install (toolkit) on local machine
-# * Con: Some unsupported parts, e.g.: np.add.at, but easy enough to work around with cupx
-
 def eval_springs(x,
                  v,
                  indices,

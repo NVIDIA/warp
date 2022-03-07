@@ -7,9 +7,6 @@
 
 import torch
 
-# Notes:
-# Pro: Good numpy support, mostly drop in replacement
-
 def eval_springs(x,
                  v,
                  indices,
