@@ -396,6 +396,14 @@ add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "samp
 add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
     doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
+add_builtin("volume_sample_world_v", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=vec3, group="Volumes",
+    doc="""Sample the vector volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+add_builtin("volume_sample_local_v", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=vec3, group="Volumes",
+    doc="""Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+
+add_builtin("volume_lookup_v", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=vec3, group="Volumes",
+    doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
 add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
     doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.""")
 add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
@@ -543,6 +551,7 @@ for t in scalar_types + vector_types:
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
+add_builtin("expect_near", input_types={"arg1": vec3, "arg2": vec3, "tolerance": float}, value_type=None, doc="Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 
 
 #---------------------------------

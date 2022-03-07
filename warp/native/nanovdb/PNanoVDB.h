@@ -640,6 +640,14 @@ PNANOVDB_FORCE_INLINE pnanovdb_coord_t pnanovdb_read_coord(pnanovdb_buf_t buf, p
     ret.z = pnanovdb_uint32_as_int32(pnanovdb_read_uint32(buf, pnanovdb_address_offset(address, 8u)));
     return ret;
 }
+PNANOVDB_FORCE_INLINE pnanovdb_vec3_t pnanovdb_read_vec3f(pnanovdb_buf_t buf, pnanovdb_address_t address)
+{
+    pnanovdb_vec3_t ret;
+    ret.x = pnanovdb_uint32_as_float(pnanovdb_read_uint32(buf, pnanovdb_address_offset(address, 0u)));
+    ret.y = pnanovdb_uint32_as_float(pnanovdb_read_uint32(buf, pnanovdb_address_offset(address, 4u)));
+    ret.z = pnanovdb_uint32_as_float(pnanovdb_read_uint32(buf, pnanovdb_address_offset(address, 8u)));
+    return ret;
+}
 
 PNANOVDB_FORCE_INLINE pnanovdb_bool_t pnanovdb_read_bit(pnanovdb_buf_t buf, pnanovdb_address_t address, pnanovdb_uint32_t bit_offset)
 {
