@@ -21,9 +21,6 @@ import warp.torch
 
 wp.init()
 
-from pxr import Usd, UsdGeom, Gf
-
-#---------------------------------
 
 class Ballistic:
 
@@ -43,40 +40,27 @@ class Ballistic:
     train_iters = 500
     train_rate = 100.0         #1.0/(sim_dt*sim_dt)
 
-    def __init__(self, render=True, adapter='cpu'):
+    def __init__(self, render=True, device='cpu'):
 
         builder = wp.sim.ModelBuilder()
 
         builder.add_particle(pos=(0, 1.0, 0.0), vel=(0.1, 0.0, 0.0), mass=1.0)
 
-        self.device = adapter
+        self.device = device
         self.render = render
 
-        self.model = builder.finalize(adapter)
+        self.model = builder.finalize(device)
         self.model.ground = False
 
-        self.target = torch.tensor((2.0, 1.0, 0.0), device=adapter)
-        self.control = torch.zeros((self.frame_steps, 3), dtype=torch.float32, device=adapter, requires_grad=True)
+        self.target = torch.tensor((2.0, 1.0, 0.0), device=device)
+        self.control = torch.zeros((self.frame_steps, 3), dtype=torch.float32, device=device, requires_grad=True)
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         if (self.render):
-            self.stage = wp.render.UsdRenderer("tests/outputs/test_sim_grad_ballistic.usda")
+            self.stage = wp.render.UsdRenderer("tests/outputs/example_sim_grad_bounce.usda")
 
-        # allocate input/output states
-        self.states = []
-        for i in range(self.sim_substeps+1):
-            self.states.append(self.model.state(requires_grad=True))
-
-    def step(self):
-        for i in range(self.sim_substeps):
-
-            self.states[i].clear_forces()
-            self.states[i+1].clear_forces()
-
-            self.integrator.simulate(self.model, self.states[i], self.states[i+1], self.sim_dt)
-
-
+            
     # define PyTorch autograd op to wrap simulate func
     class StepFunc(torch.autograd.Function):
 
@@ -84,20 +68,21 @@ class Ballistic:
         # anything else will be treated as a constant and 
         # accessed directly through the env variable
         @staticmethod
-        def forward(ctx, env, particle_q, particle_qd, particle_f):
+        def forward(ctx, model, particle_q, particle_qd, particle_f):
 
             ctx.env = env
             ctx.particle_q = particle_q
             ctx.particle_qd = particle_qd
             ctx.particle_f = particle_f
 
-            # apply initial conditions
-            wp.copy(env.states[0].particle_q, wp.torch.from_torch(ctx.particle_q, dtype=wp.vec3))
-            wp.copy(env.states[0].particle_qd, wp.torch.from_torch(ctx.particle_qd, dtype=wp.vec3))
-            wp.copy(env.states[0].particle_f, wp.torch.from_torch(ctx.particle_f, dtype=wp.vec3))
-
             # simulate
-            ctx.env.step()
+            ctx.tape = wp.Tape()
+            with ctx.tape:
+
+                env.states[i].clear_forces()
+                env.states[i+1].clear_forces()
+
+                env.integrator.simulate(self.model, self.states[i], self.states[i+1], self.sim_dt)
 
             # copy output back to torch
             out_q = wp.torch.to_torch(env.states[-1].particle_q)
@@ -230,7 +215,7 @@ class Ballistic:
 
 #---------
 
-ballistic = Ballistic(adapter="cpu", render=True)
+ballistic = Ballistic(device="cpu", render=True)
 
 #ballistic.check_grad()
 ballistic.train('gd')

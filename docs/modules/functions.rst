@@ -937,7 +937,7 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_near(arg1: float, arg2: float) -> None
+.. function:: expect_near(arg1: float, arg2: float, tolerance: float) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 

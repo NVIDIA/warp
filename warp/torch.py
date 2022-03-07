@@ -7,6 +7,7 @@
 
 import warp
 import torch
+import numpy
 
 # wrap a torch tensor to a wp array, data is not copied
 def from_torch(t, dtype=warp.types.float32):
@@ -38,12 +39,23 @@ def from_torch(t, dtype=warp.types.float32):
     
     return a
 
-# wrap a wp array to a tensor throug CUDA array interface protocol
-# note that users must maintain reference to original Warp array
-# to ensure that memory is not deallocated underneath the tensor
 def to_torch(a):
+
+    if a.device == "cpu":
+        # Torch has an issue wrapping CPU objects 
+        # that support the __array_interface__ protocol
+        # in this case we need to workaround by going
+        # to an ndarray first, see https://pearu.github.io/array_interface_pytorch.html
+        return torch.as_tensor(numpy.asarray(a))
+
+    elif a.device == "cuda":
+        # Torch does support the __cuda_array_interface__
+        # correctly, but we must be sure to maintain a reference
+        # to the owning object to prevent memory allocs going out of schope
+        return torch.as_tensor(a, device="cuda")
     
-    return torch.as_tensor(a, device=a.device)
+    else:
+        raise RuntimeError("Unsupported device")
 
 
 

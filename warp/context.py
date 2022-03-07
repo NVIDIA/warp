@@ -749,12 +749,16 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
                 if (isinstance(arg_type, warp.types.array)):
 
-                    if (a is None or a.ptr is None):
+                    if (a is None):
                         
                         # allow for NULL arrays
                         params.append(ctypes.c_int64(0))
 
                     else:
+
+                        # check for array
+                        if (isinstance(a, warp.types.array) == False):
+                            raise RuntimeError(f"Passing non-array value with type {type(a)} to array argument: '{kernel.adj.args[i].label}'")
 
                         # check subtype
                         if (a.dtype != arg_type.dtype):
