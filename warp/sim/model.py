@@ -132,7 +132,7 @@ class Mesh:
         vel = wp.zeros_like(pos)
         indices = wp.array(self.indices, dtype=wp.int32, device=device)
 
-        self.mesh = wp.Mesh(pos, vel, indices)
+        self.mesh = wp.Mesh(points=pos, velocities=vel, indices=indices)
         return self.mesh.id
 
 

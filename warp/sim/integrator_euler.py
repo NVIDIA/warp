@@ -1836,10 +1836,6 @@ def compute_particle_residual(particle_qd_0: wp.array(dtype=wp.vec3),
     err = wp.vec3()
 
     if (m > 0.0):
-        #err = (v1-v0)*m - f*dt - gravity*dt*m   
-        #invm = 1.0/(m + 1.e+3*dt*dt*16.0)
-        #err = (v1-v0)*m - f*dt - gravity*dt*m
-        #err = err*invm
         err = (v1-v0)*m - f*dt - gravity*dt*m
 
     residual[tid] = err

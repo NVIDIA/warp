@@ -597,6 +597,16 @@ def get_devices():
 
     return devices
 
+def get_preferred_device():
+    """Returns the preferred compute device, will return "cuda" if available, "cpu" otherwise.
+    """
+    if is_cuda_available():
+        return "cuda"
+    elif is_cpu_available():
+        return "cpu"
+    else:
+        return None
+
 
 def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> warp.array:
     """Return a zero-initialized array

@@ -47,7 +47,7 @@ def _compute_segment_xform(pos0, pos1):
 class UsdRenderer:
     """A USD renderer
     """  
-    def __init__(self, path):
+    def __init__(self, path, upaxis="y"):
         """Construct a UsdRenderer object
         
         Args:
@@ -67,6 +67,14 @@ class UsdRenderer:
         self.stage.SetStartTimeCode(0.0)
         self.stage.SetEndTimeCode(0.0)
         self.stage.SetTimeCodesPerSecond(1.0)
+
+        if upaxis == "x":
+            UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.x)
+        elif upaxis == "y":
+            UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.y)
+        elif upaxis == "z":
+            UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
+
 
     def begin_frame(self, time):
         self.stage.SetEndTimeCode(time)

@@ -15,11 +15,6 @@ import numpy as np
 
 from warp.render import UsdRenderer
 
-np.random.seed(532)
-
-wp.config.mode = "release"
-#wp.config.verify_cuda = True
-
 wp.init()
 
 frame_dt = 1.0/60
@@ -30,7 +25,7 @@ sim_dt = frame_dt/sim_substeps
 sim_steps = frame_count*sim_substeps
 sim_time = 0.0
 
-device = "cuda"
+device = wp.get_preferred_device()
 
 
 @wp.func 
@@ -158,7 +153,9 @@ k_damp = 2.0
 k_friction = 1.0
 k_mu = 100000.0 # for cohesive materials
 
-renderer = UsdRenderer("tests/outputs/test_dem.usd")
+inv_mass = 64.0
+
+renderer = UsdRenderer("tests/outputs/example_dem.usd")
 
 use_graph = True
 if (use_graph):
@@ -167,12 +164,9 @@ if (use_graph):
 
     for s in range(sim_substeps):
 
-        # with wp.ScopedTimer("grid build", active=False):
-        #     grid.build(x, point_radius)
-
         with wp.ScopedTimer("forces", active=False):
             wp.launch(kernel=apply_forces, dim=len(x), inputs=[grid.id, x, v, f, point_radius, k_contact, k_damp, k_friction, k_mu], device=device)
-            wp.launch(kernel=integrate, dim=len(x), inputs=[x, v, f, (0.0, -9.8, 0.0), sim_dt, 64.0], device=device)
+            wp.launch(kernel=integrate, dim=len(x), inputs=[x, v, f, (0.0, -9.8, 0.0), sim_dt, inv_mass], device=device)
         
     graph = wp.capture_end()
 
@@ -199,7 +193,7 @@ for i in range(frame_count):
 
                 with wp.ScopedTimer("forces", active=False):
                     wp.launch(kernel=apply_forces, dim=len(x), inputs=[grid.id, x, v, f, point_radius, k_contact, k_damp, k_friction, k_mu], device=device)
-                    wp.launch(kernel=integrate, dim=len(x), inputs=[x, v, f, (0.0, -9.8, 0.0), sim_dt, 1.0], device=device)
+                    wp.launch(kernel=integrate, dim=len(x), inputs=[x, v, f, (0.0, -9.8, 0.0), sim_dt, inv_mass], device=device)
             
             wp.synchronize()
         

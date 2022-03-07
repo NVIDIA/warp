@@ -22,7 +22,6 @@ import warp.render
 
 wp.init()
 
-# params
 sim_width = 64
 sim_height = 32
 
@@ -35,12 +34,12 @@ sim_time = 0.0
 sim_render = True
 sim_use_graph = True
 
-device = "cuda"
+device = wp.get_preferred_device()
  
 builder = wp.sim.ModelBuilder()
 
 builder.add_cloth_grid(
-    pos=(0.0, 3.0, 0.0), 
+    pos=(0.0, 4.0, 0.0), 
     rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
     vel=(0.0, 0.0, 0.0), 
     dim_x=sim_width, 
@@ -53,26 +52,13 @@ builder.add_cloth_grid(
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-#torus = Usd.Stage.Open("./tests/assets/suzanne_small.usda")
-#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Suzanne/Suzanne"))
+usd_stage = Usd.Stage.Open("./tests/assets/bunny.usd")
+usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
 
-# torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
-# torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+mesh_points = np.array(usd_geom.GetPointsAttr().Get())
+mesh_indices = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
 
-torus = Usd.Stage.Open("./tests/assets/suzanne_two.usda")
-torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
-
-
-#torus = Usd.Stage.Open("./tests/assets/bunny.usda")
-#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/bunny/bunny"))
-
-#torus = Usd.Stage.Open("./tests/assets/sphere_high.usda")
-#torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Icosphere/Icosphere"))
-
-points = np.array(torus_geom.GetPointsAttr().Get())
-indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
-
-mesh = wp.sim.Mesh(points, indices)
+mesh = wp.sim.Mesh(mesh_points, mesh_indices)
 
 builder.add_shape_mesh(
     body=-1,
@@ -84,27 +70,20 @@ builder.add_shape_mesh(
     kd=1.e+2,
     kf=1.e+1)
 
-#builder.add_shape_sphere(body=-1, pos=(1.0, 0.0, 1.0))
-#builder.add_shape_box(body=-1)
-
 model = builder.finalize(device=device)
 model.ground = True
 model.tri_ke = 1.e+3
 model.tri_ka = 1.e+3
 model.tri_kb = 1.0
 model.tri_kd = 1.e+1
-
 model.soft_contact_kd = 1.e+2
 
 integrator = wp.sim.SemiImplicitIntegrator()
-#integrator = wp.sim.VariationalImplicitIntegrator(model)
-
 
 state_0 = model.state()
 state_1 = model.state()
 
-stage = wp.render.UsdRenderer("tests/outputs/test_sim_cloth.usd")
-
+stage = wp.render.UsdRenderer("tests/outputs/example_sim_cloth.usd")
 
 if (sim_use_graph):
 
@@ -129,11 +108,10 @@ if (sim_use_graph):
 # launch simulation
 for i in range(sim_frames):
     
-    with wp.ScopedTimer("simulate", active=True, detailed=False):
+    with wp.ScopedTimer("simulate", active=True):
 
         if (sim_use_graph):
             wp.capture_launch(graph)
-            sim_time += 1.0/60.0
         else:
 
             wp.sim.collide(model, state_0)
@@ -144,27 +122,26 @@ for i in range(sim_frames):
                 state_1.clear_forces()
 
                 integrator.simulate(model, state_0, state_1, sim_dt)
-                sim_time += sim_dt
 
                 # swap states
                 (state_0, state_1) = (state_1, state_0)
 
     if (sim_render):
 
-        with wp.ScopedTimer("render", active=False):
+        with wp.ScopedTimer("render", active=True):
 
             stage.begin_frame(sim_time)
-            #stage.render_mesh(name="cloth", points=state.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
-            stage.render_points(name="points", points=state_0.particle_q.to("cpu").numpy(), radius=0.1)
+            
+            stage.render_mesh(name="cloth", points=state_0.particle_q.numpy(), indices=model.tri_indices.numpy())
+            stage.render_points(name="points", points=state_0.particle_q.numpy(), radius=0.1)
             
             # render static geometry once
             if (i == 0):
-
-                #stage.render_box(name="box", pos=(0.0, 0.0, 0.0), extents=(0.5, 0.5, 0.5))
-                #stage.render_sphere(name="sphere", pos=(1.0, 0.0, 1.0), radius=1.0)
-                stage.render_mesh(name="mesh", points=points, indices=indices, pos=(1.0, 0.0, 1.0), rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5), scale=(2.0, 2.0, 2.0))
+                stage.render_mesh(name="mesh", points=mesh_points, indices=mesh_indices, pos=(1.0, 0.0, 1.0), rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5), scale=(2.0, 2.0, 2.0))
 
             stage.end_frame()
+
+    sim_time += 1.0/sim_fps
 
 
 stage.save()

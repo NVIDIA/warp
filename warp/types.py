@@ -551,7 +551,7 @@ class array:
 
 class Mesh:
 
-    def __init__(self, points, velocities, indices):
+    def __init__(self, points, indices, velocities=None):
         """ Class representing a triangle mesh.
 
         Attributes:
@@ -560,12 +560,22 @@ class Mesh:
 
         Args:
             points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
-            velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3`
             indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be length 3*number of triangles
+            velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
         """
 
         if (points.device != indices.device):
-            raise RuntimeError("Points and indices must live on the same device")
+            raise RuntimeError("Mesh points and indices must live on the same device")
+
+        if (points.dtype != vec3):
+            raise RuntimeError("Mesh points should be an array of type wp.vec3")
+
+        if (velocities and velocities.dtype != vec3):
+            raise RuntimeError("Mesh velocities should be an array of type wp.vec3")
+
+        if (indices.dtype != int32):
+            raise RuntimeError("Mesh indices should be an array of type wp.int32")
+
 
         self.device = points.device
         self.points = points

@@ -5,7 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
 import os
 import sys
 import numpy as np
@@ -17,8 +16,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import warp as wp
 import warp.render
 
-np.random.seed(42)
-
 wp.init()
 
 @wp.kernel
@@ -28,8 +25,6 @@ def deform(positions: wp.array(dtype=wp.vec3), t: float):
 
     x = positions[tid]
     
-#    a = 2.0 + 3.0
-
     offset = -wp.sin(x[0])*0.02
     scale = wp.sin(t)
 
@@ -88,7 +83,6 @@ def simulate(positions: wp.array(dtype=wp.vec3),
     velocities[tid] = v
 
 
-device = "cuda"
 num_particles = 1000
 
 sim_steps = 500
@@ -101,33 +95,27 @@ sim_render = True
 sim_restitution = 0.0
 sim_margin = 0.1
 
+device = wp.get_preferred_device()
+
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-torus = Usd.Stage.Open("./tests/assets/suzanne.usda")
-torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/World/model/Suzanne"))
+usd_stage = Usd.Stage.Open("./tests/assets/suzanne.usda")
+usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/World/model/Suzanne")) 
 
-# torus = Usd.Stage.Open("./tests/assets/excavator.usda")
-# torus_geom = UsdGeom.Mesh(torus.GetPrimAtPath("/Excavator/Excavator"))
-
-points = np.array(torus_geom.GetPointsAttr().Get())
-indices = np.array(torus_geom.GetFaceVertexIndicesAttr().Get())
-
-# create wp mesh
+# create collision mesh
 mesh = wp.Mesh(
-    points=wp.array(points, dtype=wp.vec3, device=device),
-    velocities=None,
-    indices=wp.array(indices, dtype=int, device=device))
-
+    points=wp.array(usd_geom.GetPointsAttr().Get(), dtype=wp.vec3, device=device),
+    indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int, device=device))
+ 
+# random particles
 init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -0.2, 0.5]))*10.0
 init_vel = np.random.rand(num_particles, 3)*0.0
 
-positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device=device)
-velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=device)
-
-positions_host = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device="cpu")
+positions = wp.from_numpy(init_pos, dtype=wp.vec3, device=device)
+velocities = wp.from_numpy(init_vel, dtype=wp.vec3, device=device)
 
 if (sim_render):
-    stage = render.UsdRenderer("tests/outputs/test_mesh.usd")
+    stage = warp.render.UsdRenderer("tests/outputs/example_mesh.usd")
 
 for i in range(sim_steps):
 
@@ -154,12 +142,10 @@ for i in range(sim_steps):
 
         with wp.ScopedTimer("render", detailed=False):
 
-            wp.copy(positions_host, positions)
-
             stage.begin_frame(sim_time)
 
-            stage.render_mesh(name="mesh", points=mesh.points.to("cpu").numpy(), indices=mesh.indices.to("cpu").numpy())
-            stage.render_points(name="points", points=positions_host.numpy(), radius=sim_margin)
+            stage.render_mesh(name="mesh", points=mesh.points.numpy(), indices=mesh.indices.numpy())
+            stage.render_points(name="points", points=positions.numpy(), radius=sim_margin)
 
             stage.end_frame()
 
@@ -168,6 +154,3 @@ for i in range(sim_steps):
 if (sim_render):
     stage.save()
 
-print(np.mean(sim_timers["simulate"]))
-print(np.min(sim_timers["simulate"]))
-print(np.max(sim_timers["simulate"]))

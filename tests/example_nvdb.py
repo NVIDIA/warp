@@ -72,7 +72,6 @@ def simulate(positions: wp.array(dtype=wp.vec3),
     velocities[tid] = v
 
 
-device = "cuda"
 num_particles = 10000
 
 sim_steps = 1000
@@ -85,6 +84,8 @@ sim_render = True
 
 sim_restitution = 0.0
 sim_margin = 15.0
+
+device = wp.get_preferred_device()
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
@@ -101,7 +102,7 @@ file = np.fromfile("tests/assets/rocks.nvdb.grid", dtype=np.byte)
 volume = wp.Volume(wp.array(file, device=device))
 
 if (sim_render):
-    stage = warp.render.UsdRenderer("tests/outputs/example_nvdb.usd")    
+    stage = warp.render.UsdRenderer("tests/outputs/example_nvdb.usd", upaxis="z")
 
 for i in range(sim_steps):
 
@@ -133,6 +134,3 @@ for i in range(sim_steps):
 if (sim_render):
     stage.save()
 
-print(np.mean(sim_timers["simulate"]))
-print(np.min(sim_timers["simulate"]))
-print(np.max(sim_timers["simulate"]))
