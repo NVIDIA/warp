@@ -913,8 +913,12 @@ def capture_end()->int:
         A handle to a CUDA graph object that can be launched with :func:`~warp.capture_launch()`
     """
 
-
-    return runtime.core.cuda_graph_end_capture()
+    graph = runtime.core.cuda_graph_end_capture()
+    
+    if graph == None:
+        raise RuntimeError("Error occured during CUDA graph capture.")
+    else:
+        return graph
 
 def capture_launch(graph: int):
     """Launch a previously captured CUDA graph

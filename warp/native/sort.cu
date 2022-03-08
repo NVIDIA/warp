@@ -23,7 +23,7 @@ void radix_sort_pairs_device(int* keys, int* values, int n)
 
     // compute temporary memory required
 	size_t sort_temp_size;
-	cub::DeviceRadixSort::SortPairs(NULL, sort_temp_size, d_keys, d_values, int(n), 0, 32);
+	cub::DeviceRadixSort::SortPairs(NULL, sort_temp_size, d_keys, d_values, int(n), 0, 32, (cudaStream_t)cuda_get_stream());
 
     if (sort_temp_size > sort_temp_max_size)
     {

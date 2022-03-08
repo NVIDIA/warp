@@ -162,7 +162,7 @@ uint64_t hash_grid_create_device(int dim_x, int dim_y, int dim_z)
     grid.cell_ends = (int*)alloc_device(num_cells*sizeof(int));
 
     // upload to device
-    HashGrid* grid_device = (HashGrid*)(alloc_device(num_cells*sizeof(int)));
+    HashGrid* grid_device = (HashGrid*)(alloc_device(sizeof(HashGrid)));
     memcpy_h2d(grid_device, &grid, sizeof(HashGrid));
 
     uint64_t grid_id = (uint64_t)(grid_device);
@@ -189,7 +189,11 @@ void hash_grid_destroy_device(uint64_t id)
 
 void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* points, int num_points)
 {
-    HashGrid grid;
+    // host grid must be static so that we can
+    // perform host->device memcpy from this var
+    // and have it safely recorded inside CUDA graphs
+    static HashGrid grid;
+
     if (hash_grid_get_descriptor(id, grid))
     {
         if (num_points > grid.max_points)
@@ -212,7 +216,7 @@ void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* poin
         hash_grid_rebuild_device(grid, points, num_points);
 
         // update device side grid descriptor
-        memcpy_h2d((HashGrid*)id, &grid, sizeof(HashGrid));        
+        memcpy_h2d((HashGrid*)id, &grid, sizeof(HashGrid));
 
         // update host side grid descriptor
         hash_grid_add_descriptor(id, grid);

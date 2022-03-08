@@ -203,16 +203,23 @@ void cuda_graph_begin_capture()
 
 void* cuda_graph_end_capture()
 {
-    cudaGraph_t graph;
+    cudaGraph_t graph = NULL;
     check_cuda(cudaStreamEndCapture(g_cuda_stream, &graph));
 
-    cudaGraphExec_t graph_exec;
-    check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0))
+    if (graph)
+    {
+        cudaGraphExec_t graph_exec = NULL;
+        check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0))
 
-    // free source graph
-    check_cuda(cudaGraphDestroy(graph));
+        // free source graph
+        check_cuda(cudaGraphDestroy(graph));
 
-    return graph_exec;
+        return graph_exec;
+    }
+    else
+    {
+        return NULL;
+    }
 }
 
 void cuda_graph_launch(void* graph_exec)

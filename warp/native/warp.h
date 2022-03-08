@@ -10,7 +10,7 @@
 
 #if defined(__CUDACC__)
 
-    #if _DEBUG   
+    #if 0//_DEBUG   
         #define check_cuda(code) { cuda_report_error(code, __FILE__, __LINE__); }
 
         // helper for launching kernels (synchronize + error checking after each kernel)

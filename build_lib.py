@@ -24,7 +24,7 @@ build_path = os.path.dirname(os.path.realpath(__file__)) + "/warp"
 
 warp.config.verbose = True
 warp.config.cuda_path = "_build/target-deps/cuda"
-warp.config.mode = "release"
+warp.config.mode = "debug"
 
 if os.name == 'nt':
     warp.build.set_msvc_compiler(msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.16.27023", sdk_path="_build/host-deps/winsdk")
@@ -55,7 +55,8 @@ try:
         warp.build.build_dll(
                         cpp_path=build_path + "/native/warp.cpp", 
                         cu_path=build_path + "/native/warp.cu", 
-                        dll_path=dll_path, 
+                        dll_path=dll_path,
+                        config=warp.config.mode,
                         force=True)
                     
 except Exception as e:
