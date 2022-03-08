@@ -39,8 +39,6 @@ class Tape:
     #
     def backward(self, loss: wp.array=None, grads: dict=None):
 
-        self.gradients = {}
-        
         # if scalar loss is specified then allocate 
         # a 'seed' array for it, with gradient of one
         if (loss):
@@ -101,3 +99,11 @@ class Tape:
             adj = wp.zeros_like(a)
             self.gradients[a] = adj
             return adj
+
+
+    def reset(self):
+        
+        self.launches = []
+
+        for a in self.gradients.values():
+            a.zero_()

@@ -400,17 +400,19 @@ class Allocator:
 
     def alloc(self, size_in_bytes):
         
-        return self.alloc_func(size_in_bytes)
+        # p = self.alloc_func(size_in_bytes)
+        # return p
 
-        if size_in_bytes in self.pool and len(self.pool[size_in_bytes]) > 0:
+        if size_in_bytes in self.pool and len(self.pool[size_in_bytes]) > 0:            
             return self.pool[size_in_bytes].pop()
         else:
             return self.alloc_func(size_in_bytes)
 
     def free(self, addr, size_in_bytes):
-        
-        self.free_func(addr)
-        return
+
+        # addr = ctypes.cast(self.ptr, ctypes.c_void_p)
+        # self.free_func(addr)
+        # return
 
         if size_in_bytes not in self.pool:
             self.pool[size_in_bytes] = [addr,]

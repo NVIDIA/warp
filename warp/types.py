@@ -460,16 +460,14 @@ class array:
         try:
             if (self.owner):
 
-                addr = ctypes.cast(self.ptr, ctypes.POINTER(ctypes.c_int))
-
                 # this import can fail during process destruction
                 # in this case we allow OS to clean up allocations
                 from warp.context import runtime
 
                 if (self.device == "cpu"):
-                    runtime.host_allocator.free(addr, self.capacity)
+                    runtime.host_allocator.free(self.ptr, self.capacity)
                 else:
-                    runtime.device_allocator.free(addr, self.capacity)
+                    runtime.device_allocator.free(self.ptr, self.capacity)
         
         except Exception as e:
             pass

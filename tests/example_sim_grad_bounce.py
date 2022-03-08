@@ -11,11 +11,12 @@ import math
 # include parent path
 import os
 import sys
+from warp.utils import ScopedTimer
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
 import warp.sim
-import warp.render
+import warp.sim.render
 
 wp.init()
 
@@ -40,7 +41,7 @@ def step(x: wp.array(dtype=wp.vec3),
 
 class Ballistic:
 
-    sim_duration = 1.0       # seconds
+    sim_duration = 1.5       # seconds
 
     # control frequency
     frame_dt = 1.0/60.0
@@ -55,7 +56,7 @@ class Ballistic:
     render_time = 0.0
 
     train_iters = 100
-    train_rate = 0.1
+    train_rate = 0.05
 
     def __init__(self, render=True, adapter='cpu'):
 
@@ -69,10 +70,12 @@ class Ballistic:
         self.model = builder.finalize(adapter)
         self.model.ground = True
 
-        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.model.soft_contact_ke = 1.e+3
+        self.model.soft_contact_kf = 1.e+1
+        self.model.soft_contact_kd = 1.0
+        self.model.soft_contact_mu = 0.25
 
-        if (self.render):
-            self.stage = wp.render.UsdRenderer("tests/outputs/test_sim_grad_ballistic.usda")
+        self.integrator = wp.sim.SemiImplicitIntegrator()
 
         self.target = (2.0, 1.0, 0.0)
         self.loss = wp.zeros(1, dtype=wp.float32, device=adapter, requires_grad=True)
@@ -82,12 +85,18 @@ class Ballistic:
         for i in range(self.sim_steps+1):
             self.states.append(self.model.state(requires_grad=True))
 
+        self.graph = None
+
+        if (self.render):
+            self.stage = wp.sim.render.SimRenderer(self.model, "tests/outputs/example_sim_grad_bounce.usda")
+
     def compute_loss(self):
 
         # run control loop
         for i in range(self.sim_steps):
 
             self.states[i].clear_forces()
+            self.states[i+1].clear_forces()
 
             self.integrator.simulate(self.model, 
                                      self.states[i], 
@@ -97,7 +106,7 @@ class Ballistic:
             if (i%self.sim_substeps == 0) and self.render:
 
                 self.stage.begin_frame(self.render_time)
-                self.stage.render_sphere(pos=self.states[i].particle_q.numpy()[0], rot=wp.quat_identity(), radius=0.1, name="ball")
+                self.stage.render(self.states[i])
                 self.stage.render_sphere(pos=self.target, rot=wp.quat_identity(), radius=0.1, name="target")
                 self.stage.end_frame()
 
@@ -106,30 +115,63 @@ class Ballistic:
         if (self.render):
             self.stage.save()
 
-        # compute loss
+        # compute loss on final state
         wp.launch(kernel=loss, dim=1, inputs=[self.states[-1].particle_q, self.target, self.loss], device=self.device)
 
     def train(self, mode='gd'):
 
+        tape = wp.Tape()
+
+        for i in range(self.train_iters):
+   
+            with ScopedTimer("Forward"):
+                with tape:
+                    self.compute_loss()
+
+            with ScopedTimer("Backward"):#, detailed=True):
+                tape.backward(self.loss)
+
+            with ScopedTimer("Step"):
+                x = self.states[0].particle_qd
+                x_grad = tape.gradients[self.states[0].particle_qd]
+
+                print(f"Iter: {i} Loss: {self.loss}")
+                print(f"   x: {x} g: {x_grad}")
+
+                wp.launch(kernel=step, dim=1, inputs=[x, x_grad, self.train_rate], device=self.device)
+
+            tape.reset()
+
+
+    def train_graph(self, mode='gd'):
+
+        tape = wp.Tape()
+
         for i in range(self.train_iters):
 
-            tape = wp.Tape()
-            with tape:
-                self.compute_loss()
+            if self.graph == None:
 
-            tape.backward(self.loss)
+                wp.capture_begin()
 
-            x = self.states[0].particle_qd
-            x_grad = tape.gradients[self.states[0].particle_qd]
+                with tape:
+                    self.compute_loss()
 
-            print(f"Iter: {i} Loss: {self.loss}")
-            print(f"   x: {x} g: {x_grad}")
+                tape.backward(self.loss)
 
-            wp.launch(kernel=step, dim=1, inputs=[x, x_grad, self.train_rate])
+                self.graph = wp.capture_end()
+
+            wp.capture_launch(self.graph)
+
+            with ScopedTimer("Step"):
+                x = self.states[0].particle_qd
+                x_grad = tape.gradients[self.states[0].particle_qd]
+
+                print(f"Iter: {i} Loss: {self.loss}")
+                print(f"   x: {x} g: {x_grad}")
+
+                wp.launch(kernel=step, dim=1, inputs=[x, x_grad, self.train_rate], device=self.device)
 
 
-
-ballistic = Ballistic(adapter="cpu", render=True)
-
-#ballistic.check_grad()
+ballistic = Ballistic(adapter="cuda", render=False)
 ballistic.train('gd')
+ 
