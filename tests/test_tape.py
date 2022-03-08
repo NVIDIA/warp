@@ -107,11 +107,12 @@ def test_tape_mul_variable(test, device):
     test.assert_np_equal(tape.gradients[y].numpy(), x.numpy())
 
     # run backward again with different incoming gradient
-    # to ensure no stored state
+    # should accumulate the same gradients again onto output
+    # so gradients = 2.0*prev
     tape.backward(grads={z: loss_grad})
 
-    test.assert_np_equal(tape.gradients[x].numpy(), y.numpy())
-    test.assert_np_equal(tape.gradients[y].numpy(), x.numpy())
+    test.assert_np_equal(tape.gradients[x].numpy(), y.numpy()*2.0)
+    test.assert_np_equal(tape.gradients[y].numpy(), x.numpy()*2.0)
 
 
 def test_tape_dot_product(test, device):

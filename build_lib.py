@@ -24,7 +24,7 @@ build_path = os.path.dirname(os.path.realpath(__file__)) + "/warp"
 
 warp.config.verbose = True
 warp.config.cuda_path = "_build/target-deps/cuda"
-warp.config.mode = "debug"
+warp.config.mode = "release"
 
 if os.name == 'nt':
     warp.build.set_msvc_compiler(msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.16.27023", sdk_path="_build/host-deps/winsdk")
