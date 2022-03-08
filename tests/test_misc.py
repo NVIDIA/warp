@@ -109,31 +109,9 @@ def lennard_jones(grid : wp.uint64,
     rz = (-0.5 + wp.rint(xi[2] / period[2])) * period[2]
     xi -= wp.vec3(rx, ry, rz)
     
-    if (tid == 0):
-        print(wp.vec3(xi[0], xi[1], xi[2]))
-
     points[i] = wp.vec3(xi[0], xi[1], xi[2])
     velocities[i] = wp.vec3(vel[0], vel[1], vel[2])
   
-
-
-@wp.kernel
-def simple(grid: wp.uint64):
-    
-   
-    # if tid < 32:
-    #     print(i)
-    
-    if wp.tid() == 0:
-        # tid = wp.tid()
-        # i = wp.hash_grid_point_id(grid, tid)
-        #print(i)
-        i = wp.hash_grid_point_id(grid, wp.tid())
-        #query = wp.hash_grid_query(grid, wp.vec3(), 1.0)
-        #print(i)
-        #print("hello")
-        print(i)
-
 
 # Create the neighborlist
 grid = wp.HashGrid(dim_x, dim_y, dim_z, device)
@@ -177,17 +155,20 @@ vels_arr = wp.array(vels, dtype=wp.vec3, device=device)
 
 
 
-# begin capture
-grid.build(points_arr, cell_radius)
+# ensure that grid is big enough to
+# avoid allocations during graph capture
+grid.reserve(len(points))
 
 use_graph = True
-
 if (use_graph):
     wp.capture_begin()
 
-for i in range(10000):
+for i in range(1024):
+
+    # update grid
     grid.build(points_arr, cell_radius)
 
+    # compute forces
     wp.launch(kernel=lennard_jones, dim=len(points), inputs=[grid.id, points_arr, vels_arr, query_radius, dt, epsSigma6, epsSigma12, period], device=device)
 
 # end capture and return a graph object
