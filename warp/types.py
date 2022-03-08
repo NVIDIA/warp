@@ -740,6 +740,16 @@ class HashGrid:
             runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
 
 
+    def reserve(self, num_points):
+
+        from warp.context import runtime
+
+        if (self.device == "cpu"):
+            runtime.core.hash_grid_reserve_host(self.id, num_points)
+        else:
+            runtime.core.hash_grid_reserve_device(self.id, num_points)
+
+
     def __del__(self):
 
         try:

@@ -13,27 +13,41 @@
 
 #include <cub/cub.cuh>
 
-void radix_sort_pairs_device(int* keys, int* values, int n)
-{
-    static void* sort_temp_memory = NULL;
-    static size_t sort_temp_max_size = 0;
+static void* radix_sort_temp_memory = NULL;
+static size_t radix_sort_temp_max_size = 0;
 
-    cub::DoubleBuffer<int> d_keys(keys, keys + n);
-	cub::DoubleBuffer<int> d_values(values, values + n);
+void radix_sort_reserve(int n)
+{
+    cub::DoubleBuffer<int> d_keys((int*)0, (int*)n);
+	cub::DoubleBuffer<int> d_values((int*)0, (int*)n);
 
     // compute temporary memory required
 	size_t sort_temp_size;
 	cub::DeviceRadixSort::SortPairs(NULL, sort_temp_size, d_keys, d_values, int(n), 0, 32, (cudaStream_t)cuda_get_stream());
 
-    if (sort_temp_size > sort_temp_max_size)
+    if (sort_temp_size > radix_sort_temp_max_size)
     {
-	    free_device(sort_temp_memory);
-        sort_temp_memory = alloc_device(sort_temp_size);
-        sort_temp_max_size = sort_temp_size;
+	    free_device(radix_sort_temp_memory);
+        radix_sort_temp_memory = alloc_device(sort_temp_size);
+        radix_sort_temp_max_size = sort_temp_size;
     }
+}
+
+void radix_sort_pairs_device(int* keys, int* values, int n)
+{
+    cub::DoubleBuffer<int> d_keys(keys, keys + n);
+	cub::DoubleBuffer<int> d_values(values, values + n);
+
+    radix_sort_reserve(n);
 
     // sort
-    cub::DeviceRadixSort::SortPairs(sort_temp_memory, sort_temp_size, d_keys, d_values, n, 0, 32, (cudaStream_t)cuda_get_stream());
+    cub::DeviceRadixSort::SortPairs(
+        radix_sort_temp_memory, 
+        radix_sort_temp_max_size, 
+        d_keys, 
+        d_values, 
+        n, 0, 32, 
+        (cudaStream_t)cuda_get_stream());
 
 	if (d_keys.Current() != keys)
 		memcpy_d2d(keys, d_keys.Current(), sizeof(int)*n);

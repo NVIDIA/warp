@@ -81,28 +81,30 @@ void hash_grid_destroy_host(uint64_t id)
     delete grid;
 }
 
-void hash_grid_resize_host(HashGrid& grid, int num_points)
+void hash_grid_reserve_host(uint64_t id, int num_points)
 {
-    if (num_points > grid.max_points)
+    HashGrid* grid = (HashGrid*)(id);
+
+    if (num_points > grid->max_points)
     {
-        free_host(grid.point_cells);
-        free_host(grid.point_ids);
+        free_host(grid->point_cells);
+        free_host(grid->point_ids);
         
         const int num_to_alloc = num_points*3/2;
-        grid.point_cells = (int*)alloc_host(2*num_to_alloc*sizeof(int));  // *2 for auxilliary radix buffers
-        grid.point_ids = (int*)alloc_host(2*num_to_alloc*sizeof(int));    // *2 for auxilliary radix buffers
+        grid->point_cells = (int*)alloc_host(2*num_to_alloc*sizeof(int));  // *2 for auxilliary radix buffers
+        grid->point_ids = (int*)alloc_host(2*num_to_alloc*sizeof(int));    // *2 for auxilliary radix buffers
 
-        grid.max_points = num_to_alloc;
+        grid->max_points = num_to_alloc;
     }
 
-    grid.num_points = num_points;
+    grid->num_points = num_points;
 }
 
 void hash_grid_update_host(uint64_t id, float cell_width, const wp::vec3* points, int num_points)
 {
     HashGrid* grid = (HashGrid*)(id);
 
-    hash_grid_resize_host(*grid, num_points);
+    hash_grid_reserve_host(id, num_points);
 
     grid->cell_width = cell_width;
     grid->cell_width_inv = 1.0f / cell_width;
@@ -187,12 +189,9 @@ void hash_grid_destroy_device(uint64_t id)
 }
 
 
-void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* points, int num_points)
+void hash_grid_reserve_device(uint64_t id, int num_points)
 {
-    // host grid must be static so that we can
-    // perform host->device memcpy from this var
-    // and have it safely recorded inside CUDA graphs
-    static HashGrid grid;
+    HashGrid grid;
 
     if (hash_grid_get_descriptor(id, grid))
     {
@@ -204,12 +203,41 @@ void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* poin
             const int num_to_alloc = num_points*3/2;
             grid.point_cells = (int*)alloc_device(2*num_to_alloc*sizeof(int));  // *2 for auxilliary radix buffers
             grid.point_ids = (int*)alloc_device(2*num_to_alloc*sizeof(int));    // *2 for auxilliary radix buffers
-
             grid.max_points = num_to_alloc;
+
+            // ensure we pre-size our sort routine to avoid
+            // allocations during graph capture
+            radix_sort_reserve(num_to_alloc);
+
+            // update device side grid descriptor, todo: this is
+            // slightly redundant since it is performed again
+            // inside hash_grid_update_device(), but since
+            // reserve can be called from Python we need to make 
+            // sure it is consistent
+            memcpy_h2d((HashGrid*)id, &grid, sizeof(HashGrid));
+
+            // update host side grid descriptor
+            hash_grid_add_descriptor(id, grid);
         }
+    }
+}
 
+void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* points, int num_points)
+{
+    
+    // ensure we have enough memory reserved for update
+    // this must be done before retrieving the descriptor
+    // below since it may update it
+    hash_grid_reserve_device(id, num_points);
+
+    // host grid must be static so that we can
+    // perform host->device memcpy from this variable
+    // and have it safely recorded inside CUDA graphs
+    static HashGrid grid;
+
+    if (hash_grid_get_descriptor(id, grid))
+    {
         grid.num_points = num_points;
-
         grid.cell_width = cell_width;
         grid.cell_width_inv = 1.0f / cell_width;
 

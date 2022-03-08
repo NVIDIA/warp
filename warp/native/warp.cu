@@ -179,8 +179,20 @@ void array_sum_device(uint64_t a, uint64_t out, int len)
 
 uint64_t cuda_check_device()
 {
-    cudaDeviceSynchronize();
-    return cudaPeekAtLastError(); 
+    cudaStreamCaptureStatus status;
+    cudaStreamIsCapturing(g_cuda_stream, &status);
+    
+    // do not check during cuda stream capture
+    // since we cannot synchronize the device
+    if (status == cudaStreamCaptureStatusNone)
+    {
+        cudaDeviceSynchronize();
+        return cudaPeekAtLastError(); 
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 void cuda_report_error(int code, const char* file, int line)

@@ -73,3 +73,9 @@ void radix_sort_pairs_host(int* keys, int* values, int n)
 		values[offset] = v;
 	}	
 }
+
+#if __APPLE__
+
+void radix_sort_reserve(int n) {}
+
+#endif // __APPLE_

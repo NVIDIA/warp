@@ -400,24 +400,24 @@ class Allocator:
 
     def alloc(self, size_in_bytes):
         
-        # p = self.alloc_func(size_in_bytes)
-        # return p
+        p = self.alloc_func(size_in_bytes)
+        return p
 
-        if size_in_bytes in self.pool and len(self.pool[size_in_bytes]) > 0:            
-            return self.pool[size_in_bytes].pop()
-        else:
-            return self.alloc_func(size_in_bytes)
+        # if size_in_bytes in self.pool and len(self.pool[size_in_bytes]) > 0:            
+        #     return self.pool[size_in_bytes].pop()
+        # else:
+        #     return self.alloc_func(size_in_bytes)
 
     def free(self, addr, size_in_bytes):
 
-        # addr = ctypes.cast(self.ptr, ctypes.c_void_p)
-        # self.free_func(addr)
-        # return
+        addr = ctypes.cast(addr, ctypes.c_void_p)
+        self.free_func(addr)
+        return
 
-        if size_in_bytes not in self.pool:
-            self.pool[size_in_bytes] = [addr,]
-        else:
-            self.pool[size_in_bytes].append(addr)
+        # if size_in_bytes not in self.pool:
+        #     self.pool[size_in_bytes] = [addr,]
+        # else:
+        #     self.pool[size_in_bytes].append(addr)
 
     def print(self):
         
@@ -477,11 +477,13 @@ class Runtime:
         self.core.hash_grid_create_host.restype = ctypes.c_uint64
         self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
+        self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
         self.core.hash_grid_create_device.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
         self.core.hash_grid_create_device.restype = ctypes.c_uint64
         self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
+        self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
         self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
         self.core.volume_create_host.restype = ctypes.c_uint64
@@ -916,7 +918,7 @@ def capture_end()->int:
     graph = runtime.core.cuda_graph_end_capture()
     
     if graph == None:
-        raise RuntimeError("Error occured during CUDA graph capture.")
+        raise RuntimeError("Error occured during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")
     else:
         return graph
 
