@@ -1,109 +1,127 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
-# NVIDIA CORPORATION and its licensors retain all intellectual property
-# and proprietary rights in and to this software, related documentation
-# and any modifications thereto.  Any use, reproduction, disclosure or
-# distribution of this software and related documentation without an express
-# license agreement from NVIDIA CORPORATION is strictly prohibited.
-
-from numba import jit, prange
+from numba import cuda, float32
 import numpy as np
+import cupy as cp
 
+import math
 
-@jit(nopython=True, parallel=True)
-def eval_springs(num_springs,
-    x,
-    v,
-    indices,
-    rest,
-    ke,
-    kd,
-    f):
+# Notes:
+# 
+# Current implementation requires some familarity of writing custom cuda kernels
+# May be improved with cuda ufuncs and/or writing custom numba type extensions.
 
-    i = indices[:,0]
-    j = indices[:,1]
+@cuda.jit(device=True)
+def norm(x):
+    s = float32(0.0)
+    for i in range(3):
+        s += x[i] * x[i]
+    return math.sqrt(s)
 
-    xi = x[i]
-    xj = x[j]
+@cuda.jit(device=True)
+def dot(x, y):
+    s = float32(0.0)
+    for i in range(3):
+        s += x[i] * y[i]
+    return s
 
-    vi = v[i]
-    vj = v[j]
+@cuda.jit
+def eval_springs_cuda(num_springs,  # (1,)
+    xs,      # position              (N, 3)
+    vs,      # velocities            (N, 3)
+    indices, # spring indices        (S, 2)
+    rests,   # spring rest length    (S,)
+    kes,     # stiffness             (S,)
+    kds,     # damping               (S,)
+    fs):     # forces                (N, 3)
 
-    xij = xi - xj
-    vij = vi - vj
+    tidx = cuda.grid(1)
 
-    # no support for norm on a axis so have to run a custom parallel loop
-    l = np.empty(num_springs, dtype=np.float32)
-    for r in prange(num_springs):
-        l[r] = np.linalg.norm(xij[r])
+    if tidx < num_springs:
+        i, j = indices[tidx][0], indices[tidx][1]
+        xi, xj = xs[i], xs[j]
+        vi, vj = vs[i], vs[j]
+        rest, ke, kd = rests[tidx], kes[tidx], kds[tidx]
 
-    l_inv = (1.0 / l).astype(np.float32)
+        xij = cuda.local.array(3, dtype=cp.float32)
+        vij = cuda.local.array(3, dtype=cp.float32)
+        for k in range(3):
+            xij[k] = xi[k] - xj[k]
+        for k in range(3):
+            vij[k] = vi[k] - vj[k]
+        
+        l = norm(xij)
+        
+        l_inv = float32(1.0) / l
 
-    # normalized spring direction
-    dir = (xij.T * l_inv).T
+        # normalized spring direction
+        xij_unit = cuda.local.array(3, dtype=cp.float32)
+        for k in range(3):
+            xij_unit[k] = xij[k] * l_inv
+        c = l - rest
+        dcdt = dot(xij_unit, vij)
 
-    c = l - rest
+        # mass-spring-damper model
+        fac = ke * c + kd * dcdt
+        df = cuda.local.array(3, dtype=cp.float32)
+        for k in range(3):
+            df[k] = xij_unit[k] * fac
+        
+        for k in range(3):
+            cuda.atomic.add(fs[i], k, -df[k])
+            cuda.atomic.add(fs[j], k, df[k])
 
-    # no support for sum over an axis so have to run custom parallel loop
-    dcdt = np.empty(num_springs, dtype=np.float32)
-    for r in prange(num_springs):
-        dcdt[r] = np.dot(dir[r], vij[r])
+# Support const array with cp array?
+g = np.array([0.0, 0.0-9.8, 0.0], dtype=np.float32)
+z = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
-    # damping based on relative velocity.
-    fs = dir.T*(ke * c + kd * dcdt)
+@cuda.jit
+def integrate_particles_cuda(xs,    # position  (N, 3)
+                            vs,     # velocity  (N, 3)
+                            fs,     # force     (N, 3)
+                            ws,     # inverse of mass (N,)
+                            dt):    # dt        (1,)
 
-    # no atomic add support so have to run serial reduce
-    for r in range(num_springs):
-        dcdt[r] = np.dot(dir[r], vij[r])
+    i = cuda.grid(1)
 
-        f[i[r]] -= (fs.T)[r]
-        f[j[r]] += (fs.T)[r]
+    if i < xs.shape[0]:
+        w = ws[i]
+        a = cuda.const.array_like(g) if w > 0.0 else cuda.const.array_like(z)
 
+        for j in range(3):
+            # vs[i] += ((f * w) + a) * dt (ideally)
+            vs[i][j] = vs[i][j] + ((fs[i][j] * w) + a[j]) * dt
+            xs[i][j] = xs[i][j] + vs[i][j] * dt
 
-@jit(nopython=True, parallel=True)
-def integrate_particles(x,
-                        v,
-                        f,
-                        w,
-                        dt):
-
-    g = np.array((0.0, 0.0 - 9.8, 0.0))
-    s = w > 0.0
-
-    # todo: how to express this in Numba?
-    a_ext = g#*s[:,None]
-
-    # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
-    v += ((f.T * w).T + a_ext) * dt
-    x += (v * dt)
-
-    # clear forces
-    f *= 0.0
-
-
+        fs[i] = 0.0
+    
 class NbIntegrator:
 
     def __init__(self, cloth):
 
         self.cloth = cloth
 
-        self.positions = np.array(self.cloth.positions)
-        self.velocities = np.array(self.cloth.velocities)
-        self.inv_mass = np.array(self.cloth.inv_masses)
+        self.positions = cp.array(self.cloth.positions)
+        self.velocities = cp.array(self.cloth.velocities)
+        self.inv_mass = cp.array(self.cloth.inv_masses)
 
-        self.spring_indices = np.array(self.cloth.spring_indices)
-        self.spring_lengths = np.array(self.cloth.spring_lengths)
-        self.spring_stiffness = np.array(self.cloth.spring_stiffness)
-        self.spring_damping = np.array(self.cloth.spring_damping)
+        self.spring_indices = cp.array(self.cloth.spring_indices)
+        self.spring_lengths = cp.array(self.cloth.spring_lengths)
+        self.spring_stiffness = cp.array(self.cloth.spring_stiffness)
+        self.spring_damping = cp.array(self.cloth.spring_damping)
         
-        self.forces = np.zeros((self.cloth.num_particles, 3), dtype=np.float32)
+        self.forces = cp.zeros((self.cloth.num_particles, 3), dtype=cp.float32)
+
+        self.num_particles = self.positions.shape[0]
+        self.integrate_tpb = 4
+        self.integrate_nb = self.num_particles // self.integrate_tpb + 1
+
+        self.spring_tpb = 4
+        self.spring_nb = self.cloth.num_springs // self.spring_tpb + 1        
 
     def simulate(self, dt, substeps):
-
         sim_dt = dt/substeps
-        
-        for s in range(substeps):
 
-            eval_springs(self.cloth.num_springs,
+        for s in range(substeps):
+            eval_springs_cuda[self.spring_nb, self.spring_tpb](self.cloth.num_springs,
                         self.positions, 
                         self.velocities,
                         self.spring_indices.reshape((self.cloth.num_springs, 2)),
@@ -111,13 +129,13 @@ class NbIntegrator:
                         self.spring_stiffness,
                         self.spring_damping,
                         self.forces)
-
+            
             # integrate 
-            integrate_particles(
+            integrate_particles_cuda[self.integrate_nb, self.integrate_tpb](
                 self.positions,
                 self.velocities,
                 self.forces,
                 self.inv_mass,
                 sim_dt)
 
-        return self.positions
+        return self.positions.get()
