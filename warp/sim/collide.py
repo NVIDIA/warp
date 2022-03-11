@@ -152,14 +152,14 @@ def create_soft_contacts(
 
     # GEO_SPHERE (0)
     if (geo_type == 0):
-        d = sphere_sdf(wp.vec3(0.0, 0.0, 0.0), geo_scale[0], x_local)
-        n = sphere_sdf_grad(wp.vec3(0.0, 0.0, 0.0), geo_scale[0], x_local)
+        d = sphere_sdf(wp.vec3(), geo_scale[0], x_local)
+        n = sphere_sdf_grad(wp.vec3(), geo_scale[0], x_local)
 
     # GEO_BOX (1)
     if (geo_type == 1):
         d = box_sdf(geo_scale, x_local)
         n = box_sdf_grad(geo_scale, x_local)
-    
+        
     # GEO_CAPSULE (2)
     if (geo_type == 2):
         d = capsule_sdf(geo_scale[0], geo_scale[1], x_local)
@@ -189,7 +189,7 @@ def create_soft_contacts(
 
     if (d < soft_contact_margin):
 
-        index = wp.atomic_add(soft_contact_count, 0, 1) # index is zero, adding 1
+        index = wp.atomic_add(soft_contact_count, 0, 1) 
 
         if (index < soft_contact_max):
 

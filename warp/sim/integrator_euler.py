@@ -23,8 +23,7 @@ from . particles import eval_particle_forces
 @wp.kernel
 def integrate_particles(x: wp.array(dtype=wp.vec3),
                         v: wp.array(dtype=wp.vec3),
-                        f_ext: wp.array(dtype=wp.vec3),
-                        f_int: wp.array(dtype=wp.vec3),
+                        f: wp.array(dtype=wp.vec3),
                         w: wp.array(dtype=float),
                         gravity: wp.vec3,
                         dt: float,
@@ -35,14 +34,12 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 
     x0 = x[tid]
     v0 = v[tid]
-
-    fe = f_ext[tid]
-    fi = f_int[tid]
+    f0 = f[tid]
 
     inv_mass = w[tid]
 
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
-    v1 = v0 + ((fe + fi) * inv_mass + gravity * wp.step(0.0 - inv_mass)) *dt
+    v1 = v0 + (f0 * inv_mass + gravity * wp.step(0.0 - inv_mass)) *dt
     x1 = x0 + v1 * dt
 
     x_new[tid] = x1
@@ -53,8 +50,7 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 @wp.kernel
 def integrate_bodies(body_q: wp.array(dtype=wp.transform),
                      body_qd: wp.array(dtype=wp.spatial_vector),
-                     body_f_int: wp.array(dtype=wp.spatial_vector),
-                     body_f_ext: wp.array(dtype=wp.spatial_vector),
+                     body_f: wp.array(dtype=wp.spatial_vector),
                      body_com: wp.array(dtype=wp.vec3),
                      m: wp.array(dtype=float),
                      I: wp.array(dtype=wp.mat33),
@@ -70,8 +66,7 @@ def integrate_bodies(body_q: wp.array(dtype=wp.transform),
     # positions
     q = body_q[tid]
     qd = body_qd[tid]
-    f_int = body_f_int[tid]
-    f_ext = body_f_ext[tid]
+    f = body_f[tid]
 
     # masses
     mass = m[tid]
@@ -89,7 +84,6 @@ def integrate_bodies(body_q: wp.array(dtype=wp.transform),
     v0 = wp.spatial_bottom(qd)
 
     # unpack spatial wrench
-    f = f_int + f_ext
     t0 = wp.spatial_top(f)
     f0 = wp.spatial_bottom(f)
 
@@ -717,9 +711,9 @@ def eval_tetrahedra(x: wp.array(dtype=wp.vec3),
        
     # r_s = wp.sqrt(wp.abs(dot(col1, col1) + dot(col2, col2) + dot(col3, col3) - 3.0))
 
-    # f1 = wp.vec3(0.0, 0.0, 0.0)
-    # f2 = wp.vec3(0.0, 0.0, 0.0)
-    # f3 = wp.vec3(0.0, 0.0, 0.0)
+    # f1 = wp.vec3()
+    # f2 = wp.vec3()
+    # f3 = wp.vec3()
 
     # if (r_s > 0.0):
     #     r_s_inv = 1.0/r_s
@@ -892,7 +886,7 @@ def eval_soft_contacts(
     pv = particle_v[particle_index]
 
     X_wb = wp.transform_identity()
-    X_com = wp.vec3(0.0, 0.0, 0.0)
+    X_com = wp.vec3()
     
     if (body_index >= 0):
         X_wb = body_q[body_index]
@@ -933,16 +927,16 @@ def eval_soft_contacts(
     fd = n * wp.min(vn, 0.0) * kd
 
     # viscous friction
-    #ft = vt*kf
+    # ft = vt*kf
 
     # Coulomb friction (box)
     # lower = mu * c * ke
     # upper = 0.0 - lower
 
-    # vx = clamp(dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
-    # vz = clamp(dot(vec3(0.0, 0.0, kf), vt), lower, upper)
+    # vx = wp.clamp(wp.dot(wp.vec3(kf, 0.0, 0.0), vt), lower, upper)
+    # vz = wp.clamp(wp.dot(wp.vec3(0.0, 0.0, kf), vt), lower, upper)
 
-    #ft = wp.vec3(vx, 0.0, vz)
+    # ft = wp.vec3(vx, 0.0, vz)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
     ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), abs(mu*c*ke))
@@ -1186,9 +1180,9 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     X_cj = joint_X_c[tid]
 
     X_wp = X_pj
-    r_p = wp.vec3(0.0, 0.0, 0.0)
-    w_p = wp.vec3(0.0, 0.0, 0.0)
-    v_p = wp.vec3(0.0, 0.0, 0.0)
+    r_p = wp.vec3()
+    w_p = wp.vec3()
+    v_p = wp.vec3()
 
     # parent transform and moment arm
     if (c_parent >= 0):
@@ -1237,8 +1231,8 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     w_err = w_c - w_p
 
     # total force/torque on the parent
-    t_total = wp.vec3(0.0, 0.0, 0.0)
-    f_total = wp.vec3(0.0, 0.0, 0.0)
+    t_total = wp.vec3()
+    f_total = wp.vec3()
 
     # reduce angular damping stiffness for stability
     angular_damping_scale = 0.01
@@ -1345,7 +1339,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         q_w = q_p*q_off
 
         # joint dynamics
-        t_total = wp.vec3(0.0, 0.0, 0.0)
+        t_total = wp.vec3()
         t_total += eval_joint_force(angles[0], wp.dot(wp.quat_rotate(q_w, axis_0), w_err), joint_target[qd_start+0], joint_target_ke[qd_start+0],joint_target_kd[qd_start+0], joint_act[qd_start+0], joint_limit_lower[qd_start+0], joint_limit_upper[qd_start+0], joint_limit_ke[qd_start+0], joint_limit_kd[qd_start+0], wp.quat_rotate(q_w, axis_0))
         t_total += eval_joint_force(angles[1], wp.dot(wp.quat_rotate(q_w, axis_1), w_err), joint_target[qd_start+1], joint_target_ke[qd_start+1],joint_target_kd[qd_start+1], joint_act[qd_start+1], joint_limit_lower[qd_start+1], joint_limit_upper[qd_start+1], joint_limit_ke[qd_start+1], joint_limit_kd[qd_start+1], wp.quat_rotate(q_w, axis_1))
         t_total += eval_joint_force(angles[2], wp.dot(wp.quat_rotate(q_w, axis_2), w_err), joint_target[qd_start+2], joint_target_ke[qd_start+2],joint_target_kd[qd_start+2], joint_act[qd_start+2], joint_limit_lower[qd_start+2], joint_limit_upper[qd_start+2], joint_limit_ke[qd_start+2], joint_limit_kd[qd_start+2], wp.quat_rotate(q_w, axis_2))
@@ -1373,7 +1367,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         q_w = q_p*q_off
 
         # joint dynamics
-        t_total = wp.vec3(0.0, 0.0, 0.0)
+        t_total = wp.vec3()
 
         # free axes
         t_total += eval_joint_force(angles[0], wp.dot(wp.quat_rotate(q_w, axis_0), w_err), joint_target[qd_start+0], joint_target_ke[qd_start+0],joint_target_kd[qd_start+0], joint_act[qd_start+0], joint_limit_lower[qd_start+0], joint_limit_upper[qd_start+0], joint_limit_ke[qd_start+0], joint_limit_kd[qd_start+0], wp.quat_rotate(q_w, axis_0))
@@ -1753,14 +1747,11 @@ class SemiImplicitIntegrator:
             particle_f = None
             body_f = None
 
-            # alloc particle force buffer
-            if (model.particle_count):
-                particle_f = state_out.particle_f
-                #particle_f.zero_()
-
-            if (model.body_count):
-                body_f = state_out.body_f
-                #body_f.zero()
+            if state_in.particle_count:
+                particle_f = state_in.particle_f
+            
+            if state_in.body_count:
+                body_f = state_in.body_f
 
             compute_forces(model, state_in, particle_f, body_f)
 
@@ -1776,7 +1767,6 @@ class SemiImplicitIntegrator:
                         state_in.body_q,
                         state_in.body_qd,
                         state_in.body_f,
-                        body_f,
                         model.body_com,
                         model.body_mass,
                         model.body_inertia,
@@ -1803,7 +1793,6 @@ class SemiImplicitIntegrator:
                         state_in.particle_q, 
                         state_in.particle_qd,
                         state_in.particle_f,
-                        particle_f, 
                         model.particle_inv_mass, 
                         model.gravity, 
                         dt

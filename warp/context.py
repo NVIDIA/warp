@@ -654,18 +654,17 @@ def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> w
         # construct array
         return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
 
-def zeros_like(src: warp.array, requires_grad:bool=False) -> warp.array:
+def zeros_like(src: warp.array) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
 
     Args:
         src: The template array to use for length, data type, and device
-        requires_grad: Whether the array will be tracked for back propagation
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = zeros(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
+    arr = zeros(len(src), dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
     return arr
 
 def clone(src: warp.array) -> warp.array:
@@ -767,10 +766,10 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
                     else:
 
-                        # check for array
+                        # check for array value
                         if (isinstance(a, warp.types.array) == False):
                             raise RuntimeError(f"Passing non-array value with type {type(a)} to array argument: '{kernel.adj.args[i].label}'")
-
+                        
                         # check subtype
                         if (a.dtype != arg_type.dtype):
                             raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.adj.args[i].label))
@@ -779,7 +778,10 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                         if (a.device != device):
                             raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, a.device))
             
-                        params.append(ctypes.c_int64(a.ptr))
+                        if(a.ptr == None):                            
+                            params.append(ctypes.c_int64(0))
+                        else:
+                            params.append(ctypes.c_int64(a.ptr))
 
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):

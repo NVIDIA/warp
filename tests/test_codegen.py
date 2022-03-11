@@ -91,14 +91,14 @@ def test_reassign():
 @wp.kernel
 def test_dynamic_reassign(n: int):
 
-    f0 = wp.vec3(0.0, 0.0, 0.0)
+    f0 = wp.vec3()
     f1 = f0
 
     for i in range(0, n):
         f1 = f1 - wp.vec3(2.0, 0.0, 0.0)
 
     wp.expect_eq(f1, wp.vec3(-4.0, 0.0, 0.0))
-    wp.expect_eq(f0, wp.vec3(0.0, 0.0, 0.0))
+    wp.expect_eq(f0, wp.vec3())
 
 
 @wp.kernel

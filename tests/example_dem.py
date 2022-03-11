@@ -76,7 +76,7 @@ def apply_forces(grid : wp.uint64,
     x = particle_x[i]
     v = particle_v[i]
 
-    f = wp.vec3(0.0, 0.0, 0.0)
+    f = wp.vec3()
 
     # ground contact
     n = wp.vec3(0.0, 1.0, 0.0)

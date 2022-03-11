@@ -69,7 +69,7 @@ def lennard_jones(grid : wp.uint64,
     query = wp.hash_grid_query(grid, xi, radius)
     index = int(0)
     
-    force = wp.vec3(0.0, 0.0, 0.0)
+    force = wp.vec3()
     
     while(wp.hash_grid_query_next(query, index)):
         

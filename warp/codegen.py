@@ -15,6 +15,7 @@ import typing
 import weakref
 import ctypes
 import copy
+import textwrap
 
 import numpy as np
 
@@ -94,6 +95,11 @@ class Adjoint:
 
         # build AST from function object
         adj.source = inspect.getsource(func)
+        
+        # ensures that indented class methods can be parsed as kernels
+        adj.source = textwrap.dedent(adj.source)    
+
+        # build AST
         adj.tree = ast.parse(adj.source)
 
         # parse argument types

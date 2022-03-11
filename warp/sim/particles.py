@@ -56,7 +56,7 @@ def eval_particle_forces_kernel(grid : wp.uint64,
     x = particle_x[i]
     v = particle_v[i]
 
-    f = wp.vec3(0.0, 0.0, 0.0)
+    f = wp.vec3()
 
     # particle contact
     query = wp.hash_grid_query(grid, x, radius*2.0+k_cohesion)

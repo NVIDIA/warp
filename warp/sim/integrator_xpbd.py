@@ -256,7 +256,7 @@ def apply_deltas(x_orig: wp.array(dtype=wp.vec3),
     v_out[tid] = v_new
 
     # clear forces
-    delta[tid] = wp.vec3(0.0, 0.0, 0.0)
+    delta[tid] = wp.vec3()
 
 
 class XPBDIntegrator:

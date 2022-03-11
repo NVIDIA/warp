@@ -64,7 +64,7 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
     f0 = f[tid]
     inv_mass = w[tid]
 
-    g = wp.vec3(0.0, 0.0, 0.0)
+    g = wp.vec3()
 
     # treat particles with inv_mass == 0 as kinematic
     if (inv_mass > 0.0):
@@ -78,7 +78,7 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
     v[tid] = v1
 
     # clear forces
-    f[tid] = wp.vec3(0.0, 0.0, 0.0)
+    f[tid] = wp.vec3()
 
 
 class WpIntegrator:
