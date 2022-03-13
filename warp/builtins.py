@@ -196,6 +196,8 @@ add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion 
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0")
 add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
+add_builtin("quat_from_matrix", input_types={"m": mat33}, value_type=quat, group="Quaternion Math",
+    doc="Construct a quaternion from a 3x3 matrix.")
 add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, group="Quaternion Math",
     doc="Compute quaternion conjugate.")
 add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
