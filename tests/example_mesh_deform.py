@@ -99,16 +99,17 @@ device = wp.get_preferred_device()
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-usd_stage = Usd.Stage.Open("./tests/assets/suzanne.usda")
-usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/World/model/Suzanne")) 
+usd_stage = Usd.Stage.Open("./tests/assets/bunny.usd")
+usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny")) 
+usd_scale = 10.0
 
 # create collision mesh
 mesh = wp.Mesh(
-    points=wp.array(usd_geom.GetPointsAttr().Get(), dtype=wp.vec3, device=device),
+    points=wp.array(usd_geom.GetPointsAttr().Get()*usd_scale, dtype=wp.vec3, device=device),
     indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int, device=device))
  
 # random particles
-init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -0.2, 0.5]))*10.0
+init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -1.5, 0.5]))*10.0
 init_vel = np.random.rand(num_particles, 3)*0.0
 
 positions = wp.from_numpy(init_pos, dtype=wp.vec3, device=device)

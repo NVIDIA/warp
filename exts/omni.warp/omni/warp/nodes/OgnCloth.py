@@ -21,8 +21,7 @@ import omni.timeline
 from pxr import Usd, UsdGeom, Gf, Sdf
 
 
-# helper to read a USD xform out of graph inputs
-# helper to get the transform for a bundle prim
+# helper to get the transform from a bundle prim
 def read_transform_bundle(bundle):
 
     timeline =  omni.timeline.get_timeline_interface()
@@ -34,9 +33,11 @@ def read_transform_bundle(bundle):
 
     return prim.ComputeLocalToWorldTransform(time)
 
+# helper to read points from a bundle prim
 def read_points_bundle(bundle):
     return bundle.attribute_by_name("points").value
 
+# helper to read indices from a bundle prim
 def read_indices_bundle(bundle):
     return bundle.attribute_by_name("faceVertexIndices").value
 
@@ -52,8 +53,6 @@ def transform_points(src: wp.array(dtype=wp.vec3),
     m = wp.transform_point(xform, p)
 
     dest[tid] = m
-
-
 
 
 
@@ -209,7 +208,6 @@ class OgnCloth:
                     
                     # create integrator
                     context.integrator = wp.sim.SemiImplicitIntegrator()
-                    #context.integrator = wp.sim.VariationalImplicitIntegrator(model, solver="nesterov", max_iters=256, alpha=0.1, report=False)
 
                     # save model and state
                     context.model = model
