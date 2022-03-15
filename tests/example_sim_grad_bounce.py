@@ -11,7 +11,6 @@ import math
 # include parent path
 import os
 import sys
-from warp.utils import ScopedTimer
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
@@ -179,17 +178,17 @@ class Bounce:
 
         for i in range(self.train_iters):
    
-            with ScopedTimer("Forward", active=self.profile):
+            with wp.ScopedTimer("Forward", active=self.profile):
                 with tape:
                     self.compute_loss()
 
-            with ScopedTimer("Backward", active=self.profile):
+            with wp.ScopedTimer("Backward", active=self.profile):
                 tape.backward(self.loss)
 
-            with ScopedTimer("Render", active=self.profile):
+            with wp.ScopedTimer("Render", active=self.profile):
                 self.render()
 
-            with ScopedTimer("Step", active=self.profile):
+            with wp.ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
                 x_grad = tape.gradients[self.states[0].particle_qd]
 
@@ -213,13 +212,13 @@ class Bounce:
         # replay and optimize
         for i in range(self.train_iters):
    
-            with ScopedTimer("Replay", active=self.profile):
+            with wp.ScopedTimer("Replay", active=self.profile):
                 tape.replay()
 
-            with ScopedTimer("Render", active=self.profile):
+            with wp.ScopedTimer("Render", active=self.profile):
                 self.render()
 
-            with ScopedTimer("Step", active=self.profile):
+            with wp.ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
                 x_grad = tape.gradients[self.states[0].particle_qd]
 
