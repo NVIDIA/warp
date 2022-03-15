@@ -81,6 +81,10 @@ def parse_mjcf(
 
             joint = joints[0]
 
+            # default to hinge if not specified
+            if ("type" not in joint.attrib):
+                joint.attrib["type"] = "hinge"
+
             joint_name = joint.attrib["name"],
             joint_type = type_map[joint.attrib["type"]]
             joint_axis = wp.normalize(parse_vec(joint, "axis", (0.0, 0.0, 0.0)))
@@ -113,7 +117,7 @@ def parse_mjcf(
             elif (len(joints) == 3):
                 type = JOINT_COMPOUND
             else:
-                print("Bodies must have 1-3 joints")
+                raise RuntimeError("Bodies must have 1-3 joints")
 
             # universal / compound joint
             joint_stiffness = []
@@ -124,6 +128,10 @@ def parse_mjcf(
             joint_axis = []
 
             for i, joint in enumerate(joints):
+
+                # default to hinge if not specified
+                if ("type" not in joint.attrib):
+                    joint.attrib["type"] = "hinge"
                 
                 if (joint.attrib["type"] != "hinge"):
                     print("Compound joints must all be hinges")

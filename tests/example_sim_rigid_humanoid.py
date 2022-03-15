@@ -35,7 +35,7 @@ class Robot:
     sim_time = 0.0
     render_time = 0.0
 
-    name = "humanoid"
+    name = "nv_humanoid"
 
     def __init__(self, render=True, num_envs=1, device='cpu'):
 
@@ -51,7 +51,7 @@ class Robot:
             wp.sim.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
                 stiffness=0.0,
                 damping=0.1,
-                armature=0.0,
+                armature=0.007,
                 armature_scale=10.0,
                 contact_ke=1.e+3*2.0,
                 contact_kd=1.e+2,
@@ -83,9 +83,9 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
+            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/example_sim_" + self.name + ".usd")
 
-
+ 
     def run(self, render=True):
 
         #---------------
@@ -120,6 +120,20 @@ class Robot:
 
         # simulate 
         with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
+
+            if (self.render):
+ 
+                with wp.ScopedTimer("render", False):
+
+                    if (self.render):
+                        self.render_time += self.frame_dt
+                        
+                        self.renderer.begin_frame(self.render_time)
+                        self.renderer.render(self.state)
+                        self.renderer.end_frame()
+
+                self.renderer.save()
+
 
             for f in range(0, self.episode_frames):
                 
