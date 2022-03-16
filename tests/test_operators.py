@@ -31,11 +31,13 @@ def test_operators_scalar():
     d = a+b
     e = a/b
     f = a-b
+    g = b**8.0
 
     expect_eq(c, 2.0)
     expect_eq(d, 3.0)
     expect_eq(e, 0.5)
     expect_eq(f, -1.0)
+    expect_eq(g, 256.0)
     
 
 
