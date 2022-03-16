@@ -22,7 +22,7 @@ import warp as wp
 wp.init()
 
 @wp.kernel
-def test_operators_scalar():
+def test_operators_scalar_float():
 
     a = 1.0
     b = 2.0
@@ -32,14 +32,35 @@ def test_operators_scalar():
     e = a/b
     f = a-b
     g = b**8.0
+    h = 10.0//3.0
 
     expect_eq(c, 2.0)
     expect_eq(d, 3.0)
     expect_eq(e, 0.5)
     expect_eq(f, -1.0)
     expect_eq(g, 256.0)
+    expect_eq(h, 3.0)
     
+@wp.kernel
+def test_operators_scalar_int():
 
+    a = 1
+    b = 2
+
+    c = a*b
+    d = a+b
+    e = a/b
+    f = a-b
+    # g = b**8    # integer pow not implemented
+    h = 10//3
+
+    expect_eq(c, 2)
+    expect_eq(d, 3)
+    expect_eq(e, 0)
+    expect_eq(f, -1)
+    # expect_eq(g, 256)
+    expect_eq(h, 3)
+    
 
 @wp.kernel
 def test_operators_vec3():
@@ -98,7 +119,8 @@ devices = wp.get_devices()
 class TestOperators(test_base.TestBase):
     pass
 
-TestOperators.add_kernel_test(test_operators_scalar, dim=1, devices=devices)
+TestOperators.add_kernel_test(test_operators_scalar_float, dim=1, devices=devices)
+TestOperators.add_kernel_test(test_operators_scalar_int, dim=1, devices=devices)
 TestOperators.add_kernel_test(test_operators_vec3, dim=1, devices=devices)
 TestOperators.add_kernel_test(test_operators_vec4, dim=1, devices=devices)
 
