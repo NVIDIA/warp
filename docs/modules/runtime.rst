@@ -9,18 +9,19 @@ Runtime Reference
 Initialization
 --------------
 
-Before initialization it is possible to set runtime options through the ``warp.config`` module, e.g.: ::
+Before use Warp should be explicitly initialized with the ``wp.init()`` method::
 
    import warp as wp
 
-   wp.config.mode = "debug"
-   wp.config.verify_cuda = True
-
    wp.init()
 
-This example sets the kernel build mode to debug, and enables CUDA verification that will check the CUDA context for any errors after each kernel launch, which can be useful for debugging.
+Users can query the supported compute devices using the ``wp.get_devices()`` method::
 
-.. autofunction:: init
+   print(wp.get_devices())
+
+   >> ['cpu', 'cuda']
+
+These device strings can then be used to allocate memory and launch kernels as described below.
 
 Kernels
 -------
@@ -48,6 +49,9 @@ In Warp, kernels are defined as Python functions, decorated with the ``@warp.ker
 Kernels are launched with the ``warp.launch()`` function on a specific device (CPU/GPU). Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.
 
 .. autofunction:: launch
+
+.. note:: 
+   Currently kernels launched on ``cpu`` devices will be executed in serial. Kernels launched on ``cuda`` devices will be launched in parallel with a fixed block-size.
 
 Arrays
 ------
@@ -108,7 +112,7 @@ Data Types
 Scalar Types
 ############
 
-The following scalar types are supported for array structures:
+The following scalar storage types are supported for array structures:
 
 +---------+------------------------+
 | int8    | signed byte            |
@@ -144,33 +148,27 @@ Vector Types
 Warp provides built-in math and geometry types for common simulation and graphics problems. A full reference for operators and functions for these types is available in the :any:`functions`.
 
 
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| int8            | signed byte                                                                                                           |
-+=================+=======================================================================================================================+
-| uint8           | unsigned byte                                                                                                         |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| int16           | signed short                                                                                                          |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| vec2            | 2d vector of floats                                                                                                   |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| vec3            | 3d vector of floats                                                                                                   |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| vec4            | 4d vector of floats                                                                                                   |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| mat22           | 2x2 matrix of floats                                                                                                  |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| mat33           | 3x3 matrix of floats                                                                                                  |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| mat44           | 4x4 matrix of floats                                                                                                  |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| quat            | Quaternion in form i,j,k,w where w is the real part                                                                   |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| transform       | Spatial transform representing a rigid body transformation in format (p, q) where p is a vec3, and q is a quaternion  |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| spatial_vector  | 6d vector of floats, see wp.spatial_top(), wp.spatial_bottom(), useful for representing rigid body twists             |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
-| spatial_matrix  | 6x6 matrix of floats used to represent spatial inertia matrices                                                       |
-+-----------------+-----------------------------------------------------------------------------------------------------------------------+
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| vec2            | 2d vector of floats                                                                                                             |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| vec3            | 3d vector of floats                                                                                                             |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| vec4            | 4d vector of floats                                                                                                             |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| mat22           | 2x2 matrix of floats                                                                                                            |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| mat33           | 3x3 matrix of floats                                                                                                            |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| mat44           | 4x4 matrix of floats                                                                                                            |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| quat            | Quaternion in form i,j,k,w where w is the real part                                                                             |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| transform       | 7d vector of floats representing a spatial rigid body transformation in format (p, q) where p is a vec3, and q is a quaternion  |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| spatial_vector  | 6d vector of floats, see wp.spatial_top(), wp.spatial_bottom(), useful for representing rigid body twists                       |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| spatial_matrix  | 6x6 matrix of floats used to represent spatial inertia matrices                                                                 |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
 
 Type Conversions
 ################
@@ -179,7 +177,7 @@ Warp is particularly strict regarding type conversions and does not perform *any
 
 In addition, users should always cast storage types to a compute type (``int`` or ``float``) before computation. Compute types can be converted back to storage types through explicit casting, e.g.: ``byte_array[index] = wp.uint8(i)``.
 
-.. note:: Warp does not currently perform implicit type conversions between numeric types.
+.. note:: Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using ``int()`` or ``float()`` constructors.
 
 Constants
 ---------
@@ -217,7 +215,7 @@ Boolean Operators
 +----------+--------------------------------------+
 | a and b  | True if a and b are True             |
 +----------+--------------------------------------+
-| a or b   | True if a or b is true               |
+| a or b   | True if a or b is True               |
 +----------+--------------------------------------+
 | not a    | True if a is False, otherwise False  |
 +----------+--------------------------------------+
@@ -250,7 +248,7 @@ Meshes
 
 Warp provides a ``warp.Mesh`` class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array::
 
-   mesh = wp.Mesh(points, velocities, indices)
+   mesh = wp.Mesh(points, indices, velocities)
 
 .. note::
    Mesh objects maintain references to their input geometry buffers. All buffers should live on the same device.
@@ -269,10 +267,10 @@ Meshes can be passed to kernels using their ``id`` attribute which uniquely iden
       u = float(0.0)                   # hit face barycentric u
       v = float(0.0)                   # hit face barycentric v
       sign = float(0.0)                # hit face sign
-      n = wp.vec3(0.0, 0.0, 0.0)       # hit face normal
+      n = wp.vec3()       # hit face normal
       f = int(0)                       # hit face index
 
-      color = wp.vec3(0.0, 0.0, 0.0)
+      color = wp.vec3()
 
       # ray cast against the mesh
       if wp.mesh_query_ray(mesh, ray_origin[tid], ray_dir[tid], 1.e+6, t, u, v, sign, n, f):
@@ -410,10 +408,20 @@ After the backward pass has completed the gradients with respect to the inputs a
    # gradient of loss with respect to input a
    print(tape.gradients[a])
 
+
+.. note:: 
+
+   Warp uses a source-code transformation approach to auto-differentiation. In this approach the backwards pass must keep a record of intermediate values computed during the foward pass. This imposes some restrictions on what kernels can do and still be differentiable:
+
+   * Dynamic loops should not mutate any previously declared local variable. This means the loop must be side-effect free. A simple way to ensure this is to move the loop body into a separate function. Static loops that are unrolled at compile time do not have this restriction and can perform any computation.
+         
+   * Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g.: via ``wp.atomic_add()``)
+
+
 .. autoclass:: Tape
    :members:
 
-CUDA Graphs
+Graphs
 -----------
 
 Launching kernels from Python introduces significant additional overhead compared to C++ or native programs. To address this, Warp exposes the concept of `CUDA graphs <https://developer.nvidia.com/blog/cuda-graphs/>`_ to allow recording large batches of kernels and replaying them with very little CPU overhead.
@@ -440,4 +448,102 @@ Note that only launch calls are recorded in the graph, any Python executed outsi
 .. autofunction:: capture_begin
 .. autofunction:: capture_end
 .. autofunction:: capture_launch
+
+Interopability
+-----------------
+
+Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.
+
+NumPy
+#####
+
+Warp arrays may be converted to a NumPy array through the ``warp.array.numpy()`` method. When the Warp array lives on the ``cpu`` device this will return a zero-copy view onto the underlying Warp allocation. If the array lives on a ``cuda`` device then it will first be copied back to a temporary buffer and copied to NumPy.
+
+Warp CPU arrays also implement  the ``__array_interface__`` protocol and so can be used to construct NumPy arrays directly::
+
+   w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+   a = np.array(w)
+   print(a)   
+   > [1. 2. 3.]
+
+
+PyTorch
+#######
+
+Warp provides helper functions to convert arrays to/from PyTorch. Please see the ``warp.torch`` module for more details. Example usage is shown below::
+
+   import warp.torch
+
+   w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+
+   # convert to Torch tensor
+   t = warp.to_torch(w)
+
+   # convert from Torch tensor
+   w = warp.from_torch(t)
+
+
+CuPy/Numba
+##########
+
+Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks. Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the ``__cuda_array_interface__`` protocol, but not the other way around.
+
+JAX
+###
+
+Interop with JAX arrays is not currently well supported, although it is possible to first convert arrays to a Torch tensor and then to JAX via. the dlpack mechanism.
+
+
+Debugging
+---------
+
+Printing Values
+#################
+
+Often one of the best debugging methods is to simply print values from kernels. Warp supports printing all built-in types using the ``print()`` function, e.g.::
+
+   v = wp.vec3(1.0, 2.0, 3.0)
+
+   print(v)   
+
+In addition, formatted C-style printing is available through the ``printf()`` function, e.g.::
+
+   x = 1.0
+   i = 2
+
+   wp.printf("A float value %f, an int value: %d", x, i)
+
+.. note:: Formatted printing is only available for scalar types (e.g.: ``int`` and ``float``) not vector types.
+
+Printing Launches
+#################
+
+For complex applications it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose these issues Warp supports a simple option to print out all launches and arguments to the console::
+
+   wp.config.print_launches = True
+
+
+Step-Through Debugging
+######################
+
+It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code. Users should first compile the kernels in debug mode by setting::
+   
+   wp.config.mode = "debug"
+   
+This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process, the debugger should be attached, and a breakpoint inserted into the generated code (exported in the ``warp/gen`` folder).
+
+.. note:: Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.
+
+CUDA Verification
+#################
+
+It is possible to generate out-of-bounds memory access violations through poorly formed kernel code or inputs. In this case the CUDA runtime will detect the violation and put the CUDA context into an error state. Subsequent kernel launches may silently fail which can lead to hard to diagnose issues.
+
+If a CUDA error is suspected a simple verification method is to enable::
+
+   wp.config.verify_cuda = True
+
+This setting will check the CUDA context after every operation to ensure that it is still valid. If an error is encountered it will raise an exception that often helps to narrow down the problematic kernel.
+
+.. note:: Verifying CUDA state at each launch requires synchronizing CPU and GPU which has a significant overhead. Users should ensure this setting is only used during debugging.
 

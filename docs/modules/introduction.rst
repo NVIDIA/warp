@@ -145,7 +145,7 @@ Similar to Python tuples, built-in value types are immutable, and users should u
 Unsupported Features
 ^^^^^^^^^^^^^^^^^^^^
 
-To achieve high performance some dynamic language features are not supported:
+To achieve good performance on GPUs some dynamic language features are not supported:
 
 * Array slicing notation
 * Lambda functions
