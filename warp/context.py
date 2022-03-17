@@ -632,6 +632,9 @@ def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> w
         A warp.array object representing the allocation                
     """
 
+    if runtime == None:
+        raise RuntimeError("Warp not initialized, call wp.init() before use")
+
     if device != "cpu" and device != "cuda":
         raise RuntimeError(f"Trying to allocate array on unknown device {device}")
 
