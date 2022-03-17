@@ -75,7 +75,6 @@ mesh = wp.Mesh(
     velocities=None,
     indices=wp.array(indices, dtype=int, device=device))
 
-mesh.refit()
 
 with wp.ScopedTimer("render"):
 
@@ -87,5 +86,5 @@ with wp.ScopedTimer("render"):
 
     wp.synchronize()
 
-plt.imshow(pixels.to("cpu").numpy().reshape((height, width, 3)), origin="lower", interpolation="antialiased")
+plt.imshow(pixels.numpy().reshape((height, width, 3)), origin="lower", interpolation="antialiased")
 plt.show()
