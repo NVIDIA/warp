@@ -5,28 +5,30 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Sim Rigid Force
+#
+# Shows how to apply an external force (torque) to a rigid body causing
+# it to roll.
+#
+###########################################################################
+
 import os
 import sys
-import numpy as np
 import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+import numpy as np
 
 import warp as wp
-import warp.sim as wpsim
-
-from warp.utils import quat_identity
+import warp.sim
+import warp.sim.render
 
 wp.init()
 
 import warp.render
-
-np.random.seed(42)
-np.set_printoptions(threshold=sys.maxsize)
 
 # params
 sim_width = 8
@@ -42,9 +44,9 @@ sim_render = True
 sim_iterations = 1
 sim_relaxation = 1.0
 
-device = "cuda"
+device = wp.get_preferred_device()
 
-builder = wpsim.ModelBuilder()
+builder = wp.sim.ModelBuilder()
 
 builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
 builder.add_shape_box(body=0, hx=0.5, hy=0.5, hz=0.5, density=1000.0, ke=2.e+5, kd=1.e+4)
@@ -52,14 +54,14 @@ builder.add_shape_box(body=0, hx=0.5, hy=0.5, hz=0.5, density=1000.0, ke=2.e+5, 
 model = builder.finalize(device=device)
 model.ground = True
 
-integrator = wpsim.SemiImplicitIntegrator()
+integrator = wp.sim.SemiImplicitIntegrator()
 
 state_0 = model.state()
 state_1 = model.state()
 
 model.collide(state_0)
 
-stage = render.UsdRenderer("tests/outputs/test_sim_rigid_force.usd")
+stage = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_force.usd")
 
 for i in range(sim_frames):
     
@@ -68,12 +70,7 @@ for i in range(sim_frames):
         with wp.ScopedTimer("render"):
 
             stage.begin_frame(sim_time)
-            stage.render_ground()
-            #stage.render_mesh(name="fem", points=state_0.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
-            
-            body_q = state_0.body_q.to("cpu").numpy()
-            #stage.render_sphere(pos=body_q[0, 0:3], rot=body_q[0, 3:7], radius=float(model.shape_geo_scale.to("cpu").numpy()[0,0]), name="ball")
-            stage.render_box(pos=body_q[0, 0:3], rot=body_q[0, 3:7], extents=model.shape_geo_scale.to("cpu").numpy()[0,0:3], name="box")
+            stage.render(state_0)
             stage.end_frame()
 
     with wp.ScopedTimer("simulate"):
@@ -86,15 +83,12 @@ for i in range(sim_frames):
             state_1.clear_forces()
 
             state_0.body_f.assign([ [0.0, 0.0, -3000.0, 0.0, 0.0, 0.0], ])
-            #state_0.body_f = wp.array([ [0.0, 0.0, -3000.0, 0.0, 0.0, 0.0], ], dtype=wp.spatial_vector, device=device)
 
             integrator.simulate(model, state_0, state_1, sim_dt)
             sim_time += sim_dt
 
             # swap states
             (state_0, state_1) = (state_1, state_0)
-
-        wp.synchronize()
 
 
 stage.save()

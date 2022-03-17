@@ -5,15 +5,24 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example NanoVDB
+#
+# Shows how to implement a particle simulation with collision against
+# a NanoVDB signed-distance field. In this example the NanoVDB field
+# is created offline in Houdini. The particle kernel uses the Warp
+# wp.volume_sample_world() method to compute the SDF and normal at a point.
+#
+###########################################################################
+
 import os
 import sys
-from warp.utils import quat_identity
-import numpy as np
 import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import numpy as np
 
 import warp as wp
 import warp.render
@@ -26,6 +35,7 @@ def volume_grad(volume: wp.uint64,
     
     eps = 1.e-2
 
+    # compute gradient of the SDF using finite differences
     dx = wp.volume_sample_world(volume, p + wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR) - wp.volume_sample_world(volume, p - wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR)
     dy = wp.volume_sample_world(volume, p + wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR) - wp.volume_sample_world(volume, p - wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR)
     dz = wp.volume_sample_world(volume, p + wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR) - wp.volume_sample_world(volume, p - wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR)
@@ -87,15 +97,13 @@ sim_margin = 15.0
 
 device = wp.get_preferred_device()
 
-from pxr import Usd, UsdGeom, Gf, Sdf
-
 init_pos = 1000.0*(np.random.rand(num_particles, 3)*2.0 - 1.0) + np.array((0.0, 0.0, 3000.0))
 init_vel = np.random.rand(num_particles, 3)
 
 positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device=device)
 velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=device)
 
-# load collision volume, todo: replace with a simpler (smaller NVDB grid)
+# load collision volume
 file = np.fromfile("tests/assets/rocks.nvdb.grid", dtype=np.byte)
 
 # create Volume object

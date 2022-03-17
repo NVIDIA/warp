@@ -21,10 +21,10 @@ import warp.torch
 
 wp.init()
 
-
 class Ballistic:
 
-    sim_duration = 0.5       # seconds
+    # seconds
+    sim_duration = 0.5
 
     # control frequency
     frame_dt = 1.0/60.0
@@ -38,7 +38,7 @@ class Ballistic:
     render_time = 0.0
 
     train_iters = 500
-    train_rate = 100.0         #1.0/(sim_dt*sim_dt)
+    train_rate = 100.0         
 
     def __init__(self, render=True, device='cpu'):
 
@@ -58,7 +58,7 @@ class Ballistic:
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         if (self.render):
-            self.stage = wp.render.UsdRenderer("tests/outputs/example_sim_grad_bounce.usda")
+            self.stage = wp.render.UsdRenderer("tests/outputs/example_sim_grad_ballistic.usd")
 
             
     # define PyTorch autograd op to wrap simulate func

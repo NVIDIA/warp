@@ -5,12 +5,22 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import time
-import math
+###########################################################################
+# Example Sim Grad Bounce
+#
+# Shows how to use Warp to optimize the initial velocity of a particle
+# such that it bounces off the wall and floor in order to hit a target.
+#
+# This example uses the built-in wp.Tape() object to compute gradients of
+# the distance to target (loss) w.r.t the initial velocity, followed by
+# a simple gradient-descent optimization step.
+#
+###########################################################################
 
-# include parent path
 import os
 import sys
+
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
@@ -20,7 +30,6 @@ import warp.sim
 import warp.sim.render
 
 wp.init()
-
 
 class Bounce:
 
@@ -71,7 +80,7 @@ class Bounce:
         for i in range(self.sim_steps+1):
             self.states.append(self.model.state(requires_grad=True))
 
-        # one-shot contact creation (valid if we're doing simple collision against a non-changing normal)
+        # one-shot contact creation (valid if we're doing simple collision against a constant normal plane)
         wp.sim.collide(self.model, self.states[0])
 
         if (self.render):
@@ -84,7 +93,8 @@ class Bounce:
                     loss: wp.array(dtype=float)):
 
         # distance to target
-        loss[0] = wp.length(pos[0]-target)
+        delta = pos[0]-target
+        loss[0] = wp.dot(delta, delta)
 
     @wp.kernel
     def step_kernel(x: wp.array(dtype=wp.vec3),
@@ -229,7 +239,7 @@ class Bounce:
 
 
 
-bounce = Bounce(adapter="cuda", profile=False, render=True)
+bounce = Bounce(adapter=wp.get_preferred_device(), profile=False, render=True)
 bounce.check_grad()
 bounce.train_graph('gd')
  

@@ -5,15 +5,25 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+###########################################################################
+# Example DEM
+#
+# Shows how to implement a DEM particle simulation with cohesion between
+# particles. Neighbors are found using the wp.HashGrid class, and
+# wp.hash_grid_query(), wp.hash_grid_query_next() kernel methods.
+#
+###########################################################################
+
 import os
 import sys
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import warp as wp
 import numpy as np
 
-from warp.render import UsdRenderer
+import warp as wp
+import warp.render 
 
 wp.init()
 
@@ -155,7 +165,7 @@ k_mu = 100000.0 # for cohesive materials
 
 inv_mass = 64.0
 
-renderer = UsdRenderer("tests/outputs/example_dem.usd")
+renderer = wp.render.UsdRenderer("tests/outputs/example_dem.usd")
 
 use_graph = True
 if (use_graph):

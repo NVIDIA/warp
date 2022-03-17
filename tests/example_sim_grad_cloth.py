@@ -72,7 +72,7 @@ class Cloth:
             self.states.append(self.model.state(requires_grad=True))
 
         if (self.render):
-            self.stage = wp.sim.render.SimRenderer(self.model, "tests/outputs/example_sim_grad_bounce.usd")
+            self.stage = wp.sim.render.SimRenderer(self.model, "tests/outputs/example_sim_grad_cloth.usd")
 
 
     @wp.kernel

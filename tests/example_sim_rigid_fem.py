@@ -5,28 +5,28 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Sim Rigid FEM
+#
+# Shows how to set up a rigid sphere colliding with an FEM beam
+# using wp.sim.ModelBuilder().
+#
+###########################################################################
+
 import os
 import sys
-import numpy as np
 import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+import numpy as np
 
 import warp as wp
-import warp.sim as wpsim
-
-from warp.utils import quat_identity
+import warp.sim
+import warp.sim.render
 
 wp.init()
-
-import warp.render
-
-np.random.seed(42)
-np.set_printoptions(threshold=sys.maxsize)
 
 # params
 sim_width = 8
@@ -38,13 +38,12 @@ sim_duration = 5.0
 sim_frames = int(sim_duration*sim_fps)
 sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
-sim_render = True
 sim_iterations = 1
 sim_relaxation = 1.0
 
-device = "cuda"
+device = wp.get_preferred_device()
 
-builder = wpsim.ModelBuilder()
+builder = wp.sim.ModelBuilder()
 
 
 builder.add_soft_grid(
@@ -72,28 +71,22 @@ model.soft_contact_ke = 1.e+3
 model.soft_contact_kd = 0.0
 model.soft_contact_kf = 1.e+3
 
-integrator = wpsim.SemiImplicitIntegrator()
+integrator = wp.sim.SemiImplicitIntegrator()
 
 state_0 = model.state()
 state_1 = model.state()
 
 model.collide(state_0)
 
-stage = warp.render.UsdRenderer("tests/outputs/test_sim_rigid_fem.usd")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_fem.usd")
 
 for i in range(sim_frames):
     
-    if (sim_render):
-    
-        with wp.ScopedTimer("render"): 
+    with wp.ScopedTimer("render"): 
 
-            stage.begin_frame(sim_time)
-            stage.render_ground()
-            stage.render_mesh(name="fem", points=state_0.particle_q.to("cpu").numpy(), indices=model.tri_indices.to("cpu").numpy())
-            
-            body_q = state_0.body_q.to("cpu").numpy()
-            stage.render_sphere(pos=body_q[0, 0:3], rot=body_q[0, 3:7], radius=float(model.shape_geo_scale.to("cpu").numpy()[0,0]), name="ball")
-            stage.end_frame()
+        renderer.begin_frame(sim_time)
+        renderer.render(state_0)
+        renderer.end_frame()
 
     with wp.ScopedTimer("simulate"):
 
@@ -110,7 +103,5 @@ for i in range(sim_frames):
             # swap states
             (state_0, state_1) = (state_1, state_0)
 
-        wp.synchronize()
 
-
-stage.save()
+renderer.save()

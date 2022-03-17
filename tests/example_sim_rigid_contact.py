@@ -5,23 +5,26 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Sim Rigid Contact
+#
+# Shows how to set up free rigid bodies with different shape types falling
+# and colliding against the ground using wp.sim.ModelBuilder().
+#
+###########################################################################
+
 import os
 import sys
-import numpy as np
 import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+import numpy as np
 
 import warp as wp
 import warp.sim
 import warp.sim.render
-
-from warp.utils import quat_identity
-
 
 wp.init()
 
@@ -31,7 +34,7 @@ sim_time = 0.0
 
 num_bodies = 8
 
-device = "cuda"
+device = wp.get_preferred_device()
 
 builder = wp.sim.ModelBuilder()
 
@@ -44,7 +47,7 @@ kf = 100.0
 # boxes
 for i in range(num_bodies):
     
-    b = builder.add_body(origin=wp.transform((i, 1.0, 0.0), quat_identity()))
+    b = builder.add_body(origin=wp.transform((i, 1.0, 0.0), wp.quat_identity()))
 
     s = builder.add_shape_box( 
         pos=(0.0, 0.0, 0.0),
@@ -59,7 +62,7 @@ for i in range(num_bodies):
 # spheres
 for i in range(num_bodies):
     
-    b = builder.add_body(origin=wp.transform((i, 1.0, 2.0), quat_identity()))
+    b = builder.add_body(origin=wp.transform((i, 1.0, 2.0), wp.quat_identity()))
 
     s = builder.add_shape_sphere(
         pos=(0.0, 0.0, 0.0),
@@ -72,7 +75,7 @@ for i in range(num_bodies):
 # capsules
 for i in range(num_bodies):
     
-    b = builder.add_body(origin=wp.transform((i, 1.0, 4.0), quat_identity()))
+    b = builder.add_body(origin=wp.transform((i, 1.0, 4.0), wp.quat_identity()))
 
     s = builder.add_shape_capsule( 
         pos=(0.0, 0.0, 0.0),
@@ -93,10 +96,10 @@ model.ground = True
 integrator = wp.sim.SemiImplicitIntegrator()
 state = model.state()
 
+# one time collide for ground contact
 model.collide(state)
 
-# one time collide for ground contact
-renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_contact.usda")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_contact.usd")
 
 for i in range(sim_steps):
 

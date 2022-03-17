@@ -5,20 +5,28 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Sim Cloth
+#
+# Shows a simulation of an FEM cloth model colliding against a static
+# rigid body mesh using the wp.sim.ModelBuilder().
+#
+###########################################################################
+
 import os
 import sys
-import numpy as np
 import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+import numpy as np
 
 import warp as wp
 import warp.sim
 import warp.sim.render
+
+from pxr import Usd, UsdGeom, Gf, Sdf
 
 wp.init()
 

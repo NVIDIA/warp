@@ -5,10 +5,20 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
+###########################################################################
+# Example Sim Humanoid
+#
+# Shows how to set up a simulation of a rigid-body Humanoid articulation based
+# on the OpenAI gym environment using the wp.sim.ModelBuilder() and MCJF
+# importer. Note this example does not include a trained policy.
+#
+###########################################################################
+
 
 import os
 import sys
+import math
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
@@ -16,8 +26,6 @@ import numpy as np
 import warp as wp
 import warp.sim
 import warp.sim.render
-
-import matplotlib.pyplot as plt
 
 wp.init()
 
@@ -35,8 +43,6 @@ class Robot:
     sim_time = 0.0
     render_time = 0.0
 
-    name = "nv_humanoid"
-
     def __init__(self, render=True, num_envs=1, device='cpu'):
 
         builder = wp.sim.ModelBuilder()
@@ -48,12 +54,12 @@ class Robot:
 
         for i in range(num_envs):
 
-            wp.sim.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
+            wp.sim.parse_mjcf("./tests/assets/nv_humanoid.xml", builder,
                 stiffness=0.0,
                 damping=0.1,
                 armature=0.007,
                 armature_scale=10.0,
-                contact_ke=1.e+3*2.0,
+                contact_ke=1.e+4,
                 contact_kd=1.e+2,
                 contact_kf=1.e+2,
                 contact_mu=0.5,
@@ -83,7 +89,7 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/example_sim_" + self.name + ".usd")
+            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/example_sim_humanoid.usd")
 
  
     def run(self, render=True):
@@ -186,10 +192,6 @@ class Robot:
 
                     self.renderer.save()
 
-
-                # wp.capture_launch(graph)
-                # self.sim_time += self.frame_dt
-
             wp.synchronize()
 
  
@@ -223,6 +225,8 @@ if profile:
         print(f"envs: {env_size[i]} steps/second: {env_times[i]}")
 
     # plot
+    import matplotlib.pyplot as plt
+
     plt.figure(1)
     plt.plot(env_size, env_times)
     plt.xscale('log')
@@ -233,5 +237,5 @@ if profile:
 
 else:
 
-    robot = Robot(render=True, device='cuda', num_envs=1)
+    robot = Robot(render=True, device=wp.get_preferred_device(), num_envs=1)
     robot.run()
