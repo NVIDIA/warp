@@ -820,7 +820,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
         adj_args = adj_inputs + adj_outputs
 
         if (len(fwd_args)) != (len(kernel.adj.args)): 
-            raise RuntimeError(f"Unable to launch kernel, passed {len(fwd_args)} args but kernel requires {len(kernel.adj.args)}")
+            raise RuntimeError(f"Unable to launch kernel '{kernel.key}', passed {len(fwd_args)} args but kernel requires {len(kernel.adj.args)}")
 
         pack_args(fwd_args, params)
         pack_args(adj_args, params)
