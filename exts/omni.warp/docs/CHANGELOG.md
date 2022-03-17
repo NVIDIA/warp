@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.1.25] - 2022-03-15
+
+- Add support for class methods to be Warp kernels
+- Add HashGrid reserve() so it can be used with CUDA graphs
+- Add support for CUDA graph capture of tape forward/backward passes
+- Add support for Python 3.8.x and 3.9.x
+- 
+
+
 ## [0.1.24] - 2022-03-03
 
 ### Warp Core

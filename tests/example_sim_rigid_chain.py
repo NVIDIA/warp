@@ -60,10 +60,10 @@ for c, t in enumerate(chain_types):
             joint_limit_lower=-np.deg2rad(60.0)
             joint_limit_upper=np.deg2rad(60.0)
 
-        elif joint_type == wp.sim.JOINT_PRISMATIC:
-            joint_axis=(1.0, 0.0, 0.0),
-            joint_limit_lower=0.0,
-            joint_limit_upper=0.5,
+        elif joint_type == wp.sim.JOINT_UNIVERSAL:
+            joint_axis=(1.0, 0.0, 0.0)
+            joint_limit_lower=-np.deg2rad(60.0),
+            joint_limit_upper=np.deg2rad(60.0),
 
         elif joint_type == wp.sim.JOINT_BALL:
             joint_axis=(0.0, 0.0, 0.0)

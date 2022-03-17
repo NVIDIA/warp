@@ -601,6 +601,10 @@ add_builtin("div", input_types={"x": int, "y": int}, value_type=int, doc="", gro
 add_builtin("div", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
 add_builtin("div", input_types={"x": vec2, "y": float}, value_type=vec2, doc="", group="Operators")
 add_builtin("div", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
+add_builtin("div", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")
+
+add_builtin("floordiv", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
+add_builtin("floordiv", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
 
 add_builtin("neg", input_types={"x": int}, value_type=int, doc="", group="Operators")
 add_builtin("neg", input_types={"x": float}, value_type=float, doc="", group="Operators")

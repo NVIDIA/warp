@@ -33,7 +33,7 @@ class Robot:
     sim_time = 0.0
     render_time = 0.0
 
-    name = "ant"
+    name = "nv_ant"
 
     def __init__(self, render=True, num_envs=1, device='cpu'):
 

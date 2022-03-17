@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="warp",                                          
-    version="0.1.24",
+    version="0.1.25",
     author="NVIDIA",
     author_email="mmacklin@nvidia.com",
     description="High Performance Python DSL for Omniverse",

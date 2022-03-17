@@ -46,7 +46,7 @@ def render(mesh: wp.uint64,
     n = wp.vec3()
     f = int(0)
 
-    color = wp.vec3(0.13, 0.0, 0.0)
+    color = wp.vec3(0.0, 0.0, 0.0)
 
     if wp.mesh_query_ray(mesh, ro, rd, 1.e+6, t, u, v, sign, n, f):
         color = n*0.5 + wp.vec3(0.5, 0.5, 0.5)
@@ -57,12 +57,12 @@ def render(mesh: wp.uint64,
 device = "cuda"
 width = 1024
 height = 1024
-cam_pos = (0.0, 0.0, 2.0)
+cam_pos = (0.0, 1.0, 2.0)
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-stage = Usd.Stage.Open("./tests/assets/suzanne_two.usda")
-mesh_geom = UsdGeom.Mesh(stage.GetPrimAtPath("/World/model/Suzanne"))
+stage = Usd.Stage.Open("./tests/assets/bunny.usd")
+mesh_geom = UsdGeom.Mesh(stage.GetPrimAtPath("/bunny/bunny"))
 
 points = np.array(mesh_geom.GetPointsAttr().Get())
 indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())

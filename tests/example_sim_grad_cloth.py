@@ -11,6 +11,7 @@ import math
 # include parent path
 import os
 import sys
+from warp.utils import ScopedTimer
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
@@ -21,8 +22,7 @@ import warp.sim.render
 
 wp.init()
 
-
-class Bounce:
+class Cloth:
 
     # seconds
     sim_duration = 0.6
@@ -63,16 +63,13 @@ class Bounce:
                 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        self.target = (-2.0, 1.0, 0.0)
+        self.target = (2.0, 1.0, 0.0)
         self.loss = wp.zeros(1, dtype=wp.float32, device=adapter, requires_grad=True)  
 
         # allocate sim states for trajectory
         self.states = []
         for i in range(self.sim_steps+1):
             self.states.append(self.model.state(requires_grad=True))
-
-        # one-shot contact creation (valid if we're doing simple collision against a non-changing normal)
-        wp.sim.collide(self.model, self.states[0])
 
         if (self.render):
             self.stage = wp.sim.render.SimRenderer(self.model, "tests/outputs/example_sim_grad_bounce.usd")
@@ -178,17 +175,17 @@ class Bounce:
 
         for i in range(self.train_iters):
    
-            with wp.ScopedTimer("Forward", active=self.profile):
+            with ScopedTimer("Forward", active=self.profile):
                 with tape:
                     self.compute_loss()
 
-            with wp.ScopedTimer("Backward", active=self.profile):
+            with ScopedTimer("Backward", active=self.profile):
                 tape.backward(self.loss)
 
-            with wp.ScopedTimer("Render", active=self.profile):
+            with ScopedTimer("Render", active=self.profile):
                 self.render()
 
-            with wp.ScopedTimer("Step", active=self.profile):
+            with ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
                 x_grad = tape.gradients[self.states[0].particle_qd]
 
@@ -202,23 +199,21 @@ class Bounce:
 
     def train_graph(self, mode='gd'):
 
-        # capture forward/backward passes
         tape = wp.Tape(capture=True)
         with tape:
             self.compute_loss()
 
         tape.backward(self.loss)
 
-        # replay and optimize
         for i in range(self.train_iters):
    
-            with wp.ScopedTimer("Replay", active=self.profile):
+            with ScopedTimer("Replay", active=self.profile):
                 tape.replay()
 
-            with wp.ScopedTimer("Render", active=self.profile):
+            with ScopedTimer("Render", active=self.profile):
                 self.render()
 
-            with wp.ScopedTimer("Step", active=self.profile):
+            with ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
                 x_grad = tape.gradients[self.states[0].particle_qd]
 
@@ -229,7 +224,7 @@ class Bounce:
 
 
 
-bounce = Bounce(adapter="cuda", profile=False, render=True)
+bounce = Cloth(adapter="cuda", profile=False, render=True)
 bounce.check_grad()
 bounce.train_graph('gd')
  

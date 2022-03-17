@@ -5,7 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from tkinter import E
 import numpy as np
 import warp as wp
 
@@ -50,10 +49,6 @@ class Tape:
         if (loss):
             self.gradients[loss] = wp.array(np.ones(1), dtype=wp.float32, device=loss.device)
 
-        # insert any user specified gradients (e.g.: from Torch)
-        if (grads):
-            self.gradients.update(grads)
-
         # force allocation of all adjoints before capture
         if self.capture:
 
@@ -73,6 +68,10 @@ class Tape:
             for k, v in self.gradients.items():
                 if (k != loss):
                     v.zero_()
+
+        # insert any user specified gradients (e.g.: from Torch)
+        if (grads):
+            self.gradients.update(grads)
 
         # run launches backwards
         for launch in reversed(self.launches):

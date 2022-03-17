@@ -49,7 +49,7 @@ class Robot:
 
         for i in range(num_envs):
 
-            util.parse_mjcf("./tests/assets/ant.xml", builder,
+            wp.sim.parse_mjcf("./tests/assets/nv_ant.xml", builder,
                 stiffness=0.0,
                 damping=1.0,
                 armature=0.1,

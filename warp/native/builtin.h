@@ -116,6 +116,7 @@ inline CUDA_CALLABLE int max(int a, int b) { return a>b?a:b; }
 inline CUDA_CALLABLE int abs(int x) { return ::abs(x); }
 inline CUDA_CALLABLE int sign(int x) { return x < 0 ? -1 : 1; }
 inline CUDA_CALLABLE int clamp(int x, int a, int b) { return min(max(a, x), b); }
+inline CUDA_CALLABLE int floordiv(int a, int b) { return a/b; }
 
 // implements for-loop comparison to emulate Python range() loops with negative arguments
 inline CUDA_CALLABLE bool cmp(int iter, int end, int step)
@@ -141,6 +142,8 @@ inline CUDA_CALLABLE void adj_max(int a, int b, int& adj_a, int& adj_b, int adj_
 inline CUDA_CALLABLE void adj_abs(int x, int adj_x, int& adj_ret) { }
 inline CUDA_CALLABLE void adj_sign(int x, int adj_x, int& adj_ret) { }
 inline CUDA_CALLABLE void adj_clamp(int x, int a, int b, int& adj_x, int& adj_a, int& adj_b, int adj_ret) { }
+inline CUDA_CALLABLE void adj_floordiv(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
+
 
 // basic ops for float types
 inline CUDA_CALLABLE float mul(float a, float b) { return a*b; }
@@ -153,6 +156,7 @@ inline CUDA_CALLABLE float mod(float a, float b) { return fmodf(a, b); }
 inline CUDA_CALLABLE float log(float a) { return logf(a); }
 inline CUDA_CALLABLE float exp(float a) { return expf(a); }
 inline CUDA_CALLABLE float pow(float a, float b) { return powf(a, b); }
+inline CUDA_CALLABLE float floordiv(float a, float b) { return float(int(a/b)); }
 
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
@@ -188,7 +192,7 @@ inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, 
 inline CUDA_CALLABLE void adj_log(float a, float& adj_a, float adj_ret) { adj_a += (1.f/a)*adj_ret; }
 inline CUDA_CALLABLE void adj_exp(float a, float& adj_a, float adj_ret) { adj_a += exp(a)*adj_ret; }
 inline CUDA_CALLABLE void adj_pow(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*pow(a, b-1.f)*adj_ret; adj_b += log(a)*pow(a, b)*adj_ret; }
-
+inline CUDA_CALLABLE void adj_floordiv(float a, float b, float& adj_a, float& adj_b, float adj_ret) { }
 
 inline CUDA_CALLABLE void adj_min(float a, float b, float& adj_a, float& adj_b, float adj_ret)
 {
