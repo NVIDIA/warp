@@ -48,14 +48,14 @@ class Bounce:
 
     render_time = 0.0
 
-    train_iters = 500
+    train_iters = 250
     train_rate = 0.01
 
     def __init__(self, render=True, profile=False, adapter='cpu'):
 
         builder = wp.sim.ModelBuilder()
 
-        builder.add_particle(pos=(0, 1.0, 0.0), vel=(5.0, -5.0, 0.0), mass=1.0)
+        builder.add_particle(pos=(-0.5, 1.0, 0.0), vel=(5.0, -5.0, 0.0), mass=1.0)
         builder.add_shape_box(body=-1, pos=(2.0, 1.0, 0.0), hx=0.25, hy=1.0, hz=1.0)
 
         self.device = adapter
@@ -72,7 +72,7 @@ class Bounce:
                 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        self.target = (-2.0, 1.0, 0.0)
+        self.target = (-2.0, 1.5, 0.0)
         self.loss = wp.zeros(1, dtype=wp.float32, device=adapter, requires_grad=True)  
 
         # allocate sim states for trajectory
@@ -122,13 +122,23 @@ class Bounce:
 
         return self.loss
 
-    def render(self):
+    def render(self, iter):
+
+        # render every 16 frames
+        if iter % 16 > 0:
+            return
+
+        # draw trajectory
+        traj_verts = [self.states[0].particle_q.numpy()[0].tolist()]
 
         for i in range(0, self.sim_steps, self.sim_substeps):
+
+            traj_verts.append(self.states[i].particle_q.numpy()[0].tolist())
 
             self.stage.begin_frame(self.render_time)
             self.stage.render(self.states[i])
             self.stage.render_box(pos=self.target, rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1), name="target")
+            self.stage.render_line_strip(vertices=traj_verts, color=wp.render.bourke_color_map(0.0, 7.0, self.loss.numpy()[0]), radius=0.02, name=f"traj_{iter}")
             self.stage.end_frame()
 
             self.render_time += self.frame_dt
@@ -196,7 +206,7 @@ class Bounce:
                 tape.backward(self.loss)
 
             with wp.ScopedTimer("Render", active=self.profile):
-                self.render()
+                self.render(i)
 
             with wp.ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
@@ -226,7 +236,7 @@ class Bounce:
                 tape.replay()
 
             with wp.ScopedTimer("Render", active=self.profile):
-                self.render()
+                self.render(i)
 
             with wp.ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
