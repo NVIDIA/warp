@@ -418,7 +418,7 @@ class Model:
 
         Note:
             Currently this method uses an 'all pairs' approach to contact generation that is
-            state indepdendent. In the future this will change and will create a node in
+            state independent. In the future this will change and will create a node in
             the computational graph to propagate gradients as a function of state.
 
         Todo:
@@ -1617,7 +1617,6 @@ class ModelBuilder:
         self.body_com[i] = new_com
 
 
-    # returns a (model, state) pair given the description
     def finalize(self, device: str) -> Model:
         """Convert this builder object to a concrete model for simulation.
 
