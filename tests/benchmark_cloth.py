@@ -258,7 +258,7 @@ timers = {}
 if len(sys.argv) > 1:
     mode = sys.argv[1]
 else:
-    mode = "torch_gpu"
+    mode = "warp_gpu"
 
 run_benchmark(mode, 16, timers, render=True)
 run_benchmark(mode, 32, timers, render=False)
