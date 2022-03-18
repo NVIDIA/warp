@@ -60,7 +60,29 @@ def test_operators_scalar_int():
     expect_eq(f, -1)
     # expect_eq(g, 256)
     expect_eq(h, 3)
+
+@wp.kernel
+def test_operators_vector_index():
+
+    v = wp.vec4(1.0, 2.0, 3.0, 4.0)
+
+    expect_eq(v[0], 1.0)
+    expect_eq(v[1], 2.0)
+    expect_eq(v[2], 3.0)
+    expect_eq(v[3], 4.0)
+
+
+@wp.kernel
+def test_operators_matrix_index():
+
+    m22 = wp.mat22(1.0, 2.0, 3.0, 4.0)
+
+    expect_eq(m22[0,0], 1.0)
+    expect_eq(m22[0,1], 2.0)
+    expect_eq(m22[1,0], 3.0)
+    expect_eq(m22[1,1], 4.0)
     
+
 
 @wp.kernel
 def test_operators_vec3():
@@ -121,6 +143,8 @@ class TestOperators(test_base.TestBase):
 
 TestOperators.add_kernel_test(test_operators_scalar_float, dim=1, devices=devices)
 TestOperators.add_kernel_test(test_operators_scalar_int, dim=1, devices=devices)
+TestOperators.add_kernel_test(test_operators_matrix_index, dim=1, devices=devices)
+TestOperators.add_kernel_test(test_operators_vector_index, dim=1, devices=devices)
 TestOperators.add_kernel_test(test_operators_vec3, dim=1, devices=devices)
 TestOperators.add_kernel_test(test_operators_vec4, dim=1, devices=devices)
 

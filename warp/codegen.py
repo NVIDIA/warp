@@ -763,14 +763,20 @@ class Adjoint:
                     # handles non-array types, e.g: vec3, mat33, etc
                     indices = []
 
-                    if isinstance(node.slice.value, ast.Tuple):
-                        # handles the M[i, j] case
+                    if isinstance(node.slice, ast.Tuple):
+                        # handles the M[i, j] case (Python 3.8.x upward)
+                        for arg in node.slice.elts:
+                            var = adj.eval(arg)
+                            indices.append(var)
+
+                    elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
+                        # handles the M[i, j] case (Python 3.7.x)
                         for arg in node.slice.value.elts:
                             var = adj.eval(arg)
                             indices.append(var)
                     else:
                         # simple expression
-                        var = adj.eval(node.slice.value)
+                        var = adj.eval(node.slice)
                         indices.append(var)
 
                     out = adj.add_call(adj.builtin_functions["index"], [target, *indices])
@@ -782,7 +788,7 @@ class Adjoint:
                 if (isinstance(node.targets[0], ast.Subscript)):
                     
                     target = adj.eval(node.targets[0].value)
-                    index = adj.eval(node.targets[0].slice.value)
+                    index = adj.eval(node.targets[0].slice)
                     value = adj.eval(node.value)
 
                     if (isinstance(target.type, array)):
