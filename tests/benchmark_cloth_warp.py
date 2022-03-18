@@ -7,6 +7,9 @@
 
 import warp as wp
 
+wp.init()
+
+
 @wp.kernel
 def eval_springs(x: wp.array(dtype=wp.vec3),
                  v: wp.array(dtype=wp.vec3),

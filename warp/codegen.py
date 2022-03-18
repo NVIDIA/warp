@@ -1165,19 +1165,6 @@ def codegen_func(adj, device='cpu'):
 
     return_type = 'void' if adj.return_var is None else adj.return_var.ctype()
 
-    # s = "{} {}_forward(".format(return_type, adj.func.__name__)
-
-    # sep = ""
-    # for arg in adj.args:
-    #     if (arg.label != 'return'):
-    #         s += sep + str(arg.type.__name__) + " var_" + arg.label
-    #         sep = ", "
-
-    # reverse header
-    # s = "void {}_reverse(".format(adj.func.__name__)
-
-    # return s
-
     forward_args = ""
     reverse_args = ""
     # s = ""
@@ -1199,25 +1186,6 @@ def codegen_func(adj, device='cpu'):
         sep = ", "
 
     reverse_args += sep + return_type + " & adj_ret"
-
-    # reverse args
-
-    # add primal version of parameters
-    # sep = ""
-    # for var in adj.args:
-    #     if (var.label != 'return'):
-    #         s += sep + var.ctype() + " var_" + var.label
-    #         sep = ", "
-
-    # # add adjoint version of parameters
-    # for var in adj.args:
-    #     if (var.label != 'return'):
-    #         s += sep + var.ctype() + "& adj_" + var.label
-    #         sep = ", "
-
-    # # add adjoint of output
-    # if ('return' in adj.symbols and adj.symbols['return'] != None):
-    #     s += sep + str(adj.symbols['return'].type.__name__) + " adj_" + str(adj.symbols['return'])
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type='function', device=device)
@@ -1262,8 +1230,6 @@ def codegen_kernel(adj, device='cpu'):
     forward_body = codegen_func_forward(adj, func_type='kernel', device=device)
     reverse_body = codegen_func_reverse(adj, func_type='kernel', device=device)
 
-    # import pdb
-    # pdb.set_trace()
 
     if device == 'cpu':
         template = cpu_kernel_template
@@ -1371,67 +1337,3 @@ def codegen_module_decl(adj, device='cpu'):
     s = template.format(name=adj.func.__name__, forward_args=indent(forward_args), reverse_args=indent(reverse_args))
     return s
 
-
-
-
-
-
-
-
-
-
-
-
-# def matmul(tape, m, n, k, t1, t2, A, B, C, device):
-    
-#     if (device == 'cpu'):
-#         threads = 1
-#     else:
-#         threads = 256   # should match the threadblock size
-
-#     tape.launch(
-#         func=wp.eval_dense_gemm,
-#         dim=threads,
-#         inputs=[
-#             m,
-#             n,
-#             k,
-#             t1,
-#             t2,
-#             A,
-#             B,
-#         ],
-#         outputs=[
-#             C
-#         ],
-#         device=device,
-#         preserve_output=False)
-
-
-# def matmul_batched(tape, batch_count, m, n, k, t1, t2, A_start, B_start, C_start, A, B, C, device):
-    
-#     if (device == 'cpu'):
-#         threads = batch_count
-#     else:
-#         threads = 256*batch_count   # must match the threadblock size used in adjoint.py
-
-#     tape.launch(
-#         func=wp.eval_dense_gemm_batched,
-#         dim=threads,
-#         inputs=[
-#             m,
-#             n,
-#             k,
-#             t1,
-#             t2,
-#             A_start,
-#             B_start,
-#             C_start,
-#             A,
-#             B,
-#         ],
-#         outputs=[
-#             C
-#         ],
-#         device=device,
-#         preserve_output=False)

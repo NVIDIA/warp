@@ -5,16 +5,24 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+###########################################################################
+# Example Sim Granular
+#
+# Shows how to set up a particle-based granular material model using the
+# wp.sim.ModelBuilder().
+#
+###########################################################################
+
 import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import numpy as np
+
 import warp as wp
 import warp.sim
 import warp.sim.render
-
-import numpy as np
 
 wp.init()
 

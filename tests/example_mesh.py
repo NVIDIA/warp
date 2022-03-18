@@ -5,13 +5,23 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+###########################################################################
+# Example Mesh
+#
+# Shows how to implement a PBD particle simulation with collision against
+# a deforming triangle mesh. The mesh collision uses wp.mesh_query_point()
+# to compute the closest point, and wp.Mesh.refit() to update the mesh
+# object after deformation.
+#
+###########################################################################
+
 import os
 import sys
-import numpy as np
-import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import numpy as np
 
 import warp as wp
 import warp.render
@@ -71,10 +81,6 @@ def simulate(positions: wp.array(dtype=wp.vec3),
             n = wp.normalize(delta)*sign
             xpred = xpred - n*err
 
-        # # ground collision
-        # if (xpred[1] < margin):
-        #     xpred = wp.vec3(xpred[0], margin, xpred[2])
-
     # pbd update
     v = (xpred - x)*(1.0/dt)
     x = xpred
@@ -90,7 +96,6 @@ sim_dt = 1.0/60.0
 
 sim_time = 0.0
 sim_timers = {}
-sim_render = True
 
 sim_restitution = 0.0
 sim_margin = 0.1
@@ -115,8 +120,7 @@ init_vel = np.random.rand(num_particles, 3)*0.0
 positions = wp.from_numpy(init_pos, dtype=wp.vec3, device=device)
 velocities = wp.from_numpy(init_vel, dtype=wp.vec3, device=device)
 
-if (sim_render):
-    stage = warp.render.UsdRenderer("tests/outputs/example_mesh.usd")
+stage = warp.render.UsdRenderer("tests/outputs/example_mesh.usd")
 
 for i in range(sim_steps):
 
@@ -128,6 +132,7 @@ for i in range(sim_steps):
             inputs=[mesh.points, sim_time],
             device=device)
 
+        # refit the mesh BVH to account for the deformation
         mesh.refit()
 
         wp.launch(
@@ -136,22 +141,17 @@ for i in range(sim_steps):
             inputs=[positions, velocities, mesh.id, sim_restitution, sim_margin, sim_dt], 
             device=device)
 
-        wp.synchronize()
-    
     # render
-    if (sim_render):
+    with wp.ScopedTimer("render", detailed=False):
 
-        with wp.ScopedTimer("render", detailed=False):
+        stage.begin_frame(sim_time)
 
-            stage.begin_frame(sim_time)
+        stage.render_mesh(name="mesh", points=mesh.points.numpy(), indices=mesh.indices.numpy())
+        stage.render_points(name="points", points=positions.numpy(), radius=sim_margin)
 
-            stage.render_mesh(name="mesh", points=mesh.points.numpy(), indices=mesh.indices.numpy())
-            stage.render_points(name="points", points=positions.numpy(), radius=sim_margin)
-
-            stage.end_frame()
+        stage.end_frame()
 
     sim_time += sim_dt
 
-if (sim_render):
-    stage.save()
+stage.save()
 

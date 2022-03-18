@@ -134,6 +134,21 @@ Scalar Math
    Return atan2 of x.
 
 
+.. function:: sinh(x: float) -> float
+
+   Return sinh of x.
+
+
+.. function:: cosh(x: float) -> float
+
+   Return cosh of x.
+
+
+.. function:: tanh(x: float) -> float
+
+   Return tanh of x.
+   
+
 .. function:: log(x: float) -> float
 
    Return the natural log (base-e) of x, where x is positive.
@@ -1095,6 +1110,15 @@ Operators
 
 
 .. function:: div(x: vec3, y: float) -> vec3
+
+
+.. function:: div(x: vec4, y: float) -> vec4
+
+
+.. function:: floordiv(x: int, y: int) -> int
+
+
+.. function:: floordiv(x: float, y: float) -> float
 
 
 .. function:: neg(x: int) -> int

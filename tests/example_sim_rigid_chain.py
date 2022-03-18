@@ -5,11 +5,20 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Sim Rigid Chain
+#
+# Shows how to set up a chain of rigid bodies connected by different joint
+# types using wp.sim.ModelBuilder(). There is one chain for each joint
+# type, including fixed joints which act as a flexible beam.
+#
+###########################################################################
+
 import os
 import sys
 import math
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
@@ -110,7 +119,7 @@ model.ground = False
 integrator = wp.sim.SemiImplicitIntegrator()
 state = model.state()
 
-renderer = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_chain.usd")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_rigid_chain.usd")
 
 for i in range(sim_steps):
 

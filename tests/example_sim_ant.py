@@ -5,10 +5,20 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
+###########################################################################
+# Example Sim Ant
+#
+# Shows how to set up a simulation of a rigid-body Ant articulation based on
+# the OpenAI gym environment using the wp.sim.ModelBuilder() and MCJF
+# importer. Note this example does not include a trained policy.
+#
+###########################################################################
 
 import os
 import sys
+import math
+
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
@@ -33,8 +43,6 @@ class Robot:
     sim_time = 0.0
     render_time = 0.0
 
-    name = "nv_ant"
-
     def __init__(self, render=True, num_envs=1, device='cpu'):
 
         builder = wp.sim.ModelBuilder()
@@ -46,7 +54,7 @@ class Robot:
 
         for i in range(num_envs):
 
-            wp.sim.parse_mjcf("./tests/assets/" + self.name + ".xml", builder,
+            wp.sim.parse_mjcf("./tests/assets/nv_ant.xml", builder,
                 stiffness=0.0,
                 damping=1.0,
                 armature=0.1,
@@ -64,14 +72,13 @@ class Robot:
             dof_start = i*dof_count
 
             # set joint targets to rest pose in mjcf
-            if (self.name == "ant"):
 
-                # base
-                builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
-                builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
+            # base
+            builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
+            builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
 
-                # joints
-                builder.joint_q[coord_start+7:coord_start+coord_count] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
+            # joints
+            builder.joint_q[coord_start+7:coord_start+coord_count] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
 
 
         # finalize model
@@ -85,7 +92,7 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/example_sim_" + self.name + ".usd")
+            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/example_sim_ant.usd")
 
 
     def run(self, render=True):
@@ -186,5 +193,5 @@ if profile:
 
 else:
 
-    robot = Robot(render=True, device='cuda', num_envs=64)
+    robot = Robot(render=True, device=wp.get_preferred_device(), num_envs=64)
     robot.run()

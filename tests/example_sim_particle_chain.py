@@ -5,16 +5,22 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Sim Particle Chain
+#
+# Shows how to set up a simple chain of particles connected by springs
+# using wp.sim.ModelBuilder().
+#
+###########################################################################
+
 import os
 import sys
-import numpy as np
 import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+import numpy as np
 
 import warp as wp
 import warp.sim
@@ -32,9 +38,8 @@ sim_duration = 5.0
 sim_frames = int(sim_duration*sim_fps)
 sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
-sim_render = True
 
-device = "cpu"
+device = wp.get_preferred_device()
  
 builder = wp.sim.ModelBuilder()
 
@@ -54,12 +59,12 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rope.usd")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_particle_chain.usd")
 
 # launch simulation
 for i in range(sim_frames):
     
-    with wp.ScopedTimer("simulate", active=True, detailed=False):
+    with wp.ScopedTimer("simulate"):
 
         for s in range(sim_substeps):
 
@@ -72,12 +77,10 @@ for i in range(sim_frames):
             # swap states
             (state_0, state_1) = (state_1, state_0)
 
-    if (sim_render):
+    with wp.ScopedTimer("render"):
 
-        with wp.ScopedTimer("render", active=False):
-
-            renderer.begin_frame(sim_time)
-            renderer.render(state_0)
-            renderer.end_frame()
+        renderer.begin_frame(sim_time)
+        renderer.render(state_0)
+        renderer.end_frame()
 
 renderer.save()

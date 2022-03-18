@@ -43,6 +43,30 @@ def _compute_segment_xform(pos0, pos1):
 
     return (mid, Gf.Quath(rot.GetQuat()), scale)
 
+def bourke_color_map(low, high, v):
+
+	c = [1.0, 1.0, 1.0]
+
+	if v < low:
+		v = low
+	if v > high:
+		v = high
+	dv = high - low
+
+	if v < (low + 0.25 * dv):
+		c[0] = 0.
+		c[1] = 4. * (v - low) / dv
+	elif v < (low + 0.5 * dv):
+		c[0] = 0.
+		c[2] = 1. + 4. * (low + 0.25 * dv - v) / dv
+	elif v < (low + 0.75 * dv):
+		c[0] = 4. * (v - low - 0.5 * dv) / dv
+		c[2] = 0.
+	else:
+		c[1] = 1. + 4. * (low + 0.75 * dv - v) / dv
+		c[2] = 0.
+
+	return c
 
 class UsdRenderer:
     """A USD renderer

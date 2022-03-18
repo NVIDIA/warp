@@ -5,11 +5,19 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Sim Neo-Hookean
+#
+# Shows a simulation of an Neo-Hookean FEM beam being twisted through a
+# 180 degree rotation.
+#
+###########################################################################
+
 import os
 import sys
 import math
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pxr import Usd, UsdGeom, Gf, Sdf
@@ -67,7 +75,6 @@ model.ground = False
 model.gravity[1] = 0.0
 
 integrator = wp.sim.SemiImplicitIntegrator()
-#integrator = wp.sim.XPBDIntegrator(iterations=sim_iterations, relaxation=sim_relaxation)
 
 rest = model.state()
 rest_vol = (cell_size*cell_dim)**3
@@ -89,8 +96,8 @@ def twist_points(rest: wp.array(dtype=wp.vec3),
     p = points[tid]
     m = mass[tid]
 
+    # twist the top layer of particles in the beam
     if (m == 0 and p[1] != 0.0):
-
         points[tid] = wp.transform_point(xform, r)
 
 @wp.kernel

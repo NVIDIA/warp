@@ -5,12 +5,22 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import time
-import math
+###########################################################################
+# Example Sim Grad Bounce
+#
+# Shows how to use Warp to optimize the initial velocity of a particle
+# such that it bounces off the wall and floor in order to hit a target.
+#
+# This example uses the built-in wp.Tape() object to compute gradients of
+# the distance to target (loss) w.r.t the initial velocity, followed by
+# a simple gradient-descent optimization step.
+#
+###########################################################################
 
-# include parent path
 import os
 import sys
+
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
@@ -20,7 +30,6 @@ import warp.sim
 import warp.sim.render
 
 wp.init()
-
 
 class Bounce:
 
@@ -39,14 +48,14 @@ class Bounce:
 
     render_time = 0.0
 
-    train_iters = 500
+    train_iters = 250
     train_rate = 0.01
 
     def __init__(self, render=True, profile=False, adapter='cpu'):
 
         builder = wp.sim.ModelBuilder()
 
-        builder.add_particle(pos=(0, 1.0, 0.0), vel=(5.0, -5.0, 0.0), mass=1.0)
+        builder.add_particle(pos=(-0.5, 1.0, 0.0), vel=(5.0, -5.0, 0.0), mass=1.0)
         builder.add_shape_box(body=-1, pos=(2.0, 1.0, 0.0), hx=0.25, hy=1.0, hz=1.0)
 
         self.device = adapter
@@ -63,7 +72,7 @@ class Bounce:
                 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        self.target = (-2.0, 1.0, 0.0)
+        self.target = (-2.0, 1.5, 0.0)
         self.loss = wp.zeros(1, dtype=wp.float32, device=adapter, requires_grad=True)  
 
         # allocate sim states for trajectory
@@ -71,7 +80,7 @@ class Bounce:
         for i in range(self.sim_steps+1):
             self.states.append(self.model.state(requires_grad=True))
 
-        # one-shot contact creation (valid if we're doing simple collision against a non-changing normal)
+        # one-shot contact creation (valid if we're doing simple collision against a constant normal plane)
         wp.sim.collide(self.model, self.states[0])
 
         if (self.render):
@@ -84,7 +93,8 @@ class Bounce:
                     loss: wp.array(dtype=float)):
 
         # distance to target
-        loss[0] = wp.length(pos[0]-target)
+        delta = pos[0]-target
+        loss[0] = wp.dot(delta, delta)
 
     @wp.kernel
     def step_kernel(x: wp.array(dtype=wp.vec3),
@@ -112,13 +122,23 @@ class Bounce:
 
         return self.loss
 
-    def render(self):
+    def render(self, iter):
+
+        # render every 16 frames
+        if iter % 16 > 0:
+            return
+
+        # draw trajectory
+        traj_verts = [self.states[0].particle_q.numpy()[0].tolist()]
 
         for i in range(0, self.sim_steps, self.sim_substeps):
+
+            traj_verts.append(self.states[i].particle_q.numpy()[0].tolist())
 
             self.stage.begin_frame(self.render_time)
             self.stage.render(self.states[i])
             self.stage.render_box(pos=self.target, rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1), name="target")
+            self.stage.render_line_strip(vertices=traj_verts, color=wp.render.bourke_color_map(0.0, 7.0, self.loss.numpy()[0]), radius=0.02, name=f"traj_{iter}")
             self.stage.end_frame()
 
             self.render_time += self.frame_dt
@@ -186,7 +206,7 @@ class Bounce:
                 tape.backward(self.loss)
 
             with wp.ScopedTimer("Render", active=self.profile):
-                self.render()
+                self.render(i)
 
             with wp.ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
@@ -216,7 +236,7 @@ class Bounce:
                 tape.replay()
 
             with wp.ScopedTimer("Render", active=self.profile):
-                self.render()
+                self.render(i)
 
             with wp.ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
@@ -229,7 +249,7 @@ class Bounce:
 
 
 
-bounce = Bounce(adapter="cuda", profile=False, render=True)
+bounce = Bounce(adapter=wp.get_preferred_device(), profile=False, render=True)
 bounce.check_grad()
 bounce.train_graph('gd')
  

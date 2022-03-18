@@ -5,10 +5,19 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
+###########################################################################
+# Example Sim Rigid Kinematics
+#
+# Tests rigid body forward and backwards kinematics through the 
+# wp.sim.eval_ik() and wp.sim.eval_fk() methods.
+#
+###########################################################################
 
 import os
 import sys
+import math
+
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
@@ -16,8 +25,6 @@ import numpy as np
 import warp as wp
 import warp.sim
 import warp.sim.render
-
-import matplotlib.pyplot as plt
 
 wp.init()
 wp.config.verify_cuda = True
@@ -35,8 +42,6 @@ class Robot:
    
     sim_time = 0.0
     render_time = 0.0
-
-    name = "test_sim_rigid_kinematics"
 
     def __init__(self, render=True, num_envs=1, device='cpu'):
 
@@ -86,7 +91,7 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/" + self.name + ".usd")
+            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/example_sim_rigid_kinematics.usd")
 
 
     def run(self, render=True):
@@ -128,5 +133,5 @@ class Robot:
 
         
 
-robot = Robot(render=True, device='cuda', num_envs=1)
+robot = Robot(render=False, device=wp.get_preferred_device(), num_envs=1)
 robot.run()

@@ -5,22 +5,28 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Wave
+#
+# Shows how to implement a simple 2D wave-equation solver with collision
+# against a moving sphere.
+#
+###########################################################################
+
 import os
 import sys
-import numpy as np
 import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
+import numpy as np
 
 import warp as wp
 
 wp.init()
-wp.config.verify_cuda = True
 
 @wp.func
 def sample(f: wp.array(dtype=float),
@@ -134,7 +140,7 @@ k_speed = 1.0
 k_damp = 0.0
 
 # set up grid for visualization
-stage = Usd.Stage.CreateNew("tests/outputs/wave.usd")
+stage = Usd.Stage.CreateNew("tests/outputs/example_wave.usd")
 stage.SetStartTimeCode(0.0)
 stage.SetEndTimeCode(sim_duration*sim_fps)
 stage.SetTimeCodesPerSecond(sim_fps)

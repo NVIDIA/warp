@@ -5,16 +5,22 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
+###########################################################################
+# Example Sim Rigid Gyroscopic
+#
+# Demonstrates the Dzhanibekov effect where rigid bodies will tumble in 
+# free space due to unstable axes of rotation.
+#
+###########################################################################
+
 import os
 import sys
-import numpy as np
 import math
-import ctypes
 
+# include parent path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+import numpy as np
 
 import warp as wp
 import warp.sim
@@ -26,7 +32,7 @@ sim_steps = 2000
 sim_dt = 1.0/120.0
 sim_time = 0.0
 
-device = "cpu"
+device = wp.get_preferred_device()
 
 builder = wp.sim.ModelBuilder()
 
@@ -64,7 +70,7 @@ model.ground = False
 integrator = wp.sim.SemiImplicitIntegrator()
 state = model.state()
 
-renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_gyroscopic.usda")
+renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_gyroscopic.usd")
 
 for i in range(sim_steps):
 
@@ -76,9 +82,7 @@ for i in range(sim_steps):
     renderer.render(state)
     renderer.end_frame()
    
-
     sim_time += sim_dt
-
 
 renderer.save()
 
