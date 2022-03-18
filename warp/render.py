@@ -271,7 +271,8 @@ class UsdRenderer:
             pos0 = vertices[i]
             pos1 = vertices[i+1]
 
-            (pos, rot, scale) = _compute_segment_xform(Gf.Vec3f(pos0), Gf.Vec3f(pos1))
+            (pos, rot, scale) = _compute_segment_xform(Gf.Vec3f(float(pos0[0]), float(pos0[1]), float(pos0[2])), 
+                                                       Gf.Vec3f(float(pos1[0]), float(pos1[1]), float(pos1[2])))
 
             line_positions.append(pos)
             line_rotations.append(rot)

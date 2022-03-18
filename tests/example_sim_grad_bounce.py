@@ -96,13 +96,16 @@ class Bounce:
         delta = pos[0]-target
         loss[0] = wp.dot(delta, delta)
 
+
     @wp.kernel
     def step_kernel(x: wp.array(dtype=wp.vec3),
                     grad: wp.array(dtype=wp.vec3),
                     alpha: float):
 
+        tid = wp.tid()
+
         # gradient descent step
-        x[0] = x[0] - grad[0]*alpha
+        x[tid] = x[tid] - grad[tid]*alpha
 
 
     def compute_loss(self):
@@ -124,7 +127,7 @@ class Bounce:
 
     def render(self, iter):
 
-        # render every 16 frames
+        # render every 16 iters
         if iter % 16 > 0:
             return
 
@@ -215,7 +218,7 @@ class Bounce:
                 print(f"Iter: {i} Loss: {self.loss}")
                 print(f"   x: {x} g: {x_grad}")
 
-                wp.launch(self.step_kernel, dim=1, inputs=[x, x_grad, self.train_rate], device=self.device)
+                wp.launch(self.step_kernel, dim=len(x), inputs=[x, x_grad, self.train_rate], device=self.device)
 
             tape.reset()
 
@@ -244,7 +247,7 @@ class Bounce:
 
                 print(f"Iter: {i} Loss: {self.loss}")
                 
-                wp.launch(self.step_kernel, dim=1, inputs=[x, x_grad, self.train_rate], device=self.device)
+                wp.launch(self.step_kernel, dim=len(x), inputs=[x, x_grad, self.train_rate], device=self.device)
 
 
 
