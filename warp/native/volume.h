@@ -93,19 +93,19 @@ CUDA_CALLABLE inline void adj_volume_sample_local(
 // Sampling the volume at the given index-space coordinates, uvw can be fractional
 CUDA_CALLABLE inline vec3 volume_sample_local_v(uint64_t id, vec3 uvw, int sampling_mode)
 {
-    const Volume volume = *(const Volume*)(id);
-    const pnanovdb_root_handle_t root = pnanovdb_tree_get_root(volume.buf, volume.tree);
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_root_handle_t root = volume::get_root(buf);
     const pnanovdb_vec3_t uvw_pnano{ uvw.x, uvw.y, uvw.z };
 
-    if (sampling_mode == Volume::CLOSEST)
+    if (sampling_mode == volume::CLOSEST)
     {
         const pnanovdb_coord_t ijk = pnanovdb_vec3_round_to_coord(uvw_pnano);
         const pnanovdb_address_t address =
-            pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, volume.buf, root, PNANOVDB_REF(ijk));
-        const pnanovdb_vec3_t v = pnanovdb_read_vec3f(volume.buf, address);
+            pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, root, PNANOVDB_REF(ijk));
+        const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
         return {v.x, v.y, v.z};
     }
-    else if (sampling_mode == Volume::LINEAR)
+    else if (sampling_mode == volume::LINEAR)
     {
         constexpr pnanovdb_coord_t OFFSETS[] = {
             { 0, 0, 0 }, { 0, 0, 1 }, { 0, 1, 0 }, { 0, 1, 1 }, { 1, 0, 0 }, { 1, 0, 1 }, { 1, 1, 0 }, { 1, 1, 1 },
@@ -127,8 +127,8 @@ CUDA_CALLABLE inline vec3 volume_sample_local_v(uint64_t id, vec3 uvw, int sampl
             const pnanovdb_coord_t& offs = OFFSETS[idx];
             const pnanovdb_coord_t ijkShifted = pnanovdb_coord_add(ijk, offs);
             pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(
-                PNANOVDB_GRID_TYPE_VEC3F, volume.buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
-            const pnanovdb_vec3_t v = pnanovdb_read_vec3f(volume.buf, address);
+                PNANOVDB_GRID_TYPE_VEC3F, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
+            const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
             val += wx[offs.x] * wy[offs.y] * wz[offs.z] * vec3{v.x, v.y, v.z};
         }
         return val;
@@ -163,11 +163,12 @@ CUDA_CALLABLE inline void adj_volume_sample_world(
 // Sampling the volume at the given world-space coordinates
 CUDA_CALLABLE inline vec3 volume_sample_world_v(uint64_t id, vec3 xyz, int sampling_mode)
 {
-    const Volume volume = *(const Volume*)(id);
-    const pnanovdb_root_handle_t root = pnanovdb_tree_get_root(volume.buf, volume.tree);
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_root_handle_t root = volume::get_root(buf, grid);
 
     const pnanovdb_vec3_t xyz_pnano{ xyz.x, xyz.y, xyz.z };
-    const pnanovdb_vec3_t uvw_pnano = pnanovdb_grid_world_to_indexf(volume.buf, volume.grid, PNANOVDB_REF(xyz_pnano));
+    const pnanovdb_vec3_t uvw_pnano = pnanovdb_grid_world_to_indexf(buf, grid, PNANOVDB_REF(xyz_pnano));
     const vec3 uvw{ uvw_pnano.x, uvw_pnano.y, uvw_pnano.z };
 
     return volume_sample_local_v(id, uvw, sampling_mode);
@@ -195,13 +196,13 @@ CUDA_CALLABLE inline void adj_volume_lookup(uint64_t id, int32_t i, int32_t j, i
 
 CUDA_CALLABLE inline vec3 volume_lookup_v(uint64_t id, int32_t i, int32_t j, int32_t k)
 {
-    const Volume volume = *(const Volume*)(id);
-    const pnanovdb_root_handle_t root = pnanovdb_tree_get_root(volume.buf, volume.tree);
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_root_handle_t root = volume::get_root(buf);
 
     const pnanovdb_coord_t ijk{ i, j, k };
     const pnanovdb_address_t address =
-        pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, volume.buf, root, PNANOVDB_REF(ijk));
-    const pnanovdb_vec3_t v = pnanovdb_read_vec3f(volume.buf, address);
+        pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, root, PNANOVDB_REF(ijk));
+    const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
     return {v.x, v.y, v.z};
 }
 
