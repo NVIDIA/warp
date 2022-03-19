@@ -14,11 +14,7 @@
 ###########################################################################
 
 import os
-import sys
 import math
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -99,7 +95,7 @@ state = model.state()
 # one time collide for ground contact
 model.collide(state)
 
-renderer = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_contact.usd")
+renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd"))
 
 for i in range(sim_steps):
 

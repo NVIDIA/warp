@@ -1,4 +1,5 @@
-rm report.csv
+rm outputs/benchmark.csv
+
 python3 benchmark_cloth.py warp_cpu
 python3 benchmark_cloth.py warp_gpu
 # python3 benchmark_cloth.py taichi_cpu

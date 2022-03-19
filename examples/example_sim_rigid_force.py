@@ -14,11 +14,7 @@
 ###########################################################################
 
 import os
-import sys
 import math
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -61,7 +57,7 @@ state_1 = model.state()
 
 model.collide(state_0)
 
-stage = wp.sim.render.SimRenderer(model, "tests/outputs/test_sim_rigid_force.usd")
+stage = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_force.usd"))
 
 for i in range(sim_frames):
     

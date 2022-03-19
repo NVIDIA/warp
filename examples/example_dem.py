@@ -19,6 +19,8 @@ import numpy as np
 import warp as wp
 import warp.render 
 
+import os
+
 wp.init()
 
 frame_dt = 1.0/60
@@ -159,7 +161,7 @@ k_mu = 100000.0 # for cohesive materials
 
 inv_mass = 64.0
 
-renderer = wp.render.UsdRenderer("tests/outputs/example_dem.usd")
+renderer = wp.render.UsdRenderer(os.path.join(os.path.dirname(__file__), "outputs/example_dem.usd"))
 
 use_graph = True
 if (use_graph):

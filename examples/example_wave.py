@@ -14,16 +14,11 @@
 ###########################################################################
 
 import os
-import sys
 import math
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
 import numpy as np
-
 import warp as wp
 
 wp.init()
@@ -140,7 +135,7 @@ k_speed = 1.0
 k_damp = 0.0
 
 # set up grid for visualization
-stage = Usd.Stage.CreateNew("tests/outputs/example_wave.usd")
+stage = Usd.Stage.CreateNew(os.path.join(os.path.dirname(__file__), "outputs/example_wave.usd"))
 stage.SetStartTimeCode(0.0)
 stage.SetEndTimeCode(sim_duration*sim_fps)
 stage.SetTimeCodesPerSecond(sim_fps)

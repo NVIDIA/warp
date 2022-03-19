@@ -5,18 +5,12 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-# include parent path
-import os
-import sys
-import numpy as np
-import math
-import ctypes
-
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import warp as wp
+import numpy as np
+
+import os
 
 wp.init()
 
@@ -54,14 +48,14 @@ def render(mesh: wp.uint64,
     pixels[tid] = color
 
 
-device = "cuda"
+device = wp.get_preferred_device()
 width = 1024
 height = 1024
 cam_pos = (0.0, 1.0, 2.0)
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-stage = Usd.Stage.Open("./tests/assets/bunny.usd")
+stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
 mesh_geom = UsdGeom.Mesh(stage.GetPrimAtPath("/bunny/bunny"))
 
 points = np.array(mesh_geom.GetPointsAttr().Get())

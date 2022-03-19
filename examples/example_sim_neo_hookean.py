@@ -14,13 +14,7 @@
 ###########################################################################
 
 import os
-import sys
 import math
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from pxr import Usd, UsdGeom, Gf, Sdf
 
 import warp as wp
 import warp.sim
@@ -82,7 +76,7 @@ rest_vol = (cell_size*cell_dim)**3
 state_0 = model.state()
 state_1 = model.state()
 
-stage = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_neo_hookean_twist.usd")
+stage = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_neo_hookean_twist.usd"))
 
 @wp.kernel
 def twist_points(rest: wp.array(dtype=wp.vec3),

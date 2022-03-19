@@ -14,11 +14,7 @@
 ###########################################################################
 
 import os
-import sys
 import math
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -60,7 +56,7 @@ builder.add_cloth_grid(
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-usd_stage = Usd.Stage.Open("./tests/assets/bunny.usd")
+usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
 usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
 
 mesh_points = np.array(usd_geom.GetPointsAttr().Get())
@@ -91,7 +87,7 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-stage = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_cloth.usd")
+stage = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_cloth.usd"))
 
 if (sim_use_graph):
 

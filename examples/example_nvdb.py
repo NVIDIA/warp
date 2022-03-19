@@ -16,11 +16,7 @@
 ###########################################################################
 
 import os
-import sys
 import math
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -104,13 +100,13 @@ positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device=dev
 velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=device)
 
 # load collision volume
-file = np.fromfile("tests/assets/rocks.nvdb.grid", dtype=np.byte)
+file = np.fromfile(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb.grid"), dtype=np.byte)
 
 # create Volume object
 volume = wp.Volume(wp.array(file, device=device))
 
 if (sim_render):
-    stage = warp.render.UsdRenderer("tests/outputs/example_nvdb.usd", upaxis="z")
+    stage = warp.render.UsdRenderer(os.path.join(os.path.dirname(__file__), "outputs/example_nvdb.usd"), upaxis="z")
 
 for i in range(sim_steps):
 

@@ -18,11 +18,7 @@
 ###########################################################################
 
 import os
-import sys
 import math
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -94,7 +90,7 @@ class Cloth:
             self.states.append(self.model.state(requires_grad=True))
 
         if (self.render):
-            self.stage = wp.sim.render.SimRenderer(self.model, "tests/outputs/example_sim_grad_cloth.usd")
+            self.stage = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_cloth.usd"))
        
 
     @wp.kernel

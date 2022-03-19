@@ -15,16 +15,12 @@
 #
 ###########################################################################
 
-import os
-import sys
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import numpy as np
 
 import warp as wp
 import warp.render
+
+import os
 
 wp.init()
 
@@ -104,7 +100,7 @@ device = wp.get_preferred_device()
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
-usd_stage = Usd.Stage.Open("./tests/assets/bunny.usd")
+usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
 usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny")) 
 usd_scale = 10.0
 
@@ -120,7 +116,7 @@ init_vel = np.random.rand(num_particles, 3)*0.0
 positions = wp.from_numpy(init_pos, dtype=wp.vec3, device=device)
 velocities = wp.from_numpy(init_vel, dtype=wp.vec3, device=device)
 
-stage = warp.render.UsdRenderer("tests/outputs/example_mesh.usd")
+stage = warp.render.UsdRenderer(os.path.join(os.path.dirname(__file__), "outputs/example_mesh.usd"))
 
 for i in range(sim_steps):
 

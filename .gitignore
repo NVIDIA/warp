@@ -11,10 +11,8 @@ archive
 *.dll
 *.lib
 *.cpp.obj
-tests/outputs/.thumbs
 *.pdb
-tests/outputs
 _build
 _repo
 exts/omni.warp/omni/warp/ogn
-tests/assets/.thumbs
+examples/assets/.thumbs

@@ -162,7 +162,7 @@ def run_benchmark(mode, dim, timers, render=False):
 
     if (render):
         # set up grid for visualization
-        stage = Usd.Stage.CreateNew("outputs/cloth.usd")
+        stage = Usd.Stage.CreateNew(os.path.join(os.path.dirname(__file__), "outputs/benchmark.usd"))
         stage.SetStartTimeCode(0.0)
         stage.SetEndTimeCode(sim_duration*sim_fps)
         stage.SetTimeCodesPerSecond(sim_fps)
@@ -175,55 +175,55 @@ def run_benchmark(mode, dim, timers, render=False):
     with wp.ScopedTimer("Initialization", dict=timers):
 
         if mode == "warp_cpu":
-            import tests.benchmark_cloth_warp
-            integrator = tests.benchmark_cloth_warp.WpIntegrator(cloth, "cpu")
+            import examples.benchmark_cloth_warp
+            integrator = examples.benchmark_cloth_warp.WpIntegrator(cloth, "cpu")
 
         elif mode == "warp_gpu":
-            import tests.benchmark_cloth_warp
-            integrator = tests.benchmark_cloth_warp.WpIntegrator(cloth, "cuda")
+            import examples.benchmark_cloth_warp
+            integrator = examples.benchmark_cloth_warp.WpIntegrator(cloth, "cuda")
 
         elif mode == "taichi_cpu":
-            import tests.benchmark_cloth_taichi
-            integrator = tests.benchmark_cloth_taichi.TiIntegrator(cloth, "cpu")
+            import examples.benchmark_cloth_taichi
+            integrator = examples.benchmark_cloth_taichi.TiIntegrator(cloth, "cpu")
 
         elif mode == "taichi_gpu":
-            import tests.benchmark_cloth_taichi
-            integrator = tests.benchmark_cloth_taichi.TiIntegrator(cloth, "cuda")
+            import examples.benchmark_cloth_taichi
+            integrator = examples.benchmark_cloth_taichi.TiIntegrator(cloth, "cuda")
 
         elif mode == "numpy":
-            import tests.benchmark_cloth_numpy
-            integrator = tests.benchmark_cloth_numpy.NpIntegrator(cloth)
+            import examples.benchmark_cloth_numpy
+            integrator = examples.benchmark_cloth_numpy.NpIntegrator(cloth)
 
         elif mode == "cupy":
-            import tests.benchmark_cloth_cupy
-            integrator = tests.benchmark_cloth_cupy.CpIntegrator(cloth)
+            import examples.benchmark_cloth_cupy
+            integrator = examples.benchmark_cloth_cupy.CpIntegrator(cloth)
 
         elif mode == "numba":
-            import tests.benchmark_cloth_numba
-            integrator = tests.benchmark_cloth_numba.NbIntegrator(cloth)
+            import examples.benchmark_cloth_numba
+            integrator = examples.benchmark_cloth_numba.NbIntegrator(cloth)
 
         elif mode == "torch_cpu":
-            import tests.benchmark_cloth_pytorch
-            integrator = tests.benchmark_cloth_pytorch.TrIntegrator(cloth, "cpu")
+            import examples.benchmark_cloth_pytorch
+            integrator = examples.benchmark_cloth_pytorch.TrIntegrator(cloth, "cpu")
 
         elif mode == "torch_gpu":
-            import tests.benchmark_cloth_pytorch
-            integrator = tests.benchmark_cloth_pytorch.TrIntegrator(cloth, "cuda")
+            import examples.benchmark_cloth_pytorch
+            integrator = examples.benchmark_cloth_pytorch.TrIntegrator(cloth, "cuda")
 
         elif mode == "jax_cpu":
 
             os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
-            import tests.benchmark_cloth_jax
+            import examples.benchmark_cloth_jax
 
-            integrator = tests.benchmark_cloth_jax.JxIntegrator(cloth)
+            integrator = examples.benchmark_cloth_jax.JxIntegrator(cloth)
 
         elif mode == "jax_gpu":
 
             os.environ["JAX_PLATFORM_NAME"] = "gpu"
 
-            import tests.benchmark_cloth_jax
-            integrator = tests.benchmark_cloth_jax.JxIntegrator(cloth)
+            import examples.benchmark_cloth_jax
+            integrator = examples.benchmark_cloth_jax.JxIntegrator(cloth)
 
 
         else:
@@ -260,7 +260,7 @@ if len(sys.argv) > 1:
 else:
     mode = "warp_gpu"
 
-run_benchmark(mode, 16, timers, render=True)
+run_benchmark(mode, 16, timers, render=False)
 run_benchmark(mode, 32, timers, render=False)
 run_benchmark(mode, 64, timers, render=False)
 
@@ -270,7 +270,7 @@ import csv
 for k, v in timers.items():
     print("{:16} min: {:8.2f} max: {:8.2f} avg: {:8.2f}".format(k, np.min(v), np.max(v), np.mean(v)))
 
-report = open("outputs/report.csv", 'a')
+report = open(os.path.join(os.path.dirname(__file__), "outputs/benchmark.csv"), 'a')
 writer = csv.writer(report,  delimiter=',')
 
 if (report.tell() == 0):

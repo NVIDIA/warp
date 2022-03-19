@@ -14,9 +14,6 @@
 ###########################################################################
 
 import os
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -65,7 +62,7 @@ state_1 = model.state()
 
 integrator = wp.sim.SemiImplicitIntegrator()
 
-renderer = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_granular.usd")
+renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_granular.usd"))
 
 for i in range(frame_count):
 

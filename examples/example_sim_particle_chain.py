@@ -14,11 +14,7 @@
 ###########################################################################
 
 import os
-import sys
 import math
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -59,7 +55,7 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-renderer = wp.sim.render.SimRenderer(model, "tests/outputs/example_sim_particle_chain.usd")
+renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_particle_chain.usd"))
 
 # launch simulation
 for i in range(sim_frames):

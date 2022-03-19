@@ -16,10 +16,7 @@
 
 
 import os
-import sys
 import math
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -54,7 +51,7 @@ class Robot:
 
         for i in range(num_envs):
 
-            wp.sim.parse_mjcf("./tests/assets/nv_humanoid.xml", builder,
+            wp.sim.parse_mjcf(os.path.join(os.path.dirname(__file__), "assets/nv_humanoid.xml"), builder,
                 stiffness=0.0,
                 damping=0.1,
                 armature=0.007,
@@ -89,7 +86,7 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, "./tests/outputs/example_sim_humanoid.usd")
+            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_humanoid.usd"))
 
  
     def run(self, render=True):
