@@ -1,12 +1,14 @@
 # Warp [omni.warp]
 
-Warp is a Python framework for writing high-performance simulation and graphics code. Compute kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
+NVIDIA Warp is a Python framework for writing high-performance simulation and graphics code. Compute kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
 ## Documentation
-https://mmacklin.gitlab-master-pages.nvidia.com/warp 
+
+https://nvidia.github.io/warp
 
 ## Source Code
 
-https://gitlab-master.nvidia.com/mmacklin/warp
+https://github.com/NVIDIA/warp
+
 
 

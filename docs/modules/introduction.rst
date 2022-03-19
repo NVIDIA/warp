@@ -6,7 +6,7 @@ Warp is a Python framework for writing high-performance simulation and graphics 
 Installation
 ------------
 
-See `README.md <https://gitlab-master.nvidia.com/mmacklin/warp/README.md>`_ for building instructions and where to download pre-built packages.
+See `README.md <https://github.com/NVIDIA/warp/README.md>`_ for building instructions and where to download pre-built packages.
 
 To install in your local Python environment, use: ``pip install -e .``
 
@@ -154,10 +154,4 @@ To achieve good performance on GPUs some dynamic language features are not suppo
 * Runtime evaluation of expressions, e.g.: eval()
 * Recursion
 * Dynamic allocation, lists, sets, dictionaries
-
-Source
-------
-
-https://gitlab-master.nvidia.com/mmacklin/warp
-
 
