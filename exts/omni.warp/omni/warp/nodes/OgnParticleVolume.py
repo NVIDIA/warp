@@ -19,7 +19,6 @@ import warp as wp
 from pxr import Usd, UsdGeom, Gf, Sdf
 
 import omni.timeline
-import omni.appwindow
 import omni.usd
 
 import omni.graph.core as og

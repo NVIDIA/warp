@@ -14,12 +14,6 @@
 #
 ###########################################################################
 
-import os
-import sys
-
-# include parent path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import numpy as np
 
 import warp as wp
