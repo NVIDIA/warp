@@ -12,7 +12,8 @@ archive
 *.lib
 *.cpp.obj
 *.pdb
-_build
-_repo
+/_build
+/_repo
 exts/omni.warp/omni/warp/ogn
 examples/assets/.thumbs
+doctrees

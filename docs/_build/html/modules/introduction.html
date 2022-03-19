@@ -1,0 +1,380 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Introduction &mdash; Warp  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/nvidia.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/nvidia.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Runtime Reference" href="runtime.html" />
+    <link rel="prev" title="NVIDIA Warp Documentation" href="../index.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Warp
+          
+
+          
+            
+            <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.25
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-usage">Example Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#memory-model">Memory Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compilation-model">Compilation Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#language-details">Language Details</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#built-in-types">Built-in Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#strong-typing">Strong Typing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#immutable-types">Immutable Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#unsupported-features">Unsupported Features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#source">Source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="functions.html">Language Reference</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Warp</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Introduction</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/modules/introduction.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference external" href="https://gitlab-master.nvidia.com/mmacklin/warp/README.md">README.md</a> for building instructions and where to download pre-built packages.</p>
+<p>To install in your local Python environment, use: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span></code></p>
+</div>
+<div class="section" id="example-usage">
+<h2>Example Usage<a class="headerlink" href="#example-usage" title="Permalink to this headline">¶</a></h2>
+<p>Before use Warp should be explicitly initialized as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To define a computational kernel use the following syntax with the <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> decorator. Note that all input arguments must be typed, and that the function cannot access any global state:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">simple_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">),</span>
+                  <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">),</span>
+                  <span class="n">c</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+
+    <span class="c1"># get thread index</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="c1"># load two vec3s</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+
+    <span class="c1"># compute the dot product between vectors</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+    <span class="c1"># write result back to memory</span>
+    <span class="n">c</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
+</pre></div>
+</div>
+<p>Arrays can be allocated similar to PyTorch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># allocate an uninitizalized array of vec3s</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+<span class="c1"># allocate a zero-initialized array of quaternions</span>
+<span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">quat</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+<span class="c1"># allocate and initialize an array from a numpy array</span>
+<span class="c1"># will be automatically transferred to the specified device</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To launch a kernel use the following syntax:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">simple_kernel</span><span class="p">,</span> <span class="c1"># kernel to launch</span>
+          <span class="n">dim</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>             <span class="c1"># number of threads</span>
+          <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">],</span>     <span class="c1"># parameters</span>
+          <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>        <span class="c1"># execution device</span>
+</pre></div>
+</div>
+<p>Note that all input and output buffers must exist on the same device as the one specified for execution.</p>
+<p>Often we need to read data back to main (CPU) memory which can be done conveniently as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># automatically bring data from device back to host</span>
+<span class="n">view</span> <span class="o">=</span> <span class="n">device_array</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This pattern will allocate a temporary CPU buffer, perform a copy from device-&gt;host memory, and return a numpy view onto it. To avoid allocating temporary buffers this process can be managed explicitly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># manually bring data back to host</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">host_array</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">device_array</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
+
+<span class="n">view</span> <span class="o">=</span> <span class="n">host_array</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>All copy operations are performed asynchronously and must be synchronized explicitly to ensure data is visible. For best performance multiple copies should be queued together:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># launch multiple copy operations asynchronously</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">host_array_0</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">device_array_0</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">host_array_1</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">device_array_1</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">host_array_2</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">device_array_2</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="memory-model">
+<h2>Memory Model<a class="headerlink" href="#memory-model" title="Permalink to this headline">¶</a></h2>
+<p>Memory allocations are exposed via the <code class="docutils literal notranslate"><span class="pre">warp.array</span></code> type. Arrays wrap an underlying memory allocation that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (<code class="docutils literal notranslate"><span class="pre">vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">matrix33</span></code>, etc).</p>
+<p>Arrays may be constructed from Python lists or numpy arrays; by default data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the <code class="docutils literal notranslate"><span class="pre">copy=False</span></code> parameter to the array constructor.</p>
+</div>
+<div class="section" id="compilation-model">
+<h2>Compilation Model<a class="headerlink" href="#compilation-model" title="Permalink to this headline">¶</a></h2>
+<p>Warp uses a Python-&gt;C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries and PTX, the result is then cached between application restarts for fast startup times.</p>
+<p>Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> will be included in the shared library.</p>
+<img alt="../_images/compiler_pipeline.png" src="../_images/compiler_pipeline.png" />
+</div>
+<div class="section" id="language-details">
+<h2>Language Details<a class="headerlink" href="#language-details" title="Permalink to this headline">¶</a></h2>
+<p>To support GPU computation and differentiability, there are some differences from the CPython runtime.</p>
+<div class="section" id="built-in-types">
+<h3>Built-in Types<a class="headerlink" href="#built-in-types" title="Permalink to this headline">¶</a></h3>
+<p>Warp supports a number of built-in math types similar to high-level shading languages, for example <code class="docutils literal notranslate"><span class="pre">vec2,</span> <span class="pre">vec3,</span> <span class="pre">vec4,</span> <span class="pre">mat22,</span> <span class="pre">mat33,</span> <span class="pre">mat44,</span> <span class="pre">quat,</span> <span class="pre">array</span></code>. All built-in types have value semantics so that expressions such as <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">b</span></code> generate a copy of the variable b rather than a reference.</p>
+</div>
+<div class="section" id="strong-typing">
+<h3>Strong Typing<a class="headerlink" href="#strong-typing" title="Permalink to this headline">¶</a></h3>
+<p>Unlike Python, in Warp all variables must be typed. Types are inferred from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">simple_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">vec3</span><span class="p">),</span>
+                <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">vec3</span><span class="p">),</span>
+                <span class="n">c</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+</pre></div>
+</div>
+<p>Tuple initialization is not supported, instead variables should be explicitly typed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># invalid</span>
+<span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+
+<span class="c1"># valid</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="immutable-types">
+<h3>Immutable Types<a class="headerlink" href="#immutable-types" title="Permalink to this headline">¶</a></h3>
+<p>Similar to Python tuples, built-in value types are immutable, and users should use construction syntax to mutate existing variables, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+<span class="c1"># invalid</span>
+<span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+<span class="c1"># valid</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="unsupported-features">
+<h3>Unsupported Features<a class="headerlink" href="#unsupported-features" title="Permalink to this headline">¶</a></h3>
+<p>To achieve good performance on GPUs some dynamic language features are not supported:</p>
+<ul class="simple">
+<li><p>Array slicing notation</p></li>
+<li><p>Lambda functions</p></li>
+<li><p>Exceptions</p></li>
+<li><p>Class definitions</p></li>
+<li><p>Runtime evaluation of expressions, e.g.: eval()</p></li>
+<li><p>Recursion</p></li>
+<li><p>Dynamic allocation, lists, sets, dictionaries</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="source">
+<h2>Source<a class="headerlink" href="#source" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="https://gitlab-master.nvidia.com/mmacklin/warp">https://gitlab-master.nvidia.com/mmacklin/warp</a></p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="runtime.html" class="btn btn-neutral float-right" title="Runtime Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../index.html" class="btn btn-neutral float-left" title="NVIDIA Warp Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2022, NVIDIA.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
