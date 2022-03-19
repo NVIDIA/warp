@@ -29,6 +29,10 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 [[python.module]]
 name = "omni.warp"
 
+# Additional python module with tests, to make them discoverable by test system.
+[[python.module]]
+name = "omni.warp.ogn.tests"
+
 # Core language module
 [[python.module]]
 name = "warp"
