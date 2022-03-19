@@ -16,4 +16,5 @@ archive
 /_repo
 exts/omni.warp/omni/warp/ogn
 examples/assets/.thumbs
-doctrees
+/docs/_build/doctrees
+/docs/_build/html/_static/fonts
