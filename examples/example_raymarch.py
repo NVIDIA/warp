@@ -112,8 +112,7 @@ def shadow(ro: wp.vec3, rd: wp.vec3):
 
 
 @wp.kernel
-def render(mesh: wp.uint64,
-           cam_pos: wp.vec3,
+def render(cam_pos: wp.vec3,
            cam_rot: wp.quat,
            width: int,
            height: int,
@@ -125,8 +124,8 @@ def render(mesh: wp.uint64,
     y = tid//width
 
     # compute pixel coordinates
-    sx = 2.0*float(x)/float(width) - 1.0
-    sy = (2.0*float(y)/float(height) - 1.0)
+    sx = (2.0*float(x) - float(width))/float(height)
+    sy = (2.0*float(y) - float(height))/float(height)
 
     # compute view ray
     ro = cam_pos
@@ -165,33 +164,19 @@ def render(mesh: wp.uint64,
 
 
 device = wp.get_preferred_device()
-width = 1024
+width = 2048
 height = 1024
 cam_pos = (0.0, 1.0, 2.0)
 cam_rot = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5)
 
-from pxr import Usd, UsdGeom, Gf, Sdf
-
-stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
-mesh_geom = UsdGeom.Mesh(stage.GetPrimAtPath("/bunny/bunny"))
-
-points = np.array(mesh_geom.GetPointsAttr().Get())
-indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
-
 pixels = wp.zeros(width*height, dtype=wp.vec3, device=device)
-
-# create wp mesh
-mesh = wp.Mesh(
-    points=wp.array(points, dtype=wp.vec3, device=device),
-    velocities=None,
-    indices=wp.array(indices, dtype=int, device=device))
 
 with wp.ScopedTimer("render"):
 
     wp.launch(
         kernel=render,
         dim=width*height,
-        inputs=[mesh.id, cam_pos, cam_rot, width, height, pixels],
+        inputs=[cam_pos, cam_rot, width, height, pixels],
         device=device)
 
     wp.synchronize()
