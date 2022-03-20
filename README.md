@@ -2,15 +2,22 @@
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
+Warp is designed to make it easy to write programs for:
+
+* Physics simulation
+* Geometry processing
+* Procedural animation
+* Reinforcement learning
+
 Please refer to the project [Documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
 
-<img src="./docs/img/nvdb_flow.png" width="800px"/>
+<img src="./docs/img/nvdb_flow.png"/>
 
-_A flow field visualization of a NanoVDB fluid simulation_
+_A flow field visualization of a NanoVDB fluid simulation computed in Warp_
 
 ## Installing
 
-Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment use:
+Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment run:
 
     pip install -e .
 
@@ -32,13 +39,14 @@ The `examples` directory contains a number of scripts that show how to implement
 
     pip install usd-core
     
-USD files can be viewed or rendered inside NVIDA Omniverse, Pixar's UsdView, or in Preview on macOS.
+USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, Blender, or in Preview on macOS.
+
 
 ## Omniverse
 
-A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or Create. 
+A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or Create:
 
-<img src="./docs/img/omniverse.png" width=400px/>
+<img src="./docs/img/omniverse.png" width=500px/>
 
 Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment. Please see the [Omniverse Warp Documentation](http://docs.omniverse.nvidia.com/extensions/warp.html) for more details on how to use Warp in Omniverse.
 
@@ -49,5 +57,7 @@ Please see our [GTC Presentation](https://www.nvidia.com/gtc/session-catalog/?se
 ## Discord
 
 We have a **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/XWQNJDNuaC) sever, come chat to us!
+
+
 
 
