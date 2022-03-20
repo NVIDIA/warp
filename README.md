@@ -4,13 +4,13 @@ Warp is a Python framework for writing high-performance simulation and graphics 
 
 Please refer to the project [documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
 
+
+<img src="./docs/img/header.png"/>
+<img src="./docs/img/nvdb_flow.png"/>
+
 ## Installing
 
-Pre-built packages for Windows and Linux are available as artifacts on the following TeamCity instance:
-
-https://teamcity.nvidia.com/project/Sandbox_mmacklin_Warp?mode=builds
-
-To install in your local Python environment use:
+Pre-built packages for Windows and Linux are available on the [releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment use:
 
     pip install -e .
 
@@ -18,7 +18,7 @@ From the root directory of this repository.
 
 ## Building
 
-For developers wanting to build the library themselves the following are required:
+For developers wanting to build the library themselves the following tools are required:
 
 * Microsoft Visual Studio 2017 upwards (Windows)
 * GCC 4.0 upwards (Linux)
@@ -32,7 +32,7 @@ The `examples` directory contains a number of scripts that show how to use the A
 
     pip install usd-core
     
-USD files can be viewed inside NVIDA Omniverse, Pixar's UsdView, or in Preview on macOS.
+USD files can be viewed or rendered inside NVIDA Omniverse, Pixar's UsdView, or in Preview on macOS.
 
 ## Omniverse
 
@@ -40,10 +40,10 @@ The Warp Omniverse extension is available in the extension registry inside Kit o
 
 <img src="./docs/img/omniverse.png" width=400px/>
 
-Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment. Please see the Omniverse Warp documentation for more details on how to use Warp in Omniverse.
+Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment. Please see the [Omniverse Warp Documentation](http://docs.omniverse.nvidia.com/extensions/warp.html) for more details on how to use Warp in Omniverse.
 
 ## Discord
 
-We have a **#warp** channel on the public Omniverse sever, come chat to us here: https://discord.com/invite/XWQNJDNuaC.
+We have a **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/XWQNJDNuaC) sever, come chat to us!
 
 
