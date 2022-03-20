@@ -3,12 +3,14 @@ Introduction
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
+Warp is designed to make it easy to write programs for physics simulation, geometry processing, and procedural animation. Below are some examples of simulations implemented using Warp:
+
+.. image:: ../img/header.png
+
 Installation
 ------------
 
-See `README.md <https://gitlab-master.nvidia.com/mmacklin/warp/README.md>`_ for building instructions and where to download pre-built packages.
-
-To install in your local Python environment, use: ``pip install -e .``
+Please see the Warp `README.md <https://github.com/NVIDIA/warp/README.md>`_ for building and installation instructions and where to download pre-built packages.
 
 Example Usage
 -------------
@@ -89,7 +91,7 @@ Memory Model
 
 Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (``vec3``, ``matrix33``, etc).
 
-Arrays may be constructed from Python lists or numpy arrays; by default data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the array constructor.
+Arrays may be constructed from Python lists or numpy arrays; by default, data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the array constructor.
 
 Compilation Model
 -----------------
@@ -154,10 +156,4 @@ To achieve good performance on GPUs some dynamic language features are not suppo
 * Runtime evaluation of expressions, e.g.: eval()
 * Recursion
 * Dynamic allocation, lists, sets, dictionaries
-
-Source
-------
-
-https://gitlab-master.nvidia.com/mmacklin/warp
-
 

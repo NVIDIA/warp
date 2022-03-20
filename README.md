@@ -2,15 +2,15 @@
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
-Please refer to the project [documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
+Please refer to the project [Documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
 
+<img src="./docs/img/nvdb_flow.png" width="800px"/>
 
-<img src="./docs/img/header.png"/>
-<img src="./docs/img/nvdb_flow.png"/>
+_A flow field visualization of a NanoVDB fluid simulation_
 
 ## Installing
 
-Pre-built packages for Windows and Linux are available on the [releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment use:
+Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment use:
 
     pip install -e .
 
@@ -28,7 +28,7 @@ After cloning the repository, developers should run `build.bat` or `build.sh` to
 
 ## Running Examples
 
-The `examples` directory contains a number of scripts that show how to use the API. Most examples will generate USD files containing time-sampled animations in the ``examples/outputs`` directory. Before running examples users should ensure that the ``usd-core`` package is installed using:
+The `examples` directory contains a number of scripts that show how to implement different simulation methods and how to use the Warp API. Most examples will generate USD files containing time-sampled animations in the ``examples/outputs`` directory. Before running examples users should ensure that the ``usd-core`` package is installed using:
 
     pip install usd-core
     
@@ -36,11 +36,15 @@ USD files can be viewed or rendered inside NVIDA Omniverse, Pixar's UsdView, or 
 
 ## Omniverse
 
-The Warp Omniverse extension is available in the extension registry inside Kit or Create. 
+A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or Create. 
 
 <img src="./docs/img/omniverse.png" width=400px/>
 
 Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment. Please see the [Omniverse Warp Documentation](http://docs.omniverse.nvidia.com/extensions/warp.html) for more details on how to use Warp in Omniverse.
+
+## Learn More
+
+Please see our [GTC Presentation](https://www.nvidia.com/gtc/session-catalog/?search=warp&tab.scheduledorondemand=1583520458947001NJiE&search=warp#/session/16384065793850013gEx) for more details on Warp.
 
 ## Discord
 

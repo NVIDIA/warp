@@ -110,7 +110,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#unsupported-features">Unsupported Features</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#source">Source</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime Reference</a></li>
@@ -185,10 +184,11 @@
   <div class="section" id="introduction">
 <h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
 <p>Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.</p>
+<p>Warp is designed to make it easy to write programs for physics simulation, geometry processing, and procedural animation. Below are some examples of simulations implemented using Warp:</p>
+<img alt="../_images/header.png" src="../_images/header.png" />
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
-<p>See <a class="reference external" href="https://gitlab-master.nvidia.com/mmacklin/warp/README.md">README.md</a> for building instructions and where to download pre-built packages.</p>
-<p>To install in your local Python environment, use: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span></code></p>
+<p>Please see the Warp <a class="reference external" href="https://github.com/NVIDIA/warp/README.md">README.md</a> for building and installation instructions and where to download pre-built packages.</p>
 </div>
 <div class="section" id="example-usage">
 <h2>Example Usage<a class="headerlink" href="#example-usage" title="Permalink to this headline">¶</a></h2>
@@ -263,7 +263,7 @@
 <div class="section" id="memory-model">
 <h2>Memory Model<a class="headerlink" href="#memory-model" title="Permalink to this headline">¶</a></h2>
 <p>Memory allocations are exposed via the <code class="docutils literal notranslate"><span class="pre">warp.array</span></code> type. Arrays wrap an underlying memory allocation that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (<code class="docutils literal notranslate"><span class="pre">vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">matrix33</span></code>, etc).</p>
-<p>Arrays may be constructed from Python lists or numpy arrays; by default data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the <code class="docutils literal notranslate"><span class="pre">copy=False</span></code> parameter to the array constructor.</p>
+<p>Arrays may be constructed from Python lists or numpy arrays; by default, data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the <code class="docutils literal notranslate"><span class="pre">copy=False</span></code> parameter to the array constructor.</p>
 </div>
 <div class="section" id="compilation-model">
 <h2>Compilation Model<a class="headerlink" href="#compilation-model" title="Permalink to this headline">¶</a></h2>
@@ -322,10 +322,6 @@
 <li><p>Dynamic allocation, lists, sets, dictionaries</p></li>
 </ul>
 </div>
-</div>
-<div class="section" id="source">
-<h2>Source<a class="headerlink" href="#source" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference external" href="https://gitlab-master.nvidia.com/mmacklin/warp">https://gitlab-master.nvidia.com/mmacklin/warp</a></p>
 </div>
 </div>
 
