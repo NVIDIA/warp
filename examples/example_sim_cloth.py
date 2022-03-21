@@ -26,6 +26,8 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 
 wp.init()
 
+device = wp.get_preferred_device()
+
 sim_width = 64
 sim_height = 32
 
@@ -36,9 +38,7 @@ sim_frames = int(sim_duration*sim_fps)
 sim_dt = (1.0/sim_fps)/sim_substeps
 sim_time = 0.0
 sim_render = True
-sim_use_graph = True
-
-device = wp.get_preferred_device()
+sim_use_graph = (device == "cuda")
  
 builder = wp.sim.ModelBuilder()
 

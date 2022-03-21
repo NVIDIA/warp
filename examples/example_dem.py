@@ -163,7 +163,8 @@ inv_mass = 64.0
 
 renderer = wp.render.UsdRenderer(os.path.join(os.path.dirname(__file__), "outputs/example_dem.usd"))
 
-use_graph = True
+use_graph = (device == "cuda")
+
 if (use_graph):
 
     wp.capture_begin()
