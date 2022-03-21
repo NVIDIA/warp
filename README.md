@@ -51,7 +51,7 @@ Built-in unit tests can be run from the command-line as follows:
 
 A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or Create:
 
-<img src="./docs/img/omniverse.png" width=500px/>
+<img src="./docs/img/omniverse.png" width=550px/>
 
 Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment. Please see the [Omniverse Warp Documentation](http://docs.omniverse.nvidia.com/extensions/warp.html) for more details on how to use Warp in Omniverse.
 
