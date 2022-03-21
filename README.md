@@ -41,6 +41,11 @@ The `examples` directory contains a number of scripts that show how to implement
     
 USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, Blender, or in Preview on macOS.
 
+## Testing
+
+Built-in unit tests can be run from the command-line as follows:
+
+    python -m warp.tests
 
 ## Omniverse
 
