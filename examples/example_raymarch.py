@@ -166,8 +166,8 @@ def render(cam_pos: wp.vec3,
 device = wp.get_preferred_device()
 width = 2048
 height = 1024
-cam_pos = (0.0, 1.0, 2.0)
-cam_rot = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -0.5)
+cam_pos = (-1.25, 1.0, 2.0)
+cam_rot = wp.quat_rpy(-0.5, -0.5, 0.0)
 
 pixels = wp.zeros(width*height, dtype=wp.vec3, device=device)
 
