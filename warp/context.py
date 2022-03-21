@@ -459,6 +459,11 @@ class Runtime:
             warp_lib = "warp.dll"
             self.core = warp.build.load_dll(warp_lib)
 
+        elif sys.platform == "darwin":
+
+            warp_lib = bin_path + "/" + "warp.dylib"
+            self.core = warp.build.load_dll(warp_lib)
+
         else:
 
             warp_lib = bin_path + "/" + "warp.so"

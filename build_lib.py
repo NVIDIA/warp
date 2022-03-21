@@ -59,8 +59,10 @@ if os.name == 'nt':
 
 try:
 
-    if (os.name == 'nt'):
+    if sys.platform == "win32":
         dll_path = build_path + "/bin/warp.dll"
+    elif sys.platform == "darwin":
+        dll_path = build_path + "/bin/warp.dylib"
     else:
         dll_path = build_path + "/bin/warp.so"
 
