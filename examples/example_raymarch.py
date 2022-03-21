@@ -129,7 +129,7 @@ def render(cam_pos: wp.vec3,
 
     # compute view ray
     ro = cam_pos
-    rd = wp.quat_rotate(cam_rot, wp.normalize(wp.vec3(sx, sy, -1.0)))
+    rd = wp.quat_rotate(cam_rot, wp.normalize(wp.vec3(sx, sy, -2.0)))
         
     t = float(0.0)
 
