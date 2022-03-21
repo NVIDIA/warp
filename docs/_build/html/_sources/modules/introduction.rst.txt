@@ -128,7 +128,7 @@ Tuple initialization is not supported, instead variables should be explicitly ty
     a = (1.0, 2.0, 3.0)        
 
     # valid
-    a = vec3(1.0, 2.0, 3.0) 
+    a = wp.vec3(1.0, 2.0, 3.0) 
 
 Immutable Types
 ^^^^^^^^^^^^^^^
