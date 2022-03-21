@@ -2,14 +2,7 @@
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
-Warp is designed to make it easy to write programs for:
-
-* Physics simulation
-* Geometry processing
-* Procedural animation
-* Machine learning
-
-Please refer to the project [Documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
+Warp is designed to make it easy to write programs for physics simulation, geometry processing, and procedural animation. Please refer to the project [Documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
 
 <img src="./docs/img/nvdb_flow.png"/>
 
@@ -17,16 +10,15 @@ _A flow field visualization of a NanoVDB fluid simulation computed in Warp_
 
 ## Installing
 
-Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment (3.7.x or higher) extract the archive and run the following command from the root directory:
+Warp supports Python versions 3.7.x-3.9.x. Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment extract the archive and run the following command from the root directory:
 
-    pip install -e .
+    pip install .
 
 The Warp package will now be available to import as follows:
 
 ```python
 import warp as wp
 ```
-
 
 ## Building
 
@@ -40,7 +32,11 @@ After cloning the repository, users should run:
 
     python build_lib.py
 
-This will generate the `warp.dll` / `warp.so` core library respectively. When building manually users should ensure that their CUDA_PATH environment variable is set and dynamic libraries can be found at runtime.
+This will generate the `warp.dll` / `warp.so` core library respectively. When building manually users should ensure that their CUDA_PATH environment variable is set and dynamic libraries can be found at runtime. After building the Warp package should be installed using:
+
+    pip install -e .
+
+Which ensures that subsequent modifications to the libary will be reflected.
 
 ## Running Examples
 
@@ -49,8 +45,6 @@ The `examples` directory contains a number of scripts that show how to implement
     pip install usd-core
     
 USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
-
-## Testing
 
 Built-in unit tests can be run from the command-line as follows:
 
