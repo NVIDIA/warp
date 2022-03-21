@@ -1,0 +1,555 @@
+Runtime Reference
+=================
+
+.. currentmodule:: warp
+
+.. toctree::
+   :maxdepth: 2
+
+Initialization
+--------------
+
+Before use Warp should be explicitly initialized with the ``wp.init()`` method::
+
+   import warp as wp
+
+   wp.init()
+
+Users can query the supported compute devices using the ``wp.get_devices()`` method::
+
+   print(wp.get_devices())
+
+   >> ['cpu', 'cuda']
+
+These device strings can then be used to allocate memory and launch kernels as described below.
+
+Kernels
+-------
+
+In Warp, kernels are defined as Python functions, decorated with the ``@warp.kernel`` decorator. Kernels have a 1:1 correspondence with CUDA kernels, and may be launched with any number of parallel execution threads: ::
+
+    @wp.kernel
+    def simple_kernel(a: wp.array(dtype=wp.vec3),
+                      b: wp.array(dtype=wp.vec3),
+                      c: wp.array(dtype=float)):
+
+        # get thread index
+        tid = wp.tid()
+
+        # load two vec3s
+        x = a[tid]
+        y = b[tid]
+
+        # compute the dot product between vectors
+        r = wp.dot(x, y)
+
+        # write result back to memory
+        c[tid] = r
+
+Kernels are launched with the ``warp.launch()`` function on a specific device (CPU/GPU). Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.
+
+.. autofunction:: launch
+
+.. note:: 
+   Currently kernels launched on ``cpu`` devices will be executed in serial. Kernels launched on ``cuda`` devices will be launched in parallel with a fixed block-size.
+
+Arrays
+------
+
+Arrays are the fundamental memory abstraction in Warp; they are created through the following global constructors: ::
+
+    wp.empty(n=1024, dtype=wp.vec3, device="cpu")
+    wp.zeros(n=1024, dtype=float, device="cuda")
+    
+
+Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
+
+   r = np.random.rand(1024)
+
+   # copy to Warp owned array
+   a = wp.array(r, dtype=float, device="cpu")
+
+   # return a Warp array wrapper around the numpy data (zero-copy)
+   a = wp.array(r, dtype=float, copy=False, device="cpu")
+
+   # return a Warp copy of the array data on the GPU
+   a = wp.array(r, dtype=float, device="cuda")
+
+Note that for multi-dimensional data the datatype, ``dtype`` parameter, must be specified explicitly, e.g.: ::
+
+   r = np.random.rand((1024, 3))
+
+   # initialize as an array of vec3 objects
+   a = wp.array(r, dtype=wp.vec3, device="cuda")
+
+If the shapes are incompatible an error will be raised.
+
+Arrays can be moved between devices using the ``array.to()`` method: ::
+
+   host_array = wp.array(a, dtype=float, device="cpu")
+   
+   # allocate and copy to GPU
+   device_array = host_array.to("cuda")
+
+Additionally, arrays can be copied directly between memory spaces: ::
+
+   src_array = wp.array(a, dtype=float, device="cpu")
+   dest_array = wp.empty_like(host_array)
+
+   # copy from source CPU buffer to GPU
+   wp.copy(dest_array, src_array)
+
+.. autofunction:: zeros
+.. autofunction:: zeros_like
+.. autofunction:: empty
+.. autofunction:: empty_like
+
+.. autoclass:: array
+
+Data Types
+----------
+
+Scalar Types
+############
+
+The following scalar storage types are supported for array structures:
+
++---------+------------------------+
+| int8    | signed byte            |
++---------+------------------------+
+| uint8   | unsigned byte          |
++---------+------------------------+
+| int16   | signed short           |
++---------+------------------------+
+| uint16  | unsigned short         |
++---------+------------------------+
+| int32   | signed integer         |
++---------+------------------------+
+| uint32  | unsigned integer       |
++---------+------------------------+
+| int64   | signed long integer    |
++---------+------------------------+
+| uint64  | unsigned long integer  |
++---------+------------------------+
+| float32 | single precision float |
++---------+------------------------+
+| float64 | double precision float |
++---------+------------------------+
+
+Warp supports ``float`` and ``int`` as aliases for ``wp.float32`` and ``wp.int32`` respectively.
+
+.. note:: 
+   Currently Warp treats ``int32`` and ``float32`` as the two basic scalar *compute types*, and all other types as *storage types*. Storage types can be loaded and stored to arrays, but not participate in arithmetic operations directly. Users should cast storage types to a compute type (``int`` or ``float``) to perform computations.
+
+
+Vector Types
+############
+
+Warp provides built-in math and geometry types for common simulation and graphics problems. A full reference for operators and functions for these types is available in the :any:`functions`.
+
+
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| vec2            | 2d vector of floats                                                                                                             |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| vec3            | 3d vector of floats                                                                                                             |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| vec4            | 4d vector of floats                                                                                                             |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| mat22           | 2x2 matrix of floats                                                                                                            |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| mat33           | 3x3 matrix of floats                                                                                                            |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| mat44           | 4x4 matrix of floats                                                                                                            |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| quat            | Quaternion in form i,j,k,w where w is the real part                                                                             |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| transform       | 7d vector of floats representing a spatial rigid body transformation in format (p, q) where p is a vec3, and q is a quaternion  |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| spatial_vector  | 6d vector of floats, see wp.spatial_top(), wp.spatial_bottom(), useful for representing rigid body twists                       |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+| spatial_matrix  | 6x6 matrix of floats used to represent spatial inertia matrices                                                                 |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------+
+
+Type Conversions
+################
+
+Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetric operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error. This can be surprising for users that are accustomed to C-type conversions but avoids a class of common bugs that result from implicit conversions.
+
+In addition, users should always cast storage types to a compute type (``int`` or ``float``) before computation. Compute types can be converted back to storage types through explicit casting, e.g.: ``byte_array[index] = wp.uint8(i)``.
+
+.. note:: Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using ``int()`` or ``float()`` constructors.
+
+Constants
+---------
+
+In general, Warp kernels cannot access variables in the global Python interpreter state. One exception to this is for compile-time constants, which may be declared globally (or as class attributes) and folded into the kernel definition.
+
+Constants are defined using the ``warp.constant`` type. An example is shown below::
+
+   TYPE_SPHERE = wp.constant(0)
+   TYPE_CUBE = wp.constant(1)
+   TYPE_CAPSULE = wp.constant(2)
+
+   @wp.kernel
+   def collide(geometry: wp.array(dtype=int)):
+
+      t = geometry[wp.tid()]
+
+      if (t == TYPE_SPHERE):
+         print("sphere")
+      if (t == TYPE_CUBE):
+         print("cube")
+      if (t == TYPE_CAPSULE):
+         print("capsule")
+
+
+.. autoclass:: constant
+
+
+Operators
+----------
+
+Boolean Operators
+#################
+
++----------+--------------------------------------+
+| a and b  | True if a and b are True             |
++----------+--------------------------------------+
+| a or b   | True if a or b is True               |
++----------+--------------------------------------+
+| not a    | True if a is False, otherwise False  |
++----------+--------------------------------------+
+
+.. note:: 
+
+   Expressions such as ``if (a and b):`` currently do not perform short-circuit evaluation. In this case ``b`` will also be evaluated even when ``a`` is ``False``. Users should take care to ensure that secondary conditions are safe to evaluate (e.g.: do not index out of bounds) in all cases.
+
+
+Comparison Operators
+####################
+
++--------+---------------------------------------+
+| a > b  | True if a strictly greater than b     |
++--------+---------------------------------------+
+| a < b  | True if a strictly less than b        |
++--------+---------------------------------------+
+| a >= b | True if a greater than or equal to b  |
++--------+---------------------------------------+
+| a <= b | True if a less than or equal to b     |
++--------+---------------------------------------+
+| a == b | True if a equals b                    |
++--------+---------------------------------------+
+| a != b | True if a not equal to b              |
++--------+---------------------------------------+
+
+
+Meshes
+------
+
+Warp provides a ``warp.Mesh`` class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array::
+
+   mesh = wp.Mesh(points, indices, velocities)
+
+.. note::
+   Mesh objects maintain references to their input geometry buffers. All buffers should live on the same device.
+
+Meshes can be passed to kernels using their ``id`` attribute which uniquely identifies the mesh by a unique ``uint64`` value. Once inside a kernel you can perform geometric queries against the mesh such as ray-casts or closest point lookups::
+
+   @wp.kernel
+   def raycast(mesh: wp.uint64,
+               ray_origin: wp.array(dtype=wp.vec3),
+               ray_dir: wp.array(dtype=wp.vec3),
+               ray_hit: wp.array(dtype=wp.vec3)):
+
+      tid = wp.tid()
+
+      t = float(0.0)                   # hit distance along ray
+      u = float(0.0)                   # hit face barycentric u
+      v = float(0.0)                   # hit face barycentric v
+      sign = float(0.0)                # hit face sign
+      n = wp.vec3()       # hit face normal
+      f = int(0)                       # hit face index
+
+      color = wp.vec3()
+
+      # ray cast against the mesh
+      if wp.mesh_query_ray(mesh, ray_origin[tid], ray_dir[tid], 1.e+6, t, u, v, sign, n, f):
+
+         # if we got a hit then set color to the face normal
+         color = n*0.5 + wp.vec3(0.5, 0.5, 0.5)
+
+      ray_hit[tid] = color
+
+
+Users may update mesh vertex positions at runtime simply by modifying the points buffer. After modifying point locations users should call ``Mesh.refit()`` to rebuild the bounding volume hierarchy (BVH) structure and ensure that queries work correctly.
+
+.. note::
+   Updating Mesh topology (indices) at runtime is not currently supported, users should instead re-create a new Mesh object.
+
+.. autoclass:: Mesh
+   :members:
+
+Volumes
+-------
+
+Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.
+
+Below we give an example of creating a Volume object from an existing NanoVDB file::
+
+   # load NanoVDB bytes from disk
+   file = np.fromfile("mygrid.nvdbraw", dtype=np.byte)
+
+   # create Volume object
+   volume = wp.Volume(wp.array(file, device="cpu"))
+
+.. note::
+   Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension,  can contain multiple grids, but a ``Volume`` object represents a single NanoVDB grid and requires an ``array`` of bytes for a single grid at initialization.
+
+   Because of this, when ``.nvdb`` files are used as data source, the individual grids need to be extracted for the ``Volume`` objects.
+
+   Alternatively, grid data saved directly can be passed in without modification. 
+
+
+To sample the volume inside a kernel we pass a reference to it by id, and use the built-in sampling modes::
+
+   @wp.kernel
+   def sample_grid(volume: wp.uint64,
+                   points: wp.array(dtype=wp.vec3),
+                   samples: wp.array(dtype=float)):
+
+      tid = wp.tid()
+
+      # load sample point in world-space
+      p = points[tid]
+
+      # sample grid with trilinear interpolation     
+      f = wp.volume_sample_world(volume, p, wp.Volume.LINEAR)
+
+      # write result
+      samples[tid] = f
+
+
+
+.. note:: Warp does not currently support modifying sparse-volumes at runtime. We expect to address this in a future update. Users should create volumes using standard VDB tools such as OpenVDB, Blender, Houdini, etc.
+
+.. autoclass:: Volume
+   :members:
+
+.. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
+
+Hash Grids
+----------
+
+Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.
+
+To support spatial neighbor queries Warp provides a ``HashGrid`` object that may be created as follows:: 
+
+   grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128, device="cuda")
+
+   grid.build(points=p, radius=r)
+
+Where ``p`` is an array of ``warp.vec3`` point positions, and ``r`` is the radius to use when building the grid. Neighbors can then be iterated over inside the kernel code as follows::
+
+   @wp.kernel
+   def sum(grid : wp.uint64,
+         points: wp.array(dtype=wp.vec3),
+         output: wp.array(dtype=wp.vec3),
+         radius: float):
+
+      tid = wp.tid()
+
+      # query point
+      p = points[tid]
+
+      # create grid query around point
+      query = wp.hash_grid_query(grid, p, radius)
+      index = int(0)
+
+      sum = wp.vec3()
+
+      while(wp.hash_grid_query_next(query, index)):
+            
+         neighbor = points[index]
+         
+         # compute distance to neighbor point
+         dist = wp.length(p-neighbor)
+         if (dist <= radius):
+               sum += neighbor
+
+      output[tid] = sum
+
+
+
+.. autoclass:: HashGrid
+   :members:
+
+Differentiability
+-----------------
+
+By default Warp generates a foward and backward (adjoint) version of each kernel definition. Buffers that participate in the chain of computation should be created with ``requires_grad=True``, for example::
+
+   a = wp.zeros(1024, dtype=wp.vec3, device="cuda", requires_grad=True)
+
+The ``warp.Tape`` class can then be used to record kernel launches, and replay them to compute the gradient of a scalar loss function with respect to the kernel inputs::
+
+   tape = wp.Tape()
+
+   # forward pass
+   with tape:
+      wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
+      wp.launch(kernel=compute2, inputs=[c, d], device="cuda")
+      wp.launch(kernel=loss, inputs=[d, l], device="cuda")
+
+   # reverse pass
+   tape.backward(l)
+
+After the backward pass has completed the gradients with respect to the inputs are available via a mapping in the Tape object: ::
+
+   # gradient of loss with respect to input a
+   print(tape.gradients[a])
+
+
+.. note:: 
+
+   Warp uses a source-code transformation approach to auto-differentiation. In this approach the backwards pass must keep a record of intermediate values computed during the foward pass. This imposes some restrictions on what kernels can do and still be differentiable:
+
+   * Dynamic loops should not mutate any previously declared local variable. This means the loop must be side-effect free. A simple way to ensure this is to move the loop body into a separate function. Static loops that are unrolled at compile time do not have this restriction and can perform any computation.
+         
+   * Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g.: via ``wp.atomic_add()``)
+
+
+.. autoclass:: Tape
+   :members:
+
+Graphs
+-----------
+
+Launching kernels from Python introduces significant additional overhead compared to C++ or native programs. To address this, Warp exposes the concept of `CUDA graphs <https://developer.nvidia.com/blog/cuda-graphs/>`_ to allow recording large batches of kernels and replaying them with very little CPU overhead.
+
+To record a series of kernel launches use the ``warp.capture_begin()`` and ``warp.capture_end()`` API as follows: ::
+
+   # begin capture
+   wp.capture_begin()
+
+   # record launches
+   for i in range(100):
+      wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
+
+   # end capture and return a graph object
+   graph = wp.capture_end()
+
+
+Once a graph has been constructed it can be executed: ::
+
+   wp.capture_launch(graph)
+
+Note that only launch calls are recorded in the graph, any Python executed outside of the kernel code will not be recorded. Typically it only makes sense to use CUDA graphs when the graph will be reused / launched multiple times.
+
+.. autofunction:: capture_begin
+.. autofunction:: capture_end
+.. autofunction:: capture_launch
+
+Interopability
+-----------------
+
+Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.
+
+NumPy
+#####
+
+Warp arrays may be converted to a NumPy array through the ``warp.array.numpy()`` method. When the Warp array lives on the ``cpu`` device this will return a zero-copy view onto the underlying Warp allocation. If the array lives on a ``cuda`` device then it will first be copied back to a temporary buffer and copied to NumPy.
+
+Warp CPU arrays also implement  the ``__array_interface__`` protocol and so can be used to construct NumPy arrays directly::
+
+   w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+   a = np.array(w)
+   print(a)   
+   > [1. 2. 3.]
+
+
+PyTorch
+#######
+
+Warp provides helper functions to convert arrays to/from PyTorch. Please see the ``warp.torch`` module for more details. Example usage is shown below::
+
+   import warp.torch
+
+   w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+
+   # convert to Torch tensor
+   t = warp.to_torch(w)
+
+   # convert from Torch tensor
+   w = warp.from_torch(t)
+
+
+CuPy/Numba
+##########
+
+Warp GPU arrays support the ``__cuda_array_interface__`` protocol for sharing data with other Python GPU frameworks. Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the ``__cuda_array_interface__`` protocol, but not the other way around.
+
+JAX
+###
+
+Interop with JAX arrays is not currently well supported, although it is possible to first convert arrays to a Torch tensor and then to JAX via. the dlpack mechanism.
+
+
+Debugging
+---------
+
+Printing Values
+#################
+
+Often one of the best debugging methods is to simply print values from kernels. Warp supports printing all built-in types using the ``print()`` function, e.g.::
+
+   v = wp.vec3(1.0, 2.0, 3.0)
+
+   print(v)   
+
+In addition, formatted C-style printing is available through the ``printf()`` function, e.g.::
+
+   x = 1.0
+   i = 2
+
+   wp.printf("A float value %f, an int value: %d", x, i)
+
+.. note:: Formatted printing is only available for scalar types (e.g.: ``int`` and ``float``) not vector types.
+
+Printing Launches
+#################
+
+For complex applications it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose these issues Warp supports a simple option to print out all launches and arguments to the console::
+
+   wp.config.print_launches = True
+
+
+Step-Through Debugging
+######################
+
+It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code. Users should first compile the kernels in debug mode by setting::
+   
+   wp.config.mode = "debug"
+   
+This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process, the debugger should be attached, and a breakpoint inserted into the generated code (exported in the ``warp/gen`` folder).
+
+.. note:: Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.
+
+CUDA Verification
+#################
+
+It is possible to generate out-of-bounds memory access violations through poorly formed kernel code or inputs. In this case the CUDA runtime will detect the violation and put the CUDA context into an error state. Subsequent kernel launches may silently fail which can lead to hard to diagnose issues.
+
+If a CUDA error is suspected a simple verification method is to enable::
+
+   wp.config.verify_cuda = True
+
+This setting will check the CUDA context after every operation to ensure that it is still valid. If an error is encountered it will raise an exception that often helps to narrow down the problematic kernel.
+
+.. note:: Verifying CUDA state at each launch requires synchronizing CPU and GPU which has a significant overhead. Users should ensure this setting is only used during debugging.
+
+Simulation
+----------
+
+Warp includes a simulation package available as ``warp.sim``. This module includes implementations of many common physical simulation models, such as particles, rigid bodies, finite-elements (FEM).
+
+This module is under development and subject to change, please see the test and example scenes for usage.

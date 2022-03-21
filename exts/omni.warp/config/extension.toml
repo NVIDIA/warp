@@ -1,0 +1,36 @@
+
+[package]
+# Semantic Versioning is used: https://semver.org/
+version = "0.1.25"
+authors = ["Miles Macklin"]
+title = "Warp"
+description="A Python framework for high-performance simulation and graphics programming"
+readme  = "docs/README.md"
+repository="https://github.com/nvidia/warp"
+category = "graph"
+keywords = ["kit", "omnigraph", "warp", "simulation"]
+changelog="docs/CHANGELOG.md"
+
+preview_image = "data/preview.png"
+icon = "data/icon.png"
+
+# Watch the .ogn files for hot reloading (only works for Python files)
+[fswatcher.patterns]
+include = ["*.ogn", "*.py"]
+exclude = ["Ogn*Database.py", "*/ogn*"]
+
+[dependencies]
+"omni.kit.test" = {}
+"omni.graph" = {}
+"omni.timeline" = {}
+"omni.usd" = {}
+
+# Main python module this extension provides, it will be publicly available as "import omni.warp".
+[[python.module]]
+name = "omni.warp"
+
+# Core language module
+[[python.module]]
+name = "warp"
+path = "."
+public = true

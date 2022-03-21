@@ -1,0 +1,6 @@
+[package]
+[package.target]
+python = ["cp37"]
+[package.publish]
+date = 1635811509
+kitVersion = "103.0+master.0.75457a67.gitlab"
