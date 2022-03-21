@@ -15,6 +15,7 @@ archive
 /_build
 /_repo
 examples/assets/.thumbs
+examples/benchmark*
 /docs/_build/doctrees
 /docs/_build/html/_static/fonts
 .teamcity
@@ -31,4 +32,4 @@ repo.toml
 setup.sh
 test.bat
 test.sh
-examples/benchmark*
+merge.bat
