@@ -5,6 +5,14 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+#############################################################################
+# Example Ray Cast
+#
+# Shows how to use the built-in wp.Mesh data structure and wp.mesh_query_ray()
+# function to implement a basic ray-tracer.
+#
+##############################################################################
+
 import matplotlib.pyplot as plt
 
 import warp as wp
