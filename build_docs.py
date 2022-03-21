@@ -1,7 +1,3 @@
-# This script is an 'offline' build of the core warp runtime libraries
-# designed to be executed as part of CI / developer workflows, not 
-# as part of the user runtime (since it requires CUDA toolkit, etc)
-
 import os
 import sys
 import subprocess
