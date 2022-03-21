@@ -5,7 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+from pxr import Usd, UsdGeom, UsdLux, Gf, Sdf
 
 import math
 
@@ -13,6 +13,7 @@ import warp as wp
 
 def _usd_add_xform(prim):
 
+    prim = UsdGeom.Xform(prim)
     prim.ClearXformOpOrder()
 
     t = prim.AddTranslateOp()
@@ -22,6 +23,7 @@ def _usd_add_xform(prim):
 
 def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
+    xform = UsdGeom.Xform(xform)
     xform_ops = xform.GetOrderedXformOps()
 
     xform_ops[0].Set(Gf.Vec3d(float(pos[0]), float(pos[1]), float(pos[2])), time)
@@ -98,6 +100,13 @@ class UsdRenderer:
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.y)
         elif upaxis == "z":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
+
+        # add default light
+        distantLight = UsdLux.DistantLight.Define(stage, "/light_0")
+        distantLight.CreateIntensityAttr(5000.0)
+        distantLight.CreateColorAttr(Gf.Vec3f(1.0, 0.85, 0.7))
+        UsdGeom.Xform(distantLight.GetPrim()).AddRotateYOp().Set(value=(90))
+        UsdGeom.Xform(distantLight.GetPrim()).AddRotateXOp().Set(value=(-45))
 
 
     def begin_frame(self, time):
