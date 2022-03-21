@@ -4,36 +4,62 @@
 
 import os
 import sys
+import argparse
+
 import warp.config
 import warp.build
+
+parser = argparse.ArgumentParser(description="Warp build script")
+parser.add_argument('--msvc_path', type=str, help='Path to MSVC compiler (optional if already on PATH)')
+parser.add_argument('--sdk_path', type=str, help='Path to WinSDK (optional if already on PATH)')
+parser.add_argument('--cuda_path', type=str, help='Path to CUDA SDK')
+parser.add_argument('--mode', type=str, default="release", help="Build configuration, either 'release' or 'debug'")
+parser.add_argument('--verbose', type=bool, default=True, help="Verbose building output, default True")
+args = parser.parse_args()
 
 # set build output path off this file
 build_path = os.path.dirname(os.path.realpath(__file__)) + "/warp"
 
-# # find host compiler
-# if (warp.config.host_compiler == None):
-#     warp.config.host_compiler = warp.build.find_host_compiler()
+print(args)
 
-# # no host toolchain not found
-# if (warp.config.host_compiler == None):
-#     raise Exception("Warp: Could not find host compiler (MSVC, GCC, etc), ensure that the compiler is present in the environment")
+warp.config.verbose = args.verbose
+warp.config.mode = args.mode
 
-# # check for CUDA
-# if (warp.config.cuda_path == None):
-#     warp.config.cuda_path = warp.build.find_cuda()
-
-warp.config.verbose = True
-warp.config.cuda_path = "_build/target-deps/cuda"
-warp.config.mode = "release"
-
-if os.name == 'nt':
-    warp.build.set_msvc_compiler(msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.16.27023", sdk_path="_build/host-deps/winsdk")
-
-# disable CUDA on osx
+# setup CUDA paths
 if sys.platform == 'darwin':
+
     warp.config.cuda_path = None
 
+else:
+
+    if args.cuda_path:
+        warp.config.cuda_path = args.cuda_path
+    else:
+        warp.config.cuda_path = warp.build.find_cuda()
+
+
+# setup MSVC and WinSDK paths
+if os.name == 'nt':
+    
+    if args.sdk_path and args.msvc_path:
+        # user provided MSVC
+        warp.build.set_msvc_compiler(msvc_path=args.msvc_path, sdk_path=args.sdk_path)
+    else:
+        
+        # attempt to find MSVC in environment (will set vcvars)
+        cl_path = warp.build.find_host_compiler()
+        
+        if (cl_path == None):
+            print("Could not find MSVC compiler in path")
+            sys.exit(1)
+
+
 try:
+
+    if (os.name == 'nt'):
+        dll_path = build_path + "/bin/warp.dll"
+    else:
+        dll_path = build_path + "/bin/warp.so"
 
     # no CUDA toolchain found
     if (warp.config.cuda_path == None):
@@ -42,15 +68,11 @@ try:
         warp.build.build_dll(
                         cpp_path=build_path + "/native/warp.cpp", 
                         cu_path=None, 
-                        dll_path=build_path + "/bin/warp.so",
+                        dll_path=dll_path,
                         config=warp.config.mode,
                         force=True)
 
     else:
-        if (os.name == 'nt'):
-            dll_path = build_path + "/bin/warp.dll"
-        else:
-            dll_path = build_path + "/bin/warp.so"
 
         warp.build.build_dll(
                         cpp_path=build_path + "/native/warp.cpp", 

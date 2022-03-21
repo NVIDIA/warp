@@ -1,18 +1,16 @@
 REM @echo off
 
+REM pull packman dependencies
 call "%~dp0repo" build --fetch-only %*
 
+REM Use Packman python
 SET PYTHON="%~dp0\_build\target-deps\python\python.exe"
-
-REM Host dependencies
-REM tools\packman\packman pull -p windows-x86_64 deps\host-deps.packman.xml
-REM tools\packman\packman pull -p windows-x86_64 deps\target-deps.packman.xml
 
 REM Python dependencies
 call %PYTHON% -m pip install numpy
 
 REM Build
-call %PYTHON% build_lib.py
+call %PYTHON% build_lib.py --msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.16.27023" --sdk_path="_build/host-deps/winsdk" --cuda_path="_build/target-deps/cuda"
 
 REM Copy CUDA dependencies to bin dir
 copy _build\target-deps\cuda\bin\nvrtc*.dll warp\bin
