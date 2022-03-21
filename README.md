@@ -7,7 +7,7 @@ Warp is designed to make it easy to write programs for:
 * Physics simulation
 * Geometry processing
 * Procedural animation
-* Reinforcement learning
+* Machine learning
 
 Please refer to the project [Documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
 
@@ -17,29 +17,38 @@ _A flow field visualization of a NanoVDB fluid simulation computed in Warp_
 
 ## Installing
 
-Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment run:
+Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment (3.7.x or higher) extract the archive and run the following command from the root directory:
 
     pip install -e .
 
-From the root directory of this repository.
+The Warp package will now be available to import as follows:
+
+```python
+import warp as wp
+```
+
 
 ## Building
 
-For developers wanting to build the library themselves the following tools are required:
+For developers who want to build the library themselves the following tools are required:
 
 * Microsoft Visual Studio 2017 upwards (Windows)
 * GCC 4.0 upwards (Linux)
 * CUDA Toolkit 11.3
 
-After cloning the repository, developers should run `build.bat` or `build.sh` to generate the `warp.dll` / `warp.so` core library respectively.
+After cloning the repository, users should run:
+
+    python build_lib.py
+
+This will generate the `warp.dll` / `warp.so` core library respectively. When building manually users should ensure that their CUDA_PATH environment variable is set and dynamic libraries can be found at runtime.
 
 ## Running Examples
 
-The `examples` directory contains a number of scripts that show how to implement different simulation methods and how to use the Warp API. Most examples will generate USD files containing time-sampled animations in the ``examples/outputs`` directory. Before running examples users should ensure that the ``usd-core`` package is installed using:
+The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations in the ``examples/outputs`` directory. Before running examples users should ensure that the ``usd-core`` package is installed using:
 
     pip install usd-core
     
-USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, Blender, or in Preview on macOS.
+USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
 
 ## Testing
 

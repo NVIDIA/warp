@@ -2,8 +2,11 @@
 # designed to be executed as part of CI / developer workflows, not 
 # as part of the user runtime (since it requires CUDA toolkit, etc)
 
-import os
 import sys
+if sys.version_info[0] < 3:
+    raise Exception("Warp requires Python 3.x minimum")
+
+import os
 import argparse
 
 import warp.config
@@ -56,8 +59,10 @@ if os.name == 'nt':
 
 try:
 
-    if (os.name == 'nt'):
+    if sys.platform == "win32":
         dll_path = build_path + "/bin/warp.dll"
+    elif sys.platform == "darwin":
+        dll_path = build_path + "/bin/warp.dylib"
     else:
         dll_path = build_path + "/bin/warp.so"
 
