@@ -4,7 +4,7 @@
 version = "0.1.25"
 authors = ["Miles Macklin"]
 title = "Warp"
-description="Python DSL for high performance graphics and simulation"
+description="A Python framework for high-performance simulation and graphics programming"
 readme  = "docs/README.md"
 repository="https://github.com/nvidia/warp"
 category = "graph"
