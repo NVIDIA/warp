@@ -8,7 +8,7 @@
 
 // The MIT License (MIT)
 
-// Copyright (c) {{{2014}}} {{{Eric V. Jang}}}
+// Copyright (c) 2014 Eric V. Jang
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // SOFTWARE.
 
 // Source: https://github.com/ericjang/svd3/blob/master/svd3_cuda/svd3_cuda.h
+
 
 #pragma once
 

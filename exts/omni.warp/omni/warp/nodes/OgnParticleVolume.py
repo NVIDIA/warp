@@ -19,7 +19,6 @@ import warp as wp
 from pxr import Usd, UsdGeom, Gf, Sdf
 
 import omni.timeline
-import omni.appwindow
 import omni.usd
 
 import omni.graph.core as og
@@ -31,7 +30,7 @@ def read_transform_bundle(bundle):
     time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
 
     stage = omni.usd.get_context().get_stage()
-    prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
+    prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.attribute_by_name("sourcePrimPath").value))
     return prim.ComputeLocalToWorldTransform(time)
 
 def read_bounds_bundle(bundle):
@@ -39,9 +38,10 @@ def read_bounds_bundle(bundle):
     time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
 
     stage = omni.usd.get_context().get_stage()
-    prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.bundle.get_prim_path()))
-    
-    return prim.ComputeWorldBound(time, purpose1="default")
+    prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.attribute_by_name("sourcePrimPath").value))
+
+    bounds = prim.ComputeWorldBound(time, purpose1="default")
+    return bounds
 
 def triangulate(counts, indices):
 
@@ -218,7 +218,9 @@ class OgnParticleVolume:
 
                         points_max = db.inputs.max_points
 
-                        #print(f"Creating particle grid with dim {dim_x}x{dim_y}x{dim_z}, lower {lower[0]}, {lower[1]}, {lower[2]} size {size[0]}, {size[1]}, {size[2]}, spacing {db.inputs.spacing}")
+                        if (dim_x < 0 or dim_y < 0 or dim_z < 0):
+                            print(f"Bounds for Particle Volume prim are invalid")
+                            return False
 
                         if (dim_x*dim_y*dim_z > points_max):
                             print(f"Trying to create particle volume with {dim_x*dim_y*dim_z} > {points_max} particles, increase spacing or geometry size")

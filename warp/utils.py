@@ -13,16 +13,6 @@ import numpy as np
 
 import warp as wp
 
-lwp_output = ""
-
-def lwp(s):
-    print(s)
-    global lwp_output
-    lwp_output = lwp_output + s + "\n"
-
-# short hands
-
-
 def length(a):
     return np.linalg.norm(a)
 

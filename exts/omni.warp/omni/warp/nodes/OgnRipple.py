@@ -15,7 +15,6 @@ import numpy as np
 import warp as wp
 
 import omni.timeline
-import omni.appwindow
 import omni.usd
 
 from pxr import Usd, UsdGeom, Gf, Sdf
