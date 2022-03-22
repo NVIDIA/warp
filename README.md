@@ -26,7 +26,7 @@ For developers who want to build the library themselves the following tools are 
 
 * Microsoft Visual Studio 2017 upwards (Windows)
 * GCC 4.0 upwards (Linux)
-* CUDA Toolkit 11.3
+* CUDA Toolkit 11.3 or higher
 
 After cloning the repository, users should run:
 
@@ -36,7 +36,7 @@ This will generate the `warp.dll` / `warp.so` core library respectively. When bu
 
     pip install -e .
 
-Which ensures that subsequent modifications to the libary will be reflected.
+Which ensures that subsequent modifications to the libary will be reflected in the Python package.
 
 ## Running Examples
 
@@ -44,7 +44,7 @@ The `examples` directory contains a number of scripts that show how to implement
 
     pip install usd-core
     
-USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
+USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, and Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
 
 Built-in unit tests can be run from the command-line as follows:
 
