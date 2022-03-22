@@ -10,7 +10,7 @@ Warp is designed to make it easy to write programs for physics simulation, geome
 Installation
 ------------
 
-Please see the Warp `README.md <https://github.com/NVIDIA/warp/README.md>`_ for building and installation instructions and where to download pre-built packages.
+Please see the Warp `README.md <https://github.com/NVIDIA/warp>`_ for building and installation instructions and where to download pre-built packages.
 
 Example Usage
 -------------
