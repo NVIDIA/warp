@@ -148,13 +148,10 @@ for value_type, path in volume_paths.items():
     volume_data = np.fromfile(path, dtype=np.byte)
     volume_array = wp.array(volume_data, device="cpu")
     for device in devices:
-        volume = wp.Volume(volume_array.to(device))
-
-        data_np = volume.array().numpy()
-        magic = ''.join([chr(x) for x in data_np[0:8]])
-        if magic != "NanoVDB0":
-            print(f"FAILED: NanoVDB signature doesn't match!\nFound \"{magic}\"")
-            sys.exit()
+        try:
+            volume = wp.Volume(volume_array.to(device))
+        except RuntimeError as e:
+            raise RuntimeError(f"Failed to load volume from \"{path}\" to {device} memory:\n{e}")
 
         volumes[value_type][device] = volume
 
