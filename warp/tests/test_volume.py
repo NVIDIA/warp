@@ -135,7 +135,7 @@ def test_volume_sample_linear_v(volume: wp.uint64,
 devices = wp.get_devices()
 rng = np.random.default_rng(101215)
 
-nanovdb_path = {
+volume_paths = {
     "scalar": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb.grid")),
     "vector": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb.grid"))
 }
@@ -143,7 +143,7 @@ nanovdb_path = {
 volumes = {}
 points = {}
 points_jittered = {}
-for value_type, path in nanovdb_path.items():
+for value_type, path in volume_paths.items():
     volumes[value_type] = {}
     volume_data = np.fromfile(path, dtype=np.byte)
     volume_array = wp.array(volume_data, device="cpu")
