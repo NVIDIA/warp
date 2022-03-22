@@ -12,7 +12,7 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 
 # pip deps
 ./_build/target-deps/python/python -m pip install numpy
-./_build/target-deps/python/python build_lib.py
+./_build/target-deps/python/python build_lib.py --cuda_path="_build/target-deps/cuda"
 
 # copy linux dependencies to bin dir
 cp _build/target-deps/cuda/lib64/libcudart.so.11.0 warp/bin

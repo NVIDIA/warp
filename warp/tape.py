@@ -49,10 +49,6 @@ class Tape:
         if (loss):
             self.gradients[loss] = wp.array(np.ones(1), dtype=wp.float32, device=loss.device)
 
-        # insert any user specified gradients (e.g.: from Torch)
-        if (grads):
-            self.gradients.update(grads)
-
         # force allocation of all adjoints before capture
         if self.capture:
 
@@ -72,6 +68,10 @@ class Tape:
             for k, v in self.gradients.items():
                 if (k != loss):
                     v.zero_()
+
+        # insert any user specified gradients (e.g.: from Torch)
+        if (grads):
+            self.gradients.update(grads)
 
         # run launches backwards
         for launch in reversed(self.launches):

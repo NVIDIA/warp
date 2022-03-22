@@ -5,7 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+from pxr import Usd, UsdGeom, UsdLux, Gf, Sdf
 
 import math
 
@@ -13,6 +13,7 @@ import warp as wp
 
 def _usd_add_xform(prim):
 
+    prim = UsdGeom.Xform(prim)
     prim.ClearXformOpOrder()
 
     t = prim.AddTranslateOp()
@@ -22,6 +23,7 @@ def _usd_add_xform(prim):
 
 def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
+    xform = UsdGeom.Xform(xform)
     xform_ops = xform.GetOrderedXformOps()
 
     xform_ops[0].Set(Gf.Vec3d(float(pos[0]), float(pos[1]), float(pos[2])), time)
@@ -43,6 +45,30 @@ def _compute_segment_xform(pos0, pos1):
 
     return (mid, Gf.Quath(rot.GetQuat()), scale)
 
+def bourke_color_map(low, high, v):
+
+	c = [1.0, 1.0, 1.0]
+
+	if v < low:
+		v = low
+	if v > high:
+		v = high
+	dv = high - low
+
+	if v < (low + 0.25 * dv):
+		c[0] = 0.
+		c[1] = 4. * (v - low) / dv
+	elif v < (low + 0.5 * dv):
+		c[0] = 0.
+		c[2] = 1. + 4. * (low + 0.25 * dv - v) / dv
+	elif v < (low + 0.75 * dv):
+		c[0] = 4. * (v - low - 0.5 * dv) / dv
+		c[2] = 0.
+	else:
+		c[1] = 1. + 4. * (low + 0.75 * dv - v) / dv
+		c[2] = 0.
+
+	return c
 
 class UsdRenderer:
     """A USD renderer
@@ -74,6 +100,22 @@ class UsdRenderer:
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.y)
         elif upaxis == "z":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
+
+        # add default lights
+        light_0 = UsdLux.DistantLight.Define(stage, "/light_0")
+        light_0.GetPrim().CreateAttribute("intensity", Sdf.ValueTypeNames.Float, custom=False).Set(2500.0)
+        light_0.GetPrim().CreateAttribute("color", Sdf.ValueTypeNames.Color3f, custom=False).Set(Gf.Vec3f(0.98, 0.85, 0.7))
+
+        UsdGeom.Xform(light_0.GetPrim()).AddRotateYOp().Set(value=(70.0))
+        UsdGeom.Xform(light_0.GetPrim()).AddRotateXOp().Set(value=(-45.0))
+
+        light_1 = UsdLux.DistantLight.Define(stage, "/light_1")
+        light_1.GetPrim().CreateAttribute("intensity", Sdf.ValueTypeNames.Float, custom=False).Set(2500.0)
+        light_1.GetPrim().CreateAttribute("color", Sdf.ValueTypeNames.Color3f, custom=False).Set(Gf.Vec3f(0.62, 0.82, 0.98))
+
+        UsdGeom.Xform(light_1.GetPrim()).AddRotateYOp().Set(value=(-70.0))
+        UsdGeom.Xform(light_1.GetPrim()).AddRotateXOp().Set(value=(-45.0))
+
 
 
     def begin_frame(self, time):
@@ -247,7 +289,8 @@ class UsdRenderer:
             pos0 = vertices[i]
             pos1 = vertices[i+1]
 
-            (pos, rot, scale) = _compute_segment_xform(Gf.Vec3f(pos0), Gf.Vec3f(pos1))
+            (pos, rot, scale) = _compute_segment_xform(Gf.Vec3f(float(pos0[0]), float(pos0[1]), float(pos0[2])), 
+                                                       Gf.Vec3f(float(pos1[0]), float(pos1[1]), float(pos1[2])))
 
             line_positions.append(pos)
             line_rotations.append(rot)

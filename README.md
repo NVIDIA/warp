@@ -1,44 +1,77 @@
-# NVIDIA Warp
+# NVIDIA Warp (Preview)
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
-Please refer to the project [documentation](https://mmacklin.gitlab-master-pages.nvidia.com/warp/) for detailed API and language reference.
+Warp is designed to make it easy to write programs for:
 
-Please see `#omni-warp` on Slack for discussion and reporting bugs.
+* Physics simulation
+* Geometry processing
+* Procedural animation
+* Machine learning
+
+Please refer to the project [Documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
+
+<img src="./docs/img/nvdb_flow.png"/>
+
+_A flow field visualization of a NanoVDB fluid simulation computed in Warp_
 
 ## Installing
 
-Pre-built packages for Windows and Linux are available as artifacts on the following TeamCity instance:
-
-https://teamcity.nvidia.com/project/Sandbox_mmacklin_Warp?mode=builds
-
-To install in your local Python environment use:
+Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment (3.7.x or higher) extract the archive and run the following command from the root directory:
 
     pip install -e .
 
+The Warp package will now be available to import as follows:
+
+```python
+import warp as wp
+```
+
+
 ## Building
 
-For developers looking to build the library themselves the following are required:
+For developers who want to build the library themselves the following tools are required:
 
 * Microsoft Visual Studio 2017 upwards (Windows)
 * GCC 4.0 upwards (Linux)
+* CUDA Toolkit 11.3
 
-After cloning the repository, developers should run `build.bat` or `build.sh` to generate the `warp.dll` / `warp.so` core library respectively. CUDA dependencies will automatically be downloaded.
+After cloning the repository, users should run:
 
-To run built-in tests users should install the USD Core library to your Python environment using: ``pip install usd-core``
+    python build_lib.py
+
+This will generate the `warp.dll` / `warp.so` core library respectively. When building manually users should ensure that their CUDA_PATH environment variable is set and dynamic libraries can be found at runtime.
+
+## Running Examples
+
+The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations in the ``examples/outputs`` directory. Before running examples users should ensure that the ``usd-core`` package is installed using:
+
+    pip install usd-core
+    
+USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
+
+## Testing
+
+Built-in unit tests can be run from the command-line as follows:
+
+    python -m warp.tests
 
 ## Omniverse
 
-The Warp Omniverse extension is available in the extension registry inside Kit or Create daily builds. 
+A Warp Omniverse extension is available in the extension registry inside Omniverse Kit or Create:
 
-![](./docs/img/omniverse.png)
+<img src="./docs/img/omniverse.png" width=550px/>
 
-Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment.
+Enabling the extension will automatically install and initialize the Warp Python module inside the Kit Python environment. Please see the [Omniverse Warp Documentation](http://docs.omniverse.nvidia.com/extensions/warp.html) for more details on how to use Warp in Omniverse.
 
-If the Warp extension is not visible, (e.g.: for in public or non-daily builds) then you need to add the NVIDIA internal extension registry to your extensions settings: `omniverse://kit-extensions.ov.nvidia.com/exts/kit/default`.
+## Learn More
 
-## Source
+Please see our [GTC Presentation](https://www.nvidia.com/gtc/session-catalog/?search=warp&tab.scheduledorondemand=1583520458947001NJiE&search=warp#/session/16384065793850013gEx) for more details on Warp.
 
-https://gitlab-master.nvidia.com/mmacklin/warp
+## Discord
+
+We have a **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/XWQNJDNuaC) sever, come chat to us!
+
+
 
 

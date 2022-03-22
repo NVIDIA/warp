@@ -1,0 +1,28 @@
+{
+    "OgnDeform": {
+        "version": 1,
+        "description": "Example Warp deformer",
+        "language": "Python",
+        "inputs": {
+            "points": {
+                "type": "pointf[3][]",
+                "description": "Input points",
+                "default": []
+            },
+            "time": {
+                "type": "float",
+                "description": "Input time",
+                "default": 0.0
+            }
+        },
+        "outputs": {
+            "points": {
+                "type": "pointf[3][]",
+                "description": "Output points"
+            }
+        },
+        "state": {
+            "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
+        }
+    }
+}

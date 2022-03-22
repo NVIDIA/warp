@@ -42,6 +42,9 @@ add_builtin("sqrt", input_types={"x": float}, value_type=float, doc="Return the 
 add_builtin("tan", input_types={"x": float}, value_type=float, doc="Return tangent of x in radians.", group="Scalar Math")
 add_builtin("atan", input_types={"x": float}, value_type=float, doc="Return arctan of x.", group="Scalar Math")
 add_builtin("atan2", input_types={"y": float, "x": float}, value_type=float, doc="Return atan2 of x.", group="Scalar Math")
+add_builtin("sinh", input_types={"x": float}, value_type=float, doc="Return the sinh of x.", group="Scalar Math")
+add_builtin("cosh", input_types={"x": float}, value_type=float, doc="Return the cosh of x.", group="Scalar Math")
+add_builtin("tanh", input_types={"x": float}, value_type=float, doc="Return the tanh of x.", group="Scalar Math")
 
 add_builtin("log", input_types={"x": float}, value_type=float, doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
 add_builtin("exp", input_types={"x": float}, value_type=float, doc="Return base-e exponential, e^x.", group="Scalar Math")
@@ -612,6 +615,10 @@ add_builtin("div", input_types={"x": int, "y": int}, value_type=int, doc="", gro
 add_builtin("div", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
 add_builtin("div", input_types={"x": vec2, "y": float}, value_type=vec2, doc="", group="Operators")
 add_builtin("div", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
+add_builtin("div", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")
+
+add_builtin("floordiv", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
+add_builtin("floordiv", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
 
 add_builtin("neg", input_types={"x": int}, value_type=int, doc="", group="Operators")
 add_builtin("neg", input_types={"x": float}, value_type=float, doc="", group="Operators")

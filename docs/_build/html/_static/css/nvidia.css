@@ -1,0 +1,171 @@
+@import url("./theme.css");
+/*@import url("../pygments.css");*/
+body {
+    font-family: "Lato","proxima-nova","Helvetica Neue",Arial,sans-serif;
+}
+
+/* Default header fonts are ugly */
+h1, h2, .rst-content .toctree-wrapper p.caption, h3, h4, h5, h6, legend, p.caption {
+    font-family: "Lato","proxima-nova","Helvetica Neue",Arial,sans-serif;
+}
+
+.wy-nav-side {
+    background-color: #404452;
+}
+
+/* Use white for docs background */
+.wy-side-nav-search {
+    background-color: #fff;
+}
+
+.wy-menu-vertical li.toctree-l2.current>a {
+    background-color: #c5c5d2 !important;
+}
+
+.wy-menu-vertical a:hover, .wy-menu-vertical li.current a:hover, .wy-menu-vertical li.toctree-l2.current>a:hover {
+    color: #eeedee !important;
+    background-color: #76b900 !important;
+}
+
+@media screen and (min-width: 1400px) {
+    .wy-nav-content {
+        background-color: #fff;
+    }
+}
+
+/* Fixes for mobile */
+.wy-nav-top {
+    background-color: #fff;
+    background-image: url('../modulus_logo_v7_64h.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    padding: 0;
+    margin: 0.4045em 0.809em;
+    color: #333;
+}
+
+.wy-nav-top > a {
+    display: none;
+}
+
+@media screen and (max-width: 768px) {
+    .wy-side-nav-search>a img.logo {
+        height: 60px;
+    }
+}
+
+/* This is needed to ensure that logo above search scales properly */
+.wy-side-nav-search a {
+    display: block;
+}
+
+.wy-side-nav-search input[type="text"] {
+    border-color:  #76b900;
+}
+
+
+/* This ensures that multiple constructors will remain in separate lines. */
+.rst-content dl:not(.docutils) dt {
+    display: table;
+    color: rgba(83, 150, 0, 0.9);
+    background-color: rgba(118, 185, 0, 0.15);
+    border-top-color: rgba(83, 150, 0, 0.9);
+}
+
+/* Use our red for literals (it's very similar to the original color) */
+.rst-content tt.literal, .rst-content tt.literal, .rst-content code.literal {
+    color: #76b900 !important;
+}
+
+.rst-content tt.xref, a .rst-content tt, .rst-content tt.xref,
+.rst-content code.xref, a .rst-content tt, a .rst-content code {
+    color: #fff;
+}
+
+/* Change link colors (except for the menu) */
+
+a {
+    color: #76b900;
+}
+
+a:hover {
+    color: #76b900;
+}
+
+
+a:visited {
+    color: #76b900;
+}
+
+.wy-menu a {
+    color: #c5c5d2;
+}
+
+.wy-menu a:hover {
+    color: #b3b3b3;
+}
+
+/* Default footer text is quite big */
+footer {
+    font-size: 80%;
+}
+
+footer .rst-footer-buttons {
+    font-size: 125%; /* revert footer settings - 1/80% = 125% */
+}
+
+footer p {
+    font-size: 100%;
+}
+
+/* For hidden headers that appear in TOC tree */
+/* see http://stackoverflow.com/a/32363545/3343043 */
+.rst-content .hidden-section {
+    display: none;
+}
+
+nav .hidden-section {
+    display: inherit;
+}
+
+.wy-side-nav-search>div.version {
+    color: #000;
+}
+
+/* Provides nice properties to make screenshots stand out clearly. */
+.screenshot {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+/* override table width restrictions */
+@media screen and (min-width: 767px) {
+
+    .wy-table-responsive table td {
+      /* !important prevents the common CSS stylesheets from overriding
+         this as on RTD they are loaded after this stylesheet */
+        white-space: normal !important;
+    }
+
+    .wy-table-responsive {
+        overflow: visible !important;
+    }
+}
+
+/* Makes the left-side TOC headers green */
+.wy-menu-vertical p.caption {
+    color: #76b900;
+}
+
+/* Add a little space after images */
+.wy-plain-list-decimal li, .rst-content img {
+    margin-bottom: 24px;
+}
+
+.rst-content .note .admonition-title, .rst-content .wy-alert-info.attention .admonition-title, .admonition .note {
+    background: #76b900;
+}
+
+
+.rst-content .note p:last-child, .rst-content .admonition {
+    background: #ddeebf
+}

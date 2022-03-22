@@ -12,4 +12,4 @@ echo "Installing Warp to Python"
 ./_build/target-deps/python/python -m pip install -e .
 
 echo "Running tests"
-./_build/target-deps/python/python tests/test_all.py
+./_build/target-deps/python/python warp/tests/test_all.py

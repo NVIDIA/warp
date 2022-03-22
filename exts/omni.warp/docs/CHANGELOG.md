@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [0.1.25] - 2022-03-20
+
+- Add support for class methods to be Warp kernels
+- Add HashGrid reserve() so it can be used with CUDA graphs
+- Add support for CUDA graph capture of tape forward/backward passes
+- Add support for Python 3.8.x and 3.9.x
+- Add hyperbolic trigonometric functions, see wp.tanh(), wp.sinh(), wp.cosh()
+- Add support for floored division on integer types
+- Move tests into core library so they can be run in Kit environment
+
+
 ## [0.1.24] - 2022-03-03
 
 ### Warp Core

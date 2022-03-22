@@ -116,6 +116,7 @@ inline CUDA_CALLABLE int max(int a, int b) { return a>b?a:b; }
 inline CUDA_CALLABLE int abs(int x) { return ::abs(x); }
 inline CUDA_CALLABLE int sign(int x) { return x < 0 ? -1 : 1; }
 inline CUDA_CALLABLE int clamp(int x, int a, int b) { return min(max(a, x), b); }
+inline CUDA_CALLABLE int floordiv(int a, int b) { return a/b; }
 
 // implements for-loop comparison to emulate Python range() loops with negative arguments
 inline CUDA_CALLABLE bool cmp(int iter, int end, int step)
@@ -141,6 +142,8 @@ inline CUDA_CALLABLE void adj_max(int a, int b, int& adj_a, int& adj_b, int adj_
 inline CUDA_CALLABLE void adj_abs(int x, int adj_x, int& adj_ret) { }
 inline CUDA_CALLABLE void adj_sign(int x, int adj_x, int& adj_ret) { }
 inline CUDA_CALLABLE void adj_clamp(int x, int a, int b, int& adj_x, int& adj_a, int& adj_b, int adj_ret) { }
+inline CUDA_CALLABLE void adj_floordiv(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
+
 
 // basic ops for float types
 inline CUDA_CALLABLE float mul(float a, float b) { return a*b; }
@@ -153,6 +156,7 @@ inline CUDA_CALLABLE float mod(float a, float b) { return fmodf(a, b); }
 inline CUDA_CALLABLE float log(float a) { return logf(a); }
 inline CUDA_CALLABLE float exp(float a) { return expf(a); }
 inline CUDA_CALLABLE float pow(float a, float b) { return powf(a, b); }
+inline CUDA_CALLABLE float floordiv(float a, float b) { return float(int(a/b)); }
 
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
@@ -170,6 +174,9 @@ inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
 inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
 inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
 inline CUDA_CALLABLE float tan(float x) { return ::tan(x); }
+inline CUDA_CALLABLE float sinh(float x) { return ::sinhf(x);}
+inline CUDA_CALLABLE float cosh(float x) { return ::coshf(x);}
+inline CUDA_CALLABLE float tanh(float x) { return ::tanhf(x);}
 
 inline CUDA_CALLABLE float round(float x) { return ::roundf(x); }
 inline CUDA_CALLABLE float rint(float x) { return ::rintf(x); }
@@ -188,7 +195,7 @@ inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, 
 inline CUDA_CALLABLE void adj_log(float a, float& adj_a, float adj_ret) { adj_a += (1.f/a)*adj_ret; }
 inline CUDA_CALLABLE void adj_exp(float a, float& adj_a, float adj_ret) { adj_a += exp(a)*adj_ret; }
 inline CUDA_CALLABLE void adj_pow(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*pow(a, b-1.f)*adj_ret; adj_b += log(a)*pow(a, b)*adj_ret; }
-
+inline CUDA_CALLABLE void adj_floordiv(float a, float b, float& adj_a, float& adj_b, float adj_ret) { }
 
 inline CUDA_CALLABLE void adj_min(float a, float b, float& adj_a, float& adj_b, float adj_ret)
 {
@@ -291,7 +298,6 @@ inline CUDA_CALLABLE void adj_atan2(float y, float x, float& adj_y, float& adj_x
     printf("arctan2 adjoint not implemented");
 }
 
-
 inline CUDA_CALLABLE void adj_sin(float x, float& adj_x, float adj_ret)
 {
     adj_x += cos(x)*adj_ret;
@@ -300,6 +306,22 @@ inline CUDA_CALLABLE void adj_sin(float x, float& adj_x, float adj_ret)
 inline CUDA_CALLABLE void adj_cos(float x, float& adj_x, float adj_ret)
 {
     adj_x -= sin(x)*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_sinh(float x, float& adj_x, float adj_ret)
+{
+    adj_x += cosh(x)*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_cosh(float x, float& adj_x, float adj_ret)
+{
+    adj_x += sinh(x)*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_tanh(float x, float& adj_x, float adj_ret)
+{
+    float tanh_x = tanh(x);
+    adj_x += (1.0f - tanh_x*tanh_x)*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_sqrt(float x, float& adj_x, float adj_ret)

@@ -13,16 +13,6 @@ import numpy as np
 
 import warp as wp
 
-lwp_output = ""
-
-def lwp(s):
-    print(s)
-    global lwp_output
-    lwp_output = lwp_output + s + "\n"
-
-# short hands
-
-
 def length(a):
     return np.linalg.norm(a)
 
@@ -558,11 +548,12 @@ class ScopedTimer:
 
     def __exit__(self, exc_type, exc_value, traceback):
 
-        if (self.detailed):
-            self.cp.disable()
-            self.cp.print_stats(sort='tottime')
-
         if (self.active):
+
+            if (self.detailed):
+                self.cp.disable()
+                self.cp.print_stats(sort='tottime')
+
             self.elapsed = (timeit.default_timer() - self.start) * 1000.0
 
             if self.dict is not None:
@@ -576,18 +567,4 @@ class ScopedTimer:
                 print("{}{} took {:.2f} ms".format(indent, self.name, self.elapsed))
 
             ScopedTimer.indent -= 1
-
-        
-# helper to return an ordered list of function types 
-def get_function_types(func):
-    
-    # parse argument types
-    types_dict = typing.get_type_hints(func)
-
-    types = []
-
-    for a in func.tree.body[0].args.args:
-        adj.args.append(adj.symbols[a.arg])
-
-
 

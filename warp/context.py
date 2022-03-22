@@ -459,6 +459,11 @@ class Runtime:
             warp_lib = "warp.dll"
             self.core = warp.build.load_dll(warp_lib)
 
+        elif sys.platform == "darwin":
+
+            warp_lib = bin_path + "/" + "warp.dylib"
+            self.core = warp.build.load_dll(warp_lib)
+
         else:
 
             warp_lib = bin_path + "/" + "warp.so"
@@ -631,6 +636,9 @@ def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> w
     Returns:
         A warp.array object representing the allocation                
     """
+
+    if runtime == None:
+        raise RuntimeError("Warp not initialized, call wp.init() before use")
 
     if device != "cpu" and device != "cuda":
         raise RuntimeError(f"Trying to allocate array on unknown device {device}")
@@ -817,7 +825,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
         adj_args = adj_inputs + adj_outputs
 
         if (len(fwd_args)) != (len(kernel.adj.args)): 
-            raise RuntimeError(f"Unable to launch kernel, passed {len(fwd_args)} args but kernel requires {len(kernel.adj.args)}")
+            raise RuntimeError(f"Unable to launch kernel '{kernel.key}', passed {len(fwd_args)} args but kernel requires {len(kernel.adj.args)}")
 
         pack_args(fwd_args, params)
         pack_args(adj_args, params)
