@@ -144,16 +144,9 @@ grid = UsdGeom.Mesh.Define(stage, "/root")
 grid_size = 0.1
 grid_displace = 0.5
 
-device = "cuda"
+device = wp.get_preferred_device()
 
-# simulation grids
-sim_grid0 = wp.zeros(sim_width*sim_height, dtype=float, device=device)
-sim_grid1 = wp.zeros(sim_width*sim_height, dtype=float, device=device)
-
-sim_host = wp.zeros(sim_width*sim_height, dtype=float, device="cpu")
-verts_host = wp.zeros(sim_width*sim_height, dtype=wp.vec3, device="cpu")
-
-vertices = verts_host.numpy().reshape((sim_width*sim_height, 3))
+vertices = []
 indices = []
 counts = []
 
@@ -189,7 +182,7 @@ for z in range(sim_height):
         pos = (float(x)*grid_size, 0.0, float(z)*grid_size)# - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
 
         # directly modifies verts_host memory since this is a numpy alias of the same buffer
-        vertices[z*sim_width + x] = pos
+        vertices.append(pos)
             
         if (x > 0 and z > 0):
             
@@ -207,6 +200,11 @@ for z in range(sim_height):
 grid.GetPointsAttr().Set(vertices, 0.0)
 grid.GetFaceVertexIndicesAttr().Set(indices, 0.0)
 grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
+
+# simulation grids
+sim_grid0 = wp.zeros(sim_width*sim_height, dtype=float, device=device)
+sim_grid1 = wp.zeros(sim_width*sim_height, dtype=float, device=device)
+sim_verts = wp.array(vertices, dtype=wp.vec3, device=device)
 
 
 for i in range(sim_frames):
@@ -239,11 +237,6 @@ for i in range(sim_frames):
 
             sim_time += sim_dt
 
-
-        # copy data back to host
-        wp.copy(sim_host, sim_grid0)
-        wp.synchronize()
-
     # render
     with wp.ScopedTimer("Render"):
 
@@ -252,12 +245,12 @@ for i in range(sim_frames):
 
             wp.launch(kernel=grid_update,
                         dim=sim_width*sim_height,
-                        inputs=[sim_host, verts_host],
-                        device="cpu")
+                        inputs=[sim_grid0, sim_verts],
+                        device=device)
 
         with wp.ScopedTimer("Usd"):
             
-            vertices = verts_host.numpy()
+            vertices = sim_verts.numpy()
 
             grid.GetPointsAttr().Set(vertices, sim_time*sim_fps)
 
