@@ -51,34 +51,33 @@ def set_msvc_compiler(msvc_path, sdk_path):
     
 
 
-# try and find an installed host compiler (msvc)
-# runs vcvars and copies back the build environment
 def find_host_compiler():
 
     if (os.name == 'nt'):
 
-        if os.system("where cl.exe >nul 2>nul") != 0:
+        try:
 
-            # cl.exe not on path then set vcvars
-            def find_vcvars_path():
-                import glob
-                for edition in ['Enterprise', 'Professional', 'BuildTools', 'Community']:
-                    paths = sorted(glob.glob(r"C:\Program Files (x86)\Microsoft Visual Studio\*\%s\VC\Auxiliary\Build\vcvars64.bat" % edition), reverse=True)
-                    if paths:
-                        return paths[0]
+            # try and find an installed host compiler (msvc)
+            # runs vcvars and copies back the build environment
 
-            vcvars_path = find_vcvars_path()
+            vswhere_path = r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"
+            vswhere_path = os.path.expandvars(vswhere_path)
+            if not os.path.exists(vswhere_path):
+                return None
 
-            # merge vcvars with our env
-            s = '"{}" & set'.format(vcvars_path)
-            output = os.popen(s).read()
+            vs_path = (
+                os.popen('"{}" -latest -property installationPath'.format(vswhere_path))
+                .read()
+                .rstrip()
+            )
+            vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
+            output = os.popen('"{}" && set'.format(vsvars_path)).read()
+            
             for line in output.splitlines():
                 pair = line.split("=", 1)
                 if (len(pair) >= 2):
                     os.environ[pair[0]] = pair[1]
-                    
-        # try and find cl.exe
-        try:
+                
             cl_path = subprocess.check_output("where cl.exe").decode()
             cl_version = os.environ["VCToolsVersion"].split(".")
 
@@ -95,6 +94,8 @@ def find_host_compiler():
             return cl_path
         
         except:
+            
+            # couldn't find host compiler
             return None
     else:
         
