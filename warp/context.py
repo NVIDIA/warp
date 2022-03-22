@@ -532,6 +532,9 @@ class Runtime:
         
         error = self.core.init()
 
+        if (error > 0):
+            raise Exception("Warp Initialization failed, CUDA not found")
+
         # allocation functions, these are function local to 
         # force other classes to go through the allocator objects
         def alloc_host(num_bytes):
@@ -553,9 +556,6 @@ class Runtime:
 
         self.host_allocator = Allocator(alloc_host, free_host)
         self.device_allocator = Allocator(alloc_device, free_device)
-
-        if (error > 0):
-            raise Exception("Warp Initialization failed, CUDA not found")
 
         # save context
         self.cuda_device = self.core.cuda_get_context()
