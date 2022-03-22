@@ -212,13 +212,13 @@ Operators
 Boolean Operators
 #################
 
-+----------+--------------------------------------+
-| a and b  | True if a and b are True             |
-+----------+--------------------------------------+
-| a or b   | True if a or b is True               |
-+----------+--------------------------------------+
-| not a    | True if a is False, otherwise False  |
-+----------+--------------------------------------+
++--------------+--------------------------------------+
+|   a and b    | True if a and b are True             |
++--------------+--------------------------------------+
+|   a or b     | True if a or b is True               |
++--------------+--------------------------------------+
+|   not a      | True if a is False, otherwise False  |
++--------------+--------------------------------------+
 
 .. note:: 
 
@@ -228,20 +228,41 @@ Boolean Operators
 Comparison Operators
 ####################
 
-+--------+---------------------------------------+
-| a > b  | True if a strictly greater than b     |
-+--------+---------------------------------------+
-| a < b  | True if a strictly less than b        |
-+--------+---------------------------------------+
-| a >= b | True if a greater than or equal to b  |
-+--------+---------------------------------------+
-| a <= b | True if a less than or equal to b     |
-+--------+---------------------------------------+
-| a == b | True if a equals b                    |
-+--------+---------------------------------------+
-| a != b | True if a not equal to b              |
-+--------+---------------------------------------+
++----------+---------------------------------------+
+| a > b    | True if a strictly greater than b     |
++----------+---------------------------------------+
+| a < b    | True if a strictly less than b        |
++----------+---------------------------------------+
+| a >= b   | True if a greater than or equal to b  |
++----------+---------------------------------------+
+| a <= b   | True if a less than or equal to b     |
++----------+---------------------------------------+
+| a == b   | True if a equals b                    |
++----------+---------------------------------------+
+| a != b   | True if a not equal to b              |
++----------+---------------------------------------+
 
+Arithmetic Operators
+####################
+
++-----------+--------------------------+
+|  a + b    | Addition                 |
++-----------+--------------------------+
+|  a - b    | Subtraction              |
++-----------+--------------------------+
+|  a * b    | Multiplication           |
++-----------+--------------------------+
+|  a / b    | Floating point division  |
++-----------+--------------------------+
+|  a // b   | Floored division         |
++-----------+--------------------------+
+|  a ** b   | Exponentiation           |
++-----------+--------------------------+
+|  a % b    | Modulus                  |
++-----------+--------------------------+
+
+.. note::
+   Arguments types to operators should match since implicit conversions are not performed, users should use the type constructors ``float()``, ``int()`` to cast variables to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar multiplication and matrix multiplication. Currently the ``@`` operator is not supported in this version.
 
 Meshes
 ------

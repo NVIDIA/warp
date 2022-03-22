@@ -113,6 +113,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#operators">Operators</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#boolean-operators">Boolean Operators</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#comparison-operators">Comparison Operators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#arithmetic-operators">Arithmetic Operators</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#meshes">Meshes</a></li>
@@ -567,8 +568,8 @@ and dtype parameter appropriately.</p>
 <h3>Boolean Operators<a class="headerlink" href="#boolean-operators" title="Permalink to this headline">¶</a></h3>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 21%" />
-<col style="width: 79%" />
+<col style="width: 27%" />
+<col style="width: 73%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p>a and b</p></td>
@@ -591,8 +592,8 @@ and dtype parameter appropriately.</p>
 <h3>Comparison Operators<a class="headerlink" href="#comparison-operators" title="Permalink to this headline">¶</a></h3>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 17%" />
-<col style="width: 83%" />
+<col style="width: 20%" />
+<col style="width: 80%" />
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p>a &gt; b</p></td>
@@ -615,6 +616,42 @@ and dtype parameter appropriately.</p>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section" id="arithmetic-operators">
+<h3>Arithmetic Operators<a class="headerlink" href="#arithmetic-operators" title="Permalink to this headline">¶</a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30%" />
+<col style="width: 70%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>a + b</p></td>
+<td><p>Addition</p></td>
+</tr>
+<tr class="row-even"><td><p>a - b</p></td>
+<td><p>Subtraction</p></td>
+</tr>
+<tr class="row-odd"><td><p>a * b</p></td>
+<td><p>Multiplication</p></td>
+</tr>
+<tr class="row-even"><td><p>a / b</p></td>
+<td><p>Floating point division</p></td>
+</tr>
+<tr class="row-odd"><td><p>a // b</p></td>
+<td><p>Floored division</p></td>
+</tr>
+<tr class="row-even"><td><p>a ** b</p></td>
+<td><p>Exponentiation</p></td>
+</tr>
+<tr class="row-odd"><td><p>a % b</p></td>
+<td><p>Modulus</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Arguments types to operators should match since implicit conversions are not performed, users should use the type constructors <code class="docutils literal notranslate"><span class="pre">float()</span></code>, <code class="docutils literal notranslate"><span class="pre">int()</span></code> to cast variables to the correct type. Also note that the multiplication expression <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">*</span> <span class="pre">b</span></code> is used to represent scalar multiplication and matrix multiplication. Currently the <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> operator is not supported in this version.</p>
+</div>
 </div>
 </div>
 <div class="section" id="meshes">
