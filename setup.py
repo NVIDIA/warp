@@ -14,7 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     license="NVSCL",
     packages=setuptools.find_packages(),
-    package_data={"": ["native/*.h", "native/*.cpp", "native/*.cu", "tests/assets/*.*", "bin/*.*", "gen/*.*"]},
+    package_data={"": ["native/*", "native/nanovdb/*", "tests/assets/*", "bin/*", "gen/*"]},
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
