@@ -10,7 +10,7 @@ _A flow field visualization of a NanoVDB fluid simulation computed in Warp_
 
 ## Installing
 
-Warp supports Python versions 3.7.x-3.9.x. Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp) page. To install in your local Python environment extract the archive and run the following command from the root directory:
+Warp supports Python versions 3.7.x-3.9.x. Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment extract the archive and run the following command from the root directory:
 
     pip install .
 
