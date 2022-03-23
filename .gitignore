@@ -1,35 +1,57 @@
+# Mac/OSX
+.DS_Store
+
+### Python ###
+# Byte-compiled / optimized / DLL files
 __pycache__
-.idea
-*.net
-*.prof
-warp/kernels
-warp.egg-info
-.vscode
-archive
+
+# compiler output files
+*.dll
 *.o
 *.exp
-*.dll
 *.lib
 *.cpp.obj
 *.pdb
-/_build
-/_repo
-examples/assets/.thumbs
-examples/benchmark*
+
+# Warp files
+warp/kernels
+warp.egg-info
+
+# VSCode
+.vscode
+
+# Bash scripts
+build.sh
+repo.sh
+setup.sh
+test.sh
+
+# Documentation
 /docs/_build/doctrees
 /docs/_build/html/_static/fonts
-.teamcity
-deps
-tools
-.gitlab-ci.yml
-build.bat
-build.sh
-copyright.py
-PACKAGE-INFO.yaml
-repo.bat
-repo.sh
-repo.toml
-setup.sh
-test.bat
-test.sh
+
+# Batch files
 merge.bat
+test.bat
+repo.bat
+build.bat
+
+# Files from /examples directory
+examples/assets/.thumbs
+examples/benchmark*
+
+# Coverage, info
+.gitlab-ci.yml
+PACKAGE-INFO.yaml
+
+# Specific sub-directories
+/_build
+/_repo
+
+# Random scripts and extensions
+coverage.py
+.teamcity
+repo.toml
+*.net
+*.prof
+.idea
