@@ -441,18 +441,18 @@ class Runtime:
 
     def __init__(self):
 
-        bin_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
+        bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
         
         if (os.name == 'nt'):
 
             if (sys.version_info[0] > 3 or
                 sys.version_info[0] == 3 and sys.version_info[1] >= 8):
                 
-                # Python 3.8 adds this method to add dll search paths
+                # Python >= 3.8 this method to add dll search paths
                 os.add_dll_directory(bin_path)
 
             else:
-                # Python 3.8 we add dll directory to path
+                # Python < 3.8 we add dll directory to path
                 os.environ["PATH"] += os.pathsep + bin_path
 
 
@@ -532,6 +532,9 @@ class Runtime:
         
         error = self.core.init()
 
+        if (error > 0):
+            raise Exception("Warp Initialization failed, CUDA not found")
+
         # allocation functions, these are function local to 
         # force other classes to go through the allocator objects
         def alloc_host(num_bytes):
@@ -553,9 +556,6 @@ class Runtime:
 
         self.host_allocator = Allocator(alloc_host, free_host)
         self.device_allocator = Allocator(alloc_device, free_device)
-
-        if (error > 0):
-            raise Exception("Warp Initialization failed, CUDA not found")
 
         # save context
         self.cuda_device = self.core.cuda_get_context()
