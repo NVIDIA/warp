@@ -21,7 +21,7 @@ parser.add_argument('--verbose', type=bool, default=True, help="Verbose building
 args = parser.parse_args()
 
 # set build output path off this file
-build_path = os.path.dirname(os.path.realpath(__file__)) + "/warp"
+build_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "warp")
 
 print(args)
 
@@ -60,18 +60,18 @@ if os.name == 'nt':
 try:
 
     if sys.platform == "win32":
-        dll_path = build_path + "/bin/warp.dll"
+        dll_path = os.path.join(build_path, "bin/warp.dll")
     elif sys.platform == "darwin":
-        dll_path = build_path + "/bin/warp.dylib"
+        dll_path = os.path.join(build_path, "bin/warp.dylib")
     else:
-        dll_path = build_path + "/bin/warp.so"
+        dll_path = os.path.join(build_path, "bin/warp.so")
 
     # no CUDA toolchain found
     if (warp.config.cuda_path == None):
         print("Warning: building without CUDA support")
 
         warp.build.build_dll(
-                        cpp_path=build_path + "/native/warp.cpp", 
+                        cpp_path=os.path.join(build_path, "native/warp.cpp"), 
                         cu_path=None, 
                         dll_path=dll_path,
                         config=warp.config.mode,
@@ -80,8 +80,8 @@ try:
     else:
 
         warp.build.build_dll(
-                        cpp_path=build_path + "/native/warp.cpp", 
-                        cu_path=build_path + "/native/warp.cu", 
+                        cpp_path=os.path.join(build_path, "native/warp.cpp"), 
+                        cu_path=os.path.join(build_path, "native/warp.cu"), 
                         dll_path=dll_path,
                         config=warp.config.mode,
                         force=True)

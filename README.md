@@ -27,6 +27,7 @@ For developers who want to build the library themselves the following tools are 
 * Microsoft Visual Studio 2017 upwards (Windows)
 * GCC 4.0 upwards (Linux)
 * CUDA Toolkit 11.3 or higher
+* Git LFS installed (https://git-lfs.github.com/) 
 
 After cloning the repository, users should run:
 
