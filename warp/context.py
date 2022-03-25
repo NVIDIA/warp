@@ -229,11 +229,11 @@ class Module:
             module_name = "wp_" + self.name
 
             include_path = os.path.dirname(os.path.realpath(__file__))
-            build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
-            gen_path = os.path.dirname(os.path.realpath(__file__)) + "/gen"
+            build_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
+            gen_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "gen")
 
-            cache_path = build_path + "/" + module_name + ".hash"
-            module_path = build_path + "/" + module_name
+            cache_path = os.path.join(build_path, module_name + ".hash")
+            module_path = os.path.join(build_path, module_name)
 
             ptx_path = module_path + ".ptx"
 
@@ -280,11 +280,11 @@ class Module:
 
             # generate kernel source
             if (enable_cpu):
-                cpp_path = gen_path + "/" + module_name + ".cpp"
+                cpp_path = os.path.join(gen_path, module_name + ".cpp")
                 cpp_source = warp.codegen.cpu_module_header
             
             if (enable_cuda):
-                cu_path = gen_path + "/" + module_name + ".cu"        
+                cu_path = os.path.join(gen_path, module_name + ".cu")
                 cu_source = warp.codegen.cuda_module_header
 
             # kernels
@@ -461,12 +461,12 @@ class Runtime:
 
         elif sys.platform == "darwin":
 
-            warp_lib = bin_path + "/" + "warp.dylib"
+            warp_lib = os.path.join(bin_path, "warp.dylib")
             self.core = warp.build.load_dll(warp_lib)
 
         else:
 
-            warp_lib = bin_path + "/" + "warp.so"
+            warp_lib = os.path.join(bin_path, "warp.so")
             self.core = warp.build.load_dll(warp_lib)
 
         # setup c-types for warp.dll
