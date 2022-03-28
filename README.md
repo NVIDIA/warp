@@ -69,4 +69,4 @@ We have a **#warp** channel on the public [Omniverse Discord](https://discord.co
 
 ## License
 
-Warp is provided under the NVIDIA Source Code License (NVSCL), please see [LICENSE.md]("./LICENSE.md") for full license text.
+Warp is provided under the NVIDIA Source Code License (NVSCL), please see [LICENSE.md](./LICENSE.md) for full license text.
