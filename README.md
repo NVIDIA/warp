@@ -67,6 +67,6 @@ Please see our [GTC Presentation](https://www.nvidia.com/gtc/session-catalog/?se
 
 We have a **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/XWQNJDNuaC) sever, come chat to us!
 
+## License
 
-
-
+Warp is provided under the NVIDIA Source Code License (NVSCL), please see [LICENSE.md]("./LICENSE.md") for full license text.
