@@ -1214,7 +1214,9 @@ def codegen_func(adj, device='cpu'):
     return s
 
 
-def codegen_kernel(adj, device='cpu'):
+def codegen_kernel(kernel, device='cpu'):
+
+    adj = kernel.adj
 
     forward_args = "int dim"
     reverse_args = "int dim"
@@ -1244,7 +1246,7 @@ def codegen_kernel(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=adj.func.__name__,
+    s = template.format(name=kernel.key,
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
                         forward_body=forward_body,
@@ -1253,7 +1255,9 @@ def codegen_kernel(adj, device='cpu'):
     return s
 
 
-def codegen_module(adj, device='cpu'):
+def codegen_module(kernel, device='cpu'):
+
+    adj = kernel.adj
 
     # build forward signature
     forward_args = "int dim"
@@ -1293,7 +1297,7 @@ def codegen_module(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=adj.func.__name__,
+    s = template.format(name=kernel.key,
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
                         forward_params=indent(forward_params, 3),
@@ -1301,7 +1305,9 @@ def codegen_module(adj, device='cpu'):
     return s
 
 
-def codegen_module_decl(adj, device='cpu'):
+def codegen_module_decl(kernel, device='cpu'):
+
+    adj = kernel.adj
 
     # build forward signature
     forward_args = "int dim"
@@ -1340,6 +1346,6 @@ def codegen_module_decl(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=adj.func.__name__, forward_args=indent(forward_args), reverse_args=indent(reverse_args))
+    s = template.format(name=kernel.key, forward_args=indent(forward_args), reverse_args=indent(reverse_args))
     return s
 
