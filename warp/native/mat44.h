@@ -115,12 +115,15 @@ inline CUDA_CALLABLE void adj_diag(const vec4& d, vec4& adj_d, const mat44& adj_
   adj_d += vec4(adj_ret.data[0][0], adj_ret.data[1][1], adj_ret.data[2][2], adj_ret.data[3][3]);
 }
 
-inline CUDA_CALLABLE void atomic_add(mat44 * addr, mat44 value) {
+inline CUDA_CALLABLE mat44 atomic_add(mat44 * addr, mat44 value) 
+{
+    mat44 m;
+    
     for (int i=0; i < 4; ++i)
-    {
         for (int j=0; j < 4; ++j)
-        atomic_add(&addr->data[i][j], value.data[i][j]);
-    }
+            m.data[i][j] = atomic_add(&addr->data[i][j], value.data[i][j]);
+
+    return m;
 }
 
 

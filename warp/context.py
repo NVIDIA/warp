@@ -75,18 +75,18 @@ class Kernel:
         if (dll):
 
             try:
-                self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
-                self.backward_cpu = eval("dll." + self.func.__name__ + "_cpu_backward")
+                self.forward_cpu = eval("dll." + self.key + "_cpu_forward")
+                self.backward_cpu = eval("dll." + self.key + "_cpu_backward")
             except:
-                print(f"Could not load CPU methods for kernel {self.func.__name__}")
+                print(f"Could not load CPU methods for kernel {self.key}")
 
         if (cuda):
 
             try:
-                self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_forward").encode('utf-8'))
-                self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_backward").encode('utf-8'))
+                self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.key + "_cuda_kernel_forward").encode('utf-8'))
+                self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.key + "_cuda_kernel_backward").encode('utf-8'))
             except:
-                print(f"Could not load CUDA methods for kernel {self.func.__name__}")
+                print(f"Could not load CUDA methods for kernel {self.key}")
 
 
 #----------------------
@@ -99,9 +99,9 @@ def func(f):
 
     return f
 
-# decorator to register kernel, @kernel
+# decorator to register kernel, @kernel, custom_name may be a string that creates a kernel with a different name from the actual function
 def kernel(f):
-
+    
     m = get_module(f.__module__)
     k = Kernel(func=f, key=f.__name__, module=m)
 
@@ -324,16 +324,16 @@ class Module:
                     entry_points.append(kernel.func.__name__ + "_cpu_forward")
                     entry_points.append(kernel.func.__name__ + "_cpu_backward")
 
-                    cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cpu")
-                    cpp_source += warp.codegen.codegen_kernel(kernel.adj, device="cpu")
-                    cpp_source += warp.codegen.codegen_module(kernel.adj, device="cpu")
+                    cpp_source += warp.codegen.codegen_module_decl(kernel, device="cpu")
+                    cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
+                    cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
 
                 if (enable_cuda):                
                     entry_points.append(kernel.func.__name__ + "_cuda_forward")
                     entry_points.append(kernel.func.__name__ + "_cuda_backward")
 
-                    cu_source += warp.codegen.codegen_kernel(kernel.adj, device="cuda")
-                    cu_source += warp.codegen.codegen_module(kernel.adj, device="cuda")
+                    cu_source += warp.codegen.codegen_kernel(kernel, device="cuda")
+                    cu_source += warp.codegen.codegen_module(kernel, device="cuda")
 
 
             # write cpp sources
