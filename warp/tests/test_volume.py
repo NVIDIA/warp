@@ -72,6 +72,21 @@ def test_volume_sample_linear(volume: wp.uint64,
     q = wp.volume_transform(volume, p)
     expect_near(wp.volume_sample_world(volume, q, wp.Volume.LINEAR), expected, 2.0e-4)
 
+@wp.kernel
+def test_volume_sample_local_linear_values(volume: wp.uint64,
+                              points: wp.array(dtype=wp.vec3),
+                              values: wp.array(dtype=wp.float32)):
+    tid = wp.tid()
+    p = points[tid]
+    values[tid] = wp.volume_sample_local(volume, p, wp.Volume.LINEAR)
+
+@wp.kernel
+def test_volume_sample_world_linear_values(volume: wp.uint64,
+                              points: wp.array(dtype=wp.vec3),
+                              values: wp.array(dtype=wp.float32)):
+    tid = wp.tid()
+    p = points[tid]
+    values[tid] = wp.volume_sample_world(volume, p, wp.Volume.LINEAR)
 
 # vector volume tests
 @wp.kernel
@@ -132,6 +147,33 @@ def test_volume_sample_linear_v(volume: wp.uint64,
     q = wp.volume_transform(volume, p)
     expect_near(wp.volume_sample_world_v(volume, q, wp.Volume.LINEAR), expected, 2.0e-4)
 
+
+
+@wp.kernel
+def test_transform(volume: wp.uint64,
+                   points: wp.array(dtype=wp.vec3),
+                   values: wp.array(dtype=wp.float32),
+                   xformed_points: wp.array(dtype=wp.vec3)):
+    tid = wp.tid()
+    p = points[tid]
+    ones = wp.vec3(1.,1.,1.)
+    values[tid] = wp.dot(wp.volume_transform(volume, p), ones)
+    xformed_points[tid] = wp.volume_transform(volume, ones)
+
+@wp.kernel
+def test_transform_inv(volume: wp.uint64,
+                       points: wp.array(dtype=wp.vec3),
+                       values: wp.array(dtype=wp.float32),
+                       xformed_points: wp.array(dtype=wp.vec3)):
+    tid = wp.tid()
+    p = points[tid]
+    ones = wp.vec3(1.,1.,1.)
+    values[tid] = wp.dot(wp.volume_transform_inv(volume, p), ones)
+    xformed_points[tid] = wp.volume_transform_inv(volume, ones)
+
+
+
+
 devices = wp.get_devices()
 rng = np.random.default_rng(101215)
 
@@ -155,10 +197,64 @@ for value_type, path in volume_paths.items():
 
         volumes[value_type][device] = volume
 
-def register(parent):
         
+def register(parent):
+
     class TestVolumes(parent):
-        pass
+        def test_volume_sample_linear_gradient(self):
+
+            for device in devices:
+                points = rng.uniform(-10., 10., size=(100, 3))
+                values = wp.array(np.zeros(1), dtype=wp.float32, device=device)
+                for case in points:
+                    uvws = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
+                    xyzs = wp.array(case * 0.25, dtype=wp.vec3, device=device, requires_grad=True)
+
+                    tape = wp.Tape()
+                    with tape:
+                        wp.launch(test_volume_sample_local_linear_values, dim=1, inputs=[volumes["scalar"][device].id, uvws, values], device=device)
+                    tape.backward(values)
+
+                    x, y, z = case
+                    grad_expected = np.array([y*z, x*z, x*y])
+                    grad_computed = tape.gradients[uvws].numpy()[0]
+                    np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
+
+                    tape = wp.Tape()
+                    with tape:
+                        wp.launch(test_volume_sample_world_linear_values, dim=1, inputs=[volumes["scalar"][device].id, xyzs, values], device=device)
+                    tape.backward(values)
+
+                    x, y, z = case
+                    grad_expected = np.array([y*z, x*z, x*y]) / 0.25
+                    grad_computed = tape.gradients[xyzs].numpy()[0]
+                    np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
+
+        def test_volume_transform_gradient(self):
+
+            for device in devices:
+                values = wp.array(np.zeros(1), dtype=wp.float32, device=device)
+                xformed_points = wp.array(np.zeros(3), dtype=wp.vec3, device=device)
+                points = rng.uniform(-10., 10., size=(10, 3))
+                for case in points:
+                    points = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
+                    tape = wp.Tape()
+                    with tape:
+                        wp.launch(test_transform, dim=1, inputs=[volumes["scalar"][device].id, points, values, xformed_points], device=device)
+                    tape.backward(values)
+
+                    grad_computed = tape.gradients[points].numpy()
+                    grad_expected = xformed_points.numpy()
+                    np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
+
+                    tape = wp.Tape()
+                    with tape:
+                        wp.launch(test_transform_inv, dim=1, inputs=[volumes["scalar"][device].id, points, values, xformed_points], device=device)
+                    tape.backward(values)
+
+                    grad_computed = tape.gradients[points].numpy()
+                    grad_expected = xformed_points.numpy()
+                    np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
     for device in devices:
         axis = np.linspace(-11, 11, 23)
