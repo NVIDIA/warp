@@ -242,11 +242,16 @@ class Adjoint:
             else:
                 func = resolved_func
 
+
         # expression (zero output), e.g.: void do_something();
         if (func.value_type(inputs) == None):
 
             forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
-            adj.add_forward(forward_call)
+            
+            if func.skip_replay:
+                adj.add_forward(forward_call, statement_replay="//" + forward_call)
+            else:
+                adj.add_forward(forward_call)
 
             if (len(inputs)):
                 reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs))
@@ -260,8 +265,12 @@ class Adjoint:
             output = adj.add_var(func.value_type(inputs))
 
             forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
-            adj.add_forward(forward_call)
 
+            if func.skip_replay:
+                adj.add_forward(forward_call, statement_replay="//" + forward_call)
+            else:
+                adj.add_forward(forward_call)
+            
             if (len(inputs)):
                 reverse_call = func.namespace + "{}({}, {}, {});".format(
                     "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs), adj.format_args("adj_", [output]))
@@ -328,13 +337,16 @@ class Adjoint:
         adj.add_forward("}")
         adj.add_reverse(f"for (var_{iter}=var_{end}-1; cmp(var_{iter}, var_{start}, -var_{step}); var_{iter} -= var_{step}) {{")
 
-    # define a while loop, todo: reverse mode
+    # define a while loop
     def begin_while(adj, cond):
 
         adj.add_forward("while (1) {")
+        #adj.add_reverse("}")
 
         adj.indent_count += 1
 
+        # evaluate condition, this an be a complex expression, hence why
+        # we do it here instead of inside the while() declaration
         c = adj.eval(cond)
         adj.add_forward(f"if (var_{c} == false) break;")
 
@@ -343,6 +355,7 @@ class Adjoint:
         adj.indent_count -= 1
 
         adj.add_forward("}")
+        #adj.add_reverse("while (1) {")
 
 
     # append a statement to the forward pass

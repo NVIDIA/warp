@@ -27,7 +27,18 @@ import warp.config
 # represents either a built-in or user-defined function
 class Function:
 
-    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, variadic=False, doc="", group="", hidden=False):
+    def __init__(self,
+                 func,
+                 key,
+                 namespace,
+                 input_types={},
+                 value_type=None,
+                 module=None,
+                 variadic=False,
+                 doc="",
+                 group="",
+                 hidden=False,
+                 skip_replay=False):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -37,8 +48,9 @@ class Function:
         self.doc = doc
         self.group = group
         self.module = module
-        self.variadic = variadic    # function can take arbitrary number of inputs, e.g.: printf()
-        self.hidden = hidden        # function will not be listed in docs
+        self.variadic = variadic        # function can take arbitrary number of inputs, e.g.: printf()
+        self.hidden = hidden            # function will not be listed in docs
+        self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
 
         if (func):
             self.adj = warp.codegen.Adjoint(func)
@@ -111,10 +123,10 @@ def kernel(f):
 builtin_functions = {}
 
 # decorator to register a built-in function with @builtin
-def builtin(key, input_types={}, doc="", group="", hidden=False):
+def builtin(key, input_types={}, doc="", group="", hidden=False, skip_replay=False):
     def insert(c):
         
-        func = Function(func=None, input_types=input_types, key=key, namespace="wp::", value_type=c.value_type, doc=doc, group=group, hidden=hidden)
+        func = Function(func=None, input_types=input_types, key=key, namespace="wp::", value_type=c.value_type, doc=doc, group=group, hidden=hidden, skip_replay=skip_replay)
         builtin_functions[key] = func
 
     return insert

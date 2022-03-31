@@ -490,7 +490,7 @@ class LoadFunc:
 
         return args[0].type.dtype
 
-@builtin("store", hidden=True)
+@builtin("store", hidden=True, skip_replay=True)
 class StoreFunc:
     @staticmethod
     def value_type(args):
@@ -503,7 +503,7 @@ class StoreFunc:
 
         return None
 
-@builtin("atomic_add", input_types={"array": array, "index": int, "value": Any}, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility")
+@builtin("atomic_add", input_types={"array": array, "index": int, "value": Any}, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
 class AtomicAddFunc:
     @staticmethod
     def value_type(args):
@@ -518,7 +518,7 @@ class AtomicAddFunc:
         return args[0].type.dtype
 
 
-@builtin("atomic_sub", input_types={"array": array, "index": int, "value": Any}, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility")
+@builtin("atomic_sub", input_types={"array": array, "index": int, "value": Any}, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
 class AtomicSubFunc:
     @staticmethod
     def value_type(args):
