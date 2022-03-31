@@ -18,21 +18,11 @@ import numpy as np
 
 import warp as wp
 import warp.render 
+from pxr import Usd
 
 import os
 
 wp.init()
-
-frame_dt = 1.0/60
-frame_count = 400
-
-sim_substeps = 64
-sim_dt = frame_dt/sim_substeps
-sim_steps = frame_count*sim_substeps
-sim_time = 0.0
-
-device = wp.get_preferred_device()
-
 
 @wp.func 
 def contact_force(n: wp.vec3,
@@ -61,7 +51,6 @@ def contact_force(n: wp.vec3,
 
     # total force
     return  -n*fn - vt*ft
-
 
 @wp.kernel
 def apply_forces(grid : wp.uint64,
@@ -132,13 +121,6 @@ def integrate(x: wp.array(dtype=wp.vec3),
     v[tid] = v_new
     x[tid] = x_new  
 
-
-point_radius = 0.1
-
-grid = wp.HashGrid(128, 128, 128, device)
-grid_cell_size = point_radius*5.0
-
-
 # creates a grid of particles
 def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
     points = np.meshgrid(np.linspace(0, dim_x, dim_x), np.linspace(0, dim_y, dim_y), np.linspace(0, dim_z, dim_z))
@@ -148,68 +130,98 @@ def particle_grid(dim_x, dim_y, dim_z, lower, radius, jitter):
     return points_t.reshape((-1, 3))
 
 
-points = particle_grid(32, 128, 32, (0.0, 0.3, 0.0), point_radius, 0.1)
+class Example:
+    frame_dt = 1.0/60
+    frame_count = 400
 
-x = wp.array(points, dtype=wp.vec3, device=device)
-v = wp.array(np.ones([len(x), 3])*np.array([0.0, 0.0, 10.0]), dtype=wp.vec3, device=device)
-f = wp.zeros_like(v)
+    sim_substeps = 64
+    sim_dt = frame_dt/sim_substeps
+    sim_steps = frame_count*sim_substeps
+    sim_time = 0.0
 
-k_contact = 8000.0
-k_damp = 2.0
-k_friction = 1.0
-k_mu = 100000.0 # for cohesive materials
+    device = wp.get_preferred_device()
 
-inv_mass = 64.0
+    point_radius = 0.1
 
-renderer = wp.render.UsdRenderer(os.path.join(os.path.dirname(__file__), "outputs/example_dem.usd"))
+    grid = wp.HashGrid(128, 128, 128, device)
+    grid_cell_size = point_radius*5.0
 
-use_graph = (device == "cuda")
+    points = particle_grid(32, 128, 32, (0.0, 0.3, 0.0), point_radius, 0.1)
 
-if (use_graph):
+    k_contact = 8000.0
+    k_damp = 2.0
+    k_friction = 1.0
+    k_mu = 100000.0 # for cohesive materials
 
-    wp.capture_begin()
+    inv_mass = 64.0
 
-    for s in range(sim_substeps):
+    def init(self, stage):
+        self.renderer = wp.render.UsdRenderer(stage)
+        self.renderer.render_ground()
 
-        with wp.ScopedTimer("forces", active=False):
-            wp.launch(kernel=apply_forces, dim=len(x), inputs=[grid.id, x, v, f, point_radius, k_contact, k_damp, k_friction, k_mu], device=device)
-            wp.launch(kernel=integrate, dim=len(x), inputs=[x, v, f, (0.0, -9.8, 0.0), sim_dt, inv_mass], device=device)
-        
-    graph = wp.capture_end()
+        self.x = wp.array(Example.points, dtype=wp.vec3, device=Example.device)
+        self.v = wp.array(np.ones([len(self.x), 3])*np.array([0.0, 0.0, 10.0]), dtype=wp.vec3, device=Example.device)
+        self.f = wp.zeros_like(self.v)
 
+        self.use_graph = (Example.device == "cuda")
 
-for i in range(frame_count):
+        if (self.use_graph):
 
-    with wp.ScopedTimer("simulate", active=True):
+            wp.capture_begin()
 
-        if (use_graph):
-
-            with wp.ScopedTimer("grid build", active=False):
-                grid.build(x, grid_cell_size)
-
-            with wp.ScopedTimer("solve", active=False):
-                wp.capture_launch(graph)
-                wp.synchronize()
-                
-
-        else:
-            for s in range(sim_substeps):
-
-                with wp.ScopedTimer("grid build", active=False):
-                    grid.build(x, point_radius)
+            for s in range(Example.sim_substeps):
 
                 with wp.ScopedTimer("forces", active=False):
-                    wp.launch(kernel=apply_forces, dim=len(x), inputs=[grid.id, x, v, f, point_radius, k_contact, k_damp, k_friction, k_mu], device=device)
-                    wp.launch(kernel=integrate, dim=len(x), inputs=[x, v, f, (0.0, -9.8, 0.0), sim_dt, inv_mass], device=device)
+                    wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[Example.grid.id, self.x, self.v, self.f, Example.point_radius, Example.k_contact, Example.k_damp, Example.k_friction, Example.k_mu], device=Example.device)
+                    wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), Example.sim_dt, Example.inv_mass], device=Example.device)
+                
+            self.graph = wp.capture_end()
+
+    def update(self):
+        with wp.ScopedTimer("simulate", active=True):
+
+            if (self.use_graph):
+
+                with wp.ScopedTimer("grid build", active=False):
+                    Example.grid.build(self.x, Example.grid_cell_size)
+
+                with wp.ScopedTimer("solve", active=False):
+                    wp.capture_launch(self.graph)
+                    wp.synchronize()
+                    
+
+            else:
+                for s in range(Example.sim_substeps):
+
+                    with wp.ScopedTimer("grid build", active=False):
+                        Example.grid.build(self.x, Example.point_radius)
+
+                    with wp.ScopedTimer("forces", active=False):
+                        wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[Example.grid.id, self.x, self.v, self.f, Example.point_radius, Example.k_contact, Example.k_damp, Example.k_friction, Example.k_mu], device=Example.device)
+                        wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), Example.sim_dt, Example.inv_mass], device=Example.device)
+                
+                wp.synchronize()
+
+    def render(self, is_live=False):
+        with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else Example.sim_time 
             
-            wp.synchronize()
-        
-    with wp.ScopedTimer("render", active=True):
-        renderer.begin_frame(sim_time)
-        renderer.render_points(points=x.numpy(), radius=point_radius, name="points")
-        renderer.end_frame()
+            self.renderer.begin_frame(time)
+            self.renderer.render_points(points=self.x.numpy(), radius=Example.point_radius, name="points")
+            self.renderer.end_frame()
 
-    sim_time += frame_dt
+            Example.sim_time += Example.frame_dt
 
-renderer.save()
 
+if __name__ == '__main__':
+    path = os.path.join(os.path.dirname(__file__), "outputs/example_dem.usd")
+    stage = Usd.Stage.CreateNew(path)
+
+    example = Example()
+    example.init(stage)
+
+    for i in range(example.frame_count):
+        example.update()
+        example.render()
+
+    example.renderer.save()

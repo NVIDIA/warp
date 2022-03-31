@@ -73,7 +73,7 @@ def bourke_color_map(low, high, v):
 class UsdRenderer:
     """A USD renderer
     """  
-    def __init__(self, path, upaxis="y"):
+    def __init__(self, stage, upaxis="y"):
         """Construct a UsdRenderer object
         
         Args:
@@ -81,7 +81,7 @@ class UsdRenderer:
             stage (Usd.Stage): A USD stage (either in memory or on disk)            
         """
 
-        self.stage = stage = Usd.Stage.CreateNew(path)
+        self.stage = stage
 
         self.draw_points = True
         self.draw_springs = False
