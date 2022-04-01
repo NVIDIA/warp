@@ -6,11 +6,11 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Example Sim Ant
+# Example Sim Quadruped
 #
-# Shows how to set up a simulation of a rigid-body Ant articulation based on
-# the OpenAI gym environment using the wp.sim.ModelBuilder() and MCJF
-# importer. Note this example does not include a trained policy.
+# Shows how to set up a simulation of a rigid-body quadruped articulation 
+# from a URDF using the wp.sim.ModelBuilder().
+# Note this example does not include a trained policy.
 #
 ###########################################################################
 
