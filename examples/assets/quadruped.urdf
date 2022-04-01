@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="quadruped">
+    <link name="base">
+        <collision>
+            <origin rpy="0 1.57079632679 0" xyz="0 0 0"/>
+            <geometry>
+                <cylinder length="0.75" radius="0.1"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0.024"/>
+            <mass value="6.222"/>
+            <inertia ixx="0.017938806" ixy="0.00387963" ixz="0.001500772" iyy="0.370887745" iyz="6.8963e-05" izz="0.372497653"/>
+        </inertial>
+    </link>
+
+    <joint name="LF_HAA" type="revolute">
+        <parent link="base"/>
+        <child link="LF_HAA"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <origin rpy="0 0 0" xyz="0.2999 0.104 0.0"/>
+    </joint>
+    <link name="LF_HAA">
+        <collision>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
+            <geometry>
+                <cylinder length="0.05" radius="0.04"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0.00046"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="LF_HFE" type="revolute">
+        <parent link="LF_HAA"/>
+        <child link="LF_THIGH"/>
+        <origin rpy="0 0 1.57079632679" xyz="0 0.05 0"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+    <link name="LF_THIGH">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="LF_KFE" type="revolute">
+        <parent link="LF_THIGH"/>
+        <child link="LF_SHANK"/>
+        <origin rpy="0 0 0" xyz="0 0.0 -0.25"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+    <link name="LF_SHANK">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="RF_HAA" type="revolute">
+        <parent link="base"/>
+        <child link="RF_HAA"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <origin rpy="0 0 0" xyz="0.2999 -0.104 0.0"/>
+    </joint>
+    <link name="RF_HAA">
+        <collision>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
+            <geometry>
+                <cylinder length="0.05" radius="0.04"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0.00046"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="RF_HFE" type="revolute">
+        <parent link="RF_HAA"/>
+        <child link="RF_THIGH"/>
+        <origin rpy="0 0 -1.57079632679" xyz="0 -0.05 0"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+    <link name="RF_THIGH">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="RF_KFE" type="revolute">
+        <parent link="RF_THIGH"/>
+        <child link="RF_SHANK"/>
+        <origin rpy="0 0 0" xyz="0 0.0 -0.25"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+    <link name="RF_SHANK">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+
+    <joint name="LH_HAA" type="revolute">
+        <parent link="base"/>
+        <child link="LH_HAA"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <origin rpy="0 0 3.1415" xyz="-0.2999 0.104 0.0"/>
+    </joint>
+    <link name="LH_HAA">
+        <collision>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
+            <geometry>
+                <cylinder length="0.05" radius="0.04"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0.00046"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="LH_HFE" type="revolute">
+        <parent link="LH_HAA"/>
+        <child link="LH_THIGH"/>
+        <origin rpy="0 0 1.57079632679" xyz="0 -0.05 0"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+    <link name="LH_THIGH">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="LH_KFE" type="revolute">
+        <parent link="LH_THIGH"/>
+        <child link="LH_SHANK"/>
+        <origin rpy="0 0 0" xyz="0 0.0 -0.25"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+    <link name="LH_SHANK">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="RH_HAA" type="revolute">
+        <parent link="base"/>
+        <child link="RH_HAA"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <origin rpy="0 0 3.1415" xyz="-0.2999 -0.104 0.0"/>
+    </joint>
+    <link name="RH_HAA">
+        <collision>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
+            <geometry>
+                <cylinder length="0.05" radius="0.04"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0.00046"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="RH_HFE" type="revolute">
+        <parent link="RH_HAA"/>
+        <child link="RH_THIGH"/>
+        <origin rpy="0 0 -1.57079632679" xyz="0 0.05 0"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+    <link name="RH_THIGH">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+    <joint name="RH_KFE" type="revolute">
+        <parent link="RH_THIGH"/>
+        <child link="RH_SHANK"/>
+        <origin rpy="0 0 0" xyz="0 0.0 -0.25"/>
+        <axis xyz="1 0 0"/>
+        <limit effort="80.0" velocity="20." />
+        <dynamics damping="0.0" friction="0.0"/>
+    </joint>
+    <link name="RH_SHANK">
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 -0.125"/>
+            <mass value="2.04"/>
+            <inertia ixx="0.001053013" ixy="4.527e-05" ixz="8.855e-05" iyy="0.001805509" iyz="9.909e-05" izz="0.001765827"/>
+        </inertial>
+    </link>
+
+</robot>
