@@ -427,29 +427,29 @@ add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, 
 add_builtin("randn", input_types={"state": uint32}, value_type=float, group="Random", 
     doc="Sample a normal distribution")
 
-add_builtin("noise", input_types={"seed": uint32, "x": float}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "x": float}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 1d.")
-add_builtin("noise", input_types={"seed": uint32, "xy": vec2}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xy": vec2}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 2d.")
-add_builtin("noise", input_types={"seed": uint32, "xyz": vec3}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xyz": vec3}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 3d.")
-add_builtin("noise", input_types={"seed": uint32, "xyzt": vec4}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xyzt": vec4}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 4d.")
 
-add_builtin("pnoise", input_types={"seed": uint32, "x": float, "px": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "x": float, "px": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 1d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 2d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 3d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 4d.")
 
-add_builtin("curlnoise", input_types={"seed": uint32, "xy": vec2}, value_type=vec2, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xy": vec2}, value_type=vec2, group="Random",
     doc="Divergence-free vector field based on the gradient of a Perlin noise function.")
-add_builtin("curlnoise", input_types={"seed": uint32, "xyz": vec3}, value_type=vec3, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xyz": vec3}, value_type=vec3, group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
-add_builtin("curlnoise", input_types={"seed": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
 
 # note printf calls directly to global CRT printf (no wp:: namespace prefix)

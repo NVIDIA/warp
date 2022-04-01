@@ -762,57 +762,57 @@ Random
    Sample a normal distribution
 
 
-.. function:: noise(seed: uint32, x: float) -> float
+.. function:: noise(state: uint32, x: float) -> float
 
    Non-periodic Perlin-style noise in 1d.
 
 
-.. function:: noise(seed: uint32, xy: vec2) -> float
+.. function:: noise(state: uint32, xy: vec2) -> float
 
    Non-periodic Perlin-style noise in 2d.
 
 
-.. function:: noise(seed: uint32, xyz: vec3) -> float
+.. function:: noise(state: uint32, xyz: vec3) -> float
 
    Non-periodic Perlin-style noise in 3d.
 
 
-.. function:: noise(seed: uint32, xyzt: vec4) -> float
+.. function:: noise(state: uint32, xyzt: vec4) -> float
 
    Non-periodic Perlin-style noise in 4d.
 
 
-.. function:: pnoise(seed: uint32, x: float, px: int) -> float
+.. function:: pnoise(state: uint32, x: float, px: int) -> float
 
    Periodic Perlin-style noise in 1d.
 
 
-.. function:: pnoise(seed: uint32, xy: vec2, px: int, py: int) -> float
+.. function:: pnoise(state: uint32, xy: vec2, px: int, py: int) -> float
 
    Periodic Perlin-style noise in 2d.
 
 
-.. function:: pnoise(seed: uint32, xyz: vec3, px: int, py: int, pz: int) -> float
+.. function:: pnoise(state: uint32, xyz: vec3, px: int, py: int, pz: int) -> float
 
    Periodic Perlin-style noise in 3d.
 
 
-.. function:: pnoise(seed: uint32, xyzt: vec4, px: int, py: int, pz: int, pt: int) -> float
+.. function:: pnoise(state: uint32, xyzt: vec4, px: int, py: int, pz: int, pt: int) -> float
 
    Periodic Perlin-style noise in 4d.
 
 
-.. function:: curlnoise(seed: uint32, xy: vec2) -> vec2
+.. function:: curlnoise(state: uint32, xy: vec2) -> vec2
 
    Divergence-free vector field based on the gradient of a Perlin noise function.
 
 
-.. function:: curlnoise(seed: uint32, xyz: vec3) -> vec3
+.. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
 
    Divergence-free vector field based on the curl of three Perlin noise functions.
 
 
-.. function:: curlnoise(seed: uint32, xyzt: vec4) -> vec3
+.. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
 
    Divergence-free vector field based on the curl of three Perlin noise functions.
 
