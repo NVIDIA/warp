@@ -10,6 +10,8 @@ from warp.tests.test_base import *
 
 import numpy as np
 
+wp.config.cache_kernels = False
+
 wp.init()
 
 
@@ -148,7 +150,25 @@ def test_volume_sample_linear_v(volume: wp.uint64,
     expect_near(wp.volume_sample_world_v(volume, q, wp.Volume.LINEAR), expected, 2.0e-4)
 
 
+@wp.kernel
+def test_volume_sample_local_v_linear_values(volume: wp.uint64,
+                              points: wp.array(dtype=wp.vec3),
+                              values: wp.array(dtype=wp.float32)):
+    tid = wp.tid()
+    p = points[tid]
+    ones = wp.vec3(1.,1.,1.)
+    values[tid] = wp.dot(wp.volume_sample_local_v(volume, p, wp.Volume.LINEAR), ones)
 
+@wp.kernel
+def test_volume_sample_world_v_linear_values(volume: wp.uint64,
+                              points: wp.array(dtype=wp.vec3),
+                              values: wp.array(dtype=wp.float32)):
+    tid = wp.tid()
+    p = points[tid]
+    ones = wp.vec3(1.,1.,1.)
+    values[tid] = wp.dot(wp.volume_sample_world_v(volume, p, wp.Volume.LINEAR), ones)
+
+# Local/world transformation tests
 @wp.kernel
 def test_transform(volume: wp.uint64,
                    points: wp.array(dtype=wp.vec3),
@@ -177,6 +197,16 @@ def test_transform_inv(volume: wp.uint64,
 devices = wp.get_devices()
 rng = np.random.default_rng(101215)
 
+# Note about the test grids:
+# test_grid
+#   active region: [-10,10]^3
+#   values: v[i,j,k] = i * j * k
+#   voxel size: 0.25
+#
+# test_vec_grid
+#   active region: [-10,10]^3
+#   values: v[i,j,k] = (i+100*i, j+100*j, k+100*k)
+#   voxel size: 0.25
 volume_paths = {
     "scalar": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb.grid")),
     "vector": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb.grid"))
@@ -227,6 +257,33 @@ def register(parent):
 
                     x, y, z = case
                     grad_expected = np.array([y*z, x*z, x*y]) / 0.25
+                    grad_computed = tape.gradients[xyzs].numpy()[0]
+                    np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
+
+        def test_volume_sample_v_linear_gradient(self):
+
+            for device in devices:
+                points = rng.uniform(-10., 10., size=(100, 3))
+                values = wp.array(np.zeros(1), dtype=wp.float32, device=device)
+                for case in points:
+                    uvws = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
+                    xyzs = wp.array(case * 0.25, dtype=wp.vec3, device=device, requires_grad=True)
+
+                    tape = wp.Tape()
+                    with tape:
+                        wp.launch(test_volume_sample_local_v_linear_values, dim=1, inputs=[volumes["vector"][device].id, uvws, values], device=device)
+                    tape.backward(values)
+
+                    grad_expected = np.array([101.0, 101.0, 101.0])
+                    grad_computed = tape.gradients[uvws].numpy()[0]
+                    np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
+
+                    tape = wp.Tape()
+                    with tape:
+                        wp.launch(test_volume_sample_world_v_linear_values, dim=1, inputs=[volumes["vector"][device].id, xyzs, values], device=device)
+                    tape.backward(values)
+
+                    grad_expected = np.array([101.0, 101.0, 101.0]) / 0.25
                     grad_computed = tape.gradients[xyzs].numpy()[0]
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
