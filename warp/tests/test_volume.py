@@ -98,7 +98,7 @@ def test_volume_lookup_v(volume: wp.uint64,
     tid = wp.tid()
 
     p = points[tid]
-    expected = wp.vec3(p[0] + 100.0 * p[0], p[1] + 100.0 * p[1], p[2] + 100.0 * p[2])
+    expected = wp.vec3(p[0] + 2.0*p[1] + 3.0*p[2], 4.0*p[0] + 5.0*p[1] + 6.0*p[2], 7.0*p[0] + 8.0*p[1] + 9.0*p[2])
     if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
         expected = wp.vec3(10.8, -4.13, 10.26)
 
@@ -119,7 +119,7 @@ def test_volume_sample_closest_v(volume: wp.uint64,
     i = round(p[0])
     j = round(p[1])
     k = round(p[2])
-    expected = wp.vec3(i + 100.0 * i, j + 100.0 * j, k + 100.0 * k)
+    expected = wp.vec3(i + 2.0*j + 3.0*k, 4.0*i + 5.0*j + 6.0*k, 7.0*i + 8.0*j + 9.0*k)
     if abs(i) > 10.0 or abs(j) > 10.0 or abs(k) > 10.0:
         expected = wp.vec3(10.8, -4.13, 10.26)
 
@@ -140,7 +140,7 @@ def test_volume_sample_linear_v(volume: wp.uint64,
 
     p = points[tid]
 
-    expected = wp.vec3(p[0] + 100.0 * p[0], p[1] + 100.0 * p[1], p[2] + 100.0 * p[2])
+    expected = wp.vec3(p[0] + 2.0*p[1] + 3.0*p[2], 4.0*p[0] + 5.0*p[1] + 6.0*p[2], 7.0*p[0] + 8.0*p[1] + 9.0*p[2])
     if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
         return  # not testing against background values
 
@@ -205,7 +205,7 @@ rng = np.random.default_rng(101215)
 #
 # test_vec_grid
 #   active region: [-10,10]^3
-#   values: v[i,j,k] = (i+100*i, j+100*j, k+100*k)
+#   values: v[i,j,k] = (i + 2*j + 3*k, 4*i + 5*j + 6*k, 7*i + 8*j + 9*k)
 #   voxel size: 0.25
 volume_paths = {
     "scalar": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb.grid")),
@@ -274,7 +274,7 @@ def register(parent):
                         wp.launch(test_volume_sample_local_v_linear_values, dim=1, inputs=[volumes["vector"][device].id, uvws, values], device=device)
                     tape.backward(values)
 
-                    grad_expected = np.array([101.0, 101.0, 101.0])
+                    grad_expected = np.array([6.0, 15.0, 24.0])
                     grad_computed = tape.gradients[uvws].numpy()[0]
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
@@ -283,7 +283,7 @@ def register(parent):
                         wp.launch(test_volume_sample_world_v_linear_values, dim=1, inputs=[volumes["vector"][device].id, xyzs, values], device=device)
                     tape.backward(values)
 
-                    grad_expected = np.array([101.0, 101.0, 101.0]) / 0.25
+                    grad_expected = np.array([6.0, 15.0, 24.0]) / 0.25
                     grad_computed = tape.gradients[xyzs].numpy()[0]
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
