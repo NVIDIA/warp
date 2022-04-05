@@ -38,18 +38,16 @@ inline CUDA_CALLABLE float interpolate_gradient(float a0, float a1, float t, flo
 inline CUDA_CALLABLE float random_gradient_1d(uint32 state, int ix)
 {
     const uint32_t p1 = 73856093;
-    uint32 idx = ix*p1;
-    uint32 state = state + idx;
-    return randf(state, -1.f, 1.f);
+    uint32 idx = ix*p1 + state;
+    return randf(idx, -1.f, 1.f);
 }
 
 inline CUDA_CALLABLE vec2 random_gradient_2d(uint32 state, int ix, int iy)
 {
     const uint32_t p1 = 73856093;
     const uint32_t p2 = 19349663;
-    uint32 idx = ix*p1 ^ iy*p2;
-    uint32 state = state + idx;
-    float phi = randf(state, 0.f, 2.f*M_PI);
+    uint32 idx = ix*p1 ^ iy*p2 + state;
+    float phi = randf(idx, 0.f, 2.f*M_PI);
     float x = cos(phi);
     float y = sin(phi);
     return vec2(x, y);
@@ -60,12 +58,11 @@ inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 state, int ix, int iy, int i
     const uint32 p1 = 73856093;
 	const uint32 p2 = 19349663;
     const uint32 p3 = 53471161;
-    uint32 idx = ix*p1 ^ iy*p2 ^ iz*p3;
-    uint32 state = state + idx;
+    uint32 idx = ix*p1 ^ iy*p2 ^ iz*p3 + state;
 
-    float x = randn(state);
-    float y = randn(state);
-    float z = randn(state);
+    float x = randn(idx);
+    float y = randn(idx);
+    float z = randn(idx);
 
     return normalize(vec3(x, y, z));
 }
@@ -76,13 +73,12 @@ inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 state, int ix, int iy, int i
 	const uint32 p2 = 19349663;
 	const uint32 p3 = 53471161;
     const uint32 p4 = 10000019;
-    uint32 idx = ix*p1 ^ iy*p2 ^ iz*p3 ^ it*p4;
-    uint32 state = state + idx;
+    uint32 idx = ix*p1 ^ iy*p2 ^ iz*p3 ^ it*p4 + state;
 
-    float x = randn(state);
-    float y = randn(state);
-    float z = randn(state);
-    float t = randn(state);
+    float x = randn(idx);
+    float y = randn(idx);
+    float z = randn(idx);
+    float t = randn(idx);
 
     return normalize(vec4(x, y, z, t));
 }
