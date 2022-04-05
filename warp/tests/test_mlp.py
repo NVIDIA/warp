@@ -66,7 +66,7 @@ def test_mlp(test, device):
     assert_np_equal(result, expect, tol=1.e-6)
 
 
-def create_golden():
+def create_mlp(m, n):
 
     import torch
     torch.manual_seed(0)
@@ -86,12 +86,18 @@ def create_golden():
             out = self.act(out)
             return out
 
+    return FeedForward(m, n)
+
+
+def create_golden():
+
+    import torch
 
     input_size = 32
     hidden_size = 16
     batch_size = 64
 
-    network = FeedForward(input_size, hidden_size)
+    network = create_mlp(input_size, hidden_size)
 
     x = torch.Tensor(np.random.rand(batch_size, input_size))
     x.requires_grad = True
@@ -119,10 +125,11 @@ def load_golden():
     
     return np.load(os.path.join(os.path.dirname(__file__), "assets/mlp_golden.npy"), allow_pickle=True).item()
 
-# uncomment to re-build golden files
-create_golden()
 
 def test_mlp_grad(test, device):
+
+    # uncomment to re-build golden files
+    #create_golden()
 
     results = load_golden()
 
@@ -169,46 +176,97 @@ def test_mlp_grad(test, device):
     
 
 
-def profile_mlp_torch():
+def profile_mlp_torch(device):
+
+    import torch
+
+    m = 200
+    n = 10
+
+    steps = 18
 
     for i in range(18):       
-        with torch.no_grad():
-            
-            batch_size = 2**i
-            x = torch.Tensor(np.random.rand(batch_size, input_size))
 
-            with wp.ScopedTimer("torch_" + str(batch_size)):
-                y = network.forward(x)
-                torch.cuda.synchronize()
+        b = 2**i
+
+        network = create_mlp(m, n)
+          
+        x = torch.Tensor(np.random.rand(b, m))
+
+        with wp.ScopedTimer("torch_forward" + str(b)):
+            y = network.forward(x)
+            torch.cuda.synchronize()
 
 
-    profile = True
-    if profile:
-        for i in range(16):
-            with wp.ScopedTimer("torch-backward"):
-                loss.backward(retain_graph=True)
-                
-                if str(loss.device).startswith("cuda"):
-                    torch.cuda.synchronize()
+    for i in range(18):       
 
-def profile_mlp_warp():
+        b = 2**i
 
-    for i in range(18):
+        network = create_mlp(m, n)
+          
+        x = torch.Tensor(np.random.rand(b, m))
+        y = network.forward(x)
 
-        batch_size = 2**i        
-        p = wp.array(np.random.rand(n*batch_size), dtype=float, device=device)
-        q = wp.zeros(m*batch_size, device=device)
+        loss = torch.norm(y)
 
-        with wp.ScopedTimer("warp_" + str(batch_size), active=profile):
-            wp.launch(mlp_kernel, dim=batch_size, inputs=[m, n, batch_size, weights, bias, p, q], device=device)
+        # run once to alloc all gradients
+        loss.backward(retain_graph=True)        
+
+        with wp.ScopedTimer("torch-backward" + str(b)):
+            loss.backward()
+            torch.cuda.synchronize()
+
+
+def profile_mlp_warp(device):
+
+    m = 200
+    n = 10
+
+    steps = 18
+
+    for i in range(steps):
+
+        b = 2**i
+        
+        weights = wp.array(np.random.rand(m, n)*0.5 - 0.5, dtype=float, device=device)
+        bias = wp.array(np.random.rand(m)*0.5 - 0.5, dtype=float, device=device)
+
+        x = wp.array(np.random.rand(n*b), dtype=float, device=device)
+        y = wp.zeros(m*b, device=device)
+
+        with wp.ScopedTimer("warp-forward" + str(b)):
+            wp.launch(mlp_kernel, dim=b, inputs=[m, n, b, weights, bias, x, y], device=device)
             wp.synchronize()
 
 
-    for i in range(16):
-        with wp.ScopedTimer("warp-backward"):
-            tape.backward(loss=loss)
+    for i in range(steps):
+
+        b = 2**i
+
+        weights = wp.array(np.random.rand(m, n)*0.5 - 0.5, dtype=float, device=device, requires_grad=True)
+        bias = wp.array(np.random.rand(m)*0.5 - 0.5, dtype=float, device=device, requires_grad=True)
+
+        x = wp.array(np.random.rand(n*b), dtype=float, device=device, requires_grad=True)
+        y = wp.zeros(m*b, device=device, requires_grad=True)
+
+        loss = wp.zeros(1, dtype=float, device=device)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(mlp_kernel, dim=b, inputs=[m, n, b, weights, bias, x, y], device=device)
+            wp.launch(loss_kernel, dim=len(y), inputs=[y, loss], device=device)
+
+        # run backward once to ensure all adjoints are allocated
+        tape.backward(loss)
+        wp.synchronize()
+
+        with wp.ScopedTimer("warp-backward" + str(b)):
+            tape.backward(loss)
             wp.synchronize()
 
+
+# profile_mlp_warp("cuda")
+# profile_mlp_torch("cuda")
 
 def register(parent):
 

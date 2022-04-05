@@ -389,12 +389,11 @@ CUDA_CALLABLE inline void adj_mlp(const float* __restrict__ weights, const float
         if (adj_out)
             adj_activation(tmp, adj_f, adj_out[index + b*i]);
 
-
         for (int j=0; j < n; ++j)
         {
             // adjoint w.r.t M_i
             if (adj_weights)
-                atomic_add(&adj_weights[i*n + j], x[index + b*j]*adj_f);
+                atomic_add(&adj_weights[i*n + j], x[index + b*j]*adj_f);    // todo: reduce these atomic stores using warp/bock level reductions
 
             // adjoint w.r.t x
             if (adj_x)
@@ -404,6 +403,7 @@ CUDA_CALLABLE inline void adj_mlp(const float* __restrict__ weights, const float
         // adjoint w.r.t b
         if (adj_bias)
             atomic_add(&adj_bias[i], adj_f);
+
     }
 }
 
