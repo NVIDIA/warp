@@ -353,4 +353,116 @@ CUDA_CALLABLE inline void adj_dense_solve_batched(
 }
 
 
+template <typename F>
+CUDA_CALLABLE inline void mlp(const float* __restrict__ weights, const float* __restrict__ bias, F activation, int m, int n, int b, int index, const float* __restrict__ x, float* __restrict__ out)
+{
+    for (int i=0; i < m; ++i)
+    {
+        float tmp = bias[i];
+
+        for(int j=0; j < n; ++j)
+        {
+            tmp += weights[i*n + j]*x[index + b*j];
+        }
+
+        out[index + b*i] = activation(tmp);
+    }
+}
+
+template <typename F, typename AdjF>
+CUDA_CALLABLE inline void adj_mlp(const float* __restrict__ weights, const float* __restrict__ bias, F activation, int m, int n, int b, int index, const float* __restrict__ x, const float* __restrict__ out,
+                                  float* __restrict__ adj_weights, float* __restrict__ adj_bias, AdjF adj_activation, int adj_m, int adj_n, int adj_b, int adj_index, float* __restrict__ adj_x, float* __restrict__ adj_out)
+{
+    for (int i=0; i < m; ++i)
+    {
+        // recompute forward pass so we don't have to store pre-activation outputs
+        float tmp = bias[i];
+
+        for(int j=0; j < n; ++j)
+        {
+            tmp += weights[i*n + j]*x[index + b*j];            
+        }
+
+        // adjoint w.r.t to acivation
+        float adj_f = 0.0f;
+    
+        if (adj_out)
+            adj_activation(tmp, adj_f, adj_out[index + b*i]);
+
+        for (int j=0; j < n; ++j)
+        {
+            // adjoint w.r.t M_i
+            if (adj_weights)
+                atomic_add(&adj_weights[i*n + j], x[index + b*j]*adj_f);
+
+            // adjoint w.r.t x
+            if (adj_x)
+                atomic_add(&adj_x[index + b*j], weights[i*n + j]*adj_f);
+        }
+
+        // adjoint w.r.t b
+        if (adj_bias)
+            atomic_add(&adj_bias[i], adj_f);
+    }
+}
+
+
+// template <typename F>
+// CUDA_CALLABLE inline void mlp(const float* __restrict__ weights, const float* __restrict__ bias, F activation, int m, int n, int b, int index, const float* __restrict__ x, float* __restrict__ out)
+// {
+//     x += index*n;
+//     out += index*m;
+
+
+//     for (int i=0; i < m; ++i)
+//     {
+//         float tmp = bias[i];
+
+//         for(int j=0; j < n; ++j)
+//         {
+//             tmp += weights[i*n + j]*x[j];
+//         }
+
+//         out[i] = activation(tmp);
+//     }
+// }
+
+// template <typename F, typename AdjF>
+// CUDA_CALLABLE inline void adj_mlp(const float* __restrict__ weights, const float* __restrict__ bias, F activation, int m, int n, int b, int index, const float* __restrict__ x, const float* __restrict__ out,
+//                                   float* __restrict__ adj_weights, float* __restrict__ adj_bias, AdjF adj_activation, int adj_m, int adj_n, int adj_b, int adj_index, float* __restrict__ adj_x, float* __restrict__ adj_out)
+// {
+//     x += index*n;
+//     out += index*m;
+
+//     adj_x += index*n;
+//     adj_out += index*m;
+
+//     for (int i=0; i < m; ++i)
+//     {
+//         // recompute forward pass so we don't have to store pre-activation outputs
+//         float tmp = bias[i];
+
+//         for(int j=0; j < n; ++j)
+//         {
+//             tmp += weights[i*n + j]*x[index + b*j];            
+//         }
+
+//         // adjoint w.r.t to acivation
+//         float adj_f = 0.0f;
+//         adj_activation(tmp, adj_f, adj_out[index + b*i]);
+
+//         for (int j=0; j < n; ++j)
+//         {
+//             // adjoint w.r.t M_i
+//             adj_weights[i*n + j] += x[j]*adj_f;
+
+//             // adjoint w.r.t x
+//             adj_x[index + b*j] += weights[i*n + j]*adj_f;
+//         }
+
+//         // adjoint w.r.t b
+//         adj_bias[i] += adj_f;
+//     }
+// }
+
 } // namespace wp

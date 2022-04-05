@@ -131,13 +131,13 @@ def builtin(key, input_types={}, doc="", group="", hidden=False, skip_replay=Fal
 
     return insert
 
-def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False):
+def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False, skip_replay=False):
 
     # wrap value type in a lambda
     def value_func(arg):
         return value_type
         
-    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden)
+    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden, skip_replay=skip_replay)
 
     if key in builtin_functions:
         # if key exists we add overload

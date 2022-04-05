@@ -14,6 +14,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Callable
 
 #---------------------------------
 # Scalar Math
@@ -547,6 +548,8 @@ for t in scalar_types + vector_types:
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 
+
+add_builtin("mlp", input_types={"weights": array(dtype=float), "bias": array(dtype=float), "activation": Callable, "m": int, "n": int, "b": int, "index": int, "x": array(dtype=float), "out": array(dtype=float)}, value_type=None, skip_replay=True, doc="Evaluate an MLP in the form out = activation(weights*x + bias) for each batch", group="Utility")
 
 #---------------------------------
 # Operators
