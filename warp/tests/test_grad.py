@@ -12,6 +12,32 @@ from warp.tests.test_base import *
 wp.init()
 wp.config.mode = "debug"
 
+@wp.kernel
+def scalar_grad(x: wp.array(dtype=float),
+                y: wp.array(dtype=float)):
+
+    y[0] = x[0]**2.0
+
+
+
+def test_scalar_grad(test, device):
+
+    n = 32
+    val = np.ones(n, dtype=np.float32)
+
+    x = wp.array([3.0], dtype=float, device=device, requires_grad=True)
+    y = wp.zeros_like(x)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(scalar_grad, dim=1, inputs=[x, y], device=device)
+
+    tape.backward(y)
+
+    print(tape.gradients[x])
+   
+
+
 
 @wp.kernel
 def for_loop_grad(n: int, 
@@ -206,6 +232,7 @@ def register(parent):
         pass
 
     #add_function_test(TestGrad, "test_while_loop_grad", test_while_loop_grad, devices=devices)
+    add_function_test(TestGrad, "test_scalar_grad", test_scalar_grad, devices=devices)
     add_function_test(TestGrad, "test_for_loop_grad", test_for_loop_grad, devices=devices)
     add_function_test(TestGrad, "test_for_loop_nested_if_grad", test_for_loop_nested_if_grad, devices=devices)
     #add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)

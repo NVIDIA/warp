@@ -380,7 +380,7 @@ CUDA_CALLABLE inline void adj_mlp(const float* __restrict__ weights, const float
 
         for(int j=0; j < n; ++j)
         {
-            tmp += weights[i*n + j]*x[index + b*j];            
+            tmp += weights[i*n + j]*x[index + b*j];
         }
 
         // adjoint w.r.t to acivation
@@ -388,6 +388,7 @@ CUDA_CALLABLE inline void adj_mlp(const float* __restrict__ weights, const float
     
         if (adj_out)
             adj_activation(tmp, adj_f, adj_out[index + b*i]);
+
 
         for (int j=0; j < n; ++j)
         {

@@ -10,19 +10,10 @@ import warp as wp
 from warp.tests.test_base import *
 
 wp.init()
-wp.config.mode = "debug"
 
 @wp.func
 def mlp_activation(z: float):
     return wp.tanh(z)
-
-@wp.kernel
-def loss_kernel(x: wp.array(dtype=float),
-                loss: wp.array(dtype=float)):
-
-    l = x[wp.tid()]
-    
-    wp.atomic_add(loss, 0, l*l)
 
 
 @wp.kernel
@@ -38,7 +29,18 @@ def mlp_kernel(dim_m: int,
     wp.mlp(weights, bias, mlp_activation, dim_m, dim_n, dim_b, wp.tid(), x, y)
     
 
+@wp.kernel
+def loss_kernel(x: wp.array(dtype=float),
+                loss: wp.array(dtype=float)):
+
+    l = x[wp.tid()]
+    
+    wp.atomic_add(loss, 0, l*l)
+
+
 def test_mlp(test, device):
+
+    np.random.seed(0)
 
     m = 10
     n = 200
@@ -51,20 +53,6 @@ def test_mlp(test, device):
     x = wp.array(np.random.rand(n*batches), dtype=float, device=device)
     y = wp.zeros(m*batches, device=device)
 
-    # profile = True
-    # if profile:
-
-    #     for i in range(18):
-
-    #         batch_size = 2**i        
-    #         p = wp.array(np.random.rand(n*batch_size), dtype=float, device=device)
-    #         q = wp.zeros(m*batch_size, device=device)
-
-    #         with wp.ScopedTimer("warp_" + str(batch_size), active=profile):
-    #             wp.launch(mlp_kernel, dim=batch_size, inputs=[m, n, batch_size, weights, bias, p, q], device=device)
-    #             wp.synchronize()
-
-
     with wp.ScopedTimer("warp", active=False):
         wp.launch(mlp_kernel, dim=batches, inputs=[m, n, batches, weights, bias, x, y], device=device)
         wp.synchronize()
@@ -72,11 +60,6 @@ def test_mlp(test, device):
     # A*x + b
     with wp.ScopedTimer("numpy", active=False):
         expect = np.tanh(weights.numpy().reshape(m,n)@x.numpy().reshape(-1, batches) + bias.numpy().reshape(m, 1))
-
-    # x^T*A^T + b^T
-    # with wp.ScopedTimer("numpy", active=profile):
-    #     expect = np.tanh(x.numpy().reshape(batches, -1)@weights.numpy().reshape(m,n).T + bias.numpy().reshape(1, m))
-
 
     result = y.numpy().reshape(-1, batches)
 
@@ -86,6 +69,7 @@ def test_mlp(test, device):
 def create_golden():
 
     import torch
+    torch.manual_seed(0)
 
     class FeedForward(torch.nn.Module):
 
@@ -109,35 +93,14 @@ def create_golden():
 
     network = FeedForward(input_size, hidden_size)
 
-    # profile = True
-    # if profile:
-    #     for i in range(18):       
-    #         with torch.no_grad():
-                
-    #             batch_size = 2**i
-    #             x = torch.Tensor(np.random.rand(batch_size, input_size))
-
-    #             with wp.ScopedTimer("torch_" + str(batch_size)):
-    #                 y = network.forward(x)
-    #                 torch.cuda.synchronize()
-
-    #     return
-
-
     x = torch.Tensor(np.random.rand(batch_size, input_size))
     x.requires_grad = True
 
     y = network.forward(x)
+    y.retain_grad()
 
-    loss = torch.norm(y)**2.0
+    loss = torch.inner(y.flatten(), y.flatten())
     loss.backward(retain_graph=True)
-
-    for i in range(16):
-        with wp.ScopedTimer("torch-backward"):
-            loss.backward(retain_graph=True)
-            torch.cuda.synchronize()
-    
-
 
     results = {}
     results["weights"] = network.fc1.weight.cpu().detach().numpy()
@@ -147,6 +110,7 @@ def create_golden():
     results["x"] = x.cpu().detach().numpy()
     results["x_grad"] = x.grad.cpu().detach().numpy()
     results["y"] = y.cpu().detach().numpy()
+    results["y_grad"] = y.grad.cpu().detach().numpy()
     results["loss"] = loss.cpu().detach().numpy()
 
     np.save(os.path.join(os.path.dirname(__file__), "assets/mlp_golden.npy"), results, allow_pickle=True)
@@ -157,7 +121,6 @@ def load_golden():
 
 # uncomment to re-build golden files
 create_golden()
-
 
 def test_mlp_grad(test, device):
 
@@ -170,8 +133,8 @@ def test_mlp_grad(test, device):
     torch_x = results["x"].T
     torch_x_grad = results["x_grad"].T
     torch_y = results["y"].T
+    torch_y_grad = results["y_grad"].T
     torch_loss = results["loss"].T
-
 
     weights = wp.array(torch_weights, dtype=float, device=device, requires_grad=True)
     bias = wp.array(torch_bias, dtype=float, device=device, requires_grad=True)
@@ -193,19 +156,58 @@ def test_mlp_grad(test, device):
 
     tape.backward(loss=loss)
 
-    # # check forward result
-    # assert_np_equal(y.numpy().reshape(-1, b), torch_y, tol=1.e-3)
-    # assert_np_equal(loss.numpy(), torch_loss, tol=1.e-3)
+    # check forward result
+    assert_np_equal(y.numpy().reshape(-1, b), torch_y, tol=1.e-1)
+    assert_np_equal(loss.numpy(), torch_loss, tol=1.e-1)
 
-    # # check backward result
-    # assert_np_equal(tape.gradients[weights].numpy().reshape(m, n), torch_weights_grad, tol=1.e-3)
+    # check backward result
+    assert_np_equal(tape.gradients[weights].numpy().reshape(m, n), torch_weights_grad, tol=1.e-1)
+    assert_np_equal(tape.gradients[bias].numpy(), torch_bias_grad, tol=1.e-1)
+    assert_np_equal(tape.gradients[x].numpy().reshape(n, b), torch_x_grad, tol=1.e-1)
+    assert_np_equal(tape.gradients[y].numpy().reshape(m, b), torch_y_grad, tol=1.e-1)
+
+    
+
+
+def profile_mlp_torch():
+
+    for i in range(18):       
+        with torch.no_grad():
+            
+            batch_size = 2**i
+            x = torch.Tensor(np.random.rand(batch_size, input_size))
+
+            with wp.ScopedTimer("torch_" + str(batch_size)):
+                y = network.forward(x)
+                torch.cuda.synchronize()
+
+
+    profile = True
+    if profile:
+        for i in range(16):
+            with wp.ScopedTimer("torch-backward"):
+                loss.backward(retain_graph=True)
+                
+                if str(loss.device).startswith("cuda"):
+                    torch.cuda.synchronize()
+
+def profile_mlp_warp():
+
+    for i in range(18):
+
+        batch_size = 2**i        
+        p = wp.array(np.random.rand(n*batch_size), dtype=float, device=device)
+        q = wp.zeros(m*batch_size, device=device)
+
+        with wp.ScopedTimer("warp_" + str(batch_size), active=profile):
+            wp.launch(mlp_kernel, dim=batch_size, inputs=[m, n, batch_size, weights, bias, p, q], device=device)
+            wp.synchronize()
+
 
     for i in range(16):
         with wp.ScopedTimer("warp-backward"):
             tape.backward(loss=loss)
             wp.synchronize()
-    
-
 
 
 def register(parent):
@@ -214,12 +216,10 @@ def register(parent):
 
     class TestMLP(parent):
         pass
-
+    
     add_function_test(TestMLP, "test_mlp", test_mlp, devices=devices)
     add_function_test(TestMLP, "test_mlp_grad", test_mlp_grad, devices=devices)
     
-    #add_function_test(TestMLP, "test_mlp_grad", test_for_loop_nested_if_grad, devices=devices)
-
     return TestMLP
 
 if __name__ == '__main__':

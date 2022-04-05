@@ -297,6 +297,15 @@ inline CUDA_CALLABLE void adj_mul(const mat44& a, const mat44& b, mat44& adj_a, 
     adj_b += mul(transpose(a), adj_ret);
 }
 
+A = 10*200
+
+y = 10*b
+x^T = b*10
+
+10x10 inner products each of b ops
+
+
+
 inline CUDA_CALLABLE void adj_transpose(const mat44& a, mat44& adj_a, const mat44& adj_ret)
 {
     adj_a += transpose(adj_ret);
