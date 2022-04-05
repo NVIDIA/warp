@@ -31,7 +31,7 @@ def test_volume_lookup(volume: wp.uint64,
     j = int(p[1])
     k = int(p[2])
 
-    expect_eq(wp.volume_lookup(volume, i, j, k), expected)
+    expect_eq(wp.volume_lookup_f(volume, i, j, k), expected)
 
 
 @wp.kernel
@@ -48,10 +48,10 @@ def test_volume_sample_closest(volume: wp.uint64,
     if abs(i) > 10.0 or abs(j) > 10.0 or abs(k) > 10.0:
         expected = 10.0
 
-    expect_eq(wp.volume_sample_local(volume, p, wp.Volume.CLOSEST), expected)
+    expect_eq(wp.volume_sample_local_f(volume, p, wp.Volume.CLOSEST), expected)
 
     q = wp.volume_transform(volume, p)
-    expect_eq(wp.volume_sample_world(volume, q, wp.Volume.CLOSEST), expected)
+    expect_eq(wp.volume_sample_world_f(volume, q, wp.Volume.CLOSEST), expected)
 
     q_inv = wp.volume_transform_inv(volume, q)
     expect_eq(p, q_inv)
@@ -69,10 +69,10 @@ def test_volume_sample_linear(volume: wp.uint64,
     if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
         return  # not testing against background values
 
-    expect_near(wp.volume_sample_local(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
+    expect_near(wp.volume_sample_local_f(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
 
     q = wp.volume_transform(volume, p)
-    expect_near(wp.volume_sample_world(volume, q, wp.Volume.LINEAR), expected, 2.0e-4)
+    expect_near(wp.volume_sample_world_f(volume, q, wp.Volume.LINEAR), expected, 2.0e-4)
 
 @wp.kernel
 def test_volume_sample_local_linear_values(volume: wp.uint64,
@@ -80,7 +80,7 @@ def test_volume_sample_local_linear_values(volume: wp.uint64,
                               values: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     p = points[tid]
-    values[tid] = wp.volume_sample_local(volume, p, wp.Volume.LINEAR)
+    values[tid] = wp.volume_sample_local_f(volume, p, wp.Volume.LINEAR)
 
 @wp.kernel
 def test_volume_sample_world_linear_values(volume: wp.uint64,
@@ -88,7 +88,7 @@ def test_volume_sample_world_linear_values(volume: wp.uint64,
                               values: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     p = points[tid]
-    values[tid] = wp.volume_sample_world(volume, p, wp.Volume.LINEAR)
+    values[tid] = wp.volume_sample_world_f(volume, p, wp.Volume.LINEAR)
 
 # vector volume tests
 @wp.kernel

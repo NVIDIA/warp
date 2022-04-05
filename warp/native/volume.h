@@ -43,23 +43,23 @@ CUDA_CALLABLE inline pnanovdb_root_handle_t get_root(const pnanovdb_buf_t& buf,
 } // namespace volume
 
 // Forward declarations
-CUDA_CALLABLE inline float volume_sample_local(uint64_t id, vec3 uvw, int sampling_mode);
-CUDA_CALLABLE inline float volume_sample_world(uint64_t id, vec3 xyz, int sampling_mode);
-CUDA_CALLABLE inline float volume_lookup(uint64_t id, int32_t i, int32_t j, int32_t k);
+CUDA_CALLABLE inline float volume_sample_local_f(uint64_t id, vec3 uvw, int sampling_mode);
+CUDA_CALLABLE inline float volume_sample_world_f(uint64_t id, vec3 xyz, int sampling_mode);
+CUDA_CALLABLE inline float volume_lookup_f(uint64_t id, int32_t i, int32_t j, int32_t k);
 CUDA_CALLABLE inline vec3 volume_sample_local_v(uint64_t id, vec3 uvw, int sampling_mode);
 CUDA_CALLABLE inline vec3 volume_sample_world_v(uint64_t id, vec3 xyz, int sampling_mode);
 CUDA_CALLABLE inline vec3 volume_lookup_v(uint64_t id, int32_t i, int32_t j, int32_t k);
 CUDA_CALLABLE inline vec3 volume_transform(uint64_t id, vec3 uvw);
 CUDA_CALLABLE inline vec3 volume_transform_inv(uint64_t id, vec3 xyz);
-CUDA_CALLABLE inline void adj_volume_sample_local(
+CUDA_CALLABLE inline void adj_volume_sample_local_f(
     uint64_t id, vec3 uvw, int sampling_mode, uint64_t& adj_id, vec3& adj_uvw, int& adj_sampling_mode, const float& adj_ret);
 CUDA_CALLABLE inline void adj_volume_sample_local_v(
     uint64_t id, vec3 uvw, int sampling_mode, uint64_t& adj_id, vec3& adj_uvw, int& adj_sampling_mode, const vec3& adj_ret);
-CUDA_CALLABLE inline void adj_volume_sample_world(
+CUDA_CALLABLE inline void adj_volume_sample_world_f(
     uint64_t id, vec3 xyz, int sampling_mode, uint64_t& adj_id, vec3& adj_xyz, int& adj_sampling_mode, const float& adj_ret);
 CUDA_CALLABLE inline void adj_volume_sample_world_v(
     uint64_t id, vec3 xyz, int sampling_mode, uint64_t& adj_id, vec3& adj_xyz, int& adj_sampling_mode, const vec3& adj_ret);
-CUDA_CALLABLE inline void adj_volume_lookup(uint64_t id, int32_t i, int32_t j, int32_t k, uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, const float& adj_ret);
+CUDA_CALLABLE inline void adj_volume_lookup_f(uint64_t id, int32_t i, int32_t j, int32_t k, uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, const float& adj_ret);
 CUDA_CALLABLE inline void adj_volume_lookup_v(
     uint64_t id, int32_t i, int32_t j, int32_t k, uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, const vec3& adj_ret);
 CUDA_CALLABLE inline void adj_volume_transform(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw, const vec3& adj_ret);
@@ -67,7 +67,7 @@ CUDA_CALLABLE inline void adj_volume_transform_inv(uint64_t id, vec3 xyz, uint64
 // ---
 
 // Sampling the volume at the given index-space coordinates, uvw can be fractional
-CUDA_CALLABLE inline float volume_sample_local(uint64_t id, vec3 uvw, int sampling_mode)
+CUDA_CALLABLE inline float volume_sample_local_f(uint64_t id, vec3 uvw, int sampling_mode)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_root_handle_t root = volume::get_root(buf);
@@ -110,7 +110,7 @@ CUDA_CALLABLE inline float volume_sample_local(uint64_t id, vec3 uvw, int sampli
     return 0;
 }
 
-CUDA_CALLABLE inline void adj_volume_sample_local(
+CUDA_CALLABLE inline void adj_volume_sample_local_f(
     uint64_t id, vec3 uvw, int sampling_mode, uint64_t& adj_id, vec3& adj_uvw, int& adj_sampling_mode, const float& adj_ret)
 {
     if (sampling_mode != volume::LINEAR) {
@@ -247,7 +247,7 @@ CUDA_CALLABLE inline void adj_volume_sample_local_v(
 }
 
 // Sampling the volume at the given world-space coordinates
-CUDA_CALLABLE inline float volume_sample_world(uint64_t id, vec3 xyz, int sampling_mode)
+CUDA_CALLABLE inline float volume_sample_world_f(uint64_t id, vec3 xyz, int sampling_mode)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
@@ -257,15 +257,15 @@ CUDA_CALLABLE inline float volume_sample_world(uint64_t id, vec3 xyz, int sampli
     const pnanovdb_vec3_t uvw_pnano = pnanovdb_grid_world_to_indexf(buf, grid, PNANOVDB_REF(xyz_pnano));
     const vec3 uvw{ uvw_pnano.x, uvw_pnano.y, uvw_pnano.z };
 
-    return volume_sample_local(id, uvw, sampling_mode);
+    return volume_sample_local_f(id, uvw, sampling_mode);
 }
 
-CUDA_CALLABLE inline void adj_volume_sample_world(
+CUDA_CALLABLE inline void adj_volume_sample_world_f(
     uint64_t id, vec3 xyz, int sampling_mode, uint64_t& adj_id, vec3& adj_xyz, int& adj_sampling_mode, const float& adj_ret)
 {
     const vec3 uvw = volume_transform_inv(id, xyz);
     vec3 adj_uvw(0.f);
-    adj_volume_sample_local(id, uvw, sampling_mode, adj_id, adj_uvw, adj_sampling_mode, adj_ret);
+    adj_volume_sample_local_f(id, uvw, sampling_mode, adj_id, adj_uvw, adj_sampling_mode, adj_ret);
     adj_volume_transform_inv(id, uvw, adj_id, adj_xyz, adj_uvw);
 }
 
@@ -292,7 +292,7 @@ CUDA_CALLABLE inline void adj_volume_sample_world_v(
     adj_volume_transform_inv(id, uvw, adj_id, adj_xyz, adj_uvw);
 }
 
-CUDA_CALLABLE inline float volume_lookup(uint64_t id, int32_t i, int32_t j, int32_t k)
+CUDA_CALLABLE inline float volume_lookup_f(uint64_t id, int32_t i, int32_t j, int32_t k)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_root_handle_t root = volume::get_root(buf);
@@ -303,7 +303,7 @@ CUDA_CALLABLE inline float volume_lookup(uint64_t id, int32_t i, int32_t j, int3
     return pnanovdb_read_float(buf, address);
 }
 
-CUDA_CALLABLE inline void adj_volume_lookup(uint64_t id, int32_t i, int32_t j, int32_t k, uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, const float& adj_ret)
+CUDA_CALLABLE inline void adj_volume_lookup_f(uint64_t id, int32_t i, int32_t j, int32_t k, uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, const float& adj_ret)
 {
     // NOOP
 }

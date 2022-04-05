@@ -344,7 +344,7 @@ To sample the volume inside a kernel we pass a reference to it by id, and use th
       p = points[tid]
 
       # sample grid with trilinear interpolation     
-      f = wp.volume_sample_world(volume, p, wp.Volume.LINEAR)
+      f = wp.volume_sample_world_f(volume, p, wp.Volume.LINEAR)
 
       # write result
       samples[tid] = f
