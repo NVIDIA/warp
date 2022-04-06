@@ -180,12 +180,12 @@ def profile_mlp_torch(device):
 
     import torch
 
-    m = 200
-    n = 10
+    m = 64
+    n = 32
 
-    steps = 18
+    steps = 20
 
-    for i in range(18):       
+    for i in range(steps):       
 
         b = 2**i
 
@@ -198,7 +198,7 @@ def profile_mlp_torch(device):
             torch.cuda.synchronize()
 
 
-    for i in range(18):       
+    for i in range(steps):       
 
         b = 2**i
 
@@ -219,10 +219,10 @@ def profile_mlp_torch(device):
 
 def profile_mlp_warp(device):
 
-    m = 200
-    n = 10
+    m = 64
+    n = 32
 
-    steps = 18
+    steps = 20
 
     for i in range(steps):
 
