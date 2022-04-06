@@ -47,9 +47,9 @@ CUDA_CALLABLE inline pnanovdb_root_handle_t get_root(const pnanovdb_buf_t& buf,
 }
 
 template<typename T>
-T zero() { return T{0.f} ;}
+inline T zero() { return T{0.f} ;}
 template<>
-int64_t zero<int64_t>() { return 0; }
+inline int64_t zero<int64_t>() { return 0; }
 } // namespace volume
 
 template<typename T>

@@ -10,8 +10,6 @@ from warp.tests.test_base import *
 
 import numpy as np
 
-wp.config.cache_kernels = False
-
 wp.init()
 
 
