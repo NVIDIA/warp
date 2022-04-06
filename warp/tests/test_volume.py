@@ -15,10 +15,10 @@ wp.config.cache_kernels = False
 wp.init()
 
 
-# scalar volume tests
+# float volume tests
 @wp.kernel
-def test_volume_lookup(volume: wp.uint64,
-                       points: wp.array(dtype=wp.vec3)):
+def test_volume_lookup_f(volume: wp.uint64,
+                         points: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
@@ -35,8 +35,8 @@ def test_volume_lookup(volume: wp.uint64,
 
 
 @wp.kernel
-def test_volume_sample_closest(volume: wp.uint64,
-                               points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_closest_f(volume: wp.uint64,
+                                 points: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
@@ -48,18 +48,16 @@ def test_volume_sample_closest(volume: wp.uint64,
     if abs(i) > 10.0 or abs(j) > 10.0 or abs(k) > 10.0:
         expected = 10.0
 
-    expect_eq(wp.volume_sample_local_f(volume, p, wp.Volume.CLOSEST), expected)
+    expect_eq(wp.volume_sample_f(volume, p, wp.Volume.CLOSEST), expected)
 
-    q = wp.volume_transform(volume, p)
-    expect_eq(wp.volume_sample_world_f(volume, q, wp.Volume.CLOSEST), expected)
-
-    q_inv = wp.volume_transform_inv(volume, q)
+    q = wp.volume_local_to_world(volume, p)
+    q_inv = wp.volume_world_to_local(volume, q)
     expect_eq(p, q_inv)
 
 
 @wp.kernel
-def test_volume_sample_linear(volume: wp.uint64,
-                              points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_linear_f(volume: wp.uint64,
+                                points: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
@@ -69,28 +67,26 @@ def test_volume_sample_linear(volume: wp.uint64,
     if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
         return  # not testing against background values
 
-    expect_near(wp.volume_sample_local_f(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
-
-    q = wp.volume_transform(volume, p)
-    expect_near(wp.volume_sample_world_f(volume, q, wp.Volume.LINEAR), expected, 2.0e-4)
+    expect_near(wp.volume_sample_f(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
 
 @wp.kernel
-def test_volume_sample_local_linear_values(volume: wp.uint64,
+def test_volume_sample_local_f_linear_values(volume: wp.uint64,
                               points: wp.array(dtype=wp.vec3),
                               values: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     p = points[tid]
-    values[tid] = wp.volume_sample_local_f(volume, p, wp.Volume.LINEAR)
+    values[tid] = wp.volume_sample_f(volume, p, wp.Volume.LINEAR)
 
 @wp.kernel
-def test_volume_sample_world_linear_values(volume: wp.uint64,
+def test_volume_sample_world_f_linear_values(volume: wp.uint64,
                               points: wp.array(dtype=wp.vec3),
                               values: wp.array(dtype=wp.float32)):
     tid = wp.tid()
-    p = points[tid]
-    values[tid] = wp.volume_sample_world_f(volume, p, wp.Volume.LINEAR)
+    q = points[tid]
+    p = wp.volume_world_to_local(volume, q)
+    values[tid] = wp.volume_sample_f(volume, p, wp.Volume.LINEAR)
 
-# vector volume tests
+# vec3f volume tests
 @wp.kernel
 def test_volume_lookup_v(volume: wp.uint64,
                          points: wp.array(dtype=wp.vec3)):
@@ -123,12 +119,10 @@ def test_volume_sample_closest_v(volume: wp.uint64,
     if abs(i) > 10.0 or abs(j) > 10.0 or abs(k) > 10.0:
         expected = wp.vec3(10.8, -4.13, 10.26)
 
-    expect_eq(wp.volume_sample_local_v(volume, p, wp.Volume.CLOSEST), expected)
+    expect_eq(wp.volume_sample_v(volume, p, wp.Volume.CLOSEST), expected)
 
-    q = wp.volume_transform(volume, p)
-    expect_eq(wp.volume_sample_world_v(volume, q, wp.Volume.CLOSEST), expected)
-
-    q_inv = wp.volume_transform_inv(volume, q)
+    q = wp.volume_local_to_world(volume, p)
+    q_inv = wp.volume_world_to_local(volume, q)
     expect_eq(p, q_inv)
 
 
@@ -144,11 +138,7 @@ def test_volume_sample_linear_v(volume: wp.uint64,
     if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
         return  # not testing against background values
 
-    expect_near(wp.volume_sample_local_v(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
-
-    q = wp.volume_transform(volume, p)
-    expect_near(wp.volume_sample_world_v(volume, q, wp.Volume.LINEAR), expected, 2.0e-4)
-
+    expect_near(wp.volume_sample_v(volume, p, wp.Volume.LINEAR), expected, 2.0e-4)
 
 @wp.kernel
 def test_volume_sample_local_v_linear_values(volume: wp.uint64,
@@ -157,39 +147,79 @@ def test_volume_sample_local_v_linear_values(volume: wp.uint64,
     tid = wp.tid()
     p = points[tid]
     ones = wp.vec3(1.,1.,1.)
-    values[tid] = wp.dot(wp.volume_sample_local_v(volume, p, wp.Volume.LINEAR), ones)
+    values[tid] = wp.dot(wp.volume_sample_v(volume, p, wp.Volume.LINEAR), ones)
 
 @wp.kernel
 def test_volume_sample_world_v_linear_values(volume: wp.uint64,
                               points: wp.array(dtype=wp.vec3),
                               values: wp.array(dtype=wp.float32)):
     tid = wp.tid()
-    p = points[tid]
+    q = points[tid]
+    p = wp.volume_world_to_local(volume, q)
     ones = wp.vec3(1.,1.,1.)
-    values[tid] = wp.dot(wp.volume_sample_world_v(volume, p, wp.Volume.LINEAR), ones)
+    values[tid] = wp.dot(wp.volume_sample_v(volume, p, wp.Volume.LINEAR), ones)
+
+# int64 volume tests
+@wp.kernel
+def test_volume_lookup_i(volume: wp.uint64,
+                         points: wp.array(dtype=wp.vec3)):
+
+    tid = wp.tid()
+
+    p = points[tid]
+    i = int(p[0])
+    j = int(p[1])
+    k = int(p[2])
+    expected = i * j * k
+    if abs(i) > 10 or abs(j) > 10 or abs(k) > 10:
+        expected = 10
+
+    expect_eq(wp.volume_lookup_i(volume, i, j, k), wp.int64(expected))
+
+
+@wp.kernel
+def test_volume_sample_i(volume: wp.uint64,
+                                 points: wp.array(dtype=wp.vec3)):
+
+    tid = wp.tid()
+
+    p = points[tid]
+    i = round(p[0])
+    j = round(p[1])
+    k = round(p[2])
+    expected = int(i * j * k)
+    if abs(i) > 10.0 or abs(j) > 10.0 or abs(k) > 10.0:
+        expected = 10
+
+    expect_eq(wp.volume_sample_i(volume, p), wp.int64(expected))
+
+    q = wp.volume_local_to_world(volume, p)
+    q_inv = wp.volume_world_to_local(volume, q)
+    expect_eq(p, q_inv)
+
 
 # Local/world transformation tests
 @wp.kernel
-def test_transform(volume: wp.uint64,
+def test_volume_local_to_world(volume: wp.uint64,
                    points: wp.array(dtype=wp.vec3),
                    values: wp.array(dtype=wp.float32),
                    xformed_points: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
     p = points[tid]
     ones = wp.vec3(1.,1.,1.)
-    values[tid] = wp.dot(wp.volume_transform(volume, p), ones)
-    xformed_points[tid] = wp.volume_transform(volume, ones)
+    values[tid] = wp.dot(wp.volume_local_to_world(volume, p), ones)
+    xformed_points[tid] = wp.volume_local_to_world(volume, ones)
 
 @wp.kernel
-def test_transform_inv(volume: wp.uint64,
+def test_volume_world_to_local(volume: wp.uint64,
                        points: wp.array(dtype=wp.vec3),
                        values: wp.array(dtype=wp.float32),
                        xformed_points: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
     p = points[tid]
     ones = wp.vec3(1.,1.,1.)
-    values[tid] = wp.dot(wp.volume_transform_inv(volume, p), ones)
-    xformed_points[tid] = wp.volume_transform_inv(volume, ones)
+    values[tid] = wp.dot(wp.volume_world_to_local(volume, p), ones)
+    xformed_points[tid] = wp.volume_world_to_local(volume, ones)
 
 
 
@@ -198,7 +228,7 @@ devices = wp.get_devices()
 rng = np.random.default_rng(101215)
 
 # Note about the test grids:
-# test_grid
+# test_grid and test_int64_grid
 #   active region: [-10,10]^3
 #   values: v[i,j,k] = i * j * k
 #   voxel size: 0.25
@@ -208,8 +238,9 @@ rng = np.random.default_rng(101215)
 #   values: v[i,j,k] = (i + 2*j + 3*k, 4*i + 5*j + 6*k, 7*i + 8*j + 9*k)
 #   voxel size: 0.25
 volume_paths = {
-    "scalar": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb.grid")),
-    "vector": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb.grid"))
+    "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb.grid")),
+    "int64": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int64_grid.nvdb.grid")),
+    "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb.grid"))
 }
 
 volumes = {}
@@ -231,7 +262,7 @@ for value_type, path in volume_paths.items():
 def register(parent):
 
     class TestVolumes(parent):
-        def test_volume_sample_linear_gradient(self):
+        def test_volume_sample_linear_f_gradient(self):
 
             for device in devices:
                 points = rng.uniform(-10., 10., size=(100, 3))
@@ -242,7 +273,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_sample_local_linear_values, dim=1, inputs=[volumes["scalar"][device].id, uvws, values], device=device)
+                        wp.launch(test_volume_sample_local_f_linear_values, dim=1, inputs=[volumes["float"][device].id, uvws, values], device=device)
                     tape.backward(values)
 
                     x, y, z = case
@@ -252,7 +283,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_sample_world_linear_values, dim=1, inputs=[volumes["scalar"][device].id, xyzs, values], device=device)
+                        wp.launch(test_volume_sample_world_f_linear_values, dim=1, inputs=[volumes["float"][device].id, xyzs, values], device=device)
                     tape.backward(values)
 
                     x, y, z = case
@@ -260,7 +291,7 @@ def register(parent):
                     grad_computed = tape.gradients[xyzs].numpy()[0]
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
-        def test_volume_sample_v_linear_gradient(self):
+        def test_volume_sample_linear_v_gradient(self):
 
             for device in devices:
                 points = rng.uniform(-10., 10., size=(100, 3))
@@ -271,7 +302,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_sample_local_v_linear_values, dim=1, inputs=[volumes["vector"][device].id, uvws, values], device=device)
+                        wp.launch(test_volume_sample_local_v_linear_values, dim=1, inputs=[volumes["vec3f"][device].id, uvws, values], device=device)
                     tape.backward(values)
 
                     grad_expected = np.array([6.0, 15.0, 24.0])
@@ -280,7 +311,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_sample_world_v_linear_values, dim=1, inputs=[volumes["vector"][device].id, xyzs, values], device=device)
+                        wp.launch(test_volume_sample_world_v_linear_values, dim=1, inputs=[volumes["vec3f"][device].id, xyzs, values], device=device)
                     tape.backward(values)
 
                     grad_expected = np.array([6.0, 15.0, 24.0]) / 0.25
@@ -297,7 +328,7 @@ def register(parent):
                     points = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_transform, dim=1, inputs=[volumes["scalar"][device].id, points, values, xformed_points], device=device)
+                        wp.launch(test_volume_local_to_world, dim=1, inputs=[volumes["float"][device].id, points, values, xformed_points], device=device)
                     tape.backward(values)
 
                     grad_computed = tape.gradients[points].numpy()
@@ -306,7 +337,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_transform_inv, dim=1, inputs=[volumes["scalar"][device].id, points, values, xformed_points], device=device)
+                        wp.launch(test_volume_world_to_local, dim=1, inputs=[volumes["float"][device].id, points, values, xformed_points], device=device)
                     tape.backward(values)
 
                     grad_computed = tape.gradients[points].numpy()
@@ -320,13 +351,16 @@ def register(parent):
         points[device] = wp.array(points_np, dtype=wp.vec3, device=device)
         points_jittered[device] = wp.array(points_jittered_np, dtype=wp.vec3, device=device)
 
-        add_kernel_test(TestVolumes, test_volume_lookup, dim=len(points_np), inputs=[volumes["scalar"][device].id, points[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_closest, dim=len(points_np), inputs=[volumes["scalar"][device].id, points_jittered[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_linear, dim=len(points_np), inputs=[volumes["scalar"][device].id, points_jittered[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_lookup_f, dim=len(points_np), inputs=[volumes["float"][device].id, points[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_sample_closest_f, dim=len(points_np), inputs=[volumes["float"][device].id, points_jittered[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_sample_linear_f, dim=len(points_np), inputs=[volumes["float"][device].id, points_jittered[device]], devices=[device])
 
-        add_kernel_test(TestVolumes, test_volume_lookup_v, dim=len(points_np), inputs=[volumes["vector"][device].id, points[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_closest_v, dim=len(points_np), inputs=[volumes["vector"][device].id, points_jittered[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_linear_v, dim=len(points_np), inputs=[volumes["vector"][device].id, points_jittered[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_lookup_v, dim=len(points_np), inputs=[volumes["vec3f"][device].id, points[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_sample_closest_v, dim=len(points_np), inputs=[volumes["vec3f"][device].id, points_jittered[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_sample_linear_v, dim=len(points_np), inputs=[volumes["vec3f"][device].id, points_jittered[device]], devices=[device])
+
+        add_kernel_test(TestVolumes, test_volume_lookup_i, dim=len(points_np), inputs=[volumes["int64"][device].id, points[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_sample_i, dim=len(points_np), inputs=[volumes["int64"][device].id, points_jittered[device]], devices=[device])
 
     return TestVolumes
 

@@ -576,6 +576,11 @@ inline CUDA_CALLABLE void print(int i)
     printf("%d\n", i);
 }
 
+inline CUDA_CALLABLE void print(int64_t i)
+{
+    printf("%lld\n", i);
+}
+
 inline CUDA_CALLABLE void print(float f)
 {
     printf("%g\n", f);
