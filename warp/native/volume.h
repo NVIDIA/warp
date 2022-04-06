@@ -66,8 +66,39 @@ CUDA_CALLABLE inline void adj_volume_transform(uint64_t id, vec3 uvw, uint64_t& 
 CUDA_CALLABLE inline void adj_volume_transform_inv(uint64_t id, vec3 xyz, uint64_t& adj_id, vec3& adj_xyz, const vec3& adj_ret);
 // ---
 
+template<typename T>
+CUDA_CALLABLE inline T pnano_read(pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk);
+
+template<>
+CUDA_CALLABLE inline float pnano_read<float>(pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+    const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_FLOAT, buf, root, ijk);
+    return pnanovdb_read_float(buf, address);
+}
+template<>
+CUDA_CALLABLE inline vec3 pnano_read<vec3>(pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+    const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, root, ijk);
+    const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
+    return {v.x, v.y, v.z};
+}
+
+template<typename T>
+CUDA_CALLABLE inline T pnano_read(pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk);
+
+template<>
+CUDA_CALLABLE inline float pnano_read<float>(pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+    pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_FLOAT, buf, acc, ijk);
+    return pnanovdb_read_float(buf, address);
+}
+template<>
+CUDA_CALLABLE inline vec3 pnano_read<vec3>(pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+    pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, acc, ijk);
+    const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
+    return {v.x, v.y, v.z};
+}
+
 // Sampling the volume at the given index-space coordinates, uvw can be fractional
-CUDA_CALLABLE inline float volume_sample_local_f(uint64_t id, vec3 uvw, int sampling_mode)
+template<typename T>
+CUDA_CALLABLE inline T volume_sample(uint64_t id, vec3 uvw, int sampling_mode)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_root_handle_t root = volume::get_root(buf);
@@ -76,9 +107,7 @@ CUDA_CALLABLE inline float volume_sample_local_f(uint64_t id, vec3 uvw, int samp
     if (sampling_mode == volume::CLOSEST)
     {
         const pnanovdb_coord_t ijk = pnanovdb_vec3_round_to_coord(uvw_pnano);
-        const pnanovdb_address_t address =
-            pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_FLOAT, buf, root, PNANOVDB_REF(ijk));
-        return pnanovdb_read_float(buf, address);
+        return pnano_read<T>(buf, root, PNANOVDB_REF(ijk));
     }
     else if (sampling_mode == volume::LINEAR)
     {
@@ -92,22 +121,25 @@ CUDA_CALLABLE inline float volume_sample_local_f(uint64_t id, vec3 uvw, int samp
 
         pnanovdb_readaccessor_t accessor;
         pnanovdb_readaccessor_init(PNANOVDB_REF(accessor), root);
-        float val = 0.0f;
+        T val{0.0f};
         const float wx[2]{ 1 - ijk_frac.x, ijk_frac.x };
         const float wy[2]{ 1 - ijk_frac.y, ijk_frac.y };
         const float wz[2]{ 1 - ijk_frac.z, ijk_frac.z };
-#pragma unroll
         for (int idx = 0; idx < 8; ++idx)
         {
             const pnanovdb_coord_t& offs = OFFSETS[idx];
             const pnanovdb_coord_t ijkShifted = pnanovdb_coord_add(ijk, offs);
-            pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(
-                PNANOVDB_GRID_TYPE_FLOAT, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
-            val += wx[offs.x] * wy[offs.y] * wz[offs.z] * pnanovdb_read_float(buf, address);
+            const T v = pnano_read<T>(buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
+            val = add(val, wx[offs.x] * wy[offs.y] * wz[offs.z] * v);
         }
         return val;
     }
     return 0;
+}
+
+CUDA_CALLABLE inline float volume_sample_local_f(uint64_t id, vec3 uvw, int sampling_mode)
+{
+    return volume_sample<float>(id, uvw, sampling_mode);
 }
 
 CUDA_CALLABLE inline void adj_volume_sample_local_f(
@@ -131,23 +163,18 @@ CUDA_CALLABLE inline void adj_volume_sample_local_f(
 
     pnanovdb_readaccessor_t accessor;
     pnanovdb_readaccessor_init(PNANOVDB_REF(accessor), root);
-    float vs[2][2][2];
     const float wx[2]{ 1 - ijk_frac.x, ijk_frac.x };
     const float wy[2]{ 1 - ijk_frac.y, ijk_frac.y };
     const float wz[2]{ 1 - ijk_frac.z, ijk_frac.z };
     vec3 dphi(0,0,0);
-#pragma unroll
     for (int idx = 0; idx < 8; ++idx)
     {
         const pnanovdb_coord_t& offs = OFFSETS[idx];
         const pnanovdb_coord_t ijkShifted = pnanovdb_coord_add(ijk, offs);
-        pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(
-            PNANOVDB_GRID_TYPE_FLOAT, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
-        const float v = pnanovdb_read_float(buf, address);
+        const float v = pnano_read<float>(buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
         const vec3 signs(offs.x * 2 - 1, offs.y * 2 - 1, offs.z * 2 - 1);
-        dphi.x += signs.x * wy[offs.y] * wz[offs.z] * v;
-        dphi.y += signs.y * wx[offs.x] * wz[offs.z] * v;
-        dphi.z += signs.z * wx[offs.x] * wy[offs.y] * v;
+        const vec3 grad_w(signs.x * wy[offs.y] * wz[offs.z], signs.y * wx[offs.x] * wz[offs.z], signs.z * wx[offs.x] * wy[offs.y]); 
+        dphi = add(dphi, mul(v, grad_w));
     }
 
     adj_uvw += mul(dphi, adj_ret);
@@ -156,47 +183,7 @@ CUDA_CALLABLE inline void adj_volume_sample_local_f(
 // Sampling the volume at the given index-space coordinates, uvw can be fractional
 CUDA_CALLABLE inline vec3 volume_sample_local_v(uint64_t id, vec3 uvw, int sampling_mode)
 {
-    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
-    const pnanovdb_root_handle_t root = volume::get_root(buf);
-    const pnanovdb_vec3_t uvw_pnano{ uvw.x, uvw.y, uvw.z };
-
-    if (sampling_mode == volume::CLOSEST)
-    {
-        const pnanovdb_coord_t ijk = pnanovdb_vec3_round_to_coord(uvw_pnano);
-        const pnanovdb_address_t address =
-            pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, root, PNANOVDB_REF(ijk));
-        const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
-        return {v.x, v.y, v.z};
-    }
-    else if (sampling_mode == volume::LINEAR)
-    {
-        constexpr pnanovdb_coord_t OFFSETS[] = {
-            { 0, 0, 0 }, { 0, 0, 1 }, { 0, 1, 0 }, { 0, 1, 1 }, { 1, 0, 0 }, { 1, 0, 1 }, { 1, 1, 0 }, { 1, 1, 1 },
-        };
-
-        const pnanovdb_vec3_t ijk_base{ floorf(uvw_pnano.x), floorf(uvw_pnano.y), floorf(uvw_pnano.z) };
-        const pnanovdb_vec3_t ijk_frac{ uvw_pnano.x - ijk_base.x, uvw_pnano.y - ijk_base.y, uvw_pnano.z - ijk_base.z };
-        const pnanovdb_coord_t ijk{ (pnanovdb_int32_t)ijk_base.x, (pnanovdb_int32_t)ijk_base.y, (pnanovdb_int32_t)ijk_base.z };
-
-        pnanovdb_readaccessor_t accessor;
-        pnanovdb_readaccessor_init(PNANOVDB_REF(accessor), root);
-        vec3 val = 0.0f;
-        const float wx[2]{ 1 - ijk_frac.x, ijk_frac.x };
-        const float wy[2]{ 1 - ijk_frac.y, ijk_frac.y };
-        const float wz[2]{ 1 - ijk_frac.z, ijk_frac.z };
-#pragma unroll
-        for (int idx = 0; idx < 8; ++idx)
-        {
-            const pnanovdb_coord_t& offs = OFFSETS[idx];
-            const pnanovdb_coord_t ijkShifted = pnanovdb_coord_add(ijk, offs);
-            pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(
-                PNANOVDB_GRID_TYPE_VEC3F, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
-            const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
-            val += wx[offs.x] * wy[offs.y] * wz[offs.z] * vec3{v.x, v.y, v.z};
-        }
-        return val;
-    }
-    return 0;
+    return volume_sample<vec3>(id, uvw, sampling_mode);
 }
 
 CUDA_CALLABLE inline void adj_volume_sample_local_v(
@@ -220,26 +207,22 @@ CUDA_CALLABLE inline void adj_volume_sample_local_v(
 
     pnanovdb_readaccessor_t accessor;
     pnanovdb_readaccessor_init(PNANOVDB_REF(accessor), root);
-    float vs[2][2][2];
     const float wx[2]{ 1 - ijk_frac.x, ijk_frac.x };
     const float wy[2]{ 1 - ijk_frac.y, ijk_frac.y };
     const float wz[2]{ 1 - ijk_frac.z, ijk_frac.z };
     vec3 dphi[3] = {{0,0,0}, {0,0,0}, {0,0,0}};
-#pragma unroll
     for (int idx = 0; idx < 8; ++idx)
     {
         const pnanovdb_coord_t& offs = OFFSETS[idx];
         const pnanovdb_coord_t ijkShifted = pnanovdb_coord_add(ijk, offs);
-        pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(
-            PNANOVDB_GRID_TYPE_VEC3F, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
-        const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
-        vec3 signs(offs.x * 2 - 1, offs.y * 2 - 1, offs.z * 2 - 1);
-        dphi[0] = add(dphi[0], vec3(signs.x * wy[offs.y] * wz[offs.z] * v.x, signs.y * wx[offs.x] * wz[offs.z] * v.x, signs.z * wx[offs.x] * wy[offs.y] * v.x));
-        dphi[1] = add(dphi[1], vec3(signs.x * wy[offs.y] * wz[offs.z] * v.y, signs.y * wx[offs.x] * wz[offs.z] * v.y, signs.z * wx[offs.x] * wy[offs.y] * v.y));
-        dphi[2] = add(dphi[2], vec3(signs.x * wy[offs.y] * wz[offs.z] * v.z, signs.y * wx[offs.x] * wz[offs.z] * v.z, signs.z * wx[offs.x] * wy[offs.y] * v.z));
+        const vec3 v = pnano_read<vec3>(buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
+        const vec3 signs(offs.x * 2 - 1, offs.y * 2 - 1, offs.z * 2 - 1);
+        const vec3 grad_w(signs.x * wy[offs.y] * wz[offs.z], signs.y * wx[offs.x] * wz[offs.z], signs.z * wx[offs.x] * wy[offs.y]); 
+        dphi[0] = add(dphi[0], mul(v.x, grad_w));
+        dphi[1] = add(dphi[1], mul(v.y, grad_w));
+        dphi[2] = add(dphi[2], mul(v.z, grad_w));
     }
 
-#pragma unroll
     for (int k = 0; k < 3; ++k)
     {
         adj_uvw[k] += dot(dphi[k], adj_ret);
