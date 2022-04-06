@@ -91,7 +91,7 @@ def test_pnoise(test, device):
     # plt.savefig("pnoise_test.png")
 
     ### Generating pnoise_test_result_true.npy ###
-    #np.save(os.path.join(os.path.dirname(__file__), "pnoise_golden.npy"), img)
+    # np.save(os.path.join(os.path.dirname(__file__), "assets/pnoise_golden.npy"), img)
 
     ### Golden image comparison ###
     img_true = np.load(os.path.join(os.path.dirname(__file__), "assets/pnoise_golden.npy"))
@@ -148,7 +148,7 @@ def test_curlnoise(test, device):
 
     ### Generating curlnoise_test_result_true.npy ###
     result = np.stack((xy_coords, uv_coords))
-    # np.save(os.path.join(os.path.dirname(__file__), "assets/curlnoise_test_result_true_NEW.npy"), result)
+    # np.save(os.path.join(os.path.dirname(__file__), "assets/curlnoise_golden.npy"), result)
 
     ### Golden image comparison ###
     result_true = np.load(os.path.join(os.path.dirname(__file__), "assets/curlnoise_golden.npy"))

@@ -27,7 +27,18 @@ import warp.config
 # represents either a built-in or user-defined function
 class Function:
 
-    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, variadic=False, doc="", group="", hidden=False):
+    def __init__(self,
+                 func,
+                 key,
+                 namespace,
+                 input_types={},
+                 value_type=None,
+                 module=None,
+                 variadic=False,
+                 doc="",
+                 group="",
+                 hidden=False,
+                 skip_replay=False):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -37,8 +48,9 @@ class Function:
         self.doc = doc
         self.group = group
         self.module = module
-        self.variadic = variadic    # function can take arbitrary number of inputs, e.g.: printf()
-        self.hidden = hidden        # function will not be listed in docs
+        self.variadic = variadic        # function can take arbitrary number of inputs, e.g.: printf()
+        self.hidden = hidden            # function will not be listed in docs
+        self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
 
         if (func):
             self.adj = warp.codegen.Adjoint(func)
@@ -75,18 +87,18 @@ class Kernel:
         if (dll):
 
             try:
-                self.forward_cpu = eval("dll." + self.func.__name__ + "_cpu_forward")
-                self.backward_cpu = eval("dll." + self.func.__name__ + "_cpu_backward")
+                self.forward_cpu = eval("dll." + self.key + "_cpu_forward")
+                self.backward_cpu = eval("dll." + self.key + "_cpu_backward")
             except:
-                print(f"Could not load CPU methods for kernel {self.func.__name__}")
+                print(f"Could not load CPU methods for kernel {self.key}")
 
         if (cuda):
 
             try:
-                self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_forward").encode('utf-8'))
-                self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.func.__name__ + "_cuda_kernel_backward").encode('utf-8'))
+                self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.key + "_cuda_kernel_forward").encode('utf-8'))
+                self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.key + "_cuda_kernel_backward").encode('utf-8'))
             except:
-                print(f"Could not load CUDA methods for kernel {self.func.__name__}")
+                print(f"Could not load CUDA methods for kernel {self.key}")
 
 
 #----------------------
@@ -99,9 +111,9 @@ def func(f):
 
     return f
 
-# decorator to register kernel, @kernel
+# decorator to register kernel, @kernel, custom_name may be a string that creates a kernel with a different name from the actual function
 def kernel(f):
-
+    
     m = get_module(f.__module__)
     k = Kernel(func=f, key=f.__name__, module=m)
 
@@ -111,21 +123,21 @@ def kernel(f):
 builtin_functions = {}
 
 # decorator to register a built-in function with @builtin
-def builtin(key, input_types={}, doc="", group="", hidden=False):
+def builtin(key, input_types={}, doc="", group="", hidden=False, skip_replay=False):
     def insert(c):
         
-        func = Function(func=None, input_types=input_types, key=key, namespace="wp::", value_type=c.value_type, doc=doc, group=group, hidden=hidden)
+        func = Function(func=None, input_types=input_types, key=key, namespace="wp::", value_type=c.value_type, doc=doc, group=group, hidden=hidden, skip_replay=skip_replay)
         builtin_functions[key] = func
 
     return insert
 
-def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False):
+def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False, skip_replay=False):
 
     # wrap value type in a lambda
     def value_func(arg):
         return value_type
         
-    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden)
+    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden, skip_replay=skip_replay)
 
     if key in builtin_functions:
         # if key exists we add overload
@@ -229,11 +241,11 @@ class Module:
             module_name = "wp_" + self.name
 
             include_path = os.path.dirname(os.path.realpath(__file__))
-            build_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
-            gen_path = os.path.dirname(os.path.realpath(__file__)) + "/gen"
+            build_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
+            gen_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "gen")
 
-            cache_path = build_path + "/" + module_name + ".hash"
-            module_path = build_path + "/" + module_name
+            cache_path = os.path.join(build_path, module_name + ".hash")
+            module_path = os.path.join(build_path, module_name)
 
             ptx_path = module_path + ".ptx"
 
@@ -280,11 +292,11 @@ class Module:
 
             # generate kernel source
             if (enable_cpu):
-                cpp_path = gen_path + "/" + module_name + ".cpp"
+                cpp_path = os.path.join(gen_path, module_name + ".cpp")
                 cpp_source = warp.codegen.cpu_module_header
             
             if (enable_cuda):
-                cu_path = gen_path + "/" + module_name + ".cu"        
+                cu_path = os.path.join(gen_path, module_name + ".cu")
                 cu_source = warp.codegen.cuda_module_header
 
             # kernels
@@ -324,16 +336,16 @@ class Module:
                     entry_points.append(kernel.func.__name__ + "_cpu_forward")
                     entry_points.append(kernel.func.__name__ + "_cpu_backward")
 
-                    cpp_source += warp.codegen.codegen_module_decl(kernel.adj, device="cpu")
-                    cpp_source += warp.codegen.codegen_kernel(kernel.adj, device="cpu")
-                    cpp_source += warp.codegen.codegen_module(kernel.adj, device="cpu")
+                    cpp_source += warp.codegen.codegen_module_decl(kernel, device="cpu")
+                    cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
+                    cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
 
                 if (enable_cuda):                
                     entry_points.append(kernel.func.__name__ + "_cuda_forward")
                     entry_points.append(kernel.func.__name__ + "_cuda_backward")
 
-                    cu_source += warp.codegen.codegen_kernel(kernel.adj, device="cuda")
-                    cu_source += warp.codegen.codegen_module(kernel.adj, device="cuda")
+                    cu_source += warp.codegen.codegen_kernel(kernel, device="cuda")
+                    cu_source += warp.codegen.codegen_module(kernel, device="cuda")
 
 
             # write cpp sources
@@ -441,18 +453,18 @@ class Runtime:
 
     def __init__(self):
 
-        bin_path = os.path.dirname(os.path.realpath(__file__)) + "/bin"
+        bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
         
         if (os.name == 'nt'):
 
             if (sys.version_info[0] > 3 or
                 sys.version_info[0] == 3 and sys.version_info[1] >= 8):
                 
-                # Python 3.8 adds this method to add dll search paths
+                # Python >= 3.8 this method to add dll search paths
                 os.add_dll_directory(bin_path)
 
             else:
-                # Python 3.8 we add dll directory to path
+                # Python < 3.8 we add dll directory to path
                 os.environ["PATH"] += os.pathsep + bin_path
 
 
@@ -461,12 +473,12 @@ class Runtime:
 
         elif sys.platform == "darwin":
 
-            warp_lib = bin_path + "/" + "warp.dylib"
+            warp_lib = os.path.join(bin_path, "warp.dylib")
             self.core = warp.build.load_dll(warp_lib)
 
         else:
 
-            warp_lib = bin_path + "/" + "warp.so"
+            warp_lib = os.path.join(bin_path, "warp.so")
             self.core = warp.build.load_dll(warp_lib)
 
         # setup c-types for warp.dll
@@ -532,6 +544,9 @@ class Runtime:
         
         error = self.core.init()
 
+        if (error > 0):
+            raise Exception("Warp Initialization failed, CUDA not found")
+
         # allocation functions, these are function local to 
         # force other classes to go through the allocator objects
         def alloc_host(num_bytes):
@@ -553,9 +568,6 @@ class Runtime:
 
         self.host_allocator = Allocator(alloc_host, free_host)
         self.device_allocator = Allocator(alloc_device, free_device)
-
-        if (error > 0):
-            raise Exception("Warp Initialization failed, CUDA not found")
 
         # save context
         self.cuda_device = self.core.cuda_get_context()

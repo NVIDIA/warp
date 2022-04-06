@@ -198,3 +198,9 @@ if __name__ == '__main__':
     unittest.main(verbosity=2)
 
 
+if __name__ == '__main__':
+    stage = Usd.Stage.CreateNew(path)
+
+    init(stage)
+    for i in range(sim_steps):
+        update(stage)

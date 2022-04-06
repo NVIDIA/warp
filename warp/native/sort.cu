@@ -18,8 +18,8 @@ static size_t radix_sort_temp_max_size = 0;
 
 void radix_sort_reserve(int n)
 {
-    cub::DoubleBuffer<int> d_keys((int*)0, (int*)n);
-	cub::DoubleBuffer<int> d_values((int*)0, (int*)n);
+    cub::DoubleBuffer<int> d_keys;
+	cub::DoubleBuffer<int> d_values;
 
     // compute temporary memory required
 	size_t sort_temp_size;
