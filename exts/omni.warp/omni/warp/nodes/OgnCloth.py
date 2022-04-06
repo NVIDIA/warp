@@ -332,7 +332,7 @@ class OgnCloth:
                             (context.state_0, context.state_1) = (context.state_1, context.state_0)
 
 
-                # transform cloth posiitions back to local space
+                # transform cloth positions back to local space
                 with wp.ScopedTimer("Transform", active=False):
                     
                     cloth_xform_inv = read_transform_bundle(db.inputs.cloth).GetInverse()

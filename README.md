@@ -27,6 +27,7 @@ For developers who want to build the library themselves the following tools are 
 * Microsoft Visual Studio 2017 upwards (Windows)
 * GCC 4.0 upwards (Linux)
 * CUDA Toolkit 11.3 or higher
+* Git LFS installed (https://git-lfs.github.com/) 
 
 After cloning the repository, users should run:
 
@@ -66,6 +67,6 @@ Please see our [GTC Presentation](https://www.nvidia.com/gtc/session-catalog/?se
 
 We have a **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/XWQNJDNuaC) sever, come chat to us!
 
+## License
 
-
-
+Warp is provided under the NVIDIA Source Code License (NVSCL), please see [LICENSE.md](./LICENSE.md) for full license text.
