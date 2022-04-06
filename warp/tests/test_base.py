@@ -74,16 +74,19 @@ def assert_np_equal(result, expect, tol=0.0):
             raise AssertionError(f"Maximum expected error exceeds tolerance got: {a}, expected: {b}, with err: {err} > {tol}")
 
 
+def create_test_func(func, device, **kwargs):
+
+    # pass args to func
+    def test_func(self):
+        func(self, device, **kwargs)
+
+    return test_func
+
 
 def add_function_test(cls, name, func, devices=["cpu"], **kwargs):
     
     for device in devices:
-
-        # pass args to func
-        def test_func(self):
-            func(self, device, **kwargs)
-        
-        setattr(cls, name + "_" + device, test_func)
+        setattr(cls, name + "_" + device, create_test_func(func, device, **kwargs))
 
 
 def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=["cpu"]):

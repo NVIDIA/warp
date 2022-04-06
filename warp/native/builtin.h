@@ -377,6 +377,8 @@ template <typename T>
 CUDA_CALLABLE inline void adj_copy(T& dest, const T& src, T& adj_dest, T& adj_src)
 {
     // nop, this is non-differentiable operation since it violates SSA
+    adj_src = adj_dest;
+    adj_dest = 0.0;
 }
 
 

@@ -23,6 +23,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Callable
 
 from warp.types import *
 import warp.config
@@ -75,6 +76,7 @@ class Var:
             return str(self.type.__name__)
 
 
+
 #------------------------------------------------------------------------
 # Source code transformer, this class takes a Python function and
 # computes its adjoint using single-pass translation of the function's AST
@@ -87,12 +89,12 @@ class Adjoint:
 
         adj.func = func
 
-        adj.symbols = {}     # map from symbols to adjoint variables
-        adj.variables = []   # list of local variables (in order)
-        adj.args = []        # list of function arguments (in order)
+        adj.symbols = {}            # map from symbols to adjoint variables
+        adj.variables = []          # list of local variables (in order)
+        adj.args = []               # list of function arguments (in order)
 
-        adj.cond = None                # condition variable if in branch
-        adj.return_var = None          # return type for function or kernel
+        adj.cond = None             # condition variable if in branch
+        adj.return_var = None       # return type for function or kernel
 
         # build AST from function object
         adj.source = inspect.getsource(func)
@@ -145,15 +147,25 @@ class Adjoint:
         return s
 
     # generates a comma separated list of args
-    def format_args(adj, prefix, indices):
-        args = ""
+    def format_args(adj, prefix, args):
+        s = ""
         sep = ""
 
-        for i in indices:
-            args += sep + prefix + str(i)
+        for a in args:
+            if type(a) == warp.context.Function:
+                
+                # functions don't have a var_ prefix so strip it off here
+                if (prefix == "var_"):
+                    s += sep + a.key
+                else:
+                    s += sep + prefix + a.key
+
+            else:
+                s += sep + prefix + str(a)
+
             sep = ", "
 
-        return args
+        return s
 
     def add_var(adj, type=None, constant=None):
         index = len(adj.variables)
@@ -222,10 +234,14 @@ class Adjoint:
                         
                         # if arg type registered as None, treat as 
                         # template allowing any type to match
-                        if inputs[i].type == Any:
+                        if a == Any:
                             continue
 
-                        # otherwise check args match signature
+                        # handle function refs as a special case
+                        if a == Callable and type(inputs[i]) is warp.context.Function:
+                            continue
+
+                        # otherwise check arg type matches input variable type
                         if not types_equal(a, inputs[i].type):
                             match = False
                             break
@@ -290,6 +306,7 @@ class Adjoint:
 
         adj.label_count += 1
 
+
     # define an if statement
     def begin_if(adj, cond):
 
@@ -329,33 +346,72 @@ class Adjoint:
 
         adj.indent_count += 1
 
+        adj.for_body_start = len(adj.body_forward_replay)
+        adj.for_var_start = len(adj.variables)
+
     def end_for(adj, iter, start, end, step):
+
+        adj.for_body_end = len(adj.body_forward_replay)
+        adj.for_var_end = len(adj.variables)
+
+        # zero adjoint vars
+        for i in range(adj.for_var_start, adj.for_var_end):
+            adj.add_reverse(f"adj_{i} = 0;")
 
         adj.indent_count -= 1
 
         # run loop in reverse order for gradient computation
         adj.add_forward("}")
-        adj.add_reverse(f"for (var_{iter}=var_{end}-1; cmp(var_{iter}, var_{start}, -var_{step}); var_{iter} -= var_{step}) {{")
+        
+        # replay loop body
+        for i in reversed(range(adj.for_body_start, adj.for_body_end)):
+            adj.add_reverse(adj.body_forward_replay[i])
+
+        adj.add_reverse(f"for (var_{iter}=var_{end}-1; cmp(var_{iter}, var_{start}-1, -var_{step}); var_{iter} -= var_{step}) {{")
 
     # define a while loop
     def begin_while(adj, cond):
 
-        adj.add_forward("while (1) {")
-        #adj.add_reverse("}")
+        # adj.add_forward("while (1) {", statement_replay="while(0) {")
+        # adj.add_reverse("}")
+
+        # adj.indent_count += 1
+
+        # # evaluate condition, this an be a complex expression, hence 
+        # # we do it here instead of inside the while() declaration
+        
+        # c = adj.eval(cond)
+
+        # adj.add_forward(f"if (var_{c} == false) break;")                
+
+        adj.body_start = len(adj.body_forward)
+
+        adj.add_forward(f"while_start_{adj.label_count}:;")
+
+        c = adj.eval(cond)
+        adj.add_forward(f"if ((var_{c}) == false) goto while_end_{adj.label_count};")
 
         adj.indent_count += 1
 
-        # evaluate condition, this an be a complex expression, hence why
-        # we do it here instead of inside the while() declaration
-        c = adj.eval(cond)
-        adj.add_forward(f"if (var_{c} == false) break;")
 
     def end_while(adj):
 
+        adj.add_forward(f"goto while_start_{adj.label_count};")
+
         adj.indent_count -= 1
 
-        adj.add_forward("}")
-        #adj.add_reverse("while (1) {")
+        adj.add_forward(f"while_end_{adj.label_count}:;")
+
+        # todo, nested whiles?
+        adj.label_count += 1
+
+        # adj.indent_count -= 1
+
+        # adj.add_forward("}")               
+        
+        # adj.add_reverse(f"if (var_{c} == false) break;")
+        # c = adj.eval(cond)
+        # adj.add_reverse("while (1) {")
 
 
     # append a statement to the forward pass
@@ -493,13 +549,24 @@ class Adjoint:
                 # lookup symbol, if it has already been assigned to a variable then return the existing mapping
                 if node.id in adj.symbols:
                     return adj.symbols[node.id]
+
+                # try and resolve the name using the functions globals context (used to lookup constants + functions)
                 elif node.id in adj.func.__globals__:
                     obj = adj.func.__globals__[node.id]
-                    if not isinstance(obj, warp.constant):
-                        raise TypeError(f"'{node.id}' is not a local variable or of type warp.constant")
-                    out = adj.add_constant(obj.val)
-                    adj.symbols[node.id] = out
-                    return out
+                    
+                    if isinstance(obj, warp.constant):
+                        # evaluate constant
+                        out = adj.add_constant(obj.val)
+                        adj.symbols[node.id] = out
+                        return out
+
+                    elif isinstance(obj, warp.context.Function):
+                        # pass back ref. to function (will be converted to name during function call)
+                        return obj
+
+                    else:
+                        raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
+                   
                 else:
                     raise KeyError("Referencing undefined symbol: " + str(node.id))
 

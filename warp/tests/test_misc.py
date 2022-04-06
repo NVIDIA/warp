@@ -5,6 +5,9 @@ import os
 import sys
 import pdb
 
+print(os.path.dirname(os.path.realpath(__file__)))
+
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import warp as wp
@@ -164,6 +167,8 @@ vels_arr = wp.array(vels, dtype=wp.vec3, device=device)
 #     wp.synchronize()
 
 
+if (False or True and True):
+    print("hi")
 
 # ensure that grid is big enough to
 # avoid allocations during graph capture
