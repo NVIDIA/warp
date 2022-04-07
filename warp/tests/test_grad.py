@@ -21,9 +21,6 @@ def scalar_grad(x: wp.array(dtype=float),
 
 def test_scalar_grad(test, device):
 
-    n = 32
-    val = np.ones(n, dtype=np.float32)
-
     x = wp.array([3.0], dtype=float, device=device, requires_grad=True)
     y = wp.zeros_like(x)
 
@@ -33,7 +30,7 @@ def test_scalar_grad(test, device):
 
     tape.backward(y)
 
-    print(tape.gradients[x])
+    assert_np_equal(tape.gradients[x].numpy(), np.array(6.0))
    
 
 
@@ -154,35 +151,35 @@ def test_for_loop_nested_for_grad(test, device):
 # differentiating thought most while loops is not supported
 # since doing things like i = i + 1 breaks adjointing
 
-@wp.kernel
-def while_loop_grad(n: int, 
-                    x: wp.array(dtype=float),
-                    c: wp.array(dtype=int),
-                    s: wp.array(dtype=float)):
+# @wp.kernel
+# def while_loop_grad(n: int, 
+#                     x: wp.array(dtype=float),
+#                     c: wp.array(dtype=int),
+#                     s: wp.array(dtype=float)):
 
-    tid = wp.tid()
+#     tid = wp.tid()
 
-    while i < n:
-        s[0] = s[0] + x[i]*2.0
-        i = i + 1
+#     while i < n:
+#         s[0] = s[0] + x[i]*2.0
+#         i = i + 1
 
         
 
-def test_while_loop_grad(test, device):
+# def test_while_loop_grad(test, device):
 
-    n = 32
-    x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
-    c = wp.zeros(1, dtype=int, device=device)
-    sum = wp.zeros(1, dtype=wp.float32, device=device)
+#     n = 32
+#     x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
+#     c = wp.zeros(1, dtype=int, device=device)
+#     sum = wp.zeros(1, dtype=wp.float32, device=device)
 
-    tape = wp.Tape()
-    with tape:
-        wp.launch(while_loop_grad, dim=1, inputs=[n, x, c, sum], device=device)
+#     tape = wp.Tape()
+#     with tape:
+#         wp.launch(while_loop_grad, dim=1, inputs=[n, x, c, sum], device=device)
    
-    tape.backward(loss=sum)
+#     tape.backward(loss=sum)
 
-    assert_np_equal(sum.numpy(), 2.0*np.sum(x.numpy()))
-    assert_np_equal(tape.gradients[x].numpy(), 2.0*np.ones_like(x.numpy()))
+#     assert_np_equal(sum.numpy(), 2.0*np.sum(x.numpy()))
+#     assert_np_equal(tape.gradients[x].numpy(), 2.0*np.ones_like(x.numpy()))
 
 
 
