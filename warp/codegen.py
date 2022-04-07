@@ -81,6 +81,18 @@ class Var:
 # Source code transformer, this class takes a Python function and
 # computes its adjoint using single-pass translation of the function's AST
 
+class Block:
+
+    def __init__(self):
+        
+        # list of statements inside this block
+        self.body_forward = []
+        self.body_replay = []
+        self.body_reverse = []
+
+        # list of vars declared in this block
+        self.vars = []
+       
 
 class Adjoint:
 
@@ -116,14 +128,13 @@ class Adjoint:
         for a in adj.tree.body[0].args.args:
             adj.args.append(adj.symbols[a.arg])
 
-        # primal statements (allows different statements in replay)
-        adj.body_forward = []
-        adj.body_forward_replay = []
-        adj.body_reverse = []
+        # blocks
+        adj.blocks = [Block()]
 
-        adj.output = []
+        # holds current indent level
+        adj.prefix = ""
 
-        adj.indent_count = 0
+        # used to generate new label indices
         adj.label_count = 0
 
     # generate function ssa form and adjoint
@@ -167,14 +178,57 @@ class Adjoint:
 
         return s
 
+    def indent(adj):
+        adj.prefix = adj.prefix + "\t"
+
+    def dedent(adj):
+        adj.prefix = adj.prefix[0:-1]  
+
+
+    def begin_block(adj):
+        b = Block()
+        
+        # give block a unique id
+        b.label = adj.label_count
+        adj.label_count += 1
+
+        adj.blocks.append(b)
+        return b
+
+    def end_block(adj):
+        return adj.blocks.pop()
+
     def add_var(adj, type=None, constant=None):
         index = len(adj.variables)
 
         # allocate new variable
         v = Var(str(index), type=type, constant=constant)
+
         adj.variables.append(v)
+        
+        adj.blocks[-1].vars.append(v)
 
         return v
+
+    # append a statement to the forward pass
+    def add_forward(adj, statement, replay=None, skip_replay=False):
+
+        adj.blocks[-1].body_forward.append(adj.prefix + statement)
+
+        if skip_replay == False:
+
+            if (replay):
+                # if custom replay specified the output it
+                adj.blocks[-1].body_replay.append(adj.prefix + replay)
+            else:
+                # by default just replay the original statement
+                adj.blocks[-1].body_replay.append(adj.prefix + statement)
+
+    # append a statement to the reverse pass
+    def add_reverse(adj, statement):
+
+        adj.blocks[-1].body_reverse.append(adj.prefix + statement)
+
 
     def add_constant(adj, n):
 
@@ -265,7 +319,7 @@ class Adjoint:
             forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
             
             if func.skip_replay:
-                adj.add_forward(forward_call, statement_replay="//" + forward_call)
+                adj.add_forward(forward_call, replay="//" + forward_call)
             else:
                 adj.add_forward(forward_call)
 
@@ -283,7 +337,7 @@ class Adjoint:
             forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
 
             if func.skip_replay:
-                adj.add_forward(forward_call, statement_replay="//" + forward_call)
+                adj.add_forward(forward_call, replay="//" + forward_call)
             else:
                 adj.add_forward(forward_call)
             
@@ -313,11 +367,11 @@ class Adjoint:
         adj.add_forward("if (var_{}) {{".format(cond))
         adj.add_reverse("}")
 
-        adj.indent_count += 1
+        adj.indent()
 
     def end_if(adj, cond):
 
-        adj.indent_count -= 1
+        adj.dedent()
 
         adj.add_forward("}")
         adj.add_reverse(f"if (var_{cond}) {{")
@@ -327,116 +381,143 @@ class Adjoint:
         adj.add_forward(f"if (!var_{cond}) {{")
         adj.add_reverse("}")
 
-        adj.indent_count += 1
+        adj.indent()
 
     def end_else(adj, cond):
 
-        adj.indent_count -= 1
+        adj.dedent()
 
         adj.add_forward("}")
         adj.add_reverse(f"if (!var_{cond}) {{")
 
 
     # define a for-loop
-    def begin_for(adj, iter, start, end, step):
+    def begin_for(adj, iter):
 
-        # note that dynamic for-loops must not mutate any previous state, so we don't need to re-run them in the reverse pass        
-        adj.add_forward(f"for (var_{iter}=var_{start}; cmp(var_{iter}, var_{end}, var_{step}); var_{iter} += var_{step}) {{""", statement_replay="if (false) {")
-        adj.add_reverse("}")
+        cond_block = adj.begin_block()
+        adj.add_forward(f"for_start_{cond_block.label}:;")
+        adj.indent()
 
-        adj.indent_count += 1
+        # evaluate cond
+        adj.add_forward(f"if (iter_cmp(var_{iter}) == 0) goto for_end_{cond_block.label};")
 
-        adj.for_body_start = len(adj.body_forward_replay)
-        adj.for_var_start = len(adj.variables)
+        # evaluate iter
+        val = adj.add_call(adj.builtin_functions["iter_next"], [iter])
 
-    def end_for(adj, iter, start, end, step):
+        adj.begin_block()
 
-        adj.for_body_end = len(adj.body_forward_replay)
-        adj.for_var_end = len(adj.variables)
+        return val
 
-        # zero adjoint vars
-        for i in range(adj.for_var_start, adj.for_var_end):
-            adj.add_reverse(f"adj_{i} = 0;")
 
-        adj.indent_count -= 1
+    def end_for(adj, iter):
+       
+        body_block = adj.end_block()
+        cond_block = adj.end_block()
+                
+        ####################
+        # forward pass
 
-        # run loop in reverse order for gradient computation
-        adj.add_forward("}")
+        for i in cond_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
+
+        for i in body_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
+
+        adj.add_forward(f"goto for_start_{cond_block.label};", skip_replay=True)
         
-        # replay loop body
-        for i in reversed(range(adj.for_body_start, adj.for_body_end)):
-            adj.add_reverse(adj.body_forward_replay[i])
+        adj.dedent()
+        adj.add_forward(f"for_end_{cond_block.label}:;", skip_replay=True)
 
-        adj.add_reverse(f"for (var_{iter}=var_{end}-1; cmp(var_{iter}, var_{start}-1, -var_{step}); var_{iter} -= var_{step}) {{")
+        ####################
+        # reverse pass
+        
+        reverse = []
+        
+        # reverse iterator
+        reverse.append(adj.prefix + f"var_{iter} = wp::iter_reverse(var_{iter});")
+
+        for i in cond_block.body_forward:
+            reverse.append(i)
+
+        # zero adjoints
+        for i in body_block.vars:
+             reverse.append(adj.prefix + f"\tadj_{i} = 0;")
+
+        # replay
+        for i in body_block.body_replay:
+            reverse.append(i)
+
+        # reverse
+        for i in reversed(body_block.body_reverse):
+            reverse.append(i)            
+
+        reverse.append(adj.prefix + f"\tgoto for_start_{cond_block.label};")
+        reverse.append(adj.prefix + f"for_end_{cond_block.label}:;")    
+
+        adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
     # define a while loop
     def begin_while(adj, cond):
 
-        # adj.add_forward("while (1) {", statement_replay="while(0) {")
-        # adj.add_reverse("}")
-
-        # adj.indent_count += 1
-
-        # # evaluate condition, this an be a complex expression, hence 
-        # # we do it here instead of inside the while() declaration
-        
-        # c = adj.eval(cond)
-
-        # adj.add_forward(f"if (var_{c} == false) break;")                
-
-        adj.body_start = len(adj.body_forward)
-
-        adj.add_forward(f"while_start_{adj.label_count}:;")
+        # evaulate condition in it's own block
+        # so we can control replay
+        cond_block = adj.begin_block()
+        cond_block.body_forward.append(f"while_start_{cond_block.label}:;")
 
         c = adj.eval(cond)
-        adj.add_forward(f"if ((var_{c}) == false) goto while_end_{adj.label_count};")
+        
+        cond_block.body_forward.append(f"if ((var_{c}) == false) goto while_end_{cond_block.label};")
 
-        adj.indent_count += 1
-
+        # being block around loop
+        adj.begin_block()        
+        adj.indent()
+        
 
     def end_while(adj):
 
-        adj.add_forward(f"goto while_start_{adj.label_count};")
+        adj.dedent()     
+        body_block = adj.end_block()
+        cond_block = adj.end_block()
 
-        adj.indent_count -= 1
+        ####################
+        # forward pass
 
-        adj.add_forward(f"while_end_{adj.label_count}:;")
+        for i in cond_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
 
-        # todo, nested whiles?
-        adj.label_count += 1
-
-        # adj.indent_count -= 1
-
-        # adj.add_forward("}")               
+        for i in body_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
         
-        # adj.add_reverse(f"if (var_{c} == false) break;")
-        # c = adj.eval(cond)
-        # adj.add_reverse("while (1) {")
+        adj.blocks[-1].body_forward.append(f"goto while_start_{cond_block.label};")
+        adj.blocks[-1].body_forward.append(f"while_end_{cond_block.label}:;")
 
 
-    # append a statement to the forward pass
-    def add_forward(adj, statement, statement_replay=None):
+        ####################
+        # reverse pass
+        reverse = []
+        
+        # cond
+        for i in cond_block.body_forward:
+            reverse.append(i)
 
-        prefix = ""
-        for i in range(adj.indent_count):
-            prefix += "\t"
+        # zero adjoints of local vars
+        for i in body_block.vars:
+             reverse.append(f"adj_{i} = 0;")
 
-        adj.body_forward.append(prefix + statement)
+        # replay
+        for i in body_block.body_replay:
+            reverse.append(i)
 
-        # allow for different statement in reverse kernel replay
-        if (statement_replay):
-            adj.body_forward_replay.append(prefix + statement_replay)
-        else:
-            adj.body_forward_replay.append(prefix + statement)
+        # reverse
+        for i in reversed(body_block.body_reverse):
+            reverse.append(i)            
 
-    # append a statement to the reverse pass
-    def add_reverse(adj, statement):
+        reverse.append(f"goto while_start_{cond_block.label};")
+        reverse.append(f"while_end_{cond_block.label}:;")
 
-        prefix = ""
-        for i in range(adj.indent_count):
-            prefix += "\t"
+        # output
+        adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
-        adj.body_reverse.append(prefix + statement)
 
     def eval(adj, node):
 
@@ -648,8 +729,7 @@ class Adjoint:
                 for s in node.body:
                     adj.eval(s)
 
-                
-                # detect symbols with conflicting definitions (assigned inside the for loop)
+                                # detect symbols with conflicting definitions (assigned inside the for loop)
                 for items in symbols_prev.items():
 
                     sym = items[0]
@@ -676,88 +756,74 @@ class Adjoint:
 
             elif (isinstance(node, ast.For)):
 
-                unroll = True
-                for a in node.iter.args:
+                # try and unroll simple range() statements that use constant args
+                unrolled = False
 
-                    # if all range() arguments are numeric constants we will unroll
-                    # note that this only handles trivial constants, it will not unroll
-                    # constant-time expressions (e.g.: range(0, 3*2))
-                    if (isinstance(a, ast.Num) == False):
-                        unroll = False
-                        break
+                if isinstance(node.iter, ast.Call) and node.iter.func.id == "range":
+                    
+                    is_constant = True
+                    for a in node.iter.args:
 
-                if (unroll):
+                        # if all range() arguments are numeric constants we will unroll
+                        # note that this only handles trivial constants, it will not unroll
+                        # constant compile-time expressions e.g.: range(0, 3*2)
+                        if (isinstance(a, ast.Num) == False):
+                            is_constant = False
+                            break
 
-                    # range(end)
-                    if len(node.iter.args) == 1:
-                        start = 0
-                        end = node.iter.args[0].n
-                        step = 1
+                    if (is_constant):
 
-                    # range(start, end)
-                    elif len(node.iter.args) == 2:
-                        start = node.iter.args[0].n
-                        end = node.iter.args[1].n
-                        step = 1
+                        # range(end)
+                        if len(node.iter.args) == 1:
+                            start = 0
+                            end = node.iter.args[0].n
+                            step = 1
 
-                    # range(start, end, step)
-                    elif len(node.iter.args) == 3:
-                        start = node.iter.args[0].n
-                        end = node.iter.args[1].n
-                        step = node.iter.args[2].n
+                        # range(start, end)
+                        elif len(node.iter.args) == 2:
+                            start = node.iter.args[0].n
+                            end = node.iter.args[1].n
+                            step = 1
 
-                    # test if we're above max unroll count
-                    max_iters = abs(end-start)//abs(step)
-                    max_unroll = adj.options["max_unroll"]
+                        # range(start, end, step)
+                        elif len(node.iter.args) == 3:
+                            start = node.iter.args[0].n
+                            end = node.iter.args[1].n
+                            step = node.iter.args[2].n
 
-                    if max_iters > max_unroll:
-                        unroll = False
+                        # test if we're above max unroll count
+                        max_iters = abs(end-start)//abs(step)
+                        max_unroll = adj.options["max_unroll"]
 
-                        if (warp.config.verbose):
-                            print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
-                    else:
+                        if max_iters > max_unroll:
 
-                        # unroll
-                        for i in range(start, end, step):
+                            if (warp.config.verbose):
+                                print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
+                        else:
 
-                            var_iter = adj.add_constant(i)
-                            adj.symbols[node.target.id] = var_iter
+                            # unroll
+                            for i in range(start, end, step):
 
-                            # eval body
-                            for s in node.body:
-                                adj.eval(s)
+                                var_iter = adj.add_constant(i)
+                                adj.symbols[node.target.id] = var_iter
+
+                                # eval body
+                                for s in node.body:
+                                    adj.eval(s)
+
+                            unrolled = True
               
-                if unroll == False:
+                
+                # couldn't unroll so generate a dynamic loop
+                if not unrolled:
 
-                    # dynamic loop, body must be side-effect free, i.e.: not
-                    # overwrite memory locations used by previous operations
+                    # evaluate the Iterable
+                    iter = adj.eval(node.iter)
 
-                    # range(end)
-                    if len(node.iter.args) == 1:                        
-                        start = adj.add_constant(0)
-                        end = adj.eval(node.iter.args[0])
-                        step = adj.add_constant(1)
+                    adj.symbols[node.target.id] = adj.begin_for(iter)
 
-                    # range(start, end)
-                    elif len(node.iter.args) == 2:
-                        start = adj.eval(node.iter.args[0])
-                        end = adj.eval(node.iter.args[1])
-                        step = adj.add_constant(1)
-
-                    # range(start, end, step)
-                    elif len(node.iter.args) == 3:
-                        start = adj.eval(node.iter.args[0])
-                        end = adj.eval(node.iter.args[1])
-                        step = adj.eval(node.iter.args[2])
-
-                    # add iterator variable
-                    iter = adj.add_var(int)
-                    adj.symbols[node.target.id] = iter
-
-                    # save symbol table
+                    # for loops should be side-effect free, here we store a copy
                     symbols_prev = adj.symbols.copy()
-
-                    adj.begin_for(iter, start, end, step)
 
                     # eval body
                     for s in node.body:
@@ -784,7 +850,7 @@ class Adjoint:
                             # reset the symbol to point to the original variable
                             adj.symbols[sym] = var1
 
-                    adj.end_for(iter, start, end, step)
+                    adj.end_for(iter)
 
             elif (isinstance(node, ast.Expr)):
                 return adj.eval(node.value)
@@ -1144,7 +1210,7 @@ def codegen_func_forward_body(adj, device='cpu', indent=4):
     body = []
     indent_block = " " * indent
 
-    for f in adj.body_forward:
+    for f in adj.blocks[0].body_forward:
         body += [f + "\n"]
 
     return "".join([indent_block + l for l in body])
@@ -1193,14 +1259,14 @@ def codegen_func_reverse_body(adj, device='cpu', indent=4):
     body += ["//---------\n"]
     body += ["// forward\n"]
 
-    for f in adj.body_forward_replay:
+    for f in adj.blocks[0].body_replay:
         body += [f + "\n"]
 
     # reverse pass
     body += ["//---------\n"]
     body += ["// reverse\n"]
 
-    for l in reversed(adj.body_reverse):
+    for l in reversed(adj.blocks[0].body_reverse):
         body += [l + "\n"]
 
     body += ["return;\n"]

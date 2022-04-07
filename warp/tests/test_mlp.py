@@ -180,8 +180,8 @@ def profile_mlp_torch(device):
 
     import torch
 
-    m = 64
-    n = 32
+    m = 128
+    n = 64
 
     steps = 20
 
@@ -219,8 +219,8 @@ def profile_mlp_torch(device):
 
 def profile_mlp_warp(device):
 
-    m = 64
-    n = 32
+    m = 128
+    n = 64
 
     steps = 20
 

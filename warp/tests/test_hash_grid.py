@@ -44,10 +44,9 @@ def count_neighbors(grid : wp.uint64,
     count = int(0)
 
     # construct query around point p
-    query = wp.hash_grid_query(grid, p, radius)
-    index = int(0)
+    neighbors = wp.hash_grid_query(grid, p, radius)
 
-    while(wp.hash_grid_query_next(query, index)):
+    for index in neighbors:
 
         # compute distance to point
         d = wp.length(p - points[index])
@@ -101,7 +100,6 @@ def test_hashgrid_query(test, device):
             return points_t.reshape((-1, 3))
 
         points = particle_grid(16, 32, 16, (0.0, 0.3, 0.0), cell_radius*0.25, 0.1)
-        #points = np.load("tests/outputs/dem.npy", allow_pickle=True)
 
         points_arr = wp.array(points, dtype=wp.vec3, device=device)
         counts_arr = wp.zeros(len(points), dtype=int, device=device)
@@ -118,20 +116,19 @@ def test_hashgrid_query(test, device):
         with wp.ScopedTimer("grid query", active=print_enabled):
             wp.launch(kernel=count_neighbors, dim=len(points), inputs=[grid.id, query_radius, points_arr, counts_arr], device=device)
             wp.synchronize()
-            #wp.launch(kernel=count_neighbors, dim=1, inputs=[grid, query_radius, points_arr, counts_arr], device=device)
-
 
         counts = counts_arr.numpy()
         counts_ref = counts_arr_ref.numpy()
 
-        test.assertTrue(np.array_equal(counts, counts_ref))
-        
         if (print_enabled):
             print(f"Grid min: {np.min(counts)} max: {np.max(counts)} avg: {np.mean(counts)}")
             print(f"Ref min: {np.min(counts_ref)} max: {np.max(counts_ref)} avg: {np.mean(counts_ref)}")
 
             print(f"Passed: {np.array_equal(counts, counts_ref)}")
 
+
+        test.assertTrue(np.array_equal(counts, counts_ref))
+        
 def register(parent):
 
     devices = wp.get_devices()
@@ -145,4 +142,4 @@ def register(parent):
 
 if __name__ == '__main__':
     c = register(unittest.TestCase)
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, failfast=False)
