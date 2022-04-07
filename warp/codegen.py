@@ -131,9 +131,10 @@ class Adjoint:
         # blocks
         adj.blocks = [Block()]
 
-        adj.output = []
+        # holds current indent level
+        adj.prefix = ""
 
-        adj.indent_count = 0
+        # used to generate new label indices
         adj.label_count = 0
 
     # generate function ssa form and adjoint
@@ -177,8 +178,20 @@ class Adjoint:
 
         return s
 
+    def indent(adj):
+        adj.prefix = adj.prefix + "\t"
+
+    def dedent(adj):
+        adj.prefix = adj.prefix[0:-1]  
+
+
     def begin_block(adj):
         b = Block()
+        
+        # give block a unique id
+        b.label = adj.label_count
+        adj.label_count += 1
+
         adj.blocks.append(b)
         return b
 
@@ -198,28 +211,23 @@ class Adjoint:
         return v
 
     # append a statement to the forward pass
-    def add_forward(adj, statement, replay=None):
+    def add_forward(adj, statement, replay=None, skip_replay=False):
 
-        prefix = ""
-        for i in range(adj.indent_count):
-            prefix += "\t"
+        adj.blocks[-1].body_forward.append(adj.prefix + statement)
 
-        adj.blocks[-1].body_forward.append(prefix + statement)
+        if skip_replay == False:
 
-        # allow for different statement in reverse kernel replay
-        if (replay):
-            adj.blocks[-1].body_replay.append(prefix + replay)
-        else:
-            adj.blocks[-1].body_replay.append(prefix + statement)
+            if (replay):
+                # if custom replay specified the output it
+                adj.blocks[-1].body_replay.append(adj.prefix + replay)
+            else:
+                # by default just replay the original statement
+                adj.blocks[-1].body_replay.append(adj.prefix + statement)
 
     # append a statement to the reverse pass
     def add_reverse(adj, statement):
 
-        prefix = ""
-        for i in range(adj.indent_count):
-            prefix += "\t"
-
-        adj.blocks[-1].body_reverse.append(prefix + statement)
+        adj.blocks[-1].body_reverse.append(adj.prefix + statement)
 
 
     def add_constant(adj, n):
@@ -359,11 +367,11 @@ class Adjoint:
         adj.add_forward("if (var_{}) {{".format(cond))
         adj.add_reverse("}")
 
-        adj.indent_count += 1
+        adj.indent()
 
     def end_if(adj, cond):
 
-        adj.indent_count -= 1
+        adj.dedent()
 
         adj.add_forward("}")
         adj.add_reverse(f"if (var_{cond}) {{")
@@ -373,48 +381,67 @@ class Adjoint:
         adj.add_forward(f"if (!var_{cond}) {{")
         adj.add_reverse("}")
 
-        adj.indent_count += 1
+        adj.indent()
 
     def end_else(adj, cond):
 
-        adj.indent_count -= 1
+        adj.dedent()
 
         adj.add_forward("}")
         adj.add_reverse(f"if (!var_{cond}) {{")
 
 
     # define a for-loop
-    def begin_for(adj, iter, start, end, step):
+    def begin_for(adj, iter):
 
-        # note that dynamic for-loops must not mutate any previous state, so we don't need to re-run them in the reverse pass
-        adj.blocks[-1].body_forward.append(f"for (var_{iter}=var_{start}; cmp(var_{iter}, var_{end}, var_{step}); var_{iter} += var_{step}) {{""")
-        
+        cond_block = adj.begin_block()
+        adj.add_forward(f"for_start_{cond_block.label}:;")
+        adj.indent()
+
+        # evaluate cond
+        adj.add_forward(f"if (iter_cmp(var_{iter}) == 0) goto for_end_{cond_block.label};")
+
+        # evaluate iter
+        val = adj.add_call(adj.builtin_functions["iter_next"], [iter])
+
         adj.begin_block()
-        adj.indent_count += 1
+
+        return val
 
 
-    def end_for(adj, iter, start, end, step):
-
-        adj.indent_count -= 1
+    def end_for(adj, iter):
+       
         body_block = adj.end_block()
-
+        cond_block = adj.end_block()
+                
         ####################
         # forward pass
+
+        for i in cond_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
 
         for i in body_block.body_forward:
             adj.blocks[-1].body_forward.append(i)
 
-        adj.blocks[-1].body_forward.append("}")
+        adj.add_forward(f"goto for_start_{cond_block.label};", skip_replay=True)
+        
+        adj.dedent()
+        adj.add_forward(f"for_end_{cond_block.label}:;", skip_replay=True)
 
         ####################
         # reverse pass
-
+        
         reverse = []
-        reverse.append(f"for (var_{iter}=var_{end}-1; cmp(var_{iter}, var_{start}-1, -var_{step}); var_{iter} -= var_{step}) {{")
+        
+        # reverse iterator
+        reverse.append(adj.prefix + f"var_{iter} = wp::iter_reverse(var_{iter});")
+
+        for i in cond_block.body_forward:
+            reverse.append(i)
 
         # zero adjoints
         for i in body_block.vars:
-             reverse.append(f"adj_{i} = 0;")
+             reverse.append(adj.prefix + f"\tadj_{i} = 0;")
 
         # replay
         for i in body_block.body_replay:
@@ -424,7 +451,8 @@ class Adjoint:
         for i in reversed(body_block.body_reverse):
             reverse.append(i)            
 
-        reverse.append("}")
+        reverse.append(adj.prefix + f"\tgoto for_start_{cond_block.label};")
+        reverse.append(adj.prefix + f"for_end_{cond_block.label}:;")    
 
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
@@ -434,20 +462,20 @@ class Adjoint:
         # evaulate condition in it's own block
         # so we can control replay
         cond_block = adj.begin_block()
-        cond_block.body_forward.append(f"while_start_{adj.label_count}:;")
+        cond_block.body_forward.append(f"while_start_{cond_block.label}:;")
 
         c = adj.eval(cond)
         
-        cond_block.body_forward.append(f"if ((var_{c}) == false) goto while_end_{adj.label_count};")
+        cond_block.body_forward.append(f"if ((var_{c}) == false) goto while_end_{cond_block.label};")
 
         # being block around loop
         adj.begin_block()        
-        adj.indent_count += 1
+        adj.indent()
         
 
     def end_while(adj):
 
-        adj.indent_count -= 1        
+        adj.dedent()     
         body_block = adj.end_block()
         cond_block = adj.end_block()
 
@@ -460,8 +488,8 @@ class Adjoint:
         for i in body_block.body_forward:
             adj.blocks[-1].body_forward.append(i)
         
-        adj.blocks[-1].body_forward.append(f"goto while_start_{adj.label_count};")
-        adj.blocks[-1].body_forward.append(f"while_end_{adj.label_count}:;")
+        adj.blocks[-1].body_forward.append(f"goto while_start_{cond_block.label};")
+        adj.blocks[-1].body_forward.append(f"while_end_{cond_block.label}:;")
 
 
         ####################
@@ -484,14 +512,11 @@ class Adjoint:
         for i in reversed(body_block.body_reverse):
             reverse.append(i)            
 
-        reverse.append(f"goto while_start_{adj.label_count};")
-        reverse.append(f"while_end_{adj.label_count}:;")
+        reverse.append(f"goto while_start_{cond_block.label};")
+        reverse.append(f"while_end_{cond_block.label}:;")
 
         # output
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
-
-        # todo, nested whiles?
-        adj.label_count += 1
 
 
     def eval(adj, node):
@@ -704,8 +729,7 @@ class Adjoint:
                 for s in node.body:
                     adj.eval(s)
 
-                
-                # detect symbols with conflicting definitions (assigned inside the for loop)
+                                # detect symbols with conflicting definitions (assigned inside the for loop)
                 for items in symbols_prev.items():
 
                     sym = items[0]
@@ -732,97 +756,74 @@ class Adjoint:
 
             elif (isinstance(node, ast.For)):
 
-                unroll = True
-                for a in node.iter.args:
+                # try and unroll simple range() statements that use constant args
+                unrolled = False
 
-                    # if all range() arguments are numeric constants we will unroll
-                    # note that this only handles trivial constants, it will not unroll
-                    # constant-time expressions (e.g.: range(0, 3*2))
-                    if (isinstance(a, ast.Num) == False):
-                        unroll = False
-                        break
+                if isinstance(node.iter, ast.Call) and node.iter.func.id == "range":
+                    
+                    is_constant = True
+                    for a in node.iter.args:
 
-                if (unroll):
+                        # if all range() arguments are numeric constants we will unroll
+                        # note that this only handles trivial constants, it will not unroll
+                        # constant compile-time expressions e.g.: range(0, 3*2)
+                        if (isinstance(a, ast.Num) == False):
+                            is_constant = False
+                            break
 
-                    # range(end)
-                    if len(node.iter.args) == 1:
-                        start = 0
-                        end = node.iter.args[0].n
-                        step = 1
+                    if (is_constant):
 
-                    # range(start, end)
-                    elif len(node.iter.args) == 2:
-                        start = node.iter.args[0].n
-                        end = node.iter.args[1].n
-                        step = 1
+                        # range(end)
+                        if len(node.iter.args) == 1:
+                            start = 0
+                            end = node.iter.args[0].n
+                            step = 1
 
-                    # range(start, end, step)
-                    elif len(node.iter.args) == 3:
-                        start = node.iter.args[0].n
-                        end = node.iter.args[1].n
-                        step = node.iter.args[2].n
+                        # range(start, end)
+                        elif len(node.iter.args) == 2:
+                            start = node.iter.args[0].n
+                            end = node.iter.args[1].n
+                            step = 1
 
-                    # test if we're above max unroll count
-                    max_iters = abs(end-start)//abs(step)
-                    max_unroll = adj.options["max_unroll"]
+                        # range(start, end, step)
+                        elif len(node.iter.args) == 3:
+                            start = node.iter.args[0].n
+                            end = node.iter.args[1].n
+                            step = node.iter.args[2].n
 
-                    if max_iters > max_unroll:
-                        unroll = False
+                        # test if we're above max unroll count
+                        max_iters = abs(end-start)//abs(step)
+                        max_unroll = adj.options["max_unroll"]
 
-                        if (warp.config.verbose):
-                            print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
-                    else:
+                        if max_iters > max_unroll:
 
-                        # unroll
-                        for i in range(start, end, step):
+                            if (warp.config.verbose):
+                                print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
+                        else:
 
-                            var_iter = adj.add_constant(i)
-                            adj.symbols[node.target.id] = var_iter
+                            # unroll
+                            for i in range(start, end, step):
 
-                            # eval body
-                            for s in node.body:
-                                adj.eval(s)
+                                var_iter = adj.add_constant(i)
+                                adj.symbols[node.target.id] = var_iter
+
+                                # eval body
+                                for s in node.body:
+                                    adj.eval(s)
+
+                            unrolled = True
               
-                if unroll == False:
+                
+                # couldn't unroll so generate a dynamic loop
+                if not unrolled:
 
                     # evaluate the Iterable
                     iter = adj.eval(node.iter)
 
+                    adj.symbols[node.target.id] = adj.begin_for(iter)
+
+                    # for loops should be side-effect free, here we store a copy
                     symbols_prev = adj.symbols.copy()
-
-                    adj.begin_for(iter)
-
-
-
-                    # # dynamic loop, body must be side-effect free, i.e.: not
-                    # # overwrite memory locations used by previous operations
-
-                    # # range(end)
-                    # if len(node.iter.args) == 1:                        
-                    #     start = adj.add_constant(0)
-                    #     end = adj.eval(node.iter.args[0])
-                    #     step = adj.add_constant(1)
-
-                    # # range(start, end)
-                    # elif len(node.iter.args) == 2:
-                    #     start = adj.eval(node.iter.args[0])
-                    #     end = adj.eval(node.iter.args[1])
-                    #     step = adj.add_constant(1)
-
-                    # # range(start, end, step)
-                    # elif len(node.iter.args) == 3:
-                    #     start = adj.eval(node.iter.args[0])
-                    #     end = adj.eval(node.iter.args[1])
-                    #     step = adj.eval(node.iter.args[2])
-
-                    # # add iterator variable
-                    # iter = adj.add_var(int)
-                    # adj.symbols[node.target.id] = iter
-
-                    # # save symbol table
-                    # symbols_prev = adj.symbols.copy()
-
-                    # adj.begin_for(iter, start, end, step)
 
                     # eval body
                     for s in node.body:
@@ -849,7 +850,7 @@ class Adjoint:
                             # reset the symbol to point to the original variable
                             adj.symbols[sym] = var1
 
-                    adj.end_for(iter, start, end, step)
+                    adj.end_for(iter)
 
             elif (isinstance(node, ast.Expr)):
                 return adj.eval(node.value)

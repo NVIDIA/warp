@@ -64,11 +64,12 @@ def compute_num_contacts(
     lower = lowers[tid]
 
     query = wp.mesh_query_aabb(mesh_id, lower, upper)
-
-    index = int(-1)
     count = int(0)
 
-    while wp.mesh_query_aabb_next(query, index):
+    #index = int(-1)
+    #while wp.mesh_query_aabb_next(query, index):
+
+    for index in query:
         count = count + 1
 
     counts[tid] = count

@@ -16,6 +16,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Callable
 
 from warp.types import *
 from warp.utils import *
@@ -997,6 +998,8 @@ def type_str(t):
         return "None"
     elif t == Any:
         return "Any"
+    elif t == Callable:
+        return "Callable"
     elif (isinstance(t, array)):
         return f"array({t.dtype.__name__})"
     else:
