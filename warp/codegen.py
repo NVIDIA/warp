@@ -266,8 +266,9 @@ class Adjoint:
 
     def add_call(adj, func, inputs):
 
-        # if func is overloaded then perform overload resolution here, this is just to try and catch
-        # argument errors before they go to generated native code
+        # if func is overloaded then perform overload resolution here
+        # we validate argument types before they go to generated native
+        # code
 
         if (isinstance(func, list)):
     
@@ -306,9 +307,17 @@ class Adjoint:
                     break
 
             if (resolved_func == None):
-                arg_types = "".join(str(x.type) + ", " for x in inputs)
+                
+                arg_types = ""
 
-                raise Exception(f"Couldn't find function overload for {func[0].key} that matched inputs {arg_types}")
+                for x in inputs:
+                    if isinstance(x, Var):
+                        arg_types += str(x.type) + ", "
+                    
+                    if isinstance(x, warp.context.Function):
+                        arg_types += "function" + ", "
+
+                raise Exception(f"Couldn't find function overload for '{func[0].key}' that matched inputs with types: {arg_types}")
             else:
                 func = resolved_func
 
