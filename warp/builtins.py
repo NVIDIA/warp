@@ -406,6 +406,9 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
     doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.""")
 
+add_builtin("intersect_tri_tri", input_types={"v0": vec3, "v1": vec3, "v2": vec3, "u0": vec3, "u1": vec3, "u2": vec3}, value_type=int, group="Geometry", 
+    doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.")
+
 #---------------------------------
 # Ranges
 
