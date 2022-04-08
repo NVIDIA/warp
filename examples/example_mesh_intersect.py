@@ -47,7 +47,7 @@ def intersect(mesh_0: wp.uint64,
     tid = wp.tid()
 
     # mesh_0 is assumed to be the query mesh, we launch one thread
-    # for each frace in mesh_0 and test it against the opposing mesh's BVH
+    # for each face in mesh_0 and test it against the opposing mesh's BVH
     face = tid%num_faces
     batch = tid//num_faces
 
