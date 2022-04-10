@@ -466,7 +466,7 @@ class Runtime:
 
             else:
                 # Python < 3.8 we add dll directory to path
-                os.environ["PATH"] += os.pathsep + bin_path
+                os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
 
 
             warp_lib = "warp.dll"
