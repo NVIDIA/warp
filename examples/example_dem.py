@@ -18,7 +18,6 @@ import numpy as np
 
 import warp as wp
 import warp.render 
-from pxr import Usd
 
 import os
 
@@ -154,8 +153,8 @@ class Example:
 
     inv_mass = 64.0
 
-    def init(self, stage):
-        self.renderer = wp.render.UsdRenderer(stage)
+    def init(self, stage_or_stage_path):
+        self.renderer = wp.render.UsdRenderer(stage_or_stage_path)
         self.renderer.render_ground()
 
         self.x = wp.array(Example.points, dtype=wp.vec3, device=Example.device)
@@ -213,11 +212,10 @@ class Example:
 
 
 if __name__ == '__main__':
-    path = os.path.join(os.path.dirname(__file__), "outputs/example_dem.usd")
-    stage = Usd.Stage.CreateNew(path)
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_dem.usd")
 
     example = Example()
-    example.init(stage)
+    example.init(stage_path)
 
     for i in range(example.frame_count):
         example.update()

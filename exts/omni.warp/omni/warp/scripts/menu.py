@@ -10,9 +10,11 @@ from . import menu_common
 from .common import log_error
 import os
 import imp
+import webbrowser
 
 SCRIPTS_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scripts"))
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
+WARP_REFERENCE_GUIDE_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
 
 class WarpMenu:
     def __init__(self):
@@ -55,6 +57,13 @@ class WarpMenu:
             }
         ]
 
+        self._help_menu = [
+            {
+                "name": "Warp Guide",
+                "onclick_fn": lambda *_: self._on_warp_guide_click()
+            }
+        ]
+
         self._script_menu_descriptions = []
         for menu_item in self._script_menu:
             menu_item_description = MenuItemDescription(name=menu_item.get("name"), onclick_fn=menu_item.get("onclick_fn"))
@@ -65,13 +74,19 @@ class WarpMenu:
             menu_item_description = MenuItemDescription(name=menu_item.get("name"), onclick_fn=menu_item.get("onclick_fn"))
             self._scene_menu_descriptions.append(menu_item_description)
 
+        self._help_menu_descriptions = []
+        for menu_item in self._help_menu:
+            menu_item_description = MenuItemDescription(name=menu_item.get("name"), onclick_fn=menu_item.get("onclick_fn"))
+            self._help_menu_descriptions.append(menu_item_description)
+
         # line breaks
         self._script_menu_descriptions.insert(len(self._script_menu_descriptions) - 1, MenuItemDescription())
         self._scene_menu_descriptions.insert(len(self._scene_menu_descriptions) - 1, MenuItemDescription())
 
         self._window_menu_descriptions = [
             MenuItemDescription(name="Scripts", sub_menu=self._script_menu_descriptions),
-            MenuItemDescription(name="Scenes", sub_menu=self._scene_menu_descriptions)
+            MenuItemDescription(name="Scenes", sub_menu=self._scene_menu_descriptions),
+            MenuItemDescription(name="Help", sub_menu=self._help_menu_descriptions)
         ]
 
         self._window_menus_warp = [
@@ -157,3 +172,6 @@ class WarpMenu:
 
     def _on_browse_scenes_click(self):
         os.startfile(SCENES_PATH)
+
+    def _on_warp_guide_click(self, *_):
+        webbrowser.open(WARP_REFERENCE_GUIDE_URL)

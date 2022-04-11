@@ -81,7 +81,12 @@ class UsdRenderer:
             stage (Usd.Stage): A USD stage (either in memory or on disk)            
         """
 
-        self.stage = stage
+        if isinstance(stage, str):
+            self.stage = stage = Usd.Stage.CreateNew(stage)
+        elif isinstance(stage, Usd.Stage):
+            self.stage = stage
+        else:
+            print("Failed to create stage in renderer. Please construct with stage path or stage object.")
 
         self.draw_points = True
         self.draw_springs = False
