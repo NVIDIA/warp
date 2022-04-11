@@ -489,6 +489,8 @@ struct mesh_query_aabb_t
 	int face;
 };
 
+
+
 CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
     uint64_t id, const vec3& lower, const vec3& upper)
 {
@@ -605,8 +607,26 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
     return false;
 }
 
-//Stub
-CUDA_CALLABLE inline void adj_mesh_query_aabb_next(mesh_query_aabb_t& query, int& index, mesh_query_aabb_t&, int&, bool&)
+CUDA_CALLABLE inline int iter_next(mesh_query_aabb_t& query)
+{
+    return query.face;
+}
+
+CUDA_CALLABLE inline bool iter_cmp(mesh_query_aabb_t& query)
+{
+    bool finished = mesh_query_aabb_next(query, query.face);
+    return finished;
+}
+
+CUDA_CALLABLE inline mesh_query_aabb_t iter_reverse(const mesh_query_aabb_t& query)
+{
+    // can't reverse BVH queries, users should not rely on neighbor ordering
+    return query;
+}
+
+
+// stub
+CUDA_CALLABLE inline void adj_mesh_query_aabb_next(mesh_query_aabb_t& query, int& index, mesh_query_aabb_t&, int&, bool&) 
 {
 
 }

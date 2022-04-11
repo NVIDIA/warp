@@ -210,6 +210,11 @@ np_dtype_to_warp_type = {
     np.dtype(np.float64): float64
 }
 
+# represent a Python range iterator
+class range_t:
+
+    def __init__(self):
+        pass
 
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class mesh_query_aabb_t:

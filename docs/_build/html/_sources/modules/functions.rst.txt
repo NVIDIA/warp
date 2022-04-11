@@ -615,6 +615,23 @@ Linear Algebra
 .. function:: dense_solve_batched(b_start: array(int32), A_start: array(int32), A_dim: array(int32), A: array(float32), L: array(float32), b: array(float32), x: array(float32)) -> None
 
 
+.. function:: mlp(weights: array(float32), bias: array(float32), activation: Callable, m: int, n: int, b: int, index: int, x: array(float32), out: array(float32)) -> None
+
+   Evaluate a multi-layer perceptron (MLP) layer in the form ``out = act(weights*x + bias)``. 
+
+   :param weights: A layer's network weights with dimensions ``(m, n)``.
+   :param bias: An array with dimensions ``(n)`.
+   :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
+   :param m: The number of output dimensions
+   :param n: The number of input dimensions
+   :param b: The number of batches
+   :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
+   :param x: The feature matrix with dimensions ``(n, b)``
+   :param out: The network output with dimensions ``(m, b)``
+
+   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
+
+
 
 
 Geometry
@@ -690,131 +707,6 @@ Geometry
 
    Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.
-
-
-
-
-Volumes
----------------
-.. function:: volume_sample_world(id: uint64, xyz: vec3, sampling_mode: int) -> float
-
-   Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
-
-
-.. function:: volume_sample_local(id: uint64, uvw: vec3, sampling_mode: int) -> float
-
-   Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
-
-
-.. function:: volume_lookup(id: uint64, i: int, j: int, k: int) -> float
-
-   Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
-
-
-.. function:: volume_transform(id: uint64, uvw: vec3) -> vec3
-
-   Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.
-
-
-.. function:: volume_transform_inv(id: uint64, xyz: vec3) -> vec3
-
-   Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.
-
-
-
-
-Random
----------------
-.. function:: rand_init(seed: int) -> uint32
-
-   Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
-
-
-.. function:: rand_init(seed: int, offset: int) -> uint32
-
-   Initialize a new random number generator given a user-defined seed and an offset. 
-   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
-   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``
-
-
-.. function:: randi(state: uint32) -> int
-
-   Return a random integer between [0, 2^32)
-
-
-.. function:: randi(state: uint32, min: int, max: int) -> int
-
-   Return a random integer between [min, max)
-
-
-.. function:: randf(state: uint32) -> float
-
-   Return a random float between [0.0, 1.0)
-
-
-.. function:: randf(state: uint32, min: float, max: float) -> float
-
-   Return a random float between [min, max)
-
-
-.. function:: randn(state: uint32) -> float
-
-   Sample a normal distribution
-
-
-.. function:: noise(seed: uint32, x: float) -> float
-
-   Non-periodic Perlin-style noise in 1d.
-
-
-.. function:: noise(seed: uint32, xy: vec2) -> float
-
-   Non-periodic Perlin-style noise in 2d.
-
-
-.. function:: noise(seed: uint32, xyz: vec3) -> float
-
-   Non-periodic Perlin-style noise in 3d.
-
-
-.. function:: noise(seed: uint32, xyzt: vec4) -> float
-
-   Non-periodic Perlin-style noise in 4d.
-
-
-.. function:: pnoise(seed: uint32, x: float, px: int) -> float
-
-   Periodic Perlin-style noise in 1d.
-
-
-.. function:: pnoise(seed: uint32, xy: vec2, px: int, py: int) -> float
-
-   Periodic Perlin-style noise in 2d.
-
-
-.. function:: pnoise(seed: uint32, xyz: vec3, px: int, py: int, pz: int) -> float
-
-   Periodic Perlin-style noise in 3d.
-
-
-.. function:: pnoise(seed: uint32, xyzt: vec4, px: int, py: int, pz: int, pt: int) -> float
-
-   Periodic Perlin-style noise in 4d.
-
-
-.. function:: curlnoise(seed: uint32, xy: vec2) -> vec2
-
-   Divergence-free vector field based on the gradient of a Perlin noise function.
-
-
-.. function:: curlnoise(seed: uint32, xyz: vec3) -> vec3
-
-   Divergence-free vector field based on the curl of three Perlin noise functions.
-
-
-.. function:: curlnoise(seed: uint32, xyzt: vec4) -> vec3
-
-   Divergence-free vector field based on the curl of three Perlin noise functions.
 
 
 
@@ -959,6 +851,131 @@ Utility
 
 
 
+Volumes
+---------------
+.. function:: volume_sample_world(id: uint64, xyz: vec3, sampling_mode: int) -> float
+
+   Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+
+
+.. function:: volume_sample_local(id: uint64, uvw: vec3, sampling_mode: int) -> float
+
+   Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+
+
+.. function:: volume_lookup(id: uint64, i: int, j: int, k: int) -> float
+
+   Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_transform(id: uint64, uvw: vec3) -> vec3
+
+   Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.
+
+
+.. function:: volume_transform_inv(id: uint64, xyz: vec3) -> vec3
+
+   Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.
+
+
+
+
+Random
+---------------
+.. function:: rand_init(seed: int) -> uint32
+
+   Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
+
+
+.. function:: rand_init(seed: int, offset: int) -> uint32
+
+   Initialize a new random number generator given a user-defined seed and an offset. 
+   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
+   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``
+
+
+.. function:: randi(state: uint32) -> int
+
+   Return a random integer between [0, 2^32)
+
+
+.. function:: randi(state: uint32, min: int, max: int) -> int
+
+   Return a random integer between [min, max)
+
+
+.. function:: randf(state: uint32) -> float
+
+   Return a random float between [0.0, 1.0)
+
+
+.. function:: randf(state: uint32, min: float, max: float) -> float
+
+   Return a random float between [min, max)
+
+
+.. function:: randn(state: uint32) -> float
+
+   Sample a normal distribution
+
+
+.. function:: noise(state: uint32, x: float) -> float
+
+   Non-periodic Perlin-style noise in 1d.
+
+
+.. function:: noise(state: uint32, xy: vec2) -> float
+
+   Non-periodic Perlin-style noise in 2d.
+
+
+.. function:: noise(state: uint32, xyz: vec3) -> float
+
+   Non-periodic Perlin-style noise in 3d.
+
+
+.. function:: noise(state: uint32, xyzt: vec4) -> float
+
+   Non-periodic Perlin-style noise in 4d.
+
+
+.. function:: pnoise(state: uint32, x: float, px: int) -> float
+
+   Periodic Perlin-style noise in 1d.
+
+
+.. function:: pnoise(state: uint32, xy: vec2, px: int, py: int) -> float
+
+   Periodic Perlin-style noise in 2d.
+
+
+.. function:: pnoise(state: uint32, xyz: vec3, px: int, py: int, pz: int) -> float
+
+   Periodic Perlin-style noise in 3d.
+
+
+.. function:: pnoise(state: uint32, xyzt: vec4, px: int, py: int, pz: int, pt: int) -> float
+
+   Periodic Perlin-style noise in 4d.
+
+
+.. function:: curlnoise(state: uint32, xy: vec2) -> vec2
+
+   Divergence-free vector field based on the gradient of a Perlin noise function.
+
+
+.. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
+
+   Divergence-free vector field based on the curl of three Perlin noise functions.
+
+
+.. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
+
+   Divergence-free vector field based on the curl of three Perlin noise functions.
+
+
+
+
 
 ---------------
 
@@ -1062,6 +1079,9 @@ Operators
 
 
 .. function:: mul(x: mat22, y: vec2) -> vec2
+
+
+.. function:: mul(x: mat22, y: mat22) -> mat22
 
 
 .. function:: mul(x: mat33, y: float) -> mat33
