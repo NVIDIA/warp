@@ -765,6 +765,19 @@ class Adjoint:
 
             elif (isinstance(node, ast.For)):
 
+                def is_num(a):
+                    return isinstance(a, ast.Num) or (
+                        isinstance(a, ast.UnaryOp) and
+                        isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num))
+
+                def eval_num(a):
+                    if isinstance(a, ast.Num):
+                        return a.n
+                    if (isinstance(a, ast.UnaryOp) and
+                        isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num)):
+                        return -a.operand.n
+                    return None
+
                 # try and unroll simple range() statements that use constant args
                 unrolled = False
 
@@ -776,7 +789,7 @@ class Adjoint:
                         # if all range() arguments are numeric constants we will unroll
                         # note that this only handles trivial constants, it will not unroll
                         # constant compile-time expressions e.g.: range(0, 3*2)
-                        if (isinstance(a, ast.Num) == False):
+                        if not is_num(a):
                             is_constant = False
                             break
 
@@ -785,20 +798,20 @@ class Adjoint:
                         # range(end)
                         if len(node.iter.args) == 1:
                             start = 0
-                            end = node.iter.args[0].n
+                            end = eval_num(node.iter.args[0])
                             step = 1
 
                         # range(start, end)
                         elif len(node.iter.args) == 2:
-                            start = node.iter.args[0].n
-                            end = node.iter.args[1].n
+                            start = eval_num(node.iter.args[0])
+                            end = eval_num(node.iter.args[1])
                             step = 1
 
                         # range(start, end, step)
                         elif len(node.iter.args) == 3:
-                            start = node.iter.args[0].n
-                            end = node.iter.args[1].n
-                            step = node.iter.args[2].n
+                            start = eval_num(node.iter.args[0])
+                            end = eval_num(node.iter.args[1])
+                            step = eval_num(node.iter.args[2])
 
                         # test if we're above max unroll count
                         max_iters = abs(end-start)//abs(step)

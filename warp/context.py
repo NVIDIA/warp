@@ -948,7 +948,7 @@ def capture_end()->int:
     graph = runtime.core.cuda_graph_end_capture()
     
     if graph == None:
-        raise RuntimeError("Error occured during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")
+        raise RuntimeError("Error occurred during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")
     else:
         return graph
 
