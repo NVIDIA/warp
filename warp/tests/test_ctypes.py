@@ -113,6 +113,69 @@ def test_transform_multiply(test, device, n):
     wp.launch(transform_multiply, dim=n, inputs=[xforms, a], device=device)
 
 
+# construct kernel + test harness for given matrix / vector types
+def make_matrix_test(dim, matrix, vector):
+   
+    def test_matrix_kernel(a: wp.array(dtype=matrix),
+                           b: wp.array(dtype=matrix),
+                           c: wp.array(dtype=matrix),               
+                           x: wp.array(dtype=vector),
+                           result_m: wp.array(dtype=matrix),
+                           result_x: wp.array(dtype=vector)):
+
+        tid = wp.tid()
+
+        m = a[tid]*b[tid] + c[tid]*2.0
+        
+        result_m[tid] = m
+        result_x[tid] = m*x[tid]
+
+
+    # register a custom kernel (no decorator) function
+    # this lets us register the same function definition
+    # against multiple symbols, with different arg types
+    module = wp.get_module(test_matrix_kernel.__module__)
+    kernel = wp.Kernel(func=test_matrix_kernel, key=f"test_mat{dim}{dim}_kernel", module=module)
+        
+    def test_matrix(test, device):
+
+        rng = np.random.default_rng(42)
+
+        n = 1024
+
+        a = rng.random(size=(n, dim, dim), dtype=float)
+        b = rng.random(size=(n, dim, dim), dtype=float)
+        c = rng.random(size=(n, dim, dim), dtype=float)
+        x = rng.random(size=(n, dim, 1), dtype=float)
+
+        a_array = wp.array(a, dtype=matrix, device=device)
+        b_array = wp.array(b, dtype=matrix, device=device)
+        c_array = wp.array(c, dtype=matrix, device=device)
+
+        x_array = wp.array(x, dtype=vector, device=device)
+
+        result_m_array = wp.zeros_like(a_array)
+        result_x_array = wp.zeros_like(x_array)
+
+        wp.launch(kernel, n, inputs=[a_array, b_array, c_array, x_array, result_m_array, result_x_array], device=device)
+
+        # numpy reference result
+        result_m = np.matmul(a,b) + c*2.0
+        result_x = np.matmul(result_m, x)
+
+        assert_np_equal(result_m_array.numpy(), result_m, tol=1.e-5)
+        assert_np_equal(result_x_array.numpy(), result_x, tol=1.e-5)
+
+
+    return test_matrix
+
+
+# generate test functions for matrix types
+test_mat22 = make_matrix_test(2, wp.mat22, wp.vec2)
+test_mat33 = make_matrix_test(3, wp.mat33, wp.vec3)
+test_mat44 = make_matrix_test(4, wp.mat44, wp.vec4)
+
+
 def test_scalar_array(test, device):
 
     scalar_list = (0.0, 1.0, 2.0)
@@ -289,6 +352,9 @@ def register(parent):
                     13.0, 14.0, 15.0, 16.0)]
 
 
+    add_function_test(TestCTypes, "test_mat22", test_mat22, devices=devices)
+    add_function_test(TestCTypes, "test_mat33", test_mat33, devices=devices)
+    add_function_test(TestCTypes, "test_mat44", test_mat44, devices=devices)
     add_kernel_test(TestCTypes, name="test_scalar_arg_types", kernel=test_scalar_arg_types, dim=1, inputs=[-64, 255, -64, 255, -64, 255, -64, 255, 3.14159, 3.14159], devices=devices)
     add_kernel_test(TestCTypes, name="test_vector_arg_types", kernel=test_vector_arg_types, dim=1, inputs=inputs, devices=devices)
     add_function_test(TestCTypes, "test_scalar_array_load", test_scalar_array_types, devices=devices, load=True, store=False)

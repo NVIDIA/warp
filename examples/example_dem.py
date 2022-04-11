@@ -84,10 +84,9 @@ def apply_forces(grid : wp.uint64,
         f = f + contact_force(n, v, c, k_contact, k_damp, 100.0, 0.5)
 
     # particle contact
-    query = wp.hash_grid_query(grid, x, radius*5.0)
-    index = int(0)
+    neighbors = wp.hash_grid_query(grid, x, radius*5.0)
 
-    while(wp.hash_grid_query_next(query, index)):
+    for index in neighbors:
 
         if index != i:
             

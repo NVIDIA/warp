@@ -74,8 +74,8 @@ void array_sum_host(uint64_t a, uint64_t out, int len)
 //#include "spline.inl"
 
 
-// stubs for MacOS where there is no CUDA
-#if __APPLE__
+// stubs for platforms where there is no CUDA
+#if WP_DISABLE_CUDA
 
 int cuda_init() { return false; }
 
@@ -127,4 +127,4 @@ WP_API void cuda_unload_module(void* module) {}
 WP_API void* cuda_get_kernel(void* module, const char* name) { return NULL; }
 WP_API size_t cuda_launch_kernel(void* kernel, size_t dim, void** args) { return 0;}
 
-#endif // __APPLE__
+#endif // WP_DISABLE_CUDA

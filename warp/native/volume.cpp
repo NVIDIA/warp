@@ -116,8 +116,8 @@ void volume_destroy_device(uint64_t id)
 }
 
 // stubs for non-CUDA platforms
-#if __APPLE__
+#if WP_DISABLE_CUDA
 
-#endif // __APPLE_
+#endif // WP_DISABLE_CUDA
 
 #endif // WP_CUDA

@@ -23,6 +23,9 @@ import warp.tests.test_noise
 import warp.tests.test_tape
 import warp.tests.test_compile_consts
 import warp.tests.test_volume
+import warp.tests.test_mlp
+import warp.tests.test_grad
+import warp.tests.test_intersect
 
 def run():
 
@@ -42,6 +45,9 @@ def run():
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_tape.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_compile_consts.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_volume.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mlp.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_grad.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_intersect.register(unittest.TestCase)))
 
     # load all modules
     wp.force_load()

@@ -23,6 +23,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Callable
 
 from warp.types import *
 import warp.config
@@ -75,10 +76,23 @@ class Var:
             return str(self.type.__name__)
 
 
+
 #------------------------------------------------------------------------
 # Source code transformer, this class takes a Python function and
 # computes its adjoint using single-pass translation of the function's AST
 
+class Block:
+
+    def __init__(self):
+        
+        # list of statements inside this block
+        self.body_forward = []
+        self.body_replay = []
+        self.body_reverse = []
+
+        # list of vars declared in this block
+        self.vars = []
+       
 
 class Adjoint:
 
@@ -87,12 +101,12 @@ class Adjoint:
 
         adj.func = func
 
-        adj.symbols = {}     # map from symbols to adjoint variables
-        adj.variables = []   # list of local variables (in order)
-        adj.args = []        # list of function arguments (in order)
+        adj.symbols = {}            # map from symbols to adjoint variables
+        adj.variables = []          # list of local variables (in order)
+        adj.args = []               # list of function arguments (in order)
 
-        adj.cond = None                # condition variable if in branch
-        adj.return_var = None          # return type for function or kernel
+        adj.cond = None             # condition variable if in branch
+        adj.return_var = None       # return type for function or kernel
 
         # build AST from function object
         adj.source = inspect.getsource(func)
@@ -114,14 +128,13 @@ class Adjoint:
         for a in adj.tree.body[0].args.args:
             adj.args.append(adj.symbols[a.arg])
 
-        # primal statements (allows different statements in replay)
-        adj.body_forward = []
-        adj.body_forward_replay = []
-        adj.body_reverse = []
+        # blocks
+        adj.blocks = [Block()]
 
-        adj.output = []
+        # holds current indent level
+        adj.prefix = ""
 
-        adj.indent_count = 0
+        # used to generate new label indices
         adj.label_count = 0
 
     # generate function ssa form and adjoint
@@ -145,24 +158,77 @@ class Adjoint:
         return s
 
     # generates a comma separated list of args
-    def format_args(adj, prefix, indices):
-        args = ""
+    def format_args(adj, prefix, args):
+        s = ""
         sep = ""
 
-        for i in indices:
-            args += sep + prefix + str(i)
+        for a in args:
+            if type(a) == warp.context.Function:
+                
+                # functions don't have a var_ prefix so strip it off here
+                if (prefix == "var_"):
+                    s += sep + a.key
+                else:
+                    s += sep + prefix + a.key
+
+            else:
+                s += sep + prefix + str(a)
+
             sep = ", "
 
-        return args
+        return s
+
+    def indent(adj):
+        adj.prefix = adj.prefix + "\t"
+
+    def dedent(adj):
+        adj.prefix = adj.prefix[0:-1]  
+
+
+    def begin_block(adj):
+        b = Block()
+        
+        # give block a unique id
+        b.label = adj.label_count
+        adj.label_count += 1
+
+        adj.blocks.append(b)
+        return b
+
+    def end_block(adj):
+        return adj.blocks.pop()
 
     def add_var(adj, type=None, constant=None):
         index = len(adj.variables)
 
         # allocate new variable
         v = Var(str(index), type=type, constant=constant)
+
         adj.variables.append(v)
+        
+        adj.blocks[-1].vars.append(v)
 
         return v
+
+    # append a statement to the forward pass
+    def add_forward(adj, statement, replay=None, skip_replay=False):
+
+        adj.blocks[-1].body_forward.append(adj.prefix + statement)
+
+        if skip_replay == False:
+
+            if (replay):
+                # if custom replay specified the output it
+                adj.blocks[-1].body_replay.append(adj.prefix + replay)
+            else:
+                # by default just replay the original statement
+                adj.blocks[-1].body_replay.append(adj.prefix + statement)
+
+    # append a statement to the reverse pass
+    def add_reverse(adj, statement):
+
+        adj.blocks[-1].body_reverse.append(adj.prefix + statement)
+
 
     def add_constant(adj, n):
 
@@ -200,8 +266,9 @@ class Adjoint:
 
     def add_call(adj, func, inputs):
 
-        # if func is overloaded then perform overload resolution here, this is just to try and catch
-        # argument errors before they go to generated native code
+        # if func is overloaded then perform overload resolution here
+        # we validate argument types before they go to generated native
+        # code
 
         if (isinstance(func, list)):
     
@@ -222,10 +289,14 @@ class Adjoint:
                         
                         # if arg type registered as None, treat as 
                         # template allowing any type to match
-                        if inputs[i].type == Any:
+                        if a == Any:
                             continue
 
-                        # otherwise check args match signature
+                        # handle function refs as a special case
+                        if a == Callable and type(inputs[i]) is warp.context.Function:
+                            continue
+
+                        # otherwise check arg type matches input variable type
                         if not types_equal(a, inputs[i].type):
                             match = False
                             break
@@ -236,17 +307,30 @@ class Adjoint:
                     break
 
             if (resolved_func == None):
-                arg_types = "".join(str(x.type) + ", " for x in inputs)
+                
+                arg_types = ""
 
-                raise Exception(f"Couldn't find function overload for {func[0].key} that matched inputs {arg_types}")
+                for x in inputs:
+                    if isinstance(x, Var):
+                        arg_types += str(x.type) + ", "
+                    
+                    if isinstance(x, warp.context.Function):
+                        arg_types += "function" + ", "
+
+                raise Exception(f"Couldn't find function overload for '{func[0].key}' that matched inputs with types: {arg_types}")
             else:
                 func = resolved_func
+
 
         # expression (zero output), e.g.: void do_something();
         if (func.value_type(inputs) == None):
 
             forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
-            adj.add_forward(forward_call)
+            
+            if func.skip_replay:
+                adj.add_forward(forward_call, replay="//" + forward_call)
+            else:
+                adj.add_forward(forward_call)
 
             if (len(inputs)):
                 reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs))
@@ -260,8 +344,12 @@ class Adjoint:
             output = adj.add_var(func.value_type(inputs))
 
             forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
-            adj.add_forward(forward_call)
 
+            if func.skip_replay:
+                adj.add_forward(forward_call, replay="//" + forward_call)
+            else:
+                adj.add_forward(forward_call)
+            
             if (len(inputs)):
                 reverse_call = func.namespace + "{}({}, {}, {});".format(
                     "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs), adj.format_args("adj_", [output]))
@@ -281,17 +369,18 @@ class Adjoint:
 
         adj.label_count += 1
 
+
     # define an if statement
     def begin_if(adj, cond):
 
         adj.add_forward("if (var_{}) {{".format(cond))
         adj.add_reverse("}")
 
-        adj.indent_count += 1
+        adj.indent()
 
     def end_if(adj, cond):
 
-        adj.indent_count -= 1
+        adj.dedent()
 
         adj.add_forward("}")
         adj.add_reverse(f"if (var_{cond}) {{")
@@ -301,73 +390,143 @@ class Adjoint:
         adj.add_forward(f"if (!var_{cond}) {{")
         adj.add_reverse("}")
 
-        adj.indent_count += 1
+        adj.indent()
 
     def end_else(adj, cond):
 
-        adj.indent_count -= 1
+        adj.dedent()
 
         adj.add_forward("}")
         adj.add_reverse(f"if (!var_{cond}) {{")
 
 
     # define a for-loop
-    def begin_for(adj, iter, start, end, step):
+    def begin_for(adj, iter):
 
-        # note that dynamic for-loops must not mutate any previous state, so we don't need to re-run them in the reverse pass        
-        adj.add_forward(f"for (var_{iter}=var_{start}; cmp(var_{iter}, var_{end}, var_{step}); var_{iter} += var_{step}) {{""", statement_replay="if (false) {")
-        adj.add_reverse("}")
+        cond_block = adj.begin_block()
+        adj.add_forward(f"for_start_{cond_block.label}:;")
+        adj.indent()
 
-        adj.indent_count += 1
+        # evaluate cond
+        adj.add_forward(f"if (iter_cmp(var_{iter}) == 0) goto for_end_{cond_block.label};")
 
-    def end_for(adj, iter, start, end, step):
+        # evaluate iter
+        val = adj.add_call(adj.builtin_functions["iter_next"], [iter])
 
-        adj.indent_count -= 1
+        adj.begin_block()
 
-        # run loop in reverse order for gradient computation
-        adj.add_forward("}")
-        adj.add_reverse(f"for (var_{iter}=var_{end}-1; cmp(var_{iter}, var_{start}, -var_{step}); var_{iter} -= var_{step}) {{")
+        return val
 
-    # define a while loop, todo: reverse mode
+
+    def end_for(adj, iter):
+       
+        body_block = adj.end_block()
+        cond_block = adj.end_block()
+                
+        ####################
+        # forward pass
+
+        for i in cond_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
+
+        for i in body_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
+
+        adj.add_forward(f"goto for_start_{cond_block.label};", skip_replay=True)
+        
+        adj.dedent()
+        adj.add_forward(f"for_end_{cond_block.label}:;", skip_replay=True)
+
+        ####################
+        # reverse pass
+        
+        reverse = []
+        
+        # reverse iterator
+        reverse.append(adj.prefix + f"var_{iter} = wp::iter_reverse(var_{iter});")
+
+        for i in cond_block.body_forward:
+            reverse.append(i)
+
+        # zero adjoints
+        for i in body_block.vars:
+             reverse.append(adj.prefix + f"\tadj_{i} = 0;")
+
+        # replay
+        for i in body_block.body_replay:
+            reverse.append(i)
+
+        # reverse
+        for i in reversed(body_block.body_reverse):
+            reverse.append(i)            
+
+        reverse.append(adj.prefix + f"\tgoto for_start_{cond_block.label};")
+        reverse.append(adj.prefix + f"for_end_{cond_block.label}:;")    
+
+        adj.blocks[-1].body_reverse.extend(reversed(reverse))
+
+    # define a while loop
     def begin_while(adj, cond):
 
-        adj.add_forward("while (1) {")
-
-        adj.indent_count += 1
+        # evaulate condition in it's own block
+        # so we can control replay
+        cond_block = adj.begin_block()
+        cond_block.body_forward.append(f"while_start_{cond_block.label}:;")
 
         c = adj.eval(cond)
-        adj.add_forward(f"if (var_{c} == false) break;")
+        
+        cond_block.body_forward.append(f"if ((var_{c}) == false) goto while_end_{cond_block.label};")
+
+        # being block around loop
+        adj.begin_block()        
+        adj.indent()
+        
 
     def end_while(adj):
 
-        adj.indent_count -= 1
+        adj.dedent()     
+        body_block = adj.end_block()
+        cond_block = adj.end_block()
 
-        adj.add_forward("}")
+        ####################
+        # forward pass
+
+        for i in cond_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
+
+        for i in body_block.body_forward:
+            adj.blocks[-1].body_forward.append(i)
+        
+        adj.blocks[-1].body_forward.append(f"goto while_start_{cond_block.label};")
+        adj.blocks[-1].body_forward.append(f"while_end_{cond_block.label}:;")
 
 
-    # append a statement to the forward pass
-    def add_forward(adj, statement, statement_replay=None):
+        ####################
+        # reverse pass
+        reverse = []
+        
+        # cond
+        for i in cond_block.body_forward:
+            reverse.append(i)
 
-        prefix = ""
-        for i in range(adj.indent_count):
-            prefix += "\t"
+        # zero adjoints of local vars
+        for i in body_block.vars:
+             reverse.append(f"adj_{i} = 0;")
 
-        adj.body_forward.append(prefix + statement)
+        # replay
+        for i in body_block.body_replay:
+            reverse.append(i)
 
-        # allow for different statement in reverse kernel replay
-        if (statement_replay):
-            adj.body_forward_replay.append(prefix + statement_replay)
-        else:
-            adj.body_forward_replay.append(prefix + statement)
+        # reverse
+        for i in reversed(body_block.body_reverse):
+            reverse.append(i)            
 
-    # append a statement to the reverse pass
-    def add_reverse(adj, statement):
+        reverse.append(f"goto while_start_{cond_block.label};")
+        reverse.append(f"while_end_{cond_block.label}:;")
 
-        prefix = ""
-        for i in range(adj.indent_count):
-            prefix += "\t"
+        # output
+        adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
-        adj.body_reverse.append(prefix + statement)
 
     def eval(adj, node):
 
@@ -480,13 +639,24 @@ class Adjoint:
                 # lookup symbol, if it has already been assigned to a variable then return the existing mapping
                 if node.id in adj.symbols:
                     return adj.symbols[node.id]
+
+                # try and resolve the name using the functions globals context (used to lookup constants + functions)
                 elif node.id in adj.func.__globals__:
                     obj = adj.func.__globals__[node.id]
-                    if not isinstance(obj, warp.constant):
-                        raise TypeError(f"'{node.id}' is not a local variable or of type warp.constant")
-                    out = adj.add_constant(obj.val)
-                    adj.symbols[node.id] = out
-                    return out
+                    
+                    if isinstance(obj, warp.constant):
+                        # evaluate constant
+                        out = adj.add_constant(obj.val)
+                        adj.symbols[node.id] = out
+                        return out
+
+                    elif isinstance(obj, warp.context.Function):
+                        # pass back ref. to function (will be converted to name during function call)
+                        return obj
+
+                    else:
+                        raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
+                   
                 else:
                     raise KeyError("Referencing undefined symbol: " + str(node.id))
 
@@ -568,8 +738,7 @@ class Adjoint:
                 for s in node.body:
                     adj.eval(s)
 
-                
-                # detect symbols with conflicting definitions (assigned inside the for loop)
+                                # detect symbols with conflicting definitions (assigned inside the for loop)
                 for items in symbols_prev.items():
 
                     sym = items[0]
@@ -596,88 +765,87 @@ class Adjoint:
 
             elif (isinstance(node, ast.For)):
 
-                unroll = True
-                for a in node.iter.args:
+                def is_num(a):
+                    return isinstance(a, ast.Num) or (
+                        isinstance(a, ast.UnaryOp) and
+                        isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num))
 
-                    # if all range() arguments are numeric constants we will unroll
-                    # note that this only handles trivial constants, it will not unroll
-                    # constant-time expressions (e.g.: range(0, 3*2))
-                    if (isinstance(a, ast.Num) == False):
-                        unroll = False
-                        break
+                def eval_num(a):
+                    if isinstance(a, ast.Num):
+                        return a.n
+                    if (isinstance(a, ast.UnaryOp) and
+                        isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num)):
+                        return -a.operand.n
+                    return None
 
-                if (unroll):
+                # try and unroll simple range() statements that use constant args
+                unrolled = False
 
-                    # range(end)
-                    if len(node.iter.args) == 1:
-                        start = 0
-                        end = node.iter.args[0].n
-                        step = 1
+                if isinstance(node.iter, ast.Call) and node.iter.func.id == "range":
+                    
+                    is_constant = True
+                    for a in node.iter.args:
 
-                    # range(start, end)
-                    elif len(node.iter.args) == 2:
-                        start = node.iter.args[0].n
-                        end = node.iter.args[1].n
-                        step = 1
+                        # if all range() arguments are numeric constants we will unroll
+                        # note that this only handles trivial constants, it will not unroll
+                        # constant compile-time expressions e.g.: range(0, 3*2)
+                        if not is_num(a):
+                            is_constant = False
+                            break
 
-                    # range(start, end, step)
-                    elif len(node.iter.args) == 3:
-                        start = node.iter.args[0].n
-                        end = node.iter.args[1].n
-                        step = node.iter.args[2].n
+                    if (is_constant):
 
-                    # test if we're above max unroll count
-                    max_iters = abs(end-start)//abs(step)
-                    max_unroll = adj.options["max_unroll"]
+                        # range(end)
+                        if len(node.iter.args) == 1:
+                            start = 0
+                            end = eval_num(node.iter.args[0])
+                            step = 1
 
-                    if max_iters > max_unroll:
-                        unroll = False
+                        # range(start, end)
+                        elif len(node.iter.args) == 2:
+                            start = eval_num(node.iter.args[0])
+                            end = eval_num(node.iter.args[1])
+                            step = 1
 
-                        if (warp.config.verbose):
-                            print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
-                    else:
+                        # range(start, end, step)
+                        elif len(node.iter.args) == 3:
+                            start = eval_num(node.iter.args[0])
+                            end = eval_num(node.iter.args[1])
+                            step = eval_num(node.iter.args[2])
 
-                        # unroll
-                        for i in range(start, end, step):
+                        # test if we're above max unroll count
+                        max_iters = abs(end-start)//abs(step)
+                        max_unroll = adj.options["max_unroll"]
 
-                            var_iter = adj.add_constant(i)
-                            adj.symbols[node.target.id] = var_iter
+                        if max_iters > max_unroll:
 
-                            # eval body
-                            for s in node.body:
-                                adj.eval(s)
+                            if (warp.config.verbose):
+                                print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
+                        else:
+
+                            # unroll
+                            for i in range(start, end, step):
+
+                                var_iter = adj.add_constant(i)
+                                adj.symbols[node.target.id] = var_iter
+
+                                # eval body
+                                for s in node.body:
+                                    adj.eval(s)
+
+                            unrolled = True
               
-                if unroll == False:
+                
+                # couldn't unroll so generate a dynamic loop
+                if not unrolled:
 
-                    # dynamic loop, body must be side-effect free, i.e.: not
-                    # overwrite memory locations used by previous operations
+                    # evaluate the Iterable
+                    iter = adj.eval(node.iter)
 
-                    # range(end)
-                    if len(node.iter.args) == 1:                        
-                        start = adj.add_constant(0)
-                        end = adj.eval(node.iter.args[0])
-                        step = adj.add_constant(1)
+                    adj.symbols[node.target.id] = adj.begin_for(iter)
 
-                    # range(start, end)
-                    elif len(node.iter.args) == 2:
-                        start = adj.eval(node.iter.args[0])
-                        end = adj.eval(node.iter.args[1])
-                        step = adj.add_constant(1)
-
-                    # range(start, end, step)
-                    elif len(node.iter.args) == 3:
-                        start = adj.eval(node.iter.args[0])
-                        end = adj.eval(node.iter.args[1])
-                        step = adj.eval(node.iter.args[2])
-
-                    # add iterator variable
-                    iter = adj.add_var(int)
-                    adj.symbols[node.target.id] = iter
-
-                    # save symbol table
+                    # for loops should be side-effect free, here we store a copy
                     symbols_prev = adj.symbols.copy()
-
-                    adj.begin_for(iter, start, end, step)
 
                     # eval body
                     for s in node.body:
@@ -704,7 +872,7 @@ class Adjoint:
                             # reset the symbol to point to the original variable
                             adj.symbols[sym] = var1
 
-                    adj.end_for(iter, start, end, step)
+                    adj.end_for(iter)
 
             elif (isinstance(node, ast.Expr)):
                 return adj.eval(node.value)
@@ -1064,7 +1232,7 @@ def codegen_func_forward_body(adj, device='cpu', indent=4):
     body = []
     indent_block = " " * indent
 
-    for f in adj.body_forward:
+    for f in adj.blocks[0].body_forward:
         body += [f + "\n"]
 
     return "".join([indent_block + l for l in body])
@@ -1113,14 +1281,14 @@ def codegen_func_reverse_body(adj, device='cpu', indent=4):
     body += ["//---------\n"]
     body += ["// forward\n"]
 
-    for f in adj.body_forward_replay:
+    for f in adj.blocks[0].body_replay:
         body += [f + "\n"]
 
     # reverse pass
     body += ["//---------\n"]
     body += ["// reverse\n"]
 
-    for l in reversed(adj.body_reverse):
+    for l in reversed(adj.blocks[0].body_reverse):
         body += [l + "\n"]
 
     body += ["return;\n"]
@@ -1214,7 +1382,9 @@ def codegen_func(adj, device='cpu'):
     return s
 
 
-def codegen_kernel(adj, device='cpu'):
+def codegen_kernel(kernel, device='cpu'):
+
+    adj = kernel.adj
 
     forward_args = "int dim"
     reverse_args = "int dim"
@@ -1244,7 +1414,7 @@ def codegen_kernel(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=adj.func.__name__,
+    s = template.format(name=kernel.key,
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
                         forward_body=forward_body,
@@ -1253,7 +1423,9 @@ def codegen_kernel(adj, device='cpu'):
     return s
 
 
-def codegen_module(adj, device='cpu'):
+def codegen_module(kernel, device='cpu'):
+
+    adj = kernel.adj
 
     # build forward signature
     forward_args = "int dim"
@@ -1293,7 +1465,7 @@ def codegen_module(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=adj.func.__name__,
+    s = template.format(name=kernel.key,
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
                         forward_params=indent(forward_params, 3),
@@ -1301,7 +1473,9 @@ def codegen_module(adj, device='cpu'):
     return s
 
 
-def codegen_module_decl(adj, device='cpu'):
+def codegen_module_decl(kernel, device='cpu'):
+
+    adj = kernel.adj
 
     # build forward signature
     forward_args = "int dim"
@@ -1340,6 +1514,6 @@ def codegen_module_decl(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=adj.func.__name__, forward_args=indent(forward_args), reverse_args=indent(reverse_args))
+    s = template.format(name=kernel.key, forward_args=indent(forward_args), reverse_args=indent(reverse_args))
     return s
 

@@ -87,8 +87,11 @@ struct hash_grid_query_t
     int cell_index;     // offset in the current cell (index into cell_indices)
     int cell_end;       // index following the end of this cell 
     
+    int current;        // index of the current iterator value
+
     HashGrid grid;
 };
+
 
 CUDA_CALLABLE inline hash_grid_query_t hash_grid_query(uint64_t id, wp::vec3 pos, float radius)
 {
@@ -159,6 +162,25 @@ CUDA_CALLABLE inline bool hash_grid_query_next(hash_grid_query_t& query, int& in
         }
     }
 }
+
+CUDA_CALLABLE inline int iter_next(hash_grid_query_t& query)
+{
+    return query.current;
+}
+
+CUDA_CALLABLE inline bool iter_cmp(hash_grid_query_t& query)
+{
+    bool finished = hash_grid_query_next(query, query.current);
+    return finished;
+}
+
+CUDA_CALLABLE inline hash_grid_query_t iter_reverse(const hash_grid_query_t& query)
+{
+    // can't reverse grid queries, users should not rely on neighbor ordering
+    return query;
+}
+
+
 
 CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)
 {

@@ -47,6 +47,10 @@ class Tape:
         # if scalar loss is specified then allocate 
         # a 'seed' array for it, with gradient of one
         if (loss):
+            
+            if len(loss) > 1:
+                raise RuntimeError("Can only return gradients for scalar loss functions.")
+
             self.gradients[loss] = wp.array(np.ones(1), dtype=wp.float32, device=loss.device)
 
         # force allocation of all adjoints before capture
@@ -146,6 +150,9 @@ class Tape:
     def reset(self):
         
         self.launches = []
+        self.zero()
+
+    def zero(self):
 
         for a in self.gradients.values():
             a.zero_()

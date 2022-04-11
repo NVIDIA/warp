@@ -39,6 +39,12 @@ This will generate the `warp.dll` / `warp.so` core library respectively. When bu
 
 Which ensures that subsequent modifications to the libary will be reflected in the Python package.
 
+If you are cloning from Windows, please first ensure that you have enabled "Developer Mode" in Windows settings and symlinks in git:
+
+    git config --global core.symlinks true
+
+This will ensure symlinks inside ``exts/omni.warp`` work upon cloning.
+
 ## Running Examples
 
 The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations in the ``examples/outputs`` directory. Before running examples users should ensure that the ``usd-core`` package is installed using:
@@ -67,6 +73,6 @@ Please see our [GTC Presentation](https://www.nvidia.com/gtc/session-catalog/?se
 
 We have a **#warp** channel on the public [Omniverse Discord](https://discord.com/invite/XWQNJDNuaC) sever, come chat to us!
 
+## License
 
-
-
+Warp is provided under the NVIDIA Source Code License (NVSCL), please see [LICENSE.md](./LICENSE.md) for full license text.

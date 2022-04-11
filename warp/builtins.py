@@ -14,6 +14,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Callable
 
 #---------------------------------
 # Scalar Math
@@ -330,6 +331,23 @@ add_builtin("dense_solve_batched",
                  "b": array(dtype=float),
                  "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
+
+add_builtin("mlp", input_types={"weights": array(dtype=float), "bias": array(dtype=float), "activation": Callable, "m": int, "n": int, "b": int, "index": int, "x": array(dtype=float), "out": array(dtype=float)}, value_type=None, skip_replay=True, 
+    doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
+
+   :param weights: A layer's network weights with dimensions ``(m, n)``.
+   :param bias: An array with dimensions ``(n)`.
+   :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
+   :param m: The number of output dimensions
+   :param n: The number of input dimensions
+   :param b: The number of batches
+   :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
+   :param x: The feature matrix with dimensions ``(n, b)``
+   :param out: The network output with dimensions ``(m, b)``
+
+   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).""", group="Linear Algebra")
+
+
 #---------------------------------
 # Geometry
 
@@ -388,6 +406,23 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
     doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.""")
 
+add_builtin("intersect_tri_tri", input_types={"v0": vec3, "v1": vec3, "v2": vec3, "u0": vec3, "u1": vec3, "u2": vec3}, value_type=int, group="Geometry", 
+    doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.")
+
+#---------------------------------
+# Ranges
+
+add_builtin("range", input_types={"end": int}, value_type=range_t, group="Utility", hidden=True)
+add_builtin("range", input_types={"start": int, "end": int}, value_type=range_t, group="Utility", hidden=True)
+add_builtin("range", input_types={"start": int, "end": int, "step": int}, value_type=range_t, group="Utility", hidden=True)
+
+#---------------------------------
+# Iterators
+
+add_builtin("iter_next", input_types={"range": range_t}, value_type=int, group="Utility", hidden=True)
+add_builtin("iter_next", input_types={"query": hash_grid_query_t}, value_type=int, group="Utility", hidden=True)
+add_builtin("iter_next", input_types={"query": mesh_query_aabb_t}, value_type=int, group="Utility", hidden=True)
+
 #---------------------------------
 # Volumes 
 
@@ -427,29 +462,29 @@ add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, 
 add_builtin("randn", input_types={"state": uint32}, value_type=float, group="Random", 
     doc="Sample a normal distribution")
 
-add_builtin("noise", input_types={"seed": uint32, "x": float}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "x": float}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 1d.")
-add_builtin("noise", input_types={"seed": uint32, "xy": vec2}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xy": vec2}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 2d.")
-add_builtin("noise", input_types={"seed": uint32, "xyz": vec3}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xyz": vec3}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 3d.")
-add_builtin("noise", input_types={"seed": uint32, "xyzt": vec4}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xyzt": vec4}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 4d.")
 
-add_builtin("pnoise", input_types={"seed": uint32, "x": float, "px": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "x": float, "px": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 1d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 2d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 3d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 4d.")
 
-add_builtin("curlnoise", input_types={"seed": uint32, "xy": vec2}, value_type=vec2, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xy": vec2}, value_type=vec2, group="Random",
     doc="Divergence-free vector field based on the gradient of a Perlin noise function.")
-add_builtin("curlnoise", input_types={"seed": uint32, "xyz": vec3}, value_type=vec3, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xyz": vec3}, value_type=vec3, group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
-add_builtin("curlnoise", input_types={"seed": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
 
 # note printf calls directly to global CRT printf (no wp:: namespace prefix)
@@ -490,7 +525,7 @@ class LoadFunc:
 
         return args[0].type.dtype
 
-@builtin("store", hidden=True)
+@builtin("store", hidden=True, skip_replay=True)
 class StoreFunc:
     @staticmethod
     def value_type(args):
@@ -503,7 +538,7 @@ class StoreFunc:
 
         return None
 
-@builtin("atomic_add", input_types={"array": array, "index": int, "value": Any}, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility")
+@builtin("atomic_add", input_types={"array": array, "index": int, "value": Any}, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
 class AtomicAddFunc:
     @staticmethod
     def value_type(args):
@@ -518,7 +553,7 @@ class AtomicAddFunc:
         return args[0].type.dtype
 
 
-@builtin("atomic_sub", input_types={"array": array, "index": int, "value": Any}, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility")
+@builtin("atomic_sub", input_types={"array": array, "index": int, "value": Any}, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
 class AtomicSubFunc:
     @staticmethod
     def value_type(args):
@@ -546,7 +581,6 @@ for t in scalar_types + vector_types:
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
-
 
 #---------------------------------
 # Operators
@@ -586,6 +620,7 @@ add_builtin("mul", input_types={"x": quat, "y": float}, value_type=quat, doc="",
 add_builtin("mul", input_types={"x": quat, "y": quat}, value_type=quat, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat22, "y": float}, value_type=mat22, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat22, "y": vec2}, value_type=vec2, doc="", group="Operators")
+add_builtin("mul", input_types={"x": mat22, "y": mat22}, value_type=mat22, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat33, "y": float}, value_type=mat33, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat33, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat33, "y": mat33}, value_type=mat33, doc="", group="Operators")

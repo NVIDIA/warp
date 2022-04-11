@@ -6,11 +6,11 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Example Sim Ant
+# Example Sim Cartpole
 #
-# Shows how to set up a simulation of a rigid-body Ant articulation based on
-# the OpenAI gym environment using the wp.sim.ModelBuilder() and MCJF
-# importer. Note this example does not include a trained policy.
+# Shows how to set up a simulation of a rigid-body cartpole articulation 
+# from a URDF using the wp.sim.ModelBuilder().
+# Note this example does not include a trained policy.
 #
 ###########################################################################
 
@@ -29,7 +29,7 @@ class Robot:
 
     frame_dt = 1.0/60.0
 
-    episode_duration = 5.0      # seconds
+    episode_duration = 20.0      # seconds
     episode_frames = int(episode_duration/frame_dt)
 
     sim_substeps = 10
@@ -49,46 +49,38 @@ class Robot:
         self.num_envs = num_envs
 
         for i in range(num_envs):
-
-            wp.sim.parse_mjcf(os.path.join(os.path.dirname(__file__), "assets/nv_ant.xml"), builder,
-                stiffness=0.0,
-                damping=1.0,
+            wp.sim.parse_urdf(os.path.join(os.path.dirname(__file__), "assets/cartpole.urdf"), builder,
+                xform=wp.transform(np.array((i*2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)),
+                floating=False, 
+                density=0,
                 armature=0.1,
-                contact_ke=1.e+4,
-                contact_kd=1.e+2,
-                contact_kf=1.e+4,
-                contact_mu=1.0,
+                stiffness=0.0,
+                damping=0.0,
+                shape_ke=1.e+4,
+                shape_kd=1.e+2,
+                shape_kf=1.e+2,
+                shape_mu=1.0,
                 limit_ke=1.e+4,
                 limit_kd=1.e+1)
 
-            coord_count = 15
-            dof_count = 14
-            
-            coord_start = i*coord_count
-            dof_start = i*dof_count
+            # joint initial positions
+            builder.joint_q[-3:] = [0.0, 0.3, 0.0]
 
-            # set joint targets to rest pose in mjcf
-
-            # base
-            builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
-            builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
-
-            # joints
-            builder.joint_q[coord_start+7:coord_start+coord_count] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
-
+            builder.joint_target[:3] = [0.0, 0.0, 0.0]
 
         # finalize model
         self.model = builder.finalize(device)
         self.model.ground = True
-        self.model.joint_attach_ke *= 32.0
-        self.model.joint_attach_kd *= 4.0
+
+        self.model.joint_attach_ke = 1600.0
+        self.model.joint_attach_kd = 20.0
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_ant.usd"))
+            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_cartpole.usd"))
 
 
     def run(self, render=True):
@@ -189,5 +181,5 @@ if profile:
 
 else:
 
-    robot = Robot(render=True, device=wp.get_preferred_device(), num_envs=64)
+    robot = Robot(render=True, device=wp.get_preferred_device(), num_envs=10)
     robot.run()
