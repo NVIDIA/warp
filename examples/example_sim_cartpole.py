@@ -50,7 +50,7 @@ class Robot:
 
         for i in range(num_envs):
             wp.sim.parse_urdf(os.path.join(os.path.dirname(__file__), "assets/cartpole.urdf"), builder,
-                xform=wp.transform(np.array((4 + i*2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)),
+                xform=wp.transform(np.array((i*2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)),
                 floating=False, 
                 density=0,
                 armature=0.1,
