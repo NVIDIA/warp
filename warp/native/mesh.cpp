@@ -167,11 +167,11 @@ void mesh_refit_host(uint64_t id)
 
 
 // stubs for non-CUDA platforms
-#if __APPLE__
+#if WP_DISABLE_CUDA
 
 void mesh_refit_device(uint64_t id)
 {
 }
 
 
-#endif // __APPLE_
+#endif // WP_DISABLE_CUDA

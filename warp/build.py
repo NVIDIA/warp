@@ -194,17 +194,23 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
     if (warp.config.verbose):
         print("Building {}".format(dll_path))
 
+    # is the library being built with CUDA enabled?
+    if cuda_home is None or cuda_home == "":
+        cuda_disabled = 1
+    else:
+        cuda_disabled = 0
+
     if os.name == 'nt':
 
         cpp_out = cpp_path + ".obj"
 
         if (config == "debug"):
-            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{nanovdb_home}"'
+            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{nanovdb_home}"'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{nanovdb_home}"'
+            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{nanovdb_home}"'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -213,7 +219,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
 
 
         with ScopedTimer("build", active=warp.config.verbose):
-            cpp_cmd = 'cl.exe {cflags} -c "{cpp_path}" /Fo"{cpp_out}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
+            cpp_cmd = f'cl.exe {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
             run_cmd(cpp_cmd)
 
             ld_inputs.append(quote(cpp_out))
@@ -223,10 +229,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I{warp_home}/native/cub -I"{nanovdb_home}" -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, nanovdb_home=nanovdb_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I{warp_home}/native/cub -I"{nanovdb_home}" -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52 -I{warp_home}/native/cub -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'.format(warp_home=warp_home, cuda_home=cuda_home, nanovdb_home=nanovdb_home, cu_out=cu_out, cu_path=cu_path)
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52 -I{warp_home}/native/cub -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -242,18 +248,18 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
         cpp_out = cpp_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = "-O0 -g -D_DEBUG -DWP_CPU -fPIC --std=c++11"
+            cpp_flags = f"-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11"
             ld_flags = "-D_DEBUG"
             ld_inputs = []
 
         if (config == "release"):
-            cpp_flags = "-O3 -DNDEBUG -DWP_CPU  -fPIC --std=c++11"
+            cpp_flags = f"-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11"
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
 
         with ScopedTimer("build", active=warp.config.verbose):
-            build_cmd = 'g++ {cflags} -c "{cpp_path}" -o "{cpp_out}"'.format(cflags=cpp_flags, cpp_out=cpp_out, cpp_path=cpp_path)
+            build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
             run_cmd(build_cmd)
 
             ld_inputs.append(quote(cpp_out))
@@ -263,10 +269,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -I{warp_home}/native/cub -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path, warp_home=warp_home)
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -I{warp_home}/native/cub -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = '"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC -gencode=arch=compute_52,code=compute_52 --use_fast_math -DWP_CUDA -I{warp_home}/native/cub -o "{cu_out}" -c "{cu_path}"'.format(cuda_home=cuda_home, cu_out=cu_out, cu_path=cu_path, warp_home=warp_home)
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC -gencode=arch=compute_52,code=compute_52 --use_fast_math -DWP_CUDA -I{warp_home}/native/cub -o "{cu_out}" -c "{cu_path}"'
 
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
