@@ -14,7 +14,8 @@ import webbrowser
 
 SCRIPTS_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scripts"))
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
-WARP_REFERENCE_GUIDE_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
+WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
+WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
 class WarpMenu:
     def __init__(self):
@@ -59,8 +60,12 @@ class WarpMenu:
 
         self._help_menu = [
             {
-                "name": "Warp Guide",
-                "onclick_fn": lambda *_: self._on_warp_guide_click()
+                "name": "Getting Started",
+                "onclick_fn": lambda *_: self._on_getting_started_click()
+            },
+            {
+                "name": "Documentation",
+                "onclick_fn": lambda *_: self._on_documentation_click()
             }
         ]
 
@@ -173,5 +178,8 @@ class WarpMenu:
     def _on_browse_scenes_click(self):
         os.startfile(SCENES_PATH)
 
-    def _on_warp_guide_click(self, *_):
-        webbrowser.open(WARP_REFERENCE_GUIDE_URL)
+    def _on_getting_started_click(self, *_):
+        webbrowser.open(WARP_GETTING_STARTED_URL)
+
+    def _on_documentation_click(self, *_):
+        webbrowser.open(WARP_DOCUMENTATION_URL)
