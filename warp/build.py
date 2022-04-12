@@ -248,7 +248,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
         cpp_out = cpp_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = f"-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11"
+            cpp_flags = f"-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -fkeep-inline-functions"
             ld_flags = "-D_DEBUG"
             ld_inputs = []
 
