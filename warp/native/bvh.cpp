@@ -139,6 +139,8 @@ int MedianBVHBuilder::partition_midpoint(const bounds3* bounds, int* indices, in
     return k;
 }
 
+// disable std::sort workaround for macOS error
+#if 0
 int MedianBVHBuilder::partition_sah(const bounds3* bounds, int* indices, int start, int end, bounds3 range_bounds)
 {
     assert(end-start >= 2);
@@ -191,6 +193,7 @@ int MedianBVHBuilder::partition_sah(const bounds3* bounds, int* indices, int sta
 
     return start + minSplit + 1;
 }
+#endif
 
 int MedianBVHBuilder::build_recursive(BVH& bvh, const bounds3* bounds, int* indices, int start, int end, int depth, int parent)
 {
@@ -261,6 +264,8 @@ private:
 };
 
 
+// disable std::sort workaround for macOS error
+#if 0
 void LinearBVHBuilderCPU::build(BVH& bvh, const bounds3* items, int n)
 {
 	memset(&bvh, 0, sizeof(BVH));
@@ -306,7 +311,7 @@ void LinearBVHBuilderCPU::build(BVH& bvh, const bounds3* items, int n)
 
 	printf("Created BVH for %d items with %d nodes, max depth of %d\n", n, bvh.num_nodes, bvh.max_depth);
 }
-
+#endif
 
 inline bounds3 LinearBVHBuilderCPU::calc_bounds(const bounds3* bounds, const KeyIndexPair* keys, int start, int end)
 {
