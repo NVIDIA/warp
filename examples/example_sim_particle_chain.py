@@ -24,59 +24,92 @@ import warp.sim.render
 
 wp.init()
 
-# params
-sim_width = 64
-sim_height = 32
 
-sim_fps = 60.0
-sim_substeps = 32
-sim_duration = 5.0
-sim_frames = int(sim_duration*sim_fps)
-sim_dt = (1.0/sim_fps)/sim_substeps
-sim_time = 0.0
+class Example:
 
-device = wp.get_preferred_device()
+    def init_params(self):
+
+        self.sim_width = 64
+        self.sim_height = 32
+
+        self.sim_fps = 60.0
+        self.sim_substeps = 32
+        self.sim_duration = 5.0
+        self.sim_frames = int(self.sim_duration*self.sim_fps)
+        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_time = 0.0
+
+        self.device = wp.get_preferred_device()
  
-builder = wp.sim.ModelBuilder()
+    def init(self, stage):
 
-# anchor
-builder.add_particle((0.0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
+        self.init_params()
 
-# chain
-for i in range(1, 10):
-    builder.add_particle((i, 1.0, 0.0), (0.0, 0., 0.0), 1.0)
-    builder.add_spring(i - 1, i, 1.e+6, 0.0, 0)
+        builder = wp.sim.ModelBuilder()
 
-model = builder.finalize(device=device)
-model.ground = False
+        # anchor
+        builder.add_particle((0.0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
 
-integrator = wp.sim.SemiImplicitIntegrator()
+        # chain
+        for i in range(1, 10):
+            builder.add_particle((i, 1.0, 0.0), (0.0, 0., 0.0), 1.0)
+            builder.add_spring(i - 1, i, 1.e+6, 0.0, 0)
 
-state_0 = model.state()
-state_1 = model.state()
+        self.model = builder.finalize(device=self.device)
+        self.model.ground = False
 
-renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_particle_chain.usd"))
+        self.integrator = wp.sim.SemiImplicitIntegrator()
 
-# launch simulation
-for i in range(sim_frames):
-    
-    with wp.ScopedTimer("simulate"):
+        self.state_0 = self.model.state()
+        self.state_1 = self.model.state()
 
-        for s in range(sim_substeps):
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
-            state_0.clear_forces()
-            state_1.clear_forces()
+    def update(self):
 
-            integrator.simulate(model, state_0, state_1, sim_dt)
-            sim_time += sim_dt
+        with wp.ScopedTimer("simulate"):
 
-            # swap states
-            (state_0, state_1) = (state_1, state_0)
+            for s in range(self.sim_substeps):
 
-    with wp.ScopedTimer("render"):
+                self.state_0.clear_forces()
+                self.state_1.clear_forces()
 
-        renderer.begin_frame(sim_time)
-        renderer.render(state_0)
-        renderer.end_frame()
+                self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+                self.sim_time += self.sim_dt
 
-renderer.save()
+                # swap states
+                (self.state_0, self.state_1) = (self.state_1, self.state_0)
+
+    def render(self, is_live=False):
+
+        with wp.ScopedTimer("render"):
+            time = 0.0 if is_live else self.sim_time
+
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state_0)
+            self.renderer.end_frame()
+
+    # kit load event
+    def on_load(self, stage, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.init(stage)
+            self.render(is_live)
+
+    # kit update event
+    def on_update(self, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.update()
+            self.render(is_live)
+
+
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_particle_chain.usd")
+
+    example = Example()
+    example.init(stage_path)
+
+    for i in range(example.sim_frames):
+        example.update()
+        example.render()
+
+    example.renderer.save()

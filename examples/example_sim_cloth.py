@@ -22,121 +22,146 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+from pxr import Usd, UsdGeom
 
 wp.init()
 
-device = wp.get_preferred_device()
 
-sim_width = 64
-sim_height = 32
+class Example:
 
-sim_fps = 60.0
-sim_substeps = 32
-sim_duration = 5.0
-sim_frames = int(sim_duration*sim_fps)
-sim_dt = (1.0/sim_fps)/sim_substeps
-sim_time = 0.0
-sim_render = True
-sim_use_graph = (device == "cuda")
+    def init_params(self):
+
+        self.device = wp.get_preferred_device()
+
+        self.sim_width = 64
+        self.sim_height = 32
+
+        self.sim_fps = 60.0
+        self.sim_substeps = 32
+        self.sim_duration = 5.0
+        self.sim_frames = int(self.sim_duration*self.sim_fps)
+        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_time = 0.0
+        self.sim_use_graph = (self.device == "cuda")
  
-builder = wp.sim.ModelBuilder()
+    def init(self, stage):
 
-builder.add_cloth_grid(
-    pos=(0.0, 4.0, 0.0), 
-    rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
-    vel=(0.0, 0.0, 0.0), 
-    dim_x=sim_width, 
-    dim_y=sim_height, 
-    cell_x=0.1, 
-    cell_y=0.1, 
-    mass=0.1, 
-    fix_left=True)
+        self.init_params()
 
+        builder = wp.sim.ModelBuilder()
 
-from pxr import Usd, UsdGeom, Gf, Sdf
+        builder.add_cloth_grid(
+            pos=(0.0, 4.0, 0.0), 
+            rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
+            vel=(0.0, 0.0, 0.0), 
+            dim_x=self.sim_width, 
+            dim_y=self.sim_height, 
+            cell_x=0.1, 
+            cell_y=0.1, 
+            mass=0.1, 
+            fix_left=True)
 
-usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
-usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
+        usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
+        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
 
-mesh_points = np.array(usd_geom.GetPointsAttr().Get())
-mesh_indices = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
+        mesh_points = np.array(usd_geom.GetPointsAttr().Get())
+        mesh_indices = np.array(usd_geom.GetFaceVertexIndicesAttr().Get())
 
-mesh = wp.sim.Mesh(mesh_points, mesh_indices)
+        mesh = wp.sim.Mesh(mesh_points, mesh_indices)
 
-builder.add_shape_mesh(
-    body=-1,
-    mesh=mesh,
-    pos=(1.0, 0.0, 1.0),
-    rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5),
-    scale=(2.0, 2.0, 2.0),
-    ke=1.e+2,
-    kd=1.e+2,
-    kf=1.e+1)
+        builder.add_shape_mesh(
+            body=-1,
+            mesh=mesh,
+            pos=(1.0, 0.0, 1.0),
+            rot=wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5),
+            scale=(2.0, 2.0, 2.0),
+            ke=1.e+2,
+            kd=1.e+2,
+            kf=1.e+1)
 
-model = builder.finalize(device=device)
-model.ground = True
-model.tri_ke = 1.e+3
-model.tri_ka = 1.e+3
-model.tri_kb = 1.0
-model.tri_kd = 1.e+1
-model.soft_contact_kd = 1.e+2
+        self.model = builder.finalize(device=self.device)
+        self.model.ground = True
+        self.model.tri_ke = 1.e+3
+        self.model.tri_ka = 1.e+3
+        self.model.tri_kb = 1.0
+        self.model.tri_kd = 1.e+1
+        self.model.soft_contact_kd = 1.e+2
 
-integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.SemiImplicitIntegrator()
 
-state_0 = model.state()
-state_1 = model.state()
+        self.state_0 = self.model.state()
+        self.state_1 = self.model.state()
 
-stage = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_cloth.usd"))
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
-if (sim_use_graph):
+        if (self.sim_use_graph):
 
-    # create update graph
-    wp.capture_begin()
+            # create update graph
+            wp.capture_begin()
 
-    wp.sim.collide(model, state_0)
+            wp.sim.collide(self.model, self.state_0)
 
-    for s in range(sim_substeps):
+            for s in range(self.sim_substeps):
 
-        state_0.clear_forces()
+                self.state_0.clear_forces()
 
-        integrator.simulate(model, state_0, state_1, sim_dt)
-
-        # swap states
-        (state_0, state_1) = (state_1, state_0)
-
-    graph = wp.capture_end()
-
-
-# launch simulation
-for i in range(sim_frames):
-    
-    with wp.ScopedTimer("simulate", active=True):
-
-        if (sim_use_graph):
-            wp.capture_launch(graph)
-        else:
-
-            wp.sim.collide(model, state_0)
-
-            for s in range(sim_substeps):
-
-                state_0.clear_forces()
-
-                integrator.simulate(model, state_0, state_1, sim_dt)
+                self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
 
                 # swap states
-                (state_0, state_1) = (state_1, state_0)
+                (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
-    if (sim_render):
+            self.graph = wp.capture_end()
+
+    def update(self):
+
+        with wp.ScopedTimer("simulate", active=True):
+
+            if (self.sim_use_graph):
+                wp.capture_launch(self.graph)
+            else:
+
+                wp.sim.collide(self.model, self.state_0)
+
+                for s in range(self.sim_substeps):
+
+                    self.state_0.clear_forces()
+
+                    self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+
+                    # swap states
+                    (self.state_0, self.state_1) = (self.state_1, self.state_0)
+
+    def render(self, is_live=False):
 
         with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else self.sim_time
 
-            stage.begin_frame(sim_time)
-            stage.render(state_0)
-            stage.end_frame()
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state_0)
+            self.renderer.end_frame()
 
-    sim_time += 1.0/sim_fps
+        self.sim_time += 1.0/self.sim_fps
 
+    # kit load event
+    def on_load(self, stage, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.init(stage)
+            self.render(is_live)
 
-stage.save()
+    # kit update event
+    def on_update(self, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.update()
+            self.render(is_live)
+
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_cloth.usd")
+
+    example = Example()
+    example.init(stage_path)
+
+    for i in range(example.sim_frames):
+        example.update()
+        example.render()
+
+    example.renderer.save()

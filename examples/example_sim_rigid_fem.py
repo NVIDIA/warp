@@ -24,80 +24,110 @@ import warp.sim.render
 
 wp.init()
 
-# params
-sim_width = 8
-sim_height = 8
 
-sim_fps = 60.0
-sim_substeps = 64
-sim_duration = 5.0
-sim_frames = int(sim_duration*sim_fps)
-sim_dt = (1.0/sim_fps)/sim_substeps
-sim_time = 0.0
-sim_iterations = 1
-sim_relaxation = 1.0
+class Example:
 
-device = wp.get_preferred_device()
+    def init_params(self):
 
-builder = wp.sim.ModelBuilder()
+        self.sim_width = 8
+        self.sim_height = 8
 
+        self.sim_fps = 60.0
+        self.sim_substeps = 64
+        self.sim_duration = 5.0
+        self.sim_frames = int(self.sim_duration*self.sim_fps)
+        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_time = 0.0
+        self.sim_iterations = 1
+        self.sim_relaxation = 1.0
 
-builder.add_soft_grid(
-    pos=(0.0, 0.0, 0.0), 
-    rot=wp.quat_identity(), 
-    vel=(0.0, 0.0, 0.0), 
-    dim_x=20, 
-    dim_y=10, 
-    dim_z=10,
-    cell_x=0.1, 
-    cell_y=0.1,
-    cell_z=0.1,
-    density=100.0, 
-    k_mu=50000.0, 
-    k_lambda=20000.0,
-    k_damp=0.0)
+        self.device = wp.get_preferred_device()
 
-builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
-builder.add_shape_sphere(body=0, radius=0.75, density=100.0)
+    def init(self, stage):
 
-model = builder.finalize(device=device)
-model.ground = True
-model.soft_contact_distance = 0.01
-model.soft_contact_ke = 1.e+3
-model.soft_contact_kd = 0.0
-model.soft_contact_kf = 1.e+3
+        self.init_params()
 
-integrator = wp.sim.SemiImplicitIntegrator()
+        builder = wp.sim.ModelBuilder()
 
-state_0 = model.state()
-state_1 = model.state()
+        builder.add_soft_grid(
+            pos=(0.0, 0.0, 0.0), 
+            rot=wp.quat_identity(), 
+            vel=(0.0, 0.0, 0.0), 
+            dim_x=20, 
+            dim_y=10, 
+            dim_z=10,
+            cell_x=0.1, 
+            cell_y=0.1,
+            cell_z=0.1,
+            density=100.0, 
+            k_mu=50000.0, 
+            k_lambda=20000.0,
+            k_damp=0.0)
 
-model.collide(state_0)
+        builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
+        builder.add_shape_sphere(body=0, radius=0.75, density=100.0)
 
-renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_fem.usd"))
+        self.model = builder.finalize(device=self.device)
+        self.model.ground = True
+        self.model.soft_contact_distance = 0.01
+        self.model.soft_contact_ke = 1.e+3
+        self.model.soft_contact_kd = 0.0
+        self.model.soft_contact_kf = 1.e+3
 
-for i in range(sim_frames):
-    
-    with wp.ScopedTimer("render"): 
+        self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        renderer.begin_frame(sim_time)
-        renderer.render(state_0)
-        renderer.end_frame()
+        self.state_0 = self.model.state()
+        self.state_1 = self.model.state()
 
-    with wp.ScopedTimer("simulate"):
+        self.model.collide(self.state_0)
 
-        for s in range(sim_substeps):
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
-            wp.sim.collide(model, state_0)
+    def update(self):
 
-            state_0.clear_forces()
-            state_1.clear_forces()
+        with wp.ScopedTimer("simulate", active=True):
+            for s in range(self.sim_substeps):
 
-            integrator.simulate(model, state_0, state_1, sim_dt)
-            sim_time += sim_dt
+                wp.sim.collide(self.model, self.state_0)
 
-            # swap states
-            (state_0, state_1) = (state_1, state_0)
+                self.state_0.clear_forces()
+                self.state_1.clear_forces()
 
+                self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+                self.sim_time += self.sim_dt
 
-renderer.save()
+                # swap states
+                (self.state_0, self.state_1) = (self.state_1, self.state_0)
+
+    def render(self, is_live=False):
+
+        with wp.ScopedTimer("render", active=True): 
+            time = 0.0 if is_live else self.sim_time
+
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state_0)
+            self.renderer.end_frame()
+
+    # kit load event
+    def on_load(self, stage, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.init(stage)
+            self.render(is_live)
+
+    # kit update event
+    def on_update(self, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.update()
+            self.render(is_live)
+
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_fem.usd")
+
+    example = Example()
+    example.init(stage_path)
+
+    for i in range(example.sim_frames):
+        example.update()
+        example.render()
+
+    example.renderer.save()

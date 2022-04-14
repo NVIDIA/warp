@@ -24,64 +24,97 @@ import warp.sim.render
 
 wp.init()
 
-sim_steps = 2000
-sim_dt = 1.0/120.0
-sim_time = 0.0
 
-device = wp.get_preferred_device()
-
-builder = wp.sim.ModelBuilder()
-
-builder.add_body(
-    parent=-1,
-    origin=wp.transform_identity())
+class Example:
     
-scale = 0.5
+    def init_params(self):
 
-# axis shape
-builder.add_shape_box( 
-    pos=(0.3*scale, 0.0, 0.0),
-    hx=0.25*scale,
-    hy=0.1*scale,
-    hz=0.1*scale,
-    density=100.0,
-    body=0)
+        self.sim_steps = 2000
+        self.sim_dt = 1.0/120.0
+        self.sim_time = 0.0
 
-# tip shape
-builder.add_shape_box(
-    pos=(0.0, 0.0, 0.0),
-    hx=0.05*scale,
-    hy=0.2*scale,
-    hz=1.0*scale,
-    density=100.0,
-    body=0)
+        self.scale = 0.5
 
-# initial spin 
-builder.body_qd[0] = (25.0, 0.01, 0.01, 0.0, 0.0, 0.0)
+        self.device = wp.get_preferred_device()
 
-model = builder.finalize(device)
-model.gravity[1] = 0.0
-model.ground = False
+    def init(self, stage):
 
-integrator = wp.sim.SemiImplicitIntegrator()
-state = model.state()
+        self.init_params()
 
-renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_gyroscopic.usd"))
+        builder = wp.sim.ModelBuilder()
 
-for i in range(sim_steps):
+        builder.add_body(
+            parent=-1,
+            origin=wp.transform_identity())    
 
-    state.clear_forces()
+        # axis shape
+        builder.add_shape_box( 
+            pos=(0.3*self.scale, 0.0, 0.0),
+            hx=0.25*self.scale,
+            hy=0.1*self.scale,
+            hz=0.1*self.scale,
+            density=100.0,
+            body=0)
 
-    state = integrator.simulate(model, state, state, sim_dt)   
+        # tip shape
+        builder.add_shape_box(
+            pos=(0.0, 0.0, 0.0),
+            hx=0.05*self.scale,
+            hy=0.2*self.scale,
+            hz=1.0*self.scale,
+            density=100.0,
+            body=0)
+
+        # initial spin 
+        builder.body_qd[0] = (25.0, 0.01, 0.01, 0.0, 0.0, 0.0)
+
+        self.model = builder.finalize(self.device)
+        self.model.gravity[1] = 0.0
+        self.model.ground = False
+
+        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.state = self.model.state()
+
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+
+    def update(self):
+        with wp.ScopedTimer("simulate", active=True):
+            self.state.clear_forces()
+            self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)   
     
-    renderer.begin_frame(sim_time)
-    renderer.render(state)
-    renderer.end_frame()
+    def render(self, is_live=False):
+        with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else self.sim_time
+
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state)
+            self.renderer.end_frame()
    
-    sim_time += sim_dt
+        self.sim_time += self.sim_dt
 
-renderer.save()
+    # kit load event
+    def on_load(self, stage, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.init(stage)
+            self.render(is_live)
 
+    # kit update event
+    def on_update(self, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.update()
+            self.render(is_live)
+
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_gyroscopic.usd")
+
+    example = Example()
+    example.init(stage_path)
+
+    for i in range(example.sim_steps):
+        example.update()
+        example.render()
+
+    example.renderer.save()
 
 
 

@@ -21,70 +21,100 @@ import numpy as np
 import warp as wp
 import warp.sim
 import warp.sim.render
+import warp.render
 
 wp.init()
 
-import warp.render
 
-# params
-sim_width = 8
-sim_height = 8
+class Example:
 
-sim_fps = 60.0
-sim_substeps = 64
-sim_duration = 5.0
-sim_frames = int(sim_duration*sim_fps)
-sim_dt = (1.0/sim_fps)/sim_substeps
-sim_time = 0.0
-sim_render = True
-sim_iterations = 1
-sim_relaxation = 1.0
+    def init_params(self):
 
-device = wp.get_preferred_device()
+        self.sim_width = 8
+        self.sim_height = 8
 
-builder = wp.sim.ModelBuilder()
+        self.sim_fps = 60.0
+        self.sim_substeps = 64
+        self.sim_duration = 5.0
+        self.sim_frames = int(self.sim_duration*self.sim_fps)
+        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_time = 0.0
+        self.sim_render = True
+        self.sim_iterations = 1
+        self.sim_relaxation = 1.0
 
-builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
-builder.add_shape_box(body=0, hx=0.5, hy=0.5, hz=0.5, density=1000.0, ke=2.e+5, kd=1.e+4)
+        self.device = wp.get_preferred_device()
 
-model = builder.finalize(device=device)
-model.ground = True
+    def init(self, stage):
 
-integrator = wp.sim.SemiImplicitIntegrator()
+        self.init_params()
 
-state_0 = model.state()
-state_1 = model.state()
+        builder = wp.sim.ModelBuilder()
 
-model.collide(state_0)
+        builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
+        builder.add_shape_box(body=0, hx=0.5, hy=0.5, hz=0.5, density=1000.0, ke=2.e+5, kd=1.e+4)
 
-stage = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_force.usd"))
+        self.model = builder.finalize(device=self.device)
+        self.model.ground = True
 
-for i in range(sim_frames):
-    
-    if (sim_render):
-    
+        self.integrator = wp.sim.SemiImplicitIntegrator()
+
+        self.state_0 = self.model.state()
+        self.state_1 = self.model.state()
+
+        self.model.collide(self.state_0)
+
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+
+    def update(self):
+
+        with wp.ScopedTimer("simulate"):
+
+            for s in range(self.sim_substeps):
+
+                wp.sim.collide(self.model, self.state_0)
+
+                self.state_0.clear_forces()
+                self.state_1.clear_forces()
+
+                self.state_0.body_f.assign([ [0.0, 0.0, -3000.0, 0.0, 0.0, 0.0], ])
+
+                self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+                self.sim_time += self.sim_dt
+
+                # swap states
+                (self.state_0, self.state_1) = (self.state_1, self.state_0)
+
+    def render(self, is_live=False):
+
         with wp.ScopedTimer("render"):
+            time = 0.0 if is_live else self.sim_time
 
-            stage.begin_frame(sim_time)
-            stage.render(state_0)
-            stage.end_frame()
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state_0)
+            self.renderer.end_frame()
 
-    with wp.ScopedTimer("simulate"):
+    # kit load event
+    def on_load(self, stage, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.init(stage)
+            self.render(is_live)
 
-        for s in range(sim_substeps):
-
-            wp.sim.collide(model, state_0)
-
-            state_0.clear_forces()
-            state_1.clear_forces()
-
-            state_0.body_f.assign([ [0.0, 0.0, -3000.0, 0.0, 0.0, 0.0], ])
-
-            integrator.simulate(model, state_0, state_1, sim_dt)
-            sim_time += sim_dt
-
-            # swap states
-            (state_0, state_1) = (state_1, state_0)
+    # kit update event
+    def on_update(self, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.update()
+            self.render(is_live)
 
 
-stage.save()
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_force.usd")
+
+    example = Example()
+    example.init(stage_path)
+
+    for i in range(example.sim_frames):
+        example.update()
+        example.render()
+
+    example.renderer.save()
