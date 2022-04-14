@@ -11,3 +11,4 @@ from warp.context import *
 from warp.builtins import *
 from warp.tape import *
 from warp.utils import *
+from warp.torch import *
