@@ -228,6 +228,48 @@ inline CUDA_CALLABLE mat44 transpose(const mat44& a)
     return t;
 }
 
+inline CUDA_CALLABLE mat44 determinant(const mat44& m)
+{
+    
+}
+
+inline CUDA_CALLABLE mat44 inverse(const mat44& m)
+{
+	float det = determinant(m);
+
+	if (fabsf(det) > kEps)
+	{
+		mat44 b;
+		
+		b.data[0][0] = m.data[1][1]*m.data[2][2] - m.data[1][2]*m.data[2][1]; 
+		b.data[1][0] = m.data[1][2]*m.data[2][0] - m.data[1][0]*m.data[2][2]; 
+		b.data[2][0] = m.data[1][0]*m.data[2][1] - m.data[1][1]*m.data[2][0]; 
+		
+        b.data[0][1] = m.data[0][2]*m.data[2][1] - m.data[0][1]*m.data[2][2]; 
+        b.data[1][1] = m.data[0][0]*m.data[2][2] - m.data[0][2]*m.data[2][0]; 
+        b.data[2][1] = m.data[0][1]*m.data[2][0] - m.data[0][0]*m.data[2][1]; 
+
+        b.data[0][2] = m.data[0][1]*m.data[1][2] - m.data[0][2]*m.data[1][1];
+        b.data[1][2] = m.data[0][2]*m.data[1][0] - m.data[0][0]*m.data[1][2];
+        b.data[2][2] = m.data[0][0]*m.data[1][1] - m.data[0][1]*m.data[1][0];
+
+		return b*(1.0f/det);
+	}
+	else
+	{
+		return mat44();
+	}
+}
+
+inline CUDA_CALLABLE void adj_inverse(const mat44& m, mat44& adj_m, const mat44& adj_ret)
+{
+    // todo: how to cache this from the forward pass?
+    mat44 invt = transpose(inverse(m));
+
+    // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf 2.2.3
+    adj_m -= invt*adj_ret*invt;
+}
+
 inline CUDA_CALLABLE vec3 transform_point(const mat44& m, const vec3& v)
 {
     vec4 out = mul(m, vec4(v.x, v.y, v.z, 1.0));

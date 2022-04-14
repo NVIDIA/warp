@@ -85,7 +85,6 @@ inline CUDA_CALLABLE bool operator==(const mat33& a, const mat33& b)
     return true;
 }
 
-
 inline CUDA_CALLABLE mat33 diag(const vec3& d) {
   return mat33(d.x, 0.f, 0.f, 0.f, d.y, 0.f, 0.f, 0.f, d.z);
 }
@@ -239,6 +238,43 @@ inline CUDA_CALLABLE mat33 transpose(const mat33& a)
 inline CUDA_CALLABLE float determinant(const mat33& m)
 {
     return dot(vec3(m.data[0]), cross(vec3(m.data[1]), vec3(m.data[2])));
+}
+
+inline CUDA_CALLABLE mat33 inverse(const mat33& m)
+{
+	float det = determinant(m);
+
+	if (fabsf(det) > kEps)
+	{
+		mat33 b;
+		
+		b.data[0][0] = m.data[1][1]*m.data[2][2] - m.data[1][2]*m.data[2][1]; 
+		b.data[1][0] = m.data[1][2]*m.data[2][0] - m.data[1][0]*m.data[2][2]; 
+		b.data[2][0] = m.data[1][0]*m.data[2][1] - m.data[1][1]*m.data[2][0]; 
+		
+        b.data[0][1] = m.data[0][2]*m.data[2][1] - m.data[0][1]*m.data[2][2]; 
+        b.data[1][1] = m.data[0][0]*m.data[2][2] - m.data[0][2]*m.data[2][0]; 
+        b.data[2][1] = m.data[0][1]*m.data[2][0] - m.data[0][0]*m.data[2][1]; 
+
+        b.data[0][2] = m.data[0][1]*m.data[1][2] - m.data[0][2]*m.data[1][1];
+        b.data[1][2] = m.data[0][2]*m.data[1][0] - m.data[0][0]*m.data[1][2];
+        b.data[2][2] = m.data[0][0]*m.data[1][1] - m.data[0][1]*m.data[1][0];
+
+		return b*(1.0f/det);
+	}
+	else
+	{
+		return mat33();
+	}
+}
+
+inline CUDA_CALLABLE void adj_inverse(const mat33& m, mat33& adj_m, const mat33& adj_ret)
+{
+    // todo: how to cache this from the forward pass?
+    mat33 invt = transpose(inverse(m));
+
+    // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf 2.2.3
+    adj_m -= invt*adj_ret*invt;
 }
 
 inline CUDA_CALLABLE mat33 outer(const vec3& a, const vec3& b)
