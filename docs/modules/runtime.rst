@@ -344,7 +344,7 @@ To sample the volume inside a kernel we pass a reference to it by id, and use th
       p = points[tid]
 
       # transform position to the volume's local-space
-      q = wp.volume_world_to_local(volume, p)
+      q = wp.volume_world_to_index(volume, p)
       # sample volume with trilinear interpolation     
       f = wp.volume_sample_f(volume, q, wp.Volume.LINEAR)
 

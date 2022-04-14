@@ -54,7 +54,7 @@ inline CUDA_CALLABLE void adj_quat(const vec3& v, float w, vec3& adj_v, float& a
     adj_w   += adj_ret.w;
 }
 
-// foward methods
+// forward methods
 
 inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
 {

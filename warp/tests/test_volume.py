@@ -48,8 +48,8 @@ def test_volume_sample_closest_f(volume: wp.uint64,
 
     expect_eq(wp.volume_sample_f(volume, p, wp.Volume.CLOSEST), expected)
 
-    q = wp.volume_local_to_world(volume, p)
-    q_inv = wp.volume_world_to_local(volume, q)
+    q = wp.volume_index_to_world(volume, p)
+    q_inv = wp.volume_world_to_index(volume, q)
     expect_eq(p, q_inv)
 
 
@@ -81,7 +81,7 @@ def test_volume_sample_world_f_linear_values(volume: wp.uint64,
                               values: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     q = points[tid]
-    p = wp.volume_world_to_local(volume, q)
+    p = wp.volume_world_to_index(volume, q)
     values[tid] = wp.volume_sample_f(volume, p, wp.Volume.LINEAR)
 
 # vec3f volume tests
@@ -119,8 +119,8 @@ def test_volume_sample_closest_v(volume: wp.uint64,
 
     expect_eq(wp.volume_sample_v(volume, p, wp.Volume.CLOSEST), expected)
 
-    q = wp.volume_local_to_world(volume, p)
-    q_inv = wp.volume_world_to_local(volume, q)
+    q = wp.volume_index_to_world(volume, p)
+    q_inv = wp.volume_world_to_index(volume, q)
     expect_eq(p, q_inv)
 
 
@@ -153,7 +153,7 @@ def test_volume_sample_world_v_linear_values(volume: wp.uint64,
                               values: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     q = points[tid]
-    p = wp.volume_world_to_local(volume, q)
+    p = wp.volume_world_to_index(volume, q)
     ones = wp.vec3(1.,1.,1.)
     values[tid] = wp.dot(wp.volume_sample_v(volume, p, wp.Volume.LINEAR), ones)
 
@@ -191,33 +191,33 @@ def test_volume_sample_i(volume: wp.uint64,
 
     expect_eq(wp.volume_sample_i(volume, p), wp.int64(expected))
 
-    q = wp.volume_local_to_world(volume, p)
-    q_inv = wp.volume_world_to_local(volume, q)
+    q = wp.volume_index_to_world(volume, p)
+    q_inv = wp.volume_world_to_index(volume, q)
     expect_eq(p, q_inv)
 
 
-# Local/world transformation tests
+# Index/world transformation tests
 @wp.kernel
-def test_volume_local_to_world(volume: wp.uint64,
+def test_volume_index_to_world(volume: wp.uint64,
                    points: wp.array(dtype=wp.vec3),
                    values: wp.array(dtype=wp.float32),
-                   xformed_points: wp.array(dtype=wp.vec3)):
+                   grad_values: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
     p = points[tid]
     ones = wp.vec3(1.,1.,1.)
-    values[tid] = wp.dot(wp.volume_local_to_world(volume, p), ones)
-    xformed_points[tid] = wp.volume_local_to_world(volume, ones)
+    values[tid] = wp.dot(wp.volume_index_to_world(volume, p), ones)
+    grad_values[tid] = wp.volume_index_to_world_dir(volume, ones)
 
 @wp.kernel
-def test_volume_world_to_local(volume: wp.uint64,
+def test_volume_world_to_index(volume: wp.uint64,
                        points: wp.array(dtype=wp.vec3),
                        values: wp.array(dtype=wp.float32),
-                       xformed_points: wp.array(dtype=wp.vec3)):
+                       grad_values: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
     p = points[tid]
     ones = wp.vec3(1.,1.,1.)
-    values[tid] = wp.dot(wp.volume_world_to_local(volume, p), ones)
-    xformed_points[tid] = wp.volume_world_to_local(volume, ones)
+    values[tid] = wp.dot(wp.volume_world_to_index(volume, p), ones)
+    grad_values[tid] = wp.volume_world_to_index_dir(volume, ones)
 
 
 
@@ -235,10 +235,20 @@ rng = np.random.default_rng(101215)
 #   active region: [-10,10]^3
 #   values: v[i,j,k] = (i + 2*j + 3*k, 4*i + 5*j + 6*k, 7*i + 8*j + 9*k)
 #   voxel size: 0.25
+#
+# torus
+#   index to world transformation:
+#      [0.1, 0, 0, 0]
+#      [0, 0, 0.1, 0]
+#      [0, 0.1, 0, 0]
+#      [1, 2, 3, 1]
+#   (-90 degrees rotation along X)
+#   voxel size: 0.1
 volume_paths = {
     "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb.grid")),
     "int64": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int64_grid.nvdb.grid")),
-    "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb.grid"))
+    "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb.grid")),
+    "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb.grid"))
 }
 
 volumes = {}
@@ -320,26 +330,26 @@ def register(parent):
 
             for device in devices:
                 values = wp.array(np.zeros(1), dtype=wp.float32, device=device)
-                xformed_points = wp.array(np.zeros(3), dtype=wp.vec3, device=device)
+                grad_values = wp.array(np.zeros(3), dtype=wp.vec3, device=device)
                 points = rng.uniform(-10., 10., size=(10, 3))
                 for case in points:
                     points = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_local_to_world, dim=1, inputs=[volumes["float"][device].id, points, values, xformed_points], device=device)
+                        wp.launch(test_volume_index_to_world, dim=1, inputs=[volumes["torus"][device].id, points, values, grad_values], device=device)
                     tape.backward(values)
 
                     grad_computed = tape.gradients[points].numpy()
-                    grad_expected = xformed_points.numpy()
+                    grad_expected = grad_values.numpy()
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_world_to_local, dim=1, inputs=[volumes["float"][device].id, points, values, xformed_points], device=device)
+                        wp.launch(test_volume_world_to_index, dim=1, inputs=[volumes["torus"][device].id, points, values, grad_values], device=device)
                     tape.backward(values)
 
                     grad_computed = tape.gradients[points].numpy()
-                    grad_expected = xformed_points.numpy()
+                    grad_expected = grad_values.numpy()
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
     for device in devices:

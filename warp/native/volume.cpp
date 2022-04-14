@@ -12,7 +12,6 @@
 
 #ifndef WP_CUDA
 
-#include "nanovdb/NanoVDB.h"
 #include <map>
 
 using namespace wp;
@@ -28,11 +27,11 @@ struct VolumeDesc
     // offset to the voxel values of the first leaf node realtive to buffer
     uint64_t first_voxel_data_offs;
 
-    // copy of the grids's metadata to keep on the host for device volumes, matches NanoVDB's definition
-    nanovdb::GridData grid_data;
+    // copy of the grids's metadata to keep on the host for device volumes
+    pnanovdb_grid_t grid_data;
 
-    // copy of the tree's metadata to keep on the host for device volumes, matches NanoVDB's definition
-    nanovdb::TreeData<3> tree_data;
+    // copy of the tree's metadata to keep on the host for device volumes
+    pnanovdb_tree_t tree_data;
 };
 
 // Host-side volume desciptors. Maps each CPU/GPU volume buffer address (id) to a CPU desc
@@ -66,15 +65,15 @@ void volume_rem_descriptor(uint64_t id)
 template<Device device>
 uint64_t volume_create(void* buf, uint64_t size)
 {
-    if (size < sizeof(nanovdb::GridData) + sizeof(nanovdb::TreeData<3>)) { // This cannot be a valid NanoVDB grid with data
+    if (size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t)) { // This cannot be a valid NanoVDB grid with data
         return 0;
     }
 
     VolumeDesc volumeDesc;
-    memcpy<device, Device::CPU>(&volumeDesc.grid_data, buf, sizeof(nanovdb::GridData));
-    memcpy<device, Device::CPU>(&volumeDesc.tree_data, (nanovdb::GridData*)buf + 1, sizeof(nanovdb::TreeData<3>));
+    memcpy<device, Device::CPU>(&volumeDesc.grid_data, buf, sizeof(pnanovdb_grid_t));
+    memcpy<device, Device::CPU>(&volumeDesc.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
 
-    if (volumeDesc.grid_data.mMagic != NANOVDB_MAGIC_NUMBER) {
+    if (volumeDesc.grid_data.magic != PNANOVDB_MAGIC_NUMBER) {
         return 0;
     }
 
@@ -83,7 +82,7 @@ uint64_t volume_create(void* buf, uint64_t size)
     memcpy<device, device>(volumeDesc.buffer, buf, size);
 
     volumeDesc.first_voxel_data_offs =
-        sizeof(nanovdb::GridData) + volumeDesc.tree_data.mNodeOffset[0] + PNANOVDB_GRID_TYPE_GET(PNANOVDB_GRID_TYPE_FLOAT, leaf_off_table);
+        sizeof(pnanovdb_grid_t) + volumeDesc.tree_data.node_offset_leaf + PNANOVDB_GRID_TYPE_GET(PNANOVDB_GRID_TYPE_FLOAT, leaf_off_table);
 
     const uint64_t id = (uint64_t)volumeDesc.buffer;
 

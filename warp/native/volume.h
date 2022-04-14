@@ -45,51 +45,34 @@ CUDA_CALLABLE inline pnanovdb_root_handle_t get_root(const pnanovdb_buf_t& buf,
     const auto tree = pnanovdb_grid_get_tree(buf, grid);
     return pnanovdb_tree_get_root(buf, tree);
 }
-
-template<typename T>
-inline T zero() { return T{0.f} ;}
-template<>
-inline int64_t zero<int64_t>() { return 0; }
 } // namespace volume
 
-template<typename T>
-CUDA_CALLABLE inline T pnano_read(pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk);
-
-template<>
-CUDA_CALLABLE inline float pnano_read<float>(pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+CUDA_CALLABLE inline void pnano_read(float& result, pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
     const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_FLOAT, buf, root, ijk);
-    return pnanovdb_read_float(buf, address);
+    result = pnanovdb_read_float(buf, address);
 }
-template<>
-CUDA_CALLABLE inline int64_t pnano_read<int64_t>(pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+CUDA_CALLABLE inline void pnano_read(int64_t& result, pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
     const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_INT64, buf, root, ijk);
-    return pnanovdb_read_int64(buf, address);
+    result = pnanovdb_read_int64(buf, address);
 }
-template<>
-CUDA_CALLABLE inline vec3 pnano_read<vec3>(pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+CUDA_CALLABLE inline void pnano_read(vec3& result, pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
     const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, root, ijk);
     const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
-    return {v.x, v.y, v.z};
+    result = {v.x, v.y, v.z};
 }
 
-template<typename T>
-CUDA_CALLABLE inline T pnano_read(pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk);
-
-template<>
-CUDA_CALLABLE inline float pnano_read<float>(pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+CUDA_CALLABLE inline void pnano_read(float& result, pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
     pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_FLOAT, buf, acc, ijk);
-    return pnanovdb_read_float(buf, address);
+    result = pnanovdb_read_float(buf, address);
 }
-template<>
-CUDA_CALLABLE inline int64_t pnano_read<int64_t>(pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+CUDA_CALLABLE inline void pnano_read(int64_t& result, pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
     pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_INT64, buf, acc, ijk);
-    return pnanovdb_read_int64(buf, address);
+    result = pnanovdb_read_int64(buf, address);
 }
-template<>
-CUDA_CALLABLE inline vec3 pnano_read<vec3>(pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+CUDA_CALLABLE inline void pnano_read(vec3& result, pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
     pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, acc, ijk);
     const pnanovdb_vec3_t v = pnanovdb_read_vec3f(buf, address);
-    return {v.x, v.y, v.z};
+    result = {v.x, v.y, v.z};
 }
 
 // Sampling the volume at the given index-space coordinates, uvw can be fractional
@@ -103,7 +86,9 @@ CUDA_CALLABLE inline T volume_sample(uint64_t id, vec3 uvw, int sampling_mode)
     if (sampling_mode == volume::CLOSEST)
     {
         const pnanovdb_coord_t ijk = pnanovdb_vec3_round_to_coord(uvw_pnano);
-        return pnano_read<T>(buf, root, PNANOVDB_REF(ijk));
+        T val;
+        pnano_read(val, buf, root, PNANOVDB_REF(ijk));
+        return val;
     }
     else if (sampling_mode == volume::LINEAR)
     {
@@ -117,15 +102,16 @@ CUDA_CALLABLE inline T volume_sample(uint64_t id, vec3 uvw, int sampling_mode)
 
         pnanovdb_readaccessor_t accessor;
         pnanovdb_readaccessor_init(PNANOVDB_REF(accessor), root);
-        T val = volume::zero<T>();
+        T val = 0;
         const float wx[2]{ 1 - ijk_frac.x, ijk_frac.x };
         const float wy[2]{ 1 - ijk_frac.y, ijk_frac.y };
         const float wz[2]{ 1 - ijk_frac.z, ijk_frac.z };
         for (int idx = 0; idx < 8; ++idx)
         {
             const pnanovdb_coord_t& offs = OFFSETS[idx];
-            const pnanovdb_coord_t ijkShifted = pnanovdb_coord_add(ijk, offs);
-            const T v = pnano_read<T>(buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
+            const pnanovdb_coord_t ijk_shifted = pnanovdb_coord_add(ijk, offs);
+            T v;
+            pnano_read(v, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijk_shifted));
             val = add(val, wx[offs.x] * wy[offs.y] * wz[offs.z] * v);
         }
         return val;
@@ -184,8 +170,9 @@ CUDA_CALLABLE inline void adj_volume_sample_f(
     for (int idx = 0; idx < 8; ++idx)
     {
         const pnanovdb_coord_t& offs = OFFSETS[idx];
-        const pnanovdb_coord_t ijkShifted = pnanovdb_coord_add(ijk, offs);
-        const float v = pnano_read<float>(buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
+        const pnanovdb_coord_t ijk_shifted = pnanovdb_coord_add(ijk, offs);
+        float v;
+        pnano_read(v, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijk_shifted));
         const vec3 signs(offs.x * 2 - 1, offs.y * 2 - 1, offs.z * 2 - 1);
         const vec3 grad_w(signs.x * wy[offs.y] * wz[offs.z], signs.y * wx[offs.x] * wz[offs.z], signs.z * wx[offs.x] * wy[offs.y]); 
         dphi = add(dphi, mul(v, grad_w));
@@ -224,8 +211,9 @@ CUDA_CALLABLE inline void adj_volume_sample_v(
     for (int idx = 0; idx < 8; ++idx)
     {
         const pnanovdb_coord_t& offs = OFFSETS[idx];
-        const pnanovdb_coord_t ijkShifted = pnanovdb_coord_add(ijk, offs);
-        const vec3 v = pnano_read<vec3>(buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijkShifted));
+        const pnanovdb_coord_t ijk_shifted = pnanovdb_coord_add(ijk, offs);
+        vec3 v;
+        pnano_read(v, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijk_shifted));
         const vec3 signs(offs.x * 2 - 1, offs.y * 2 - 1, offs.z * 2 - 1);
         const vec3 grad_w(signs.x * wy[offs.y] * wz[offs.z], signs.y * wx[offs.x] * wz[offs.z], signs.z * wx[offs.x] * wy[offs.y]); 
         dphi[0] = add(dphi[0], mul(v.x, grad_w));
@@ -252,7 +240,9 @@ CUDA_CALLABLE inline float volume_lookup_f(uint64_t id, int32_t i, int32_t j, in
     const pnanovdb_root_handle_t root = volume::get_root(buf);
 
     const pnanovdb_coord_t ijk{ i, j, k };
-    return pnano_read<float>(buf, root, PNANOVDB_REF(ijk));
+    float val;
+    pnano_read(val, buf, root, PNANOVDB_REF(ijk));
+    return val;
 }
 
 CUDA_CALLABLE inline int64_t volume_lookup_i(uint64_t id, int32_t i, int32_t j, int32_t k)
@@ -263,7 +253,9 @@ CUDA_CALLABLE inline int64_t volume_lookup_i(uint64_t id, int32_t i, int32_t j, 
     const pnanovdb_root_handle_t root = volume::get_root(buf);
 
     const pnanovdb_coord_t ijk{ i, j, k };
-    return pnano_read<int64_t>(buf, root, PNANOVDB_REF(ijk));
+    int64_t val;
+    pnano_read(val, buf, root, PNANOVDB_REF(ijk));
+    return val;
 }
 
 CUDA_CALLABLE inline vec3 volume_lookup_v(uint64_t id, int32_t i, int32_t j, int32_t k)
@@ -274,7 +266,9 @@ CUDA_CALLABLE inline vec3 volume_lookup_v(uint64_t id, int32_t i, int32_t j, int
     const pnanovdb_root_handle_t root = volume::get_root(buf);
 
     const pnanovdb_coord_t ijk{ i, j, k };
-    return pnano_read<vec3>(buf, root, PNANOVDB_REF(ijk));
+    vec3 val;
+    pnano_read(val, buf, root, PNANOVDB_REF(ijk));
+    return val;
 }
 
 CUDA_CALLABLE inline void adj_volume_lookup_f(
@@ -295,8 +289,8 @@ CUDA_CALLABLE inline void adj_volume_lookup_v(
     // NOP
 }
 
-// Index- to world-space space transformation
-CUDA_CALLABLE inline vec3 volume_local_to_world(uint64_t id, vec3 uvw)
+// Transform position from index space to world space
+CUDA_CALLABLE inline vec3 volume_index_to_world(uint64_t id, vec3 uvw)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
@@ -305,8 +299,8 @@ CUDA_CALLABLE inline vec3 volume_local_to_world(uint64_t id, vec3 uvw)
     return { xyz.x, xyz.y, xyz.z };
 }
 
-// World- to index-space transformation
-CUDA_CALLABLE inline vec3 volume_world_to_local(uint64_t id, vec3 xyz)
+// Transform position from world space to index space
+CUDA_CALLABLE inline vec3 volume_world_to_index(uint64_t id, vec3 xyz)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
@@ -315,7 +309,7 @@ CUDA_CALLABLE inline vec3 volume_world_to_local(uint64_t id, vec3 xyz)
     return { uvw.x, uvw.y, uvw.z };
 }
 
-CUDA_CALLABLE inline void adj_volume_local_to_world(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw, const vec3& adj_ret)
+CUDA_CALLABLE inline void adj_volume_index_to_world(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw, const vec3& adj_ret)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
@@ -324,13 +318,43 @@ CUDA_CALLABLE inline void adj_volume_local_to_world(uint64_t id, vec3 uvw, uint6
     adj_uvw = add(adj_uvw, vec3{ xyz.x, xyz.y, xyz.z });
 }
 
-CUDA_CALLABLE inline void adj_volume_world_to_local(uint64_t id, vec3 xyz, uint64_t& adj_id, vec3& adj_xyz, const vec3& adj_ret)
+CUDA_CALLABLE inline void adj_volume_world_to_index(uint64_t id, vec3 xyz, uint64_t& adj_id, vec3& adj_xyz, const vec3& adj_ret)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
     const pnanovdb_vec3_t pos{ adj_ret.x, adj_ret.y, adj_ret.z };
     const pnanovdb_vec3_t uvw = pnanovdb_grid_world_to_index_dirf(buf, grid, PNANOVDB_REF(pos));
     adj_xyz = add(adj_xyz, vec3{ uvw.x, uvw.y, uvw.z });
+}
+
+// Transform direction from index space to world space
+CUDA_CALLABLE inline vec3 volume_index_to_world_dir(uint64_t id, vec3 uvw)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_vec3_t pos{ uvw.x, uvw.y, uvw.z };
+    const pnanovdb_vec3_t xyz = pnanovdb_grid_index_to_world_dirf(buf, grid, PNANOVDB_REF(pos));
+    return { xyz.x, xyz.y, xyz.z };
+}
+
+// Transform direction from world space to index space
+CUDA_CALLABLE inline vec3 volume_world_to_index_dir(uint64_t id, vec3 xyz)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_vec3_t pos{ xyz.x, xyz.y, xyz.z };
+    const pnanovdb_vec3_t uvw = pnanovdb_grid_world_to_index_dirf(buf, grid, PNANOVDB_REF(pos));
+    return { uvw.x, uvw.y, uvw.z };
+}
+
+CUDA_CALLABLE inline void adj_volume_index_to_world_dir(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw, const vec3& adj_ret)
+{
+    adj_volume_index_to_world(id, uvw, adj_id, adj_uvw, adj_ret);
+}
+
+CUDA_CALLABLE inline void adj_volume_world_to_index_dir(uint64_t id, vec3 xyz, uint64_t& adj_id, vec3& adj_xyz, const vec3& adj_ret)
+{
+    adj_volume_world_to_index(id, xyz, adj_id, adj_xyz, adj_ret);
 }
 
 } // namespace wp

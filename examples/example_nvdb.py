@@ -30,7 +30,7 @@ def volume_grad(volume: wp.uint64,
                 p: wp.vec3):
     
     eps = 1.0
-    q = wp.volume_world_to_local(volume, p)
+    q = wp.volume_world_to_index(volume, p)
 
     # compute gradient of the SDF using finite differences
     dx = wp.volume_sample_f(volume, q + wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR)
@@ -56,7 +56,7 @@ def simulate(positions: wp.array(dtype=wp.vec3),
     v = v + wp.vec3(0.0, 0.0, -980.0)*dt - v*0.1*dt
     xpred = x + v*dt
 
-    xpred_local = wp.volume_world_to_local(volume, xpred)
+    xpred_local = wp.volume_world_to_index(volume, xpred)
     d = wp.volume_sample_f(volume, xpred_local, wp.Volume.LINEAR)
 
     if (d < margin):
