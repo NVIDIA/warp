@@ -620,6 +620,23 @@ Linear Algebra
 .. function:: dense_solve_batched(b_start: array(int32), A_start: array(int32), A_dim: array(int32), A: array(float32), L: array(float32), b: array(float32), x: array(float32)) -> None
 
 
+.. function:: mlp(weights: array(float32), bias: array(float32), activation: Callable, m: int, n: int, b: int, index: int, x: array(float32), out: array(float32)) -> None
+
+   Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
+
+   :param weights: A layer's network weights with dimensions ``(m, n)``.
+   :param bias: An array with dimensions ``(n)`.
+   :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
+   :param m: The number of output dimensions
+   :param n: The number of input dimensions
+   :param b: The number of batches
+   :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
+   :param x: The feature matrix with dimensions ``(n, b)``
+   :param out: The network output with dimensions ``(m, b)``
+
+   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
+
+
 
 
 Geometry
@@ -695,6 +712,156 @@ Geometry
 
    Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.
+
+
+.. function:: intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3) -> int
+
+   Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.
+
+
+
+
+Utility
+---------------
+.. function:: printf() -> None
+
+   Allows printing formatted strings, using C-style format specifiers.
+
+
+.. function:: print(value: Any) -> None
+
+   Print variable to stdout
+
+
+.. function:: tid() -> int
+
+   Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+   where dim is the parameter passed to kernel launch.
+
+
+.. function:: select(cond: bool, arg1: Any, arg2: Any)
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: atomic_add(array: array, index: int, value: Any)
+
+   Atomically add ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_sub(array: array, index: int, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by index.
+
+
+.. function:: expect_eq(arg1: int8, arg2: int8) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: uint8, arg2: uint8) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: int16, arg2: int16) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: uint16, arg2: uint16) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: int32, arg2: int32) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: uint32, arg2: uint32) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: int64, arg2: int64) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: uint64, arg2: uint64) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: float32, arg2: float32) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: float64, arg2: float64) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: vec2, arg2: vec2) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: vec3, arg2: vec3) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: vec4, arg2: vec4) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat22, arg2: mat22) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat33, arg2: mat33) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat44, arg2: mat44) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: quat, arg2: quat) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: transform, arg2: transform) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: spatial_vector, arg2: spatial_vector) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: spatial_matrix, arg2: spatial_matrix) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_near(arg1: float, arg2: float, tolerance: float) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
+
+
+.. function:: expect_near(arg1: vec3, arg2: vec3, tolerance: float) -> None
+
+   Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
 
 
 
@@ -845,156 +1012,6 @@ Random
 .. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
 
    Divergence-free vector field based on the curl of three Perlin noise functions.
-
-
-
-
-Utility
----------------
-.. function:: printf() -> None
-
-   Allows printing formatted strings, using C-style format specifiers.
-
-
-.. function:: print(value: Any) -> None
-
-   Print variable to stdout
-
-
-.. function:: tid() -> int
-
-   Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
-   where dim is the parameter passed to kernel launch.
-
-
-.. function:: select(cond: bool, arg1: Any, arg2: Any)
-
-   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
-
-
-.. function:: atomic_add(array: array, index: int, value: Any)
-
-   Atomically add ``value`` onto the array at location given by index.
-
-
-.. function:: atomic_sub(array: array, index: int, value: Any)
-
-   Atomically subtract ``value`` onto the array at location given by index.
-
-
-.. function:: expect_eq(arg1: int8, arg2: int8) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint8, arg2: uint8) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int16, arg2: int16) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint16, arg2: uint16) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int32, arg2: int32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint32, arg2: uint32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int64, arg2: int64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint64, arg2: uint64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: float32, arg2: float32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: float64, arg2: float64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec2, arg2: vec2) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec3, arg2: vec3) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec4, arg2: vec4) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: mat22, arg2: mat22) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: mat33, arg2: mat33) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: mat44, arg2: mat44) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: quat, arg2: quat) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: transform, arg2: transform) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: spatial_vector, arg2: spatial_vector) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: spatial_matrix, arg2: spatial_matrix) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_near(arg1: float, arg2: float, tolerance: float) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
-
-
-.. function:: expect_near(arg1: vec3, arg2: vec3, tolerance: float) -> None
-
-   Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
-
-
-.. function:: mlp(weights: array(float32), bias: array(float32), activation: Callable, m: int, n: int, b: int, index: int, x: array(float32), out: array(float32)) -> None
-
-   Evaluate an MLP in the form out = activation(weights*x + bias) for each batch
 
 
 

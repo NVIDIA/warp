@@ -118,19 +118,6 @@ inline CUDA_CALLABLE int sign(int x) { return x < 0 ? -1 : 1; }
 inline CUDA_CALLABLE int clamp(int x, int a, int b) { return min(max(a, x), b); }
 inline CUDA_CALLABLE int floordiv(int a, int b) { return a/b; }
 
-// implements for-loop comparison to emulate Python range() loops with negative arguments
-inline CUDA_CALLABLE bool cmp(int iter, int end, int step)
-{
-    if (step == 0)
-        // degenerate case where step == 0
-        return false;
-    if (step > 0)
-        // normal case where step > 0
-        return iter < end;
-    else
-        // reverse case where step < 0
-        return iter > end;
-}
 
 inline CUDA_CALLABLE void adj_mul(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_div(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
@@ -461,6 +448,7 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 #include "rand.h"
 #include "noise.h"
 #include "volume.h"
+#include "range.h"
 
 //--------------
 namespace wp

@@ -163,8 +163,8 @@ def make_matrix_test(dim, matrix, vector):
         result_m = np.matmul(a,b) + c*2.0
         result_x = np.matmul(result_m, x)
 
-        assert_np_equal(result_m_array.numpy(), result_m, tol=1.e-6)
-        assert_np_equal(result_x_array.numpy(), result_x, tol=1.e-6)
+        assert_np_equal(result_m_array.numpy(), result_m, tol=1.e-5)
+        assert_np_equal(result_x_array.numpy(), result_x, tol=1.e-5)
 
 
     return test_matrix

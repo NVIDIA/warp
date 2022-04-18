@@ -16,6 +16,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Callable
 
 from warp.types import *
 from warp.utils import *
@@ -465,7 +466,7 @@ class Runtime:
 
             else:
                 # Python < 3.8 we add dll directory to path
-                os.environ["PATH"] += os.pathsep + bin_path
+                os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
 
 
             warp_lib = "warp.dll"
@@ -997,6 +998,8 @@ def type_str(t):
         return "None"
     elif t == Any:
         return "Any"
+    elif t == Callable:
+        return "Callable"
     elif (isinstance(t, array)):
         return f"array({t.dtype.__name__})"
     else:

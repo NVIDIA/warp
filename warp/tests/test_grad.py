@@ -10,7 +10,6 @@ import warp as wp
 from warp.tests.test_base import *
 
 wp.init()
-wp.config.mode = "debug"
 
 @wp.kernel
 def scalar_grad(x: wp.array(dtype=float),
@@ -22,9 +21,6 @@ def scalar_grad(x: wp.array(dtype=float),
 
 def test_scalar_grad(test, device):
 
-    n = 32
-    val = np.ones(n, dtype=np.float32)
-
     x = wp.array([3.0], dtype=float, device=device, requires_grad=True)
     y = wp.zeros_like(x)
 
@@ -34,7 +30,7 @@ def test_scalar_grad(test, device):
 
     tape.backward(y)
 
-    print(tape.gradients[x])
+    assert_np_equal(tape.gradients[x].numpy(), np.array(6.0))
    
 
 
@@ -121,39 +117,69 @@ def test_for_loop_nested_if_grad(test, device):
     assert_np_equal(sum.numpy(), np.sum(expected_val))
     assert_np_equal(tape.gradients[x].numpy(), np.array(expected_grad))
 
-# replay while loop in backwards pass
+
 
 @wp.kernel
-def while_loop_grad(n: int, 
-                    x: wp.array(dtype=float),
-                    s: wp.array(dtype=float)):
+def for_loop_grad_nested(n: int, 
+                         x: wp.array(dtype=float),
+                         s: wp.array(dtype=float)):
 
-    
-    tid = wp.tid()
-        
     sum = float(0.0)
-    i = int(0)
 
-    while i < n:
-        sum = sum + x[i]*2.2
-        i = i + 1
+    for i in range(n):
+        for j in range(n):
+            sum = sum + x[i*n + j]*float(i*n + j) + 1.0
 
     s[0] = sum
 
-def test_while_loop_grad(test, device):
 
-    n = 32
-    x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
-    sum = wp.zeros(1, dtype=wp.float32, device=device)
+def test_for_loop_nested_for_grad(test, device):
+    
+    x = wp.zeros(9, dtype=float, device=device, requires_grad=True)
+    s = wp.zeros(1, dtype=float, device=device)
 
     tape = wp.Tape()
     with tape:
-        wp.launch(while_loop_grad, dim=1, inputs=[n, x, sum], device=device)
-   
-    tape.backward(loss=sum)
+        wp.launch(for_loop_grad_nested, dim=1, inputs=[3, x, s], device=device)
 
-    assert_np_equal(sum.numpy(), 2.0*np.sum(x.numpy()))
-    assert_np_equal(tape.gradients[x].numpy(), 2.0*np.ones_like(x.numpy()))
+    tape.backward(s)
+
+    assert_np_equal(s.numpy(), np.array([9.0]))
+    assert_np_equal(tape.gradients[x].numpy(), np.arange(0.0, 9.0, 1.0))
+
+
+# differentiating thought most while loops is not supported
+# since doing things like i = i + 1 breaks adjointing
+
+# @wp.kernel
+# def while_loop_grad(n: int, 
+#                     x: wp.array(dtype=float),
+#                     c: wp.array(dtype=int),
+#                     s: wp.array(dtype=float)):
+
+#     tid = wp.tid()
+
+#     while i < n:
+#         s[0] = s[0] + x[i]*2.0
+#         i = i + 1
+
+        
+
+# def test_while_loop_grad(test, device):
+
+#     n = 32
+#     x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
+#     c = wp.zeros(1, dtype=int, device=device)
+#     sum = wp.zeros(1, dtype=wp.float32, device=device)
+
+#     tape = wp.Tape()
+#     with tape:
+#         wp.launch(while_loop_grad, dim=1, inputs=[n, x, c, sum], device=device)
+   
+#     tape.backward(loss=sum)
+
+#     assert_np_equal(sum.numpy(), 2.0*np.sum(x.numpy()))
+#     assert_np_equal(tape.gradients[x].numpy(), 2.0*np.ones_like(x.numpy()))
 
 
 
@@ -232,10 +258,11 @@ def register(parent):
         pass
 
     #add_function_test(TestGrad, "test_while_loop_grad", test_while_loop_grad, devices=devices)
+    add_function_test(TestGrad, "test_for_loop_nested_for_grad", test_for_loop_nested_for_grad, devices=devices)
     add_function_test(TestGrad, "test_scalar_grad", test_scalar_grad, devices=devices)
     add_function_test(TestGrad, "test_for_loop_grad", test_for_loop_grad, devices=devices)
     add_function_test(TestGrad, "test_for_loop_nested_if_grad", test_for_loop_nested_if_grad, devices=devices)
-    #add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)
+    add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)
 
     return TestGrad
 

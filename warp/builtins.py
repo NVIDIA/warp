@@ -333,6 +333,23 @@ add_builtin("dense_solve_batched",
                  "b": array(dtype=float),
                  "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
+
+add_builtin("mlp", input_types={"weights": array(dtype=float), "bias": array(dtype=float), "activation": Callable, "m": int, "n": int, "b": int, "index": int, "x": array(dtype=float), "out": array(dtype=float)}, value_type=None, skip_replay=True, 
+    doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
+
+   :param weights: A layer's network weights with dimensions ``(m, n)``.
+   :param bias: An array with dimensions ``(n)`.
+   :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
+   :param m: The number of output dimensions
+   :param n: The number of input dimensions
+   :param b: The number of batches
+   :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
+   :param x: The feature matrix with dimensions ``(n, b)``
+   :param out: The network output with dimensions ``(m, b)``
+
+   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).""", group="Linear Algebra")
+
+
 #---------------------------------
 # Geometry
 
@@ -390,6 +407,23 @@ add_builtin("hash_grid_query_next", input_types={"query": hash_grid_query_t, "in
 add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, value_type=int, group="Geometry",
     doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.""")
+
+add_builtin("intersect_tri_tri", input_types={"v0": vec3, "v1": vec3, "v2": vec3, "u0": vec3, "u1": vec3, "u2": vec3}, value_type=int, group="Geometry", 
+    doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.")
+
+#---------------------------------
+# Ranges
+
+add_builtin("range", input_types={"end": int}, value_type=range_t, group="Utility", hidden=True)
+add_builtin("range", input_types={"start": int, "end": int}, value_type=range_t, group="Utility", hidden=True)
+add_builtin("range", input_types={"start": int, "end": int, "step": int}, value_type=range_t, group="Utility", hidden=True)
+
+#---------------------------------
+# Iterators
+
+add_builtin("iter_next", input_types={"range": range_t}, value_type=int, group="Utility", hidden=True)
+add_builtin("iter_next", input_types={"query": hash_grid_query_t}, value_type=int, group="Utility", hidden=True)
+add_builtin("iter_next", input_types={"query": mesh_query_aabb_t}, value_type=int, group="Utility", hidden=True)
 
 #---------------------------------
 # Volumes 
@@ -564,9 +598,6 @@ for t in scalar_types + vector_types:
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 add_builtin("expect_near", input_types={"arg1": vec3, "arg2": vec3, "tolerance": float}, value_type=None, doc="Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
-
-
-add_builtin("mlp", input_types={"weights": array(dtype=float), "bias": array(dtype=float), "activation": Callable, "m": int, "n": int, "b": int, "index": int, "x": array(dtype=float), "out": array(dtype=float)}, value_type=None, skip_replay=True, doc="Evaluate an MLP in the form out = activation(weights*x + bias) for each batch", group="Utility")
 
 #---------------------------------
 # Operators
