@@ -110,12 +110,6 @@ add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, group="Vector
 add_builtin("normalize", input_types={"x": quat}, value_type=quat, group="Vector Math",
     doc="Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.")
 
-add_builtin("determinant", input_types={"m": mat22}, value_type=float, group="Vector Math", 
-    doc="Compute the determinant of a 2x2 matrix.")
-
-add_builtin("determinant", input_types={"m": mat33}, value_type=float, group="Vector Math", 
-    doc="Compute the determinant of a 3x3 matrix.")
-
 add_builtin("transpose", input_types={"m": mat22}, value_type=mat22, group="Vector Math",
     doc="Return the transpose of the matrix m")
 add_builtin("transpose", input_types={"m": mat33}, value_type=mat33, group="Vector Math",
@@ -124,6 +118,20 @@ add_builtin("transpose", input_types={"m": mat44}, value_type=mat44, group="Vect
     doc="Return the transpose of the matrix m")
 add_builtin("transpose", input_types={"m": spatial_matrix}, value_type=spatial_matrix, group="Vector Math",
     doc="Return the transpose of the matrix m")
+
+add_builtin("inverse", input_types={"m": mat22}, value_type=mat22, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+add_builtin("inverse", input_types={"m": mat33}, value_type=mat33, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+add_builtin("inverse", input_types={"m": mat44}, value_type=mat44, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+
+add_builtin("determinant", input_types={"m": mat22}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
+add_builtin("determinant", input_types={"m": mat33}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
+add_builtin("determinant", input_types={"m": mat44}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
 
 add_builtin("diag", input_types={"d": vec2}, value_type=mat22, group="Vector Math",
     doc="Returns a matrix with the components of the vector d on the diagonal")
