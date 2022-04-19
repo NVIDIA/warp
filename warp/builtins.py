@@ -110,12 +110,6 @@ add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, group="Vector
 add_builtin("normalize", input_types={"x": quat}, value_type=quat, group="Vector Math",
     doc="Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.")
 
-add_builtin("determinant", input_types={"m": mat22}, value_type=float, group="Vector Math", 
-    doc="Compute the determinant of a 2x2 matrix.")
-
-add_builtin("determinant", input_types={"m": mat33}, value_type=float, group="Vector Math", 
-    doc="Compute the determinant of a 3x3 matrix.")
-
 add_builtin("transpose", input_types={"m": mat22}, value_type=mat22, group="Vector Math",
     doc="Return the transpose of the matrix m")
 add_builtin("transpose", input_types={"m": mat33}, value_type=mat33, group="Vector Math",
@@ -124,6 +118,20 @@ add_builtin("transpose", input_types={"m": mat44}, value_type=mat44, group="Vect
     doc="Return the transpose of the matrix m")
 add_builtin("transpose", input_types={"m": spatial_matrix}, value_type=spatial_matrix, group="Vector Math",
     doc="Return the transpose of the matrix m")
+
+add_builtin("inverse", input_types={"m": mat22}, value_type=mat22, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+add_builtin("inverse", input_types={"m": mat33}, value_type=mat33, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+add_builtin("inverse", input_types={"m": mat44}, value_type=mat44, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+
+add_builtin("determinant", input_types={"m": mat22}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
+add_builtin("determinant", input_types={"m": mat33}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
+add_builtin("determinant", input_types={"m": mat44}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
 
 add_builtin("diag", input_types={"d": vec2}, value_type=mat22, group="Vector Math",
     doc="Returns a matrix with the components of the vector d on the diagonal")
@@ -206,6 +214,8 @@ add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, 
     doc="Rotate a vector by a quaternion.")
 add_builtin("quat_rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
     doc="Rotate a vector the inverse of a quaternion.")
+add_builtin("quat_to_matrix", input_types={"q": quat}, value_type=mat33, group="Quaternion Math",
+    doc="Convert a quaternion to a 3x3 rotation matrix.")
 
 #---------------------------------
 # Transformations 
@@ -228,7 +238,8 @@ add_builtin("transform_vector", input_types={"t": transform, "v": vec3}, value_t
     doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
 add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, group="Vector Math",
     doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
-
+add_builtin("transform_inverse", input_types={"t": transform}, value_type=transform, group="Transformations",
+    doc="Compute the inverse of the transform.")
 #---------------------------------
 # Spatial Math 
 
@@ -613,6 +624,7 @@ add_builtin("mul", input_types={"x": float, "y": float}, value_type=float, doc="
 add_builtin("mul", input_types={"x": float, "y": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": quat}, value_type=quat, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec2, "y": float}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")

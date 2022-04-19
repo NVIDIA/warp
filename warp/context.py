@@ -1036,8 +1036,8 @@ def print_builtins(file):
               ".. functions:\n"
               ".. currentmodule:: warp\n"
               "\n"
-              "Language Reference\n"
-              "==================")
+              "Kernel Reference\n"
+              "================")
 
     print(header, file=file)
 

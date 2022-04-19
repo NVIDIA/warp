@@ -121,6 +121,8 @@ def make_matrix_test(dim, matrix, vector):
                            c: wp.array(dtype=matrix),               
                            x: wp.array(dtype=vector),
                            result_m: wp.array(dtype=matrix),
+                           result_i: wp.array(dtype=matrix),
+                           result_d: wp.array(dtype=float),
                            result_x: wp.array(dtype=vector)):
 
         tid = wp.tid()
@@ -129,6 +131,11 @@ def make_matrix_test(dim, matrix, vector):
         
         result_m[tid] = m
         result_x[tid] = m*x[tid]
+
+        result_d[tid] = wp.determinant(m)
+
+        invm = wp.inverse(m)
+        result_i[tid] = m*invm
 
 
     # register a custom kernel (no decorator) function
@@ -155,15 +162,21 @@ def make_matrix_test(dim, matrix, vector):
         x_array = wp.array(x, dtype=vector, device=device)
 
         result_m_array = wp.zeros_like(a_array)
+        result_i_array = wp.zeros_like(a_array)
         result_x_array = wp.zeros_like(x_array)
-
-        wp.launch(kernel, n, inputs=[a_array, b_array, c_array, x_array, result_m_array, result_x_array], device=device)
+        result_d_array = wp.zeros(n, dtype=float, device=device)
+        
+        wp.launch(kernel, n, inputs=[a_array, b_array, c_array, x_array, result_m_array, result_i_array, result_d_array, result_x_array], device=device)
 
         # numpy reference result
         result_m = np.matmul(a,b) + c*2.0
         result_x = np.matmul(result_m, x)
+        result_i = np.array([np.eye(dim)]*n)
+        result_d = np.linalg.det(result_m)
 
         assert_np_equal(result_m_array.numpy(), result_m, tol=1.e-5)
+        assert_np_equal(result_i_array.numpy(), result_i, tol=1.e-3)
+        assert_np_equal(result_d_array.numpy(), result_d, tol=1.e-3)
         assert_np_equal(result_x_array.numpy(), result_x, tol=1.e-5)
 
 

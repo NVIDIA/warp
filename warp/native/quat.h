@@ -140,6 +140,15 @@ inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
     return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
 }
 
+inline CUDA_CALLABLE mat33 quat_to_matrix(const quat& q)
+{
+    vec3 c1 = quat_rotate(q, vec3(1.0, 0.0, 0.0));
+    vec3 c2 = quat_rotate(q, vec3(0.0, 1.0, 0.0));
+    vec3 c3 = quat_rotate(q, vec3(0.0, 0.0, 1.0));
+
+    return mat33(c1, c2, c3);
+}
+
 
 inline CUDA_CALLABLE float index(const quat& a, int idx)
 {
@@ -218,7 +227,6 @@ inline CUDA_CALLABLE void adj_quat_inverse(const quat& q, quat& adj_q, const qua
     adj_q.z -= adj_ret.z;
     adj_q.w += adj_ret.w;
 }
-
 
 // inline void adj_normalize(const quat& a, quat& adj_a, const quat& adj_ret)
 // {
@@ -343,5 +351,16 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
         adj_p.z += -r.x*(t5-t6)+r.z*(t3+(q.z*q.z)*2.0f-1.0f)+r.y*(t7+q.y*q.z*2.0f);
     }
 }
+
+inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)
+{
+    // we don't care about adjoint w.r.t. constant identity matrix
+    vec3 t;
+
+    adj_quat_rotate(q, vec3(1.0, 0.0, 0.0), adj_q, t, adj_ret.get_col(0));
+    adj_quat_rotate(q, vec3(0.0, 1.0, 0.0), adj_q, t, adj_ret.get_col(1));
+    adj_quat_rotate(q, vec3(0.0, 0.0, 1.0), adj_q, t, adj_ret.get_col(2));
+}
+
 
 } // namespace wp
