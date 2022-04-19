@@ -105,6 +105,20 @@ inline CUDA_CALLABLE mat22 add(const mat22& a, const mat22& b)
     return t;
 }
 
+inline CUDA_CALLABLE mat22 sub(const mat22& a, const mat22& b)
+{
+    mat22 t;
+    for (int i=0; i < 2; ++i)
+    {
+        for (int j=0; j < 2; ++j)
+        {
+            t.data[i][j] = a.data[i][j] - b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
 
 inline CUDA_CALLABLE mat22 mul(const mat22& a, float b)
 {
@@ -171,7 +185,7 @@ inline CUDA_CALLABLE mat22 inverse(const mat22& m)
     if (fabs(det) > kEps)
     {
         return mat22( m.data[1][1], -m.data[0][1],
-                     -m.data[1][0],  m.data[1][1])*(1.0f/det);
+                     -m.data[1][0],  m.data[0][0])*(1.0f/det);
     }
     else
     {
@@ -185,7 +199,7 @@ inline CUDA_CALLABLE void adj_inverse(const mat22& m, mat22& adj_m, const mat22&
     mat22 invt = transpose(inverse(m));
 
     // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf 2.2.3
-    adj_m -= invt*adj_ret*invt;
+    adj_m -= mul(mul(invt, adj_ret), invt);
 }
 
 inline CUDA_CALLABLE mat22 diag(const vec2& d) 

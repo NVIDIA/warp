@@ -274,7 +274,7 @@ inline CUDA_CALLABLE void adj_inverse(const mat33& m, mat33& adj_m, const mat33&
     mat33 invt = transpose(inverse(m));
 
     // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf 2.2.3
-    adj_m -= invt*adj_ret*invt;
+    adj_m -= mul(mul(invt, adj_ret), invt);
 }
 
 inline CUDA_CALLABLE mat33 outer(const vec3& a, const vec3& b)

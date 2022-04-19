@@ -228,14 +228,6 @@ inline CUDA_CALLABLE void adj_quat_inverse(const quat& q, quat& adj_q, const qua
     adj_q.w += adj_ret.w;
 }
 
-inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)
-{
-    adj_quat_rotate(q, vec3(1.0, 0.0, 0.0), adj_q, vec3(), adj_ret.get_col(0));
-    adj_quat_rotate(q, vec3(0.0, 1.0, 0.0), adj_q, vec3(), adj_ret.get_col(1));
-    adj_quat_rotate(q, vec3(0.0, 0.0, 1.0), adj_q, vec3(), adj_ret.get_col(2));
-}
-
-
 // inline void adj_normalize(const quat& a, quat& adj_a, const quat& adj_ret)
 // {
 //     float d = length(a);
@@ -359,5 +351,16 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
         adj_p.z += -r.x*(t5-t6)+r.z*(t3+(q.z*q.z)*2.0f-1.0f)+r.y*(t7+q.y*q.z*2.0f);
     }
 }
+
+inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)
+{
+    // we don't care about adjoint w.r.t. constant identity matrix
+    vec3 t;
+
+    adj_quat_rotate(q, vec3(1.0, 0.0, 0.0), adj_q, t, adj_ret.get_col(0));
+    adj_quat_rotate(q, vec3(0.0, 1.0, 0.0), adj_q, t, adj_ret.get_col(1));
+    adj_quat_rotate(q, vec3(0.0, 0.0, 1.0), adj_q, t, adj_ret.get_col(2));
+}
+
 
 } // namespace wp
