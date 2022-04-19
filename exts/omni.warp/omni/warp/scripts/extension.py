@@ -10,6 +10,8 @@ import omni.ext
 from .menu import WarpMenu
 from .common import log_info
 
+menu_on = False
+
 
 class OmniWarpExtension(omni.ext.IExt):
 
@@ -17,11 +19,13 @@ class OmniWarpExtension(omni.ext.IExt):
         log_info("OmniWarpExtension startup")
         
         wp.init()
-        self._menu = WarpMenu()
+        if menu_on:
+            self._menu = WarpMenu()
 
     def on_shutdown(self):
         log_info("OmniWarpExtension shutdown")
 
-        self._menu.shutdown()
-        self._menu = None
+        if menu_on:
+            self._menu.shutdown()
+            self._menu = None
 
