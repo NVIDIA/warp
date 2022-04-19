@@ -27,9 +27,14 @@ def read_transform(input):
     xform = Gf.Matrix4d(input.reshape((4,4)))
     return xform
 
-def read_transform_bundle(db, bundle):
-    m = Gf.Matrix4d(bundle.attribute_by_name(db.tokens.transform).value.reshape(4,4))
-    return m
+def read_transform_bundle(bundle):
+    timeline =  omni.timeline.get_timeline_interface()
+    time = timeline.get_current_time()*timeline.get_time_codes_per_seconds()
+
+    stage = omni.usd.get_context().get_stage()
+    prim = UsdGeom.Xformable(stage.GetPrimAtPath(bundle.attribute_by_name("sourcePrimPath").value))
+    return prim.ComputeLocalToWorldTransform(time)
+
 
 
 def triangulate(counts, indices):
@@ -168,7 +173,7 @@ class OgnParticleSolver:
                             collider_points = collider.attribute_by_name(db.tokens.points).value
                             collider_indices = collider.attribute_by_name(db.tokens.faceVertexIndices).value
                             collider_counts = collider.attribute_by_name(db.tokens.faceVertexCounts).value
-                            collider_xform = read_transform_bundle(db, collider)
+                            collider_xform = read_transform_bundle(collider)
 
                             # save local copy
                             state.collider_positions_current = wp.array(collider_points, dtype=wp.vec3, device=device)
@@ -190,7 +195,7 @@ class OgnParticleSolver:
                                 rot=(0.0, 0.0, 0.0, 1.0),
                                 scale=(1.0, 1.0, 1.0))
 
-                            state.collider_xform = read_transform_bundle(db, db.inputs.collider)
+                            state.collider_xform = read_transform_bundle(db.inputs.collider)
 
                     # finalize sim model
                     model = builder.finalize(device)
@@ -246,7 +251,7 @@ class OgnParticleSolver:
                         alpha = 0.0#(i+1)/sim_substeps
 
                         previous_xform = state.collider_xform
-                        current_xform = read_transform_bundle(db, db.inputs.collider)
+                        current_xform = read_transform_bundle(db.inputs.collider)
 
                         wp.launch(
                             kernel=transform_mesh, 
