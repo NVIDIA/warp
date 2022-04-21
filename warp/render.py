@@ -73,7 +73,7 @@ def bourke_color_map(low, high, v):
 class UsdRenderer:
     """A USD renderer
     """  
-    def __init__(self, path, upaxis="y"):
+    def __init__(self, stage, upaxis="y"):
         """Construct a UsdRenderer object
         
         Args:
@@ -81,7 +81,13 @@ class UsdRenderer:
             stage (Usd.Stage): A USD stage (either in memory or on disk)            
         """
 
-        self.stage = stage = Usd.Stage.CreateNew(path)
+        if isinstance(stage, str):
+            self.stage = stage = Usd.Stage.CreateNew(stage)
+        elif isinstance(stage, Usd.Stage):
+            self.stage = stage
+        else:
+            print("Failed to create stage in renderer. Please construct with stage path or stage object.")
+        self.upaxis = upaxis
 
         self.draw_points = True
         self.draw_springs = False
@@ -116,8 +122,6 @@ class UsdRenderer:
         UsdGeom.Xform(light_1.GetPrim()).AddRotateYOp().Set(value=(-70.0))
         UsdGeom.Xform(light_1.GetPrim()).AddRotateXOp().Set(value=(-45.0))
 
-
-
     def begin_frame(self, time):
         self.stage.SetEndTimeCode(time)
         self.time = time
@@ -130,8 +134,15 @@ class UsdRenderer:
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
         mesh.CreateDoubleSidedAttr().Set(True)
 
-        points = ((-size, 0.0, -size), (size, 0.0, -size), (size, 0.0, size), (-size, 0.0, size))
-        normals = ((0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0))
+        if self.upaxis == "x":
+            points = ((0.0, -size, -size), (0.0, size, -size), (0.0, size, size), (0.0, -size, size))
+            normals = ((1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0))
+        elif self.upaxis == "y":
+            points = ((-size, 0.0, -size), (size, 0.0, -size), (size, 0.0, size), (-size, 0.0, size))
+            normals = ((0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0))
+        elif self.upaxis == "z":
+            points = ((-size, -size, 0.0), (size, -size, 0.0), (size, size, 0.0), (-size, size, 0.0))
+            normals = ((0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0))
         counts = (4, )
         indices = [0, 1, 2, 3]
 

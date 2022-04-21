@@ -19,135 +19,163 @@ import numpy as np
 
 import warp as wp
 import warp.render
+from pxr import Usd, UsdGeom
 
 import os
 
 wp.init()
 
-@wp.kernel
-def deform(positions: wp.array(dtype=wp.vec3), t: float):
-    
-    tid = wp.tid()
 
-    x = positions[tid]
-    
-    offset = -wp.sin(x[0])*0.02
-    scale = wp.sin(t)
+class Example:
 
-    x = x + wp.vec3(0.0, offset*scale, 0.0)
+    def init_params(self):
 
-    positions[tid] = x
+        self.num_particles = 1000
 
+        self.sim_steps = 500
+        self.sim_dt = 1.0/60.0
 
-@wp.kernel
-def simulate(positions: wp.array(dtype=wp.vec3),
-            velocities: wp.array(dtype=wp.vec3),
-            mesh: wp.uint64,
-            restitution: float,
-            margin: float,
-            dt: float):
-    
-    
-    tid = wp.tid()
+        self.sim_time = 0.0
+        self.sim_timers = {}
 
-    x = positions[tid]
-    v = velocities[tid]
+        self.sim_restitution = 0.0
+        self.sim_margin = 0.1
 
-    v = v + wp.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
-    xpred = x + v*dt
+        self.device = wp.get_preferred_device()
 
-    face_index = int(0)
-    face_u = float(0.0)
-    face_v = float(0.0)
-    sign = float(0.0)
+    def init(self, stage):
 
-    max_dist = 1.5
-    
-    if (wp.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_u, face_v)):
+        self.init_params()
         
-        p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
+        self.renderer = wp.render.UsdRenderer(stage)
 
-        delta = xpred-p
-        
-        dist = wp.length(delta)*sign
-        err = dist - margin
+        usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
+        usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny")) 
+        usd_scale = 10.0
 
-        # mesh collision
-        if (err < 0.0):
-            n = wp.normalize(delta)*sign
-            xpred = xpred - n*err
-
-    # pbd update
-    v = (xpred - x)*(1.0/dt)
-    x = xpred
-
-    positions[tid] = x
-    velocities[tid] = v
-
-
-num_particles = 1000
-
-sim_steps = 500
-sim_dt = 1.0/60.0
-
-sim_time = 0.0
-sim_timers = {}
-
-sim_restitution = 0.0
-sim_margin = 0.1
-
-device = wp.get_preferred_device()
-
-from pxr import Usd, UsdGeom, Gf, Sdf
-
-usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
-usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny")) 
-usd_scale = 10.0
-
-# create collision mesh
-mesh = wp.Mesh(
-    points=wp.array(usd_geom.GetPointsAttr().Get()*usd_scale, dtype=wp.vec3, device=device),
-    indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int, device=device))
+        # create collision mesh
+        self.mesh = wp.Mesh(
+            points=wp.array(usd_geom.GetPointsAttr().Get()*usd_scale, dtype=wp.vec3, device=self.device),
+            indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int, device=self.device))
  
-# random particles
-init_pos = (np.random.rand(num_particles, 3) - np.array([0.5, -1.5, 0.5]))*10.0
-init_vel = np.random.rand(num_particles, 3)*0.0
+        # random particles
+        init_pos = (np.random.rand(self.num_particles, 3) - np.array([0.5, -1.5, 0.5]))*10.0
+        init_vel = np.random.rand(self.num_particles, 3)*0.0
 
-positions = wp.from_numpy(init_pos, dtype=wp.vec3, device=device)
-velocities = wp.from_numpy(init_vel, dtype=wp.vec3, device=device)
+        self.positions = wp.from_numpy(init_pos, dtype=wp.vec3, device=self.device)
+        self.velocities = wp.from_numpy(init_vel, dtype=wp.vec3, device=self.device)
 
-stage = warp.render.UsdRenderer(os.path.join(os.path.dirname(__file__), "outputs/example_mesh.usd"))
+    def update(self):
 
-for i in range(sim_steps):
+        with wp.ScopedTimer("simulate", detailed=False, dict=self.sim_timers):
 
-    with wp.ScopedTimer("simulate", detailed=False, dict=sim_timers):
+            wp.launch(
+                kernel=self.deform,
+                dim=len(self.mesh.points),
+                inputs=[self.mesh.points, self.sim_time],
+                device=self.device)
 
-        wp.launch(
-            kernel=deform,
-            dim=len(mesh.points),
-            inputs=[mesh.points, sim_time],
-            device=device)
+            # refit the mesh BVH to account for the deformation
+            self.mesh.refit()
 
-        # refit the mesh BVH to account for the deformation
-        mesh.refit()
+            wp.launch(
+                kernel=self.simulate, 
+                dim=self.num_particles, 
+                inputs=[self.positions, self.velocities, self.mesh.id, self.sim_restitution, self.sim_margin, self.sim_dt], 
+                device=self.device)
 
-        wp.launch(
-            kernel=simulate, 
-            dim=num_particles, 
-            inputs=[positions, velocities, mesh.id, sim_restitution, sim_margin, sim_dt], 
-            device=device)
+    def render(self, is_live=False):
 
-    # render
-    with wp.ScopedTimer("render", detailed=False):
+        with wp.ScopedTimer("render", detailed=False):
+            time = 0.0 if is_live else self.sim_time 
+            
+            self.renderer.begin_frame(time)
+            self.renderer.render_mesh(name="mesh", points=self.mesh.points.numpy(), indices=self.mesh.indices.numpy())
+            self.renderer.render_points(name="points", points=self.positions.numpy(), radius=self.sim_margin)
+            self.renderer.end_frame()
 
-        stage.begin_frame(sim_time)
+        self.sim_time += self.sim_dt
 
-        stage.render_mesh(name="mesh", points=mesh.points.numpy(), indices=mesh.indices.numpy())
-        stage.render_points(name="points", points=positions.numpy(), radius=sim_margin)
+    # kit load event
+    def on_load(self, stage, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.init(stage)
+            self.render(is_live)
 
-        stage.end_frame()
+    # kit update event
+    def on_update(self, is_live=False):
+        with wp.ScopedCudaGuard():
+            self.update()
+            self.render(is_live)
 
-    sim_time += sim_dt
+    @wp.kernel
+    def deform(positions: wp.array(dtype=wp.vec3), t: float):
+        
+        tid = wp.tid()
 
-stage.save()
+        x = positions[tid]
+        
+        offset = -wp.sin(x[0])*0.02
+        scale = wp.sin(t)
 
+        x = x + wp.vec3(0.0, offset*scale, 0.0)
+
+        positions[tid] = x
+
+    @wp.kernel
+    def simulate(positions: wp.array(dtype=wp.vec3),
+                velocities: wp.array(dtype=wp.vec3),
+                mesh: wp.uint64,
+                restitution: float,
+                margin: float,
+                dt: float):
+        
+        
+        tid = wp.tid()
+
+        x = positions[tid]
+        v = velocities[tid]
+
+        v = v + wp.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
+        xpred = x + v*dt
+
+        face_index = int(0)
+        face_u = float(0.0)
+        face_v = float(0.0)
+        sign = float(0.0)
+
+        max_dist = 1.5
+        
+        if (wp.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_u, face_v)):
+            
+            p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
+
+            delta = xpred-p
+            
+            dist = wp.length(delta)*sign
+            err = dist - margin
+
+            # mesh collision
+            if (err < 0.0):
+                n = wp.normalize(delta)*sign
+                xpred = xpred - n*err
+
+        # pbd update
+        v = (xpred - x)*(1.0/dt)
+        x = xpred
+
+        positions[tid] = x
+        velocities[tid] = v
+
+
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_mesh.usd")
+
+    example = Example()
+    example.init(stage_path)
+
+    for i in range(example.sim_steps):
+        example.update()
+        example.render()
+
+    example.renderer.save()
