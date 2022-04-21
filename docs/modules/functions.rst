@@ -461,6 +461,11 @@ Quaternion Math
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
+.. function:: quat_from_matrix(m: mat33) -> quat
+
+   Construct a quaternion from a 3x3 matrix.
+
+
 .. function:: quat_inverse(q: quat) -> quat
 
    Compute quaternion conjugate.
@@ -617,7 +622,7 @@ Linear Algebra
 
 .. function:: mlp(weights: array(float32), bias: array(float32), activation: Callable, m: int, n: int, b: int, index: int, x: array(float32), out: array(float32)) -> None
 
-   Evaluate a multi-layer perceptron (MLP) layer in the form ``out = act(weights*x + bias)``. 
+   Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
 
    :param weights: A layer's network weights with dimensions ``(m, n)``.
    :param bias: An array with dimensions ``(n)`.
@@ -707,6 +712,11 @@ Geometry
 
    Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.
+
+
+.. function:: intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3) -> int
+
+   Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.
 
 
 
@@ -849,33 +859,63 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
 
+.. function:: expect_near(arg1: vec3, arg2: vec3, tolerance: float) -> None
+
+   Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
+
+
 
 
 Volumes
 ---------------
-.. function:: volume_sample_world(id: uint64, xyz: vec3, sampling_mode: int) -> float
-
-   Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
-
-
-.. function:: volume_sample_local(id: uint64, uvw: vec3, sampling_mode: int) -> float
+.. function:: volume_sample_f(id: uint64, uvw: vec3, sampling_mode: int) -> float
 
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
-.. function:: volume_lookup(id: uint64, i: int, j: int, k: int) -> float
+.. function:: volume_lookup_f(id: uint64, i: int, j: int, k: int) -> float
 
    Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
-.. function:: volume_transform(id: uint64, uvw: vec3) -> vec3
+.. function:: volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int) -> vec3
 
-   Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.
+   Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
-.. function:: volume_transform_inv(id: uint64, xyz: vec3) -> vec3
+.. function:: volume_lookup_v(id: uint64, i: int, j: int, k: int) -> vec3
 
-   Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.
+   Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_sample_i(id: uint64, uvw: vec3) -> int64
+
+   Sample the int64 volume given by ``id`` at the volume local-space point ``uvw``. 
+
+
+.. function:: volume_lookup_i(id: uint64, i: int, j: int, k: int) -> int64
+
+   Returns the int64 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_index_to_world(id: uint64, uvw: vec3) -> vec3
+
+   Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.
+
+
+.. function:: volume_world_to_index(id: uint64, xyz: vec3) -> vec3
+
+   Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
+
+
+.. function:: volume_index_to_world_dir(id: uint64, uvw: vec3) -> vec3
+
+   Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.
+
+
+.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3) -> vec3
+
+   Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
 
 
 

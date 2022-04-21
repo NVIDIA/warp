@@ -1,44 +1,21 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
-  
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>Runtime Reference &mdash; Warp  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../_static/css/nvidia.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/css/nvidia.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/nvidia.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
         <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
         <script src="../_static/jquery.js"></script>
         <script src="../_static/underscore.js"></script>
         <script src="../_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="../_static/js/theme.js"></script>
-
-    
+    <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Language Reference" href="functions.html" />
@@ -47,36 +24,17 @@
 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="../index.html" class="icon icon-home"> Warp
-          
-
-          
-            
             <img src="../_static/logo.png" class="logo" alt="Logo"/>
-          
           </a>
-
-          
-            
-            
               <div class="version">
                 0.1.25
               </div>
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -84,18 +42,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
@@ -141,76 +88,35 @@
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Language Reference</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../index.html">Warp</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-        
       <li>Runtime Reference</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
-          
             <a href="../_sources/modules/runtime.rst.txt" rel="nofollow"> View page source</a>
-          
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
-  <div class="section" id="runtime-reference">
+             
+  <section id="runtime-reference">
 <h1>Runtime Reference<a class="headerlink" href="#runtime-reference" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 </div>
-<div class="section" id="initialization">
+<section id="initialization">
 <h2>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h2>
 <p>Before use Warp should be explicitly initialized with the <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> method:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
@@ -225,8 +131,8 @@
 </pre></div>
 </div>
 <p>These device strings can then be used to allocate memory and launch kernels as described below.</p>
-</div>
-<div class="section" id="kernels">
+</section>
+<section id="kernels">
 <h2>Kernels<a class="headerlink" href="#kernels" title="Permalink to this headline">¶</a></h2>
 <p>In Warp, kernels are defined as Python functions, decorated with the <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code> decorator. Kernels have a 1:1 correspondence with CUDA kernels, and may be launched with any number of parallel execution threads:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
@@ -259,10 +165,10 @@
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>kernel</strong> – The name of a Warp kernel function, decorated with the &#64;warp.kernel decorator</p></li>
 <li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – The number of threads to launch the kernel with</p></li>
-<li><p><strong>inputs</strong> (<em>List</em>) – The input parameters to the kernel</p></li>
-<li><p><strong>outputs</strong> (<em>List</em>) – The output parameters (optional)</p></li>
-<li><p><strong>adj_inputs</strong> (<em>List</em>) – The adjoint inputs (optional)</p></li>
-<li><p><strong>adj_outputs</strong> (<em>List</em>) – The adjoint outputs (optional)</p></li>
+<li><p><strong>inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The input parameters to the kernel</p></li>
+<li><p><strong>outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The output parameters (optional)</p></li>
+<li><p><strong>adj_inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The adjoint inputs (optional)</p></li>
+<li><p><strong>adj_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The adjoint outputs (optional)</p></li>
 <li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The device to launch on</p></li>
 <li><p><strong>adjoint</strong> – Whether to run forward or backward pass (typically use False)</p></li>
 </ul>
@@ -274,8 +180,8 @@
 <p class="admonition-title">Note</p>
 <p>Currently kernels launched on <code class="docutils literal notranslate"><span class="pre">cpu</span></code> devices will be executed in serial. Kernels launched on <code class="docutils literal notranslate"><span class="pre">cuda</span></code> devices will be launched in parallel with a fixed block-size.</p>
 </div>
-</div>
-<div class="section" id="arrays">
+</section>
+<section id="arrays">
 <h2>Arrays<a class="headerlink" href="#arrays" title="Permalink to this headline">¶</a></h2>
 <p>Arrays are the fundamental memory abstraction in Warp; they are created through the following global constructors:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
@@ -320,7 +226,7 @@
 </div>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.zeros">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">n</span></em>, <em class="sig-param"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></em>, <em class="sig-param"><span class="pre">device='cpu'</span></em>, <em class="sig-param"><span class="pre">requires_grad=False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device='cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a zero-initialized array</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -359,7 +265,7 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.empty">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">empty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">n</span></em>, <em class="sig-param"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></em>, <em class="sig-param"><span class="pre">device='cpu'</span></em>, <em class="sig-param"><span class="pre">requires_grad=False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.empty" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">empty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device='cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.empty" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns an uninitialized array</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -401,7 +307,7 @@
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.array">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.array" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.array" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructs a new Warp array object from existing data.</p>
 <p>When the <code class="docutils literal notranslate"><span class="pre">data</span></code> argument is a valid list, tuple, or ndarray the array will be constructed from this object’s data.
 For objects that are not stored sequentially in memory (e.g.: a list), then the data will first
@@ -427,10 +333,10 @@ and dtype parameter appropriately.</p>
 </dl>
 </dd></dl>
 
-</div>
-<div class="section" id="data-types">
+</section>
+<section id="data-types">
 <h2>Data Types<a class="headerlink" href="#data-types" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="scalar-types">
+<section id="scalar-types">
 <h3>Scalar Types<a class="headerlink" href="#scalar-types" title="Permalink to this headline">¶</a></h3>
 <p>The following scalar storage types are supported for array structures:</p>
 <table class="docutils align-default">
@@ -476,8 +382,8 @@ and dtype parameter appropriately.</p>
 <p class="admonition-title">Note</p>
 <p>Currently Warp treats <code class="docutils literal notranslate"><span class="pre">int32</span></code> and <code class="docutils literal notranslate"><span class="pre">float32</span></code> as the two basic scalar <em>compute types</em>, and all other types as <em>storage types</em>. Storage types can be loaded and stored to arrays, but not participate in arithmetic operations directly. Users should cast storage types to a compute type (<code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">float</span></code>) to perform computations.</p>
 </div>
-</div>
-<div class="section" id="vector-types">
+</section>
+<section id="vector-types">
 <h3>Vector Types<a class="headerlink" href="#vector-types" title="Permalink to this headline">¶</a></h3>
 <p>Warp provides built-in math and geometry types for common simulation and graphics problems. A full reference for operators and functions for these types is available in the <a class="reference internal" href="functions.html"><span class="doc">Language Reference</span></a>.</p>
 <table class="docutils align-default">
@@ -518,8 +424,8 @@ and dtype parameter appropriately.</p>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="type-conversions">
+</section>
+<section id="type-conversions">
 <h3>Type Conversions<a class="headerlink" href="#type-conversions" title="Permalink to this headline">¶</a></h3>
 <p>Warp is particularly strict regarding type conversions and does not perform <em>any</em> implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetric operators match, e.g.: <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">float(0.0)</span> <span class="pre">+</span> <span class="pre">int(4)</span></code> will result in an error. This can be surprising for users that are accustomed to C-type conversions but avoids a class of common bugs that result from implicit conversions.</p>
 <p>In addition, users should always cast storage types to a compute type (<code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">float</span></code>) before computation. Compute types can be converted back to storage types through explicit casting, e.g.: <code class="docutils literal notranslate"><span class="pre">byte_array[index]</span> <span class="pre">=</span> <span class="pre">wp.uint8(i)</span></code>.</p>
@@ -527,9 +433,9 @@ and dtype parameter appropriately.</p>
 <p class="admonition-title">Note</p>
 <p>Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using <code class="docutils literal notranslate"><span class="pre">int()</span></code> or <code class="docutils literal notranslate"><span class="pre">float()</span></code> constructors.</p>
 </div>
-</div>
-</div>
-<div class="section" id="constants">
+</section>
+</section>
+<section id="constants">
 <h2>Constants<a class="headerlink" href="#constants" title="Permalink to this headline">¶</a></h2>
 <p>In general, Warp kernels cannot access variables in the global Python interpreter state. One exception to this is for compile-time constants, which may be declared globally (or as class attributes) and folded into the kernel definition.</p>
 <p>Constants are defined using the <code class="docutils literal notranslate"><span class="pre">warp.constant</span></code> type. An example is shown below:</p>
@@ -552,7 +458,7 @@ and dtype parameter appropriately.</p>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.constant">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">constant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.constant" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">constant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.constant" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class to declare compile-time constants accessible from Warp kernels</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -561,10 +467,10 @@ and dtype parameter appropriately.</p>
 </dl>
 </dd></dl>
 
-</div>
-<div class="section" id="operators">
+</section>
+<section id="operators">
 <h2>Operators<a class="headerlink" href="#operators" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="boolean-operators">
+<section id="boolean-operators">
 <h3>Boolean Operators<a class="headerlink" href="#boolean-operators" title="Permalink to this headline">¶</a></h3>
 <table class="docutils align-default">
 <colgroup>
@@ -587,8 +493,8 @@ and dtype parameter appropriately.</p>
 <p class="admonition-title">Note</p>
 <p>Expressions such as <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">(a</span> <span class="pre">and</span> <span class="pre">b):</span></code> currently do not perform short-circuit evaluation. In this case <code class="docutils literal notranslate"><span class="pre">b</span></code> will also be evaluated even when <code class="docutils literal notranslate"><span class="pre">a</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>. Users should take care to ensure that secondary conditions are safe to evaluate (e.g.: do not index out of bounds) in all cases.</p>
 </div>
-</div>
-<div class="section" id="comparison-operators">
+</section>
+<section id="comparison-operators">
 <h3>Comparison Operators<a class="headerlink" href="#comparison-operators" title="Permalink to this headline">¶</a></h3>
 <table class="docutils align-default">
 <colgroup>
@@ -616,8 +522,8 @@ and dtype parameter appropriately.</p>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section" id="arithmetic-operators">
+</section>
+<section id="arithmetic-operators">
 <h3>Arithmetic Operators<a class="headerlink" href="#arithmetic-operators" title="Permalink to this headline">¶</a></h3>
 <table class="docutils align-default">
 <colgroup>
@@ -652,9 +558,9 @@ and dtype parameter appropriately.</p>
 <p class="admonition-title">Note</p>
 <p>Arguments types to operators should match since implicit conversions are not performed, users should use the type constructors <code class="docutils literal notranslate"><span class="pre">float()</span></code>, <code class="docutils literal notranslate"><span class="pre">int()</span></code> to cast variables to the correct type. Also note that the multiplication expression <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">*</span> <span class="pre">b</span></code> is used to represent scalar multiplication and matrix multiplication. Currently the <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> operator is not supported in this version.</p>
 </div>
-</div>
-</div>
-<div class="section" id="meshes">
+</section>
+</section>
+<section id="meshes">
 <h2>Meshes<a class="headerlink" href="#meshes" title="Permalink to this headline">¶</a></h2>
 <p>Warp provides a <code class="docutils literal notranslate"><span class="pre">warp.Mesh</span></code> class to manage triangle mesh data. To create a mesh users provide a points, indices and optionally a velocity array:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mesh</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">velocities</span><span class="p">)</span>
@@ -698,7 +604,7 @@ and dtype parameter appropriately.</p>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Mesh">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">velocities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Mesh" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">velocities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Mesh" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class representing a triangle mesh.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Mesh.id">
@@ -729,8 +635,8 @@ and dtype parameter appropriately.</p>
 
 </dd></dl>
 
-</div>
-<div class="section" id="volumes">
+</section>
+<section id="volumes">
 <h2>Volumes<a class="headerlink" href="#volumes" title="Permalink to this headline">¶</a></h2>
 <p>Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids stored using the <a class="reference external" href="https://developer.nvidia.com/nanovdb">NanoVDB</a> standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.</p>
 <p>Below we give an example of creating a Volume object from an existing NanoVDB file:</p>
@@ -758,8 +664,10 @@ and dtype parameter appropriately.</p>
    <span class="c1"># load sample point in world-space</span>
    <span class="n">p</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
 
-   <span class="c1"># sample grid with trilinear interpolation</span>
-   <span class="n">f</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">volume_sample_world</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">LINEAR</span><span class="p">)</span>
+   <span class="c1"># transform position to the volume&#39;s local-space</span>
+   <span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">volume_world_to_index</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+   <span class="c1"># sample volume with trilinear interpolation</span>
+   <span class="n">f</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">volume_sample_f</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">LINEAR</span><span class="p">)</span>
 
    <span class="c1"># write result</span>
    <span class="n">samples</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span>
@@ -771,7 +679,7 @@ and dtype parameter appropriately.</p>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class representing a sparse grid.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.CLOSEST">
@@ -806,8 +714,8 @@ and dtype parameter appropriately.</p>
 <p class="admonition-title">See also</p>
 <p><a class="reference external" href="functions.html#volumes">Reference</a> for the volume functions available in kernels.</p>
 </div>
-</div>
-<div class="section" id="hash-grids">
+</section>
+<section id="hash-grids">
 <h2>Hash Grids<a class="headerlink" href="#hash-grids" title="Permalink to this headline">¶</a></h2>
 <p>Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.</p>
 <p>To support spatial neighbor queries Warp provides a <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code> object that may be created as follows:</p>
@@ -848,7 +756,7 @@ and dtype parameter appropriately.</p>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.HashGrid">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class representing a triangle mesh.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.HashGrid.id">
@@ -903,8 +811,8 @@ the radius used when performing queries.</p></li>
 
 </dd></dl>
 
-</div>
-<div class="section" id="differentiability">
+</section>
+<section id="differentiability">
 <h2>Differentiability<a class="headerlink" href="#differentiability" title="Permalink to this headline">¶</a></h2>
 <p>By default Warp generates a foward and backward (adjoint) version of each kernel definition. Buffers that participate in the chain of computation should be created with <code class="docutils literal notranslate"><span class="pre">requires_grad=True</span></code>, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -938,11 +846,11 @@ the radius used when performing queries.</p></li>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Tape">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">capture</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Tape" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">capture</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Tape" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-</div>
-<div class="section" id="graphs">
+</section>
+<section id="graphs">
 <h2>Graphs<a class="headerlink" href="#graphs" title="Permalink to this headline">¶</a></h2>
 <p>Launching kernels from Python introduces significant additional overhead compared to C++ or native programs. To address this, Warp exposes the concept of <a class="reference external" href="https://developer.nvidia.com/blog/cuda-graphs/">CUDA graphs</a> to allow recording large batches of kernels and replaying them with very little CPU overhead.</p>
 <p>To record a series of kernel launches use the <code class="docutils literal notranslate"><span class="pre">warp.capture_begin()</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.capture_end()</span></code> API as follows:</p>
@@ -995,11 +903,11 @@ This can be used to record large numbers of kernels and replay them with low-ove
 </dl>
 </dd></dl>
 
-</div>
-<div class="section" id="interopability">
+</section>
+<section id="interopability">
 <h2>Interopability<a class="headerlink" href="#interopability" title="Permalink to this headline">¶</a></h2>
 <p>Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.</p>
-<div class="section" id="numpy">
+<section id="numpy">
 <h3>NumPy<a class="headerlink" href="#numpy" title="Permalink to this headline">¶</a></h3>
 <p>Warp arrays may be converted to a NumPy array through the <code class="docutils literal notranslate"><span class="pre">warp.array.numpy()</span></code> method. When the Warp array lives on the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> device this will return a zero-copy view onto the underlying Warp allocation. If the array lives on a <code class="docutils literal notranslate"><span class="pre">cuda</span></code> device then it will first be copied back to a temporary buffer and copied to NumPy.</p>
 <p>Warp CPU arrays also implement  the <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> protocol and so can be used to construct NumPy arrays directly:</p>
@@ -1009,8 +917,8 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <span class="o">&gt;</span> <span class="p">[</span><span class="mf">1.</span> <span class="mf">2.</span> <span class="mf">3.</span><span class="p">]</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="pytorch">
+</section>
+<section id="pytorch">
 <h3>PyTorch<a class="headerlink" href="#pytorch" title="Permalink to this headline">¶</a></h3>
 <p>Warp provides helper functions to convert arrays to/from PyTorch. Please see the <code class="docutils literal notranslate"><span class="pre">warp.torch</span></code> module for more details. Example usage is shown below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp.torch</span>
@@ -1024,19 +932,19 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <span class="n">w</span> <span class="o">=</span> <span class="n">warp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="cupy-numba">
+</section>
+<section id="cupy-numba">
 <h3>CuPy/Numba<a class="headerlink" href="#cupy-numba" title="Permalink to this headline">¶</a></h3>
 <p>Warp GPU arrays support the <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol for sharing data with other Python GPU frameworks. Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol, but not the other way around.</p>
-</div>
-<div class="section" id="jax">
+</section>
+<section id="jax">
 <h3>JAX<a class="headerlink" href="#jax" title="Permalink to this headline">¶</a></h3>
 <p>Interop with JAX arrays is not currently well supported, although it is possible to first convert arrays to a Torch tensor and then to JAX via. the dlpack mechanism.</p>
-</div>
-</div>
-<div class="section" id="debugging">
+</section>
+</section>
+<section id="debugging">
 <h2>Debugging<a class="headerlink" href="#debugging" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="printing-values">
+<section id="printing-values">
 <h3>Printing Values<a class="headerlink" href="#printing-values" title="Permalink to this headline">¶</a></h3>
 <p>Often one of the best debugging methods is to simply print values from kernels. Warp supports printing all built-in types using the <code class="docutils literal notranslate"><span class="pre">print()</span></code> function, e.g.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
@@ -1055,15 +963,15 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <p class="admonition-title">Note</p>
 <p>Formatted printing is only available for scalar types (e.g.: <code class="docutils literal notranslate"><span class="pre">int</span></code> and <code class="docutils literal notranslate"><span class="pre">float</span></code>) not vector types.</p>
 </div>
-</div>
-<div class="section" id="printing-launches">
+</section>
+<section id="printing-launches">
 <h3>Printing Launches<a class="headerlink" href="#printing-launches" title="Permalink to this headline">¶</a></h3>
 <p>For complex applications it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose these issues Warp supports a simple option to print out all launches and arguments to the console:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">print_launches</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="step-through-debugging">
+</section>
+<section id="step-through-debugging">
 <h3>Step-Through Debugging<a class="headerlink" href="#step-through-debugging" title="Permalink to this headline">¶</a></h3>
 <p>It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code. Users should first compile the kernels in debug mode by setting:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;debug&quot;</span>
@@ -1074,8 +982,8 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <p class="admonition-title">Note</p>
 <p>Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.</p>
 </div>
-</div>
-<div class="section" id="cuda-verification">
+</section>
+<section id="cuda-verification">
 <h3>CUDA Verification<a class="headerlink" href="#cuda-verification" title="Permalink to this headline">¶</a></h3>
 <p>It is possible to generate out-of-bounds memory access violations through poorly formed kernel code or inputs. In this case the CUDA runtime will detect the violation and put the CUDA context into an error state. Subsequent kernel launches may silently fail which can lead to hard to diagnose issues.</p>
 <p>If a CUDA error is suspected a simple verification method is to enable:</p>
@@ -1087,61 +995,44 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <p class="admonition-title">Note</p>
 <p>Verifying CUDA state at each launch requires synchronizing CPU and GPU which has a significant overhead. Users should ensure this setting is only used during debugging.</p>
 </div>
-</div>
-</div>
-<div class="section" id="simulation">
+</section>
+</section>
+<section id="simulation">
 <h2>Simulation<a class="headerlink" href="#simulation" title="Permalink to this headline">¶</a></h2>
 <p>Warp includes a simulation package available as <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code>. This module includes implementations of many common physical simulation models, such as particles, rigid bodies, finite-elements (FEM).</p>
 <p>This module is under development and subject to change, please see the test and example scenes for usage.</p>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>
-           
           </div>
-          <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="functions.html" class="btn btn-neutral float-right" title="Language Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="introduction.html" class="btn btn-neutral float-left" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="functions.html" class="btn btn-neutral float-right" title="Language Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2022, NVIDIA.
-
-    </p>
+    <p>&#169; Copyright 2022, NVIDIA.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

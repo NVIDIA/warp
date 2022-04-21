@@ -566,6 +566,11 @@ inline CUDA_CALLABLE void print(int i)
     printf("%d\n", i);
 }
 
+inline CUDA_CALLABLE void print(int64_t i)
+{
+    printf("%lld\n", i);
+}
+
 inline CUDA_CALLABLE void print(float f)
 {
     printf("%g\n", f);
@@ -676,7 +681,7 @@ inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj
 
 
 template <typename T>
-inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const T& tolerance)
+inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const float& tolerance)
 {
     if (abs(actual - expected) > tolerance)
     {
@@ -686,8 +691,20 @@ inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const 
     }
 }
 
+template <>
+inline CUDA_CALLABLE void expect_near<vec3>(const vec3& actual, const vec3& expected, const float& tolerance)
+{
+    const float diff = max(max(abs(actual.x - expected.x), abs(actual.y - expected.y)), abs(actual.z - expected.z));
+    if (diff > tolerance)
+    {
+        printf("Error, expect_near() failed with torerance "); print(tolerance);
+        printf("\t Expected: "); print(expected); 
+        printf("\t Actual: "); print(actual);
+    }
+}
+
 template <typename T>
-inline CUDA_CALLABLE void adj_expect_near(const T& actual, const T& expected, const T& tolerance, T& adj_actual, T& adj_expected, T& adj_tolerance)
+inline CUDA_CALLABLE void adj_expect_near(const T& actual, const T& expected, const float& tolerance, T& adj_actual, T& adj_expected, float& adj_tolerance)
 {
     // nop
 }

@@ -208,6 +208,8 @@ add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion 
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0")
 add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
+add_builtin("quat_from_matrix", input_types={"m": mat33}, value_type=quat, group="Quaternion Math",
+    doc="Construct a quaternion from a 3x3 matrix.")
 add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, group="Quaternion Math",
     doc="Compute quaternion conjugate.")
 add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
@@ -437,18 +439,32 @@ add_builtin("iter_next", input_types={"query": mesh_query_aabb_t}, value_type=in
 #---------------------------------
 # Volumes 
 
-add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
-    doc="""Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
-add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
+add_builtin("volume_sample_f", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
     doc="""Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 
-add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
+add_builtin("volume_lookup_f", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
     doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
-add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.""")
-add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.""")
+add_builtin("volume_sample_v", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=vec3, group="Volumes",
+    doc="""Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+
+add_builtin("volume_lookup_v", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=vec3, group="Volumes",
+    doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
+add_builtin("volume_sample_i", input_types={"id": uint64, "uvw": vec3}, value_type=int64, group="Volumes",
+    doc="""Sample the int64 volume given by ``id`` at the volume local-space point ``uvw``. """)
+
+add_builtin("volume_lookup_i", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=int64, group="Volumes",
+    doc="""Returns the int64 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
+add_builtin("volume_index_to_world", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.""")
+add_builtin("volume_world_to_index", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.""")
+add_builtin("volume_index_to_world_dir", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.""")
+add_builtin("volume_world_to_index_dir", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.""")
 
 
 #---------------------------------
@@ -592,6 +608,7 @@ for t in scalar_types + vector_types:
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
+add_builtin("expect_near", input_types={"arg1": vec3, "arg2": vec3, "tolerance": float}, value_type=None, doc="Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 
 #---------------------------------
 # Operators

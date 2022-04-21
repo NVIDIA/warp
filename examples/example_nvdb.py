@@ -11,7 +11,7 @@
 # Shows how to implement a particle simulation with collision against
 # a NanoVDB signed-distance field. In this example the NanoVDB field
 # is created offline in Houdini. The particle kernel uses the Warp
-# wp.volume_sample_world() method to compute the SDF and normal at a point.
+# wp.volume_sample_f() method to compute the SDF and normal at a point.
 #
 ###########################################################################
 
@@ -103,16 +103,18 @@ class Example:
             self.update()
             self.render(is_live)
 
+    
     @wp.func
     def volume_grad(volume: wp.uint64,
                     p: wp.vec3):
         
-        eps = 1.e-2
+        eps = 1.0
+        q = wp.volume_world_to_index(volume, p)
 
         # compute gradient of the SDF using finite differences
-        dx = wp.volume_sample_world(volume, p + wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR) - wp.volume_sample_world(volume, p - wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR)
-        dy = wp.volume_sample_world(volume, p + wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR) - wp.volume_sample_world(volume, p - wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR)
-        dz = wp.volume_sample_world(volume, p + wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR) - wp.volume_sample_world(volume, p - wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR)
+        dx = wp.volume_sample_f(volume, q + wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR)
+        dy = wp.volume_sample_f(volume, q + wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR)
+        dz = wp.volume_sample_f(volume, q + wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR)
 
         return wp.normalize(wp.vec3(dx, dy, dz))
 
@@ -132,8 +134,9 @@ class Example:
 
         v = v + wp.vec3(0.0, 0.0, -980.0)*dt - v*0.1*dt
         xpred = x + v*dt
-
-        d = wp.volume_sample_world(volume, xpred, wp.Volume.LINEAR)
+        xpred_local = wp.volume_world_to_index(volume, xpred)
+        
+        d = wp.volume_sample_f(volume, xpred_local, wp.Volume.LINEAR)
 
         if (d < margin):
             
