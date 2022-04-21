@@ -33,7 +33,7 @@ class Example:
         self.sim_height = 8
 
         self.sim_fps = 60.0
-        self.sim_substeps = 64
+        self.sim_substeps = 32
         self.sim_duration = 5.0
         self.sim_frames = int(self.sim_duration*self.sim_fps)
         self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps

@@ -24,6 +24,7 @@ def _usd_add_xform(prim):
 def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
     xform = UsdGeom.Xform(xform)
+    
     xform_ops = xform.GetOrderedXformOps()
 
     xform_ops[0].Set(Gf.Vec3d(float(pos[0]), float(pos[1]), float(pos[2])), time)
@@ -219,9 +220,11 @@ class UsdRenderer:
             mesh = UsdGeom.Mesh.Define(self.stage, mesh_path)
             _usd_add_xform(mesh)
 
+            # only set topology on first render
+            mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
+            mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
+
         mesh.GetPointsAttr().Set(points, self.time)
-        mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
-        mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
 
         _usd_set_xform(mesh, pos, rot, scale, self.time)
 
@@ -329,11 +332,12 @@ class UsdRenderer:
             instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
             instancer.CreateProtoIndicesAttr().Set([0] * len(points))
 
-        quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
+            # set identity rotations
+            quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
+            instancer.GetOrientationsAttr().Set(quats, self.time)
 
         instancer.GetPositionsAttr().Set(points, self.time)
-        instancer.GetOrientationsAttr().Set(quats, self.time)
-
+    
 
     def save(self):
         try:

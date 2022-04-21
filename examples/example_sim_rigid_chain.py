@@ -31,17 +31,17 @@ class Example:
     def init_params(self):
 
         self.sim_steps = 200
-        self.sim_substeps = 32
+        self.sim_substeps = 16
         self.sim_dt = 1.0/60.0
         self.sim_time = 0.0
 
         self.chain_length = 8
         self.chain_width = 1.0
         self.chain_types = [wp.sim.JOINT_REVOLUTE,
-                    wp.sim.JOINT_FIXED, 
-                    wp.sim.JOINT_BALL,
-                    wp.sim.JOINT_UNIVERSAL,
-                    wp.sim.JOINT_COMPOUND]
+                            wp.sim.JOINT_FIXED, 
+                            wp.sim.JOINT_BALL,
+                            wp.sim.JOINT_UNIVERSAL,
+                            wp.sim.JOINT_COMPOUND]
 
         self.device = wp.get_preferred_device()
 

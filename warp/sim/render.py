@@ -114,6 +114,7 @@ class SimRenderer(warp.render.UsdRenderer):
 
     def render(self, state: warp.sim.State):
 
+
         if (self.model.particle_count):
 
             particle_q = state.particle_q.numpy()
@@ -166,20 +167,22 @@ class SimRenderer(warp.render.UsdRenderer):
                     points.append(Gf.Vec3f(wp.transform_point(X_sc, point).tolist()))
                 
                 self.render_line_strip(name=f"muscle_{m}", vertices=points, radius=0.0075, color=(muscle_activation[m], 0.2, 0.5))
-           
+        
+        
+        with Sdf.ChangeBlock():
 
-        # update  bodies
-        if (self.model.body_count):
+            # update  bodies
+            if (self.model.body_count):
 
-            body_q = state.body_q.numpy()
+                body_q = state.body_q.numpy()
 
-            for b in range(self.model.body_count):
+                for b in range(self.model.body_count):
 
-                node = UsdGeom.Xform(self.stage.GetPrimAtPath(self.root.GetPath().AppendChild("body_" + str(b))))
+                    node = UsdGeom.Xform(self.stage.GetPrimAtPath(self.root.GetPath().AppendChild("body_" + str(b))))
 
-                # unpack rigid transform
-                X_sb = warp.utils.transform_expand(body_q[b])
+                    # unpack rigid transform
+                    X_sb = warp.utils.transform_expand(body_q[b])
 
-                wp.render._usd_set_xform(node, X_sb.p, X_sb.q, (1.0, 1.0, 1.0), self.time)
+                    wp.render._usd_set_xform(node, X_sb.p, X_sb.q, (1.0, 1.0, 1.0), self.time)
 
 
