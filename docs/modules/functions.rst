@@ -4,8 +4,8 @@
 .. functions:
 .. currentmodule:: warp
 
-Language Reference
-==================
+Kernel Reference
+================
 Scalar Types
 ------------
 .. autoclass:: int8
@@ -275,16 +275,6 @@ Vector Math
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: determinant(m: mat22) -> float
-
-   Compute the determinant of a 2x2 matrix.
-
-
-.. function:: determinant(m: mat33) -> float
-
-   Compute the determinant of a 3x3 matrix.
-
-
 .. function:: transpose(m: mat22) -> mat22
 
    Return the transpose of the matrix m
@@ -303,6 +293,36 @@ Vector Math
 .. function:: transpose(m: spatial_matrix) -> spatial_matrix
 
    Return the transpose of the matrix m
+
+
+.. function:: inverse(m: mat22) -> mat22
+
+   Return the inverse of the matrix m
+
+
+.. function:: inverse(m: mat33) -> mat33
+
+   Return the inverse of the matrix m
+
+
+.. function:: inverse(m: mat44) -> mat44
+
+   Return the inverse of the matrix m
+
+
+.. function:: determinant(m: mat22) -> float
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat33) -> float
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat44) -> float
+
+   Return the determinant of the matrix m
 
 
 .. function:: diag(d: vec2) -> mat22
@@ -481,6 +501,11 @@ Quaternion Math
    Rotate a vector the inverse of a quaternion.
 
 
+.. function:: quat_to_matrix(q: quat) -> mat33
+
+   Convert a quaternion to a 3x3 rotation matrix.
+
+
 
 
 Transformations
@@ -528,6 +553,11 @@ Transformations
 .. function:: transform_vector(m: mat44, v: vec3) -> vec3
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
+
+
+.. function:: transform_inverse(t: transform) -> transform
+
+   Compute the inverse of the transform.
 
 
 
@@ -1098,6 +1128,9 @@ Operators
 
 
 .. function:: mul(x: float, y: vec4) -> vec4
+
+
+.. function:: mul(x: float, y: quat) -> quat
 
 
 .. function:: mul(x: vec2, y: float) -> vec2
