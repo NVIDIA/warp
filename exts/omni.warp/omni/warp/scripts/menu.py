@@ -25,10 +25,10 @@ class WarpMenu:
                 "name": menu_common.EXAMPLE_DEM_MENU_ITEM.split("/")[-1],
                 "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_DEM_SCRIPT)
             },
-            {
-                "name": menu_common.EXAMPLE_MESH_INTERSECT_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_MESH_INTERSECT_SCRIPT)
-            },
+            # {
+            #     "name": menu_common.EXAMPLE_MESH_INTERSECT_MENU_ITEM.split("/")[-1],
+            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_MESH_INTERSECT_SCRIPT)
+            # },
             {
                 "name": menu_common.EXAMPLE_MESH_MENU_ITEM.split("/")[-1],
                 "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_MESH_SCRIPT)
@@ -145,6 +145,8 @@ class WarpMenu:
             }
         ]
 
+        self._is_live = True
+
         self._script_menu_descriptions = []
         for menu_item in self._script_menu:
             menu_item_description = MenuItemDescription(name=menu_item.get("name"), onclick_fn=menu_item.get("onclick_fn"))
@@ -181,7 +183,6 @@ class WarpMenu:
         omni.kit.menu.utils.add_menu_items(self._window_menus_warp, "Window")
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
         self._stage_event_sub = omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)
-        self._is_live = True
 
     def shutdown(self):
 
@@ -195,7 +196,9 @@ class WarpMenu:
 
         timeline = omni.timeline.get_timeline_interface()
         if timeline.is_playing() and self._example is not None:
-            self._example.on_update(is_live=self._is_live)
+            with wp.ScopedCudaGuard():
+                self._example.update()
+                self._example.render(is_live=self._is_live)
 
     def _on_stage_event(self, event):
 
@@ -209,7 +212,9 @@ class WarpMenu:
         if self._example is not None:
             stage = omni.usd.get_context().get_stage()
             stage.GetRootLayer().Clear()
-            self._example.on_load(stage)
+            with wp.ScopedCudaGuard():
+                self._example.init(stage)
+                self._example.render(is_live=self._is_live)
 
     def _refresh_example(self):
 
@@ -235,12 +240,6 @@ class WarpMenu:
             if self._example is None:
                 log_error("Problem loading example module")
                 return
-            if not hasattr(self._example, 'on_load'):
-                log_error("Example missing on_load() function")
-                return
-            if not hasattr(self._example, 'on_update'):
-                log_error("Example missing on_update() function")
-                return
             if not hasattr(self._example, 'init'):
                 log_error("Example missing init() function")
                 return
@@ -251,7 +250,9 @@ class WarpMenu:
                 log_error("Example missing render() function")
                 return
 
-            self._example.on_load(stage, is_live=self._is_live)
+            with wp.ScopedCudaGuard():
+                self._example.init(stage)
+                self._example.render(is_live=self._is_live)
 
             # focus camera
             omni.usd.get_context().get_selection().set_selected_prim_paths([stage.GetDefaultPrim().GetPath().pathString], False)

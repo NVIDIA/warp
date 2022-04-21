@@ -27,7 +27,7 @@ wp.init()
 
 class Example:
 
-    def init_params(self):
+    def __init__(self):
 
         self.sim_width = 8
         self.sim_height = 8
@@ -44,8 +44,6 @@ class Example:
         self.device = wp.get_preferred_device()
 
     def init(self, stage):
-
-        self.init_params()
 
         builder = wp.sim.ModelBuilder()
 
@@ -108,17 +106,6 @@ class Example:
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 
-    # kit load event
-    def on_load(self, stage, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.init(stage)
-            self.render(is_live)
-
-    # kit update event
-    def on_update(self, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.update()
-            self.render(is_live)
 
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_fem.usd")

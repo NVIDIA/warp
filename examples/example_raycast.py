@@ -26,10 +26,12 @@ wp.init()
 
 class Example:
 
-    device = wp.get_preferred_device()
-    width = 1024
-    height = 1024
-    cam_pos = (0.0, 1.0, 2.0)
+    def __init__(self):
+
+        device = wp.get_preferred_device()
+        width = 1024
+        height = 1024
+        cam_pos = (0.0, 1.0, 2.0)
 
     def init(self, stage):
 

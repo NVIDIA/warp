@@ -25,7 +25,7 @@ wp.init()
 
 class Example:
     
-    def init_params(self):
+    def __init__(self):
 
         self.sim_width = 128
         self.sim_height = 128
@@ -51,8 +51,6 @@ class Example:
         return y*stride + x
 
     def init(self, stage):
-
-        self.init_params()
 
         self.renderer = wp.render.UsdRenderer(stage)
 
@@ -134,17 +132,6 @@ class Example:
             self.renderer.render_sphere("sphere", (self.cx*self.grid_size, 0.0, self.cy*self.grid_size), (0.0, 0.0, 0.0, 1.0), 10.0*self.grid_size)
             self.renderer.end_frame()
 
-    # kit load event
-    def on_load(self, stage, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.init(stage)
-            self.render(is_live)
-
-    # kit update event
-    def on_update(self, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.update()
-            self.render(is_live)
 
     @wp.func
     def sample(f: wp.array(dtype=float),
