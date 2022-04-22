@@ -445,6 +445,11 @@ Vector Math
    Construct a 4x4 matrix from components.
 
 
+.. function:: mat44(pos: vec3, rot: quat, scale: vec3) -> mat44
+
+   Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
+
+
 .. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
@@ -542,7 +547,9 @@ Transformations
 
 .. function:: transform_point(m: mat44, p: vec3) -> vec3
 
-   Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation)
+   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.
 
 
 .. function:: transform_vector(t: transform, v: vec3) -> vec3
@@ -552,7 +559,9 @@ Transformations
 
 .. function:: transform_vector(m: mat44, v: vec3) -> vec3
 
-   Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
+   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.
 
 
 .. function:: transform_inverse(t: transform) -> transform
