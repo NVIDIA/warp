@@ -189,6 +189,8 @@ add_builtin("mat44", input_types={"m00": float, "m01": float, "m02": float, "m03
                                   "m20": float, "m21": float, "m22": float, "m23": float,
                                   "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="Construct a 4x4 matrix from components.", group="Vector Math")
 
+add_builtin("mat44", input_types={"pos": vec3, "rot": quat, "scale": vec3}, value_type=mat44, 
+    doc="""Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""", group="Vector Math")
 
 add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, group="Vector Math",
     doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
@@ -235,11 +237,15 @@ add_builtin("transform_multiply", input_types={"a": transform, "b": transform}, 
 add_builtin("transform_point", input_types={"t": transform, "p": vec3}, value_type=vec3, group="Transformations",
     doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).")
 add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, group="Vector Math",
-    doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation)")
+    doc="""Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.""")
 add_builtin("transform_vector", input_types={"t": transform, "v": vec3}, value_type=vec3, group="Transformations",
     doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
 add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, group="Vector Math",
-    doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
+    doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.""")
 add_builtin("transform_inverse", input_types={"t": transform}, value_type=transform, group="Transformations",
     doc="Compute the inverse of the transform.")
 #---------------------------------

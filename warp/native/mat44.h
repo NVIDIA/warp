@@ -66,6 +66,31 @@ struct mat44
         data[3][3] = m33;
     }
 
+    inline CUDA_CALLABLE mat44(const vec3& pos, const quat& rot, const vec3& scale)
+    {
+        mat33 R = quat_to_matrix(rot);
+
+        data[0][0] = R.data[0][0]*scale.x;
+        data[1][0] = R.data[1][0]*scale.x;
+        data[2][0] = R.data[2][0]*scale.x;
+        data[3][0] = 0.0f;
+
+        data[0][1] = R.data[0][1]*scale.y;
+        data[1][1] = R.data[1][1]*scale.y;
+        data[2][1] = R.data[2][1]*scale.y;
+        data[3][1] = 0.0f;
+
+        data[0][2] = R.data[0][2]*scale.z;
+        data[1][2] = R.data[1][2]*scale.z;
+        data[2][2] = R.data[2][2]*scale.z;
+        data[3][2] = 0.0f;
+
+        data[0][3] = pos.x;
+        data[1][3] = pos.y;
+        data[2][3] = pos.z;
+        data[3][3] = 1.0f;        
+    }
+
     CUDA_CALLABLE vec4 get_row(int index) const
     {
         return (vec4&)data[index]; 
@@ -137,8 +162,33 @@ inline CUDA_CALLABLE void adj_mat44(
     a1 += adj_ret.get_col(1);
     a2 += adj_ret.get_col(2);
     a3 += adj_ret.get_col(3);
-
 }
+
+inline CUDA_CALLABLE void adj_mat44(const vec3& pos, const quat& rot, const vec3& scale,
+                                    vec3& adj_pos, quat& adj_rot, vec3& adj_scale, const mat44& adj_ret)
+{
+    mat33 R = quat_to_matrix(rot);
+    mat33 adj_R = 0;
+
+    adj_pos.x += adj_ret.data[0][3];
+    adj_pos.y += adj_ret.data[1][3];
+    adj_pos.z += adj_ret.data[2][3];
+
+    adj_mul(R.data[0][0], scale.x, adj_R.data[0][0], adj_scale.x, adj_ret.data[0][0]);
+    adj_mul(R.data[1][0], scale.x, adj_R.data[1][0], adj_scale.x, adj_ret.data[1][0]);
+    adj_mul(R.data[2][0], scale.x, adj_R.data[2][0], adj_scale.x, adj_ret.data[2][0]);
+
+    adj_mul(R.data[0][1], scale.y, adj_R.data[0][1], adj_scale.y, adj_ret.data[0][1]);
+    adj_mul(R.data[1][1], scale.y, adj_R.data[1][1], adj_scale.y, adj_ret.data[1][1]);
+    adj_mul(R.data[2][1], scale.y, adj_R.data[2][1], adj_scale.y, adj_ret.data[2][1]);
+
+    adj_mul(R.data[0][2], scale.z, adj_R.data[0][2], adj_scale.z, adj_ret.data[0][2]);
+    adj_mul(R.data[1][2], scale.z, adj_R.data[1][2], adj_scale.z, adj_ret.data[1][2]);
+    adj_mul(R.data[2][2], scale.z, adj_R.data[2][2], adj_scale.z, adj_ret.data[2][2]);
+
+    adj_quat_to_matrix(rot, adj_rot, adj_R);
+}
+
 
 inline CUDA_CALLABLE void adj_mat44(float m00, float m01, float m02, float m03,
                       float m10, float m11, float m12, float m13,
