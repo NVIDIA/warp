@@ -61,6 +61,7 @@ def test_volume_sample_linear_f(volume: wp.uint64,
 
     p = points[tid]
 
+
     expected = p[0] * p[1] * p[2]
     if abs(p[0]) > 10.0 or abs(p[1]) > 10.0 or abs(p[2]) > 10.0:
         return  # not testing against background values

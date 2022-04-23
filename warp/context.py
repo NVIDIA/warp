@@ -637,11 +637,11 @@ def get_preferred_device():
         return None
 
 
-def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> warp.array:
+def zeros(shape: Tuple=None, dtype=float, device: str="cpu", requires_grad: bool=False, **kwargs)-> warp.array:
     """Return a zero-initialized array
 
     Args:
-        n: Number of elements
+        shape: Array dimensions
         dtype: Type of each element, e.g.: warp.vec3, warp.mat33, etc
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
@@ -659,7 +659,19 @@ def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> w
     if device == "cuda" and not is_cuda_available():
         raise RuntimeError("Trying to allocate CUDA buffer without GPU support")
 
-    num_bytes = n*warp.types.type_size_in_bytes(dtype)
+
+    # backwards compatability for case where users did wp.zeros(n, dtype=..), or wp.zeros(n=length, dtype=..)
+    if isinstance(shape, int):
+        shape = (shape,)
+    elif "n" in kwargs:
+        shape = (kwargs["n"], )
+    
+    # compute num els
+    num_elements = 1
+    for d in shape:
+        num_elements *= d
+
+    num_bytes = num_elements*warp.types.type_size_in_bytes(dtype)
 
     if device == "cpu":
         ptr = runtime.host_allocator.alloc(num_bytes) 
@@ -673,7 +685,7 @@ def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> w
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
         # construct array
-        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
+        return warp.types.array(dtype=dtype, shape=shape, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
 
 def zeros_like(src: warp.array) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
@@ -685,7 +697,7 @@ def zeros_like(src: warp.array) -> warp.array:
         A warp.array object representing the allocation
     """
 
-    arr = zeros(len(src), dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
+    arr = zeros(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
     return arr
 
 def clone(src: warp.array) -> warp.array:
@@ -703,7 +715,7 @@ def clone(src: warp.array) -> warp.array:
 
     return dest
 
-def empty(n: int, dtype=float, device:str="cpu", requires_grad:bool=False) -> warp.array:
+def empty(shape: Tuple=None, dtype=float, device:str="cpu", requires_grad:bool=False, **kwargs) -> warp.array:
     """Returns an uninitialized array
 
     Args:
@@ -717,7 +729,7 @@ def empty(n: int, dtype=float, device:str="cpu", requires_grad:bool=False) -> wa
     """
 
     # todo: implement uninitialized allocation
-    return zeros(n, dtype, device, requires_grad=requires_grad)  
+    return zeros(shape, dtype, device, requires_grad=requires_grad, **kwargs)  
 
 def empty_like(src: warp.array, requires_grad:bool=False) -> warp.array:
     """Return an uninitialized array with the same type and dimension of another array
@@ -729,7 +741,7 @@ def empty_like(src: warp.array, requires_grad:bool=False) -> warp.array:
     Returns:
         A warp.array object representing the allocation
     """
-    arr = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
+    arr = empty(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad)
     return arr
 
 
@@ -783,7 +795,8 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                     if (a is None):
                         
                         # allow for NULL arrays
-                        params.append(ctypes.c_int64(0))
+                        #params.append(ctypes.c_int64(0))
+                        params.append(warp.types.array_t())
 
                     else:
 
@@ -798,11 +811,12 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                         # check device
                         if (a.device != device):
                             raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, a.device))
-            
-                        if(a.ptr == None):                            
-                            params.append(ctypes.c_int64(0))
-                        else:
-                            params.append(ctypes.c_int64(a.ptr))
+                        
+                        # if(a.ptr == None):                            
+                        #     params.append(ctypes.c_int64(0))
+                        # else:
+                        #     params.append(ctypes.c_int64(a.ptr))
+                        params.append(a.__ctype__())
 
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):
@@ -971,8 +985,8 @@ def copy(dest: warp.array, src: warp.array):
 
     """
 
-    src_bytes = src.length*type_size_in_bytes(src.dtype)
-    dst_bytes = dest.length*type_size_in_bytes(dest.dtype)
+    src_bytes = src.size*type_size_in_bytes(src.dtype)
+    dst_bytes = dest.size*type_size_in_bytes(dest.dtype)
 
     if (src_bytes > dst_bytes):
         raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")

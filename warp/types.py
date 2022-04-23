@@ -10,6 +10,8 @@ import hashlib
 import inspect
 import numpy as np
 
+from typing import Tuple
+
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels
     
@@ -45,51 +47,61 @@ class constant:
 class vec2(ctypes.Array):
     
     _length_ = 2
-    _type_ = ctypes.c_float
+    _shape_ = (2,)
+    _type_ = ctypes.c_float    
     
 class vec3(ctypes.Array):
     
     _length_ = 3
+    _shape_ = (3,)
     _type_ = ctypes.c_float
     
 class vec4(ctypes.Array):
     
     _length_ = 4
+    _shape_ = (4,)
     _type_ = ctypes.c_float
 
 class quat(ctypes.Array):
     
     _length_ = 4
+    _shape_ = (4,)
     _type_ = ctypes.c_float
     
 class mat22(ctypes.Array):
     
     _length_ = 4
+    _shape_ = (2,2)
     _type_ = ctypes.c_float
     
 class mat33(ctypes.Array):
     
     _length_ = 9
+    _shape_ = (3,3)
     _type_ = ctypes.c_float
 
 class mat44(ctypes.Array):
     
     _length_ = 16
+    _shape_ = (4,4)
     _type_ = ctypes.c_float
 
 class spatial_vector(ctypes.Array):
     
     _length_ = 6
+    _shape_ = (6,)
     _type_ = ctypes.c_float
 
 class spatial_matrix(ctypes.Array):
     
     _length_ = 36
+    _shape_ = (6,6)
     _type_ = ctypes.c_float
 
 class transform(ctypes.Array):
     
     _length_ = 7
+    _shape_ = (7,)
     _type_ = ctypes.c_float
 
     def __init__(self, p, q):
@@ -228,6 +240,19 @@ class hash_grid_query_t:
     def __init__(self):
         pass
 
+# maximum number of dimensions
+MAX_ARRAY_DIM = 4
+
+class array_t(ctypes.Structure): 
+
+    _fields_ = [("data", ctypes.c_uint64),
+                ("shape", ctypes.c_int32*MAX_ARRAY_DIM),
+                ("ndims", ctypes.c_int32)]
+    
+    def __init__(self):
+        self.data = 0
+        self.ndims = 0
+
 
 def type_length(dtype):
     if (dtype == float or dtype == int):
@@ -312,9 +337,10 @@ def types_equal(a, b):
     else:
         return a == b
 
+
 class array:
 
-    def __init__(self, data=None, dtype=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
+    def __init__(self, data=None, dtype=None, shape=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
         """ Constructs a new Warp array object from existing data.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
@@ -329,7 +355,8 @@ class array:
         Args:
             data (Union[list, tuple, ndarray]) 
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is None and data an ndarray then it will be inferred from the array data type
-            length (int): Number of elements (rows) of the data type
+            shape (Tuple): Dimensions of the array
+            length (int): Number of elements (rows) of the data type (deprecated, users should use `shape` argument)
             ptr (uint64): Address of an external memory address to alias (data should be None)
             capacity (int): Maximum size in bytes of the ptr allocation (data should be None)
             device (str): Device the array lives on
@@ -340,6 +367,18 @@ class array:
         """
 
         self.owner = False
+
+        if shape == None:
+            shape = (length,)   
+        elif isinstance(shape, int):
+            shape = (shape,)
+        elif isinstance(shape, Tuple):
+            self.shape = shape
+
+
+        if len(shape) > MAX_ARRAY_DIM:
+            raise RuntimeError(f"Arrays may only have {MAX_ARRAY_DIM} dimensions maximum, trying to create array with {len(shape)} dims.")
+
 
         # canonicalize dtype
         if (dtype == int):
@@ -375,20 +414,27 @@ class array:
             except:
                 raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
             
+            # squeeze trailing dimensions of length 1
+            # if arr.shape[-1] == 1:
+            #     arr = np.squeeze(arr, len(arr.shape)-1)
+
             # ensure contiguous
             arr = np.ascontiguousarray(arr)
 
             ptr = arr.__array_interface__["data"][0]
             shape = arr.__array_interface__["shape"]
-            length = shape[0]
+            
+            # strip off the last dimension (which represents our contained type's size, e.g.: 9 for dtype=mat33)
+            if len(shape) > 1:# and shape[1] > 1:
+                shape = shape[0:-1]
 
             if (device == "cpu" and copy == False):
 
                 # ref numpy memory directly
                 self.ptr = ptr
                 self.dtype=dtype
-                self.length=length
-                self.capacity=length*type_size_in_bytes(dtype)
+                self.shape=shape
+                self.capacity=arr.size*type_size_in_bytes(dtype)
                 self.device = device
                 self.owner = False
 
@@ -402,8 +448,8 @@ class array:
                 # otherwise, we must transfer to device memory
                 # create a host wrapper around the numpy array
                 # and a new destination array to copy it to
-                src = array(dtype=dtype, length=length, capacity=length*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
-                dest = empty(length, dtype=dtype, device=device, requires_grad=requires_grad)
+                src = array(dtype=dtype, shape=shape, capacity=arr.size*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
+                dest = empty(shape, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
                 # data copy
@@ -418,7 +464,7 @@ class array:
         else:
             
             # explicit construction from ptr to external memory
-            self.length = length
+            self.shape = shape
             self.capacity = capacity
             self.dtype = dtype
             self.ptr = ptr
@@ -428,24 +474,28 @@ class array:
             self.__name__ = "array<" + type.__name__ + ">"
 
 
+        # update size
+        self.size = 1
+        for d in self.shape:
+            self.size *= d
+
         # save flag, controls if gradients will be computed in by wp.Tape
         self.requires_grad = requires_grad
 
-        # store shape (useful for interop with tensor frameworks)
-        dims = type_length(self.dtype)
-        if dims == 1:
-            # scalar type, ensures arrays are 1d for simple types
-            self.shape = (self.length,)
+        # store flat shape (including type shape)
+        if dtype in vector_types:
+            # vector type, flatten the dimensions into one tuple
+            arr_shape = (*self.shape, *self.dtype._shape_)
         else:
-            # vector type
-            self.shape = (self.length, dims)
-        
+            # scalar type
+            arr_shape = self.shape
+
         # set up array interface access so we can treat this object as a numpy array
         if device == "cpu":
 
             self.__array_interface__ = { 
                 "data": (self.ptr, False), 
-                "shape": self.shape,  
+                "shape": arr_shape,  
                 "typestr": type_typestr(type_ctype(self.dtype)), 
                 "version": 3 
             }
@@ -455,7 +505,7 @@ class array:
 
             self.__cuda_array_interface__ = {
                 "data": (self.ptr, False),
-                "shape": self.shape,
+                "shape": arr_shape,
                 "typestr": type_typestr(type_ctype(self.dtype)),
                 "version": 2
             }
@@ -480,7 +530,7 @@ class array:
 
     def __len__(self):
 
-        return self.length
+        return self.shape[0]
 
     def __str__(self):
 
@@ -490,16 +540,32 @@ class array:
         else:
             return str(self.to("cpu").numpy())
 
+    # construct a C-representation of the array for passing to kernels
+    def __ctype__(self):
+        a = array_t()
+        
+        if (self.ptr == None):
+            a.data = 0
+        else:
+            a.data = ctypes.c_uint64(self.ptr)
+
+        a.ndims = ctypes.c_int32(len(self.shape))
+
+        for i in range(a.ndims):
+            a.shape[i] = self.shape[i]
+
+        return a        
+
 
     def zero_(self):
 
         from warp.context import runtime
 
         if (self.device == "cpu"):
-            runtime.core.memset_host(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+            runtime.core.memset_host(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
         if(self.device == "cuda"):
-            runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.length*type_size_in_bytes(self.dtype)))
+            runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
 
     # equivalent to wrapping src data in an array and copying to self
@@ -521,7 +587,7 @@ class array:
         else:
             from warp.context import empty, copy, synchronize
 
-            dest = empty(n=self.length, dtype=self.dtype, device=device)
+            dest = empty(shape=self.shape, dtype=self.dtype, device=device)
             copy(dest, self)
             
             # todo: only synchronize when there is a device->host transfer outstanding
@@ -529,27 +595,27 @@ class array:
 
             return dest
 
-    def astype(self, dtype):
+    # def astype(self, dtype):
 
-        # return an alias of the array memory with different type information
-        src_length = self.length*type_length(self.dtype)
-        src_capacity = self.capacity*type_length(self.dtype)
+    #     # return an alias of the array memory with different type information
+    #     src_bytes = self.length*type_length(self.dtype)
+    #     src_capacity = self.capacity*type_length(self.dtype)
 
-        dst_length = src_length/type_length(dtype)
-        dst_capacity = src_capacity/type_length(dtype)
+    #     dst_length = src_length/type_length(dtype)
+    #     dst_capacity = src_capacity/type_length(dtype)
 
-        if ((src_length % type_length(dtype)) > 0):
-            raise RuntimeError("Dimensions are incompatible for type cast")
+    #     if ((src_length % type_length(dtype)) > 0):
+    #         raise RuntimeError("Dimensions are incompatible for type cast")
 
-        arr = array(
-            ptr=self.ptr, 
-            dtype=dtype,
-            length=int(dst_length),
-            capacity=int(dst_capacity),
-            device=self.device,
-            owner=False)
+    #     arr = array(
+    #         ptr=self.ptr, 
+    #         dtype=dtype,
+    #         length=int(dst_length),
+    #         capacity=int(dst_capacity),
+    #         device=self.device,
+    #         owner=False)
 
-        return arr
+    #     return arr
 
 
 class Mesh:
@@ -598,15 +664,15 @@ class Mesh:
                 get_data(points), 
                 get_data(velocities), 
                 get_data(indices), 
-                int(points.length), 
-                int(indices.length/3))
+                int(len(points)), 
+                int(len(indices)/3))
         else:
             self.id = runtime.core.mesh_create_device(
                 get_data(points), 
                 get_data(velocities), 
                 get_data(indices), 
-                int(points.length), 
-                int(indices.length/3))
+                int(len(points)), 
+                int(len(indices)/3))
 
 
     def __del__(self):
@@ -665,9 +731,9 @@ class Volume:
             return
 
         if self.device == "cpu":
-            self.id = self.context.core.volume_create_host(ctypes.cast(data.ptr, ctypes.c_void_p), data.length)
+            self.id = self.context.core.volume_create_host(ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
         else:
-            self.id = self.context.core.volume_create_device(ctypes.cast(data.ptr, ctypes.c_void_p), data.length)
+            self.id = self.context.core.volume_create_device(ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
 
         if self.id == 0:
             raise RuntimeError("Failed to create volume from input array")

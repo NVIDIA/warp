@@ -41,7 +41,7 @@ def test_rounding(test, device):
                 dtype=np.float32)
 
     x = wp.array(nx, device=device)
-    N = x.length
+    N = len(x)
 
     x_round = wp.empty(N, dtype=float, device=device)
     x_rint = wp.empty(N, dtype=float, device=device)

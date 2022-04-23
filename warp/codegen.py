@@ -71,7 +71,8 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            return str(self.type.dtype.__name__) + "*"
+            #return str(self.type.dtype.__name__) + "*"
+            return f"array_t<{str(self.type.dtype.__name__)}>"
         else:
             return str(self.type.__name__)
 
@@ -1433,12 +1434,12 @@ def codegen_module(kernel, device='cpu'):
 
     sep = ","
     for arg in adj.args:
-        if (isinstance(arg.type, array)):
-            forward_args += sep + "wp::array var_" + arg.label
-            forward_params += sep + "cast<" + arg.ctype() + ">(var_" + arg.label + ")"
-        else:
-            forward_args += sep + arg.ctype() + " var_" + arg.label
-            forward_params += sep + "var_" + arg.label
+        # if (isinstance(arg.type, array)):
+        #     forward_args += sep + "wp::array var_" + arg.label
+        #     forward_params += sep + "var_" + arg.label
+        # else:
+        forward_args += sep + arg.ctype() + " var_" + arg.label
+        forward_params += sep + "var_" + arg.label
 
         sep = ", "
 
@@ -1449,12 +1450,12 @@ def codegen_module(kernel, device='cpu'):
 
     sep = ","
     for arg in adj.args:
-        if (isinstance(arg.type, array)):
-            reverse_args += sep + "wp::array adj_" + arg.label
-            reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
-        else:
-            reverse_args += sep + arg.ctype() + " adj_" + arg.label
-            reverse_params += sep + "adj_" + arg.label
+        # if (isinstance(arg.type, array)):
+        #     reverse_args += sep + "wp::array adj_" + arg.label
+        #     reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
+        # else:
+        reverse_args += sep + arg.ctype() + " adj_" + arg.label
+        reverse_params += sep + "adj_" + arg.label
 
         sep = ", "
 
@@ -1483,12 +1484,12 @@ def codegen_module_decl(kernel, device='cpu'):
 
     sep = ","
     for arg in adj.args:
-        if (isinstance(arg.type, array)):
-            forward_args += sep + "wp::array var_" + arg.label
-            forward_params += sep + "cast<" + arg.ctype() + ">(var_" + arg.label + ")"
-        else:
-            forward_args += sep + arg.ctype() + " var_" + arg.label
-            forward_params += sep + "var_" + arg.label
+        # if (isinstance(arg.type, array)):
+        #     forward_args += sep + "wp::array var_" + arg.label
+        #     forward_params += sep + "cast<" + arg.ctype() + ">(var_" + arg.label + ")"
+        # else:
+        forward_args += sep + arg.ctype() + " var_" + arg.label
+        forward_params += sep + "var_" + arg.label
 
         sep = ", "
 
@@ -1498,12 +1499,12 @@ def codegen_module_decl(kernel, device='cpu'):
 
     sep = ","
     for arg in adj.args:
-        if (isinstance(arg.type, array)):
-            reverse_args += sep + "wp::array adj_" + arg.label
-            reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
-        else:
-            reverse_args += sep + arg.ctype() + " adj_" + arg.label
-            reverse_params += sep + "adj_" + arg.label
+        # if (isinstance(arg.type, array)):
+        #     reverse_args += sep + "wp::array adj_" + arg.label
+        #     reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
+        # else:
+        reverse_args += sep + arg.ctype() + " adj_" + arg.label
+        reverse_params += sep + "adj_" + arg.label
 
         sep = ", "
 
