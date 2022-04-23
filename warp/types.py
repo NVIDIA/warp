@@ -241,18 +241,19 @@ class hash_grid_query_t:
         pass
 
 # maximum number of dimensions
-MAX_ARRAY_DIM = 4
+ARRAY_MAX_DIMS = 4
 
 class array_t(ctypes.Structure): 
 
     _fields_ = [("data", ctypes.c_uint64),
-                ("shape", ctypes.c_int32*MAX_ARRAY_DIM),
-                ("ndims", ctypes.c_int32)]
+                ("shape", ctypes.c_int32*ARRAY_MAX_DIMS),
+                ("ndim", ctypes.c_int32)]
     
     def __init__(self):
         self.data = 0
-        self.ndims = 0
-
+        self.shape = (0,)*ARRAY_MAX_DIMS
+        self.ndim = 0       
+        
 
 def type_length(dtype):
     if (dtype == float or dtype == int):
@@ -376,8 +377,8 @@ class array:
             self.shape = shape
 
 
-        if len(shape) > MAX_ARRAY_DIM:
-            raise RuntimeError(f"Arrays may only have {MAX_ARRAY_DIM} dimensions maximum, trying to create array with {len(shape)} dims.")
+        if len(shape) > ARRAY_MAX_DIMS:
+            raise RuntimeError(f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims.")
 
 
         # canonicalize dtype
@@ -403,30 +404,42 @@ class array:
                 dtype = np_dtype_to_warp_type[arr.dtype]
 
             try:
-                # try to convert src array to destination shape, e.g.: (n*3) -> (n, vec3)
-                arr = arr.reshape((-1, type_length(dtype)))
-            except:
-                raise RuntimeError(f"Could not reshape input data with shape {arr.shape} to array with shape (*, {type_length(dtype)}")
-
-            try:
                 # try to convert src array to destination type
                 arr = arr.astype(dtype=type_typestr(dtype._type_))
             except:
                 raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
             
-            # squeeze trailing dimensions of length 1
-            # if arr.shape[-1] == 1:
-            #     arr = np.squeeze(arr, len(arr.shape)-1)
-
             # ensure contiguous
             arr = np.ascontiguousarray(arr)
 
+            # remove any trailing dimensions of length 1
+            if arr.ndim > 1 and arr.shape[-1] == 1:
+                arr = np.squeeze(arr, axis=len(arr.shape)-1)
+
             ptr = arr.__array_interface__["data"][0]
             shape = arr.__array_interface__["shape"]
-            
-            # strip off the last dimension (which represents our contained type's size, e.g.: 9 for dtype=mat33)
-            if len(shape) > 1:# and shape[1] > 1:
-                shape = shape[0:-1]
+
+            # Convert input shape to Warp
+            if type_length(dtype) > 1:
+                
+                # if we are constructing an array of vectors, but input 
+                # is one dimensional (i.e.: flattened) then try and reshape to 
+                # to match target dtype
+                if arr.ndim == 1:
+                    arr = arr.reshape((-1, *dtype._shape_))
+
+                # last dimension should match dtype shape when using vector types,
+                # e.g.: array of mat22 objects should have shape (n, 2, 2)
+                dtype_ndim = len(dtype._shape_)
+                
+                trailing_shape = arr.shape[-dtype_ndim:]
+                leading_shape = arr.shape[0:-dtype_ndim]
+
+                if dtype._shape_ != trailing_shape:
+                    raise RuntimeError(f"Last dimensions of input array should match the specified data type, given shape {arr.shape}, expected last dimensions to match dtype shape {dtype._shape_}")
+
+                shape = leading_shape
+
 
             if (device == "cpu" and copy == False):
 
@@ -549,9 +562,9 @@ class array:
         else:
             a.data = ctypes.c_uint64(self.ptr)
 
-        a.ndims = ctypes.c_int32(len(self.shape))
+        a.ndim = ctypes.c_int32(len(self.shape))
 
-        for i in range(a.ndims):
+        for i in range(a.ndim):
             a.shape[i] = self.shape[i]
 
         return a        

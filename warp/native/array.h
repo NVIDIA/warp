@@ -7,7 +7,7 @@
 namespace wp
 {
 
-
+// must match constant in types.py
 const int kMaxArrayDims = 4;
 
 template <typename T>

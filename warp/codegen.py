@@ -920,36 +920,32 @@ class Adjoint:
 
                 target = adj.eval(node.value)
 
-                if isinstance(target.type, array):
-                    
-                    # handles the case where we are indexing into an array, e.g.: x = arr[i]
-                    index = adj.eval(node.slice)
-                    out = adj.add_call(adj.builtin_functions["load"], [target, index])
-                    return out
+                indices = []
 
-                else:
-
-                    # handles non-array types, e.g: vec3, mat33, etc
-                    indices = []
-
-                    if isinstance(node.slice, ast.Tuple):
-                        # handles the M[i, j] case (Python 3.8.x upward)
-                        for arg in node.slice.elts:
-                            var = adj.eval(arg)
-                            indices.append(var)
-
-                    elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-                        # handles the M[i, j] case (Python 3.7.x)
-                        for arg in node.slice.value.elts:
-                            var = adj.eval(arg)
-                            indices.append(var)
-                    else:
-                        # simple expression
-                        var = adj.eval(node.slice)
+                if isinstance(node.slice, ast.Tuple):
+                    # handles the x[i, j] case (Python 3.8.x upward)
+                    for arg in node.slice.elts:
+                        var = adj.eval(arg)
                         indices.append(var)
 
+                elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
+                    # handles the x[i, j] case (Python 3.7.x)
+                    for arg in node.slice.value.elts:
+                        var = adj.eval(arg)
+                        indices.append(var)
+                else:
+                    # simple expression, e.g.: x[i]
+                    var = adj.eval(node.slice)
+                    indices.append(var)
+
+                if isinstance(target.type, array):
+                    # handles array loads
+                    out = adj.add_call(adj.builtin_functions["load"], [target, *indices])
+                else:
+                    # handles non-array type indexing, e.g: vec3, mat33, etc
                     out = adj.add_call(adj.builtin_functions["index"], [target, *indices])
-                    return out
+
+                return out
 
             elif (isinstance(node, ast.Assign)):
 
