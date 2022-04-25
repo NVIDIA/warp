@@ -561,7 +561,7 @@ class LoadFunc:
 
         return args[0].type.dtype
 
-@builtin("view", hidden=True, differentiable=False)
+@builtin("view", hidden=True)
 class ViewFunc:
     @staticmethod
     def value_type(args):
@@ -569,12 +569,12 @@ class ViewFunc:
             raise Exception("view() argument 0 must be a array")
 
         # check index types
-        for a in args[1:-1]:
+        for a in args[1:]:
             if type_is_int(a.type) == False:
                 raise Exception(f"view() index arguments must be of integer type, got index of type {a.type}")
 
         # check array dim big enough to support view
-        num_indices = len(args[1:-1])
+        num_indices = len(args[1:])
         num_dims = args[0].type.ndim
 
         if num_indices >= num_dims:
@@ -584,7 +584,7 @@ class ViewFunc:
         import copy
         view_type = copy.copy(args[0].type)
         view_type.ndim -= num_indices
-
+        
         return view_type
 
 @builtin("store", hidden=True, skip_replay=True)

@@ -11,11 +11,25 @@ const int kMaxArrayDims = 4;
 template <typename T>
 struct array_t
 {
+    array_t() {}    
+    array_t(int) {} // for backward a = 0 initialization syntax
+
     T* data;
     int shape[kMaxArrayDims];
     //int stride[kMaxArrayDims];
     int ndim;
 };
+
+// return stride (in elements) of the given index
+template <typename T>
+CUDA_CALLABLE inline int stride(const array_t<T>& a, int dim)
+{
+    int stride = 1;
+    for (int i=dim+1; i < a.ndim; ++i)
+        stride = stride*a.shape[i];
+
+    return stride;
+}
 
 template <typename T>
 T& index(const array_t<T>& arr, int i)
@@ -49,8 +63,8 @@ T& index(const array_t<T>& arr, int i, int j, int k)
     assert(arr.shape[2] > k);
 
     const int idx = i*arr.shape[1]*arr.shape[2] + 
-                      j*arr.shape[2] +
-                      k;
+                    j*arr.shape[2] +
+                    k;
        
     return arr.data[idx];
 }
@@ -65,9 +79,9 @@ T& index(const array_t<T>& arr, int i, int j, int k, int l)
     assert(arr.shape[3] > l);
 
     const int idx = i*arr.shape[1]*arr.shape[2]*arr.shape[3] + 
-                      j*arr.shape[2]*arr.shape[3] + 
-                      k*arr.shape[3] + 
-                      l;
+                    j*arr.shape[2]*arr.shape[3] + 
+                    k*arr.shape[3] + 
+                    l;
 
     // int i = 0;
     // for i < in range(0, kMaxArrayDims):
@@ -81,11 +95,11 @@ template <typename T>
 array_t<T> view(array_t<T>& src, int i)
 {
     array_t<T> a;
-    a.data = &index(src, i);
+    a.data = src.data + i*stride(src, 0);
     a.shape[0] = src.shape[1];
     a.shape[1] = src.shape[2];
     a.shape[2] = src.shape[3];
-    a.ndim = src.ndim-1;
+    a.ndim = src.ndim-1; 
 
     return a;
 }
@@ -94,7 +108,7 @@ template <typename T>
 array_t<T> view(array_t<T>& src, int i, int j)
 {
     array_t<T> a;
-    a.data = &index(src, i, j);
+    a.data = src.data + i*stride(src, 0) + j*stride(src,1);
     a.shape[0] = src.shape[2];
     a.shape[1] = src.shape[3];
     a.ndim = src.ndim-2;
@@ -106,12 +120,16 @@ template <typename T>
 array_t<T> view(array_t<T>& src, int i, int j, int k)
 {
     array_t<T> a;
-    a.data = &index(src, i, j, k);
+    a.data = src.data + i*stride(src, 0) + j*stride(src,1) + k*stride(src,2);
     a.shape[0] = src.shape[3];
     a.ndim = src.ndim-3;
     
     return a;
 }
+
+template <typename T> void adj_view(array_t<T>& src, int i, array_t<T>& adj_src, int adj_i, array_t<T> adj_ret) {}
+template <typename T> void adj_view(array_t<T>& src, int i, int j, array_t<T>& adj_src, int adj_i, int adj_j, array_t<T> adj_ret) {}
+template <typename T> void adj_view(array_t<T>& src, int i, int j, int k, array_t<T>& adj_src, int adj_i, int adj_j, int adj_k, array_t<T> adj_ret) {}
 
 
 template<typename T> inline CUDA_CALLABLE T atomic_add(const array_t<T>& buf, int i, T value) { return atomic_add(&index(buf, i), value); }
