@@ -422,9 +422,9 @@ class array:
             # Convert input shape to Warp
             if type_length(dtype) > 1:
                 
-                # if we are constructing an array of vectors, but input 
+                # if we are constructing an array of vectors/matrices, but input 
                 # is one dimensional (i.e.: flattened) then try and reshape to 
-                # to match target dtype
+                # to match target dtype, inferring the first dimension
                 if arr.ndim == 1:
                     arr = arr.reshape((-1, *dtype._shape_))
 

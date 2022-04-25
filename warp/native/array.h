@@ -2,8 +2,6 @@
 
 #include "builtin.h"
 
-//#include <assert.h>
-
 namespace wp
 {
 

@@ -562,12 +562,18 @@ class LoadFunc:
 class StoreFunc:
     @staticmethod
     def value_type(args):
+        # check target type
         if (type(args[0].type) != array):
             raise Exception("store() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != int32 and args[1].type != int64 and args[1].type != uint64):
-            raise Exception("store() argument input 1 must be an integer type")
-        if (args[2].type != args[0].type.dtype):
-            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
+       
+        # check index types
+        for a in args[1:-1]:
+            if type_is_int(a.type) == False:
+                raise Exception(f"store() index arguments must be of integer type, got index of type {a.type}")
+
+        # check value type
+        if (args[-1].type != args[0].type.dtype):
+            raise Exception("store() value argument type ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
 
         return None
 

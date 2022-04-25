@@ -953,11 +953,29 @@ class Adjoint:
                 if (isinstance(node.targets[0], ast.Subscript)):
                     
                     target = adj.eval(node.targets[0].value)
-                    index = adj.eval(node.targets[0].slice)
                     value = adj.eval(node.value)
 
+                    slice = node.targets[0].slice
+                    indices = []
+
+                    if isinstance(slice, ast.Tuple):
+                        # handles the x[i, j] case (Python 3.8.x upward)
+                        for arg in slice.elts:
+                            var = adj.eval(arg)
+                            indices.append(var)
+
+                    elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
+                        # handles the x[i, j] case (Python 3.7.x)
+                        for arg in slice.value.elts:
+                            var = adj.eval(arg)
+                            indices.append(var)
+                    else:
+                        # simple expression, e.g.: x[i]
+                        var = adj.eval(slice)
+                        indices.append(var)                    
+
                     if (isinstance(target.type, array)):
-                        adj.add_call(adj.builtin_functions["store"], [target, index, value])
+                        adj.add_call(adj.builtin_functions["store"], [target, *indices, value])
                     else:
                         raise RuntimeError("Can only subscript assign array types")
 
