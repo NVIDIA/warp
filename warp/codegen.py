@@ -1243,11 +1243,12 @@ def constant_str(value):
         return str(value)
 
 def indent(args, stops=1):
-    sep = "\n"
+    sep = ",\n"
     for i in range(stops):
         sep += "\t"
 
-    return sep + args.replace(", ", "," + sep)
+    #return sep + args.replace(", ", "," + sep)
+    return sep.join(args)
 
 
 def codegen_func_forward_body(adj, device='cpu', indent=4):
@@ -1361,27 +1362,19 @@ def codegen_func(adj, device='cpu'):
 
     return_type = 'void' if adj.return_var is None else adj.return_var.ctype()
 
-    forward_args = ""
-    reverse_args = ""
-    # s = ""
+    forward_args = []
+    reverse_args = []
 
     # forward args
-    sep = ""
     for arg in adj.args:
-        forward_args += sep + arg.ctype() + " var_" + arg.label
-        reverse_args += sep + arg.ctype() + " var_" + arg.label
-        sep = ", "
+        forward_args.append(arg.ctype() + " var_" + arg.label)
+        reverse_args.append(arg.ctype() + " var_" + arg.label)
 
     # reverse args
-    sep = ","
     for arg in adj.args:
-        if "*" in arg.ctype():
-            reverse_args += sep + arg.ctype() + " adj_" + arg.label
-        else:
-            reverse_args += sep + arg.ctype() + " & adj_" + arg.label
-        sep = ", "
+        reverse_args.append(arg.ctype() + " & adj_" + arg.label)
 
-    reverse_args += sep + return_type + " & adj_ret"
+    reverse_args.append(return_type + " & adj_ret")
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type='function', device=device)
@@ -1408,21 +1401,17 @@ def codegen_kernel(kernel, device='cpu'):
 
     adj = kernel.adj
 
-    forward_args = "int dim"
-    reverse_args = "int dim"
+    forward_args = ["int dim"]
+    reverse_args = ["int dim"]
 
     # forward args
-    sep = ","
     for arg in adj.args:
-        forward_args += sep + arg.ctype() + " var_" + arg.label
-        reverse_args += sep + arg.ctype() + " var_" + arg.label
-        sep = ", "
+        forward_args.append(arg.ctype() + " var_" + arg.label)
+        reverse_args.append(arg.ctype() + " var_" + arg.label)
 
     # reverse args
-    sep = ","
     for arg in adj.args:
-        reverse_args += sep + arg.ctype() + " adj_" + arg.label
-        sep = ", "
+        reverse_args.append(arg.ctype() + " adj_" + arg.label)
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type='kernel', device=device)
@@ -1450,35 +1439,20 @@ def codegen_module(kernel, device='cpu'):
     adj = kernel.adj
 
     # build forward signature
-    forward_args = "int dim"
-    forward_params = "dim"
+    forward_args = ["int dim"]
+    forward_params = ["dim"]
 
-    sep = ","
     for arg in adj.args:
-        # if (isinstance(arg.type, array)):
-        #     forward_args += sep + "wp::array var_" + arg.label
-        #     forward_params += sep + "var_" + arg.label
-        # else:
-        forward_args += sep + arg.ctype() + " var_" + arg.label
-        forward_params += sep + "var_" + arg.label
-
-        sep = ", "
-
+        forward_args.append(arg.ctype() + " var_" + arg.label)
+        forward_params.append("var_" + arg.label)
 
     # build reverse signature
-    reverse_args = forward_args
-    reverse_params = forward_params
+    reverse_args = [*forward_args]
+    reverse_params = [*forward_params]
 
-    sep = ","
     for arg in adj.args:
-        # if (isinstance(arg.type, array)):
-        #     reverse_args += sep + "wp::array adj_" + arg.label
-        #     reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
-        # else:
-        reverse_args += sep + arg.ctype() + " adj_" + arg.label
-        reverse_params += sep + "adj_" + arg.label
-
-        sep = ", "
+        reverse_args.append(arg.ctype() + " adj_" + arg.label)
+        reverse_params.append("adj_" + arg.label)
 
     if device == 'cpu':
         template = cpu_module_template
@@ -1500,34 +1474,20 @@ def codegen_module_decl(kernel, device='cpu'):
     adj = kernel.adj
 
     # build forward signature
-    forward_args = "int dim"
-    forward_params = "dim"
+    forward_args = ["int dim"]
+    forward_params = ["dim"]
 
-    sep = ","
     for arg in adj.args:
-        # if (isinstance(arg.type, array)):
-        #     forward_args += sep + "wp::array var_" + arg.label
-        #     forward_params += sep + "cast<" + arg.ctype() + ">(var_" + arg.label + ")"
-        # else:
-        forward_args += sep + arg.ctype() + " var_" + arg.label
-        forward_params += sep + "var_" + arg.label
-
-        sep = ", "
+        forward_args.append(arg.ctype() + " var_" + arg.label)
+        forward_params.append("var_" + arg.label)
 
     # build reverse signature
-    reverse_args = forward_args
-    reverse_params = forward_params
+    reverse_args = [*forward_args]
+    reverse_params = [*forward_params]
 
-    sep = ","
     for arg in adj.args:
-        # if (isinstance(arg.type, array)):
-        #     reverse_args += sep + "wp::array adj_" + arg.label
-        #     reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
-        # else:
-        reverse_args += sep + arg.ctype() + " adj_" + arg.label
-        reverse_params += sep + "adj_" + arg.label
-
-        sep = ", "
+        reverse_args.append(arg.ctype() + " adj_" + arg.label)
+        reverse_params.append("adj_" + arg.label)
 
     if device == 'cpu':
         template = cpu_module_header_template
