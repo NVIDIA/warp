@@ -341,7 +341,7 @@ def types_equal(a, b):
 
 class array:
 
-    def __init__(self, data=None, dtype=None, shape=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, requires_grad=False):
+    def __init__(self, data=None, dtype=None, shape=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
         """ Constructs a new Warp array object from existing data.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
@@ -487,7 +487,13 @@ class array:
             self.__name__ = "array<" + type.__name__ + ">"
 
 
-        # update size
+        # update ndim
+        if ndim == None:
+            self.ndim = len(self.shape)
+        else:
+            self.ndim = ndim
+
+        # update size (num elements)
         self.size = 1
         for d in self.shape:
             self.size *= d

@@ -525,7 +525,7 @@ inline CUDA_CALLABLE mat44 inverse(const mat44& m)
     // compute 4x4 determinant & its reciprocal
     double det = x30*z30 + x20*z20 + x10*z10 + x00*z00;
     
-    if (fabsf(det) > kEps) 
+    if (fabsf(float(det)) > kEps) 
     {
         mat44 invm;
 

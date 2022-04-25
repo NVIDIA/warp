@@ -553,10 +553,39 @@ class LoadFunc:
     def value_type(args):
         if (type(args[0].type) != array):
             raise Exception("load() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != int32 and args[1].type != int64 and args[1].type != uint64):
-            raise Exception("load() argument input 1 must be an integer type")
+
+        # check index types
+        for a in args[1:-1]:
+            if type_is_int(a.type) == False:
+                raise Exception(f"load() index arguments must be of integer type, got index of type {a.type}")
 
         return args[0].type.dtype
+
+@builtin("view", hidden=True, differentiable=False)
+class ViewFunc:
+    @staticmethod
+    def value_type(args):
+        if (type(args[0].type) != array):
+            raise Exception("view() argument 0 must be a array")
+
+        # check index types
+        for a in args[1:-1]:
+            if type_is_int(a.type) == False:
+                raise Exception(f"view() index arguments must be of integer type, got index of type {a.type}")
+
+        # check array dim big enough to support view
+        num_indices = len(args[1:-1])
+        num_dims = args[0].type.ndim
+
+        if num_indices >= num_dims:
+            raise Exception(f"Trying to create an array view with {num_indices} indices, but array only has {num_dims} dimensions.")
+        
+        # create an array view with leading dimensions removed
+        import copy
+        view_type = copy.copy(args[0].type)
+        view_type.ndim -= num_indices
+
+        return view_type
 
 @builtin("store", hidden=True, skip_replay=True)
 class StoreFunc:

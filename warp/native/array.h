@@ -14,13 +14,13 @@ struct array_t
     T* data;
     int shape[kMaxArrayDims];
     //int stride[kMaxArrayDims];
-    int ndims;
+    int ndim;
 };
 
 template <typename T>
 T& index(const array_t<T>& arr, int i)
 {
-    assert(arr.ndims == 1);
+    assert(arr.ndim == 1);
     assert(arr.shape[0] > i);
     
     const int idx = i;
@@ -31,7 +31,7 @@ T& index(const array_t<T>& arr, int i)
 template <typename T>
 T& index(const array_t<T>& arr, int i, int j)
 {
-    assert(arr.ndims == 2);
+    assert(arr.ndim == 2);
     assert(arr.shape[0] > i);
     assert(arr.shape[1] > j);
 
@@ -43,7 +43,7 @@ T& index(const array_t<T>& arr, int i, int j)
 template <typename T>
 T& index(const array_t<T>& arr, int i, int j, int k)
 {
-    assert(arr.ndims == 3);
+    assert(arr.ndim == 3);
     assert(arr.shape[0] > i);
     assert(arr.shape[1] > j);
     assert(arr.shape[2] > k);
@@ -58,7 +58,7 @@ T& index(const array_t<T>& arr, int i, int j, int k)
 template <typename T>
 T& index(const array_t<T>& arr, int i, int j, int k, int l)
 {
-    assert(arr.ndims == 3);
+    assert(arr.ndim == 3);
     assert(arr.shape[0] > i);
     assert(arr.shape[1] > j);
     assert(arr.shape[2] > k);
@@ -75,6 +75,42 @@ T& index(const array_t<T>& arr, int i, int j, int k, int l)
     //     i *= arr.shape[i]
 
     return arr.data[idx];
+}
+
+template <typename T>
+array_t<T> view(array_t<T>& src, int i)
+{
+    array_t<T> a;
+    a.data = &index(src, i);
+    a.shape[0] = src.shape[1];
+    a.shape[1] = src.shape[2];
+    a.shape[2] = src.shape[3];
+    a.ndim = src.ndim-1;
+
+    return a;
+}
+
+template <typename T>
+array_t<T> view(array_t<T>& src, int i, int j)
+{
+    array_t<T> a;
+    a.data = &index(src, i, j);
+    a.shape[0] = src.shape[2];
+    a.shape[1] = src.shape[3];
+    a.ndim = src.ndim-2;
+    
+    return a;
+}
+
+template <typename T>
+array_t<T> view(array_t<T>& src, int i, int j, int k)
+{
+    array_t<T> a;
+    a.data = &index(src, i, j, k);
+    a.shape[0] = src.shape[3];
+    a.ndim = src.ndim-3;
+    
+    return a;
 }
 
 

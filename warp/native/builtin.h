@@ -39,13 +39,13 @@ namespace wp
 {
 
 // 64bit address for an array
-typedef uint64_t array;
+//typedef uint64_t array;
 
-template <typename T>
-CUDA_CALLABLE T cast(wp::array addr)
-{
-    return (T)(addr);
-}
+// template <typename T>
+// CUDA_CALLABLE T cast(wp::array addr)
+// {
+//     return (T)(addr);
+// }
 
 // numeric types (used from generated kernels)
 typedef float float32;

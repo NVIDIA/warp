@@ -939,8 +939,15 @@ class Adjoint:
                     indices.append(var)
 
                 if isinstance(target.type, array):
+                    
                     # handles array loads
-                    out = adj.add_call(adj.builtin_functions["load"], [target, *indices])
+                    if len(indices) == target.type.ndim:
+                        # handles array loads
+                        out = adj.add_call(adj.builtin_functions["load"], [target, *indices])
+                    else:
+                        # handles array views
+                        out = adj.add_call(adj.builtin_functions["view"], [target, *indices])
+
                 else:
                     # handles non-array type indexing, e.g: vec3, mat33, etc
                     out = adj.add_call(adj.builtin_functions["index"], [target, *indices])
