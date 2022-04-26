@@ -6,7 +6,6 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 from . context import add_builtin
-from . context import builtin
 
 from warp.types import *
 
@@ -524,125 +523,134 @@ add_builtin("curlnoise", input_types={"state": uint32, "xyzt": vec4}, value_type
 add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility",
     doc="Allows printing formatted strings, using C-style format specifiers.")
 
-@builtin("print", input_types={"value": Any}, doc="Print variable to stdout", group="Utility")
-class PrintFunc:
-    @staticmethod
-    def value_type(args):
-        return None
+add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout", group="Utility")
 
 # helpers
 add_builtin("tid", input_types={}, value_type=int, group="Utility",
     doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.""")
 
-@builtin("copy", input_types={}, hidden=True, group="Utility")
-class CopyFunc:
-    @staticmethod
-    def value_type(args):
-        return None
+add_builtin("copy", variadic=True, hidden=True, group="Utility")
+add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
 
-@builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
-class SelectFunc:
-    @staticmethod
-    def value_type(args):
-        return args[1].type
+# does argument checking and type progagation for load()
+def load_value_type(args):
 
-@builtin("load", hidden=True)
-class LoadFunc:
-    @staticmethod
-    def value_type(args):
-        if (type(args[0].type) != array):
-            raise Exception("load() argument 0 must be a array")
+    if (type(args[0].type) != array):
+        raise RuntimeError("load() argument 0 must be an array")
 
-        # check index types
-        for a in args[1:-1]:
-            if type_is_int(a.type) == False:
-                raise Exception(f"load() index arguments must be of integer type, got index of type {a.type}")
+    num_indices = len(args[1:])
+    num_dims = args[0].type.ndim
 
-        return args[0].type.dtype
+    if num_indices < num_dims:
+        raise RuntimeError("Num indices < num dimensions for array load, this is a codegen error, should have generated a view instead")
 
-@builtin("view", hidden=True)
-class ViewFunc:
-    @staticmethod
-    def value_type(args):
-        if (type(args[0].type) != array):
-            raise Exception("view() argument 0 must be a array")
+    if num_indices > num_dims:
+        raise RuntimeError(f"Num indices > num dimensions for array load, received {num_indices}, but array only has {num_dims}")
 
-        # check index types
-        for a in args[1:]:
-            if type_is_int(a.type) == False:
-                raise Exception(f"view() index arguments must be of integer type, got index of type {a.type}")
+    # check index types
+    for a in args[1:]:
+        if type_is_int(a.type) == False:
+            raise RuntimeError(f"load() index arguments must be of integer type, got index of type {a.type}")
 
-        # check array dim big enough to support view
-        num_indices = len(args[1:])
-        num_dims = args[0].type.ndim
+    return args[0].type.dtype
 
-        if num_indices >= num_dims:
-            raise Exception(f"Trying to create an array view with {num_indices} indices, but array only has {num_dims} dimensions.")
-        
-        # create an array view with leading dimensions removed
-        import copy
-        view_type = copy.copy(args[0].type)
-        view_type.ndim -= num_indices
-        
-        return view_type
+# does argument checking and type progagation for view()
+def view_value_type(args):
+    if (type(args[0].type) != array):
+        raise RuntimeError("view() argument 0 must be an array")
 
-@builtin("store", hidden=True, skip_replay=True)
-class StoreFunc:
-    @staticmethod
-    def value_type(args):
-        # check target type
-        if (type(args[0].type) != array):
-            raise Exception("store() argument 0 must be a array")
-       
-        # check index types
-        for a in args[1:-1]:
-            if type_is_int(a.type) == False:
-                raise Exception(f"store() index arguments must be of integer type, got index of type {a.type}")
+    # check array dim big enough to support view
+    num_indices = len(args[1:])
+    num_dims = args[0].type.ndim
 
-        # check value type
-        if (args[-1].type != args[0].type.dtype):
-            raise Exception("store() value argument type ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
+    if num_indices >= num_dims:
+        raise RuntimeError(f"Trying to create an array view with {num_indices} indices, but array only has {num_dims} dimensions.")
 
-        return None
+    # check index types
+    for a in args[1:]:
+        if type_is_int(a.type) == False:
+            raise RuntimeError(f"view() index arguments must be of integer type, got index of type {a.type}")
 
-@builtin("atomic_add", input_types={"array": array, "index": int, "value": Any}, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
-class AtomicAddFunc:
-    @staticmethod
-    def value_type(args):
+    # create an array view with leading dimensions removed
+    import copy
+    view_type = copy.copy(args[0].type)
+    view_type.ndim -= num_indices
+    
+    return view_type
 
-        if (type(args[0].type) != array):
-            raise Exception("store() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != int32 and args[1].type != int64 and args[1].type != uint64):
-            raise Exception("store() argument input 1 must be an integer type")
-        if (args[2].type != args[0].type.dtype):
-            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
+# does argument checking and type progagation for store()
+def store_value_type(args):
+    # check target type
+    if (type(args[0].type) != array):
+        raise RuntimeError("store() argument 0 must be an array")
+    
+    num_indices = len(args[1:-1])
+    num_dims = args[0].type.ndim
 
-        return args[0].type.dtype
+    # if this happens we should have generated a view instead of a load during code gen
+    if num_indices < num_dims:
+        raise RuntimeError("Num indices < num dimensions for array store")
+
+    if num_indices > num_dims:
+        raise RuntimeError(f"Num indices > num dimensions for array store, received {num_indices}, but array only has {num_dims}")
+
+    # check index types
+    for a in args[1:-1]:
+        if type_is_int(a.type) == False:
+            raise RuntimeError(f"store() index arguments must be of integer type, got index of type {a.type}")
+
+    # check value type
+    if (args[-1].type != args[0].type.dtype):
+        raise RuntimeError(f"store() value argument type ({args[2].type}) must be of the same type as the array ({args[0].type.dtype})")
+
+    return None
 
 
-@builtin("atomic_sub", input_types={"array": array, "index": int, "value": Any}, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
-class AtomicSubFunc:
-    @staticmethod
-    def value_type(args):
+add_builtin("load", variadic=True, hidden=True, value_func=load_value_type)
+add_builtin("view", variadic=True, hidden=True, value_func=view_value_type)
+add_builtin("store", variadic=True, hidden=True, value_func=store_value_type, skip_replay=True)
 
-        if (type(args[0].type) != array):
-            raise Exception("store() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != int32 and args[1].type != int64 and args[1].type != uint64):
-            raise Exception("store() argument input 1 must be an integer type")
-        if (args[2].type != args[0].type.dtype):
-            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
+def atomic_op_value_type(args):
 
-        return args[0].type.dtype
+    # check target type
+    if (type(args[0].type) != array):
+        raise RuntimeError("atomic() operation argument 0 must be an array")
+    
+    num_indices = len(args[1:-1])
+    num_dims = args[0].type.ndim
+
+    # if this happens we should have generated a view instead of a load during code gen
+    if num_indices < num_dims:
+        raise RuntimeError("Num indices < num dimensions for atomic array operation")
+
+    if num_indices > num_dims:
+        raise RuntimeError(f"Num indices > num dimensions for atomic array operation, received {num_indices}, but array only has {num_dims}")
+
+    # check index types
+    for a in args[1:-1]:
+        if type_is_int(a.type) == False:
+            raise RuntimeError(f"atomic() operation index arguments must be of integer type, got index of type {a.type}")
+
+    if (args[-1].type != args[0].type.dtype):
+        raise RuntimeError(f"atomic() value argument ({args[-1].type}) must be of the same type as the array ({args[0].type.dtype})")
+
+    return args[0].type.dtype
+
+
+add_builtin("atomic_add", input_types={"array": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"array": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"array": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"array": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_type=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+
+add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
 
 # used to index into builtin types, i.e.: y = vec3[1]
-@builtin("index", hidden=True)
-class IndexFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
+add_builtin("index", variadic=True, hidden=True, value_type=float)
 
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")

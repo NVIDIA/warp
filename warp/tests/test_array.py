@@ -50,6 +50,8 @@ def kernel_2d(a: wp.array(dtype=int, ndim=2), m: int, n: int):
     wp.expect_eq(a[i,j], wp.tid()*2 + 1)
 
 
+
+
 def test_2d(test, device):
 
     dim_x = 4
@@ -112,6 +114,8 @@ def kernel_4d(a: wp.array(dtype=int, ndim=4), m: int, n: int, o: int, p: int):
     k = wp.tid()%(o*p)/p
     l = wp.tid()%p
 
+
+
     wp.expect_eq(a[i,j,k,l], wp.tid())
     wp.expect_eq(a[i][j][k][l], wp.tid())
 
@@ -134,6 +138,10 @@ def test_4d(test, device):
     with CheckOutput(test):
         wp.launch(kernel_4d, dim=arr.size, inputs=[arr, dim_x, dim_y, dim_z, dim_w], device=device)
         
+
+
+def test_slice():
+    pass
 
 
 #arr3d = wp.array(a3, dtype=float, device=device)

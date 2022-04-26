@@ -267,60 +267,62 @@ class Adjoint:
 
     def add_call(adj, func, inputs):
 
+        # promote func to list
+        if isinstance(func, list) == False:
+            func = [func,]
+
         # if func is overloaded then perform overload resolution here
-        # we validate argument types before they go to generated native
-        # code
+        # we validate argument types before they go to generated native code
+        resolved_func = None
 
-        if (isinstance(func, list)):
-    
-            resolved_func = None
+        for f in func:
+            match = True
 
-            for f in func:
-                match = True
+            # skip type checking for variadic functions
+            if not f.variadic:
 
-                if (f.variadic == False):
-                  
-                    # check argument counts match (todo: default arguments?)
-                    if len(f.input_types) != len(inputs):
-                        match = False
+                # check argument counts match (todo: default arguments?)
+                if len(f.input_types) != len(inputs):
+                    match = False
+                    continue
+
+                # check argument types equal
+                for i, a in enumerate(f.input_types.values()):
+                    
+                    # if arg type registered as Any, treat as 
+                    # template allowing any type to match
+                    if a == Any:
                         continue
 
-                    # check argument types equal
-                    for i, a in enumerate(f.input_types.values()):
-                        
-                        # if arg type registered as None, treat as 
-                        # template allowing any type to match
-                        if a == Any:
-                            continue
+                    # handle function refs as a special case
+                    if a == Callable and type(inputs[i]) is warp.context.Function:
+                        continue
 
-                        # handle function refs as a special case
-                        if a == Callable and type(inputs[i]) is warp.context.Function:
-                            continue
+                    # otherwise check arg type matches input variable type
+                    if not types_equal(a, inputs[i].type):
+                        match = False
+                        break
 
-                        # otherwise check arg type matches input variable type
-                        if not types_equal(a, inputs[i].type):
-                            match = False
-                            break
+            # found a match, use it
+            if (match):
+                resolved_func = f
+                break
 
-                # found a match, use it
-                if (match):
-                    resolved_func = f
-                    break
+        if resolved_func == None:
+            
+            arg_types = ""
 
-            if (resolved_func == None):
+            for x in inputs:
+                if isinstance(x, Var):
+                    arg_types += str(x.type) + ", "
                 
-                arg_types = ""
+                if isinstance(x, warp.context.Function):
+                    arg_types += "function" + ", "
 
-                for x in inputs:
-                    if isinstance(x, Var):
-                        arg_types += str(x.type) + ", "
-                    
-                    if isinstance(x, warp.context.Function):
-                        arg_types += "function" + ", "
+            raise Exception(f"Couldn't find function overload for '{func[0].key}' that matched inputs with types: {arg_types}")
 
-                raise Exception(f"Couldn't find function overload for '{func[0].key}' that matched inputs with types: {arg_types}")
-            else:
-                func = resolved_func
+        else:
+            func = resolved_func
 
 
         # expression (zero output), e.g.: void do_something();
@@ -1014,7 +1016,7 @@ class Adjoint:
                     return out
 
             elif (isinstance(node, ast.Return)):
-                cond = adj.cond  # None if not in branch, else branch boolean
+                cond = adj.cond  
 
                 out = adj.eval(node.value)
                 adj.symbols['return'] = out

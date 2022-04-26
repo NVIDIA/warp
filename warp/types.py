@@ -333,8 +333,8 @@ def types_equal(a, b):
     if (b == int):
         b = int32
         
-    if (isinstance(a, array) and isinstance(b, array)):
-        return a.dtype == b.dtype
+    if isinstance(a, array) and isinstance(b, array):
+        return True
     else:
         return a == b
 

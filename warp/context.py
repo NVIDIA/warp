@@ -32,7 +32,7 @@ class Function:
                  func,
                  key,
                  namespace,
-                 input_types={},
+                 input_types=None,
                  value_type=None,
                  module=None,
                  variadic=False,
@@ -56,6 +56,11 @@ class Function:
         if (func):
             self.adj = warp.codegen.Adjoint(func)
 
+            # record input types    
+            self.input_types = {}            
+            for a in self.adj.args:
+                self.input_types[a.label] = a.type
+            
         if (module):
             module.register_function(self)
 
@@ -123,20 +128,11 @@ def kernel(f):
 
 builtin_functions = {}
 
-# decorator to register a built-in function with @builtin
-def builtin(key, input_types={}, doc="", group="", hidden=False, skip_replay=False):
-    def insert(c):
-        
-        func = Function(func=None, input_types=input_types, key=key, namespace="wp::", value_type=c.value_type, doc=doc, group=group, hidden=hidden, skip_replay=skip_replay)
-        builtin_functions[key] = func
+def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False, skip_replay=False):
 
-    return insert
-
-def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False, skip_replay=False):
-
-    # wrap value type in a lambda
-    def value_func(arg):
-        return value_type
+    if value_func == None:
+        def value_func(args):
+            return value_type
         
     func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden, skip_replay=skip_replay)
 
