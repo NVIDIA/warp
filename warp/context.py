@@ -806,17 +806,23 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
                     else:
 
+                        arg_name = kernel.adj.args[i].label
+
                         # check for array value
                         if (isinstance(a, warp.types.array) == False):
-                            raise RuntimeError(f"Passing non-array value with type {type(a)} to array argument: '{kernel.adj.args[i].label}'")
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array, but passed value has type {type(a)}.")
                         
                         # check subtype
                         if (a.dtype != arg_type.dtype):
-                            raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.adj.args[i].label))
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={a.dtype}.")
+
+                        # check dimensions
+                        if (a.ndim != arg_type.ndim):
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dimensions {arg_type.ndim} but the passed array has dimensions {a.ndim}.")
 
                         # check device
                         if (a.device != device):
-                            raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, a.device))
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', trying to launch on device='{device}'', but input array for argument '{arg_name}' is on device={a.device}.")
                         
                         # if(a.ptr == None):                            
                         #     params.append(ctypes.c_int64(0))
