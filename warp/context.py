@@ -795,6 +795,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
             for i, a in enumerate(args):
 
                 arg_type = kernel.adj.args[i].type
+                arg_name = kernel.adj.args[i].label
 
                 if (isinstance(arg_type, warp.types.array)):
 
@@ -806,7 +807,6 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
                     else:
 
-                        arg_name = kernel.adj.args[i].label
 
                         # check for array value
                         if (isinstance(a, warp.types.array) == False):
@@ -822,7 +822,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
 
                         # check device
                         if (a.device != device):
-                            raise RuntimeError(f"Error launching kernel '{kernel.key}', trying to launch on device='{device}'', but input array for argument '{arg_name}' is on device={a.device}.")
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={a.device}.")
                         
                         # if(a.ptr == None):                            
                         #     params.append(ctypes.c_int64(0))
@@ -839,7 +839,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                     # flatten to 1D array
                     v = a.flatten()
                     if (len(v) != arg_type._length_):
-                        raise RuntimeError(f"Kernel parameter {kernel.adj.args[i].label} has incorrect value length {len(v)}, expected {arg_type._length_}")
+                        raise RuntimeError(f"Error launching kernel '{kernel.key}', parameter for argument '{arg_name}' has length {len(v)}, but expected {arg_type._length_}. Could not convert parameter to {arg_type}.")
 
                     # wrap the arg_type (which is an ctypes.Array) in a structure
                     # to ensure parameter is passed to the .dll by value rather than reference
@@ -857,14 +857,14 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                         # try to pack as a scalar type
                         params.append(arg_type._type_(a))
                     except:
-                        raise RuntimeError(f"Unable to pack kernel parameter type {type(a)} for param {kernel.adj.args[i].label}, expected {arg_type}")
+                        raise RuntimeError(f"Error launching kernel, unable to pack kernel parameter type {type(a)} for param {arg_name}, expected {arg_type}")
 
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
 
         if (len(fwd_args)) != (len(kernel.adj.args)): 
-            raise RuntimeError(f"Unable to launch kernel '{kernel.key}', passed {len(fwd_args)} args but kernel requires {len(kernel.adj.args)}")
+            raise RuntimeError(f"Error launching kernel '{kernel.key}', passed {len(fwd_args)} arguments but kernel requires {len(kernel.adj.args)}.")
 
         pack_args(fwd_args, params)
         pack_args(adj_args, params)
