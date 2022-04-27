@@ -19,13 +19,6 @@ WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
 class WarpMenu:
 
-
-    def _on_window_menu_click(self, menu_item, is_visible):
-        self.show_window(menu_item, is_visible)
-
-    def show_window(self, menu_item, is_visible):
-        print(":LKJSD:LFKJSD:FLKJ")
-
     def __init__(self):
 
         self._is_live = True
