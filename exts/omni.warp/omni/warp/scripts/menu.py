@@ -18,175 +18,158 @@ WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/pr
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
 class WarpMenu:
+
+
+    def _on_window_menu_click(self, menu_item, is_visible):
+        self.show_window(menu_item, is_visible)
+
+    def show_window(self, menu_item, is_visible):
+        print(":LKJSD:LFKJSD:FLKJ")
+
     def __init__(self):
-
-        self._script_menu = [
-            {
-                "name": menu_common.EXAMPLE_DEM_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_DEM_SCRIPT)
-            },
-            # {
-            #     "name": menu_common.EXAMPLE_MESH_INTERSECT_MENU_ITEM.split("/")[-1],
-            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_MESH_INTERSECT_SCRIPT)
-            # },
-            {
-                "name": menu_common.EXAMPLE_MESH_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_MESH_SCRIPT)
-            },
-            {
-                "name": menu_common.EXAMPLE_NVDB_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_NVDB_SCRIPT)
-            },
-            # {
-            #     "name": menu_common.EXAMPLE_SIM_ANT_MENU_ITEM.split("/")[-1],
-            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_ANT_SCRIPT)
-            # },
-            # {
-            #     "name": menu_common.EXAMPLE_SIM_CARTPOLE_MENU_ITEM.split("/")[-1],
-            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_CARTPOLE_SCRIPT)
-            # },
-            {
-                "name": menu_common.EXAMPLE_SIM_CLOTH_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_CLOTH_SCRIPT)
-            },
-            # {
-            #     "name": menu_common.EXAMPLE_SIM_GRAD_BOUNCE_MENU_ITEM.split("/")[-1],
-            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_GRAD_BOUNCE_SCRIPT)
-            # },
-            # {
-            #     "name": menu_common.EXAMPLE_SIM_GRAD_CLOTH_MENU_ITEM.split("/")[-1],
-            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_GRAD_CLOTH_SCRIPT)
-            # },
-            {
-                "name": menu_common.EXAMPLE_SIM_GRANULAR_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_GRANULAR_SCRIPT)
-            },
-            # {
-            #     "name": menu_common.EXAMPLE_SIM_HUMANOID_MENU_ITEM.split("/")[-1],
-            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_HUMANOID_SCRIPT)
-            # },
-            {
-                "name": menu_common.EXAMPLE_SIM_NEO_HOOKEAN_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_NEO_HOOKEAN_SCRIPT)
-            },
-            {
-                "name": menu_common.EXAMPLE_SIM_PARTICLE_CHAIN_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_PARTICLE_CHAIN_SCRIPT)
-            },
-            # {
-            #     "name": menu_common.EXAMPLE_SIM_QUADRUPED_MENU_ITEM.split("/")[-1],
-            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_QUADRUPED_SCRIPT)
-            # },
-            {
-                "name": menu_common.EXAMPLE_SIM_RIGID_CHAIN_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_CHAIN_SCRIPT)
-            },
-            {
-                "name": menu_common.EXAMPLE_SIM_RIGID_CONTACT_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_CONTACT_SCRIPT)
-            },
-            {
-                "name": menu_common.EXAMPLE_SIM_RIGID_FEM_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_FEM_SCRIPT)
-            },
-            {
-                "name": menu_common.EXAMPLE_SIM_RIGID_FORCE_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_FORCE_SCRIPT)
-            },
-            {
-                "name": menu_common.EXAMPLE_SIM_RIGID_GYROSCOPIC_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_GYROSCOPIC_SCRIPT)
-            },
-            # {
-            #     "name": menu_common.EXAMPLE_SIM_RIGID_KINEMATICS_MENU_ITEM.split("/")[-1],
-            #     "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_KINEMATICS_SCRIPT)
-            # },
-            {
-                "name": menu_common.EXAMPLE_WAVE_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_script_menu_click(menu_common.EXAMPLE_WAVE_SCRIPT)
-            },
-            {
-                "name": menu_common.EXAMPLE_BROWSE_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_browse_scripts_click()
-            }
-        ]
-
-        self._scene_menu = [
-            {
-                "name": menu_common.SCENE_CLOTH_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_scene_menu_click(menu_common.SCENE_CLOTH)
-            },
-            {
-                "name": menu_common.SCENE_DEFORM_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_scene_menu_click(menu_common.SCENE_DEFORM)
-            },
-            {
-                "name": menu_common.SCENE_PARTICLES_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_scene_menu_click(menu_common.SCENE_PARTICLES)
-            },
-            {
-                "name": menu_common.SCENE_WAVE_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_scene_menu_click(menu_common.SCENE_WAVE)
-            },
-            {
-                "name": menu_common.SCENE_BROWSE_MENU_ITEM.split("/")[-1],
-                "onclick_fn": lambda *_: self._on_browse_scenes_click()
-            }
-        ]
-
-        self._help_menu = [
-            {
-                "name": "Getting Started",
-                "onclick_fn": lambda *_: self._on_getting_started_click()
-            },
-            {
-                "name": "Documentation",
-                "onclick_fn": lambda *_: self._on_documentation_click()
-            }
-        ]
 
         self._is_live = True
 
-        self._script_menu_descriptions = []
-        for menu_item in self._script_menu:
-            menu_item_description = MenuItemDescription(name=menu_item.get("name"), onclick_fn=menu_item.get("onclick_fn"))
-            self._script_menu_descriptions.append(menu_item_description)
+        editor_menu = omni.kit.ui.get_editor_menu()
 
-        self._scene_menu_descriptions = []
-        for menu_item in self._scene_menu:
-            menu_item_description = MenuItemDescription(name=menu_item.get("name"), onclick_fn=menu_item.get("onclick_fn"))
-            self._scene_menu_descriptions.append(menu_item_description)
+        if editor_menu:
 
-        self._help_menu_descriptions = []
-        for menu_item in self._help_menu:
-            menu_item_description = MenuItemDescription(name=menu_item.get("name"), onclick_fn=menu_item.get("onclick_fn"))
-            self._help_menu_descriptions.append(menu_item_description)
+            self._example_DEM_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_DEM_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_DEM_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_MESH_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_MESH_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_MESH_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_NVDB_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_NVDB_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_NVDB_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_CLOTH_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_CLOTH_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_CLOTH_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_GRANULAR_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_GRANULAR_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_GRANULAR_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_NEO_HOOKEAN_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_NEO_HOOKEAN_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_NEO_HOOKEAN_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_PARTICLE_CHAIN_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_PARTICLE_CHAIN_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_PARTICLE_CHAIN_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_RIGID_CHAIN_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_RIGID_CHAIN_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_CHAIN_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_RIGID_CONTACT_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_RIGID_CONTACT_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_CONTACT_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_RIGID_FEM_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_RIGID_FEM_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_FEM_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_RIGID_FORCE_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_RIGID_FORCE_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_FORCE_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_SIM_RIGID_GYROSCOPIC_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_SIM_RIGID_GYROSCOPIC_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_GYROSCOPIC_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_WAVE_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_WAVE_MENU_ITEM}", 
+                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_WAVE_SCRIPT),
+                toggle=False, value=False
+            )
+            self._example_BROWSE_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.EXAMPLE_BROWSE_MENU_ITEM}", 
+                lambda _, value: self._on_browse_scripts_click(),
+                toggle=False, value=False
+            )
 
-        # line breaks
-        self._script_menu_descriptions.insert(len(self._script_menu_descriptions) - 1, MenuItemDescription())
-        self._scene_menu_descriptions.insert(len(self._scene_menu_descriptions) - 1, MenuItemDescription())
+            self._scene_CLOTH_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.SCENE_CLOTH_MENU_ITEM}", 
+                lambda _, value: self._on_scene_menu_click(menu_common.SCENE_CLOTH),
+                toggle=False, value=False
+            )
+            self._scene_DEFORM_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.SCENE_DEFORM_MENU_ITEM}", 
+                lambda _, value: self._on_scene_menu_click(menu_common.SCENE_DEFORM),
+                toggle=False, value=False
+            )
+            self._scene_PARTICLES_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.SCENE_PARTICLES_MENU_ITEM}", 
+                lambda _, value: self._on_scene_menu_click(menu_common.SCENE_PARTICLES),
+                toggle=False, value=False
+            )
+            self._scene_WAVE_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.SCENE_WAVE_MENU_ITEM}", 
+                lambda _, value: self._on_scene_menu_click(menu_common.SCENE_WAVE),
+                toggle=False, value=False
+            )
+            self._scene_BROWSE_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.SCENE_BROWSE_MENU_ITEM}", 
+                lambda _, value: self._on_browse_scenes_click(),
+                toggle=False, value=False
+            )
 
-        self._window_menu_descriptions = [
-            MenuItemDescription(name="Scripts", sub_menu=self._script_menu_descriptions),
-            MenuItemDescription(name="Scenes", sub_menu=self._scene_menu_descriptions),
-            MenuItemDescription(name="Help", sub_menu=self._help_menu_descriptions)
-        ]
+            self._help_GETTING_STARTED_menu_item = editor_menu.add_item(
+                "Window/Warp/Help/Getting Started", 
+                lambda _, value: self._on_getting_started_click(),
+                toggle=False, value=False
+            )
+            self._help_DOCUMENTATION_menu_item = editor_menu.add_item(
+                "Window/Warp/Help/Documentation", 
+                lambda _, value: self._on_documentation_click(),
+                toggle=False, value=False
+            )
 
-        self._window_menus_warp = [
-            MenuItemDescription(
-                name="Warp",
-                appear_after="Simulation",
-                sub_menu=self._window_menu_descriptions
-            ),
-        ]
-
-        omni.kit.menu.utils.add_menu_items(self._window_menus_warp, "Window")
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
         self._stage_event_sub = omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)
 
     def shutdown(self):
+        self._example_DEM_menu_item = None
+        self._example_MESH_menu_item = None
+        self._example_NVDB_menu_item = None
+        self._example_SIM_CLOTH_menu_item = None
+        self._example_SIM_GRANULAR_menu_item = None
+        self._example_SIM_NEO_HOOKEAN_menu_item = None
+        self._example_SIM_PARTICLE_CHAIN_menu_item = None
+        self._example_SIM_RIGID_CHAIN_menu_item = None
+        self._example_SIM_RIGID_CONTACT_menu_item = None
+        self._example_SIM_RIGID_FEM_menu_item = None
+        self._example_SIM_RIGID_FORCE_menu_item = None
+        self._example_SIM_RIGID_GYROSCOPIC_menu_item = None
+        self._example_WAVE_menu_item = None
+        self._example_BROWSE_menu_item = None
 
-        omni.kit.menu.utils.remove_menu_items(self._window_menus_warp, "Window")
+        self._scene_CLOTH_menu_item = None
+        self._scene_DEFORM_menu_item = None
+        self._scene_PARTICLES_menu_item = None
+        self._scene_WAVE_menu_item = None
+        self._scene_BROWSE_menu_item = None
+
+        self._help_GETTING_STARTED_menu_item = None
+        self._help_DOCUMENTATION_menu_item = None
+
         self._example = None
         self._update_event_sub = None
         self._update_event_stream = None
