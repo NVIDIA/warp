@@ -534,7 +534,7 @@ add_builtin("copy", variadic=True, hidden=True, group="Utility")
 add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
 
 # does argument checking and type progagation for load()
-def load_value_type(args):
+def load_value_func(args):
 
     if (type(args[0].type) != array):
         raise RuntimeError("load() argument 0 must be an array")
@@ -556,7 +556,7 @@ def load_value_type(args):
     return args[0].type.dtype
 
 # does argument checking and type progagation for view()
-def view_value_type(args):
+def view_value_func(args):
     if (type(args[0].type) != array):
         raise RuntimeError("view() argument 0 must be an array")
 
@@ -580,7 +580,7 @@ def view_value_type(args):
     return view_type
 
 # does argument checking and type progagation for store()
-def store_value_type(args):
+def store_value_func(args):
     # check target type
     if (type(args[0].type) != array):
         raise RuntimeError("store() argument 0 must be an array")
@@ -607,9 +607,9 @@ def store_value_type(args):
     return None
 
 
-add_builtin("load", variadic=True, hidden=True, value_func=load_value_type)
-add_builtin("view", variadic=True, hidden=True, value_func=view_value_type)
-add_builtin("store", variadic=True, hidden=True, value_func=store_value_type, skip_replay=True)
+add_builtin("load", variadic=True, hidden=True, value_func=load_value_func, group="Utility")
+add_builtin("view", variadic=True, hidden=True, value_func=view_value_func, group="Utility")
+add_builtin("store", variadic=True, hidden=True, value_func=store_value_func, skip_replay=True, group="Utility")
 
 def atomic_op_value_type(args):
 
@@ -650,7 +650,7 @@ add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "j":
 
 
 # used to index into builtin types, i.e.: y = vec3[1]
-add_builtin("index", variadic=True, hidden=True, value_type=float)
+add_builtin("index", variadic=True, hidden=True, value_type=float, group="Utility")
 
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")

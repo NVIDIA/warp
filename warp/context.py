@@ -33,7 +33,7 @@ class Function:
                  key,
                  namespace,
                  input_types=None,
-                 value_type=None,
+                 value_func=None,
                  module=None,
                  variadic=False,
                  doc="",
@@ -44,7 +44,7 @@ class Function:
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
-        self.value_type = value_type
+        self.value_func = value_func    # a function that takes a list of args and returns the value type, e.g.: load(array, index) returns the type of value being loaded
         self.input_types = input_types
         self.doc = doc
         self.group = group
@@ -113,7 +113,7 @@ class Kernel:
 def func(f):
 
     m = get_module(f.__module__)
-    f = Function(func=f, key=f.__name__, namespace="", module=m, value_type=None)   # value_type not known yet, will be inferred during code-gen
+    f = Function(func=f, key=f.__name__, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
 
     return f
 
@@ -130,11 +130,21 @@ builtin_functions = {}
 
 def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False, skip_replay=False):
 
+    # wrap simple single-type functions with a value_func()
     if value_func == None:
         def value_func(args):
             return value_type
         
-    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden, skip_replay=skip_replay)
+    func = Function(func=None,
+                    key=key,
+                    namespace=namespace,
+                    input_types=input_types,
+                    value_func=value_func,
+                    variadic=variadic,
+                    doc=doc,
+                    group=group,
+                    hidden=hidden,
+                    skip_replay=skip_replay)
 
     if key in builtin_functions:
         # if key exists we add overload
@@ -320,7 +330,7 @@ class Module:
 
                     return value_type
 
-                func.value_type = wrap(func.adj)
+                func.value_func = wrap(func.adj)
 
 
             # kernels
@@ -1011,7 +1021,10 @@ def type_str(t):
     elif t == Callable:
         return "Callable"
     elif (isinstance(t, array)):
-        return f"array({t.dtype.__name__})"
+        if t.dtype == Any:
+            return "array(Any)"
+        else:
+            return f"array({t.dtype.__name__})"
     else:
         return t.__name__
 
@@ -1025,7 +1038,9 @@ def print_function(f, file):
     return_type = ""
 
     try:
-        return_type = " -> " + type_str(f.value_type(None))
+        # todo: construct a default value for each of the functions args
+        # so we can generate the return type for overloaded functions
+        return_type = " -> " + type_str(f.value_func(None))
     except:
         pass
 

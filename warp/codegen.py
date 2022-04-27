@@ -95,6 +95,7 @@ class Block:
         self.vars = []
        
 
+
 class Adjoint:
 
 
@@ -326,7 +327,7 @@ class Adjoint:
 
 
         # expression (zero output), e.g.: void do_something();
-        if (func.value_type(inputs) == None):
+        if (func.value_func(inputs) == None):
 
             forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
             
@@ -344,7 +345,7 @@ class Adjoint:
         # function (one output)
         else:
 
-            output = adj.add_var(func.value_type(inputs))
+            output = adj.add_var(func.value_func(inputs))
 
             forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
 
