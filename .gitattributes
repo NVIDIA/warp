@@ -12,3 +12,4 @@
 *.usd filter=lfs diff=lfs merge=lfs -text
 *.usda filter=lfs diff=lfs merge=lfs -text
 *.grid filter=lfs diff=lfs merge=lfs -text
+*.nvdb filter=lfs diff=lfs merge=lfs -text
