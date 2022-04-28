@@ -927,14 +927,14 @@ Volumes
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
-.. function:: volume_sample_i(id: uint64, uvw: vec3) -> int64
+.. function:: volume_sample_i(id: uint64, uvw: vec3) -> int
 
-   Sample the int64 volume given by ``id`` at the volume local-space point ``uvw``. 
+   Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
 
 
-.. function:: volume_lookup_i(id: uint64, i: int, j: int, k: int) -> int64
+.. function:: volume_lookup_i(id: uint64, i: int, j: int, k: int) -> int
 
-   Returns the int64 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+   Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
 .. function:: volume_index_to_world(id: uint64, uvw: vec3) -> vec3
