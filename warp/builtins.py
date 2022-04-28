@@ -457,11 +457,11 @@ add_builtin("volume_sample_v", input_types={"id": uint64, "uvw": vec3, "sampling
 add_builtin("volume_lookup_v", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=vec3, group="Volumes",
     doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
-add_builtin("volume_sample_i", input_types={"id": uint64, "uvw": vec3}, value_type=int64, group="Volumes",
-    doc="""Sample the int64 volume given by ``id`` at the volume local-space point ``uvw``. """)
+add_builtin("volume_sample_i", input_types={"id": uint64, "uvw": vec3}, value_type=int, group="Volumes",
+    doc="""Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. """)
 
-add_builtin("volume_lookup_i", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=int64, group="Volumes",
-    doc="""Returns the int64 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+add_builtin("volume_lookup_i", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=int, group="Volumes",
+    doc="""Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
 add_builtin("volume_index_to_world", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
     doc="""Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.""")
