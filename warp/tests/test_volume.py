@@ -157,7 +157,7 @@ def test_volume_sample_world_v_linear_values(volume: wp.uint64,
     ones = wp.vec3(1.,1.,1.)
     values[tid] = wp.dot(wp.volume_sample_v(volume, p, wp.Volume.LINEAR), ones)
 
-# int64 volume tests
+# int32 volume tests
 @wp.kernel
 def test_volume_lookup_i(volume: wp.uint64,
                          points: wp.array(dtype=wp.vec3)):
@@ -172,7 +172,7 @@ def test_volume_lookup_i(volume: wp.uint64,
     if abs(i) > 10 or abs(j) > 10 or abs(k) > 10:
         expected = 10
 
-    expect_eq(wp.volume_lookup_i(volume, i, j, k), wp.int64(expected))
+    expect_eq(wp.volume_lookup_i(volume, i, j, k), expected)
 
 
 @wp.kernel
@@ -189,7 +189,7 @@ def test_volume_sample_i(volume: wp.uint64,
     if abs(i) > 10.0 or abs(j) > 10.0 or abs(k) > 10.0:
         expected = 10
 
-    expect_eq(wp.volume_sample_i(volume, p), wp.int64(expected))
+    expect_eq(wp.volume_sample_i(volume, p), expected)
 
     q = wp.volume_index_to_world(volume, p)
     q_inv = wp.volume_world_to_index(volume, q)
@@ -226,7 +226,7 @@ devices = wp.get_devices()
 rng = np.random.default_rng(101215)
 
 # Note about the test grids:
-# test_grid and test_int64_grid
+# test_grid and test_int32_grid
 #   active region: [-10,10]^3
 #   values: v[i,j,k] = i * j * k
 #   voxel size: 0.25
@@ -246,7 +246,7 @@ rng = np.random.default_rng(101215)
 #   voxel size: 0.1
 volume_paths = {
     "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
-    "int64": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int64_grid.nvdb")),
+    "int32": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int32_grid.nvdb")),
     "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb")),
     "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb"))
 }
@@ -366,8 +366,8 @@ def register(parent):
         add_kernel_test(TestVolumes, test_volume_sample_closest_v, dim=len(points_np), inputs=[volumes["vec3f"][device].id, points_jittered[device]], devices=[device])
         add_kernel_test(TestVolumes, test_volume_sample_linear_v, dim=len(points_np), inputs=[volumes["vec3f"][device].id, points_jittered[device]], devices=[device])
 
-        add_kernel_test(TestVolumes, test_volume_lookup_i, dim=len(points_np), inputs=[volumes["int64"][device].id, points[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_i, dim=len(points_np), inputs=[volumes["int64"][device].id, points_jittered[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_lookup_i, dim=len(points_np), inputs=[volumes["int32"][device].id, points[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_sample_i, dim=len(points_np), inputs=[volumes["int32"][device].id, points_jittered[device]], devices=[device])
 
     return TestVolumes
 
