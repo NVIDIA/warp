@@ -99,7 +99,7 @@ def eval_articulation_fk(
                         joint_qd[qd_start+1],
                         joint_qd[qd_start+2])
 
-            print(r)
+            # print(r)
             
             X_jc = wp.transform(wp.vec3(), r)
             v_jc = wp.spatial_vector(w, wp.vec3())
