@@ -59,10 +59,10 @@ class Example:
         self.velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=self.device)
 
         # load collision volume
-        file = np.fromfile(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb.grid"), dtype=np.byte)
+        file = open(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb"), "rb")
 
         # create Volume object
-        self.volume = wp.Volume(wp.array(file, device=self.device))
+        self.volume = wp.Volume.load_from_nvdb(file, device=self.device)
 
     def update(self):
 
