@@ -11,3 +11,9 @@ from warp.context import *
 from warp.builtins import *
 from warp.tape import *
 from warp.utils import *
+
+try:
+    from warp.torch import *
+except ModuleNotFoundError:
+    pass
+
