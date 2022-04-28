@@ -28,7 +28,7 @@ wp.init()
 
 class Example:
 
-    def init_params(self):
+    def __init__(self):
 
         self.num_particles = 1000
 
@@ -45,8 +45,6 @@ class Example:
 
     def init(self, stage):
 
-        self.init_params()
-        
         self.renderer = wp.render.UsdRenderer(stage)
 
         usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
@@ -95,18 +93,6 @@ class Example:
             self.renderer.end_frame()
 
         self.sim_time += self.sim_dt
-
-    # kit load event
-    def on_load(self, stage, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.init(stage)
-            self.render(is_live)
-
-    # kit update event
-    def on_update(self, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.update()
-            self.render(is_live)
 
     @wp.kernel
     def deform(positions: wp.array(dtype=wp.vec3), t: float):

@@ -27,7 +27,7 @@ wp.init()
 
 class Example:
 
-    def init_params(self):
+    def __init__(self):
 
         self.device = wp.get_preferred_device()
         self.width = 2048
@@ -38,7 +38,7 @@ class Example:
         self.pixels = wp.zeros(self.width*self.height, dtype=wp.vec3, device=self.device)
 
     def init(self, stage):
-        self.init_params()
+        pass
 
     def update(self):
         pass

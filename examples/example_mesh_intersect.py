@@ -26,7 +26,7 @@ wp.init()
 
 class Example:
 
-    def init_params(self):
+    def __init__(self):
         
         self.device = wp.get_preferred_device()
         self.query_count = 1024
@@ -34,8 +34,6 @@ class Example:
 
     def init(self, stage):
         
-        self.init_params()
-
         self.renderer = wp.render.UsdRenderer(stage)
 
         self.path_0 = "assets/cube.usda"
@@ -100,21 +98,6 @@ class Example:
                     self.renderer.render_box(f"result_{i}", pos=wp.vec3(xform.p[0] + offset, xform.p[1] + 5.0, xform.p[2]), rot=wp.quat_identity(), extents=(0.1, 0.1, 0.1))
                 
             self.renderer.end_frame()
-
-    # kit load event
-    def on_load(self, stage, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.init(stage)
-            self.render(is_live)
-
-    # kit update event
-    def on_update(self, is_live=False):
-        if self.has_queried:
-            return
-        with wp.ScopedCudaGuard():
-            self.update()
-            self.render(is_live)
-            self.has_queried = True
 
     # create collision meshes
     def load_mesh(self, path, prim, device):
