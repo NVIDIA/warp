@@ -245,10 +245,10 @@ rng = np.random.default_rng(101215)
 #   (-90 degrees rotation along X)
 #   voxel size: 0.1
 volume_paths = {
-    "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb.grid")),
-    "int64": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int64_grid.nvdb.grid")),
-    "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb.grid")),
-    "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb.grid"))
+    "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
+    "int64": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int64_grid.nvdb")),
+    "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb")),
+    "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb"))
 }
 
 volumes = {}
@@ -256,11 +256,10 @@ points = {}
 points_jittered = {}
 for value_type, path in volume_paths.items():
     volumes[value_type] = {}
-    volume_data = np.fromfile(path, dtype=np.byte)
-    volume_array = wp.array(volume_data, device="cpu")
+    volume_data = open(path, "rb").read()
     for device in devices:
         try:
-            volume = wp.Volume(volume_array.to(device))
+            volume = wp.Volume.load_from_nvdb(volume_data, device)
         except RuntimeError as e:
             raise RuntimeError(f"Failed to load volume from \"{path}\" to {device} memory:\n{e}")
 
