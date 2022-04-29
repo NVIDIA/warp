@@ -659,16 +659,13 @@ Linear Algebra
 .. function:: dense_solve_batched(b_start: array(int32), A_start: array(int32), A_dim: array(int32), A: array(float32), L: array(float32), b: array(float32), x: array(float32)) -> None
 
 
-.. function:: mlp(weights: array(float32), bias: array(float32), activation: Callable, m: int, n: int, b: int, index: int, x: array(float32), out: array(float32)) -> None
+.. function:: mlp(weights: array(float32), bias: array(float32), activation: Callable, index: int, x: array(float32), out: array(float32)) -> None
 
    Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
 
    :param weights: A layer's network weights with dimensions ``(m, n)``.
    :param bias: An array with dimensions ``(n)`.
    :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
-   :param m: The number of output dimensions
-   :param n: The number of input dimensions
-   :param b: The number of batches
    :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
    :param x: The feature matrix with dimensions ``(n, b)``
    :param out: The network output with dimensions ``(m, b)``
@@ -778,19 +775,67 @@ Utility
    where dim is the parameter passed to kernel launch.
 
 
+.. function:: tid()
+
+   Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+   where dim is the parameter passed to kernel launch.
+
+
+.. function:: tid()
+
+   Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+   where dim is the parameter passed to kernel launch.
+
+
+.. function:: tid()
+
+   Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+   where dim is the parameter passed to kernel launch.
+
+
 .. function:: select(cond: bool, arg1: Any, arg2: Any)
 
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
 
 
-.. function:: atomic_add(array: array, index: int, value: Any)
+.. function:: atomic_add(array: array(Any), i: int, value: Any)
 
    Atomically add ``value`` onto the array at location given by index.
 
 
-.. function:: atomic_sub(array: array, index: int, value: Any)
+.. function:: atomic_add(array: array(Any), i: int, j: int, value: Any)
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(array: array(Any), i: int, j: int, k: int, value: Any)
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(array: array(Any), i: int, j: int, k: int, l: int, value: Any) -> atomic_op_value_type
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(array: array(Any), i: int, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_sub(array: array(Any), i: int, j: int, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(array: array(Any), i: int, j: int, k: int, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(array: array(Any), i: int, j: int, k: int, l: int, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
 
 
 .. function:: expect_eq(arg1: int8, arg2: int8) -> None
@@ -1053,10 +1098,6 @@ Random
    Divergence-free vector field based on the curl of three Perlin noise functions.
 
 
-
-
-
----------------
 
 
 Operators

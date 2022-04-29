@@ -1,5 +1,46 @@
 # CHANGELOG
 
+## [0.2.0] - 2022-04-29
+
+### Warp Core
+
+- Fix for unrolling loops with negative bounds
+- Fix for unresolved symbol `hash_grid_build_device()` not found when lib is compiled without CUDA support
+- Fix for failure to load nvrtc-builtins64_113.dll when user has a newer CUDA toolkit installed on their machine
+- Fix for conversion of Torch tensors to wp.arrays() with a vector dtype (incorrect row count)
+- Fix for `warp.dll` not found on some Windows installations
+- Add support for custom iterable types, supports ranges, hash grid, and mesh query objects
+- Add support for multi-dimensional arrays, for example use `x = array[i,j,k]` syntax to address a 3-dimensional array 
+- Add support for multi-dimensional kernel launches, use `launch(kernel, dim=(i,j,k), ...` and `i,j,k = wp.tid()` to obtain thread indices
+- Add support for bounds-checking array accesses in debug mode, use `wp.config.mode = "debug"` to enable
+- Add support for differentiating through dynamic and nested for-loops
+- Add support for evaluating MLP neural network layers inside kernels with custom activation functions, see `wp.mlp()`
+- Add additional NVDB sampling methods and adjoints, see `wp.volume_sample_i()`, `wp.volume_sample_f()`, `and wp.volume_sample_vec()`
+- Add support for loading zlib compressed NVDB volumes, see `wp.Volume.load_from_nvdb()`
+- Add support for triangle intersection testing, see `wp.intersect_tri_tri()`
+- Add support for NVTX profile zones in `wp.ScopedTimer()`
+- Add support for additional transform and quaternion math operations, see `wp.inverse()`, `wp.quat_to_matrix()`, `wp.quat_from_matrix()`
+- Add fast math (`--fast-math`) to kernel compilation by default
+- Add support for PyTorch by default (if installed)
+  
+### Warp Kit
+
+- Add Omniverse Kit menu for browsing Warp example scripts and sample scenes under `Window->Warp`
+- Fix for OgnParticleSolver.py example when collider is a bundle
+
+### Warp Sim
+
+- Fix for joint attachment forces
+- Fix for URDF importer and floating base support
+- Add examples showing how to use differentiable foward kinematics to solve inverse kinematics
+- Add examples for URDF cartpole and quadruped simulation
+ 
+### Breaking Changes
+
+- `wp.volume_sample_world()` is now replaced by `wp.volume_sample_f/i/vec()` which operate in index (local) space. Users should use `wp.volume_world_to_index()` to transform points from world space to index space before sampling.
+- `wp.mlp()` expects multi-dimensional arrays instead of one-dimensional arrays for inference, all other semantics remain the same as earlier versions of this API.
+- `wp.array.length` member has been removed, please use `wp.array.shape` to access array dimensions, or use `wp.array.size` to get total element count
+- 
 ## [0.1.25] - 2022-03-20
 
 - Add support for class methods to be Warp kernels

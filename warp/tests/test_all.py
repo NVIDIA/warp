@@ -26,6 +26,8 @@ import warp.tests.test_volume
 import warp.tests.test_mlp
 import warp.tests.test_grad
 import warp.tests.test_intersect
+import warp.tests.test_array
+import warp.tests.test_launch
 
 def run():
 
@@ -48,6 +50,8 @@ def run():
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mlp.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_grad.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_intersect.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_array.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_launch.register(unittest.TestCase)))
 
     # load all modules
     wp.force_load()

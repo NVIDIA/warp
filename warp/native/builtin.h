@@ -38,15 +38,6 @@
 namespace wp
 {
 
-// 64bit address for an array
-typedef uint64_t array;
-
-template <typename T>
-CUDA_CALLABLE T cast(wp::array addr)
-{
-    return (T)(addr);
-}
-
 // numeric types (used from generated kernels)
 typedef float float32;
 typedef double float64;
@@ -65,7 +56,6 @@ typedef uint64_t uint64;
 
 // matches Python string type for constant strings
 typedef char* str;
-
 
 
 template <typename T>
@@ -403,9 +393,46 @@ CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_
 CUDA_CALLABLE inline bool unot(const bool& b) { return !b; }
 CUDA_CALLABLE inline void adj_unot(const bool& b, bool& adj_b, const bool& adj_ret) { }
 
+const int LAUNCH_MAX_DIMS = 4;   // should match types.py
 
-// for single thread CPU only
+struct launch_bounds_t
+{
+    int shape[LAUNCH_MAX_DIMS];  // size of each dimension
+    int ndim;                   // number of valid dimension
+    int size;                   // total number of threads
+};
+
+#ifdef __CUDACC__
+
+// store launch bounds in shared memory so
+// we can access them from any user func
+// this is to avoid having to explicitly
+// set another piece of __constant__ memory
+// from the host
+__shared__ launch_bounds_t s_launchBounds;
+
+void set_launch_bounds(const launch_bounds_t& b)
+{
+    if (threadIdx.x == 0)
+        s_launchBounds = b;
+
+    __syncthreads();
+}
+
+#else
+
+// for single-threaded CPU we store launch
+// bounds in static memory to share globally
+static launch_bounds_t s_launchBounds;
 static int s_threadIdx;
+
+void set_launch_bounds(const launch_bounds_t& b)
+{
+    s_launchBounds = b;
+}
+#endif
+
+
 
 inline CUDA_CALLABLE int tid()
 {
@@ -416,6 +443,44 @@ inline CUDA_CALLABLE int tid()
 #endif
 }
 
+inline CUDA_CALLABLE void tid(int& i, int& j)
+{
+    const int index = tid();
+
+    const int n = s_launchBounds.shape[1];
+
+    // convert to work item
+    i = index/n;
+    j = index%n;
+}
+
+inline CUDA_CALLABLE void tid(int& i, int& j, int& k)
+{
+    const int index = tid();
+
+    const int n = s_launchBounds.shape[1];
+    const int o = s_launchBounds.shape[2];
+
+    // convert to work item
+    i = index/(n*o);
+    j = index%(n*o)/o;
+    k = index%o;
+}
+
+inline CUDA_CALLABLE void tid(int& i, int& j, int& k, int& l)
+{
+    const int index = tid();
+
+    const int n = s_launchBounds.shape[1];
+    const int o = s_launchBounds.shape[2];
+    const int p = s_launchBounds.shape[3];
+
+    // convert to work item
+    i = index/(n*o*p);
+    j = index%(n*o*p)/(o*p);
+    k = index%(o*p)/p;
+    l = index%p;
+}
 
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)
@@ -432,6 +497,7 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 
 } // namespace wp
 
+#include "array.h"
 #include "vec2.h"
 #include "vec3.h"
 #include "vec4.h"
@@ -453,108 +519,6 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 //--------------
 namespace wp
 {
-
-template<typename T>
-inline CUDA_CALLABLE T atomic_add(T* buf, int index, T value)
-{
-    return atomic_add(buf + index, value);
-}
-
-template<typename T>
-inline CUDA_CALLABLE T atomic_sub(T* buf, int index, T value)
-{
-    return atomic_add(buf + index, -value);
-}
-
-
-template<typename T>
-inline CUDA_CALLABLE T load(T* buf, int index)
-{
-    assert(buf);
-    return buf[index];
-}
-
-template<typename T>
-inline CUDA_CALLABLE void store(T* buf, int index, T value)
-{
-    // allow NULL buffers for case where gradients are not required
-    if (buf)
-    {
-        buf[index] = value;
-    }
-}
-
-
-template <typename T>
-inline CUDA_CALLABLE void adj_load(T* buf, int index, T* adj_buf, int& adj_index, const T& adj_output)
-{
-    // allow NULL buffers for case where gradients are not required
-    if (adj_buf) {
-
-#if defined(WP_CPU)
-        adj_buf[index] += adj_output;  // does not need to be atomic if single-threaded
-#elif defined(WP_CUDA)
-        atomic_add(adj_buf, index, adj_output);
-#endif
-
-    }
-}
-
-// overloads for integer types where we do not want to store gradients
-inline CUDA_CALLABLE void adj_load(int8* buf, int index, int8* adj_buf, int& adj_index, const int8& adj_output) {}
-inline CUDA_CALLABLE void adj_load(uint8* buf, int index, uint8* adj_buf, int& adj_index, const uint8& adj_output) {}
-inline CUDA_CALLABLE void adj_load(int16* buf, int index, int16* adj_buf, int& adj_index, const int16& adj_output) {}
-inline CUDA_CALLABLE void adj_load(uint16* buf, int index, uint16* adj_buf, int& adj_index, const uint16& adj_output) {}
-inline CUDA_CALLABLE void adj_load(int32* buf, int index, int32* adj_buf, int& adj_index, const int32& adj_output) {}
-inline CUDA_CALLABLE void adj_load(uint32* buf, int index, uint32* adj_buf, int& adj_index, const uint32& adj_output) {}
-inline CUDA_CALLABLE void adj_load(int64* buf, int index, int64* adj_buf, int& adj_index, const int64& adj_output) {}
-inline CUDA_CALLABLE void adj_load(uint64* buf, int index, uint64* adj_buf, int& adj_index, const uint64& adj_output) {}
-inline CUDA_CALLABLE void adj_load(float64* buf, int index, float64* adj_buf, int& adj_index, const float64& adj_output) {}
-
-
-template <typename T>
-inline CUDA_CALLABLE void adj_store(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value)
-{   
-    if (adj_buf)
-        adj_value += adj_buf[index];
-}
-
-template<typename T>
-inline CUDA_CALLABLE void adj_atomic_add(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value, const T& adj_ret)
-{
-    if (adj_buf) 
-        adj_value += adj_buf[index];
-}
-
-template<typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(T* buf, int index, T value, T* adj_buf, int& adj_index, T& adj_value, const T& adj_ret)
-{
-    if (adj_buf) 
-        adj_value -= adj_buf[index];
-}
-
-//-------------------------
-// Texture methods
-
-inline CUDA_CALLABLE float sdf_sample(vec3 x)
-{
-    return 0.0;
-}
-
-inline CUDA_CALLABLE vec3 sdf_grad(vec3 x)
-{
-    return vec3();
-}
-
-inline CUDA_CALLABLE void adj_sdf_sample(vec3 x, vec3& adj_x, float adj_ret)
-{
-
-}
-
-inline CUDA_CALLABLE void adj_sdf_grad(vec3 x, vec3& adj_x, vec3& adj_ret)
-{
-
-}
 
 inline CUDA_CALLABLE void print(const str s)
 {

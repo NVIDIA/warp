@@ -71,7 +71,8 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            return str(self.type.dtype.__name__) + "*"
+            #return str(self.type.dtype.__name__) + "*"
+            return f"array_t<{str(self.type.dtype.__name__)}>"
         else:
             return str(self.type.__name__)
 
@@ -93,6 +94,7 @@ class Block:
         # list of vars declared in this block
         self.vars = []
        
+
 
 class Adjoint:
 
@@ -264,66 +266,85 @@ class Adjoint:
 
         return output
 
-    def add_call(adj, func, inputs):
+    def add_call(adj, func, inputs, min_outputs=None):
+
+        # promote func to list
+        if isinstance(func, list) == False:
+            func = [func,]
 
         # if func is overloaded then perform overload resolution here
-        # we validate argument types before they go to generated native
-        # code
+        # we validate argument types before they go to generated native code
+        resolved_func = None
 
-        if (isinstance(func, list)):
-    
-            resolved_func = None
+        for f in func:
+            match = True
 
-            for f in func:
-                match = True
+            # skip type checking for variadic functions
+            if not f.variadic:
 
-                if (f.variadic == False):
-                  
-                    # check argument counts match (todo: default arguments?)
-                    if len(f.input_types) != len(inputs):
-                        match = False
+                # check argument counts match (todo: default arguments?)
+                if len(f.input_types) != len(inputs):
+                    match = False
+                    continue
+
+                # check argument types equal
+                for i, a in enumerate(f.input_types.values()):
+                    
+                    # if arg type registered as Any, treat as 
+                    # template allowing any type to match
+                    if a == Any:
                         continue
 
-                    # check argument types equal
-                    for i, a in enumerate(f.input_types.values()):
-                        
-                        # if arg type registered as None, treat as 
-                        # template allowing any type to match
-                        if a == Any:
-                            continue
+                    # handle function refs as a special case
+                    if a == Callable and type(inputs[i]) is warp.context.Function:
+                        continue
 
-                        # handle function refs as a special case
-                        if a == Callable and type(inputs[i]) is warp.context.Function:
-                            continue
+                    # otherwise check arg type matches input variable type
+                    if not types_equal(a, inputs[i].type):
+                        match = False
+                        break
 
-                        # otherwise check arg type matches input variable type
-                        if not types_equal(a, inputs[i].type):
-                            match = False
-                            break
+            # check output dimensions match expectations
+            if min_outputs:
 
-                # found a match, use it
-                if (match):
-                    resolved_func = f
-                    break
-
-            if (resolved_func == None):
-                
-                arg_types = ""
-
-                for x in inputs:
-                    if isinstance(x, Var):
-                        arg_types += str(x.type) + ", "
+                try:
+                    value_type = f.value_func(inputs)
+                    if len(value_type) != min_outputs:
+                        match = False
+                        continue
+                except Exception as e:
                     
-                    if isinstance(x, warp.context.Function):
-                        arg_types += "function" + ", "
+                    # value func may fail if the user has given 
+                    # incorrect args, so we need to catch this
+                    match = False
+                    continue
 
-                raise Exception(f"Couldn't find function overload for '{func[0].key}' that matched inputs with types: {arg_types}")
-            else:
-                func = resolved_func
+            # found a match, use it
+            if (match):
+                resolved_func = f
+                break
+
+        if resolved_func == None:
+            
+            arg_types = ""
+
+            for x in inputs:
+                if isinstance(x, Var):
+                    arg_types += str(x.type) + ", "
+                
+                if isinstance(x, warp.context.Function):
+                    arg_types += "function" + ", "
+
+            raise Exception(f"Couldn't find function overload for '{func[0].key}' that matched inputs with types: {arg_types}")
+
+        else:
+            func = resolved_func
 
 
-        # expression (zero output), e.g.: void do_something();
-        if (func.value_type(inputs) == None):
+        value_type = func.value_func(inputs)
+
+        # handle expression (zero output), e.g.: void do_something();
+        if (value_type == None):
 
             forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
             
@@ -338,10 +359,27 @@ class Adjoint:
 
             return None
 
-        # function (one output)
+        # handle multiple value function
+        elif (isinstance(value_type, list)):
+
+            output = [adj.add_var(v) for v in value_type]
+            forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs+output))
+            adj.add_forward(forward_call)
+
+            if (len(inputs)):
+                reverse_call = func.namespace + "{}({}, {}, {});".format(
+                    "adj_" + func.key, adj.format_args("var_", inputs+output), adj.format_args("adj_", inputs), adj.format_args("adj_", output))
+                adj.add_reverse(reverse_call)
+
+            if len(output) == 1:
+                return output[0]
+
+            return output
+
+        # handle simple function (one output)
         else:
 
-            output = adj.add_var(func.value_type(inputs))
+            output = adj.add_var(func.value_func(inputs))
 
             forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
 
@@ -905,8 +943,13 @@ class Adjoint:
                     var = adj.eval(arg)
                     args.append(var)
 
+                # get expected return count, e.g.: for multi-assignment
+                min_outputs = None
+                if hasattr(node, "expects"):
+                    min_outputs = node.expects
+
                 # add var with value type from the function
-                out = adj.add_call(func, args)
+                out = adj.add_call(func, args, min_outputs)
                 return out
 
             elif (isinstance(node, ast.Index)):
@@ -919,48 +962,100 @@ class Adjoint:
 
                 target = adj.eval(node.value)
 
-                if isinstance(target.type, array):
-                    
-                    # handles the case where we are indexing into an array, e.g.: x = arr[i]
-                    index = adj.eval(node.slice)
-                    out = adj.add_call(adj.builtin_functions["load"], [target, index])
-                    return out
+                indices = []
 
-                else:
-
-                    # handles non-array types, e.g: vec3, mat33, etc
-                    indices = []
-
-                    if isinstance(node.slice, ast.Tuple):
-                        # handles the M[i, j] case (Python 3.8.x upward)
-                        for arg in node.slice.elts:
-                            var = adj.eval(arg)
-                            indices.append(var)
-
-                    elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-                        # handles the M[i, j] case (Python 3.7.x)
-                        for arg in node.slice.value.elts:
-                            var = adj.eval(arg)
-                            indices.append(var)
-                    else:
-                        # simple expression
-                        var = adj.eval(node.slice)
+                if isinstance(node.slice, ast.Tuple):
+                    # handles the x[i, j] case (Python 3.8.x upward)
+                    for arg in node.slice.elts:
+                        var = adj.eval(arg)
                         indices.append(var)
 
+                elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
+                    # handles the x[i, j] case (Python 3.7.x)
+                    for arg in node.slice.value.elts:
+                        var = adj.eval(arg)
+                        indices.append(var)
+                else:
+                    # simple expression, e.g.: x[i]
+                    var = adj.eval(node.slice)
+                    indices.append(var)
+
+                if isinstance(target.type, array):
+                    
+                    # handles array loads
+                    if len(indices) == target.type.ndim:
+                        # handles array loads
+                        out = adj.add_call(adj.builtin_functions["load"], [target, *indices])
+                    else:
+                        # handles array views
+                        out = adj.add_call(adj.builtin_functions["view"], [target, *indices])
+
+                else:
+                    # handles non-array type indexing, e.g: vec3, mat33, etc
                     out = adj.add_call(adj.builtin_functions["index"], [target, *indices])
-                    return out
+
+                return out
 
             elif (isinstance(node, ast.Assign)):
 
+                # handle the case where we are assigning multiple output variables
+                if (isinstance(node.targets[0], ast.Tuple)):
+
+                    # record the expected number of outputs on the node
+                    # we do this so we can decide which function to 
+                    # call based on the number of expected outputs
+                    if isinstance(node.value, ast.Call):
+                        node.value.expects = len(node.targets[0].elts)
+
+                    # evaluate values
+                    out = adj.eval(node.value)
+
+                    names = []
+                    for v in node.targets[0].elts:
+                        if (isinstance(v, ast.Name)):
+                            names.append(v.id)
+                        else:
+                            raise RuntimeError("Multiple return functions can only assign to simple variables, e.g.: x, y = func()")
+
+                    if len(names) != len(out):
+                        raise RuntimeError("Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {}, got {})".format(len(out), len(names)))
+                    
+                    for name, rhs in zip(names, out):
+                        if (name in adj.symbols):
+                            if (rhs.type != adj.symbols[name].type):
+                                raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
+
+                        adj.symbols[name] = rhs
+
+                    return out
+
                 # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
-                if (isinstance(node.targets[0], ast.Subscript)):
+                elif (isinstance(node.targets[0], ast.Subscript)):
                     
                     target = adj.eval(node.targets[0].value)
-                    index = adj.eval(node.targets[0].slice)
                     value = adj.eval(node.value)
 
+                    slice = node.targets[0].slice
+                    indices = []
+
+                    if isinstance(slice, ast.Tuple):
+                        # handles the x[i, j] case (Python 3.8.x upward)
+                        for arg in slice.elts:
+                            var = adj.eval(arg)
+                            indices.append(var)
+
+                    elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
+                        # handles the x[i, j] case (Python 3.7.x)
+                        for arg in slice.value.elts:
+                            var = adj.eval(arg)
+                            indices.append(var)
+                    else:
+                        # simple expression, e.g.: x[i]
+                        var = adj.eval(slice)
+                        indices.append(var)                    
+
                     if (isinstance(target.type, array)):
-                        adj.add_call(adj.builtin_functions["store"], [target, index, value])
+                        adj.add_call(adj.builtin_functions["store"], [target, *indices, value])
                     else:
                         raise RuntimeError("Can only subscript assign array types")
 
@@ -978,7 +1073,7 @@ class Adjoint:
                     if (name in adj.symbols):
                     
                         if (rhs.type != adj.symbols[name].type):
-                            raise TypeError("error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
+                            raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
 
                     # handle simple assignment case (a = b), where we generate a value copy rather than reference
                     if isinstance(node.value, ast.Name):
@@ -992,7 +1087,7 @@ class Adjoint:
                     return out
 
             elif (isinstance(node, ast.Return)):
-                cond = adj.cond  # None if not in branch, else branch boolean
+                cond = adj.cond  
 
                 out = adj.eval(node.value)
                 adj.symbols['return'] = out
@@ -1108,11 +1203,24 @@ cuda_kernel_template = '''
 
 extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 {{
+    int _idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (_idx >= dim.size) 
+        return;
+
+    set_launch_bounds(dim);
+
     {forward_body}
 }}
 
+
 extern "C" __global__ void {name}_cuda_kernel_backward({reverse_args})
 {{
+    int _idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (_idx >= dim.size) 
+        return;
+
+    set_launch_bounds(dim);
+
     {reverse_body}
 }}
 
@@ -1139,12 +1247,12 @@ extern "C" {{
 // Python entry points
 WP_API void {name}_cuda_forward(void* stream, {forward_args})
 {{
-    {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({forward_params});
+    {name}_cuda_kernel_forward<<<(dim.size + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({forward_params});
 }}
 
 WP_API void {name}_cuda_backward(void* stream, {reverse_args})
 {{
-    {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({reverse_params});
+    {name}_cuda_kernel_backward<<<(dim.size + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({reverse_params});
 }}
 
 }} // extern C
@@ -1153,10 +1261,14 @@ WP_API void {name}_cuda_backward(void* stream, {reverse_args})
 
 cpu_module_template = '''
 
+extern "C" {{
+
 // Python CPU entry points
 WP_API void {name}_cpu_forward({forward_args})
 {{
-    for (int i=0; i < dim; ++i)
+    set_launch_bounds(dim);
+
+    for (int i=0; i < dim.size; ++i)
     {{
         s_threadIdx = i;
 
@@ -1166,13 +1278,17 @@ WP_API void {name}_cpu_forward({forward_args})
 
 WP_API void {name}_cpu_backward({reverse_args})
 {{
-    for (int i=0; i < dim; ++i)
+    set_launch_bounds(dim);
+
+    for (int i=0; i < dim.size; ++i)
     {{
         s_threadIdx = i;
 
         {name}_cpu_kernel_backward({reverse_params});
     }}
 }}
+
+}} // extern C
 
 '''
 
@@ -1221,11 +1337,12 @@ def constant_str(value):
         return str(value)
 
 def indent(args, stops=1):
-    sep = "\n"
+    sep = ",\n"
     for i in range(stops):
         sep += "\t"
 
-    return sep + args.replace(", ", "," + sep)
+    #return sep + args.replace(", ", "," + sep)
+    return sep.join(args)
 
 
 def codegen_func_forward_body(adj, device='cpu', indent=4):
@@ -1261,12 +1378,7 @@ def codegen_func_forward(adj, func_type='kernel', device='cpu'):
 
     elif device == 'cuda':
         if func_type == 'kernel':
-            s += "    int var_idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
-            s += "    if (var_idx < dim) {\n"
-
             s += codegen_func_forward_body(adj, device=device, indent=8)
-
-            s += "    }\n"
         else:
             s += codegen_func_forward_body(adj, device=device, indent=4)
 
@@ -1320,10 +1432,7 @@ def codegen_func_reverse(adj, func_type='kernel', device='cpu'):
         s += codegen_func_reverse_body(adj, device=device, indent=4)
     elif device == 'cuda':
         if func_type == 'kernel':
-            s += "    int var_idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
-            s += "    if (var_idx < dim) {\n"
             s += codegen_func_reverse_body(adj, device=device, indent=8)
-            s += "    }\n"
         else:
             s += codegen_func_reverse_body(adj, device=device, indent=4)
     else:
@@ -1339,27 +1448,19 @@ def codegen_func(adj, device='cpu'):
 
     return_type = 'void' if adj.return_var is None else adj.return_var.ctype()
 
-    forward_args = ""
-    reverse_args = ""
-    # s = ""
+    forward_args = []
+    reverse_args = []
 
     # forward args
-    sep = ""
     for arg in adj.args:
-        forward_args += sep + arg.ctype() + " var_" + arg.label
-        reverse_args += sep + arg.ctype() + " var_" + arg.label
-        sep = ", "
+        forward_args.append(arg.ctype() + " var_" + arg.label)
+        reverse_args.append(arg.ctype() + " var_" + arg.label)
 
     # reverse args
-    sep = ","
     for arg in adj.args:
-        if "*" in arg.ctype():
-            reverse_args += sep + arg.ctype() + " adj_" + arg.label
-        else:
-            reverse_args += sep + arg.ctype() + " & adj_" + arg.label
-        sep = ", "
+        reverse_args.append(arg.ctype() + " & adj_" + arg.label)
 
-    reverse_args += sep + return_type + " & adj_ret"
+    reverse_args.append(return_type + " & adj_ret")
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type='function', device=device)
@@ -1386,21 +1487,17 @@ def codegen_kernel(kernel, device='cpu'):
 
     adj = kernel.adj
 
-    forward_args = "int dim"
-    reverse_args = "int dim"
+    forward_args = ["launch_bounds_t dim"]
+    reverse_args = ["launch_bounds_t dim"]
 
     # forward args
-    sep = ","
     for arg in adj.args:
-        forward_args += sep + arg.ctype() + " var_" + arg.label
-        reverse_args += sep + arg.ctype() + " var_" + arg.label
-        sep = ", "
+        forward_args.append(arg.ctype() + " var_" + arg.label)
+        reverse_args.append(arg.ctype() + " var_" + arg.label)
 
     # reverse args
-    sep = ","
     for arg in adj.args:
-        reverse_args += sep + arg.ctype() + " adj_" + arg.label
-        sep = ", "
+        reverse_args.append(arg.ctype() + " adj_" + arg.label)
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type='kernel', device=device)
@@ -1428,35 +1525,20 @@ def codegen_module(kernel, device='cpu'):
     adj = kernel.adj
 
     # build forward signature
-    forward_args = "int dim"
-    forward_params = "dim"
+    forward_args = ["launch_bounds_t dim"]
+    forward_params = ["dim"]
 
-    sep = ","
     for arg in adj.args:
-        if (isinstance(arg.type, array)):
-            forward_args += sep + "wp::array var_" + arg.label
-            forward_params += sep + "cast<" + arg.ctype() + ">(var_" + arg.label + ")"
-        else:
-            forward_args += sep + arg.ctype() + " var_" + arg.label
-            forward_params += sep + "var_" + arg.label
-
-        sep = ", "
-
+        forward_args.append(arg.ctype() + " var_" + arg.label)
+        forward_params.append("var_" + arg.label)
 
     # build reverse signature
-    reverse_args = forward_args
-    reverse_params = forward_params
+    reverse_args = [*forward_args]
+    reverse_params = [*forward_params]
 
-    sep = ","
     for arg in adj.args:
-        if (isinstance(arg.type, array)):
-            reverse_args += sep + "wp::array adj_" + arg.label
-            reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
-        else:
-            reverse_args += sep + arg.ctype() + " adj_" + arg.label
-            reverse_params += sep + "adj_" + arg.label
-
-        sep = ", "
+        reverse_args.append(arg.ctype() + " adj_" + arg.label)
+        reverse_params.append("adj_" + arg.label)
 
     if device == 'cpu':
         template = cpu_module_template
@@ -1473,47 +1555,4 @@ def codegen_module(kernel, device='cpu'):
     return s
 
 
-def codegen_module_decl(kernel, device='cpu'):
-
-    adj = kernel.adj
-
-    # build forward signature
-    forward_args = "int dim"
-    forward_params = "dim"
-
-    sep = ","
-    for arg in adj.args:
-        if (isinstance(arg.type, array)):
-            forward_args += sep + "wp::array var_" + arg.label
-            forward_params += sep + "cast<" + arg.ctype() + ">(var_" + arg.label + ")"
-        else:
-            forward_args += sep + arg.ctype() + " var_" + arg.label
-            forward_params += sep + "var_" + arg.label
-
-        sep = ", "
-
-    # build reverse signature
-    reverse_args = forward_args
-    reverse_params = forward_params
-
-    sep = ","
-    for arg in adj.args:
-        if (isinstance(arg.type, array)):
-            reverse_args += sep + "wp::array adj_" + arg.label
-            reverse_params += sep + "cast<" + arg.ctype() + ">(adj_" + arg.label + ")"
-        else:
-            reverse_args += sep + arg.ctype() + " adj_" + arg.label
-            reverse_params += sep + "adj_" + arg.label
-
-        sep = ", "
-
-    if device == 'cpu':
-        template = cpu_module_header_template
-    elif device == 'cuda':
-        template = cuda_module_header_template
-    else:
-        raise ValueError("Device {} is not supported".format(device))
-
-    s = template.format(name=kernel.key, forward_args=indent(forward_args), reverse_args=indent(reverse_args))
-    return s
 

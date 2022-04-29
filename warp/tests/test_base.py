@@ -48,6 +48,31 @@ class StdOutCapture:
         return str(res.decode("utf-8"))
 
 
+class CheckOutput:
+
+    def __init__(self, test):
+        self.test = test
+
+    def __enter__(self):
+        wp.force_load()
+
+        self.capture = StdOutCapture()
+        self.capture.begin()
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        
+        # ensure any stdout output is flushed
+        wp.synchronize()
+
+        s = self.capture.end()
+        if (s != ""):
+            print(s)
+            
+        # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)
+        self.test.assertEqual(s, "")
+
+
 def assert_array_equal(result, expect):
 
     a = result.numpy()
@@ -113,9 +138,9 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
             capture = StdOutCapture()
             capture.begin()
 
-            wp.launch(kernel, dim=dim, inputs=args, device=device)
-            wp.synchronize()
-
+            with CheckOutput(self):
+                wp.launch(kernel, dim=dim, inputs=args, device=device)
+            
             s = capture.end()
 
             # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)

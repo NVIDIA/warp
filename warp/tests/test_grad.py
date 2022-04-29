@@ -194,7 +194,7 @@ def preserve_outputs(n: int,
 
     # plain store
     c[tid] = x[tid]*2.0
-    
+
     # atomic stores
     wp.atomic_add(s0, 0, x[tid]*2.0)
     wp.atomic_sub(s1, 0, x[tid]*2.0)
