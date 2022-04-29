@@ -315,21 +315,20 @@ Volumes
 
 Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.
 
+
+Volume object can be created directly from Warp arrays containing a NanoVDB grid or from the contents of a standard ``.nvdb`` file, using the ``load_from_nvdb`` method.
+
+
 Below we give an example of creating a Volume object from an existing NanoVDB file::
 
-   # load NanoVDB bytes from disk
-   file = np.fromfile("mygrid.nvdbraw", dtype=np.byte)
+   # open NanoVDB file on disk
+   file = open("mygrid.nvdb", "rb")
 
    # create Volume object
-   volume = wp.Volume(wp.array(file, device="cpu"))
+   volume = wp.Volume.load_from_nvdb(file, device="cpu")
 
 .. note::
-   Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension,  can contain multiple grids, but a ``Volume`` object represents a single NanoVDB grid and requires an ``array`` of bytes for a single grid at initialization.
-
-   Because of this, when ``.nvdb`` files are used as data source, the individual grids need to be extracted for the ``Volume`` objects.
-
-   Alternatively, grid data saved directly can be passed in without modification. 
-
+   Files written by the NanoVDB library, commonly marked by the ``.nvdb`` extension, can contain multiple grids with various compression methods, but a ``Volume`` object represents a single NanoVDB grid therefore only files with a single grid are supported. NanoVDB's uncompressed and zip compressed file formats are supported.
 
 To sample the volume inside a kernel we pass a reference to it by id, and use the built-in sampling modes::
 
