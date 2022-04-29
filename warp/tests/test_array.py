@@ -151,13 +151,6 @@ def test_4d(test, device):
         
 
 
-@wp.func
-def 
-
-def test_slice():
-    pass
-
-
 
 def register(parent):
 
