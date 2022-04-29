@@ -51,9 +51,9 @@ CUDA_CALLABLE inline void pnano_read(float& result, pnanovdb_buf_t buf, pnanovdb
     const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_FLOAT, buf, root, ijk);
     result = pnanovdb_read_float(buf, address);
 }
-CUDA_CALLABLE inline void pnano_read(int64_t& result, pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
-    const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_INT64, buf, root, ijk);
-    result = pnanovdb_read_int64(buf, address);
+CUDA_CALLABLE inline void pnano_read(int32_t& result, pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+    const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_INT32, buf, root, ijk);
+    result = pnanovdb_read_int32(buf, address);
 }
 CUDA_CALLABLE inline void pnano_read(vec3& result, pnanovdb_buf_t buf, pnanovdb_root_handle_t root, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
     const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, root, ijk);
@@ -65,9 +65,9 @@ CUDA_CALLABLE inline void pnano_read(float& result, pnanovdb_buf_t buf, PNANOVDB
     pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_FLOAT, buf, acc, ijk);
     result = pnanovdb_read_float(buf, address);
 }
-CUDA_CALLABLE inline void pnano_read(int64_t& result, pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
-    pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_INT64, buf, acc, ijk);
-    result = pnanovdb_read_int64(buf, address);
+CUDA_CALLABLE inline void pnano_read(int32_t& result, pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
+    pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_INT32, buf, acc, ijk);
+    result = pnanovdb_read_int32(buf, address);
 }
 CUDA_CALLABLE inline void pnano_read(vec3& result, pnanovdb_buf_t buf, PNANOVDB_INOUT(pnanovdb_readaccessor_t) acc, PNANOVDB_IN(pnanovdb_coord_t) ijk) {
     pnanovdb_address_t address = pnanovdb_readaccessor_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, acc, ijk);
@@ -92,6 +92,7 @@ CUDA_CALLABLE inline T volume_sample(uint64_t id, vec3 uvw, int sampling_mode)
     }
     else if (sampling_mode == volume::LINEAR)
     {
+        // NB. linear sampling is not used on int volumes
         constexpr pnanovdb_coord_t OFFSETS[] = {
             { 0, 0, 0 }, { 0, 0, 1 }, { 0, 1, 0 }, { 0, 1, 1 }, { 1, 0, 0 }, { 1, 0, 1 }, { 1, 1, 0 }, { 1, 1, 1 },
         };
@@ -112,7 +113,7 @@ CUDA_CALLABLE inline T volume_sample(uint64_t id, vec3 uvw, int sampling_mode)
             const pnanovdb_coord_t ijk_shifted = pnanovdb_coord_add(ijk, offs);
             T v;
             pnano_read(v, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijk_shifted));
-            val = add(val, wx[offs.x] * wy[offs.y] * wz[offs.z] * v);
+            val = add(val, T(wx[offs.x] * wy[offs.y] * wz[offs.z] * v));
         }
         return val;
     }
@@ -127,10 +128,10 @@ CUDA_CALLABLE inline float volume_sample_f(uint64_t id, vec3 uvw, int sampling_m
 }
 
 // Sampling an int volume at the given index-space coordinates, uvw can be fractional
-CUDA_CALLABLE inline int64_t volume_sample_i(uint64_t id, vec3 uvw)
+CUDA_CALLABLE inline int32_t volume_sample_i(uint64_t id, vec3 uvw)
 {
-    if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_INT64) return 0;
-    return volume_sample<int64_t>(id, uvw, volume::CLOSEST);
+    if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_INT32) return 0;
+    return volume_sample<int32_t>(id, uvw, volume::CLOSEST);
 }
 
 // Sampling a vector volume at the given index-space coordinates, uvw can be fractional
@@ -227,7 +228,7 @@ CUDA_CALLABLE inline void adj_volume_sample_v(
     }
 }
 
-CUDA_CALLABLE inline void adj_volume_sample_i(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw, const int64_t& adj_ret)
+CUDA_CALLABLE inline void adj_volume_sample_i(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw, const int32_t& adj_ret)
 {
     // NOP
 }
@@ -245,15 +246,15 @@ CUDA_CALLABLE inline float volume_lookup_f(uint64_t id, int32_t i, int32_t j, in
     return val;
 }
 
-CUDA_CALLABLE inline int64_t volume_lookup_i(uint64_t id, int32_t i, int32_t j, int32_t k)
+CUDA_CALLABLE inline int32_t volume_lookup_i(uint64_t id, int32_t i, int32_t j, int32_t k)
 {
-    if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_INT64) return 0;
+    if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_INT32) return 0;
 
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_root_handle_t root = volume::get_root(buf);
 
     const pnanovdb_coord_t ijk{ i, j, k };
-    int64_t val;
+    int32_t val;
     pnano_read(val, buf, root, PNANOVDB_REF(ijk));
     return val;
 }
@@ -278,7 +279,7 @@ CUDA_CALLABLE inline void adj_volume_lookup_f(
 }
 
 CUDA_CALLABLE inline void adj_volume_lookup_i(
-    uint64_t id, int32_t i, int32_t j, int32_t k, uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, const int64_t& adj_ret)
+    uint64_t id, int32_t i, int32_t j, int32_t k, uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, const int32_t& adj_ret)
 {
     // NOP
 }

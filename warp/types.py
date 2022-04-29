@@ -8,6 +8,8 @@
 import ctypes 
 import hashlib
 import inspect
+import struct
+import zlib
 import numpy as np
 
 from typing import Tuple
@@ -809,9 +811,6 @@ class Volume:
             raise RuntimeError(f"Unknown device type '{data.device}'")
         self.device = data.device
 
-        if data is None:
-            return
-
         if self.device == "cpu":
             self.id = self.context.core.volume_create_host(ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
         else:
@@ -841,6 +840,36 @@ class Volume:
         else:
             self.context.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
         return array(ptr=buf.value, dtype=uint8, length=size.value, device=self.device, owner=False)
+
+    @classmethod
+    def load_from_nvdb(cls, file_or_buffer, device):
+        try:
+            data = file_or_buffer.read()
+        except AttributeError:
+            data = file_or_buffer
+
+        magic, version, grid_count, codec = struct.unpack("<QIHH", data[0:16])
+        if magic != 0x304244566f6e614e:
+            raise RuntimeError("NanoVDB signature not found")
+        if version>>21 != 32: # checking major version
+            raise RuntimeError("Unsupported NanoVDB version")
+        if grid_count != 1:
+            raise RuntimeError("Only NVDBs with exactly one grid are supported")
+
+        grid_data_offset = 192 + struct.unpack("<I", data[152:156])[0]
+        if codec == 0: # no compession
+            grid_data = data[grid_data_offset:]
+        elif codec == 1: # zip compression
+            grid_data = zlib.decompress(data[grid_data_offset + 8:])
+        else:
+            raise RuntimeError(f"Unsupported codec code: {codec}")
+
+        magic = struct.unpack("<Q", grid_data[0:8])[0]
+        if magic != 0x304244566f6e614e:
+            raise RuntimeError("NanoVDB signature not found on grid!")
+
+        data_array = array(np.frombuffer(grid_data, dtype=np.byte), device=device)
+        return cls(data_array)
 
 
 class HashGrid:

@@ -28,7 +28,7 @@ wp.init()
 
 class Example:
 
-    def init_params(self):
+    def __init__(self):
 
         self.num_particles = 10000
 
@@ -47,8 +47,6 @@ class Example:
 
     def init(self, stage):
 
-        self.init_params()
-
         self.renderer = wp.render.UsdRenderer(stage, upaxis="z")
         self.renderer.render_ground(size=10000.0)
 
@@ -59,10 +57,10 @@ class Example:
         self.velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=self.device)
 
         # load collision volume
-        file = np.fromfile(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb.grid"), dtype=np.byte)
+        file = open(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb"), "rb")
 
         # create Volume object
-        self.volume = wp.Volume(wp.array(file, device=self.device))
+        self.volume = wp.Volume.load_from_nvdb(file, device=self.device)
 
     def update(self):
 
@@ -90,19 +88,6 @@ class Example:
             self.renderer.end_frame()
 
         self.sim_time += self.sim_dt
-
-    # kit load event
-    def on_load(self, stage, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.init(stage)
-            self.render(is_live)
-
-    # kit update event
-    def on_update(self, is_live=False):
-        with wp.ScopedCudaGuard():
-            self.update()
-            self.render(is_live)
-
     
     @wp.func
     def volume_grad(volume: wp.uint64,
