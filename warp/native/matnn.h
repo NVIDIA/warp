@@ -354,55 +354,63 @@ CUDA_CALLABLE inline void adj_dense_solve_batched(
 
 
 template <typename F>
-CUDA_CALLABLE inline void mlp(const float* __restrict__ weights, const float* __restrict__ bias, F activation, int m, int n, int b, int index, const float* __restrict__ x, float* __restrict__ out)
+CUDA_CALLABLE inline void mlp(const array_t<float> weights, const array_t<float> bias, F activation, int index, const array_t<float> x, array_t<float> out)
 {
+    const int m = weights.shape[0];
+    const int n = weights.shape[1];
+    const int b = x.shape[1];
+
     for (int i=0; i < m; ++i)
     {
-        float tmp = bias[i];
+        float tmp = bias.data[i];
 
         for(int j=0; j < n; ++j)
         {
-            tmp += weights[i*n + j]*x[index + b*j];
+            tmp += weights.data[i*n + j]*x.data[index + b*j];
         }
 
-        out[index + b*i] = activation(tmp);
+        out.data[index + b*i] = activation(tmp);
     }
 }
 
 template <typename F, typename AdjF>
-CUDA_CALLABLE inline void adj_mlp(const float* __restrict__ weights, const float* __restrict__ bias, F activation, int m, int n, int b, int index, const float* __restrict__ x, const float* __restrict__ out,
-                                  float* __restrict__ adj_weights, float* __restrict__ adj_bias, AdjF adj_activation, int adj_m, int adj_n, int adj_b, int adj_index, float* __restrict__ adj_x, float* __restrict__ adj_out)
+CUDA_CALLABLE inline void adj_mlp(const array_t<float> weights, const array_t<float> bias, F activation, int index, const array_t<float> x, array_t<float> out,
+                                  array_t<float> adj_weights, array_t<float> adj_bias, AdjF adj_activation, int adj_index, array_t<float> adj_x, array_t<float> adj_out)
 {
+    const int m = weights.shape[0];
+    const int n = weights.shape[1];
+    const int b = x.shape[1];
+
     for (int i=0; i < m; ++i)
     {
         // recompute forward pass so we don't have to store pre-activation outputs
-        float tmp = bias[i];
+        float tmp = bias.data[i];
 
         for(int j=0; j < n; ++j)
         {
-            tmp += weights[i*n + j]*x[index + b*j];
+            tmp += weights.data[i*n + j]*x.data[index + b*j];
         }
 
         // adjoint w.r.t to acivation
         float adj_f = 0.0f;
     
-        if (adj_out)
-            adj_activation(tmp, adj_f, adj_out[index + b*i]);
+        if (adj_out.data)
+            adj_activation(tmp, adj_f, adj_out.data[index + b*i]);
 
         for (int j=0; j < n; ++j)
         {
             // adjoint w.r.t M_i
-            if (adj_weights)
-                atomic_add(&adj_weights[i*n + j], x[index + b*j]*adj_f);    // todo: reduce these atomic stores using warp/bock level reductions
+            if (adj_weights.data)
+                atomic_add(&adj_weights.data[i*n + j], x.data[index + b*j]*adj_f);    // todo: reduce these atomic stores using warp/bock level reductions
 
             // adjoint w.r.t x
-            if (adj_x)
-                atomic_add(&adj_x[index + b*j], weights[i*n + j]*adj_f);
+            if (adj_x.data)
+                atomic_add(&adj_x.data[index + b*j], weights.data[i*n + j]*adj_f);
         }
 
         // adjoint w.r.t b
-        if (adj_bias)
-            atomic_add(&adj_bias[i], adj_f);
+        if (adj_bias.data)
+            atomic_add(&adj_bias.data[i], adj_f);
 
     }
 }

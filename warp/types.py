@@ -12,6 +12,8 @@ import numpy as np
 
 from typing import Tuple
 
+
+
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels
     
@@ -242,6 +244,36 @@ class hash_grid_query_t:
 
 # maximum number of dimensions
 ARRAY_MAX_DIMS = 4
+LAUNCH_MAX_DIMS = 4
+
+# represents bounds for kernel launch (number of threads across multiple dimensions)
+class launch_bounds_t(ctypes.Structure):
+
+    _fields_ = [("shape", ctypes.c_int32*LAUNCH_MAX_DIMS),
+                ("ndim", ctypes.c_int32),
+                ("size", ctypes.c_int32)]
+  
+    def __init__(self, shape):
+
+        if isinstance(shape, int):
+            # 1d launch
+            self.ndim = 1
+            self.size = shape
+            self.shape[0] = shape
+
+        else:
+            # nd launch
+            self.ndim = len(shape)
+            self.size = 1
+
+            for i in range(self.ndim):
+                self.shape[i] = shape[i]
+                self.size = self.size*shape[i]
+
+        # initialize the remaining dims to 1
+        for i in range(self.ndim, LAUNCH_MAX_DIMS):
+            self.shape[i] = 1
+
 
 class array_t(ctypes.Structure): 
 
@@ -614,6 +646,20 @@ class array:
 
             return dest
 
+    # def flatten(self):
+
+    #     a = array(ptr=self.ptr,
+    #               dtype=self.dtype,
+    #               shape=(self.size,),
+    #               device=self.device,
+    #               owner=False,
+    #               ndim=1,
+    #               requires_grad=self.requires_grad)
+
+    #     # store back-ref to stop data being destroyed
+    #     a._ref = self
+    #     return a        
+
     # def astype(self, dtype):
 
     #     # return an alias of the array memory with different type information
@@ -635,6 +681,23 @@ class array:
     #         owner=False)
 
     #     return arr
+
+# aliases for arrays with small dimensions
+def array1d(*args, **kwargs):
+    kwargs["ndim"] = 1
+    return array(*args, **kwargs)
+
+def array2d(*args, **kwargs):
+    kwargs["ndim"] = 2
+    return array(*args, **kwargs)
+
+def array3d(*args, **kwargs):
+    kwargs["ndim"] = 3
+    return array(*args, **kwargs)
+
+def array4d(*args, **kwargs):
+    kwargs["ndim"] = 4
+    return array(*args, **kwargs)
 
 
 class Mesh:

@@ -16,23 +16,34 @@ import unittest
 
 wp.init()
 
+
 @wp.kernel
-def kernel_1d(a: wp.array(dtype=float)):
-    
-    print(a[wp.tid()])
+def kernel_1d(a: wp.array(dtype=int, ndim=1)):
+
+    i = wp.tid()
+
+    wp.expect_eq(a[i], wp.tid())
+
+    a[i] = a[i]*2
+    wp.atomic_add(a, i, 1)
+
+    wp.expect_eq(a[i], wp.tid()*2 + 1)
 
 
-def test_1d():
+def test_1d(test, device):
 
-    i = wp.tid()//(dim_x*dim_y)
-    i = i%(dim_x*dimy)
+    dim_x = 4
 
-    j = wp.tid()%dim_y
+    a = np.arange(0, dim_x, dtype=np.int32)
 
-    a1 = np.array([1.0, 2.0, 3.0, 4.0])
+    arr = wp.array(a, device=device)
 
-    
-    arr1d = wp.array(a1, dtype=float, device=device)
+    test.assertEqual(arr.shape, a.shape)
+    test.assertEqual(arr.size, a.size)
+    test.assertEqual(arr.ndim, a.ndim)
+
+    with CheckOutput(test):
+        wp.launch(kernel_1d, dim=arr.size, inputs=[arr], device=device)
 
 
 @wp.kernel
@@ -140,28 +151,25 @@ def test_4d(test, device):
         
 
 
+@wp.func
+def 
+
 def test_slice():
     pass
-
-
-#arr3d = wp.array(a3, dtype=float, device=device)
-
-#wp.launch(test1d, dim=arr1d.size, inputs=[arr1d], device=device)
-#wp.launch(test2d, dim=arr2d.size, inputs=[arr2d], device=device)
 
 
 
 def register(parent):
 
-    devices = ["cpu"]# wp.get_devices()
+    devices = wp.get_devices()
 
     class TestArray(parent):
         pass
 
-    # add_function_test(TestArray, "test_1d", test_1d, devices=devices)
-    add_function_test(TestArray, "test_2d", test_2d, devices=devices)
-    add_function_test(TestArray, "test_3d", test_3d, devices=devices)
-    add_function_test(TestArray, "test_4d", test_4d, devices=devices)
+    add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
+    add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)
+    add_function_test(TestArray, "test_3d_array", test_3d, devices=devices)
+    add_function_test(TestArray, "test_4d_array", test_4d, devices=devices)
 
     return TestArray
 

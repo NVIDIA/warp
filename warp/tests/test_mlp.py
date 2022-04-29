@@ -17,25 +17,22 @@ def mlp_activation(z: float):
 
 
 @wp.kernel
-def mlp_kernel(dim_m: int,
-               dim_n: int,
-               dim_b: int,
-               weights: wp.array(dtype=float),
+def mlp_kernel(weights: wp.array2d(dtype=float),
                bias: wp.array(dtype=float),
-               x: wp.array(dtype=float),
-               y: wp.array(dtype=float)):
+               x: wp.array2d(dtype=float),
+               y: wp.array2d(dtype=float)):
 
 
-    wp.mlp(weights, bias, mlp_activation, dim_m, dim_n, dim_b, wp.tid(), x, y)
+    wp.mlp(weights, bias, mlp_activation, wp.tid(), x, y)
     
 
 @wp.kernel
-def loss_kernel(x: wp.array(dtype=float),
+def loss_kernel(x: wp.array2d(dtype=float),
                 loss: wp.array(dtype=float)):
 
-    l = x[wp.tid()]
-    
-    wp.atomic_add(loss, 0, l*l)
+    i, j = wp.tid()
+        
+    wp.atomic_add(loss, 0, x[i,j]*x[i,j])
 
 
 def test_mlp(test, device):
@@ -50,11 +47,11 @@ def test_mlp(test, device):
     weights = wp.array(np.random.rand(m, n)*0.5 - 0.5, dtype=float, device=device)
     bias = wp.array(np.random.rand(m)*0.5 - 0.5, dtype=float, device=device)
 
-    x = wp.array(np.random.rand(n*batches), dtype=float, device=device)
-    y = wp.zeros(m*batches, device=device)
+    x = wp.array(np.random.rand(n, batches), dtype=float, device=device)
+    y = wp.zeros(shape=(m,batches), device=device)
 
     with wp.ScopedTimer("warp", active=False):
-        wp.launch(mlp_kernel, dim=batches, inputs=[m, n, batches, weights, bias, x, y], device=device)
+        wp.launch(mlp_kernel, dim=batches, inputs=[weights, bias, x, y], device=device)
         wp.synchronize()
 
     # A*x + b
@@ -158,8 +155,8 @@ def test_mlp_grad(test, device):
 
     tape = wp.Tape()
     with tape:
-        wp.launch(mlp_kernel, dim=b, inputs=[m, n, b, weights, bias, x, y], device=device)
-        wp.launch(loss_kernel, dim=len(y), inputs=[y, loss], device=device)
+        wp.launch(mlp_kernel, dim=b, inputs=[weights, bias, x, y], device=device)
+        wp.launch(loss_kernel, dim=y.shape, inputs=[y, loss], device=device)
 
     tape.backward(loss=loss)
 
@@ -231,11 +228,11 @@ def profile_mlp_warp(device):
         weights = wp.array(np.random.rand(m, n)*0.5 - 0.5, dtype=float, device=device)
         bias = wp.array(np.random.rand(m)*0.5 - 0.5, dtype=float, device=device)
 
-        x = wp.array(np.random.rand(n*b), dtype=float, device=device)
-        y = wp.zeros(m*b, device=device)
+        x = wp.array(np.random.rand(n, b), dtype=float, device=device)
+        y = wp.zeros(shape=(m,b), device=device)
 
         with wp.ScopedTimer("warp-forward" + str(b)):
-            wp.launch(mlp_kernel, dim=b, inputs=[m, n, b, weights, bias, x, y], device=device)
+            wp.launch(mlp_kernel, dim=b, inputs=[weights, bias, x, y], device=device)
             wp.synchronize()
 
 
@@ -246,15 +243,15 @@ def profile_mlp_warp(device):
         weights = wp.array(np.random.rand(m, n)*0.5 - 0.5, dtype=float, device=device, requires_grad=True)
         bias = wp.array(np.random.rand(m)*0.5 - 0.5, dtype=float, device=device, requires_grad=True)
 
-        x = wp.array(np.random.rand(n*b), dtype=float, device=device, requires_grad=True)
-        y = wp.zeros(m*b, device=device, requires_grad=True)
+        x = wp.array(np.random.rand(n, b), dtype=float, device=device, requires_grad=True)
+        y = wp.zeros(shape=(m,b), device=device, requires_grad=True)
 
         loss = wp.zeros(1, dtype=float, device=device)
 
         tape = wp.Tape()
         with tape:
-            wp.launch(mlp_kernel, dim=b, inputs=[m, n, b, weights, bias, x, y], device=device)
-            wp.launch(loss_kernel, dim=len(y), inputs=[y, loss], device=device)
+            wp.launch(mlp_kernel, dim=b, inputs=[weights, bias, x, y], device=device)
+            wp.launch(loss_kernel, dim=y.size, inputs=[y.flatten(), loss], device=device)
 
         # run backward once to ensure all adjoints are allocated
         tape.backward(loss)

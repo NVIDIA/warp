@@ -38,15 +38,6 @@
 namespace wp
 {
 
-// 64bit address for an array
-//typedef uint64_t array;
-
-// template <typename T>
-// CUDA_CALLABLE T cast(wp::array addr)
-// {
-//     return (T)(addr);
-// }
-
 // numeric types (used from generated kernels)
 typedef float float32;
 typedef double float64;
@@ -402,9 +393,46 @@ CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_
 CUDA_CALLABLE inline bool unot(const bool& b) { return !b; }
 CUDA_CALLABLE inline void adj_unot(const bool& b, bool& adj_b, const bool& adj_ret) { }
 
+const int LAUNCH_MAX_DIMS = 4;   // should match types.py
 
-// for single thread CPU only
+struct launch_bounds_t
+{
+    int shape[LAUNCH_MAX_DIMS];  // size of each dimension
+    int ndim;                   // number of valid dimension
+    int size;                   // total number of threads
+};
+
+#ifdef __CUDACC__
+
+// store launch bounds in shared memory so
+// we can access them from any user func
+// this is to avoid having to explicitly
+// set another piece of __constant__ memory
+// from the host
+__shared__ launch_bounds_t s_launchBounds;
+
+void set_launch_bounds(const launch_bounds_t& b)
+{
+    if (threadIdx.x == 0)
+        s_launchBounds = b;
+
+    __syncthreads();
+}
+
+#else
+
+// for single-threaded CPU we store launch
+// bounds in static memory to share globally
+static launch_bounds_t s_launchBounds;
 static int s_threadIdx;
+
+void set_launch_bounds(const launch_bounds_t& b)
+{
+    s_launchBounds = b;
+}
+#endif
+
+
 
 inline CUDA_CALLABLE int tid()
 {
@@ -415,6 +443,44 @@ inline CUDA_CALLABLE int tid()
 #endif
 }
 
+inline CUDA_CALLABLE void tid(int& i, int& j)
+{
+    const int index = tid();
+
+    const int n = s_launchBounds.shape[1];
+
+    // convert to work item
+    i = index/n;
+    j = index%n;
+}
+
+inline CUDA_CALLABLE void tid(int& i, int& j, int& k)
+{
+    const int index = tid();
+
+    const int n = s_launchBounds.shape[1];
+    const int o = s_launchBounds.shape[2];
+
+    // convert to work item
+    i = index/(n*o);
+    j = index%(n*o)/o;
+    k = index%o;
+}
+
+inline CUDA_CALLABLE void tid(int& i, int& j, int& k, int& l)
+{
+    const int index = tid();
+
+    const int n = s_launchBounds.shape[1];
+    const int o = s_launchBounds.shape[2];
+    const int p = s_launchBounds.shape[3];
+
+    // convert to work item
+    i = index/(n*o*p);
+    j = index%(n*o*p)/(o*p);
+    k = index%(o*p)/p;
+    l = index%p;
+}
 
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)

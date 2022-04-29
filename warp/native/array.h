@@ -5,8 +5,7 @@
 namespace wp
 {
 
-// must match constant in types.py
-const int kMaxArrayDims = 4;
+const int ARRAY_MAX_DIMS = 4;    // must match constant in types.py
 
 template <typename T>
 struct array_t
@@ -15,8 +14,7 @@ struct array_t
     array_t(int) {} // for backward a = 0 initialization syntax
 
     T* data;
-    int shape[kMaxArrayDims];
-    //int stride[kMaxArrayDims];
+    int shape[ARRAY_MAX_DIMS];
     int ndim;
 };
 
@@ -82,11 +80,6 @@ T& index(const array_t<T>& arr, int i, int j, int k, int l)
                     j*arr.shape[2]*arr.shape[3] + 
                     k*arr.shape[3] + 
                     l;
-
-    // int i = 0;
-    // for i < in range(0, kMaxArrayDims):
-    //     i += coord[i]
-    //     i *= arr.shape[i]
 
     return arr.data[idx];
 }

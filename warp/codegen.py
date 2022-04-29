@@ -266,7 +266,7 @@ class Adjoint:
 
         return output
 
-    def add_call(adj, func, inputs):
+    def add_call(adj, func, inputs, min_outputs=None):
 
         # promote func to list
         if isinstance(func, list) == False:
@@ -304,6 +304,21 @@ class Adjoint:
                         match = False
                         break
 
+            # check output dimensions match expectations
+            if min_outputs:
+
+                try:
+                    value_type = f.value_func(inputs)
+                    if len(value_type) != min_outputs:
+                        match = False
+                        continue
+                except Exception as e:
+                    
+                    # value func may fail if the user has given 
+                    # incorrect args, so we need to catch this
+                    match = False
+                    continue
+
             # found a match, use it
             if (match):
                 resolved_func = f
@@ -326,8 +341,10 @@ class Adjoint:
             func = resolved_func
 
 
-        # expression (zero output), e.g.: void do_something();
-        if (func.value_func(inputs) == None):
+        value_type = func.value_func(inputs)
+
+        # handle expression (zero output), e.g.: void do_something();
+        if (value_type == None):
 
             forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
             
@@ -342,7 +359,24 @@ class Adjoint:
 
             return None
 
-        # function (one output)
+        # handle multiple value function
+        elif (isinstance(value_type, list)):
+
+            output = [adj.add_var(v) for v in value_type]
+            forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs+output))
+            adj.add_forward(forward_call)
+
+            if (len(inputs)):
+                reverse_call = func.namespace + "{}({}, {}, {});".format(
+                    "adj_" + func.key, adj.format_args("var_", inputs+output), adj.format_args("adj_", inputs), adj.format_args("adj_", output))
+                adj.add_reverse(reverse_call)
+
+            if len(output) == 1:
+                return output[0]
+
+            return output
+
+        # handle simple function (one output)
         else:
 
             output = adj.add_var(func.value_func(inputs))
@@ -909,8 +943,13 @@ class Adjoint:
                     var = adj.eval(arg)
                     args.append(var)
 
+                # get expected return count, e.g.: for multi-assignment
+                min_outputs = None
+                if hasattr(node, "expects"):
+                    min_outputs = node.expects
+
                 # add var with value type from the function
-                out = adj.add_call(func, args)
+                out = adj.add_call(func, args, min_outputs)
                 return out
 
             elif (isinstance(node, ast.Index)):
@@ -959,8 +998,39 @@ class Adjoint:
 
             elif (isinstance(node, ast.Assign)):
 
+                # handle the case where we are assigning multiple output variables
+                if (isinstance(node.targets[0], ast.Tuple)):
+
+                    # record the expected number of outputs on the node
+                    # we do this so we can decide which function to 
+                    # call based on the number of expected outputs
+                    if isinstance(node.value, ast.Call):
+                        node.value.expects = len(node.targets[0].elts)
+
+                    # evaluate values
+                    out = adj.eval(node.value)
+
+                    names = []
+                    for v in node.targets[0].elts:
+                        if (isinstance(v, ast.Name)):
+                            names.append(v.id)
+                        else:
+                            raise RuntimeError("Multiple return functions can only assign to simple variables, e.g.: x, y = func()")
+
+                    if len(names) != len(out):
+                        raise RuntimeError("Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {}, got {})".format(len(out), len(names)))
+                    
+                    for name, rhs in zip(names, out):
+                        if (name in adj.symbols):
+                            if (rhs.type != adj.symbols[name].type):
+                                raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
+
+                        adj.symbols[name] = rhs
+
+                    return out
+
                 # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
-                if (isinstance(node.targets[0], ast.Subscript)):
+                elif (isinstance(node.targets[0], ast.Subscript)):
                     
                     target = adj.eval(node.targets[0].value)
                     value = adj.eval(node.value)
@@ -1003,7 +1073,7 @@ class Adjoint:
                     if (name in adj.symbols):
                     
                         if (rhs.type != adj.symbols[name].type):
-                            raise TypeError("error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
+                            raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
 
                     # handle simple assignment case (a = b), where we generate a value copy rather than reference
                     if isinstance(node.value, ast.Name):
@@ -1133,11 +1203,24 @@ cuda_kernel_template = '''
 
 extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 {{
+    int _idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (_idx >= dim.size) 
+        return;
+
+    set_launch_bounds(dim);
+
     {forward_body}
 }}
 
+
 extern "C" __global__ void {name}_cuda_kernel_backward({reverse_args})
 {{
+    int _idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (_idx >= dim.size) 
+        return;
+
+    set_launch_bounds(dim);
+
     {reverse_body}
 }}
 
@@ -1164,12 +1247,12 @@ extern "C" {{
 // Python entry points
 WP_API void {name}_cuda_forward(void* stream, {forward_args})
 {{
-    {name}_cuda_kernel_forward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({forward_params});
+    {name}_cuda_kernel_forward<<<(dim.size + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({forward_params});
 }}
 
 WP_API void {name}_cuda_backward(void* stream, {reverse_args})
 {{
-    {name}_cuda_kernel_backward<<<(dim + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({reverse_params});
+    {name}_cuda_kernel_backward<<<(dim.size + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>({reverse_params});
 }}
 
 }} // extern C
@@ -1178,10 +1261,14 @@ WP_API void {name}_cuda_backward(void* stream, {reverse_args})
 
 cpu_module_template = '''
 
+extern "C" {{
+
 // Python CPU entry points
 WP_API void {name}_cpu_forward({forward_args})
 {{
-    for (int i=0; i < dim; ++i)
+    set_launch_bounds(dim);
+
+    for (int i=0; i < dim.size; ++i)
     {{
         s_threadIdx = i;
 
@@ -1191,13 +1278,17 @@ WP_API void {name}_cpu_forward({forward_args})
 
 WP_API void {name}_cpu_backward({reverse_args})
 {{
-    for (int i=0; i < dim; ++i)
+    set_launch_bounds(dim);
+
+    for (int i=0; i < dim.size; ++i)
     {{
         s_threadIdx = i;
 
         {name}_cpu_kernel_backward({reverse_params});
     }}
 }}
+
+}} // extern C
 
 '''
 
@@ -1287,12 +1378,7 @@ def codegen_func_forward(adj, func_type='kernel', device='cpu'):
 
     elif device == 'cuda':
         if func_type == 'kernel':
-            s += "    int var_idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
-            s += "    if (var_idx < dim) {\n"
-
             s += codegen_func_forward_body(adj, device=device, indent=8)
-
-            s += "    }\n"
         else:
             s += codegen_func_forward_body(adj, device=device, indent=4)
 
@@ -1346,10 +1432,7 @@ def codegen_func_reverse(adj, func_type='kernel', device='cpu'):
         s += codegen_func_reverse_body(adj, device=device, indent=4)
     elif device == 'cuda':
         if func_type == 'kernel':
-            s += "    int var_idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
-            s += "    if (var_idx < dim) {\n"
             s += codegen_func_reverse_body(adj, device=device, indent=8)
-            s += "    }\n"
         else:
             s += codegen_func_reverse_body(adj, device=device, indent=4)
     else:
@@ -1404,8 +1487,8 @@ def codegen_kernel(kernel, device='cpu'):
 
     adj = kernel.adj
 
-    forward_args = ["int dim"]
-    reverse_args = ["int dim"]
+    forward_args = ["launch_bounds_t dim"]
+    reverse_args = ["launch_bounds_t dim"]
 
     # forward args
     for arg in adj.args:
@@ -1442,7 +1525,7 @@ def codegen_module(kernel, device='cpu'):
     adj = kernel.adj
 
     # build forward signature
-    forward_args = ["int dim"]
+    forward_args = ["launch_bounds_t dim"]
     forward_params = ["dim"]
 
     for arg in adj.args:
@@ -1472,33 +1555,4 @@ def codegen_module(kernel, device='cpu'):
     return s
 
 
-def codegen_module_decl(kernel, device='cpu'):
-
-    adj = kernel.adj
-
-    # build forward signature
-    forward_args = ["int dim"]
-    forward_params = ["dim"]
-
-    for arg in adj.args:
-        forward_args.append(arg.ctype() + " var_" + arg.label)
-        forward_params.append("var_" + arg.label)
-
-    # build reverse signature
-    reverse_args = [*forward_args]
-    reverse_params = [*forward_params]
-
-    for arg in adj.args:
-        reverse_args.append(arg.ctype() + " adj_" + arg.label)
-        reverse_params.append("adj_" + arg.label)
-
-    if device == 'cpu':
-        template = cpu_module_header_template
-    elif device == 'cuda':
-        template = cuda_module_header_template
-    else:
-        raise ValueError("Device {} is not supported".format(device))
-
-    s = template.format(name=kernel.key, forward_args=indent(forward_args), reverse_args=indent(reverse_args))
-    return s
 

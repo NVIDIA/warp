@@ -350,15 +350,12 @@ add_builtin("dense_solve_batched",
                  "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
 
 
-add_builtin("mlp", input_types={"weights": array(dtype=float), "bias": array(dtype=float), "activation": Callable, "m": int, "n": int, "b": int, "index": int, "x": array(dtype=float), "out": array(dtype=float)}, value_type=None, skip_replay=True, 
+add_builtin("mlp", input_types={"weights": array(dtype=float, ndim=2), "bias": array(dtype=float, ndim=1), "activation": Callable, "index": int, "x": array(dtype=float, ndim=2), "out": array(dtype=float, ndim=2)}, value_type=None, skip_replay=True, 
     doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
 
    :param weights: A layer's network weights with dimensions ``(m, n)``.
    :param bias: An array with dimensions ``(n)`.
    :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
-   :param m: The number of output dimensions
-   :param n: The number of input dimensions
-   :param b: The number of batches
    :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
    :param x: The feature matrix with dimensions ``(n, b)``
    :param out: The network output with dimensions ``(m, b)``
@@ -529,6 +526,19 @@ add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout",
 add_builtin("tid", input_types={}, value_type=int, group="Utility",
     doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.""")
+
+add_builtin("tid", input_types={}, value_type=[int, int], group="Utility",
+    doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+   where dim is the parameter passed to kernel launch.""")
+
+add_builtin("tid", input_types={}, value_type=[int, int, int], group="Utility",
+    doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+   where dim is the parameter passed to kernel launch.""")
+
+add_builtin("tid", input_types={}, value_type=[int, int, int, int], group="Utility",
+    doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+   where dim is the parameter passed to kernel launch.""")
+
 
 add_builtin("copy", variadic=True, hidden=True, group="Utility")
 add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")

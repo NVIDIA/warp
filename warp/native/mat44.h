@@ -302,8 +302,6 @@ inline CUDA_CALLABLE float determinant(const mat44& m)
     float x30, x31, x32, x33;
     double y01, y02, y03, y12, y13, y23;
     float z00, z10, z20, z30;
-    float z01, z11, z21, z31;
-    double z02, z03, z12, z13, z22, z23, z32, z33;
 
     // Pickle 1st two columns of matrix into registers
     x00 = m.data[0][0];
@@ -333,16 +331,6 @@ inline CUDA_CALLABLE float determinant(const mat44& m)
     x32 = m.data[3][2];
     x33 = m.data[3][3];
 
-    // Compute all 3x3 cofactors for 2nd two columns */
-    z33 = x02*y12 - x12*y02 + x22*y01;
-    z23 = x12*y03 - x32*y01 - x02*y13;
-    z13 = x02*y23 - x22*y03 + x32*y02;
-    z03 = x22*y13 - x32*y12 - x12*y23;
-    z32 = x13*y02 - x23*y01 - x03*y12;
-    z22 = x03*y13 - x13*y03 + x33*y01;
-    z12 = x23*y03 - x33*y02 - x03*y23;
-    z02 = x13*y23 - x23*y13 + x33*y12;
-
     // Compute all six 2x2 determinants of 2nd two columns
     y01 = x02*x13 - x12*x03;
     y02 = x02*x23 - x22*x03;
@@ -356,10 +344,6 @@ inline CUDA_CALLABLE float determinant(const mat44& m)
     z20 = x01*y13 - x11*y03 + x31*y01;
     z10 = x21*y03 - x31*y02 - x01*y23;
     z00 = x11*y23 - x21*y13 + x31*y12;
-    z31 = x00*y12 - x10*y02 + x20*y01;
-    z21 = x10*y03 - x30*y01 - x00*y13;
-    z11 = x00*y23 - x20*y03 + x30*y02;
-    z01 = x20*y13 - x30*y12 - x10*y23;
 
     // compute 4x4 determinant & its reciprocal
     double det = x30*z30 + x20*z20 + x10*z10 + x00*z00;

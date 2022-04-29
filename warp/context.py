@@ -343,7 +343,6 @@ class Module:
                     entry_points.append(kernel.func.__name__ + "_cpu_forward")
                     entry_points.append(kernel.func.__name__ + "_cpu_backward")
 
-                    cpp_source += warp.codegen.codegen_module_decl(kernel, device="cpu")
                     cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
                     cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
 
@@ -772,22 +771,32 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
         adjoint: Whether to run forward or backward pass (typically use False)
     """
 
-    assert(is_device_available(device))
+    # check device available
+    if is_device_available(device) == False:
+        raise RuntimeError(f"Error launching kernel, device '{device}' is not available.")
 
+    # check kernel is a function
+    if isinstance(kernel, wp.Kernel) == False:
+        raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
+
+    # debugging aid
     if (warp.config.print_launches):
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
-    if (dim > 0):
+    # delay load modules
+    if (kernel.module.loaded == False):
+        success = kernel.module.load()
+        if (success == False):
+            return
 
-        # delay load modules
-        if (kernel.module.loaded == False):
-            success = kernel.module.load()
-            if (success == False):
-                return
+    # construct launch bounds
+    bounds = warp.types.launch_bounds_t(dim)
+
+    if (bounds.size > 0):
 
         # first param is the number of threads
         params = []
-        params.append(ctypes.c_long(dim))
+        params.append(bounds)
 
         # converts arguments to kernel's expected ctypes and packs into params
         def pack_args(args, params):
@@ -888,9 +897,9 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if (adjoint):
-                runtime.core.cuda_launch_kernel(kernel.backward_cuda, dim, kernel_params)
+                runtime.core.cuda_launch_kernel(kernel.backward_cuda, bounds.size, kernel_params)
             else:
-                runtime.core.cuda_launch_kernel(kernel.forward_cuda, dim, kernel_params)
+                runtime.core.cuda_launch_kernel(kernel.forward_cuda, bounds.size, kernel_params)
 
             try:
                 runtime.verify_device()            
