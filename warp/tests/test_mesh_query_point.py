@@ -53,42 +53,44 @@ def triangle_closest_point(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
     d2 = wp.dot(ac, ap)
 
     if (d1 <= 0.0 and d2 <= 0.0):
-        return wp.vec3(1.0, 0.0, 0.0)
+        return wp.vec2(1.0, 0.0)
 
     bp = p - b
     d3 = wp.dot(ab, bp)
     d4 = wp.dot(ac, bp)
 
     if (d3 >= 0.0 and d4 <= d3):
-        return wp.vec3(0.0, 1.0, 0.0)
+        return wp.vec2(0.0, 1.0)
 
     vc = d1 * d4 - d3 * d2
     v = d1 / (d1 - d3)
     if (vc <= 0.0 and d1 >= 0.0 and d3 <= 0.0):
-        return wp.vec3(1.0 - v, v, 0.0)
+        return wp.vec2(1.0 - v, v)
 
     cp = p - c
     d5 = wp.dot(ab, cp)
     d6 = wp.dot(ac, cp)
 
     if (d6 >= 0.0 and d5 <= d6):
-        return wp.vec3(0.0, 0.0, 1.0)
+        return wp.vec2(0.0, 0.0)
 
     vb = d5 * d2 - d1 * d6
     w = d2 / (d2 - d6)
     if (vb <= 0.0 and d2 >= 0.0 and d6 <= 0.0):
-        return wp.vec3(1.0 - w, 0.0, w)
+        return wp.vec2(1.0 - w, 0.0)
 
     va = d3 * d6 - d5 * d4
     w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
     if (va <= 0.0 and (d4 - d3) >= 0.0 and (d5 - d6) >= 0.0):
-        return wp.vec3(0.0, w, 1.0 - w)
+        return wp.vec2(0.0, w)
 
     denom = 1.0 / (va + vb + vc)
     v = vb * denom
     w = vc * denom
+    u = 1.0 - v - w
 
-    return wp.vec3(1.0 - v - w, v, w)
+    return wp.vec2(u, v)
+
 
 @wp.func
 def solid_angle(v0: wp.vec3, v1: wp.vec3, v2: wp.vec3, p: wp.vec3):
@@ -135,8 +137,10 @@ def sample_mesh_brute(
         winding_angle += solid_angle(a, b, c, p)
 
         bary = triangle_closest_point(a, b, c, p)
+        u = bary[0]
+        v = bary[1]
 
-        cp = bary[0]*a + bary[1]*b + bary[2]*c
+        cp = u*a + v*b + (1.0-u-v)*c
         cp_dist = wp.length(cp - p)
 
         if (cp_dist < min_dist):
