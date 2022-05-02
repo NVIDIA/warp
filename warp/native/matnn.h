@@ -219,14 +219,14 @@ CUDA_CALLABLE inline void mlp(const array_t<float>& weights, const array_t<float
 
     for (int i=0; i < m; ++i)
     {
-        float tmp = bias.datA.data[i];
+        float tmp = bias.data[i];
 
         for(int j=0; j < n; ++j)
         {
-            tmp += weights.datA.data[i*n + j]*x.datA.data[index + b*j];
+            tmp += weights.data[i*n + j]*x.data[index + b*j];
         }
 
-        out.datA.data[index + b*i] = activation(tmp);
+        out.data[index + b*i] = activation(tmp);
     }
 }
 
@@ -241,33 +241,33 @@ CUDA_CALLABLE inline void adj_mlp(const array_t<float>& weights, const array_t<f
     for (int i=0; i < m; ++i)
     {
         // recompute forward pass so we don't have to store pre-activation outputs
-        float tmp = bias.datA.data[i];
+        float tmp = bias.data[i];
 
         for(int j=0; j < n; ++j)
         {
-            tmp += weights.datA.data[i*n + j]*x.datA.data[index + b*j];
+            tmp += weights.data[i*n + j]*x.data[index + b*j];
         }
 
         // adjoint w.r.t to acivation
         float adj_f = 0.0f;
     
         if (adj_out.data)
-            adj_activation(tmp, adj_f, adj_out.datA.data[index + b*i]);
+            adj_activation(tmp, adj_f, adj_out.data[index + b*i]);
 
         for (int j=0; j < n; ++j)
         {
             // adjoint w.r.t M_i
             if (adj_weights.data)
-                atomic_add(&adj_weights.datA.data[i*n + j], x.datA.data[index + b*j]*adj_f);    // todo: reduce these atomic stores using warp/bock level reductions
+                atomic_add(&adj_weights.data[i*n + j], x.data[index + b*j]*adj_f);    // todo: reduce these atomic stores using warp/bock level reductions
 
             // adjoint w.r.t x
             if (adj_x.data)
-                atomic_add(&adj_x.datA.data[index + b*j], weights.datA.data[i*n + j]*adj_f);
+                atomic_add(&adj_x.data[index + b*j], weights.data[i*n + j]*adj_f);
         }
 
         // adjoint w.r.t b
         if (adj_bias.data)
-            atomic_add(&adj_bias.datA.data[i], adj_f);
+            atomic_add(&adj_bias.data[i], adj_f);
 
     }
 }
