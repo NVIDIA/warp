@@ -811,11 +811,9 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                     if (a is None):
                         
                         # allow for NULL arrays
-                        #params.append(ctypes.c_int64(0))
                         params.append(warp.types.array_t())
 
                     else:
-
 
                         # check for array value
                         if (isinstance(a, warp.types.array) == False):
@@ -833,10 +831,6 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                         if (a.device != device):
                             raise RuntimeError(f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={a.device}.")
                         
-                        # if(a.ptr == None):                            
-                        #     params.append(ctypes.c_int64(0))
-                        # else:
-                        #     params.append(ctypes.c_int64(a.ptr))
                         params.append(a.__ctype__())
 
                 # try to convert to a value type (vec3, mat33, etc)
