@@ -1,7 +1,6 @@
 import carb
 import carb.settings
 import omni.kit.menu.utils
-import omni.kit.context_menu
 import omni.usd
 import omni.timeline
 import warp as wp
@@ -14,6 +13,7 @@ import webbrowser
 
 SCRIPTS_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scripts"))
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
+
 WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 

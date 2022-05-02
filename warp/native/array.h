@@ -16,6 +16,8 @@ struct array_t
     T* data;
     int shape[ARRAY_MAX_DIMS];
     int ndim;
+
+    CUDA_CALLABLE inline operator T*() const { return data; }
 };
 
 // return stride (in elements) of the given index

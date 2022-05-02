@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [0.2.0] - 2022-04-29
+## [0.2.0] - 2022-05-02
 
 ### Warp Core
 
@@ -12,21 +12,21 @@
 - Add support for custom iterable types, supports ranges, hash grid, and mesh query objects
 - Add support for multi-dimensional arrays, for example use `x = array[i,j,k]` syntax to address a 3-dimensional array 
 - Add support for multi-dimensional kernel launches, use `launch(kernel, dim=(i,j,k), ...` and `i,j,k = wp.tid()` to obtain thread indices
-- Add support for bounds-checking array accesses in debug mode, use `wp.config.mode = "debug"` to enable
+- Add support for bounds-checking array memory accesses in debug mode, use `wp.config.mode = "debug"` to enable
 - Add support for differentiating through dynamic and nested for-loops
 - Add support for evaluating MLP neural network layers inside kernels with custom activation functions, see `wp.mlp()`
-- Add additional NVDB sampling methods and adjoints, see `wp.volume_sample_i()`, `wp.volume_sample_f()`, `and wp.volume_sample_vec()`
+- Add additional NVDB sampling methods and adjoints, see `wp.volume_sample_i()`, `wp.volume_sample_f()`, and `wp.volume_sample_vec()`
 - Add support for loading zlib compressed NVDB volumes, see `wp.Volume.load_from_nvdb()`
 - Add support for triangle intersection testing, see `wp.intersect_tri_tri()`
 - Add support for NVTX profile zones in `wp.ScopedTimer()`
 - Add support for additional transform and quaternion math operations, see `wp.inverse()`, `wp.quat_to_matrix()`, `wp.quat_from_matrix()`
 - Add fast math (`--fast-math`) to kernel compilation by default
-- Add support for PyTorch by default (if installed)
+- Add `warp.torch` import by default (if PyTorch is installed)
   
 ### Warp Kit
 
 - Add Omniverse Kit menu for browsing Warp example scripts and sample scenes under `Window->Warp`
-- Fix for OgnParticleSolver.py example when collider is a bundle
+- Fix for OgnParticleSolver.py example when collider is coming from Read Prim into Bundle node
 
 ### Warp Sim
 
@@ -40,7 +40,9 @@
 - `wp.volume_sample_world()` is now replaced by `wp.volume_sample_f/i/vec()` which operate in index (local) space. Users should use `wp.volume_world_to_index()` to transform points from world space to index space before sampling.
 - `wp.mlp()` expects multi-dimensional arrays instead of one-dimensional arrays for inference, all other semantics remain the same as earlier versions of this API.
 - `wp.array.length` member has been removed, please use `wp.array.shape` to access array dimensions, or use `wp.array.size` to get total element count
-- 
+- Marking `dense_gemm()`, `dense_chol()`, etc methods as experimental until we revisit them
+
+
 ## [0.1.25] - 2022-03-20
 
 - Add support for class methods to be Warp kernels

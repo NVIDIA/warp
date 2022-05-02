@@ -1035,11 +1035,10 @@ def type_str(t):
         return "Any"
     elif t == Callable:
         return "Callable"
-    elif (isinstance(t, array)):
-        if t.dtype == Any:
-            return "array(Any)"
-        else:
-            return f"array({t.dtype.__name__})"
+    elif isinstance(t, List):
+        return ", ".join(map(type_str, t))
+    elif isinstance(t, array):
+        return f"array[{type_str(t.dtype)}]"
     else:
         return t.__name__
 

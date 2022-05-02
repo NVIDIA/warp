@@ -136,15 +136,15 @@ class Example:
 
     @wp.kernel
     def compute_volume(points: wp.array(dtype=wp.vec3),
-                    indices: wp.array(dtype=int),
+                    indices: wp.array2d(dtype=int),
                     volume: wp.array(dtype=float)):
 
         tid = wp.tid()
 
-        i = indices[tid * 4 + 0]
-        j = indices[tid * 4 + 1]
-        k = indices[tid * 4 + 2]
-        l = indices[tid * 4 + 3]
+        i = indices[tid,0]
+        j = indices[tid,1]
+        k = indices[tid,2]
+        l = indices[tid,3]
 
         x0 = points[i]
         x1 = points[j]

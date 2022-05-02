@@ -153,7 +153,7 @@ def eval_springs(x: wp.array(dtype=wp.vec3),
 @wp.kernel
 def eval_triangles(x: wp.array(dtype=wp.vec3),
                    v: wp.array(dtype=wp.vec3),
-                   indices: wp.array(dtype=int),
+                   indices: wp.array2d(dtype=int),
                    pose: wp.array(dtype=wp.mat22),
                    activation: wp.array(dtype=float),
                    k_mu: float,
@@ -164,9 +164,9 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
                    f: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
 
-    i = indices[tid * 3 + 0]
-    j = indices[tid * 3 + 1]
-    k = indices[tid * 3 + 2]
+    i = indices[tid, 0]
+    j = indices[tid, 1]
+    k = indices[tid, 2]
 
     x0 = x[i]        # point zero
     x1 = x[j]        # point one
@@ -565,14 +565,20 @@ def eval_triangles_body_contacts(
 
 @wp.kernel
 def eval_bending(
-    x: wp.array(dtype=wp.vec3), v: wp.array(dtype=wp.vec3), indices: wp.array(dtype=int), rest: wp.array(dtype=float), ke: float, kd: float, f: wp.array(dtype=wp.vec3)):
+        x: wp.array(dtype=wp.vec3),
+        v: wp.array(dtype=wp.vec3),
+        indices: wp.array2d(dtype=int),
+        rest: wp.array(dtype=float),
+        ke: float,
+        kd: float,
+        f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
-    i = indices[tid * 4 + 0]
-    j = indices[tid * 4 + 1]
-    k = indices[tid * 4 + 2]
-    l = indices[tid * 4 + 3]
+    i = indices[tid,0]
+    j = indices[tid,1]
+    k = indices[tid,2]
+    l = indices[tid,3]
 
     rest_angle = rest[tid]
 
@@ -633,24 +639,24 @@ def eval_bending(
 @wp.kernel
 def eval_tetrahedra(x: wp.array(dtype=wp.vec3),
                     v: wp.array(dtype=wp.vec3),
-                    indices: wp.array(dtype=int),
+                    indices: wp.array2d(dtype=int),
                     pose: wp.array(dtype=wp.mat33),
                     activation: wp.array(dtype=float),
-                    materials: wp.array(dtype=float),
+                    materials: wp.array2d(dtype=float),
                     f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
-    i = indices[tid * 4 + 0]
-    j = indices[tid * 4 + 1]
-    k = indices[tid * 4 + 2]
-    l = indices[tid * 4 + 3]
+    i = indices[tid,0]
+    j = indices[tid,1]
+    k = indices[tid,2]
+    l = indices[tid,3]
 
     act = activation[tid]
 
-    k_mu = materials[tid * 3 + 0]
-    k_lambda = materials[tid * 3 + 1]
-    k_damp = materials[tid * 3 + 2]
+    k_mu = materials[tid,0]
+    k_lambda = materials[tid,1]
+    k_damp = materials[tid,2]
 
     x0 = x[i]
     x1 = x[j]
@@ -1425,41 +1431,6 @@ def eval_muscles(
     for i in range(m_start, m_end):
         compute_muscle_force(i, body_X_s, body_v_s, body_com, muscle_links, muscle_points, activation, body_f_s)
     
-
-
-@wp.kernel
-def eval_dense_gemm(m: int, n: int, p: int, t1: int, t2: int, A: wp.array(dtype=float), B: wp.array(dtype=float), C: wp.array(dtype=float)):
-    dense_gemm(m, n, p, t1, t2, A, B, C)
-
-@wp.kernel
-def eval_dense_gemm_batched(m: wp.array(dtype=int), n: wp.array(dtype=int), p: wp.array(dtype=int), t1: int, t2: int, A_start: wp.array(dtype=int), B_start: wp.array(dtype=int), C_start: wp.array(dtype=int), A: wp.array(dtype=float), B: wp.array(dtype=float), C: wp.array(dtype=float)):
-    dense_gemm_batched(m, n, p, t1, t2, A_start, B_start, C_start, A, B, C)
-
-@wp.kernel
-def eval_dense_cholesky(n: int, A: wp.array(dtype=float), regularization: float, L: wp.array(dtype=float)):
-    dense_chol(n, A, regularization, L)
-
-@wp.kernel
-def eval_dense_cholesky_batched(A_start: wp.array(dtype=int), A_dim: wp.array(dtype=int), A: wp.array(dtype=float), regularization: float, L: wp.array(dtype=float)):
-    dense_chol_batched(A_start, A_dim, A, regularization, L)
-
-@wp.kernel
-def eval_dense_subs(n: int, L: wp.array(dtype=float), b: wp.array(dtype=float), x: wp.array(dtype=float)):
-    dense_subs(n, L, b, x)
-
-# helper that propagates gradients back to A, treating L as a constant / temporary variable
-# allows us to reuse the Cholesky decomposition from the forward pass
-@wp.kernel
-def eval_dense_solve(n: int, A: wp.array(dtype=float), L: wp.array(dtype=float), b: wp.array(dtype=float), x: wp.array(dtype=float)):
-    dense_solve(n, A, L, b, x)
-
-# helper that propagates gradients back to A, treating L as a constant / temporary variable
-# allows us to reuse the Cholesky decomposition from the forward pass
-@wp.kernel
-def eval_dense_solve_batched(b_start: wp.array(dtype=int), A_start: wp.array(dtype=int), A_dim: wp.array(dtype=int), A: wp.array(dtype=float), L: wp.array(dtype=float), b: wp.array(dtype=float), x: wp.array(dtype=float)):
-    dense_solve_batched(b_start, A_start, A_dim, A, L, b, x)
-
-
 
 def compute_forces(model, state, particle_f, body_f):
 

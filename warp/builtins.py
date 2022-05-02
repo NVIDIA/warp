@@ -298,7 +298,7 @@ add_builtin("dense_gemm",
                  "t2": int, 
                  "A": array(dtype=float), 
                  "B": array(dtype=float), 
-                 "C": array(dtype=float) }, value_type=None, doc="", group="Linear Algebra")
+                 "C": array(dtype=float) }, value_type=None, doc="", group="Utility", hidden=True)
 
 add_builtin("dense_gemm_batched", 
     input_types={"m": array(dtype=int), 
@@ -311,34 +311,34 @@ add_builtin("dense_gemm_batched",
                  "C_start": array(dtype=int), 
                  "A": array(dtype=float), 
                  "B": array(dtype=float), 
-                 "C": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "C": array(dtype=float)}, value_type=None, doc="", group="Utility", hidden=True)
 
 
 add_builtin("dense_chol",
     input_types={"n": int, 
                  "A": array(dtype=float), 
                  "regularization": float, 
-                 "L": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "L": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 add_builtin("dense_chol_batched",
     input_types={"A_start": array(dtype=int),
                  "A_dim": array(dtype=int),
                  "A": array(dtype=float),
                  "regularization": float,
-                 "L": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "L": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 add_builtin("dense_subs", 
     input_types={"n": int, 
                  "L": array(dtype=float), 
                  "b": array(dtype=float), 
-                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "x": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 add_builtin("dense_solve", 
     input_types={"n": int, 
                  "A": array(dtype=float), 
                  "L": array(dtype=float), 
                  "b": array(dtype=float), 
-                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "x": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 add_builtin("dense_solve_batched",
     input_types={"b_start": array(dtype=int), 
@@ -347,20 +347,20 @@ add_builtin("dense_solve_batched",
                  "A": array(dtype=float),
                  "L": array(dtype=float),
                  "b": array(dtype=float),
-                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "x": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 
 add_builtin("mlp", input_types={"weights": array(dtype=float, ndim=2), "bias": array(dtype=float, ndim=1), "activation": Callable, "index": int, "x": array(dtype=float, ndim=2), "out": array(dtype=float, ndim=2)}, value_type=None, skip_replay=True, 
     doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
 
    :param weights: A layer's network weights with dimensions ``(m, n)``.
-   :param bias: An array with dimensions ``(n)`.
+   :param bias: An array with dimensions ``(n)``.
    :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
    :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
    :param x: The feature matrix with dimensions ``(n, b)``
    :param out: The network output with dimensions ``(m, b)``
 
-   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).""", group="Linear Algebra")
+   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).""", group="Utility")
 
 
 #---------------------------------
@@ -524,20 +524,17 @@ add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout",
 
 # helpers
 add_builtin("tid", input_types={}, value_type=int, group="Utility",
-    doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+    doc="""Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.""")
 
 add_builtin("tid", input_types={}, value_type=[int, int], group="Utility",
-    doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
-   where dim is the parameter passed to kernel launch.""")
+    doc="""Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""")
 
 add_builtin("tid", input_types={}, value_type=[int, int, int], group="Utility",
-    doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
-   where dim is the parameter passed to kernel launch.""")
+    doc="""Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""")
 
 add_builtin("tid", input_types={}, value_type=[int, int, int, int], group="Utility",
-    doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
-   where dim is the parameter passed to kernel launch.""")
+    doc="""Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""")
 
 
 add_builtin("copy", variadic=True, hidden=True, group="Utility")
@@ -648,15 +645,15 @@ def atomic_op_value_type(args):
     return args[0].type.dtype
 
 
-add_builtin("atomic_add", input_types={"array": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
-add_builtin("atomic_add", input_types={"array": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_add", input_types={"array": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_add", input_types={"array": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_type=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_type=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
-add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
-add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_sub", input_types={"array": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
 
 # used to index into builtin types, i.e.: y = vec3[1]
