@@ -219,8 +219,6 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 			if (length(normal)/(dot(e0,e0) + dot(e1,e1) + dot(e2,e2)) < 1.e-6f)
 				continue;
 
-			//float v, w;
-			//vec3 c = closest_point_to_triangle(p, q, r, point, v, w);
 			vec2 barycentric = closest_point_to_triangle(p, q, r, point);
 			float u = barycentric[0];
 			float v = barycentric[1];

@@ -200,7 +200,6 @@ def test_mesh_query_point(test, device):
         velocities=None,
         indices=mesh_indices)
 
-    num_particles = 1000
     p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
 
     query_count = len(p)
@@ -262,6 +261,160 @@ def test_mesh_query_point(test, device):
 
     # stage.save()
 
+
+@wp.kernel
+def sample_mesh_query_uv(mesh: wp.uint64,
+                query_points: wp.array(dtype=wp.vec3),
+                query_u: wp.array(dtype=float),
+                query_v: wp.array(dtype=float)):
+    
+    tid = wp.tid()
+
+    face_index = int(0)
+    face_u = float(0.0)
+    face_v = float(0.0)
+    sign = float(0.0)
+
+    max_dist = 10012.0
+
+    p = query_points[tid]
+    
+    wp.mesh_query_point(mesh, p, max_dist, sign, face_index, face_u, face_v)
+        
+    query_u[tid] = face_u
+    query_v[tid] = face_v
+
+
+@wp.kernel
+def compute_loss(query_u: wp.array(dtype=float),
+                query_v: wp.array(dtype=float),
+                loss_u: wp.array(dtype=float),
+                loss_v: wp.array(dtype=float)):
+
+    tid = wp.tid()
+    u = query_u[tid]
+    v = query_v[tid]
+
+    wp.atomic_add(loss_u, 0, u)
+    wp.atomic_add(loss_v, 0, v)
+
+
+@wp.kernel
+def sample_mesh_query_uv_grad(mesh: wp.uint64,
+                query_points: wp.array(dtype=wp.vec3),
+                gradients_u: wp.array(dtype=wp.vec3),
+                gradients_v: wp.array(dtype=wp.vec3)):
+    
+    tid = wp.tid()
+
+    p = query_points[tid]
+
+    eps = 1.e-3
+
+    face_index = int(0)
+    face_u_1 = float(0.0)
+    face_u_0 = float(0.0)
+    face_v_1 = float(0.0)
+    face_v_0 = float(0.0)
+    sign = float(0.0)
+    max_dist = 10012.0
+
+    p_1 = wp.vec3(p[0] + eps, p[1], p[2])
+    p_0 = wp.vec3(p[0] - eps, p[1], p[2])
+    wp.mesh_query_point(mesh, p_1, max_dist, sign, face_index, face_u_1, face_v_1)
+    wp.mesh_query_point(mesh, p_0, max_dist, sign, face_index, face_u_0, face_v_0)
+    
+    delta_u_x = face_u_1 - face_u_0
+    delta_v_x = face_v_1 - face_v_0
+    
+    p_1 = wp.vec3(p[0], p[1] + eps, p[2])
+    p_0 = wp.vec3(p[0], p[1] - eps, p[2])
+    wp.mesh_query_point(mesh, p_1, max_dist, sign, face_index, face_u_1, face_v_1)
+    wp.mesh_query_point(mesh, p_0, max_dist, sign, face_index, face_u_0, face_v_0)
+
+    delta_u_y = face_u_1 - face_u_0
+    delta_v_y = face_v_1 - face_v_0
+
+    p_1 = wp.vec3(p[0], p[1], p[2] + eps)
+    p_0 = wp.vec3(p[0], p[1], p[2] - eps)
+    wp.mesh_query_point(mesh, p_1, max_dist, sign, face_index, face_u_1, face_v_1)
+    wp.mesh_query_point(mesh, p_0, max_dist, sign, face_index, face_u_0, face_v_0)
+
+    delta_u_z = face_u_1 - face_u_0
+    delta_v_z = face_v_1 - face_v_0
+
+    gradients_u[tid] = wp.vec3(delta_u_x / (2.0*eps), delta_u_y / (2.0*eps), delta_u_z / (2.0*eps))
+    gradients_v[tid] = wp.vec3(delta_v_x / (2.0*eps), delta_v_y / (2.0*eps), delta_v_z / (2.0*eps))
+
+
+def test_adj_mesh_query_point(test, device):
+
+    from pxr import Usd, UsdGeom, Gf, Sdf
+
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.usda")))
+    mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
+
+    mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
+    mesh_indices = mesh_geom.GetFaceVertexIndicesAttr().Get()
+
+    tri_indices = triangulate(mesh_counts, mesh_indices)
+
+    mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
+    mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
+
+    # create mesh
+    mesh = wp.Mesh(
+        points=mesh_points, 
+        velocities=None,
+        indices=mesh_indices)
+
+    p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
+
+    tape = wp.Tape()
+
+    # analytic gradients
+    with tape:
+
+        query_count = len(p)
+        query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
+
+        query_u = wp.zeros(query_count, dtype=float, device=device, requires_grad=True)
+        query_v = wp.zeros(query_count, dtype=float, device=device, requires_grad=True)
+        # loss is sum of all query_u, query_v
+        loss_u = wp.zeros(n=1, dtype=float, device=device)
+        loss_v = wp.zeros(n=1, dtype=float, device=device)
+
+        wp.launch(kernel=sample_mesh_query_uv, dim=query_count, inputs=[mesh.id, query_points, query_u, query_v], device=device)
+        wp.launch(kernel=compute_loss, dim=query_count, inputs=[query_u, query_v, loss_u, loss_v], device=device)
+
+    tape.backward(loss=loss_u)
+    analytic_u = tape.gradients[query_points].numpy()
+    # print(analytic_u)
+
+    tape.backward(loss=loss_v)
+    analytic_v = tape.gradients[query_points].numpy()
+    # print(analytic_v)
+
+    # numeric gradients
+    gradients_u = wp.zeros(query_count, dtype=wp.vec3, device=device)
+    gradients_v = wp.zeros(query_count, dtype=wp.vec3, device=device)
+
+    wp.launch(kernel=sample_mesh_query_uv_grad, dim=query_count, inputs=[mesh.id, query_points, gradients_u, gradients_v], device=device)
+
+    numeric_u = gradients_u.numpy()
+    # print(numeric_u)
+
+    numeric_v = gradients_v.numpy()
+    # print(numeric_v)
+
+    u_error = np.max(np.sqrt(((analytic_u - numeric_u) * (analytic_u - numeric_u)).sum(axis=1)))
+    v_error = np.max(np.sqrt(((analytic_v - numeric_v) * (analytic_v - numeric_v)).sum(axis=1)))
+
+    tolerance = 1.5e-4
+    test.assertTrue(u_error < tolerance, f"u_error is {u_error} which is >= {tolerance}")
+    test.assertTrue(v_error < tolerance, f"v_error is {v_error} which is >= {tolerance}")
+
+
 def register(parent):
 
     devices = wp.get_devices()
@@ -269,7 +422,8 @@ def register(parent):
     class TestMeshQuery(parent):
         pass
 
-    add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
+    # add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
+    add_function_test(TestMeshQuery, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
 
     return TestMeshQuery
 

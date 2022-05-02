@@ -254,7 +254,7 @@ CUDA_CALLABLE inline int max_dim(vec3 a)
 }
 
 // http://jcgt.org/published/0002/01/05/
-CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir, const vec3& a, const vec3& b,const vec3& c, float& t, float& u, float& v, float& w, float& sign, vec3* normal)
+CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& w, float& sign, vec3* normal)
 {
 	// todo: precompute for ray
 
