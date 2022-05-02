@@ -799,19 +799,18 @@ and dtype parameter appropriately.</p>
 <div class="section" id="volumes">
 <h2>Volumes<a class="headerlink" href="#volumes" title="Permalink to this headline">¶</a></h2>
 <p>Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids stored using the <a class="reference external" href="https://developer.nvidia.com/nanovdb">NanoVDB</a> standard. Users can access voxels directly, or use built-in closest point or trilinear interpolation to sample grid data from world or local-space.</p>
+<p>Volume object can be created directly from Warp arrays containing a NanoVDB grid or from the contents of a standard <code class="docutils literal notranslate"><span class="pre">.nvdb</span></code> file, using the <code class="docutils literal notranslate"><span class="pre">load_from_nvdb</span></code> method.</p>
 <p>Below we give an example of creating a Volume object from an existing NanoVDB file:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># load NanoVDB bytes from disk</span>
-<span class="n">file</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="s2">&quot;mygrid.nvdbraw&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">byte</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># open NanoVDB file on disk</span>
+<span class="n">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;mygrid.nvdb&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span>
 
 <span class="c1"># create Volume object</span>
-<span class="n">volume</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">))</span>
+<span class="n">volume</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">load_from_nvdb</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Files written by the NanoVDB library, commonly marked by the <code class="docutils literal notranslate"><span class="pre">.nvdb</span></code> extension,  can contain multiple grids, but a <code class="docutils literal notranslate"><span class="pre">Volume</span></code> object represents a single NanoVDB grid and requires an <code class="docutils literal notranslate"><span class="pre">array</span></code> of bytes for a single grid at initialization.</p>
-<p>Because of this, when <code class="docutils literal notranslate"><span class="pre">.nvdb</span></code> files are used as data source, the individual grids need to be extracted for the <code class="docutils literal notranslate"><span class="pre">Volume</span></code> objects.</p>
-<p>Alternatively, grid data saved directly can be passed in without modification.</p>
+<p>Files written by the NanoVDB library, commonly marked by the <code class="docutils literal notranslate"><span class="pre">.nvdb</span></code> extension, can contain multiple grids with various compression methods, but a <code class="docutils literal notranslate"><span class="pre">Volume</span></code> object represents a single NanoVDB grid therefore only files with a single grid are supported. NanoVDB’s uncompressed and zip compressed file formats are supported.</p>
 </div>
 <p>To sample the volume inside a kernel we pass a reference to it by id, and use the built-in sampling modes:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
