@@ -27,76 +27,78 @@ class WarpMenu:
 
         if editor_menu:
 
-            self._example_DEM_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_DEM_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_DEM_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_MESH_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_MESH_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_MESH_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_NVDB_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_NVDB_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_NVDB_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_CLOTH_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_CLOTH_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_CLOTH_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_GRANULAR_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_GRANULAR_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_GRANULAR_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_NEO_HOOKEAN_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_NEO_HOOKEAN_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_NEO_HOOKEAN_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_PARTICLE_CHAIN_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_PARTICLE_CHAIN_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_PARTICLE_CHAIN_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_RIGID_CHAIN_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_RIGID_CHAIN_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_CHAIN_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_RIGID_CONTACT_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_RIGID_CONTACT_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_CONTACT_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_RIGID_FEM_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_RIGID_FEM_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_FEM_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_RIGID_FORCE_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_RIGID_FORCE_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_FORCE_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_SIM_RIGID_GYROSCOPIC_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_SIM_RIGID_GYROSCOPIC_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_GYROSCOPIC_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_WAVE_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_WAVE_MENU_ITEM}", 
-                lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_WAVE_SCRIPT),
-                toggle=False, value=False
-            )
-            self._example_BROWSE_menu_item = editor_menu.add_item(
-                f"Window/{menu_common.EXAMPLE_BROWSE_MENU_ITEM}", 
-                lambda _, value: self._on_browse_scripts_click(),
-                toggle=False, value=False
-            )
+            # Disabled until we can do some more polish
+
+            # self._example_DEM_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_DEM_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_DEM_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_MESH_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_MESH_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_MESH_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_NVDB_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_NVDB_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_NVDB_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_CLOTH_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_CLOTH_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_CLOTH_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_GRANULAR_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_GRANULAR_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_GRANULAR_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_NEO_HOOKEAN_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_NEO_HOOKEAN_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_NEO_HOOKEAN_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_PARTICLE_CHAIN_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_PARTICLE_CHAIN_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_PARTICLE_CHAIN_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_RIGID_CHAIN_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_RIGID_CHAIN_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_CHAIN_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_RIGID_CONTACT_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_RIGID_CONTACT_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_CONTACT_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_RIGID_FEM_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_RIGID_FEM_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_FEM_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_RIGID_FORCE_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_RIGID_FORCE_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_FORCE_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_SIM_RIGID_GYROSCOPIC_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_SIM_RIGID_GYROSCOPIC_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_SIM_RIGID_GYROSCOPIC_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_WAVE_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_WAVE_MENU_ITEM}", 
+            #     lambda _, value: self._on_script_menu_click(menu_common.EXAMPLE_WAVE_SCRIPT),
+            #     toggle=False, value=False
+            # )
+            # self._example_BROWSE_menu_item = editor_menu.add_item(
+            #     f"Window/{menu_common.EXAMPLE_BROWSE_MENU_ITEM}", 
+            #     lambda _, value: self._on_browse_scripts_click(),
+            #     toggle=False, value=False
+            # )
 
             self._scene_CLOTH_menu_item = editor_menu.add_item(
                 f"Window/{menu_common.SCENE_CLOTH_MENU_ITEM}", 
@@ -121,7 +123,7 @@ class WarpMenu:
             self._scene_BROWSE_menu_item = editor_menu.add_item(
                 f"Window/{menu_common.SCENE_BROWSE_MENU_ITEM}", 
                 lambda _, value: self._on_browse_scenes_click(),
-                toggle=False, value=False
+                toggle=False, value=False, priority=100     # set priority to insert a separator line (omni.kit.ui)
             )
 
             self._help_GETTING_STARTED_menu_item = editor_menu.add_item(

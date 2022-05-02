@@ -51,7 +51,7 @@ Preparing a Binary Release
 
     d) Run `python -m warp.tests`
     
-5) Create a new release on Github with tag of `v0.1.25` or equivalent and upload release .zip as an attachment
+5) Create a new release on Github with tag of `v0.2.0` or equivalent and upload release .zip as an attachment
 
 
 
