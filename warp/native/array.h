@@ -32,7 +32,7 @@ CUDA_CALLABLE inline int stride(const array_t<T>& a, int dim)
 }
 
 template <typename T>
-T& index(const array_t<T>& arr, int i)
+CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
 {
     assert(arr.ndim == 1);
     assert(arr.shape[0] > i);
@@ -43,7 +43,7 @@ T& index(const array_t<T>& arr, int i)
 }
 
 template <typename T>
-T& index(const array_t<T>& arr, int i, int j)
+CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
 {
     assert(arr.ndim == 2);
     assert(arr.shape[0] > i);
@@ -55,7 +55,7 @@ T& index(const array_t<T>& arr, int i, int j)
 }
 
 template <typename T>
-T& index(const array_t<T>& arr, int i, int j, int k)
+CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
 {
     assert(arr.ndim == 3);
     assert(arr.shape[0] > i);
@@ -70,7 +70,7 @@ T& index(const array_t<T>& arr, int i, int j, int k)
 }
 
 template <typename T>
-T& index(const array_t<T>& arr, int i, int j, int k, int l)
+CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
 {
     assert(arr.ndim == 3);
     assert(arr.shape[0] > i);
@@ -87,7 +87,7 @@ T& index(const array_t<T>& arr, int i, int j, int k, int l)
 }
 
 template <typename T>
-array_t<T> view(array_t<T>& src, int i)
+CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i)
 {
     array_t<T> a;
     a.data = src.data + i*stride(src, 0);
@@ -100,7 +100,7 @@ array_t<T> view(array_t<T>& src, int i)
 }
 
 template <typename T>
-array_t<T> view(array_t<T>& src, int i, int j)
+CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j)
 {
     array_t<T> a;
     a.data = src.data + i*stride(src, 0) + j*stride(src,1);
@@ -112,7 +112,7 @@ array_t<T> view(array_t<T>& src, int i, int j)
 }
 
 template <typename T>
-array_t<T> view(array_t<T>& src, int i, int j, int k)
+CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j, int k)
 {
     array_t<T> a;
     a.data = src.data + i*stride(src, 0) + j*stride(src,1) + k*stride(src,2);
@@ -122,9 +122,9 @@ array_t<T> view(array_t<T>& src, int i, int j, int k)
     return a;
 }
 
-template <typename T> void adj_view(array_t<T>& src, int i, array_t<T>& adj_src, int adj_i, array_t<T> adj_ret) {}
-template <typename T> void adj_view(array_t<T>& src, int i, int j, array_t<T>& adj_src, int adj_i, int adj_j, array_t<T> adj_ret) {}
-template <typename T> void adj_view(array_t<T>& src, int i, int j, int k, array_t<T>& adj_src, int adj_i, int adj_j, int adj_k, array_t<T> adj_ret) {}
+template <typename T> inline CUDA_CALLABLE void adj_view(array_t<T>& src, int i, array_t<T>& adj_src, int adj_i, array_t<T> adj_ret) {}
+template <typename T> inline CUDA_CALLABLE void adj_view(array_t<T>& src, int i, int j, array_t<T>& adj_src, int adj_i, int adj_j, array_t<T> adj_ret) {}
+template <typename T> inline CUDA_CALLABLE void adj_view(array_t<T>& src, int i, int j, int k, array_t<T>& adj_src, int adj_i, int adj_j, int adj_k, array_t<T> adj_ret) {}
 
 
 template<typename T> inline CUDA_CALLABLE T atomic_add(const array_t<T>& buf, int i, T value) { return atomic_add(&index(buf, i), value); }
@@ -152,18 +152,18 @@ template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int 
 
 // for float and vector types this is just an alias for an atomic add
 template <typename T>
-void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
+CUDA_CALLABLE inline void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
 
 // for integral types (and doubles) we do not accumulate gradients
-void adj_atomic_add(int8* buf, int8 value) { }
-void adj_atomic_add(uint8* buf, uint8 value) { }
-void adj_atomic_add(int16* buf, int16 value) { }
-void adj_atomic_add(uint16* buf, uint16 value) { }
-void adj_atomic_add(int32* buf, int32 value) { }
-void adj_atomic_add(uint32* buf, uint32 value) { }
-void adj_atomic_add(int64* buf, int64 value) { }
-void adj_atomic_add(uint64* buf, uint64 value) { }
-void adj_atomic_add(float64* buf, float64 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(int8* buf, int8 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(uint8* buf, uint8 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(int16* buf, int16 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(uint16* buf, uint16 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(int32* buf, int32 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(uint32* buf, uint32 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(int64* buf, int64 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(uint64* buf, uint64 value) { }
+CUDA_CALLABLE inline void adj_atomic_add(float64* buf, float64 value) { }
 
 // only generate gradients for T types
 template<typename T> inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, const array_t<T>& adj_buf, int& adj_i, const T& adj_output) { if (adj_buf.data) { adj_atomic_add(&index(adj_buf, i), adj_output); } }
