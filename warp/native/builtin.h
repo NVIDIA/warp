@@ -411,7 +411,7 @@ struct launch_bounds_t
 // from the host
 __shared__ launch_bounds_t s_launchBounds;
 
-CUDA_CALLABLE inline void set_launch_bounds(const launch_bounds_t& b)
+__device__ inline void set_launch_bounds(const launch_bounds_t& b)
 {
     if (threadIdx.x == 0)
         s_launchBounds = b;
