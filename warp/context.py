@@ -755,13 +755,13 @@ def from_numpy(arr, dtype, device="cpu", requires_grad=False):
     return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
-def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:str="cpu", adjoint=False):
+def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:str="cpu", adjoint=False):
     """Launch a Warp kernel on the target device
 
     Kernel launches are asynchronous with respect to the calling Python thread. 
 
     Args:
-        kernel: The name of a Warp kernel function, decorated with the @warp.kernel decorator
+        kernel: The name of a Warp kernel function, decorated with the ``@wp.kernel`` decorator
         dim: The number of threads to launch the kernel with
         inputs: The input parameters to the kernel
         outputs: The output parameters (optional)

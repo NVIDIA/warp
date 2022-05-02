@@ -102,7 +102,11 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Runtime Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#initialization">Initialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#kernels">Kernels</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#arrays">Arrays</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#multi-dimensional-arrays">Multi-dimensional arrays</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#user-functions">User Functions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#data-types">Data Types</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#scalar-types">Scalar Types</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#vector-types">Vector Types</a></li>
@@ -132,6 +136,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#printing-values">Printing Values</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#printing-launches">Printing Launches</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#step-through-debugging">Step-Through Debugging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bounds-checking">Bounds Checking</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#cuda-verification">CUDA Verification</a></li>
 </ul>
 </li>
@@ -248,7 +253,26 @@
     <span class="n">c</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
 </pre></div>
 </div>
-<p>Kernels are launched with the <code class="docutils literal notranslate"><span class="pre">warp.launch()</span></code> function on a specific device (CPU/GPU). Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.</p>
+<p>Kernels are launched with the <code class="docutils literal notranslate"><span class="pre">warp.launch()</span></code> function on a specific device (CPU/GPU). The following example shows how to launch the kernel above:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">simple_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Kernels may be launched with multi-dimensional grid bounds. In this case threads are not assigned a single index, but a coordinate in of an n-dimensional grid, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">complex_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Launches a 3d grid of threads with dimension 128x128x3. To retrieve the 3d index for each thread use the following syntax:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="n">k</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Currently kernels launched on <code class="docutils literal notranslate"><span class="pre">cpu</span></code> devices will be executed in serial. Kernels launched on <code class="docutils literal notranslate"><span class="pre">cuda</span></code> devices will be launched in parallel with a fixed block-size.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.</p>
+</div>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.launch">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.launch" title="Permalink to this definition">¶</a></dt>
@@ -257,8 +281,8 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>kernel</strong> – The name of a Warp kernel function, decorated with the &#64;warp.kernel decorator</p></li>
-<li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – The number of threads to launch the kernel with</p></li>
+<li><p><strong>kernel</strong> – The name of a Warp kernel function, decorated with the <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> decorator</p></li>
+<li><p><strong>dim</strong> (<em>Tuple</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>]</em>) – The number of threads to launch the kernel with</p></li>
 <li><p><strong>inputs</strong> (<em>List</em>) – The input parameters to the kernel</p></li>
 <li><p><strong>outputs</strong> (<em>List</em>) – The output parameters (optional)</p></li>
 <li><p><strong>adj_inputs</strong> (<em>List</em>) – The adjoint inputs (optional)</p></li>
@@ -270,16 +294,12 @@
 </dl>
 </dd></dl>
 
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Currently kernels launched on <code class="docutils literal notranslate"><span class="pre">cpu</span></code> devices will be executed in serial. Kernels launched on <code class="docutils literal notranslate"><span class="pre">cuda</span></code> devices will be launched in parallel with a fixed block-size.</p>
-</div>
 </div>
 <div class="section" id="arrays">
 <h2>Arrays<a class="headerlink" href="#arrays" title="Permalink to this headline">¶</a></h2>
 <p>Arrays are the fundamental memory abstraction in Warp; they are created through the following global constructors:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Arrays can also be constructed directly from <code class="docutils literal notranslate"><span class="pre">numpy</span></code> ndarrays as follows:</p>
@@ -295,7 +315,7 @@
 <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Note that for multi-dimensional data the datatype, <code class="docutils literal notranslate"><span class="pre">dtype</span></code> parameter, must be specified explicitly, e.g.:</p>
+<p>Note that for multi-dimensional data the <code class="docutils literal notranslate"><span class="pre">dtype</span></code> parameter must be specified explicitly, e.g.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">((</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
 
 <span class="c1"># initialize as an array of vec3 objects</span>
@@ -318,6 +338,35 @@
 <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dest_array</span><span class="p">,</span> <span class="n">src_array</span><span class="p">)</span>
 </pre></div>
 </div>
+<div class="section" id="multi-dimensional-arrays">
+<h3>Multi-dimensional arrays<a class="headerlink" href="#multi-dimensional-arrays" title="Permalink to this headline">¶</a></h3>
+<p>Multi-dimensional arrays can be constructed by passing a tuple of sizes for each dimension, e.g.: the following constructs a 2d array of size 1024x16:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When passing multi-dimensional arrays to kernels users must specify the expected array dimension inside the kernel signature,
+e.g. to pass a 2d array to a kernel the number of dims is specified using the <code class="docutils literal notranslate"><span class="pre">ndim=2</span></code> parameter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">ndim</span><span class="o">=</span><span class="mi">2</span><span class="p">)):</span>
+</pre></div>
+</div>
+<p>Type-hint helpers are provided for common array sizes, e.g.: <code class="docutils literal notranslate"><span class="pre">array2d()</span></code>, <code class="docutils literal notranslate"><span class="pre">array3d()</span></code>, which are equivalent to calling <code class="docutils literal notranslate"><span class="pre">array(...,</span> <span class="pre">ndim=2)`</span></code>, etc. To index a multi-dimensional array use a the following kernel syntax:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># returns a float from the 2d array</span>
+<span class="n">value</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>To create an array slice use the following syntax, where the number of indices is less than the array dimensions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># returns an 1d array slice representing a row of the 2d array</span>
+<span class="n">row</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Slice operators can be concatenated, e.g.: via. <code class="docutils literal notranslate"><span class="pre">s</span> <span class="pre">=</span> <span class="pre">array[i][j][k]</span></code>. Slices can be passed to <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> user functions provided
+the function also declares the expected array dimension. Currently only single-index slicing is supported.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Currently Warp limits arrays to 4 dimensions maximum. This is in addition to the contained datatype, which may be 1-2 dimensional for vector and matrix types such as <code class="docutils literal notranslate"><span class="pre">vec3</span></code>, and <code class="docutils literal notranslate"><span class="pre">mat33</span></code>.</p>
+</div>
+<p>The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.zeros">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">shape=None</span></em>, <em class="sig-param"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></em>, <em class="sig-param"><span class="pre">device='cpu'</span></em>, <em class="sig-param"><span class="pre">requires_grad=False</span></em>, <em class="sig-param"><span class="pre">**kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros" title="Permalink to this definition">¶</a></dt>
@@ -429,6 +478,21 @@ and dtype parameter appropriately.</p>
 </dl>
 </dd></dl>
 
+</div>
+</div>
+<div class="section" id="user-functions">
+<h2>User Functions<a class="headerlink" href="#user-functions" title="Permalink to this headline">¶</a></h2>
+<p>Users can write their own functions using the <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> decorator, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span> <span class="nf">square</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+   <span class="k">return</span> <span class="n">x</span><span class="o">*</span><span class="n">x</span>
+</pre></div>
+</div>
+<p>User functions can be called freely from within kernels inside the same module and accept arrays as inputs.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Currently user functions must be defined in the same module as the kernels that call them.</p>
+</div>
 </div>
 <div class="section" id="data-types">
 <h2>Data Types<a class="headerlink" href="#data-types" title="Permalink to this headline">¶</a></h2>
@@ -1078,6 +1142,10 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <p class="admonition-title">Note</p>
 <p>Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.</p>
 </div>
+</div>
+<div class="section" id="bounds-checking">
+<h3>Bounds Checking<a class="headerlink" href="#bounds-checking" title="Permalink to this headline">¶</a></h3>
+<p>Warp will perform bounds checking in debug build configurations to ensure that all array accesses lie within the defined shape.</p>
 </div>
 <div class="section" id="cuda-verification">
 <h3>CUDA Verification<a class="headerlink" href="#cuda-verification" title="Permalink to this headline">¶</a></h3>

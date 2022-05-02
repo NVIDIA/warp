@@ -388,7 +388,7 @@ class array:
         and dtype parameter appropriately.
 
         Args:
-            data (Union[list, tuple, ndarray]) 
+            data (Union[list, tuple, ndarray]) An object to construct the array from, can be a Tuple, List, or generally any type convertable to an np.array
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is None and data an ndarray then it will be inferred from the array data type
             shape (Tuple): Dimensions of the array
             length (int): Number of elements (rows) of the data type (deprecated, users should use `shape` argument)
@@ -689,14 +689,17 @@ def array1d(*args, **kwargs):
     kwargs["ndim"] = 1
     return array(*args, **kwargs)
 
+# equivalent to calling array(..., ndim=2)
 def array2d(*args, **kwargs):
     kwargs["ndim"] = 2
     return array(*args, **kwargs)
 
+# equivalent to calling array(..., ndim=3)
 def array3d(*args, **kwargs):
     kwargs["ndim"] = 3
     return array(*args, **kwargs)
 
+# equivalent to calling array(..., ndim=4)
 def array4d(*args, **kwargs):
     kwargs["ndim"] = 4
     return array(*args, **kwargs)

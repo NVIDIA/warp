@@ -46,20 +46,33 @@ In Warp, kernels are defined as Python functions, decorated with the ``@warp.ker
         # write result back to memory
         c[tid] = r
 
-Kernels are launched with the ``warp.launch()`` function on a specific device (CPU/GPU). Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.
+Kernels are launched with the ``warp.launch()`` function on a specific device (CPU/GPU). The following example shows how to launch the kernel above::
 
-.. autofunction:: launch
+   wp.launch(simple_kernel, dim=1024, inputs=[a, b, c], device="cuda")
+ 
+Kernels may be launched with multi-dimensional grid bounds. In this case threads are not assigned a single index, but a coordinate in of an n-dimensional grid, e.g.::
+
+   wp.launch(complex_kernel, dim=(128, 128, 3), ...)
+
+Launches a 3d grid of threads with dimension 128x128x3. To retrieve the 3d index for each thread use the following syntax::
+
+   i,j,k = wp.tid()
 
 .. note:: 
    Currently kernels launched on ``cpu`` devices will be executed in serial. Kernels launched on ``cuda`` devices will be launched in parallel with a fixed block-size.
+
+.. note:: 
+   Note that all the kernel inputs must live on the target device, or a runtime exception will be raised.
+
+.. autofunction:: launch
 
 Arrays
 ------
 
 Arrays are the fundamental memory abstraction in Warp; they are created through the following global constructors: ::
 
-    wp.empty(n=1024, dtype=wp.vec3, device="cpu")
-    wp.zeros(n=1024, dtype=float, device="cuda")
+    wp.empty(shape=1024, dtype=wp.vec3, device="cpu")
+    wp.zeros(shape=1024, dtype=float, device="cuda")
     
 
 Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
@@ -75,14 +88,15 @@ Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
    # return a Warp copy of the array data on the GPU
    a = wp.array(r, dtype=float, device="cuda")
 
-Note that for multi-dimensional data the datatype, ``dtype`` parameter, must be specified explicitly, e.g.: ::
+Note that for multi-dimensional data the ``dtype`` parameter must be specified explicitly, e.g.: ::
 
    r = np.random.rand((1024, 3))
 
    # initialize as an array of vec3 objects
    a = wp.array(r, dtype=wp.vec3, device="cuda")
 
-If the shapes are incompatible an error will be raised.
+If the shapes are incompatible an error will be raised. 
+
 
 Arrays can be moved between devices using the ``array.to()`` method: ::
 
@@ -99,12 +113,59 @@ Additionally, arrays can be copied directly between memory spaces: ::
    # copy from source CPU buffer to GPU
    wp.copy(dest_array, src_array)
 
+Multi-dimensional arrays
+########################
+
+Multi-dimensional arrays can be constructed by passing a tuple of sizes for each dimension, e.g.: the following constructs a 2d array of size 1024x16::
+
+    wp.zeros(shape=(1024, 16), dtype=float, device="cuda")
+
+When passing multi-dimensional arrays to kernels users must specify the expected array dimension inside the kernel signature,
+e.g. to pass a 2d array to a kernel the number of dims is specified using the ``ndim=2`` parameter::
+
+   @wp.kernel
+   def test(input: wp.array(dtype=float, ndim=2)):
+
+Type-hint helpers are provided for common array sizes, e.g.: ``array2d()``, ``array3d()``, which are equivalent to calling ``array(..., ndim=2)```, etc. To index a multi-dimensional array use a the following kernel syntax::
+
+   # returns a float from the 2d array
+   value = input[i,j]
+
+To create an array slice use the following syntax, where the number of indices is less than the array dimensions::
+
+   # returns an 1d array slice representing a row of the 2d array
+   row = input[i]
+
+Slice operators can be concatenated, e.g.: via. ``s = array[i][j][k]``. Slices can be passed to ``wp.func`` user functions provided
+the function also declares the expected array dimension. Currently only single-index slicing is supported.
+
+.. note:: 
+   Currently Warp limits arrays to 4 dimensions maximum. This is in addition to the contained datatype, which may be 1-2 dimensional for vector and matrix types such as ``vec3``, and ``mat33``.
+
+
+The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:
+
 .. autofunction:: zeros
 .. autofunction:: zeros_like
 .. autofunction:: empty
 .. autofunction:: empty_like
 
 .. autoclass:: array
+
+User Functions
+--------------
+
+Users can write their own functions using the ``wp.func`` decorator, for example::
+
+   @wp.func
+   def square(x: float):
+      return x*x
+
+User functions can be called freely from within kernels inside the same module and accept arrays as inputs. 
+
+.. note:: 
+   Currently user functions must be defined in the same module as the kernels that call them.
+
 
 Data Types
 ----------
@@ -556,6 +617,11 @@ It is possible to attach IDE debuggers such as Visual Studio to Warp processes t
 This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process, the debugger should be attached, and a breakpoint inserted into the generated code (exported in the ``warp/gen`` folder).
 
 .. note:: Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.
+
+Bounds Checking
+###############
+
+Warp will perform bounds checking in debug build configurations to ensure that all array accesses lie within the defined shape.
 
 CUDA Verification
 #################
