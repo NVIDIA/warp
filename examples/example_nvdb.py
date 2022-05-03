@@ -25,10 +25,63 @@ import warp.render
 
 wp.init()
 
+@wp.func
+def volume_grad(volume: wp.uint64,
+                p: wp.vec3):
+    
+    eps = 1.0
+    q = wp.volume_world_to_index(volume, p)
+
+    # compute gradient of the SDF using finite differences
+    dx = wp.volume_sample_f(volume, q + wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR)
+    dy = wp.volume_sample_f(volume, q + wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR)
+    dz = wp.volume_sample_f(volume, q + wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR)
+
+    return wp.normalize(wp.vec3(dx, dy, dz))
+
+@wp.kernel
+def simulate(positions: wp.array(dtype=wp.vec3),
+            velocities: wp.array(dtype=wp.vec3),
+            volume: wp.uint64,
+            restitution: float,
+            margin: float,
+            dt: float):
+    
+    
+    tid = wp.tid()
+
+    x = positions[tid]
+    v = velocities[tid]
+
+    v = v + wp.vec3(0.0, 0.0, -980.0)*dt - v*0.1*dt
+    xpred = x + v*dt
+    xpred_local = wp.volume_world_to_index(volume, xpred)
+    
+    d = wp.volume_sample_f(volume, xpred_local, wp.Volume.LINEAR)
+
+    if (d < margin):
+        
+        n = volume_grad(volume, xpred)
+        err = d - margin
+
+        # mesh collision
+        xpred = xpred - n*err
+
+
+    # ground collision
+    if (xpred[2] < 0.0):
+        xpred = wp.vec3(xpred[0], xpred[1], 0.0)
+
+    # pbd update
+    v = (xpred - x)*(1.0/dt)
+    x = xpred
+
+    positions[tid] = x
+    velocities[tid] = v
 
 class Example:
 
-    def __init__(self):
+    def __init__(self, stage):
 
         self.num_particles = 10000
 
@@ -44,8 +97,6 @@ class Example:
         self.sim_margin = 15.0
 
         self.device = wp.get_preferred_device()
-
-    def init(self, stage):
 
         self.renderer = wp.render.UsdRenderer(stage, upaxis="z")
         self.renderer.render_ground(size=10000.0)
@@ -68,7 +119,7 @@ class Example:
 
             for s in range(self.sim_substeps):
                 wp.launch(
-                    kernel=self.simulate, 
+                    kernel=simulate, 
                     dim=self.num_particles, 
                     inputs=[self.positions, self.velocities, self.volume.id, self.sim_restitution, self.sim_margin, self.sim_dt/float(self.sim_substeps)], 
                     device=self.device)
@@ -89,66 +140,13 @@ class Example:
 
         self.sim_time += self.sim_dt
     
-    @wp.func
-    def volume_grad(volume: wp.uint64,
-                    p: wp.vec3):
-        
-        eps = 1.0
-        q = wp.volume_world_to_index(volume, p)
 
-        # compute gradient of the SDF using finite differences
-        dx = wp.volume_sample_f(volume, q + wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(eps, 0.0, 0.0), wp.Volume.LINEAR)
-        dy = wp.volume_sample_f(volume, q + wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(0.0, eps, 0.0), wp.Volume.LINEAR)
-        dz = wp.volume_sample_f(volume, q + wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR) - wp.volume_sample_f(volume, q - wp.vec3(0.0, 0.0, eps), wp.Volume.LINEAR)
-
-        return wp.normalize(wp.vec3(dx, dy, dz))
-
-    @wp.kernel
-    def simulate(positions: wp.array(dtype=wp.vec3),
-                velocities: wp.array(dtype=wp.vec3),
-                volume: wp.uint64,
-                restitution: float,
-                margin: float,
-                dt: float):
-        
-        
-        tid = wp.tid()
-
-        x = positions[tid]
-        v = velocities[tid]
-
-        v = v + wp.vec3(0.0, 0.0, -980.0)*dt - v*0.1*dt
-        xpred = x + v*dt
-        xpred_local = wp.volume_world_to_index(volume, xpred)
-        
-        d = wp.volume_sample_f(volume, xpred_local, wp.Volume.LINEAR)
-
-        if (d < margin):
-            
-            n = volume_grad(volume, xpred)
-            err = d - margin
-
-            # mesh collision
-            xpred = xpred - n*err
-
-    
-        # ground collision
-        if (xpred[2] < 0.0):
-            xpred = wp.vec3(xpred[0], xpred[1], 0.0)
-
-        # pbd update
-        v = (xpred - x)*(1.0/dt)
-        x = xpred
-
-        positions[tid] = x
-        velocities[tid] = v
 
 
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_nvdb.usd")
 
-    example = Example()
-    example.init(stage_path)
+    example = Example(stage_path)
 
     for i in range(example.sim_steps):
         example.update()

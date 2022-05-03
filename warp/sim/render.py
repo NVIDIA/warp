@@ -124,11 +124,11 @@ class SimRenderer(warp.render.UsdRenderer):
 
             # render tris
             if (self.model.tri_count):
-                self.render_mesh("surface", particle_q, self.model.tri_indices.numpy().squeeze())
+                self.render_mesh("surface", particle_q, self.model.tri_indices.numpy().flatten())
 
             # render springs
             if (self.model.spring_count):
-                self.render_line_list("springs", particle_q, self.model.spring_indices.numpy().squeeze(), [], 0.1)
+                self.render_line_list("springs", particle_q, self.model.spring_indices.numpy().flatten(), [], 0.1)
 
         # render muscles
         if (self.model.muscle_count):

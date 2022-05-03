@@ -29,7 +29,7 @@ wp.init()
 
 class Example:
 
-    def __init__(self):
+    def __init__(self, stage):
 
         self.device = wp.get_preferred_device()
 
@@ -44,8 +44,6 @@ class Example:
         self.sim_time = 0.0
         self.sim_use_graph = (self.device == "cuda")
  
-    def init(self, stage):
-
         builder = wp.sim.ModelBuilder()
 
         builder.add_cloth_grid(
@@ -144,8 +142,7 @@ class Example:
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_cloth.usd")
 
-    example = Example()
-    example.init(stage_path)
+    example = Example(stage_path)
 
     for i in range(example.sim_frames):
         example.update()

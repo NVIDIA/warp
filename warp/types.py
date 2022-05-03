@@ -827,11 +827,18 @@ class Volume:
         if self.id == 0:
             return
         
-        self.context.verify_device()
-        if self.device == "cpu":
-            self.context.core.volume_destroy_host(self.id)
-        else:
-            self.context.core.volume_destroy_device(self.id)
+        try:
+                
+            from warp.context import runtime
+
+            runtime.verify_device()
+            if self.device == "cpu":
+                runtime.core.volume_destroy_host(self.id)
+            else:
+                runtime.core.volume_destroy_device(self.id)
+
+        except:
+            pass
 
 
     def array(self):

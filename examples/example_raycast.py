@@ -23,17 +23,50 @@ import os
 
 wp.init()
 
+@wp.kernel
+def draw(mesh: wp.uint64,
+        cam_pos: wp.vec3,
+        width: int,
+        height: int,
+        pixels: wp.array(dtype=wp.vec3)):
+    
+    tid = wp.tid()
+
+    x = tid%width
+    y = tid//width
+
+    sx = 2.0*float(x)/float(height) - 1.0
+    sy = 2.0*float(y)/float(height) - 1.0
+
+    # compute view ray
+    ro = cam_pos
+    rd = wp.normalize(wp.vec3(sx, sy, -1.0))    
+    
+    t = float(0.0)
+    u = float(0.0)
+    v = float(0.0)
+    sign = float(0.0)
+    n = wp.vec3()
+    f = int(0)
+
+    color = wp.vec3(0.0, 0.0, 0.0)
+
+    if wp.mesh_query_ray(mesh, ro, rd, 1.e+6, t, u, v, sign, n, f):
+        color = n*0.5 + wp.vec3(0.5, 0.5, 0.5)
+        
+    pixels[tid] = color
+
+
+
 
 class Example:
 
     def __init__(self):
 
-        device = wp.get_preferred_device()
-        width = 1024
-        height = 1024
-        cam_pos = (0.0, 1.0, 2.0)
-
-    def init(self, stage):
+        self.device = wp.get_preferred_device()
+        self.width = 1024
+        self.height = 1024
+        self.cam_pos = (0.0, 1.0, 2.0)
 
         asset_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bunny/bunny"))
@@ -57,7 +90,7 @@ class Example:
         with wp.ScopedTimer("render"):
 
             wp.launch(
-                kernel=self.draw,
+                kernel=draw,
                 dim=self.width*self.height,
                 inputs=[self.mesh.id, self.cam_pos, self.width, self.height, self.pixels],
                 device=self.device)
@@ -67,43 +100,8 @@ class Example:
         plt.imshow(self.pixels.numpy().reshape((self.height, self.width, 3)), origin="lower", interpolation="antialiased")
         plt.show()
 
-    @wp.kernel
-    def draw(mesh: wp.uint64,
-            cam_pos: wp.vec3,
-            width: int,
-            height: int,
-            pixels: wp.array(dtype=wp.vec3)):
-        
-        tid = wp.tid()
-
-        x = tid%width
-        y = tid//width
-
-        sx = 2.0*float(x)/float(height) - 1.0
-        sy = 2.0*float(y)/float(height) - 1.0
-
-        # compute view ray
-        ro = cam_pos
-        rd = wp.normalize(wp.vec3(sx, sy, -1.0))    
-        
-        t = float(0.0)
-        u = float(0.0)
-        v = float(0.0)
-        sign = float(0.0)
-        n = wp.vec3()
-        f = int(0)
-
-        color = wp.vec3(0.0, 0.0, 0.0)
-
-        if wp.mesh_query_ray(mesh, ro, rd, 1.e+6, t, u, v, sign, n, f):
-            color = n*0.5 + wp.vec3(0.5, 0.5, 0.5)
-            
-        pixels[tid] = color
-
 
 if __name__ == '__main__':
 
     example = Example()
-
-    example.init("")
     example.render()

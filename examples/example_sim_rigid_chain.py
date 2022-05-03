@@ -28,7 +28,7 @@ wp.init()
 
 class Example:
 
-    def __init__(self):
+    def __init__(self, stage):
 
         self.sim_steps = 200
         self.sim_substeps = 16
@@ -44,8 +44,6 @@ class Example:
                             wp.sim.JOINT_COMPOUND]
 
         self.device = wp.get_preferred_device()
-
-    def init(self, stage):
 
         builder = wp.sim.ModelBuilder()
 
@@ -145,8 +143,7 @@ class Example:
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_rigid_chain.usd")
 
-    example = Example()
-    example.init(stage_path)
+    example = Example(stage_path)
 
     for i in range(example.sim_steps):
         example.update()

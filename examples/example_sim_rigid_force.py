@@ -28,7 +28,7 @@ wp.init()
 
 class Example:
 
-    def __init__(self):
+    def __init__(self, stage):
 
         self.sim_width = 8
         self.sim_height = 8
@@ -44,8 +44,6 @@ class Example:
         self.sim_relaxation = 1.0
 
         self.device = wp.get_preferred_device()
-
-    def init(self, stage):
 
         builder = wp.sim.ModelBuilder()
 
@@ -96,8 +94,7 @@ class Example:
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_force.usd")
 
-    example = Example()
-    example.init(stage_path)
+    example = Example(stage_path)
 
     for i in range(example.sim_frames):
         example.update()

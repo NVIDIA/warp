@@ -27,21 +27,20 @@ wp.init()
 
 class Example:
 
-    def __init__(self):
+    def __init__(self, stage):
 
         self.sim_steps = 2000
-        self.sim_dt = 1.0/240.0
+        self.sim_dt = 1.0/60.0
         self.sim_time = 0.0
+        self.sim_substeps = 8
 
         self.num_bodies = 8
         self.scale = 0.5
-        self.ke = 1.e+4
-        self.kd = 100.0
-        self.kf = 100.0
+        self.ke = 1.e+5
+        self.kd = 250.0
+        self.kf = 500.0
 
         self.device = wp.get_preferred_device()
-
-    def init(self, stage):
 
         builder = wp.sim.ModelBuilder()
 
@@ -105,8 +104,10 @@ class Example:
     def update(self):
 
         with wp.ScopedTimer("simulate", active=True):
-            self.state.clear_forces()
-            self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)   
+            
+            for i in range(self.sim_substeps):
+                self.state.clear_forces()
+                self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt/self.sim_substeps)   
 
     def render(self, is_live=False):
 
@@ -123,8 +124,7 @@ class Example:
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd")
 
-    example = Example()
-    example.init(stage_path)
+    example = Example(stage_path)
 
     for i in range(example.sim_steps):
         example.update()

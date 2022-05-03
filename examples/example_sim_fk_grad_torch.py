@@ -9,7 +9,8 @@
 # Example Sim Rigid Kinematics
 #
 # Tests rigid body forward and backwards kinematics through the 
-# wp.sim.eval_ik() and wp.sim.eval_fk() methods.
+# wp.sim.eval_ik() and wp.sim.eval_fk() methods. Shows how to connect
+# gradients from Warp to PyTorch, through custom autograd nodes.
 #
 ###########################################################################
 
@@ -23,7 +24,6 @@ import torch
 import warp as wp
 import warp.sim
 import warp.sim.render
-import warp.torch
 
 
 wp.init()
@@ -36,8 +36,8 @@ class ForwardKinematics(torch.autograd.Function):
 
         ctx.tape = wp.Tape()
         ctx.model = model        
-        ctx.joint_q = wp.torch.from_torch(joint_q)
-        ctx.joint_qd = wp.torch.from_torch(joint_qd)
+        ctx.joint_q = wp.from_torch(joint_q)
+        ctx.joint_qd = wp.from_torch(joint_qd)
 
         # allocate output
         ctx.state = model.state()
@@ -51,8 +51,8 @@ class ForwardKinematics(torch.autograd.Function):
                 None,
                 ctx.state)
 
-        return (wp.torch.to_torch(ctx.state.body_q),
-                wp.torch.to_torch(ctx.state.body_qd))
+        return (wp.to_torch(ctx.state.body_q),
+                wp.to_torch(ctx.state.body_qd))
 
 
 
@@ -60,14 +60,14 @@ class ForwardKinematics(torch.autograd.Function):
     def backward(ctx, adj_body_q, adj_body_qd):
 
         # map incoming Torch grads to our output variables
-        grads = { ctx.state.body_q: wp.torch.from_torch(adj_body_q, dtype=wp.transform),
-                  ctx.state.body_qd: wp.torch.from_torch(adj_body_qd, dtype=wp.spatial_vector) }
+        grads = { ctx.state.body_q: wp.from_torch(adj_body_q, dtype=wp.transform),
+                  ctx.state.body_qd: wp.from_torch(adj_body_qd, dtype=wp.spatial_vector) }
 
         ctx.tape.backward(grads=grads)
 
         # return adjoint w.r.t. inputs
-        return (wp.torch.to_torch(ctx.tape.gradients[ctx.joint_q]), 
-                wp.torch.to_torch(ctx.tape.gradients[ctx.joint_qd]),
+        return (wp.to_torch(ctx.tape.gradients[ctx.joint_q]), 
+                wp.to_torch(ctx.tape.gradients[ctx.joint_qd]),
                 None)
 
 class Robot:
@@ -168,8 +168,8 @@ class Robot:
 
             # render
             s = self.model.state()
-            s.body_q = wp.torch.from_torch(body_q, dtype=wp.transform)
-            s.body_qd = wp.torch.from_torch(body_qd, dtype=wp.spatial_vector)
+            s.body_q = wp.from_torch(body_q, dtype=wp.transform)
+            s.body_qd = wp.from_torch(body_qd, dtype=wp.spatial_vector)
 
             self.renderer.begin_frame(render_time)
             self.renderer.render(s)

@@ -27,7 +27,7 @@ wp.init()
 
 class Example:
     
-    def __init__(self):
+    def __init__(self, stage):
 
         self.sim_steps = 2000
         self.sim_dt = 1.0/120.0
@@ -36,8 +36,6 @@ class Example:
         self.scale = 0.5
 
         self.device = wp.get_preferred_device()
-
-    def init(self, stage):
 
         builder = wp.sim.ModelBuilder()
 
@@ -94,8 +92,7 @@ class Example:
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_gyroscopic.usd")
 
-    example = Example()
-    example.init(stage_path)
+    example = Example(stage_path)
 
     for i in range(example.sim_steps):
         example.update()

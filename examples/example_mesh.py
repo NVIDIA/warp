@@ -25,10 +25,69 @@ import os
 
 wp.init()
 
+@wp.kernel
+def deform(positions: wp.array(dtype=wp.vec3), t: float):
+    
+    tid = wp.tid()
+
+    x = positions[tid]
+    
+    offset = -wp.sin(x[0])*0.02
+    scale = wp.sin(t)
+
+    x = x + wp.vec3(0.0, offset*scale, 0.0)
+
+    positions[tid] = x
+
+@wp.kernel
+def simulate(positions: wp.array(dtype=wp.vec3),
+            velocities: wp.array(dtype=wp.vec3),
+            mesh: wp.uint64,
+            restitution: float,
+            margin: float,
+            dt: float):
+    
+    
+    tid = wp.tid()
+
+    x = positions[tid]
+    v = velocities[tid]
+
+    v = v + wp.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
+    xpred = x + v*dt
+
+    face_index = int(0)
+    face_u = float(0.0)
+    face_v = float(0.0)
+    sign = float(0.0)
+
+    max_dist = 1.5
+    
+    if (wp.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_u, face_v)):
+        
+        p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
+
+        delta = xpred-p
+        
+        dist = wp.length(delta)*sign
+        err = dist - margin
+
+        # mesh collision
+        if (err < 0.0):
+            n = wp.normalize(delta)*sign
+            xpred = xpred - n*err
+
+    # pbd update
+    v = (xpred - x)*(1.0/dt)
+    x = xpred
+
+    positions[tid] = x
+    velocities[tid] = v
+
 
 class Example:
 
-    def __init__(self):
+    def __init__(self, stage):
 
         self.num_particles = 1000
 
@@ -42,8 +101,6 @@ class Example:
         self.sim_margin = 0.1
 
         self.device = wp.get_preferred_device()
-
-    def init(self, stage):
 
         self.renderer = wp.render.UsdRenderer(stage)
 
@@ -68,7 +125,7 @@ class Example:
         with wp.ScopedTimer("simulate", detailed=False, dict=self.sim_timers):
 
             wp.launch(
-                kernel=self.deform,
+                kernel=deform,
                 dim=len(self.mesh.points),
                 inputs=[self.mesh.points, self.sim_time],
                 device=self.device)
@@ -77,7 +134,7 @@ class Example:
             self.mesh.refit()
 
             wp.launch(
-                kernel=self.simulate, 
+                kernel=simulate, 
                 dim=self.num_particles, 
                 inputs=[self.positions, self.velocities, self.mesh.id, self.sim_restitution, self.sim_margin, self.sim_dt], 
                 device=self.device)
@@ -94,71 +151,12 @@ class Example:
 
         self.sim_time += self.sim_dt
 
-    @wp.kernel
-    def deform(positions: wp.array(dtype=wp.vec3), t: float):
-        
-        tid = wp.tid()
-
-        x = positions[tid]
-        
-        offset = -wp.sin(x[0])*0.02
-        scale = wp.sin(t)
-
-        x = x + wp.vec3(0.0, offset*scale, 0.0)
-
-        positions[tid] = x
-
-    @wp.kernel
-    def simulate(positions: wp.array(dtype=wp.vec3),
-                velocities: wp.array(dtype=wp.vec3),
-                mesh: wp.uint64,
-                restitution: float,
-                margin: float,
-                dt: float):
-        
-        
-        tid = wp.tid()
-
-        x = positions[tid]
-        v = velocities[tid]
-
-        v = v + wp.vec3(0.0, 0.0-9.8, 0.0)*dt - v*0.1*dt
-        xpred = x + v*dt
-
-        face_index = int(0)
-        face_u = float(0.0)
-        face_v = float(0.0)
-        sign = float(0.0)
-
-        max_dist = 1.5
-        
-        if (wp.mesh_query_point(mesh, xpred, max_dist, sign, face_index, face_u, face_v)):
-            
-            p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
-
-            delta = xpred-p
-            
-            dist = wp.length(delta)*sign
-            err = dist - margin
-
-            # mesh collision
-            if (err < 0.0):
-                n = wp.normalize(delta)*sign
-                xpred = xpred - n*err
-
-        # pbd update
-        v = (xpred - x)*(1.0/dt)
-        x = xpred
-
-        positions[tid] = x
-        velocities[tid] = v
 
 
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_mesh.usd")
 
-    example = Example()
-    example.init(stage_path)
+    example = Example(stage_path)
 
     for i in range(example.sim_steps):
         example.update()

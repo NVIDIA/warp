@@ -24,9 +24,106 @@ import os
 wp.init()
 
 
+@wp.func 
+def contact_force(n: wp.vec3,
+                    v: wp.vec3,
+                    c: float,
+                    k_n: float,
+                    k_d: float,
+                    k_f: float,
+                    k_mu: float):
+    vn = wp.dot(n, v)
+    jn = c*k_n
+    jd = min(vn, 0.0)*k_d
+
+    # contact force
+    fn = jn + jd
+
+    # friction force
+    vt = v - n*vn
+    vs = wp.length(vt)
+    
+    if (vs > 0.0):
+        vt = vt/vs
+
+    # Coulomb condition
+    ft = wp.min(vs*k_f, k_mu*wp.abs(fn))
+
+    # total force
+    return  -n*fn - vt*ft
+
+@wp.kernel
+def apply_forces(grid : wp.uint64,
+                particle_x: wp.array(dtype=wp.vec3),
+                particle_v: wp.array(dtype=wp.vec3),
+                particle_f: wp.array(dtype=wp.vec3),
+                radius: float,
+                k_contact: float,
+                k_damp: float,
+                k_friction: float,
+                k_mu: float):
+
+    tid = wp.tid()
+
+    # order threads by cell
+    i = wp.hash_grid_point_id(grid, tid)
+
+    x = particle_x[i]
+    v = particle_v[i]
+
+    f = wp.vec3()
+
+    # ground contact
+    n = wp.vec3(0.0, 1.0, 0.0)
+    c = wp.dot(n, x)
+
+    cohesion_ground = 0.02
+    cohesion_particle = 0.0075
+
+    if c < cohesion_ground:
+        f = f + contact_force(n, v, c, k_contact, k_damp, 100.0, 0.5)
+
+    # particle contact
+    neighbors = wp.hash_grid_query(grid, x, radius*5.0)
+
+    for index in neighbors:
+
+        if index != i:
+            
+            # compute distance to point
+            n = x - particle_x[index]
+            d = wp.length(n)
+            err = d - radius*2.0
+
+            if (err <= cohesion_particle):
+                
+                n = n/d
+                vrel = v - particle_v[index]
+
+                f = f + contact_force(n, vrel, err, k_contact, k_damp, k_friction, k_mu)
+
+    particle_f[i] = f
+
+@wp.kernel
+def integrate(x: wp.array(dtype=wp.vec3),
+            v: wp.array(dtype=wp.vec3),
+            f: wp.array(dtype=wp.vec3),
+            gravity: wp.vec3,
+            dt: float,
+            inv_mass: float):
+
+    tid = wp.tid()
+
+    v_new = v[tid] + f[tid]*inv_mass*dt + gravity*dt
+    x_new = x[tid] + v_new*dt
+
+    v[tid] = v_new
+    x[tid] = x_new  
+
+
 class Example:
 
-    def __init__(self):
+    def __init__(self, stage):
 
         self.frame_dt = 1.0/60
         self.frame_count = 400
@@ -46,9 +143,7 @@ class Example:
         self.k_mu = 100000.0 # for cohesive materials
 
         self.inv_mass = 64.0
-
-    def init(self, stage):
-        
+       
         self.renderer = wp.render.UsdRenderer(stage)
         self.renderer.render_ground()
 
@@ -70,8 +165,8 @@ class Example:
             for s in range(self.sim_substeps):
 
                 with wp.ScopedTimer("forces", active=False):
-                    wp.launch(kernel=self.apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu], device=self.device)
-                    wp.launch(kernel=self.integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass], device=self.device)
+                    wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu], device=self.device)
+                    wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass], device=self.device)
                 
             self.graph = wp.capture_end()
 
@@ -95,8 +190,8 @@ class Example:
                         self.grid.build(self.x, self.point_radius)
 
                     with wp.ScopedTimer("forces", active=False):
-                        wp.launch(kernel=self.apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu], device=self.device)
-                        wp.launch(kernel=self.integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass], device=self.device)
+                        wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu], device=self.device)
+                        wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass], device=self.device)
                 
                 wp.synchronize()
 
@@ -119,108 +214,11 @@ class Example:
         
         return points_t.reshape((-1, 3))
 
-    @wp.func 
-    def contact_force(n: wp.vec3,
-                        v: wp.vec3,
-                        c: float,
-                        k_n: float,
-                        k_d: float,
-                        k_f: float,
-                        k_mu: float):
-        vn = wp.dot(n, v)
-        jn = c*k_n
-        jd = min(vn, 0.0)*k_d
-
-        # contact force
-        fn = jn + jd
-
-        # friction force
-        vt = v - n*vn
-        vs = wp.length(vt)
-        
-        if (vs > 0.0):
-            vt = vt/vs
-
-        # Coulomb condition
-        ft = wp.min(vs*k_f, k_mu*wp.abs(fn))
-
-        # total force
-        return  -n*fn - vt*ft
-
-    @wp.kernel
-    def apply_forces(grid : wp.uint64,
-                    particle_x: wp.array(dtype=wp.vec3),
-                    particle_v: wp.array(dtype=wp.vec3),
-                    particle_f: wp.array(dtype=wp.vec3),
-                    radius: float,
-                    k_contact: float,
-                    k_damp: float,
-                    k_friction: float,
-                    k_mu: float):
-
-        tid = wp.tid()
-
-        # order threads by cell
-        i = wp.hash_grid_point_id(grid, tid)
-
-        x = particle_x[i]
-        v = particle_v[i]
-
-        f = wp.vec3()
-
-        # ground contact
-        n = wp.vec3(0.0, 1.0, 0.0)
-        c = wp.dot(n, x)
-
-        cohesion_ground = 0.02
-        cohesion_particle = 0.0075
-
-        if c < cohesion_ground:
-            f = f + contact_force(n, v, c, k_contact, k_damp, 100.0, 0.5)
-
-        # particle contact
-        neighbors = wp.hash_grid_query(grid, x, radius*5.0)
-
-        for index in neighbors:
-
-            if index != i:
-                
-                # compute distance to point
-                n = x - particle_x[index]
-                d = wp.length(n)
-                err = d - radius*2.0
-
-                if (err <= cohesion_particle):
-                    
-                    n = n/d
-                    vrel = v - particle_v[index]
-
-                    f = f + contact_force(n, vrel, err, k_contact, k_damp, k_friction, k_mu)
-
-        particle_f[i] = f
-
-    @wp.kernel
-    def integrate(x: wp.array(dtype=wp.vec3),
-                v: wp.array(dtype=wp.vec3),
-                f: wp.array(dtype=wp.vec3),
-                gravity: wp.vec3,
-                dt: float,
-                inv_mass: float):
-
-        tid = wp.tid()
-
-        v_new = v[tid] + f[tid]*inv_mass*dt + gravity*dt
-        x_new = x[tid] + v_new*dt
-
-        v[tid] = v_new
-        x[tid] = x_new  
-
 
 if __name__ == '__main__':
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_dem.usd")
 
-    example = Example()
-    example.init(stage_path)
+    example = Example(stage_path)
 
     for i in range(example.frame_count):
         example.update()
