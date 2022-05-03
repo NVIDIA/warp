@@ -762,7 +762,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
 
     Args:
         kernel: The name of a Warp kernel function, decorated with the ``@wp.kernel`` decorator
-        dim: The number of threads to launch the kernel with
+        dim: The number of threads to launch the kernel, can be an integer, or a Tuple of ints with max of 4 dimensions
         inputs: The input parameters to the kernel
         outputs: The output parameters (optional)
         adj_inputs: The adjoint inputs (optional)
