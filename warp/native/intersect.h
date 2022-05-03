@@ -435,16 +435,17 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     float32 var_62;
     bool var_63;
     bool var_64;
-    vec2 var_65;
+    float32 var_65;
     vec2 var_66;
-    float32 var_67;
+    vec2 var_67;
     float32 var_68;
     float32 var_69;
     float32 var_70;
     float32 var_71;
     float32 var_72;
     float32 var_73;
-    vec2 var_74;
+    float32 var_74;
+    vec2 var_75;
     //---------
     // dual vars
     vec3 adj_0 = 0;
@@ -512,16 +513,17 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     float32 adj_62 = 0;
     bool adj_63 = 0;
     bool adj_64 = 0;
-    vec2 adj_65 = 0;
+    float32 adj_65 = 0;
     vec2 adj_66 = 0;
-    float32 adj_67 = 0;
+    vec2 adj_67 = 0;
     float32 adj_68 = 0;
     float32 adj_69 = 0;
     float32 adj_70 = 0;
     float32 adj_71 = 0;
     float32 adj_72 = 0;
     float32 adj_73 = 0;
-    vec2 adj_74 = 0;
+    float32 adj_74 = 0;
+    vec2 adj_75 = 0;
     //---------
     // forward
     var_0 = wp::sub(var_b, var_a);
@@ -603,36 +605,38 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     var_63 = (var_62 >= var_5);
     var_64 = var_59 && var_61 && var_63;
     if (var_64) {
-    	var_65 = wp::vec2(var_5, var_58);
+    	var_65 = wp::sub(var_9, var_58);
+    	var_66 = wp::vec2(var_5, var_65);
     	goto label5;
     }
-    var_66 = wp::select(var_64, var_50, var_65);
-    var_67 = wp::add(var_53, var_41);
-    var_68 = wp::add(var_67, var_21);
-    var_69 = wp::div(var_9, var_68);
-    var_70 = wp::mul(var_41, var_69);
-    var_71 = wp::mul(var_21, var_69);
-    var_72 = wp::sub(var_9, var_70);
-    var_73 = wp::sub(var_72, var_71);
-    var_74 = wp::vec2(var_73, var_70);
+    var_67 = wp::select(var_64, var_50, var_66);
+    var_68 = wp::add(var_53, var_41);
+    var_69 = wp::add(var_68, var_21);
+    var_70 = wp::div(var_9, var_69);
+    var_71 = wp::mul(var_41, var_70);
+    var_72 = wp::mul(var_21, var_70);
+    var_73 = wp::sub(var_9, var_71);
+    var_74 = wp::sub(var_73, var_72);
+    var_75 = wp::vec2(var_74, var_71);
     goto label6;
     //---------
     // reverse
     label6:;
-    adj_74 += adj_ret;
-    wp::adj_vec2(var_73, var_70, adj_73, adj_70, adj_74);
-    wp::adj_sub(var_72, var_71, adj_72, adj_71, adj_73);
-    wp::adj_sub(var_9, var_70, adj_9, adj_70, adj_72);
-    wp::adj_mul(var_21, var_69, adj_21, adj_69, adj_71);
-    wp::adj_mul(var_41, var_69, adj_41, adj_69, adj_70);
-    wp::adj_div(var_9, var_68, adj_9, adj_68, adj_69);
-    wp::adj_add(var_67, var_21, adj_67, adj_21, adj_68);
-    wp::adj_add(var_53, var_41, adj_53, adj_41, adj_67);
-    wp::adj_select(var_64, var_50, var_65, adj_64, adj_50, adj_65, adj_66);
+    adj_75 += adj_ret;
+    wp::adj_vec2(var_74, var_71, adj_74, adj_71, adj_75);
+    wp::adj_sub(var_73, var_72, adj_73, adj_72, adj_74);
+    wp::adj_sub(var_9, var_71, adj_9, adj_71, adj_73);
+    wp::adj_mul(var_21, var_70, adj_21, adj_70, adj_72);
+    wp::adj_mul(var_41, var_70, adj_41, adj_70, adj_71);
+    wp::adj_div(var_9, var_69, adj_9, adj_69, adj_70);
+    wp::adj_add(var_68, var_21, adj_68, adj_21, adj_69);
+    wp::adj_add(var_53, var_41, adj_53, adj_41, adj_68);
+    wp::adj_select(var_64, var_50, var_66, adj_64, adj_50, adj_66, adj_67);
     if (var_64) {
     	label5:;
-    	adj_65 += adj_ret;
-    	wp::adj_vec2(var_5, var_58, adj_5, adj_58, adj_65);
+    	adj_66 += adj_ret;
+    	wp::adj_vec2(var_5, var_65, adj_5, adj_65, adj_66);
+    	wp::adj_sub(var_9, var_58, adj_9, adj_58, adj_65);
     }
     wp::adj_sub(var_32, var_33, adj_32, adj_33, adj_62);
     wp::adj_sub(var_13, var_12, adj_13, adj_12, adj_60);

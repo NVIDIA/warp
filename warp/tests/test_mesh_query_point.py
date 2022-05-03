@@ -82,7 +82,7 @@ def triangle_closest_point(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
     va = d3 * d6 - d5 * d4
     w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
     if (va <= 0.0 and (d4 - d3) >= 0.0 and (d5 - d6) >= 0.0):
-        return wp.vec2(0.0, w)
+        return wp.vec2(0.0, 1.0 - w)
 
     denom = 1.0 / (va + vb + vc)
     v = vb * denom
@@ -320,7 +320,7 @@ def test_adj_mesh_query_point(test, device):
         indices=mesh_indices)
 
     # p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
-    p = wp.vec3(1.0, 1.0, 1.0)
+    p = wp.vec3(1.0, 1.0, 0)
 
     tape = wp.Tape()
 
@@ -338,7 +338,7 @@ def test_adj_mesh_query_point(test, device):
     analytic = tape.gradients[query_points].numpy().flatten()
 
     # numeric gradients
-    eps = 1.e-3
+    eps = 1.e-4
     loss_values = []
     numeric = np.zeros(3)
 
@@ -363,9 +363,12 @@ def test_adj_mesh_query_point(test, device):
         gradient = (l_1-l_0) / (2.0*eps)
         numeric[i] = gradient
 
+    print(analytic)
+    print(numeric)
+
     error = ((analytic - numeric) * (analytic - numeric)).sum(axis=0)
 
-    tolerance = 1.5e-2
+    tolerance = 4.e-3
     test.assertTrue(error < tolerance, f"error is {error} which is >= {tolerance}")
 
 

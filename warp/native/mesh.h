@@ -382,8 +382,6 @@ CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, f
 	vec2 adj_uv(adj_u, adj_v);
 
 	adj_closest_point_to_triangle(p, q, r, point, adj_p, adj_q, adj_r, adj_point, adj_uv);
-	adj_u = adj_uv[0];
-	adj_v = adj_uv[1];
 }
 
 
@@ -718,11 +716,49 @@ CUDA_CALLABLE inline vec3 mesh_eval_velocity(uint64_t id, int tri, float u, floa
 }
 
 
-CUDA_CALLABLE inline void adj_mesh_eval_position(uint64_t id, int tri, float v, float w,
-												 uint64_t&, int&, float&, float&, const vec3&) {}
+CUDA_CALLABLE inline void adj_mesh_eval_position(uint64_t id, int tri, float u, float v,
+												 uint64_t& adj_id, int& adj_tri, float& adj_u, float& adj_v, const vec3& adj_ret)
+{
+	Mesh mesh = mesh_get(id);
 
-CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float v, float w,
-												 uint64_t&, int&, float&, float&, const vec3&) {}
+	if (!mesh.points)
+		return vec3();
+
+	assert(tri < mesh.num_tris);
+
+	int i = mesh.indices[tri*3+0];
+	int j = mesh.indices[tri*3+1];
+	int k = mesh.indices[tri*3+2];
+
+	vec3 p = mesh.points[i];
+	vec3 q = mesh.points[j];
+	vec3 r = mesh.points[k];
+
+	adj_u += (p.x - r.x) * adj_ret.x + (p.y - r.y) * adj_ret.y + (p.z - r.z) * adj_ret.z
+	adj_v += (q.x - r.x) * adj_ret.x + (q.y - r.y) * adj_ret.y + (q.z - r.z) * adj_ret.z
+}
+
+CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float u, float v,
+												 uint64_t& adj_id, int& adj_tri, float& adj_u, float& adj_v, const vec3& adj_ret)
+{
+	Mesh mesh = mesh_get(id);
+
+	if (!mesh.velocities)
+		return vec3();
+
+	assert(tri < mesh.num_tris);
+
+	int i = mesh.indices[tri*3+0];
+	int j = mesh.indices[tri*3+1];
+	int k = mesh.indices[tri*3+2];
+
+	vec3 vp = mesh.velocities[i];
+	vec3 vq = mesh.velocities[j];
+	vec3 vr = mesh.velocities[k];
+
+	adj_u += (vp.x - vr.x) * adj_ret.x + (vp.y - vr.y) * adj_ret.y + (vp.z - vr.z) * adj_ret.z
+	adj_v += (vq.x - vr.x) * adj_ret.x + (vq.y - vr.y) * adj_ret.y + (vq.z - vr.z) * adj_ret.z
+}
 
 
 bool mesh_get_descriptor(uint64_t id, Mesh& mesh);
