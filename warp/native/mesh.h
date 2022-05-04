@@ -722,7 +722,7 @@ CUDA_CALLABLE inline void adj_mesh_eval_position(uint64_t id, int tri, float u, 
 	Mesh mesh = mesh_get(id);
 
 	if (!mesh.points)
-		return vec3();
+		return;
 
 	assert(tri < mesh.num_tris);
 
@@ -734,8 +734,8 @@ CUDA_CALLABLE inline void adj_mesh_eval_position(uint64_t id, int tri, float u, 
 	vec3 q = mesh.points[j];
 	vec3 r = mesh.points[k];
 
-	adj_u += (p.x - r.x) * adj_ret.x + (p.y - r.y) * adj_ret.y + (p.z - r.z) * adj_ret.z
-	adj_v += (q.x - r.x) * adj_ret.x + (q.y - r.y) * adj_ret.y + (q.z - r.z) * adj_ret.z
+	adj_u += (p.x - r.x) * adj_ret.x + (p.y - r.y) * adj_ret.y + (p.z - r.z) * adj_ret.z;
+	adj_v += (q.x - r.x) * adj_ret.x + (q.y - r.y) * adj_ret.y + (q.z - r.z) * adj_ret.z;
 }
 
 CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float u, float v,
@@ -744,7 +744,7 @@ CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float u, 
 	Mesh mesh = mesh_get(id);
 
 	if (!mesh.velocities)
-		return vec3();
+		return;
 
 	assert(tri < mesh.num_tris);
 
@@ -756,8 +756,8 @@ CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float u, 
 	vec3 vq = mesh.velocities[j];
 	vec3 vr = mesh.velocities[k];
 
-	adj_u += (vp.x - vr.x) * adj_ret.x + (vp.y - vr.y) * adj_ret.y + (vp.z - vr.z) * adj_ret.z
-	adj_v += (vq.x - vr.x) * adj_ret.x + (vq.y - vr.y) * adj_ret.y + (vq.z - vr.z) * adj_ret.z
+	adj_u += (vp.x - vr.x) * adj_ret.x + (vp.y - vr.y) * adj_ret.y + (vp.z - vr.z) * adj_ret.z;
+	adj_v += (vq.x - vr.x) * adj_ret.x + (vq.y - vr.y) * adj_ret.y + (vq.z - vr.z) * adj_ret.z;
 }
 
 
