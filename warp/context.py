@@ -456,7 +456,7 @@ class Runtime:
                 os.environ["PATH"] += os.pathsep + bin_path
 
 
-            warp_lib = "warp.dll"
+            warp_lib = os.path.join(bin_path, "warp.dll")
             self.core = warp.build.load_dll(warp_lib)
 
         elif sys.platform == "darwin":
