@@ -624,7 +624,11 @@ class array:
     # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):
         from warp.context import copy
-        copy(self, array(src, dtype=self.dtype, copy=False, device=self.device))
+
+        if isinstance(src, array):
+            copy(self, src)
+        else:
+            copy(self, array(src, dtype=self.dtype, copy=False, device="cpu"))
 
 
     # convert array to ndarray (alias memory through array interface)
