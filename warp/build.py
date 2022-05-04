@@ -282,7 +282,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
     
 def load_dll(dll_path):
     
-    dll = ctypes.CDLL(dll_path)
+    dll = ctypes.CDLL(dll_path, winmode=0)
     return dll
 
 def unload_dll(dll):
