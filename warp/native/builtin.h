@@ -530,12 +530,47 @@ inline CUDA_CALLABLE void print(int i)
     printf("%d\n", i);
 }
 
-inline CUDA_CALLABLE void print(int64_t i)
+inline CUDA_CALLABLE void print(short i)
 {
-    printf("%lld\n", (long long)i);
+    printf("%hd\n", i);
+}
+
+inline CUDA_CALLABLE void print(long i)
+{
+    printf("%ld\n", i);
+}
+
+inline CUDA_CALLABLE void print(long long i)
+{
+    printf("%lld\n", i);
+}
+
+inline CUDA_CALLABLE void print(unsigned i)
+{
+    printf("%u\n", i);
+}
+
+inline CUDA_CALLABLE void print(unsigned short i)
+{
+    printf("%hu\n", i);
+}
+
+inline CUDA_CALLABLE void print(unsigned long i)
+{
+    printf("%lu\n", i);
+}
+
+inline CUDA_CALLABLE void print(unsigned long long i)
+{
+    printf("%llu\n", i);
 }
 
 inline CUDA_CALLABLE void print(float f)
+{
+    printf("%g\n", f);
+}
+
+inline CUDA_CALLABLE void print(double f)
 {
     printf("%g\n", f);
 }
