@@ -282,7 +282,7 @@
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>kernel</strong> – The name of a Warp kernel function, decorated with the <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> decorator</p></li>
-<li><p><strong>dim</strong> (<em>Tuple</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>]</em>) – The number of threads to launch the kernel with</p></li>
+<li><p><strong>dim</strong> (<em>Tuple</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>]</em>) – The number of threads to launch the kernel, can be an integer, or a Tuple of ints with max of 4 dimensions</p></li>
 <li><p><strong>inputs</strong> (<em>List</em>) – The input parameters to the kernel</p></li>
 <li><p><strong>outputs</strong> (<em>List</em>) – The output parameters (optional)</p></li>
 <li><p><strong>adj_inputs</strong> (<em>List</em>) – The adjoint inputs (optional)</p></li>
