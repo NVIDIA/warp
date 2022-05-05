@@ -24,95 +24,114 @@ import warp.sim.render
 
 wp.init()
 
-sim_steps = 2000
-sim_dt = 1.0/240.0
-sim_time = 0.0
 
-num_bodies = 8
+class Example:
 
-device = wp.get_preferred_device()
+    def __init__(self, stage):
 
-builder = wp.sim.ModelBuilder()
+        self.sim_steps = 2000
+        self.sim_dt = 1.0/60.0
+        self.sim_time = 0.0
+        self.sim_substeps = 8
 
-scale = 0.5
+        self.num_bodies = 8
+        self.scale = 0.5
+        self.ke = 1.e+5
+        self.kd = 250.0
+        self.kf = 500.0
 
-ke = 1.e+4
-kd = 100.0
-kf = 100.0
+        self.device = wp.get_preferred_device()
 
-# boxes
-for i in range(num_bodies):
-    
-    b = builder.add_body(origin=wp.transform((i, 1.0, 0.0), wp.quat_identity()))
+        builder = wp.sim.ModelBuilder()
 
-    s = builder.add_shape_box( 
-        pos=(0.0, 0.0, 0.0),
-        hx=0.5*scale,
-        hy=0.2*scale,
-        hz=0.2*scale,
-        body=i,
-        ke=ke,
-        kd=kd,
-        kf=kf)
+        # boxes
+        for i in range(self.num_bodies):
+            
+            b = builder.add_body(origin=wp.transform((i, 1.0, 0.0), wp.quat_identity()))
 
-# spheres
-for i in range(num_bodies):
-    
-    b = builder.add_body(origin=wp.transform((i, 1.0, 2.0), wp.quat_identity()))
+            s = builder.add_shape_box( 
+                pos=(0.0, 0.0, 0.0),
+                hx=0.5*self.scale,
+                hy=0.2*self.scale,
+                hz=0.2*self.scale,
+                body=i,
+                ke=self.ke,
+                kd=self.kd,
+                kf=self.kf)
 
-    s = builder.add_shape_sphere(
-        pos=(0.0, 0.0, 0.0),
-        radius=0.25*scale, 
-        body=b,
-        ke=ke,
-        kd=kd,
-        kf=kf)
+        # spheres
+        for i in range(self.num_bodies):
+            
+            b = builder.add_body(origin=wp.transform((i, 1.0, 2.0), wp.quat_identity()))
 
-# capsules
-for i in range(num_bodies):
-    
-    b = builder.add_body(origin=wp.transform((i, 1.0, 4.0), wp.quat_identity()))
+            s = builder.add_shape_sphere(
+                pos=(0.0, 0.0, 0.0),
+                radius=0.25*self.scale, 
+                body=b,
+                ke=self.ke,
+                kd=self.kd,
+                kf=self.kf)
 
-    s = builder.add_shape_capsule( 
-        pos=(0.0, 0.0, 0.0),
-        radius=0.25*scale,
-        half_width=scale*0.5,
-        body=b,
-        ke=ke,
-        kd=kd,
-        kf=kf)
+        # capsules
+        for i in range(self.num_bodies):
+            
+            b = builder.add_body(origin=wp.transform((i, 1.0, 4.0), wp.quat_identity()))
 
-# initial spin 
-for i in range(len(builder.body_qd)):
-    builder.body_qd[i] = (0.0, 2.0, 10.0, 0.0, 0.0, 0.0)
- 
-model = builder.finalize(device)
-model.ground = True
+            s = builder.add_shape_capsule( 
+                pos=(0.0, 0.0, 0.0),
+                radius=0.25*self.scale,
+                half_width=self.scale*0.5,
+                body=b,
+                ke=self.ke,
+                kd=self.kd,
+                kf=self.kf)
 
-integrator = wp.sim.SemiImplicitIntegrator()
-state = model.state()
+        # initial spin 
+        for i in range(len(builder.body_qd)):
+            builder.body_qd[i] = (0.0, 2.0, 10.0, 0.0, 0.0, 0.0)
+        
+        self.model = builder.finalize(self.device)
+        self.model.ground = True
 
-# one time collide for ground contact
-model.collide(state)
+        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.state = self.model.state()
 
-renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd"))
+        # one time collide for ground contact
+        self.model.collide(self.state)
 
-for i in range(sim_steps):
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
-    state.clear_forces()
+    def update(self):
 
-    # sim
-    state = integrator.simulate(model, state, state, sim_dt)   
+        with wp.ScopedTimer("simulate", active=True):
+            
+            for i in range(self.sim_substeps):
+                self.state.clear_forces()
+                self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt/self.sim_substeps)   
 
-    # render
-    renderer.begin_frame(sim_time)
-    renderer.render(state)
-    renderer.end_frame()
-    
-    sim_time += sim_dt
+    def render(self, is_live=False):
+
+        with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else self.sim_time
+
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state)
+            self.renderer.end_frame()
+        
+        self.sim_time += self.sim_dt
 
 
-renderer.save()
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd")
+
+    example = Example(stage_path)
+
+    for i in range(example.sim_steps):
+        example.update()
+        example.render()
+
+    example.renderer.save()
+
 
 
 

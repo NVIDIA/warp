@@ -121,6 +121,8 @@ def make_matrix_test(dim, matrix, vector):
                            c: wp.array(dtype=matrix),               
                            x: wp.array(dtype=vector),
                            result_m: wp.array(dtype=matrix),
+                           result_i: wp.array(dtype=matrix),
+                           result_d: wp.array(dtype=float),
                            result_x: wp.array(dtype=vector)):
 
         tid = wp.tid()
@@ -129,6 +131,11 @@ def make_matrix_test(dim, matrix, vector):
         
         result_m[tid] = m
         result_x[tid] = m*x[tid]
+
+        result_d[tid] = wp.determinant(m)
+
+        invm = wp.inverse(m)
+        result_i[tid] = m*invm
 
 
     # register a custom kernel (no decorator) function
@@ -155,16 +162,22 @@ def make_matrix_test(dim, matrix, vector):
         x_array = wp.array(x, dtype=vector, device=device)
 
         result_m_array = wp.zeros_like(a_array)
+        result_i_array = wp.zeros_like(a_array)
         result_x_array = wp.zeros_like(x_array)
-
-        wp.launch(kernel, n, inputs=[a_array, b_array, c_array, x_array, result_m_array, result_x_array], device=device)
+        result_d_array = wp.zeros(n, dtype=float, device=device)
+        
+        wp.launch(kernel, n, inputs=[a_array, b_array, c_array, x_array, result_m_array, result_i_array, result_d_array, result_x_array], device=device)
 
         # numpy reference result
         result_m = np.matmul(a,b) + c*2.0
         result_x = np.matmul(result_m, x)
+        result_i = np.array([np.eye(dim)]*n)
+        result_d = np.linalg.det(result_m)
 
-        assert_np_equal(result_m_array.numpy(), result_m, tol=1.e-6)
-        assert_np_equal(result_x_array.numpy(), result_x, tol=1.e-6)
+        assert_np_equal(result_m_array.numpy(), result_m, tol=1.e-5)
+        assert_np_equal(result_i_array.numpy(), result_i, tol=1.e-3)
+        assert_np_equal(result_d_array.numpy(), result_d, tol=1.e-3)
+        assert_np_equal(result_x_array.numpy(), result_x, tol=1.e-5)
 
 
     return test_matrix
@@ -331,6 +344,26 @@ def test_scalar_array_types(test, device, load, store):
         wp.launch(test_scalar_array_types_store, dim=dim, inputs=[i8, u8, i16, u16, i32, u32, i64, u64, f32, f64], device=device)
 
 
+@wp.kernel
+def test_transform_matrix():
+
+    r = wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), 0.5)
+    t = wp.vec3(0.25, 0.5, -0.75)
+    s = wp.vec3(2.0, 0.5, 0.75)
+
+    m = wp.mat44(t, r, s)
+
+    p = wp.vec3(1.0, 2.0, 3.0)
+
+    r_0 = wp.quat_rotate(r, wp.cw_mul(s, p)) + t
+    r_1 = wp.transform_point(m, p)
+
+    r_2 = wp.transform_vector(m, p)
+
+    wp.expect_near(r_0, r_1, 1.e-4)
+    wp.expect_near(r_2, r_0 - t, 1.e-4)
+
+
 def register(parent):
 
     devices = wp.get_devices()
@@ -364,6 +397,7 @@ def register(parent):
     add_function_test(TestCTypes, "test_vec3_arg", test_vec3_arg, devices=devices, n=8)
     add_function_test(TestCTypes, "test_vec3_transform", test_vec3_transform, devices=devices, n=8)
     add_function_test(TestCTypes, "test_transform_multiply", test_transform_multiply, devices=devices, n=8)
+    add_kernel_test(TestCTypes, name="test_transform_matrix", kernel=test_transform_matrix, dim=1, devices=devices)
     add_function_test(TestCTypes, "test_scalar_array", test_scalar_array, devices=devices)
     add_function_test(TestCTypes, "test_vector_array", test_vector_array, devices=devices)
 

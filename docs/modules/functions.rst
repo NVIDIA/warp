@@ -4,8 +4,8 @@
 .. functions:
 .. currentmodule:: warp
 
-Language Reference
-==================
+Kernel Reference
+================
 Scalar Types
 ------------
 .. autoclass:: int8
@@ -275,16 +275,6 @@ Vector Math
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: determinant(m: mat22) -> float
-
-   Compute the determinant of a 2x2 matrix.
-
-
-.. function:: determinant(m: mat33) -> float
-
-   Compute the determinant of a 3x3 matrix.
-
-
 .. function:: transpose(m: mat22) -> mat22
 
    Return the transpose of the matrix m
@@ -303,6 +293,36 @@ Vector Math
 .. function:: transpose(m: spatial_matrix) -> spatial_matrix
 
    Return the transpose of the matrix m
+
+
+.. function:: inverse(m: mat22) -> mat22
+
+   Return the inverse of the matrix m
+
+
+.. function:: inverse(m: mat33) -> mat33
+
+   Return the inverse of the matrix m
+
+
+.. function:: inverse(m: mat44) -> mat44
+
+   Return the inverse of the matrix m
+
+
+.. function:: determinant(m: mat22) -> float
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat33) -> float
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat44) -> float
+
+   Return the determinant of the matrix m
 
 
 .. function:: diag(d: vec2) -> mat22
@@ -425,6 +445,11 @@ Vector Math
    Construct a 4x4 matrix from components.
 
 
+.. function:: mat44(pos: vec3, rot: quat, scale: vec3) -> mat44
+
+   Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
+
+
 .. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
@@ -461,6 +486,11 @@ Quaternion Math
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
+.. function:: quat_from_matrix(m: mat33) -> quat
+
+   Construct a quaternion from a 3x3 matrix.
+
+
 .. function:: quat_inverse(q: quat) -> quat
 
    Compute quaternion conjugate.
@@ -474,6 +504,11 @@ Quaternion Math
 .. function:: quat_rotate_inv(q: quat, p: vec3) -> vec3
 
    Rotate a vector the inverse of a quaternion.
+
+
+.. function:: quat_to_matrix(q: quat) -> mat33
+
+   Convert a quaternion to a 3x3 rotation matrix.
 
 
 
@@ -512,7 +547,9 @@ Transformations
 
 .. function:: transform_point(m: mat44, p: vec3) -> vec3
 
-   Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation)
+   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.
 
 
 .. function:: transform_vector(t: transform, v: vec3) -> vec3
@@ -522,7 +559,14 @@ Transformations
 
 .. function:: transform_vector(m: mat44, v: vec3) -> vec3
 
-   Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
+   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.
+
+
+.. function:: transform_inverse(t: transform) -> transform
+
+   Compute the inverse of the transform.
 
 
 
@@ -584,243 +628,30 @@ Spatial Math
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_jacobian(S: array(spatial_vector), joint_parents: array(int32), joint_qd_start: array(int32), joint_start: int, joint_count: int, J_start: int, J_out: array(float32)) -> None
+.. function:: spatial_jacobian(S: array[spatial_vector], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int, joint_count: int, J_start: int, J_out: array[float32]) -> None
 
 
-.. function:: spatial_mass(I_s: array(spatial_matrix), joint_start: int, joint_count: int, M_start: int, M: array(float32)) -> None
-
-
-
-
-Linear Algebra
----------------
-.. function:: dense_gemm(m: int, n: int, p: int, t1: int, t2: int, A: array(float32), B: array(float32), C: array(float32)) -> None
-
-
-.. function:: dense_gemm_batched(m: array(int32), n: array(int32), p: array(int32), t1: int, t2: int, A_start: array(int32), B_start: array(int32), C_start: array(int32), A: array(float32), B: array(float32), C: array(float32)) -> None
-
-
-.. function:: dense_chol(n: int, A: array(float32), regularization: float, L: array(float32)) -> None
-
-
-.. function:: dense_chol_batched(A_start: array(int32), A_dim: array(int32), A: array(float32), regularization: float, L: array(float32)) -> None
-
-
-.. function:: dense_subs(n: int, L: array(float32), b: array(float32), x: array(float32)) -> None
-
-
-.. function:: dense_solve(n: int, A: array(float32), L: array(float32), b: array(float32), x: array(float32)) -> None
-
-
-.. function:: dense_solve_batched(b_start: array(int32), A_start: array(int32), A_dim: array(int32), A: array(float32), L: array(float32), b: array(float32), x: array(float32)) -> None
-
-
-
-
-Geometry
----------------
-.. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float, inside: float, face: int, bary_u: float, bary_v: float) -> bool
-
-   Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
-
-   :param id: The mesh identifier
-   :param point: The point in space to query
-   :param max_dist: Mesh faces above this distance will not be considered by the query
-   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
-   :param face: Returns the index of the closest face
-   :param bary_u: Returns the barycentric u coordinate of the closest point
-   :param bary_v: Retruns the barycentric v coordinate of the closest point
-
-
-.. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float, t: float, bary_u: float, bary_v: float, sign: float, normal: vec3, face: int) -> bool
-
-   Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
-
-   :param id: The mesh identifier
-   :param start: The start point of the ray
-   :param dir: The ray direction (should be normalized)
-   :param max_t: The maximum distance along the ray to check for intersections
-   :param t: Returns the distance of the closest hit along the ray
-   :param bary_u: Returns the barycentric u coordinate of the closest hit
-   :param bary_v: Returns the barycentric v coordinate of the closest hit
-   :param sign: Returns a value > 0 if the hit ray hit front of the face, returns < 0 otherwise
-   :param normal: Returns the face normal
-   :param face: Returns the index of the hit face
-
-
-.. function:: mesh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> mesh_query_aabb_t
-
-   Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
-   inside a volume. Returns an object that is used to track state during mesh traversal.
-    
-   :param id: The mesh identifier
-   :param lower: The lower bound of the bounding box in mesh space
-   :param upper: The upper bound of the bounding box in mesh space
-
-
-.. function:: mesh_query_aabb_next(query: mesh_query_aabb_t, index: int) -> bool
-
-   Move to the next triangle overlapping the query bounding box. The index of the current face is stored in ``index``, returns ``False``
-   if there are no more overlapping triangles.
-
-
-.. function:: mesh_eval_position(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
-
-   Evaluates the position on the mesh given a face index, and barycentric coordinates.
-
-
-.. function:: mesh_eval_velocity(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
-
-   Evaluates the velocity on the mesh given a face index, and barycentric coordinates.
-
-
-.. function:: hash_grid_query(id: uint64, point: vec3, max_dist: float) -> hash_grid_query_t
-
-   Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
-   fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
-
-
-.. function:: hash_grid_query_next(query: hash_grid_query_t, index: int) -> bool
-
-   Move to the next point in the hash grid query. The index of the current neighbor is stored in ``index``, returns ``False``
-   if there are no more neighbors.
-
-
-.. function:: hash_grid_point_id(id: uint64, index: int) -> int
-
-   Return the index of a point in the grid, this can be used to re-order threads such that grid 
-   traversal occurs in a spatially coherent order.
-
-
-
-
-Volumes
----------------
-.. function:: volume_sample_world(id: uint64, xyz: vec3, sampling_mode: int) -> float
-
-   Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
-
-
-.. function:: volume_sample_local(id: uint64, uvw: vec3, sampling_mode: int) -> float
-
-   Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
-
-
-.. function:: volume_lookup(id: uint64, i: int, j: int, k: int) -> float
-
-   Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
-
-
-.. function:: volume_transform(id: uint64, uvw: vec3) -> vec3
-
-   Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.
-
-
-.. function:: volume_transform_inv(id: uint64, xyz: vec3) -> vec3
-
-   Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.
-
-
-
-
-Random
----------------
-.. function:: rand_init(seed: int) -> uint32
-
-   Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
-
-
-.. function:: rand_init(seed: int, offset: int) -> uint32
-
-   Initialize a new random number generator given a user-defined seed and an offset. 
-   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
-   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``
-
-
-.. function:: randi(state: uint32) -> int
-
-   Return a random integer between [0, 2^32)
-
-
-.. function:: randi(state: uint32, min: int, max: int) -> int
-
-   Return a random integer between [min, max)
-
-
-.. function:: randf(state: uint32) -> float
-
-   Return a random float between [0.0, 1.0)
-
-
-.. function:: randf(state: uint32, min: float, max: float) -> float
-
-   Return a random float between [min, max)
-
-
-.. function:: randn(state: uint32) -> float
-
-   Sample a normal distribution
-
-
-.. function:: noise(seed: uint32, x: float) -> float
-
-   Non-periodic Perlin-style noise in 1d.
-
-
-.. function:: noise(seed: uint32, xy: vec2) -> float
-
-   Non-periodic Perlin-style noise in 2d.
-
-
-.. function:: noise(seed: uint32, xyz: vec3) -> float
-
-   Non-periodic Perlin-style noise in 3d.
-
-
-.. function:: noise(seed: uint32, xyzt: vec4) -> float
-
-   Non-periodic Perlin-style noise in 4d.
-
-
-.. function:: pnoise(seed: uint32, x: float, px: int) -> float
-
-   Periodic Perlin-style noise in 1d.
-
-
-.. function:: pnoise(seed: uint32, xy: vec2, px: int, py: int) -> float
-
-   Periodic Perlin-style noise in 2d.
-
-
-.. function:: pnoise(seed: uint32, xyz: vec3, px: int, py: int, pz: int) -> float
-
-   Periodic Perlin-style noise in 3d.
-
-
-.. function:: pnoise(seed: uint32, xyzt: vec4, px: int, py: int, pz: int, pt: int) -> float
-
-   Periodic Perlin-style noise in 4d.
-
-
-.. function:: curlnoise(seed: uint32, xy: vec2) -> vec2
-
-   Divergence-free vector field based on the gradient of a Perlin noise function.
-
-
-.. function:: curlnoise(seed: uint32, xyz: vec3) -> vec3
-
-   Divergence-free vector field based on the curl of three Perlin noise functions.
-
-
-.. function:: curlnoise(seed: uint32, xyzt: vec4) -> vec3
-
-   Divergence-free vector field based on the curl of three Perlin noise functions.
+.. function:: spatial_mass(I_s: array[spatial_matrix], joint_start: int, joint_count: int, M_start: int, M: array[float32]) -> None
 
 
 
 
 Utility
 ---------------
+.. function:: mlp(weights: array[float32], bias: array[float32], activation: Callable, index: int, x: array[float32], out: array[float32]) -> None
+
+   Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
+
+   :param weights: A layer's network weights with dimensions ``(m, n)``.
+   :param bias: An array with dimensions ``(n)``.
+   :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
+   :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
+   :param x: The feature matrix with dimensions ``(n, b)``
+   :param out: The network output with dimensions ``(m, b)``
+
+   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
+
+
 .. function:: printf() -> None
 
    Allows printing formatted strings, using C-style format specifiers.
@@ -833,8 +664,23 @@ Utility
 
 .. function:: tid() -> int
 
-   Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+   Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.
+
+
+.. function:: tid() -> int, int
+
+   Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+
+
+.. function:: tid() -> int, int, int
+
+   Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+
+
+.. function:: tid() -> int, int, int, int
+
+   Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
 
 
 .. function:: select(cond: bool, arg1: Any, arg2: Any)
@@ -842,14 +688,44 @@ Utility
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
 
 
-.. function:: atomic_add(array: array, index: int, value: Any)
+.. function:: atomic_add(a: array[Any], i: int, value: Any)
 
    Atomically add ``value`` onto the array at location given by index.
 
 
-.. function:: atomic_sub(array: array, index: int, value: Any)
+.. function:: atomic_add(a: array[Any], i: int, j: int, value: Any)
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: array[Any], i: int, j: int, k: int, value: Any)
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: array[Any], i: int, j: int, k: int, l: int, value: Any) -> atomic_op_value_type
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: array[Any], i: int, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_sub(a: array[Any], i: int, j: int, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: array[Any], i: int, j: int, k: int, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: array[Any], i: int, j: int, k: int, l: int, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
 
 
 .. function:: expect_eq(arg1: int8, arg2: int8) -> None
@@ -957,10 +833,243 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
 
+.. function:: expect_near(arg1: vec3, arg2: vec3, tolerance: float) -> None
+
+   Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
 
 
 
+
+Geometry
 ---------------
+.. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float, inside: float, face: int, bary_u: float, bary_v: float) -> bool
+
+   Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Retruns the barycentric v coordinate of the closest point
+
+
+.. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float, t: float, bary_u: float, bary_v: float, sign: float, normal: vec3, face: int) -> bool
+
+   Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
+
+   :param id: The mesh identifier
+   :param start: The start point of the ray
+   :param dir: The ray direction (should be normalized)
+   :param max_t: The maximum distance along the ray to check for intersections
+   :param t: Returns the distance of the closest hit along the ray
+   :param bary_u: Returns the barycentric u coordinate of the closest hit
+   :param bary_v: Returns the barycentric v coordinate of the closest hit
+   :param sign: Returns a value > 0 if the hit ray hit front of the face, returns < 0 otherwise
+   :param normal: Returns the face normal
+   :param face: Returns the index of the hit face
+
+
+.. function:: mesh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> mesh_query_aabb_t
+
+   Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
+   inside a volume. Returns an object that is used to track state during mesh traversal.
+    
+   :param id: The mesh identifier
+   :param lower: The lower bound of the bounding box in mesh space
+   :param upper: The upper bound of the bounding box in mesh space
+
+
+.. function:: mesh_query_aabb_next(query: mesh_query_aabb_t, index: int) -> bool
+
+   Move to the next triangle overlapping the query bounding box. The index of the current face is stored in ``index``, returns ``False``
+   if there are no more overlapping triangles.
+
+
+.. function:: mesh_eval_position(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
+
+   Evaluates the position on the mesh given a face index, and barycentric coordinates.
+
+
+.. function:: mesh_eval_velocity(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
+
+   Evaluates the velocity on the mesh given a face index, and barycentric coordinates.
+
+
+.. function:: hash_grid_query(id: uint64, point: vec3, max_dist: float) -> hash_grid_query_t
+
+   Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
+   fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
+
+
+.. function:: hash_grid_query_next(query: hash_grid_query_t, index: int) -> bool
+
+   Move to the next point in the hash grid query. The index of the current neighbor is stored in ``index``, returns ``False``
+   if there are no more neighbors.
+
+
+.. function:: hash_grid_point_id(id: uint64, index: int) -> int
+
+   Return the index of a point in the grid, this can be used to re-order threads such that grid 
+   traversal occurs in a spatially coherent order.
+
+
+.. function:: intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3) -> int
+
+   Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.
+
+
+
+
+Volumes
+---------------
+.. function:: volume_sample_f(id: uint64, uvw: vec3, sampling_mode: int) -> float
+
+   Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+
+
+.. function:: volume_lookup_f(id: uint64, i: int, j: int, k: int) -> float
+
+   Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int) -> vec3
+
+   Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
+
+
+.. function:: volume_lookup_v(id: uint64, i: int, j: int, k: int) -> vec3
+
+   Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_sample_i(id: uint64, uvw: vec3) -> int
+
+   Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
+
+
+.. function:: volume_lookup_i(id: uint64, i: int, j: int, k: int) -> int
+
+   Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_index_to_world(id: uint64, uvw: vec3) -> vec3
+
+   Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.
+
+
+.. function:: volume_world_to_index(id: uint64, xyz: vec3) -> vec3
+
+   Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
+
+
+.. function:: volume_index_to_world_dir(id: uint64, uvw: vec3) -> vec3
+
+   Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.
+
+
+.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3) -> vec3
+
+   Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
+
+
+
+
+Random
+---------------
+.. function:: rand_init(seed: int) -> uint32
+
+   Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
+
+
+.. function:: rand_init(seed: int, offset: int) -> uint32
+
+   Initialize a new random number generator given a user-defined seed and an offset. 
+   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
+   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``
+
+
+.. function:: randi(state: uint32) -> int
+
+   Return a random integer between [0, 2^32)
+
+
+.. function:: randi(state: uint32, min: int, max: int) -> int
+
+   Return a random integer between [min, max)
+
+
+.. function:: randf(state: uint32) -> float
+
+   Return a random float between [0.0, 1.0)
+
+
+.. function:: randf(state: uint32, min: float, max: float) -> float
+
+   Return a random float between [min, max)
+
+
+.. function:: randn(state: uint32) -> float
+
+   Sample a normal distribution
+
+
+.. function:: noise(state: uint32, x: float) -> float
+
+   Non-periodic Perlin-style noise in 1d.
+
+
+.. function:: noise(state: uint32, xy: vec2) -> float
+
+   Non-periodic Perlin-style noise in 2d.
+
+
+.. function:: noise(state: uint32, xyz: vec3) -> float
+
+   Non-periodic Perlin-style noise in 3d.
+
+
+.. function:: noise(state: uint32, xyzt: vec4) -> float
+
+   Non-periodic Perlin-style noise in 4d.
+
+
+.. function:: pnoise(state: uint32, x: float, px: int) -> float
+
+   Periodic Perlin-style noise in 1d.
+
+
+.. function:: pnoise(state: uint32, xy: vec2, px: int, py: int) -> float
+
+   Periodic Perlin-style noise in 2d.
+
+
+.. function:: pnoise(state: uint32, xyz: vec3, px: int, py: int, pz: int) -> float
+
+   Periodic Perlin-style noise in 3d.
+
+
+.. function:: pnoise(state: uint32, xyzt: vec4, px: int, py: int, pz: int, pt: int) -> float
+
+   Periodic Perlin-style noise in 4d.
+
+
+.. function:: curlnoise(state: uint32, xy: vec2) -> vec2
+
+   Divergence-free vector field based on the gradient of a Perlin noise function.
+
+
+.. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
+
+   Divergence-free vector field based on the curl of three Perlin noise functions.
+
+
+.. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
+
+   Divergence-free vector field based on the curl of three Perlin noise functions.
+
+
 
 
 Operators
@@ -1043,6 +1152,9 @@ Operators
 .. function:: mul(x: float, y: vec4) -> vec4
 
 
+.. function:: mul(x: float, y: quat) -> quat
+
+
 .. function:: mul(x: vec2, y: float) -> vec2
 
 
@@ -1062,6 +1174,9 @@ Operators
 
 
 .. function:: mul(x: mat22, y: vec2) -> vec2
+
+
+.. function:: mul(x: mat22, y: mat22) -> mat22
 
 
 .. function:: mul(x: mat33, y: float) -> mat33

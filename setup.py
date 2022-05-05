@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="nvidia-warp",                                          
-    version="0.1.25",
+    version="0.2.0",
     author="NVIDIA",
     author_email="mmacklin@nvidia.com",
     description="A Python framework for high-performance simulation and graphics programming",

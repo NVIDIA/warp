@@ -105,6 +105,20 @@ inline CUDA_CALLABLE mat22 add(const mat22& a, const mat22& b)
     return t;
 }
 
+inline CUDA_CALLABLE mat22 sub(const mat22& a, const mat22& b)
+{
+    mat22 t;
+    for (int i=0; i < 2; ++i)
+    {
+        for (int j=0; j < 2; ++j)
+        {
+            t.data[i][j] = a.data[i][j] - b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
 
 inline CUDA_CALLABLE mat22 mul(const mat22& a, float b)
 {
@@ -165,6 +179,29 @@ inline CUDA_CALLABLE float determinant(const mat22& m)
     return m.data[0][0]*m.data[1][1] - m.data[1][0]*m.data[0][1];
 }
 
+inline CUDA_CALLABLE mat22 inverse(const mat22& m)
+{
+    float det = determinant(m);
+    if (fabs(det) > kEps)
+    {
+        return mat22( m.data[1][1], -m.data[0][1],
+                     -m.data[1][0],  m.data[0][0])*(1.0f/det);
+    }
+    else
+    {
+        return mat22();
+    }
+}
+
+inline CUDA_CALLABLE void adj_inverse(const mat22& m, mat22& adj_m, const mat22& adj_ret)
+{
+    // todo: how to cache this from the forward pass?
+    mat22 invt = transpose(inverse(m));
+
+    // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf 2.2.3
+    adj_m -= mul(mul(invt, adj_ret), invt);
+}
+
 inline CUDA_CALLABLE mat22 diag(const vec2& d) 
 {
     return mat22(d.x, 0.f, 
@@ -181,7 +218,6 @@ inline CUDA_CALLABLE void adj_outer(const vec2& a, const vec2& b, vec2& adj_a, v
     adj_a += mul(adj_ret, b);
     adj_b += mul(transpose(adj_ret), a);
 }
-
 
 
 inline void CUDA_CALLABLE adj_index(const mat22& m, int row, int col, mat22& adj_m, int& adj_row, int& adj_col, float adj_ret)

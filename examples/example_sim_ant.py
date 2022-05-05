@@ -80,7 +80,7 @@ class Robot:
         # finalize model
         self.model = builder.finalize(device)
         self.model.ground = True
-        self.model.joint_attach_ke *= 16.0
+        self.model.joint_attach_ke *= 32.0
         self.model.joint_attach_kd *= 4.0
 
         self.integrator = wp.sim.SemiImplicitIntegrator()

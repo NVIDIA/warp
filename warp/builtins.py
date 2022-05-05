@@ -6,7 +6,6 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 from . context import add_builtin
-from . context import builtin
 
 from warp.types import *
 
@@ -14,6 +13,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Callable
 
 #---------------------------------
 # Scalar Math
@@ -109,12 +109,6 @@ add_builtin("normalize", input_types={"x": vec4}, value_type=vec4, group="Vector
 add_builtin("normalize", input_types={"x": quat}, value_type=quat, group="Vector Math",
     doc="Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.")
 
-add_builtin("determinant", input_types={"m": mat22}, value_type=float, group="Vector Math", 
-    doc="Compute the determinant of a 2x2 matrix.")
-
-add_builtin("determinant", input_types={"m": mat33}, value_type=float, group="Vector Math", 
-    doc="Compute the determinant of a 3x3 matrix.")
-
 add_builtin("transpose", input_types={"m": mat22}, value_type=mat22, group="Vector Math",
     doc="Return the transpose of the matrix m")
 add_builtin("transpose", input_types={"m": mat33}, value_type=mat33, group="Vector Math",
@@ -123,6 +117,20 @@ add_builtin("transpose", input_types={"m": mat44}, value_type=mat44, group="Vect
     doc="Return the transpose of the matrix m")
 add_builtin("transpose", input_types={"m": spatial_matrix}, value_type=spatial_matrix, group="Vector Math",
     doc="Return the transpose of the matrix m")
+
+add_builtin("inverse", input_types={"m": mat22}, value_type=mat22, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+add_builtin("inverse", input_types={"m": mat33}, value_type=mat33, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+add_builtin("inverse", input_types={"m": mat44}, value_type=mat44, group="Vector Math",
+    doc="Return the inverse of the matrix m")
+
+add_builtin("determinant", input_types={"m": mat22}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
+add_builtin("determinant", input_types={"m": mat33}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
+add_builtin("determinant", input_types={"m": mat44}, value_type=float, group="Vector Math",
+    doc="Return the determinant of the matrix m")
 
 add_builtin("diag", input_types={"d": vec2}, value_type=mat22, group="Vector Math",
     doc="Returns a matrix with the components of the vector d on the diagonal")
@@ -180,6 +188,8 @@ add_builtin("mat44", input_types={"m00": float, "m01": float, "m02": float, "m03
                                   "m20": float, "m21": float, "m22": float, "m23": float,
                                   "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="Construct a 4x4 matrix from components.", group="Vector Math")
 
+add_builtin("mat44", input_types={"pos": vec3, "rot": quat, "scale": vec3}, value_type=mat44, 
+    doc="""Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""", group="Vector Math")
 
 add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, group="Vector Math",
     doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
@@ -199,12 +209,16 @@ add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion 
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0")
 add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
+add_builtin("quat_from_matrix", input_types={"m": mat33}, value_type=quat, group="Quaternion Math",
+    doc="Construct a quaternion from a 3x3 matrix.")
 add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, group="Quaternion Math",
     doc="Compute quaternion conjugate.")
 add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
     doc="Rotate a vector by a quaternion.")
 add_builtin("quat_rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
     doc="Rotate a vector the inverse of a quaternion.")
+add_builtin("quat_to_matrix", input_types={"q": quat}, value_type=mat33, group="Quaternion Math",
+    doc="Convert a quaternion to a 3x3 rotation matrix.")
 
 #---------------------------------
 # Transformations 
@@ -222,12 +236,17 @@ add_builtin("transform_multiply", input_types={"a": transform, "b": transform}, 
 add_builtin("transform_point", input_types={"t": transform, "p": vec3}, value_type=vec3, group="Transformations",
     doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).")
 add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, group="Vector Math",
-    doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation)")
+    doc="""Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.""")
 add_builtin("transform_vector", input_types={"t": transform, "v": vec3}, value_type=vec3, group="Transformations",
     doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
 add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, group="Vector Math",
-    doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
-
+    doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.""")
+add_builtin("transform_inverse", input_types={"t": transform}, value_type=transform, group="Transformations",
+    doc="Compute the inverse of the transform.")
 #---------------------------------
 # Spatial Math 
 
@@ -279,7 +298,7 @@ add_builtin("dense_gemm",
                  "t2": int, 
                  "A": array(dtype=float), 
                  "B": array(dtype=float), 
-                 "C": array(dtype=float) }, value_type=None, doc="", group="Linear Algebra")
+                 "C": array(dtype=float) }, value_type=None, doc="", group="Utility", hidden=True)
 
 add_builtin("dense_gemm_batched", 
     input_types={"m": array(dtype=int), 
@@ -292,34 +311,34 @@ add_builtin("dense_gemm_batched",
                  "C_start": array(dtype=int), 
                  "A": array(dtype=float), 
                  "B": array(dtype=float), 
-                 "C": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "C": array(dtype=float)}, value_type=None, doc="", group="Utility", hidden=True)
 
 
 add_builtin("dense_chol",
     input_types={"n": int, 
                  "A": array(dtype=float), 
                  "regularization": float, 
-                 "L": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "L": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 add_builtin("dense_chol_batched",
     input_types={"A_start": array(dtype=int),
                  "A_dim": array(dtype=int),
                  "A": array(dtype=float),
                  "regularization": float,
-                 "L": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "L": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 add_builtin("dense_subs", 
     input_types={"n": int, 
                  "L": array(dtype=float), 
                  "b": array(dtype=float), 
-                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "x": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 add_builtin("dense_solve", 
     input_types={"n": int, 
                  "A": array(dtype=float), 
                  "L": array(dtype=float), 
                  "b": array(dtype=float), 
-                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "x": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
 
 add_builtin("dense_solve_batched",
     input_types={"b_start": array(dtype=int), 
@@ -328,7 +347,21 @@ add_builtin("dense_solve_batched",
                  "A": array(dtype=float),
                  "L": array(dtype=float),
                  "b": array(dtype=float),
-                 "x": array(dtype=float)}, value_type=None, doc="", group="Linear Algebra")
+                 "x": array(dtype=float)}, value_type=None, doc="WIP", group="Utility", hidden=True)
+
+
+add_builtin("mlp", input_types={"weights": array(dtype=float, ndim=2), "bias": array(dtype=float, ndim=1), "activation": Callable, "index": int, "x": array(dtype=float, ndim=2), "out": array(dtype=float, ndim=2)}, value_type=None, skip_replay=True, 
+    doc="""Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
+
+   :param weights: A layer's network weights with dimensions ``(m, n)``.
+   :param bias: An array with dimensions ``(n)``.
+   :param activation: A ``wp.func`` function that takes a single scalar float as input and returns a scalar float as output
+   :param index: The batch item to process, typically each thread will process 1 item in the batch, in this case index should be ``wp.tid()``
+   :param x: The feature matrix with dimensions ``(n, b)``
+   :param out: The network output with dimensions ``(m, b)``
+
+   :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).""", group="Utility")
+
 
 #---------------------------------
 # Geometry
@@ -388,21 +421,52 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
     doc="""Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.""")
 
+add_builtin("intersect_tri_tri", input_types={"v0": vec3, "v1": vec3, "v2": vec3, "u0": vec3, "u1": vec3, "u2": vec3}, value_type=int, group="Geometry", 
+    doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.")
+
+#---------------------------------
+# Ranges
+
+add_builtin("range", input_types={"end": int}, value_type=range_t, group="Utility", hidden=True)
+add_builtin("range", input_types={"start": int, "end": int}, value_type=range_t, group="Utility", hidden=True)
+add_builtin("range", input_types={"start": int, "end": int, "step": int}, value_type=range_t, group="Utility", hidden=True)
+
+#---------------------------------
+# Iterators
+
+add_builtin("iter_next", input_types={"range": range_t}, value_type=int, group="Utility", hidden=True)
+add_builtin("iter_next", input_types={"query": hash_grid_query_t}, value_type=int, group="Utility", hidden=True)
+add_builtin("iter_next", input_types={"query": mesh_query_aabb_t}, value_type=int, group="Utility", hidden=True)
+
 #---------------------------------
 # Volumes 
 
-add_builtin("volume_sample_world", input_types={"id": uint64, "xyz": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
-    doc="""Sample the volume given by ``id`` at the world-space point ``xyz``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
-add_builtin("volume_sample_local", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
+add_builtin("volume_sample_f", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=float, group="Volumes",
     doc="""Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 
-add_builtin("volume_lookup", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
+add_builtin("volume_lookup_f", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
     doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
-add_builtin("volume_transform", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in volume local-space to world space given the volume's intrinsic affine transformation.""")
-add_builtin("volume_transform_inv", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
-    doc="""Transform a point defined in world-space to the volume's local space, given the volume's intrinsic affine transformation.""")
+add_builtin("volume_sample_v", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=vec3, group="Volumes",
+    doc="""Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
+
+add_builtin("volume_lookup_v", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=vec3, group="Volumes",
+    doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
+add_builtin("volume_sample_i", input_types={"id": uint64, "uvw": vec3}, value_type=int, group="Volumes",
+    doc="""Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. """)
+
+add_builtin("volume_lookup_i", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=int, group="Volumes",
+    doc="""Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
+add_builtin("volume_index_to_world", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.""")
+add_builtin("volume_world_to_index", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.""")
+add_builtin("volume_index_to_world_dir", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.""")
+add_builtin("volume_world_to_index_dir", input_types={"id": uint64, "xyz": vec3}, value_type=vec3, group="Volumes",
+    doc="""Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.""")
 
 
 #---------------------------------
@@ -427,126 +491,180 @@ add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, 
 add_builtin("randn", input_types={"state": uint32}, value_type=float, group="Random", 
     doc="Sample a normal distribution")
 
-add_builtin("noise", input_types={"seed": uint32, "x": float}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "x": float}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 1d.")
-add_builtin("noise", input_types={"seed": uint32, "xy": vec2}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xy": vec2}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 2d.")
-add_builtin("noise", input_types={"seed": uint32, "xyz": vec3}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xyz": vec3}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 3d.")
-add_builtin("noise", input_types={"seed": uint32, "xyzt": vec4}, value_type=float, group="Random",
+add_builtin("noise", input_types={"state": uint32, "xyzt": vec4}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 4d.")
 
-add_builtin("pnoise", input_types={"seed": uint32, "x": float, "px": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "x": float, "px": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 1d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xy": vec2, "px": int, "py": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 2d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xyz": vec3, "px": int, "py": int, "pz": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 3d.")
-add_builtin("pnoise", input_types={"seed": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Random",
+add_builtin("pnoise", input_types={"state": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int}, value_type=float, group="Random",
     doc="Periodic Perlin-style noise in 4d.")
 
-add_builtin("curlnoise", input_types={"seed": uint32, "xy": vec2}, value_type=vec2, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xy": vec2}, value_type=vec2, group="Random",
     doc="Divergence-free vector field based on the gradient of a Perlin noise function.")
-add_builtin("curlnoise", input_types={"seed": uint32, "xyz": vec3}, value_type=vec3, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xyz": vec3}, value_type=vec3, group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
-add_builtin("curlnoise", input_types={"seed": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
+add_builtin("curlnoise", input_types={"state": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
     doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
 
 # note printf calls directly to global CRT printf (no wp:: namespace prefix)
 add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility",
     doc="Allows printing formatted strings, using C-style format specifiers.")
 
-@builtin("print", input_types={"value": Any}, doc="Print variable to stdout", group="Utility")
-class PrintFunc:
-    @staticmethod
-    def value_type(args):
-        return None
+add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout", group="Utility")
 
 # helpers
 add_builtin("tid", input_types={}, value_type=int, group="Utility",
-    doc="""Return the current thread id. Note that this is the *global* index of the thread in the range [0, dim) 
+    doc="""Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim) 
    where dim is the parameter passed to kernel launch.""")
 
-@builtin("copy", input_types={}, hidden=True, group="Utility")
-class CopyFunc:
-    @staticmethod
-    def value_type(args):
-        return None
+add_builtin("tid", input_types={}, value_type=[int, int], group="Utility",
+    doc="""Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""")
 
-@builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
-class SelectFunc:
-    @staticmethod
-    def value_type(args):
-        return args[1].type
+add_builtin("tid", input_types={}, value_type=[int, int, int], group="Utility",
+    doc="""Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""")
 
-@builtin("load", hidden=True)
-class LoadFunc:
-    @staticmethod
-    def value_type(args):
-        if (type(args[0].type) != array):
-            raise Exception("load() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != int32 and args[1].type != int64 and args[1].type != uint64):
-            raise Exception("load() argument input 1 must be an integer type")
-
-        return args[0].type.dtype
-
-@builtin("store", hidden=True)
-class StoreFunc:
-    @staticmethod
-    def value_type(args):
-        if (type(args[0].type) != array):
-            raise Exception("store() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != int32 and args[1].type != int64 and args[1].type != uint64):
-            raise Exception("store() argument input 1 must be an integer type")
-        if (args[2].type != args[0].type.dtype):
-            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
-
-        return None
-
-@builtin("atomic_add", input_types={"array": array, "index": int, "value": Any}, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility")
-class AtomicAddFunc:
-    @staticmethod
-    def value_type(args):
-
-        if (type(args[0].type) != array):
-            raise Exception("store() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != int32 and args[1].type != int64 and args[1].type != uint64):
-            raise Exception("store() argument input 1 must be an integer type")
-        if (args[2].type != args[0].type.dtype):
-            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
-
-        return args[0].type.dtype
+add_builtin("tid", input_types={}, value_type=[int, int, int, int], group="Utility",
+    doc="""Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""")
 
 
-@builtin("atomic_sub", input_types={"array": array, "index": int, "value": Any}, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility")
-class AtomicSubFunc:
-    @staticmethod
-    def value_type(args):
+add_builtin("copy", variadic=True, hidden=True, group="Utility")
+add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
 
-        if (type(args[0].type) != array):
-            raise Exception("store() argument 0 must be a array")
-        if (args[1].type != int and args[1].type != int32 and args[1].type != int64 and args[1].type != uint64):
-            raise Exception("store() argument input 1 must be an integer type")
-        if (args[2].type != args[0].type.dtype):
-            raise Exception("store() argument input 2 ({}) must be of the same type as the array ({})".format(args[2].type, args[0].type.dtype))
+# does argument checking and type progagation for load()
+def load_value_func(args):
 
-        return args[0].type.dtype
+    if (type(args[0].type) != array):
+        raise RuntimeError("load() argument 0 must be an array")
+
+    num_indices = len(args[1:])
+    num_dims = args[0].type.ndim
+
+    if num_indices < num_dims:
+        raise RuntimeError("Num indices < num dimensions for array load, this is a codegen error, should have generated a view instead")
+
+    if num_indices > num_dims:
+        raise RuntimeError(f"Num indices > num dimensions for array load, received {num_indices}, but array only has {num_dims}")
+
+    # check index types
+    for a in args[1:]:
+        if type_is_int(a.type) == False:
+            raise RuntimeError(f"load() index arguments must be of integer type, got index of type {a.type}")
+
+    return args[0].type.dtype
+
+# does argument checking and type progagation for view()
+def view_value_func(args):
+    if (type(args[0].type) != array):
+        raise RuntimeError("view() argument 0 must be an array")
+
+    # check array dim big enough to support view
+    num_indices = len(args[1:])
+    num_dims = args[0].type.ndim
+
+    if num_indices >= num_dims:
+        raise RuntimeError(f"Trying to create an array view with {num_indices} indices, but array only has {num_dims} dimensions.")
+
+    # check index types
+    for a in args[1:]:
+        if type_is_int(a.type) == False:
+            raise RuntimeError(f"view() index arguments must be of integer type, got index of type {a.type}")
+
+    # create an array view with leading dimensions removed
+    import copy
+    view_type = copy.copy(args[0].type)
+    view_type.ndim -= num_indices
+    
+    return view_type
+
+# does argument checking and type progagation for store()
+def store_value_func(args):
+    # check target type
+    if (type(args[0].type) != array):
+        raise RuntimeError("store() argument 0 must be an array")
+    
+    num_indices = len(args[1:-1])
+    num_dims = args[0].type.ndim
+
+    # if this happens we should have generated a view instead of a load during code gen
+    if num_indices < num_dims:
+        raise RuntimeError("Num indices < num dimensions for array store")
+
+    if num_indices > num_dims:
+        raise RuntimeError(f"Num indices > num dimensions for array store, received {num_indices}, but array only has {num_dims}")
+
+    # check index types
+    for a in args[1:-1]:
+        if type_is_int(a.type) == False:
+            raise RuntimeError(f"store() index arguments must be of integer type, got index of type {a.type}")
+
+    # check value type
+    if (args[-1].type != args[0].type.dtype):
+        raise RuntimeError(f"store() value argument type ({args[2].type}) must be of the same type as the array ({args[0].type.dtype})")
+
+    return None
+
+
+add_builtin("load", variadic=True, hidden=True, value_func=load_value_func, group="Utility")
+add_builtin("view", variadic=True, hidden=True, value_func=view_value_func, group="Utility")
+add_builtin("store", variadic=True, hidden=True, value_func=store_value_func, skip_replay=True, group="Utility")
+
+def atomic_op_value_type(args):
+
+    # check target type
+    if (type(args[0].type) != array):
+        raise RuntimeError("atomic() operation argument 0 must be an array")
+    
+    num_indices = len(args[1:-1])
+    num_dims = args[0].type.ndim
+
+    # if this happens we should have generated a view instead of a load during code gen
+    if num_indices < num_dims:
+        raise RuntimeError("Num indices < num dimensions for atomic array operation")
+
+    if num_indices > num_dims:
+        raise RuntimeError(f"Num indices > num dimensions for atomic array operation, received {num_indices}, but array only has {num_dims}")
+
+    # check index types
+    for a in args[1:-1]:
+        if type_is_int(a.type) == False:
+            raise RuntimeError(f"atomic() operation index arguments must be of integer type, got index of type {a.type}")
+
+    if (args[-1].type != args[0].type.dtype):
+        raise RuntimeError(f"atomic() value argument ({args[-1].type}) must be of the same type as the array ({args[0].type.dtype})")
+
+    return args[0].type.dtype
+
+
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_type=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+
+add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
 
 # used to index into builtin types, i.e.: y = vec3[1]
-@builtin("index", hidden=True)
-class IndexFunc:
-    @staticmethod
-    def value_type(args):
-        return float
-
+add_builtin("index", variadic=True, hidden=True, value_type=float, group="Utility")
 
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
-
+add_builtin("expect_near", input_types={"arg1": vec3, "arg2": vec3, "tolerance": float}, value_type=None, doc="Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 
 #---------------------------------
 # Operators
@@ -579,6 +697,7 @@ add_builtin("mul", input_types={"x": float, "y": float}, value_type=float, doc="
 add_builtin("mul", input_types={"x": float, "y": vec2}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": quat}, value_type=quat, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec2, "y": float}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")

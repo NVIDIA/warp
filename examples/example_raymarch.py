@@ -112,11 +112,11 @@ def shadow(ro: wp.vec3, rd: wp.vec3):
 
 
 @wp.kernel
-def render(cam_pos: wp.vec3,
-           cam_rot: wp.quat,
-           width: int,
-           height: int,
-           pixels: wp.array(dtype=wp.vec3)):
+def draw(cam_pos: wp.vec3,
+        cam_rot: wp.quat,
+        width: int,
+        height: int,
+        pixels: wp.array(dtype=wp.vec3)):
     
     tid = wp.tid()
 
@@ -163,23 +163,35 @@ def render(cam_pos: wp.vec3,
         pixels[tid] = wp.vec3(0.4, 0.45, 0.5)*1.5
 
 
-device = wp.get_preferred_device()
-width = 2048
-height = 1024
-cam_pos = (-1.25, 1.0, 2.0)
-cam_rot = wp.quat_rpy(-0.5, -0.5, 0.0)
+class Example:
 
-pixels = wp.zeros(width*height, dtype=wp.vec3, device=device)
+    def __init__(self):
 
-with wp.ScopedTimer("render"):
+        self.device = wp.get_preferred_device()
+        self.width = 2048
+        self.height = 1024
+        self.cam_pos = (-1.25, 1.0, 2.0)
+        self.cam_rot = wp.quat_rpy(-0.5, -0.5, 0.0)
 
-    wp.launch(
-        kernel=render,
-        dim=width*height,
-        inputs=[cam_pos, cam_rot, width, height, pixels],
-        device=device)
+        self.pixels = wp.zeros(self.width*self.height, dtype=wp.vec3, device=self.device)
 
-    wp.synchronize()
+    def render(self, is_live=False):
 
-plt.imshow(pixels.numpy().reshape((height, width, 3)), origin="lower", interpolation="antialiased")
-plt.show()
+        with wp.ScopedTimer("render"):
+
+            wp.launch(
+                kernel=draw,
+                dim=self.width*self.height,
+                inputs=[self.cam_pos, self.cam_rot, self.width, self.height, self.pixels],
+                device=self.device)
+
+            wp.synchronize()
+
+        plt.imshow(self.pixels.numpy().reshape((self.height, self.width, 3)), origin="lower", interpolation="antialiased")
+        plt.show()
+
+
+if __name__ == '__main__':
+
+    example = Example()
+    example.render()

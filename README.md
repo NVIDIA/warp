@@ -2,23 +2,67 @@
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
-Warp is designed to make it easy to write programs for physics simulation, geometry processing, and procedural animation. Please refer to the project [Documentation](https://nvidia.github.io/warp/) for detailed API and language reference.
+Warp is designed to make it easy to write programs for physics simulation, geometry processing, and procedural animation. Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and [CHANGELOG.md](./CHANGELOG.md) for release history.
 
-<img src="./docs/img/nvdb_flow.png"/>
+![](./docs/img/gifs/aldina.gif) ![](./docs/img/gifs/nanovdb.gif)
+![](./docs/img/gifs/ocean.gif) ![](./docs/img/gifs/particles.gif)
 
-_A flow field visualization of a NanoVDB fluid simulation computed in Warp_
+_A selection of physical simulations computed with Warp_
 
-## Installing
+## Installing 
 
 Warp supports Python versions 3.7.x-3.9.x. Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment extract the archive and run the following command from the root directory:
 
     pip install .
 
-The Warp package will now be available to import as follows:
+## Getting Started
+
+An example first program that computes the lengths of random 3D vectors is given below:
 
 ```python
 import warp as wp
+import numpy as np
+
+wp.init()
+
+num_points = 1024
+device = "cuda"
+
+@wp.kernel
+def length(points: wp.array(dtype=wp.vec3),
+           lengths: wp.array(dtype=float)):
+
+    # thread index
+    tid = wp.tid()
+    
+    # compute distance of each point from origin
+    lengths[tid] = wp.length(points[tid])
+
+
+# allocate an array of 3d points
+points = wp.array(np.random.rand(num_points, 3), dtype=wp.vec3, device=device)
+lengths = wp.zeros(num_points, dtype=float, device=device)
+
+# launch kernel
+wp.launch(kernel=length,
+          dim=len(points),
+          inputs=[points, lengths],
+          device=device)
+
+print(lengths)
 ```
+
+## Running Examples
+
+The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations in the ``examples/outputs`` directory. Before running examples users should ensure that the ``usd-core`` package is installed using:
+
+    pip install usd-core
+    
+USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, and Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
+
+Built-in unit tests can be run from the command-line as follows:
+
+    python -m warp.tests
 
 ## Building
 
@@ -39,17 +83,11 @@ This will generate the `warp.dll` / `warp.so` core library respectively. When bu
 
 Which ensures that subsequent modifications to the libary will be reflected in the Python package.
 
-## Running Examples
+If you are cloning from Windows, please first ensure that you have enabled "Developer Mode" in Windows settings and symlinks in git:
 
-The `examples` directory contains a number of scripts that show how to implement different simulation methods using the Warp API. Most examples will generate USD files containing time-sampled animations in the ``examples/outputs`` directory. Before running examples users should ensure that the ``usd-core`` package is installed using:
+    git config --global core.symlinks true
 
-    pip install usd-core
-    
-USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, and Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
-
-Built-in unit tests can be run from the command-line as follows:
-
-    python -m warp.tests
+This will ensure symlinks inside ``exts/omni.warp`` work upon cloning.
 
 ## Omniverse
 

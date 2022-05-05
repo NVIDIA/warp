@@ -18,7 +18,7 @@ def transform_inverse(t: wp.transform):
     q = wp.transform_get_rotation(t)
 
     q_inv = wp.quat_inverse(q)
-    return wp.transform(wp.quat_rotate(q_inv, p)*(0.0 - 1.0), q_inv)
+    return wp.transform(-wp.quat_rotate(q_inv, p), q_inv)
 
 
 @wp.func

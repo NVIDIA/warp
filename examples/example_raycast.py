@@ -14,6 +14,7 @@
 ##############################################################################
 
 import matplotlib.pyplot as plt
+from pxr import Usd, UsdGeom
 
 import warp as wp
 import numpy as np
@@ -23,11 +24,11 @@ import os
 wp.init()
 
 @wp.kernel
-def render(mesh: wp.uint64,
-           cam_pos: wp.vec3,
-           width: int,
-           height: int,
-           pixels: wp.array(dtype=wp.vec3)):
+def draw(mesh: wp.uint64,
+        cam_pos: wp.vec3,
+        width: int,
+        height: int,
+        pixels: wp.array(dtype=wp.vec3)):
     
     tid = wp.tid()
 
@@ -56,37 +57,51 @@ def render(mesh: wp.uint64,
     pixels[tid] = color
 
 
-device = wp.get_preferred_device()
-width = 1024
-height = 1024
-cam_pos = (0.0, 1.0, 2.0)
-
-from pxr import Usd, UsdGeom, Gf, Sdf
-
-stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
-mesh_geom = UsdGeom.Mesh(stage.GetPrimAtPath("/bunny/bunny"))
-
-points = np.array(mesh_geom.GetPointsAttr().Get())
-indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
-
-pixels = wp.zeros(width*height, dtype=wp.vec3, device=device)
-
-# create wp mesh
-mesh = wp.Mesh(
-    points=wp.array(points, dtype=wp.vec3, device=device),
-    velocities=None,
-    indices=wp.array(indices, dtype=int, device=device))
 
 
-with wp.ScopedTimer("render"):
+class Example:
 
-    wp.launch(
-        kernel=render,
-        dim=width*height,
-        inputs=[mesh.id, cam_pos, width, height, pixels],
-        device=device)
+    def __init__(self):
 
-    wp.synchronize()
+        self.device = wp.get_preferred_device()
+        self.width = 1024
+        self.height = 1024
+        self.cam_pos = (0.0, 1.0, 2.0)
 
-plt.imshow(pixels.numpy().reshape((height, width, 3)), origin="lower", interpolation="antialiased")
-plt.show()
+        asset_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
+        mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/bunny/bunny"))
+
+        points = np.array(mesh_geom.GetPointsAttr().Get())
+        indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
+
+        self.pixels = wp.zeros(self.width*self.height, dtype=wp.vec3, device=self.device)
+
+        # create wp mesh
+        self.mesh = wp.Mesh(
+            points=wp.array(points, dtype=wp.vec3, device=self.device),
+            velocities=None,
+            indices=wp.array(indices, dtype=int, device=self.device))
+
+    def update(self):
+        pass
+
+    def render(self, is_live=False):
+
+        with wp.ScopedTimer("render"):
+
+            wp.launch(
+                kernel=draw,
+                dim=self.width*self.height,
+                inputs=[self.mesh.id, self.cam_pos, self.width, self.height, self.pixels],
+                device=self.device)
+
+            wp.synchronize()
+
+        plt.imshow(self.pixels.numpy().reshape((self.height, self.width, 3)), origin="lower", interpolation="antialiased")
+        plt.show()
+
+
+if __name__ == '__main__':
+
+    example = Example()
+    example.render()

@@ -23,71 +23,86 @@ import warp.sim.render
 
 wp.init()
 
-frame_dt = 1.0/60
-frame_count = 400
 
-sim_substeps = 64
-sim_dt = frame_dt/sim_substeps
-sim_steps = frame_count*sim_substeps
-sim_time = 0.0
+class Example:
 
-radius = 0.1
+    def __init__(self, stage):
 
-device = wp.get_preferred_device()
+        self.frame_dt = 1.0/60
+        self.frame_count = 400
 
-builder = wp.sim.ModelBuilder()
+        self.sim_substeps = 64
+        self.sim_dt = self.frame_dt/self.sim_substeps
+        self.sim_steps = self.frame_count*self.sim_substeps
+        self.sim_time = 0.0
 
-builder.add_particle_grid(
-    dim_x=16,
-    dim_y=32,
-    dim_z=16,
-    cell_x=radius*2.0,
-    cell_y=radius*2.0,
-    cell_z=radius*2.0,
-    pos=(0.0, 1.0, 0.0),
-    rot=wp.quat_identity(),
-    vel=(5.0, 0.0, 0.0),
-    mass=0.1,
-    jitter=radius*0.1)
+        self.radius = 0.1
 
-model = builder.finalize(device)
-model.particle_radius = radius
-model.particle_kf = 25.0
+        self.device = wp.get_preferred_device()
 
-model.soft_contact_kd = 100.0
-model.soft_contact_kf *= 2.0
+        builder = wp.sim.ModelBuilder()
 
-state_0 = model.state()
-state_1 = model.state()
+        builder.add_particle_grid(
+            dim_x=16,
+            dim_y=32,
+            dim_z=16,
+            cell_x=self.radius*2.0,
+            cell_y=self.radius*2.0,
+            cell_z=self.radius*2.0,
+            pos=(0.0, 1.0, 0.0),
+            rot=wp.quat_identity(),
+            vel=(5.0, 0.0, 0.0),
+            mass=0.1,
+            jitter=self.radius*0.1)
 
-integrator = wp.sim.SemiImplicitIntegrator()
+        self.model = builder.finalize(self.device)
+        self.model.particle_radius = self.radius
+        self.model.particle_kf = 25.0
 
-renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_granular.usd"))
+        self.model.soft_contact_kd = 100.0
+        self.model.soft_contact_kf *= 2.0
 
-for i in range(frame_count):
+        self.state_0 = self.model.state()
+        self.state_1 = self.model.state()
 
-    with wp.ScopedTimer("simulate", active=True):
+        self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        model.particle_grid.build(state_0.particle_q, radius*2.0)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
-        for s in range(sim_substeps):
+    def update(self):
 
-            state_0.clear_forces()
+        with wp.ScopedTimer("simulate", active=True):
 
-            integrator.simulate(model, state_0, state_1, sim_dt)
-            sim_time += sim_dt
+            self.model.particle_grid.build(self.state_0.particle_q, self.radius*2.0)
 
-            # swap states
-            (state_0, state_1) = (state_1, state_0)
+            for s in range(self.sim_substeps):
 
-        p = state_0.particle_q.numpy()
+                self.state_0.clear_forces()
 
-    with wp.ScopedTimer("render", active=True):
-        renderer.begin_frame(sim_time)
-        renderer.render(state_0)
-        renderer.end_frame()
+                self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
 
-    sim_time += frame_dt
+                # swap states
+                (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
-renderer.save()
+    def render(self, is_live=False):
 
+        with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else self.sim_time
+
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state_0)
+            self.renderer.end_frame()
+
+        self.sim_time += self.frame_dt
+
+
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_granular.usd")
+
+    example = Example(stage_path)
+
+    for i in range(example.frame_count):
+        example.update()
+        example.render()
+
+    example.renderer.save()

@@ -522,6 +522,7 @@ class ScopedTimer:
     indent = -1
 
     enabled = True
+    use_nvtx = False
 
     def __init__(self, name, active=True, print=True, detailed=False, dict=None):
         self.name = name
@@ -537,6 +538,11 @@ class ScopedTimer:
     def __enter__(self):
 
         if (self.active):
+            if (self.use_nvtx):
+                import nvtx
+                self.nvtx_range_id = nvtx.start_range(self.name)
+                return
+
             self.start = timeit.default_timer()
             ScopedTimer.indent += 1
 
@@ -549,6 +555,10 @@ class ScopedTimer:
     def __exit__(self, exc_type, exc_value, traceback):
 
         if (self.active):
+            if (self.use_nvtx):
+                import nvtx
+                nvtx.end_range(self.nvtx_range_id)
+                return
 
             if (self.detailed):
                 self.cp.disable()

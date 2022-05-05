@@ -418,7 +418,7 @@ class Model:
 
         Note:
             Currently this method uses an 'all pairs' approach to contact generation that is
-            state indepdendent. In the future this will change and will create a node in
+            state independent. In the future this will change and will create a node in
             the computational graph to propagate gradients as a function of state.
 
         Todo:
@@ -675,9 +675,9 @@ class ModelBuilder:
         child = len(self.body_mass)
 
         # body data
-        self.body_inertia.append(np.eye(3)*joint_armature)
-        self.body_mass.append(0.0)
-        self.body_com.append(np.zeros(3))
+        self.body_inertia.append(I_m + np.eye(3)*joint_armature)
+        self.body_mass.append(m)
+        self.body_com.append(com)
         
         self.body_q.append(origin)
         self.body_qd.append(wp.spatial_vector())
@@ -1617,7 +1617,6 @@ class ModelBuilder:
         self.body_com[i] = new_com
 
 
-    # returns a (model, state) pair given the description
     def finalize(self, device: str) -> Model:
         """Convert this builder object to a concrete model for simulation.
 
@@ -1647,10 +1646,17 @@ class ModelBuilder:
         body_inv_inertia = []
         
         for m in self.body_mass:
-            body_inv_mass.append(1.0/m)
+            if (m > 0.0):
+                body_inv_mass.append(1.0/m)
+            else:
+                body_inv_mass.append(0.0)
+
         
         for i in self.body_inertia:
-            body_inv_inertia.append(np.linalg.inv(i))
+            if i.any():
+                body_inv_inertia.append(np.linalg.inv(i))
+            else:
+                body_inv_inertia.append(i)
 
         #-------------------------------------
         # construct Model (non-time varying) data

@@ -16,6 +16,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Callable
 
 from warp.types import *
 from warp.utils import *
@@ -27,22 +28,39 @@ import warp.config
 # represents either a built-in or user-defined function
 class Function:
 
-    def __init__(self, func, key, namespace, input_types={}, value_type=None, module=None, variadic=False, doc="", group="", hidden=False):
+    def __init__(self,
+                 func,
+                 key,
+                 namespace,
+                 input_types=None,
+                 value_func=None,
+                 module=None,
+                 variadic=False,
+                 doc="",
+                 group="",
+                 hidden=False,
+                 skip_replay=False):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
-        self.value_type = value_type
+        self.value_func = value_func    # a function that takes a list of args and returns the value type, e.g.: load(array, index) returns the type of value being loaded
         self.input_types = input_types
         self.doc = doc
         self.group = group
         self.module = module
-        self.variadic = variadic    # function can take arbitrary number of inputs, e.g.: printf()
-        self.hidden = hidden        # function will not be listed in docs
+        self.variadic = variadic        # function can take arbitrary number of inputs, e.g.: printf()
+        self.hidden = hidden            # function will not be listed in docs
+        self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
 
         if (func):
             self.adj = warp.codegen.Adjoint(func)
 
+            # record input types    
+            self.input_types = {}            
+            for a in self.adj.args:
+                self.input_types[a.label] = a.type
+            
         if (module):
             module.register_function(self)
 
@@ -95,7 +113,7 @@ class Kernel:
 def func(f):
 
     m = get_module(f.__module__)
-    f = Function(func=f, key=f.__name__, namespace="", module=m, value_type=None)   # value_type not known yet, will be inferred during code-gen
+    f = Function(func=f, key=f.__name__, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
 
     return f
 
@@ -110,22 +128,23 @@ def kernel(f):
 
 builtin_functions = {}
 
-# decorator to register a built-in function with @builtin
-def builtin(key, input_types={}, doc="", group="", hidden=False):
-    def insert(c):
+def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False, skip_replay=False):
+
+    # wrap simple single-type functions with a value_func()
+    if value_func == None:
+        def value_func(args):
+            return value_type
         
-        func = Function(func=None, input_types=input_types, key=key, namespace="wp::", value_type=c.value_type, doc=doc, group=group, hidden=hidden)
-        builtin_functions[key] = func
-
-    return insert
-
-def add_builtin(key, input_types={}, value_type=None, doc="", namespace="wp::", variadic=False, group="Other", hidden=False):
-
-    # wrap value type in a lambda
-    def value_func(arg):
-        return value_type
-        
-    func = Function(func=None, key=key, namespace=namespace, input_types=input_types, value_type=value_func, variadic=variadic, doc=doc, group=group, hidden=hidden)
+    func = Function(func=None,
+                    key=key,
+                    namespace=namespace,
+                    input_types=input_types,
+                    value_func=value_func,
+                    variadic=variadic,
+                    doc=doc,
+                    group=group,
+                    hidden=hidden,
+                    skip_replay=skip_replay)
 
     if key in builtin_functions:
         # if key exists we add overload
@@ -311,7 +330,7 @@ class Module:
 
                     return value_type
 
-                func.value_type = wrap(func.adj)
+                func.value_func = wrap(func.adj)
 
 
             # kernels
@@ -324,7 +343,6 @@ class Module:
                     entry_points.append(kernel.func.__name__ + "_cpu_forward")
                     entry_points.append(kernel.func.__name__ + "_cpu_backward")
 
-                    cpp_source += warp.codegen.codegen_module_decl(kernel, device="cpu")
                     cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
                     cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
 
@@ -453,11 +471,11 @@ class Runtime:
 
             else:
                 # Python < 3.8 we add dll directory to path
-                os.environ["PATH"] += os.pathsep + bin_path
+                os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
 
 
             warp_lib = "warp.dll"
-            self.core = warp.build.load_dll(warp_lib)
+            self.core = warp.build.load_dll(os.path.join(bin_path, warp_lib))
 
         elif sys.platform == "darwin":
 
@@ -624,11 +642,11 @@ def get_preferred_device():
         return None
 
 
-def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> warp.array:
+def zeros(shape: Tuple=None, dtype=float, device: str="cpu", requires_grad: bool=False, **kwargs)-> warp.array:
     """Return a zero-initialized array
 
     Args:
-        n: Number of elements
+        shape: Array dimensions
         dtype: Type of each element, e.g.: warp.vec3, warp.mat33, etc
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
@@ -646,7 +664,19 @@ def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> w
     if device == "cuda" and not is_cuda_available():
         raise RuntimeError("Trying to allocate CUDA buffer without GPU support")
 
-    num_bytes = n*warp.types.type_size_in_bytes(dtype)
+
+    # backwards compatability for case where users did wp.zeros(n, dtype=..), or wp.zeros(n=length, dtype=..)
+    if isinstance(shape, int):
+        shape = (shape,)
+    elif "n" in kwargs:
+        shape = (kwargs["n"], )
+    
+    # compute num els
+    num_elements = 1
+    for d in shape:
+        num_elements *= d
+
+    num_bytes = num_elements*warp.types.type_size_in_bytes(dtype)
 
     if device == "cpu":
         ptr = runtime.host_allocator.alloc(num_bytes) 
@@ -660,7 +690,7 @@ def zeros(n: int, dtype=float, device: str="cpu", requires_grad: bool=False)-> w
         raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
     else:
         # construct array
-        return warp.types.array(dtype=dtype, length=n, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
+        return warp.types.array(dtype=dtype, shape=shape, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
 
 def zeros_like(src: warp.array) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
@@ -672,7 +702,7 @@ def zeros_like(src: warp.array) -> warp.array:
         A warp.array object representing the allocation
     """
 
-    arr = zeros(len(src), dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
+    arr = zeros(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
     return arr
 
 def clone(src: warp.array) -> warp.array:
@@ -690,7 +720,7 @@ def clone(src: warp.array) -> warp.array:
 
     return dest
 
-def empty(n: int, dtype=float, device:str="cpu", requires_grad:bool=False) -> warp.array:
+def empty(shape: Tuple=None, dtype=float, device:str="cpu", requires_grad:bool=False, **kwargs) -> warp.array:
     """Returns an uninitialized array
 
     Args:
@@ -704,7 +734,7 @@ def empty(n: int, dtype=float, device:str="cpu", requires_grad:bool=False) -> wa
     """
 
     # todo: implement uninitialized allocation
-    return zeros(n, dtype, device, requires_grad=requires_grad)  
+    return zeros(shape, dtype, device, requires_grad=requires_grad, **kwargs)  
 
 def empty_like(src: warp.array, requires_grad:bool=False) -> warp.array:
     """Return an uninitialized array with the same type and dimension of another array
@@ -716,7 +746,7 @@ def empty_like(src: warp.array, requires_grad:bool=False) -> warp.array:
     Returns:
         A warp.array object representing the allocation
     """
-    arr = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=requires_grad)
+    arr = empty(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad)
     return arr
 
 
@@ -725,14 +755,14 @@ def from_numpy(arr, dtype, device="cpu", requires_grad=False):
     return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
-def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:str="cpu", adjoint=False):
+def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:str="cpu", adjoint=False):
     """Launch a Warp kernel on the target device
 
     Kernel launches are asynchronous with respect to the calling Python thread. 
 
     Args:
-        kernel: The name of a Warp kernel function, decorated with the @warp.kernel decorator
-        dim: The number of threads to launch the kernel with
+        kernel: The name of a Warp kernel function, decorated with the ``@wp.kernel`` decorator
+        dim: The number of threads to launch the kernel, can be an integer, or a Tuple of ints with max of 4 dimensions
         inputs: The input parameters to the kernel
         outputs: The output parameters (optional)
         adj_inputs: The adjoint inputs (optional)
@@ -741,22 +771,32 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
         adjoint: Whether to run forward or backward pass (typically use False)
     """
 
-    assert(is_device_available(device))
+    # check device available
+    if is_device_available(device) == False:
+        raise RuntimeError(f"Error launching kernel, device '{device}' is not available.")
 
+    # check kernel is a function
+    if isinstance(kernel, wp.Kernel) == False:
+        raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
+
+    # debugging aid
     if (warp.config.print_launches):
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
-    if (dim > 0):
+    # delay load modules
+    if (kernel.module.loaded == False):
+        success = kernel.module.load()
+        if (success == False):
+            return
 
-        # delay load modules
-        if (kernel.module.loaded == False):
-            success = kernel.module.load()
-            if (success == False):
-                return
+    # construct launch bounds
+    bounds = warp.types.launch_bounds_t(dim)
+
+    if (bounds.size > 0):
 
         # first param is the number of threads
         params = []
-        params.append(ctypes.c_long(dim))
+        params.append(bounds)
 
         # converts arguments to kernel's expected ctypes and packs into params
         def pack_args(args, params):
@@ -764,32 +804,34 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
             for i, a in enumerate(args):
 
                 arg_type = kernel.adj.args[i].type
+                arg_name = kernel.adj.args[i].label
 
                 if (isinstance(arg_type, warp.types.array)):
 
                     if (a is None):
                         
                         # allow for NULL arrays
-                        params.append(ctypes.c_int64(0))
+                        params.append(warp.types.array_t())
 
                     else:
 
                         # check for array value
                         if (isinstance(a, warp.types.array) == False):
-                            raise RuntimeError(f"Passing non-array value with type {type(a)} to array argument: '{kernel.adj.args[i].label}'")
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array, but passed value has type {type(a)}.")
                         
                         # check subtype
                         if (a.dtype != arg_type.dtype):
-                            raise RuntimeError("Array dtype {} does not match kernel signature {} for param: {}".format(a.dtype, arg_type.dtype, kernel.adj.args[i].label))
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={a.dtype}.")
+
+                        # check dimensions
+                        if (a.ndim != arg_type.ndim):
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dimensions {arg_type.ndim} but the passed array has dimensions {a.ndim}.")
 
                         # check device
                         if (a.device != device):
-                            raise RuntimeError("Launching kernel on device={} where input array is on device={}. Arrays must live on the same device".format(device, a.device))
-            
-                        if(a.ptr == None):                            
-                            params.append(ctypes.c_int64(0))
-                        else:
-                            params.append(ctypes.c_int64(a.ptr))
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={a.device}.")
+                        
+                        params.append(a.__ctype__())
 
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):
@@ -800,7 +842,7 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                     # flatten to 1D array
                     v = a.flatten()
                     if (len(v) != arg_type._length_):
-                        raise RuntimeError(f"Kernel parameter {kernel.adj.args[i].label} has incorrect value length {len(v)}, expected {arg_type._length_}")
+                        raise RuntimeError(f"Error launching kernel '{kernel.key}', parameter for argument '{arg_name}' has length {len(v)}, but expected {arg_type._length_}. Could not convert parameter to {arg_type}.")
 
                     # wrap the arg_type (which is an ctypes.Array) in a structure
                     # to ensure parameter is passed to the .dll by value rather than reference
@@ -818,14 +860,14 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
                         # try to pack as a scalar type
                         params.append(arg_type._type_(a))
                     except:
-                        raise RuntimeError(f"Unable to pack kernel parameter type {type(a)} for param {kernel.adj.args[i].label}, expected {arg_type}")
+                        raise RuntimeError(f"Error launching kernel, unable to pack kernel parameter type {type(a)} for param {arg_name}, expected {arg_type}")
 
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
 
         if (len(fwd_args)) != (len(kernel.adj.args)): 
-            raise RuntimeError(f"Unable to launch kernel '{kernel.key}', passed {len(fwd_args)} args but kernel requires {len(kernel.adj.args)}")
+            raise RuntimeError(f"Error launching kernel '{kernel.key}', passed {len(fwd_args)} arguments but kernel requires {len(kernel.adj.args)}.")
 
         pack_args(fwd_args, params)
         pack_args(adj_args, params)
@@ -849,9 +891,9 @@ def launch(kernel, dim: int, inputs:List, outputs:List=[], adj_inputs:List=[], a
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if (adjoint):
-                runtime.core.cuda_launch_kernel(kernel.backward_cuda, dim, kernel_params)
+                runtime.core.cuda_launch_kernel(kernel.backward_cuda, bounds.size, kernel_params)
             else:
-                runtime.core.cuda_launch_kernel(kernel.forward_cuda, dim, kernel_params)
+                runtime.core.cuda_launch_kernel(kernel.forward_cuda, bounds.size, kernel_params)
 
             try:
                 runtime.verify_device()            
@@ -935,7 +977,7 @@ def capture_end()->int:
     graph = runtime.core.cuda_graph_end_capture()
     
     if graph == None:
-        raise RuntimeError("Error occured during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")
+        raise RuntimeError("Error occurred during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")
     else:
         return graph
 
@@ -958,8 +1000,8 @@ def copy(dest: warp.array, src: warp.array):
 
     """
 
-    src_bytes = src.length*type_size_in_bytes(src.dtype)
-    dst_bytes = dest.length*type_size_in_bytes(dest.dtype)
+    src_bytes = src.size*type_size_in_bytes(src.dtype)
+    dst_bytes = dest.size*type_size_in_bytes(dest.dtype)
 
     if (src_bytes > dst_bytes):
         raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")
@@ -985,8 +1027,12 @@ def type_str(t):
         return "None"
     elif t == Any:
         return "Any"
-    elif (isinstance(t, array)):
-        return f"array({t.dtype.__name__})"
+    elif t == Callable:
+        return "Callable"
+    elif isinstance(t, List):
+        return ", ".join(map(type_str, t))
+    elif isinstance(t, array):
+        return f"array[{type_str(t.dtype)}]"
     else:
         return t.__name__
 
@@ -1000,7 +1046,9 @@ def print_function(f, file):
     return_type = ""
 
     try:
-        return_type = " -> " + type_str(f.value_type(None))
+        # todo: construct a default value for each of the functions args
+        # so we can generate the return type for overloaded functions
+        return_type = " -> " + type_str(f.value_func(None))
     except:
         pass
 
@@ -1021,8 +1069,8 @@ def print_builtins(file):
               ".. functions:\n"
               ".. currentmodule:: warp\n"
               "\n"
-              "Language Reference\n"
-              "==================")
+              "Kernel Reference\n"
+              "================")
 
     print(header, file=file)
 

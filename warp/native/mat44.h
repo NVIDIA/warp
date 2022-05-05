@@ -66,6 +66,31 @@ struct mat44
         data[3][3] = m33;
     }
 
+    inline CUDA_CALLABLE mat44(const vec3& pos, const quat& rot, const vec3& scale)
+    {
+        mat33 R = quat_to_matrix(rot);
+
+        data[0][0] = R.data[0][0]*scale.x;
+        data[1][0] = R.data[1][0]*scale.x;
+        data[2][0] = R.data[2][0]*scale.x;
+        data[3][0] = 0.0f;
+
+        data[0][1] = R.data[0][1]*scale.y;
+        data[1][1] = R.data[1][1]*scale.y;
+        data[2][1] = R.data[2][1]*scale.y;
+        data[3][1] = 0.0f;
+
+        data[0][2] = R.data[0][2]*scale.z;
+        data[1][2] = R.data[1][2]*scale.z;
+        data[2][2] = R.data[2][2]*scale.z;
+        data[3][2] = 0.0f;
+
+        data[0][3] = pos.x;
+        data[1][3] = pos.y;
+        data[2][3] = pos.z;
+        data[3][3] = 1.0f;        
+    }
+
     CUDA_CALLABLE vec4 get_row(int index) const
     {
         return (vec4&)data[index]; 
@@ -137,8 +162,33 @@ inline CUDA_CALLABLE void adj_mat44(
     a1 += adj_ret.get_col(1);
     a2 += adj_ret.get_col(2);
     a3 += adj_ret.get_col(3);
-
 }
+
+inline CUDA_CALLABLE void adj_mat44(const vec3& pos, const quat& rot, const vec3& scale,
+                                    vec3& adj_pos, quat& adj_rot, vec3& adj_scale, const mat44& adj_ret)
+{
+    mat33 R = quat_to_matrix(rot);
+    mat33 adj_R = 0;
+
+    adj_pos.x += adj_ret.data[0][3];
+    adj_pos.y += adj_ret.data[1][3];
+    adj_pos.z += adj_ret.data[2][3];
+
+    adj_mul(R.data[0][0], scale.x, adj_R.data[0][0], adj_scale.x, adj_ret.data[0][0]);
+    adj_mul(R.data[1][0], scale.x, adj_R.data[1][0], adj_scale.x, adj_ret.data[1][0]);
+    adj_mul(R.data[2][0], scale.x, adj_R.data[2][0], adj_scale.x, adj_ret.data[2][0]);
+
+    adj_mul(R.data[0][1], scale.y, adj_R.data[0][1], adj_scale.y, adj_ret.data[0][1]);
+    adj_mul(R.data[1][1], scale.y, adj_R.data[1][1], adj_scale.y, adj_ret.data[1][1]);
+    adj_mul(R.data[2][1], scale.y, adj_R.data[2][1], adj_scale.y, adj_ret.data[2][1]);
+
+    adj_mul(R.data[0][2], scale.z, adj_R.data[0][2], adj_scale.z, adj_ret.data[0][2]);
+    adj_mul(R.data[1][2], scale.z, adj_R.data[1][2], adj_scale.z, adj_ret.data[1][2]);
+    adj_mul(R.data[2][2], scale.z, adj_R.data[2][2], adj_scale.z, adj_ret.data[2][2]);
+
+    adj_quat_to_matrix(rot, adj_rot, adj_R);
+}
+
 
 inline CUDA_CALLABLE void adj_mat44(float m00, float m01, float m02, float m03,
                       float m10, float m11, float m12, float m13,
@@ -171,6 +221,21 @@ inline CUDA_CALLABLE mat44 add(const mat44& a, const mat44& b)
 
     return t;
 }
+
+inline CUDA_CALLABLE mat44 sub(const mat44& a, const mat44& b)
+{
+    mat44 t;
+    for (int i=0; i < 4; ++i)
+    {
+        for (int j=0; j < 4; ++j)
+        {
+            t.data[i][j] = a.data[i][j] - b.data[i][j];
+        }
+    }
+
+    return t;
+}
+
 
 inline CUDA_CALLABLE mat44 mul(const mat44& a, float b)
 {
@@ -226,6 +291,264 @@ inline CUDA_CALLABLE mat44 transpose(const mat44& a)
     }
 
     return t;
+}
+
+inline CUDA_CALLABLE float determinant(const mat44& m)
+{
+    // adapted from USD GfMatrix4f::Inverse()
+    float x00, x01, x02, x03;
+    float x10, x11, x12, x13;
+    float x20, x21, x22, x23;
+    float x30, x31, x32, x33;
+    double y01, y02, y03, y12, y13, y23;
+    float z00, z10, z20, z30;
+
+    // Pickle 1st two columns of matrix into registers
+    x00 = m.data[0][0];
+    x01 = m.data[0][1];
+    x10 = m.data[1][0];
+    x11 = m.data[1][1];
+    x20 = m.data[2][0];
+    x21 = m.data[2][1];
+    x30 = m.data[3][0];
+    x31 = m.data[3][1];
+
+    // Compute all six 2x2 determinants of 1st two columns
+    y01 = x00*x11 - x10*x01;
+    y02 = x00*x21 - x20*x01;
+    y03 = x00*x31 - x30*x01;
+    y12 = x10*x21 - x20*x11;
+    y13 = x10*x31 - x30*x11;
+    y23 = x20*x31 - x30*x21;
+
+    // Pickle 2nd two columns of matrix into registers
+    x02 = m.data[0][2];
+    x03 = m.data[0][3];
+    x12 = m.data[1][2];
+    x13 = m.data[1][3];
+    x22 = m.data[2][2];
+    x23 = m.data[2][3];
+    x32 = m.data[3][2];
+    x33 = m.data[3][3];
+
+    // Compute all six 2x2 determinants of 2nd two columns
+    y01 = x02*x13 - x12*x03;
+    y02 = x02*x23 - x22*x03;
+    y03 = x02*x33 - x32*x03;
+    y12 = x12*x23 - x22*x13;
+    y13 = x12*x33 - x32*x13;
+    y23 = x22*x33 - x32*x23;
+
+    // Compute all 3x3 cofactors for 1st two columns
+    z30 = x11*y02 - x21*y01 - x01*y12;
+    z20 = x01*y13 - x11*y03 + x31*y01;
+    z10 = x21*y03 - x31*y02 - x01*y23;
+    z00 = x11*y23 - x21*y13 + x31*y12;
+
+    // compute 4x4 determinant & its reciprocal
+    double det = x30*z30 + x20*z20 + x10*z10 + x00*z00;
+    return det;
+}
+
+inline CUDA_CALLABLE void adj_determinant(const mat44& m, mat44& adj_m, float adj_ret)
+{
+    // adapted from USD GfMatrix4f::Inverse()
+    float x00, x01, x02, x03;
+    float x10, x11, x12, x13;
+    float x20, x21, x22, x23;
+    float x30, x31, x32, x33;
+    double y01, y02, y03, y12, y13, y23;
+    float z00, z10, z20, z30;
+    float z01, z11, z21, z31;
+    double z02, z03, z12, z13, z22, z23, z32, z33;
+
+    // Pickle 1st two columns of matrix into registers
+    x00 = m.data[0][0];
+    x01 = m.data[0][1];
+    x10 = m.data[1][0];
+    x11 = m.data[1][1];
+    x20 = m.data[2][0];
+    x21 = m.data[2][1];
+    x30 = m.data[3][0];
+    x31 = m.data[3][1];
+
+    // Compute all six 2x2 determinants of 1st two columns
+    y01 = x00*x11 - x10*x01;
+    y02 = x00*x21 - x20*x01;
+    y03 = x00*x31 - x30*x01;
+    y12 = x10*x21 - x20*x11;
+    y13 = x10*x31 - x30*x11;
+    y23 = x20*x31 - x30*x21;
+
+    // Pickle 2nd two columns of matrix into registers
+    x02 = m.data[0][2];
+    x03 = m.data[0][3];
+    x12 = m.data[1][2];
+    x13 = m.data[1][3];
+    x22 = m.data[2][2];
+    x23 = m.data[2][3];
+    x32 = m.data[3][2];
+    x33 = m.data[3][3];
+
+    // Compute all 3x3 cofactors for 2nd two columns */
+    z33 = x02*y12 - x12*y02 + x22*y01;
+    z23 = x12*y03 - x32*y01 - x02*y13;
+    z13 = x02*y23 - x22*y03 + x32*y02;
+    z03 = x22*y13 - x32*y12 - x12*y23;
+    z32 = x13*y02 - x23*y01 - x03*y12;
+    z22 = x03*y13 - x13*y03 + x33*y01;
+    z12 = x23*y03 - x33*y02 - x03*y23;
+    z02 = x13*y23 - x23*y13 + x33*y12;
+
+    // Compute all six 2x2 determinants of 2nd two columns
+    y01 = x02*x13 - x12*x03;
+    y02 = x02*x23 - x22*x03;
+    y03 = x02*x33 - x32*x03;
+    y12 = x12*x23 - x22*x13;
+    y13 = x12*x33 - x32*x13;
+    y23 = x22*x33 - x32*x23;
+
+    // Compute all 3x3 cofactors for 1st two columns
+    z30 = x11*y02 - x21*y01 - x01*y12;
+    z20 = x01*y13 - x11*y03 + x31*y01;
+    z10 = x21*y03 - x31*y02 - x01*y23;
+    z00 = x11*y23 - x21*y13 + x31*y12;
+    z31 = x00*y12 - x10*y02 + x20*y01;
+    z21 = x10*y03 - x30*y01 - x00*y13;
+    z11 = x00*y23 - x20*y03 + x30*y02;
+    z01 = x20*y13 - x30*y12 - x10*y23;
+
+    // Multiply all 3x3 cofactors by adjoint & transpose
+    adj_m.data[0][0] += float(z00*adj_ret);
+    adj_m.data[0][1] += float(z10*adj_ret);
+    adj_m.data[1][0] += float(z01*adj_ret);
+    adj_m.data[0][2] += float(z20*adj_ret);
+    adj_m.data[2][0] += float(z02*adj_ret);
+    adj_m.data[0][3] += float(z30*adj_ret);
+    adj_m.data[3][0] += float(z03*adj_ret);
+    adj_m.data[1][1] += float(z11*adj_ret);
+    adj_m.data[1][2] += float(z21*adj_ret);
+    adj_m.data[2][1] += float(z12*adj_ret);
+    adj_m.data[1][3] += float(z31*adj_ret);
+    adj_m.data[3][1] += float(z13*adj_ret);
+    adj_m.data[2][2] += float(z22*adj_ret);
+    adj_m.data[2][3] += float(z32*adj_ret);
+    adj_m.data[3][2] += float(z23*adj_ret);
+    adj_m.data[3][3] += float(z33*adj_ret);
+
+}
+
+inline CUDA_CALLABLE mat44 inverse(const mat44& m)
+{
+    // adapted from USD GfMatrix4f::Inverse()
+    float x00, x01, x02, x03;
+    float x10, x11, x12, x13;
+    float x20, x21, x22, x23;
+    float x30, x31, x32, x33;
+    double y01, y02, y03, y12, y13, y23;
+    float z00, z10, z20, z30;
+    float z01, z11, z21, z31;
+    double z02, z03, z12, z13, z22, z23, z32, z33;
+
+    // Pickle 1st two columns of matrix into registers
+    x00 = m.data[0][0];
+    x01 = m.data[0][1];
+    x10 = m.data[1][0];
+    x11 = m.data[1][1];
+    x20 = m.data[2][0];
+    x21 = m.data[2][1];
+    x30 = m.data[3][0];
+    x31 = m.data[3][1];
+
+    // Compute all six 2x2 determinants of 1st two columns
+    y01 = x00*x11 - x10*x01;
+    y02 = x00*x21 - x20*x01;
+    y03 = x00*x31 - x30*x01;
+    y12 = x10*x21 - x20*x11;
+    y13 = x10*x31 - x30*x11;
+    y23 = x20*x31 - x30*x21;
+
+    // Pickle 2nd two columns of matrix into registers
+    x02 = m.data[0][2];
+    x03 = m.data[0][3];
+    x12 = m.data[1][2];
+    x13 = m.data[1][3];
+    x22 = m.data[2][2];
+    x23 = m.data[2][3];
+    x32 = m.data[3][2];
+    x33 = m.data[3][3];
+
+    // Compute all 3x3 cofactors for 2nd two columns */
+    z33 = x02*y12 - x12*y02 + x22*y01;
+    z23 = x12*y03 - x32*y01 - x02*y13;
+    z13 = x02*y23 - x22*y03 + x32*y02;
+    z03 = x22*y13 - x32*y12 - x12*y23;
+    z32 = x13*y02 - x23*y01 - x03*y12;
+    z22 = x03*y13 - x13*y03 + x33*y01;
+    z12 = x23*y03 - x33*y02 - x03*y23;
+    z02 = x13*y23 - x23*y13 + x33*y12;
+
+    // Compute all six 2x2 determinants of 2nd two columns
+    y01 = x02*x13 - x12*x03;
+    y02 = x02*x23 - x22*x03;
+    y03 = x02*x33 - x32*x03;
+    y12 = x12*x23 - x22*x13;
+    y13 = x12*x33 - x32*x13;
+    y23 = x22*x33 - x32*x23;
+
+    // Compute all 3x3 cofactors for 1st two columns
+    z30 = x11*y02 - x21*y01 - x01*y12;
+    z20 = x01*y13 - x11*y03 + x31*y01;
+    z10 = x21*y03 - x31*y02 - x01*y23;
+    z00 = x11*y23 - x21*y13 + x31*y12;
+    z31 = x00*y12 - x10*y02 + x20*y01;
+    z21 = x10*y03 - x30*y01 - x00*y13;
+    z11 = x00*y23 - x20*y03 + x30*y02;
+    z01 = x20*y13 - x30*y12 - x10*y23;
+
+    // compute 4x4 determinant & its reciprocal
+    double det = x30*z30 + x20*z20 + x10*z10 + x00*z00;
+    
+    if (fabsf(float(det)) > kEps) 
+    {
+        mat44 invm;
+
+        // todo: should we switch to float only?
+        double rcp = 1.0 / det;
+
+        // Multiply all 3x3 cofactors by reciprocal & transpose
+        invm.data[0][0] = float(z00*rcp);
+        invm.data[0][1] = float(z10*rcp);
+        invm.data[1][0] = float(z01*rcp);
+        invm.data[0][2] = float(z20*rcp);
+        invm.data[2][0] = float(z02*rcp);
+        invm.data[0][3] = float(z30*rcp);
+        invm.data[3][0] = float(z03*rcp);
+        invm.data[1][1] = float(z11*rcp);
+        invm.data[1][2] = float(z21*rcp);
+        invm.data[2][1] = float(z12*rcp);
+        invm.data[1][3] = float(z31*rcp);
+        invm.data[3][1] = float(z13*rcp);
+        invm.data[2][2] = float(z22*rcp);
+        invm.data[2][3] = float(z32*rcp);
+        invm.data[3][2] = float(z23*rcp);
+        invm.data[3][3] = float(z33*rcp);
+
+        return invm;
+    }
+    else 
+    {
+        return mat44();
+    }
+}
+
+inline CUDA_CALLABLE void adj_inverse(const mat44& m, mat44& adj_m, const mat44& adj_ret)
+{
+    // todo: how to cache this from the forward pass?
+    mat44 invt = transpose(inverse(m));
+
+    // see https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf 2.2.3
+    adj_m -= mul(mul(invt, adj_ret), invt);
 }
 
 inline CUDA_CALLABLE vec3 transform_point(const mat44& m, const vec3& v)

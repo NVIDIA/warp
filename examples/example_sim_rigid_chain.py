@@ -25,114 +25,130 @@ import warp.sim.render
 
 wp.init()
 
-sim_steps = 200
-sim_substeps = 32
-sim_dt = 1.0/60.0
-sim_time = 0.0
 
-chain_length = 8
-chain_width = 1.0
-chain_types = [wp.sim.JOINT_REVOLUTE,
-               wp.sim.JOINT_FIXED, 
-               wp.sim.JOINT_BALL,
-               wp.sim.JOINT_UNIVERSAL,
-               wp.sim.JOINT_COMPOUND]
+class Example:
 
-device = wp.get_preferred_device()
+    def __init__(self, stage):
 
-builder = wp.sim.ModelBuilder()
+        self.sim_steps = 200
+        self.sim_substeps = 16
+        self.sim_dt = 1.0/60.0
+        self.sim_time = 0.0
+
+        self.chain_length = 8
+        self.chain_width = 1.0
+        self.chain_types = [wp.sim.JOINT_REVOLUTE,
+                            wp.sim.JOINT_FIXED, 
+                            wp.sim.JOINT_BALL,
+                            wp.sim.JOINT_UNIVERSAL,
+                            wp.sim.JOINT_COMPOUND]
+
+        self.device = wp.get_preferred_device()
+
+        builder = wp.sim.ModelBuilder()
+
+        for c, t in enumerate(self.chain_types):
+
+            # start a new articulation
+            builder.add_articulation()
+
+            for i in range(self.chain_length):
+
+                if i == 0:
+                    parent = -1
+                    parent_joint_xform = wp.transform([0.0, 0.0, c*1.0], wp.quat_identity())           
+                else:
+                    parent = builder.joint_count-1
+                    parent_joint_xform = wp.transform([self.chain_width, 0.0, 0.0], wp.quat_identity())
+
+                joint_type = t
+
+                if joint_type == wp.sim.JOINT_REVOLUTE:
+
+                    joint_axis=(0.0, 0.0, 1.0)
+                    joint_limit_lower=-np.deg2rad(60.0)
+                    joint_limit_upper=np.deg2rad(60.0)
+
+                elif joint_type == wp.sim.JOINT_UNIVERSAL:
+                    joint_axis=(1.0, 0.0, 0.0)
+                    joint_limit_lower=-np.deg2rad(60.0),
+                    joint_limit_upper=np.deg2rad(60.0),
+
+                elif joint_type == wp.sim.JOINT_BALL:
+                    joint_axis=(0.0, 0.0, 0.0)
+                    joint_limit_lower = 100.0
+                    joint_limit_upper = -100.0
+
+                elif joint_type == wp.sim.JOINT_FIXED:
+                    joint_axis=(0.0, 0.0, 0.0)
+                    joint_limit_lower = 0.0
+                    joint_limit_upper = 0.0
+            
+                elif joint_type == wp.sim.JOINT_COMPOUND:
+                    joint_limit_lower=-np.deg2rad(60.0)
+                    joint_limit_upper=np.deg2rad(60.0)
+
+                # create body
+                b = builder.add_body(
+                        parent=parent,
+                        origin=wp.transform([i, 0.0, c*1.0], wp.quat_identity()),
+                        joint_xform=parent_joint_xform,
+                        joint_axis=joint_axis,
+                        joint_type=joint_type,
+                        joint_limit_lower=joint_limit_lower,
+                        joint_limit_upper=joint_limit_upper,
+                        joint_target_ke=0.0,
+                        joint_target_kd=0.0,
+                        joint_limit_ke=30.0,
+                        joint_limit_kd=30.0,
+                        joint_armature=0.1)
+
+                # create shape
+                s = builder.add_shape_box( 
+                        pos=(self.chain_width*0.5, 0.0, 0.0),
+                        hx=self.chain_width*0.5,
+                        hy=0.1,
+                        hz=0.1,
+                        density=10.0,
+                        body=b)
 
 
-for c, t in enumerate(chain_types):
+        self.model = builder.finalize(self.device)
+        self.model.ground = False
 
-    # start a new articulation
-    builder.add_articulation()
+        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.state = self.model.state()
 
-    for i in range(chain_length):
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
-        if i == 0:
-            parent = -1
-            parent_joint_xform = wp.transform([0.0, 0.0, c*1.0], wp.quat_identity())           
-        else:
-            parent = builder.joint_count-1
-            parent_joint_xform = wp.transform([chain_width, 0.0, 0.0], wp.quat_identity())
+    def update(self):
 
-        joint_type = t
-
-        if joint_type == wp.sim.JOINT_REVOLUTE:
-
-            joint_axis=(0.0, 0.0, 1.0)
-            joint_limit_lower=-np.deg2rad(60.0)
-            joint_limit_upper=np.deg2rad(60.0)
-
-        elif joint_type == wp.sim.JOINT_UNIVERSAL:
-            joint_axis=(1.0, 0.0, 0.0)
-            joint_limit_lower=-np.deg2rad(60.0),
-            joint_limit_upper=np.deg2rad(60.0),
-
-        elif joint_type == wp.sim.JOINT_BALL:
-            joint_axis=(0.0, 0.0, 0.0)
-            joint_limit_lower = 100.0
-            joint_limit_upper = -100.0
-
-        elif joint_type == wp.sim.JOINT_FIXED:
-            joint_axis=(0.0, 0.0, 0.0)
-            joint_limit_lower = 0.0
-            joint_limit_upper = 0.0
-       
-        elif joint_type == wp.sim.JOINT_COMPOUND:
-            joint_limit_lower=-np.deg2rad(60.0)
-            joint_limit_upper=np.deg2rad(60.0)
-
-        # create body
-        b = builder.add_body(
-                parent=parent,
-                origin=wp.transform([i, 0.0, c*1.0], wp.quat_identity()),
-                joint_xform=parent_joint_xform,
-                joint_axis=joint_axis,
-                joint_type=joint_type,
-                joint_limit_lower=joint_limit_lower,
-                joint_limit_upper=joint_limit_upper,
-                joint_target_ke=0.0,
-                joint_target_kd=0.0,
-                joint_limit_ke=30.0,
-                joint_limit_kd=30.0,
-                joint_armature=0.1)
-
-        # create shape
-        s = builder.add_shape_box( 
-                pos=(chain_width*0.5, 0.0, 0.0),
-                hx=chain_width*0.5,
-                hy=0.1,
-                hz=0.1,
-                density=10.0,
-                body=b)
-
-
-model = builder.finalize(device)
-model.ground = False
-
-integrator = wp.sim.SemiImplicitIntegrator()
-state = model.state()
-
-renderer = wp.sim.render.SimRenderer(model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_chain.usd"))
-
-for i in range(sim_steps):
-
-    for s in range(sim_substeps):
-
-        state.clear_forces()
-
-        state = integrator.simulate(model, state, state, sim_dt/sim_substeps)   
+        with wp.ScopedTimer("simulate", active=True):
+            for s in range(self.sim_substeps):
+                self.state.clear_forces()
+                self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt/self.sim_substeps)   
     
-    renderer.begin_frame(sim_time)
-    renderer.render(state)
-    renderer.end_frame()
-   
-    sim_time += sim_dt
+    def render(self, is_live=False):
 
-renderer.save()
+        with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else self.sim_time
+
+            self.renderer.begin_frame(time)
+            self.renderer.render(self.state)
+            self.renderer.end_frame()
+        
+        self.sim_time += self.sim_dt
 
 
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_rigid_chain.usd")
+
+    example = Example(stage_path)
+
+    for i in range(example.sim_steps):
+        example.update()
+        example.render()
+
+    example.renderer.save()
 
 

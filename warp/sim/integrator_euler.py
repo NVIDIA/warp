@@ -153,7 +153,7 @@ def eval_springs(x: wp.array(dtype=wp.vec3),
 @wp.kernel
 def eval_triangles(x: wp.array(dtype=wp.vec3),
                    v: wp.array(dtype=wp.vec3),
-                   indices: wp.array(dtype=int),
+                   indices: wp.array2d(dtype=int),
                    pose: wp.array(dtype=wp.mat22),
                    activation: wp.array(dtype=float),
                    k_mu: float,
@@ -164,9 +164,9 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
                    f: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
 
-    i = indices[tid * 3 + 0]
-    j = indices[tid * 3 + 1]
-    k = indices[tid * 3 + 2]
+    i = indices[tid, 0]
+    j = indices[tid, 1]
+    k = indices[tid, 2]
 
     x0 = x[i]        # point zero
     x1 = x[j]        # point one
@@ -565,14 +565,20 @@ def eval_triangles_body_contacts(
 
 @wp.kernel
 def eval_bending(
-    x: wp.array(dtype=wp.vec3), v: wp.array(dtype=wp.vec3), indices: wp.array(dtype=int), rest: wp.array(dtype=float), ke: float, kd: float, f: wp.array(dtype=wp.vec3)):
+        x: wp.array(dtype=wp.vec3),
+        v: wp.array(dtype=wp.vec3),
+        indices: wp.array2d(dtype=int),
+        rest: wp.array(dtype=float),
+        ke: float,
+        kd: float,
+        f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
-    i = indices[tid * 4 + 0]
-    j = indices[tid * 4 + 1]
-    k = indices[tid * 4 + 2]
-    l = indices[tid * 4 + 3]
+    i = indices[tid,0]
+    j = indices[tid,1]
+    k = indices[tid,2]
+    l = indices[tid,3]
 
     rest_angle = rest[tid]
 
@@ -633,24 +639,24 @@ def eval_bending(
 @wp.kernel
 def eval_tetrahedra(x: wp.array(dtype=wp.vec3),
                     v: wp.array(dtype=wp.vec3),
-                    indices: wp.array(dtype=int),
+                    indices: wp.array2d(dtype=int),
                     pose: wp.array(dtype=wp.mat33),
                     activation: wp.array(dtype=float),
-                    materials: wp.array(dtype=float),
+                    materials: wp.array2d(dtype=float),
                     f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
-    i = indices[tid * 4 + 0]
-    j = indices[tid * 4 + 1]
-    k = indices[tid * 4 + 2]
-    l = indices[tid * 4 + 3]
+    i = indices[tid,0]
+    j = indices[tid,1]
+    k = indices[tid,2]
+    l = indices[tid,3]
 
     act = activation[tid]
 
-    k_mu = materials[tid * 3 + 0]
-    k_lambda = materials[tid * 3 + 1]
-    k_damp = materials[tid * 3 + 2]
+    k_mu = materials[tid,0]
+    k_lambda = materials[tid,1]
+    k_damp = materials[tid,2]
 
     x0 = x[i]
     x1 = x[j]
@@ -1187,12 +1193,12 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     # parent transform and moment arm
     if (c_parent >= 0):
         X_wp = body_q[c_parent]*X_wp
-        r_wp = wp.transform_get_translation(X_wp) - wp.transform_point(body_q[c_parent], body_com[c_parent])
+        r_p = wp.transform_get_translation(X_wp) - wp.transform_point(body_q[c_parent], body_com[c_parent])
         
         twist_p = body_qd[c_parent]
 
         w_p = wp.spatial_top(twist_p)
-        v_p = wp.spatial_bottom(twist_p) + wp.cross(w_p, r_wp)
+        v_p = wp.spatial_bottom(twist_p) + wp.cross(w_p, r_p)
 
     # child transform and moment arm
     X_wc = body_q[c_child]#*X_cj
@@ -1227,6 +1233,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
 
     # translational error
     x_err = x_c - x_p
+    r_err = wp.quat_inverse(q_p)*q_c
     v_err = v_c - v_p
     w_err = w_c - w_p
 
@@ -1241,6 +1248,14 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     if (type == wp.sim.JOINT_FREE):
         return
 
+    if type == wp.sim.JOINT_FIXED:
+
+        ang_err = wp.normalize(wp.vec3(r_err[0], r_err[1], r_err[2]))*wp.acos(r_err[3])*2.0
+
+        f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
+        t_total += wp.transform_vector(X_wp, ang_err)*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
+    
+
     if type == wp.sim.JOINT_PRISMATIC:
         
         # world space joint axis
@@ -1250,73 +1265,43 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         q = wp.dot(x_err, axis_p)
         qd = wp.dot(v_err, axis_p)
 
-        limit_f = 0.0
-
-        # compute limit forces, damping only active when limit is violated
-        if (q < limit_lower):
-            limit_f = limit_ke*(limit_lower-q) - limit_kd*min(qd, 0.0)
-
-        if (q > limit_upper):
-            limit_f = limit_ke*(limit_upper-q) - limit_kd*max(qd, 0.0)
-
-        # joint dynamics
-        f_total += (target_ke*(q - target) + target_kd*qd + act - limit_f)*axis_p
+        f_total = eval_joint_force(q, qd, target, target_ke, target_kd, act, limit_lower, limit_upper, limit_ke, limit_kd, axis_p)
 
         # attachment dynamics
-        q_pc = wp.quat_inverse(q_p)*q_c
+        ang_err = wp.normalize(wp.vec3(r_err[0], r_err[1], r_err[2]))*wp.acos(r_err[3])*2.0
 
-        ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
-    
+        # project off any displacement along the joint axis
         f_total += (x_err - q*axis_p)*joint_attach_ke + (v_err - qd*axis_p)*joint_attach_kd
-        t_total += ang_err*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
-    
+        t_total += wp.transform_vector(X_wp, ang_err)*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
+
+
     if type == wp.sim.JOINT_REVOLUTE:
         
         axis_p = wp.transform_vector(X_wp, axis)
         axis_c = wp.transform_vector(X_wc, axis)
 
         # swing twist decomposition
-        q_pc = wp.quat_inverse(q_p)*q_c
-        twist = wp.quat_twist(axis, q_pc)
+        twist = wp.quat_twist(axis, r_err)
 
         q = wp.acos(twist[3])*2.0*wp.sign(wp.dot(axis, wp.vec3(twist[0], twist[1], twist[2])))
         qd = wp.dot(w_err, axis_p)
 
-        limit_f = 0.0
+        t_total = eval_joint_force(q, qd, target, target_ke, target_kd, act, limit_lower, limit_upper, limit_ke, limit_kd, axis_p)
 
-        if (q < limit_lower):
-            limit_f = limit_ke*(limit_lower-q) - limit_kd*min(qd, 0.0)
-
-        if (q > limit_upper):
-            limit_f = limit_ke*(limit_upper-q) - limit_kd*max(qd, 0.0)
-
-        # joint dynamics        
-        t_total += (target_ke*(q - target) + target_kd*qd + act - limit_f)*axis_p
-
-        # remove swing
+        # attachment dynamics
         swing_err = wp.cross(axis_p, axis_c)
 
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
         t_total += swing_err*joint_attach_ke + (w_err - qd*axis_p)*joint_attach_kd*angular_damping_scale
+
  
     if type == wp.sim.JOINT_BALL:
         
-        q_pc = wp.quat_inverse(q_p)*q_c
-        ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
-        #ang_err = wp.vec3(q_pc[0], q_pc[1], q_pc[2])
+        ang_err = wp.normalize(wp.vec3(r_err[0], r_err[1], r_err[2]))*wp.acos(r_err[3])*2.0
 
         # todo: joint limits
-        t_total += target_kd*w_err + target_ke*ang_err
+        t_total += target_kd*w_err + target_ke*wp.transform_vector(X_wp, ang_err)
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
-    
-    if type == wp.sim.JOINT_FIXED:
-
-        q_pc = wp.quat_inverse(q_p)*q_c
-        ang_err = wp.normalize(wp.vec3(q_pc[0], q_pc[1], q_pc[2]))*wp.acos(q_pc[3])*2.0
-        #ang_err = wp.vec3(q_pc[0], q_pc[1], q_pc[2])
-
-        f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
-        t_total += ang_err*joint_attach_ke + w_err*joint_attach_kd*angular_damping_scale
     
     if type == wp.sim.JOINT_COMPOUND:
 
@@ -1446,41 +1431,6 @@ def eval_muscles(
     for i in range(m_start, m_end):
         compute_muscle_force(i, body_X_s, body_v_s, body_com, muscle_links, muscle_points, activation, body_f_s)
     
-
-
-@wp.kernel
-def eval_dense_gemm(m: int, n: int, p: int, t1: int, t2: int, A: wp.array(dtype=float), B: wp.array(dtype=float), C: wp.array(dtype=float)):
-    dense_gemm(m, n, p, t1, t2, A, B, C)
-
-@wp.kernel
-def eval_dense_gemm_batched(m: wp.array(dtype=int), n: wp.array(dtype=int), p: wp.array(dtype=int), t1: int, t2: int, A_start: wp.array(dtype=int), B_start: wp.array(dtype=int), C_start: wp.array(dtype=int), A: wp.array(dtype=float), B: wp.array(dtype=float), C: wp.array(dtype=float)):
-    dense_gemm_batched(m, n, p, t1, t2, A_start, B_start, C_start, A, B, C)
-
-@wp.kernel
-def eval_dense_cholesky(n: int, A: wp.array(dtype=float), regularization: float, L: wp.array(dtype=float)):
-    dense_chol(n, A, regularization, L)
-
-@wp.kernel
-def eval_dense_cholesky_batched(A_start: wp.array(dtype=int), A_dim: wp.array(dtype=int), A: wp.array(dtype=float), regularization: float, L: wp.array(dtype=float)):
-    dense_chol_batched(A_start, A_dim, A, regularization, L)
-
-@wp.kernel
-def eval_dense_subs(n: int, L: wp.array(dtype=float), b: wp.array(dtype=float), x: wp.array(dtype=float)):
-    dense_subs(n, L, b, x)
-
-# helper that propagates gradients back to A, treating L as a constant / temporary variable
-# allows us to reuse the Cholesky decomposition from the forward pass
-@wp.kernel
-def eval_dense_solve(n: int, A: wp.array(dtype=float), L: wp.array(dtype=float), b: wp.array(dtype=float), x: wp.array(dtype=float)):
-    dense_solve(n, A, L, b, x)
-
-# helper that propagates gradients back to A, treating L as a constant / temporary variable
-# allows us to reuse the Cholesky decomposition from the forward pass
-@wp.kernel
-def eval_dense_solve_batched(b_start: wp.array(dtype=int), A_start: wp.array(dtype=int), A_dim: wp.array(dtype=int), A: wp.array(dtype=float), L: wp.array(dtype=float), b: wp.array(dtype=float), x: wp.array(dtype=float)):
-    dense_solve_batched(b_start, A_start, A_dim, A, L, b, x)
-
-
 
 def compute_forces(model, state, particle_f, body_f):
 

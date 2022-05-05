@@ -16,19 +16,18 @@
 import os
 import math
 
-from pxr import Usd, UsdGeom, Gf, Sdf
-
 import numpy as np
 import warp as wp
+import warp.render
 
 wp.init()
 
 @wp.func
 def sample(f: wp.array(dtype=float),
-           x: int,
-           y: int,
-           width: int,
-           height: int):
+        x: int,
+        y: int,
+        width: int,
+        height: int):
 
     # clamp texture coords
     x = wp.clamp(x, 0, width-1)
@@ -39,10 +38,10 @@ def sample(f: wp.array(dtype=float),
 
 @wp.func
 def laplacian(f: wp.array(dtype=float),
-              x: int,
-              y: int,
-              width: int,
-              height: int):
+            x: int,
+            y: int,
+            width: int,
+            height: int):
     
     ddx = sample(f, x+1, y, width, height) - 2.0*sample(f, x,y, width, height) + sample(f, x-1, y, width, height)
     ddy = sample(f, x, y+1, width, height) - 2.0*sample(f, x,y, width, height) + sample(f, x, y-1, width, height)
@@ -51,14 +50,14 @@ def laplacian(f: wp.array(dtype=float),
 
 @wp.kernel
 def wave_displace(hcurrent: wp.array(dtype=float),
-                  hprevious: wp.array(dtype=float),
-                  width: int,
-                  height: int,
-                  center_x: float,
-                  center_y: float,
-                  r: float,
-                  mag: float,
-                  t: float):
+                hprevious: wp.array(dtype=float),
+                width: int,
+                height: int,
+                center_x: float,
+                center_y: float,
+                r: float,
+                mag: float,
+                t: float):
 
     tid = wp.tid()
 
@@ -76,16 +75,15 @@ def wave_displace(hcurrent: wp.array(dtype=float),
         hcurrent[tid] = h
         hprevious[tid] = h
 
-
 @wp.kernel
 def wave_solve(hprevious: wp.array(dtype=float),
-               hcurrent: wp.array(dtype=float),
-               width: int,
-               height: int,
-               inv_cell: float,
-               k_speed: float,
-               k_damp: float,
-               dt: float):
+            hcurrent: wp.array(dtype=float),
+            width: int,
+            height: int,
+            inv_cell: float,
+            k_speed: float,
+            k_damp: float,
+            dt: float):
 
     tid = wp.tid()
 
@@ -103,7 +101,6 @@ def wave_solve(hprevious: wp.array(dtype=float),
     # buffers get swapped each iteration
     hprevious[tid] = h
 
-
 # simple kernel to apply height deltas to a vertex array
 @wp.kernel
 def grid_update(heights: wp.array(dtype=float),
@@ -118,143 +115,123 @@ def grid_update(heights: wp.array(dtype=float),
 
     vertices[tid] = v_new
 
+class Example:
 
-# params
-sim_width = 128
-sim_height = 128
+    def __init__(self, stage):
 
-sim_fps = 60.0
-sim_substeps = 16
-sim_duration = 5.0
-sim_frames = int(sim_duration*sim_fps)
-sim_dt = (1.0/sim_fps)/sim_substeps
-sim_time = 0.0
+        self.sim_width = 128
+        self.sim_height = 128
 
-# wave constants
-k_speed = 1.0
-k_damp = 0.0
+        self.sim_fps = 60.0
+        self.sim_substeps = 16
+        self.sim_duration = 5.0
+        self.sim_frames = int(self.sim_duration*self.sim_fps)
+        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_time = 0.0
 
-# set up grid for visualization
-stage = Usd.Stage.CreateNew(os.path.join(os.path.dirname(__file__), "outputs/example_wave.usd"))
-stage.SetStartTimeCode(0.0)
-stage.SetEndTimeCode(sim_duration*sim_fps)
-stage.SetTimeCodesPerSecond(sim_fps)
+        # wave constants
+        self.k_speed = 1.0
+        self.k_damp = 0.0
 
-grid = UsdGeom.Mesh.Define(stage, "/root")
-grid_size = 0.1
-grid_displace = 0.5
+        # grid constants
+        self.grid_size = 0.1
+        self.grid_displace = 0.5
 
-device = wp.get_preferred_device()
+        self.device = wp.get_preferred_device()
 
-vertices = []
-indices = []
-counts = []
+        self.renderer = wp.render.UsdRenderer(stage)
 
-def add_sphere(stage, pos: tuple, radius: float, time: float=0.0):
-    """Debug helper to add a sphere for visualization
-    
-    Args:
-        pos: The position of the sphere
-        radius: The radius of the sphere
-        name: A name for the USD prim on the stage
-    """
+        vertices = []
+        self.indices = []
 
-    sphere_path = "/sphere"
-    sphere = UsdGeom.Sphere.Get(stage, sphere_path)
-    if not sphere:
-        sphere = UsdGeom.Sphere.Define(stage, sphere_path)
-    
-    sphere.GetRadiusAttr().Set(radius, time)
+        def grid_index(x, y, stride):
+            return y*stride + x
 
-    mat = Gf.Matrix4d()
-    mat.SetIdentity()
-    mat.SetTranslateOnly(Gf.Vec3d(pos))
+        for z in range(self.sim_height):
+            for x in range(self.sim_width):
 
-    op = sphere.MakeMatrixXform()
-    op.Set(mat, time)
+                pos = (float(x)*self.grid_size, 0.0, float(z)*self.grid_size)# - Gf.Vec3f(float(self.sim_width)/2*self.grid_size, 0.0, float(self.sim_height)/2*self.grid_size)
 
-def grid_index(x, y, stride):
-    return y*stride + x
+                # directly modifies verts_host memory since this is a numpy alias of the same buffer
+                vertices.append(pos)
+                    
+                if (x > 0 and z > 0):
+                    
+                    self.indices.append(grid_index(x-1, z-1, self.sim_width))
+                    self.indices.append(grid_index(x, z, self.sim_width))
+                    self.indices.append(grid_index(x, z-1, self.sim_width))
 
-for z in range(sim_height):
-    for x in range(sim_width):
+                    self.indices.append(grid_index(x-1, z-1, self.sim_width))
+                    self.indices.append(grid_index(x-1, z, self.sim_width))
+                    self.indices.append(grid_index(x, z, self.sim_width))
 
-        pos = (float(x)*grid_size, 0.0, float(z)*grid_size)# - Gf.Vec3f(float(sim_width)/2*grid_size, 0.0, float(sim_height)/2*grid_size)
+        # simulation grids
+        self.sim_grid0 = wp.zeros(self.sim_width*self.sim_height, dtype=float, device=self.device)
+        self.sim_grid1 = wp.zeros(self.sim_width*self.sim_height, dtype=float, device=self.device)
+        self.sim_verts = wp.array(vertices, dtype=wp.vec3, device=self.device)
 
-        # directly modifies verts_host memory since this is a numpy alias of the same buffer
-        vertices.append(pos)
-            
-        if (x > 0 and z > 0):
-            
-            indices.append(grid_index(x-1, z-1, sim_width))
-            indices.append(grid_index(x, z, sim_width))
-            indices.append(grid_index(x, z-1, sim_width))
+        #create surface displacment around a point
+        self.cx = self.sim_width/2 + math.sin(self.sim_time)*self.sim_width/3
+        self.cy = self.sim_height/2 + math.cos(self.sim_time)*self.sim_height/3
 
-            indices.append(grid_index(x-1, z-1, sim_width))
-            indices.append(grid_index(x-1, z, sim_width))
-            indices.append(grid_index(x, z, sim_width))
+    def update(self):
 
-            counts.append(3)
-            counts.append(3)
+        with wp.ScopedTimer("simulate", active=True):
 
-grid.GetPointsAttr().Set(vertices, 0.0)
-grid.GetFaceVertexIndicesAttr().Set(indices, 0.0)
-grid.GetFaceVertexCountsAttr().Set(counts, 0.0)
+            for s in range(self.sim_substeps):
 
-# simulation grids
-sim_grid0 = wp.zeros(sim_width*sim_height, dtype=float, device=device)
-sim_grid1 = wp.zeros(sim_width*sim_height, dtype=float, device=device)
-sim_verts = wp.array(vertices, dtype=wp.vec3, device=device)
+                #create surface displacment around a point
+                self.cx = self.sim_width/2 + math.sin(self.sim_time)*self.sim_width/3
+                self.cy = self.sim_height/2 + math.cos(self.sim_time)*self.sim_height/3
 
+                wp.launch(
+                    kernel=wave_displace, 
+                    dim=self.sim_width*self.sim_height, 
+                    inputs=[self.sim_grid0, self.sim_grid1, self.sim_width, self.sim_height, self.cx, self.cy, 10.0, self.grid_displace, -math.pi*0.5],  
+                    device=self.device)
 
-for i in range(sim_frames):
+                # integrate wave equation
+                wp.launch(
+                    kernel=wave_solve, 
+                    dim=self.sim_width*self.sim_height, 
+                    inputs=[self.sim_grid0, self.sim_grid1, self.sim_width, self.sim_height, 1.0/self.grid_size, self.k_speed, self.k_damp, self.sim_dt], 
+                    device=self.device)
 
-    # simulate
-    with wp.ScopedTimer("Simulate"):
+                # swap grids
+                (self.sim_grid0, self.sim_grid1) = (self.sim_grid1, self.sim_grid0)
 
-        for s in range(sim_substeps):
+                self.sim_time += self.sim_dt
 
-            #create surface displacment around a point
-            cx = sim_width/2 + math.sin(sim_time)*sim_width/3
-            cy = sim_height/2 + math.cos(sim_time)*sim_height/3
+        with wp.ScopedTimer("mesh", active=False):
 
-            wp.launch(
-                kernel=wave_displace, 
-                dim=sim_width*sim_height, 
-                inputs=[sim_grid0, sim_grid1, sim_width, sim_height, cx, cy, 10.0, grid_displace, -math.pi*0.5],  
-                device=device)
-
-
-            # integrate wave equation
-            wp.launch(
-                kernel=wave_solve, 
-                dim=sim_width*sim_height, 
-                inputs=[sim_grid0, sim_grid1, sim_width, sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
-                device=device)
-
-            # swap grids
-            (sim_grid0, sim_grid1) = (sim_grid1, sim_grid0)
-
-            sim_time += sim_dt
-
-    # render
-    with wp.ScopedTimer("Render"):
-
-        # update grid vertices from heights (CPU)
-        with wp.ScopedTimer("Mesh"):
-
+            # update grid vertices from heights 
             wp.launch(kernel=grid_update,
-                        dim=sim_width*sim_height,
-                        inputs=[sim_grid0, sim_verts],
-                        device=device)
+                        dim=self.sim_width*self.sim_height,
+                        inputs=[self.sim_grid0, self.sim_verts],
+                        device=self.device)
 
-        with wp.ScopedTimer("Usd"):
-            
-            vertices = sim_verts.numpy()
+    def render(self, is_live=False):
 
-            grid.GetPointsAttr().Set(vertices, sim_time*sim_fps)
+        with wp.ScopedTimer("render", active=True):
+            time = 0.0 if is_live else self.sim_time
 
-            add_sphere(stage, (cx*grid_size, 0.0, cy*grid_size), 10.0*grid_size, sim_time*sim_fps)
+            vertices = self.sim_verts.numpy()
+
+            self.renderer.begin_frame(time)
+            self.renderer.render_mesh("surface", vertices, self.indices)
+            self.renderer.render_sphere("sphere", (self.cx*self.grid_size, 0.0, self.cy*self.grid_size), (0.0, 0.0, 0.0, 1.0), 10.0*self.grid_size)
+            self.renderer.end_frame()
 
 
-stage.Save()
+
+
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_wave.usd")
+
+    example = Example(stage_path)
+
+    for i in range(example.sim_frames):
+        example.update()
+        example.render()
+
+    example.renderer.save()

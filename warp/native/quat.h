@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "mat33.h"
+
 namespace wp
 {
 
@@ -52,7 +54,7 @@ inline CUDA_CALLABLE void adj_quat(const vec3& v, float w, vec3& adj_v, float& a
     adj_w   += adj_ret.w;
 }
 
-// foward methods
+// forward methods
 
 inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
 {
@@ -140,6 +142,66 @@ inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
     return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
 }
 
+inline CUDA_CALLABLE mat33 quat_to_matrix(const quat& q)
+{
+    vec3 c1 = quat_rotate(q, vec3(1.0, 0.0, 0.0));
+    vec3 c2 = quat_rotate(q, vec3(0.0, 1.0, 0.0));
+    vec3 c3 = quat_rotate(q, vec3(0.0, 0.0, 1.0));
+
+    return mat33(c1, c2, c3);
+}
+
+inline CUDA_CALLABLE quat quat_from_matrix(const mat33& m)
+{
+    const float tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
+    float x, y, z, w, h = 0.0f;
+
+    if (tr >= 0.0f) {
+        h = sqrt(tr + 1.0f);
+        w = 0.5f * h;
+        h = 0.5f / h;
+
+        x = (m.data[2][1] - m.data[1][2]) * h;
+        y = (m.data[0][2] - m.data[2][0]) * h;
+        z = (m.data[1][0] - m.data[0][1]) * h;
+    } else {
+        size_t max_diag = 0;
+        if (m.data[1][1] > m.data[0][0]) {
+            max_diag = 1;
+        }
+        if (m.data[2][2] > m.data[max_diag][max_diag]) {
+            max_diag = 2;
+        }
+
+        if (max_diag == 0) {
+            h = sqrt((m.data[0][0] - (m.data[1][1] + m.data[2][2])) + 1.0f);
+            x = 0.5f * h;
+            h = 0.5f / h;
+
+            y = (m.data[0][1] + m.data[1][0]) * h;
+            z = (m.data[2][0] + m.data[0][2]) * h;
+            w = (m.data[2][1] - m.data[1][2]) * h;
+        } else if (max_diag == 1) {
+            h = sqrt((m.data[1][1] - (m.data[2][2] + m.data[0][0])) + 1.0f);
+            y = 0.5f * h;
+            h = 0.5f / h;
+
+            z = (m.data[1][2] + m.data[2][1]) * h;
+            x = (m.data[0][1] + m.data[1][0]) * h;
+            w = (m.data[0][2] - m.data[2][0]) * h;
+        } if (max_diag == 2) {
+            h = sqrt((m.data[2][2] - (m.data[0][0] + m.data[1][1])) + 1.0f);
+            z = 0.5f * h;
+            h = 0.5f / h;
+
+            x = (m.data[2][0] + m.data[0][2]) * h;
+            y = (m.data[1][2] + m.data[2][1]) * h;
+            w = (m.data[1][0] - m.data[0][1]) * h;
+        }
+    }
+
+    return normalize(quat(x, y, z, w));
+}
 
 inline CUDA_CALLABLE float index(const quat& a, int idx)
 {
@@ -218,7 +280,6 @@ inline CUDA_CALLABLE void adj_quat_inverse(const quat& q, quat& adj_q, const qua
     adj_q.z -= adj_ret.z;
     adj_q.w += adj_ret.w;
 }
-
 
 // inline void adj_normalize(const quat& a, quat& adj_a, const quat& adj_ret)
 // {
@@ -342,6 +403,22 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
         adj_p.y += r.y*(t3+(q.y*q.y)*2.0f-1.0f)+r.x*(t4+q.x*q.y*2.0f)-r.z*(t7-q.y*q.z*2.0f);
         adj_p.z += -r.x*(t5-t6)+r.z*(t3+(q.z*q.z)*2.0f-1.0f)+r.y*(t7+q.y*q.z*2.0f);
     }
+}
+
+inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)
+{
+    // we don't care about adjoint w.r.t. constant identity matrix
+    vec3 t;
+
+    adj_quat_rotate(q, vec3(1.0, 0.0, 0.0), adj_q, t, adj_ret.get_col(0));
+    adj_quat_rotate(q, vec3(0.0, 1.0, 0.0), adj_q, t, adj_ret.get_col(1));
+    adj_quat_rotate(q, vec3(0.0, 0.0, 1.0), adj_q, t, adj_ret.get_col(2));
+}
+
+
+inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, const quat& adj_ret)
+{
+    // TODO
 }
 
 } // namespace wp

@@ -17,10 +17,13 @@ import unittest
 import warp as wp
 from warp.tests.test_base import *
 
+#wp.config.mode = "debug"
+
 wp.init()
 
 @wp.kernel
 def test_rename():
+
 
     a = 0
     b = 1
@@ -151,6 +154,29 @@ def test_range_dynamic(start: int, end: int, step: int, result: wp.array(dtype=i
         result[output] = i
         output += 1
 
+@wp.kernel
+def test_range_dynamic_nested(n: int):
+    
+    sum1 = float(0.0)
+    sum2 = float(0.0)
+    sum3 = float(0.0)
+
+    for i in range(n):
+        sum1 = sum1 + 1.0
+        sum3 = sum3 + 1.0
+
+        for j in range(n):
+            sum2 = sum2 + 1.0
+            sum3 = sum3 + 1.0
+        
+        sum3 = sum3 + 1.0
+
+
+    wp.expect_eq(sum1, float(n))
+    wp.expect_eq(sum2, float(n*n))
+    wp.expect_eq(sum3, float(n*n + 2*n))
+
+
 
 @wp.kernel
 def test_while(n: int):
@@ -186,6 +212,8 @@ def register(parent):
     add_kernel_test(TestCodeGen, name="test_range_static_sum", kernel=test_range_static_sum, dim=1, expect=[10, 10, 10], devices=devices)
     add_kernel_test(TestCodeGen, name="test_range_dynamic_sum", kernel=test_range_dynamic_sum, dim=1, inputs=[0, 10, 2], expect=[10, 10, 10, 10], devices=devices)
     add_kernel_test(TestCodeGen, name="test_range_dynamic_sum_zero", kernel=test_range_dynamic_sum, dim=1, inputs=[0, 0, 1], expect=[0, 0, 0, 0], devices=devices)
+
+    add_kernel_test(TestCodeGen, name="test_range_dynamic_nested", kernel=test_range_dynamic_nested, dim=1, inputs=[4], devices=devices)
 
     add_kernel_test(TestCodeGen, name="test_while_zero", kernel=test_while, dim=1, inputs=[0], devices=devices)
     add_kernel_test(TestCodeGen, name="test_while_positive", kernel=test_while, dim=1, inputs=[16], devices=devices)

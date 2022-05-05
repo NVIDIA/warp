@@ -19,6 +19,8 @@ def from_torch(t, dtype=warp.types.float32):
 
     if len(t.shape) > 1 and warp.type_length(dtype) == 1:
         rows = t.numel()
+    elif len(t.shape) > 1 and warp.type_length(dtype) > 1:
+        rows = t.numel() // warp.type_length(dtype)
     elif len(t.shape) == 1:
         rows = t.shape[0]
 

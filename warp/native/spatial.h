@@ -253,13 +253,13 @@ CUDA_CALLABLE inline void adj_transform_multiply(const transform& a, const trans
     adj_mul(a.q, b.q, adj_a.q, adj_b.q, adj_ret.q);
 }
 
-/*
+
 CUDA_CALLABLE inline transform transform_inverse(const transform& t)
 {
-    quat q_inv = inverse(t.q);
+    quat q_inv = quat_inverse(t.q);
     return transform(-quat_rotate(q_inv, t.p), q_inv);
 }
-*/
+
     
 CUDA_CALLABLE inline vec3 transform_vector(const transform& t, const vec3& x)
 {
@@ -375,16 +375,17 @@ CUDA_CALLABLE inline void adj_transform_get_rotation(const transform& t, transfo
     adj_t.q += adj_ret;
 }
 
-/*
+
 CUDA_CALLABLE inline void adj_transform_inverse(const transform& t, transform& adj_t, const transform& adj_ret)
 {
-    //quat q_inv = inverse(t.q);
-    //return transform(-quat_rotate(q_inv, t.p), q_inv);
 
-    quat q_inv = inverse(t.q); 
+    // forward
+    quat q_inv = quat_inverse(t.q); 
     vec3 p = quat_rotate(q_inv, t.p);
     vec3 np = -p;
+    // transform t = transform(np, q_inv)
 
+    // backward
     quat adj_q_inv = 0.0f;
     quat adj_q = 0.0f;
     vec3 adj_p = 0.0f;
@@ -393,10 +394,10 @@ CUDA_CALLABLE inline void adj_transform_inverse(const transform& t, transform& a
     adj_transform(np, q_inv, adj_np, adj_q_inv, adj_ret);
     adj_p = -adj_np;
     adj_quat_rotate(q_inv, t.p, adj_q_inv, adj_t.p, adj_p);
-    adj_inverse(t.q, adj_t.q, adj_q_inv);
+    adj_quat_inverse(t.q, adj_t.q, adj_q_inv);
     
 }
-*/
+
 
 
 CUDA_CALLABLE inline void adj_transform_vector(const transform& t, const vec3& x, transform& adj_t, vec3& adj_x, const vec3& adj_ret)

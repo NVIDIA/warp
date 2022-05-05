@@ -48,6 +48,31 @@ class StdOutCapture:
         return str(res.decode("utf-8"))
 
 
+class CheckOutput:
+
+    def __init__(self, test):
+        self.test = test
+
+    def __enter__(self):
+        wp.force_load()
+
+        self.capture = StdOutCapture()
+        self.capture.begin()
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        
+        # ensure any stdout output is flushed
+        wp.synchronize()
+
+        s = self.capture.end()
+        if (s != ""):
+            print(s)
+            
+        # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)
+        self.test.assertEqual(s, "")
+
+
 def assert_array_equal(result, expect):
 
     a = result.numpy()
@@ -74,16 +99,19 @@ def assert_np_equal(result, expect, tol=0.0):
             raise AssertionError(f"Maximum expected error exceeds tolerance got: {a}, expected: {b}, with err: {err} > {tol}")
 
 
+def create_test_func(func, device, **kwargs):
+
+    # pass args to func
+    def test_func(self):
+        func(self, device, **kwargs)
+
+    return test_func
+
 
 def add_function_test(cls, name, func, devices=["cpu"], **kwargs):
     
     for device in devices:
-
-        # pass args to func
-        def test_func(self):
-            func(self, device, **kwargs)
-        
-        setattr(cls, name + "_" + device, test_func)
+        setattr(cls, name + "_" + device, create_test_func(func, device, **kwargs))
 
 
 def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=["cpu"]):
@@ -110,9 +138,9 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
             capture = StdOutCapture()
             capture.begin()
 
-            wp.launch(kernel, dim=dim, inputs=args, device=device)
-            wp.synchronize()
-
+            with CheckOutput(self):
+                wp.launch(kernel, dim=dim, inputs=args, device=device)
+            
             s = capture.end()
 
             # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)
