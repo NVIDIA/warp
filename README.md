@@ -11,7 +11,11 @@ _A selection of physical simulations computed with Warp_
 
 ## Installing 
 
-Warp supports Python versions 3.7.x-3.9.x. Pre-built packages for Windows and Linux are available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment extract the archive and run the following command from the root directory:
+Warp supports Python versions 3.7.x-3.9.x. The easiest way is to install from PyPi:
+
+    pip install warp-lang
+
+Pre-built binary packages for Windows and Linux are also available on the [Releases](https://github.com/NVIDIA/warp/releases) page. To install in your local Python environment extract the archive and run the following command from the root directory:
 
     pip install .
 
