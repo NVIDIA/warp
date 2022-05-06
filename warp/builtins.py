@@ -441,6 +441,16 @@ add_builtin("mesh_get_index", input_types={"id": uint64, "index": int}, value_ty
     doc="""Returns the point-index of the mesh given a face-vertex index.""")
 
 
+add_builtin("closest_point_edge_edge", input_types={"p1":vec3, "q1":vec3, "p2":vec3, "q2":vec3, "epsilon":float}, value_type=vec3, group="Geometry",
+    doc="""Finds the closest points between two edges. Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
+
+   :param p1: First point of first edge
+   :param q1: Second point of first edge
+   :param p2: First point of second edge
+   :param q2: Second point of second edge
+   :param epsilon: Zero tolerance for determining if points in an edge are degenerate.
+   :param out: vec3 output containing (s,t,d), where `s` in [0,1] is the barycentric weight for the first edge, `t` is the barycentric weight for the second edge, and `d` is the distance between the two edges at these two closest points.""")
+
 #---------------------------------
 # Ranges
 
