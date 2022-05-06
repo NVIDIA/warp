@@ -263,9 +263,10 @@ def test_mesh_query_point(test, device):
 
 
 @wp.kernel
-def mesh_query_point(mesh: wp.uint64,
+def mesh_query_point_loss(mesh: wp.uint64,
                 query_points: wp.array(dtype=wp.vec3),
-                projected_points: wp.array(dtype=wp.vec3)):
+                projected_points: wp.array(dtype=wp.vec3),
+                loss: wp.array(dtype=float)):
     
     tid = wp.tid()
 
@@ -283,18 +284,7 @@ def mesh_query_point(mesh: wp.uint64,
 
     projected_points[tid] = q
 
-
-@wp.kernel
-def compute_loss(query_points: wp.array(dtype=wp.vec3),
-                projected_points: wp.array(dtype=wp.vec3),
-                loss: wp.array(dtype=float)):
-
-    tid = wp.tid()
-    p = query_points[tid]
-    q = projected_points[tid]
-
     dist = wp.length(wp.sub(p, q))
-
     loss[tid] = dist
 
 
@@ -313,6 +303,11 @@ def test_adj_mesh_query_point(test, device):
     mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
     mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
 
+    # test tri
+    # print("Testing Single Triangle")
+    # mesh_points = wp.array(np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]), dtype=wp.vec3, device=device)
+    # mesh_indices = wp.array(np.array([0,1,2]), dtype=int, device=device)
+
     # create mesh
     mesh = wp.Mesh(
         points=mesh_points, 
@@ -320,7 +315,7 @@ def test_adj_mesh_query_point(test, device):
         indices=mesh_indices)
 
     # p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
-    p = wp.vec3(1.0, 1.0, 0)
+    p = wp.vec3(50.0, 50.0, 50.0)
 
     tape = wp.Tape()
 
@@ -328,17 +323,16 @@ def test_adj_mesh_query_point(test, device):
     with tape:
 
         query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
-        projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device, requires_grad=True)
+        projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
         loss = wp.zeros(n=1, dtype=float, device=device)
 
-        wp.launch(kernel=mesh_query_point, dim=1, inputs=[mesh.id, query_points, projected_points], device=device)
-        wp.launch(kernel=compute_loss, dim=1, inputs=[query_points, projected_points, loss], device=device)
+        wp.launch(kernel=mesh_query_point_loss, dim=1, inputs=[mesh.id, query_points, projected_points, loss], device=device)
 
     tape.backward(loss=loss)
     analytic = tape.gradients[query_points].numpy().flatten()
 
     # numeric gradients
-    eps = 1.e-4
+    eps = 1.e-3
     loss_values = []
     numeric = np.zeros(3)
 
@@ -349,26 +343,24 @@ def test_adj_mesh_query_point(test, device):
 
     for i in range(6):
         q = offset_query_points[i]
+
         query_points = wp.array(q, dtype=wp.vec3, device=device)
         projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
         loss = wp.zeros(n=1, dtype=float, device=device)
 
-        wp.launch(kernel=mesh_query_point, dim=1, inputs=[mesh.id, query_points, projected_points], device=device)
-        wp.launch(kernel=compute_loss, dim=1, inputs=[query_points, projected_points, loss], device=device)
+        wp.launch(kernel=mesh_query_point_loss, dim=1, inputs=[mesh.id, query_points, projected_points, loss], device=device)
+
         loss_values.append(loss.numpy()[0])
 
     for i in range(3):
         l_0 = loss_values[i*2]
         l_1 = loss_values[i*2+1]
-        gradient = (l_1-l_0) / (2.0*eps)
+        gradient = (l_1 - l_0) / (2.0*eps)
         numeric[i] = gradient
-
-    print(analytic)
-    print(numeric)
 
     error = ((analytic - numeric) * (analytic - numeric)).sum(axis=0)
 
-    tolerance = 4.e-3
+    tolerance = 1.e-3
     test.assertTrue(error < tolerance, f"error is {error} which is >= {tolerance}")
 
 
