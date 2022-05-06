@@ -1,7 +1,7 @@
 import setuptools
 
 setuptools.setup(
-    name="nvidia-warp",                                          
+    name="warp-lang",
     version="0.2.0",
     author="NVIDIA",
     author_email="mmacklin@nvidia.com",
@@ -19,7 +19,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
-        "License :: NVSCL",
+        "License :: Other/Proprietary License",
         "Operating System :: OS Independent",
     ],
     install_requires=["numpy"],
