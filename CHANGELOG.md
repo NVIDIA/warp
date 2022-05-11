@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.2.1] - 2022-05-11
+
+- Fix for unit tests in Kit
+
 ## [0.2.0] - 2022-05-02
 
 ### Warp Core
