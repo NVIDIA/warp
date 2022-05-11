@@ -13,6 +13,7 @@ import warp as wp
 import warp.tests.test_codegen
 import warp.tests.test_mesh_query_aabb
 import warp.tests.test_mesh_query_point
+import warp.tests.test_mesh_query_ray
 import warp.tests.test_conditional
 import warp.tests.test_operators
 import warp.tests.test_rounding
@@ -35,6 +36,7 @@ def run():
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_codegen.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mesh_query_aabb.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mesh_query_point.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mesh_query_ray.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_conditional.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_operators.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_rounding.register(unittest.TestCase)))
