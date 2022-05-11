@@ -17,6 +17,25 @@ np.random.seed(42)
 wp.init()
 
 
+# triangulate a list of polygon face indices
+def triangulate(face_counts, face_indices):
+    num_tris = np.sum(np.subtract(face_counts, 2))
+    num_tri_vtx = num_tris * 3
+    tri_indices = np.zeros(num_tri_vtx, dtype=int)
+    ctr = 0
+    wedgeIdx = 0
+
+    for nb in face_counts:
+        for i in range(nb-2):
+            tri_indices[ctr] = face_indices[wedgeIdx]
+            tri_indices[ctr + 1] = face_indices[wedgeIdx + i + 1]
+            tri_indices[ctr + 2] = face_indices[wedgeIdx + i + 2]
+            ctr+=3
+        wedgeIdx+=nb
+
+    return tri_indices
+
+
 @wp.kernel
 def mesh_query_ray_loss(mesh: wp.uint64,
                 query_points: wp.array(dtype=wp.vec3),
@@ -49,13 +68,26 @@ def mesh_query_ray_loss(mesh: wp.uint64,
 
 def test_adj_mesh_query_ray(test, device):
 
-    # test tri
-    print("Testing Single Triangle")
-    mesh_points = wp.array(np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]), dtype=wp.vec3, device=device)
-    mesh_indices = wp.array(np.array([0,1,2]), dtype=int, device=device)
+    from pxr import Usd, UsdGeom, Gf, Sdf
 
-    p = wp.vec3(0.5, 0.5, 2.0)
-    D = wp.vec3(0.0, 0.0, -1.0)
+    # test tri
+    # print("Testing Single Triangle")
+    # mesh_points = wp.array(np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]), dtype=wp.vec3, device=device)
+    # mesh_indices = wp.array(np.array([0,1,2]), dtype=int, device=device)
+
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.usda")))
+    mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
+
+    mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
+    mesh_indices = mesh_geom.GetFaceVertexIndicesAttr().Get()
+
+    tri_indices = triangulate(mesh_counts, mesh_indices)
+
+    mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
+    mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
+
+    p = wp.vec3(50.0, 50.0, 0.0)
+    D = wp.vec3(0.0, -1.0, 0.0)
 
     # create mesh
     mesh = wp.Mesh(
@@ -79,13 +111,6 @@ def test_adj_mesh_query_ray(test, device):
     q = intersection_points.numpy().flatten()
     analytic_p = tape.gradients[query_points].numpy().flatten()
     analytic_D = tape.gradients[query_dirs].numpy().flatten()
-
-    print("intersection point")
-    print(q)
-    print("analytic_p:")
-    print(analytic_p)
-    print("analytic_D:")
-    print(analytic_D)
 
     # numeric gradients
 
@@ -143,12 +168,13 @@ def test_adj_mesh_query_ray(test, device):
         l_1 = loss_values_D[i*2+1]
         gradient = (l_1 - l_0) / (2.0*eps)
         numeric_D[i] = gradient
-
-    print("numeric_p")
-    print(numeric_p)
-    print("numeric_D")
-    print(numeric_D)
     
+    error_p = ((analytic_p - numeric_p) * (analytic_p - numeric_p)).sum(axis=0)
+    error_D = ((analytic_D - numeric_D) * (analytic_D - numeric_D)).sum(axis=0)
+
+    tolerance = 1.e-3
+    test.assertTrue(error_p < tolerance, f"error is {error_p} which is >= {tolerance}")
+    test.assertTrue(error_D < tolerance, f"error is {error_D} which is >= {tolerance}")
 
 def register(parent):
 

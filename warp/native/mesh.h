@@ -495,7 +495,7 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 
 	vec3 adj_a, adj_b, adj_c;
 
-	adj_intersect_ray_tri_woop(start, dir, a, b, c, t, u, v, sign, n, adj_start, adj_dir, adj_a, adj_b, adj_c, adj_t, adj_u, adj_v, adj_sign, adj_n, adj_ret);
+	adj_intersect_ray_tri_woop(start, dir, a, b, c, t, u, v, sign, &n, adj_start, adj_dir, adj_a, adj_b, adj_c, adj_t, adj_u, adj_v, adj_sign, &adj_n, adj_ret);
 
 }
 
