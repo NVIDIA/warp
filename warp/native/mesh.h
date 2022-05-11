@@ -433,10 +433,10 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 				vec3 q = mesh.points[j];
 				vec3 r = mesh.points[k];
 
-				float t, u, v, w, sign;
+				float t, u, v, sign;
 				vec3 n;
 				
-				if (intersect_ray_tri_woop(start, dir, p, q, r, t, u, v, w, sign, &n))
+				if (intersect_ray_tri_woop(start, dir, p, q, r, t, u, v, sign, &n))
 				{
 					if (t < min_t && t >= 0.0f)
 					{
@@ -481,7 +481,22 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 	uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& n, int& face,
 	uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_n, int& adj_face, bool adj_ret)
 {
-	// nop
+
+	Mesh mesh = mesh_get(id);
+	
+	// face is determined by BVH in forward pass
+	int i = mesh.indices[face*3+0];
+	int j = mesh.indices[face*3+1];
+	int k = mesh.indices[face*3+2];
+
+	vec3 a = mesh.points[i];
+	vec3 b = mesh.points[j];
+	vec3 c = mesh.points[k];
+
+	vec3 adj_a, adj_b, adj_c;
+
+	adj_intersect_ray_tri_woop(start, dir, a, b, c, t, u, v, sign, n, adj_start, adj_dir, adj_a, adj_b, adj_c, adj_t, adj_u, adj_v, adj_sign, adj_n, adj_ret);
+
 }
 
 // stores state required to traverse the BVH nodes that 

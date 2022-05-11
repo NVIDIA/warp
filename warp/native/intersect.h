@@ -254,7 +254,7 @@ CUDA_CALLABLE inline int max_dim(vec3 a)
 }
 
 // http://jcgt.org/published/0002/01/05/
-CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& w, float& sign, vec3* normal)
+CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& sign, vec3* normal)
 {
 	// todo: precompute for ray
 
@@ -323,7 +323,6 @@ CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir,
 	const float rcpDet = 1.0f/det;
 	u = U*rcpDet;
 	v = V*rcpDet;
-	w = W*rcpDet;
 	t = T*rcpDet;
 	sign = det;
 	
@@ -341,8 +340,8 @@ CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir,
 }
 
 CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
-    const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& w, float& sign, vec3* normal,
-    vec3& adj_p, vec3& adj_dir, vec3& adj_a, vec3& adj_b, vec3& adj_c, float& adj_t, float& adj_u, float& adj_v, float& adj_w, float& adj_sign, vec3* normal, bool& adj_ret)
+    const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& sign, vec3* normal,
+    vec3& adj_p, vec3& adj_dir, vec3& adj_a, vec3& adj_b, vec3& adj_c, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3* adj_normal, bool& adj_ret)
 {
 
 	// todo: precompute for ray
@@ -383,8 +382,6 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
 	float V = Ax*Cy - Ay*Cx;
 	float W = Bx*Ay - By*Ax;
 
-    const float det = U + V + W;
-
 	if (U == 0.0f || V == 0.0f || W == 0.0f) 
 	{
 		double CxBy = (double)Cx*(double)By;
@@ -420,17 +417,35 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
 
     // adj_p
 
-    const float dAx_dpx = dBx_dpx = dCx_dpx = -1.f;
-    const float dAy_dpx = dBy_dpx = dCy_dpx = 0.f;
-    const float dAz_dpx = dBz_dpx = dCz_dpx = 0.f;
+    const float dAx_dpx = -1.f;
+    const float dBx_dpx = -1.f;
+    const float dCx_dpx = -1.f;
+    const float dAy_dpx = 0.f;
+    const float dBy_dpx = 0.f;
+    const float dCy_dpx = 0.f;
+    const float dAz_dpx = 0.f;
+    const float dBz_dpx = 0.f;
+    const float dCz_dpx = 0.f;
 
-    const float dAx_dpy = dBx_dpy = dCx_dpy = 0.f;
-    const float dAy_dpy = dBy_dpy = dCy_dpy = -1.f;
-    const float dAz_dpy = dBz_dpy = dCz_dpy = 0.f;
-
-    const float dAx_dpz = dBx_dpz = dCx_dpz = Sx;
-    const float dAy_dpz = dBy_dpz = dCy_dpz = Sy;
-    const float dAz_dpz = dBz_dpz = dCz_dpz = -Sz;
+    const float dAx_dpy = 0.f;
+    const float dBx_dpy = 0.f;
+    const float dCx_dpy = 0.f;
+    const float dAy_dpy = -1.f;
+    const float dBy_dpy = -1.f;
+    const float dCy_dpy = -1.f;
+    const float dAz_dpy = 0.f;
+    const float dBz_dpy = 0.f;
+    const float dCz_dpy = 0.f;
+    
+    const float dAx_dpz = Sx;
+    const float dBx_dpz = Sx;
+    const float dCx_dpz = Sx;
+    const float dAy_dpz = Sy;
+    const float dBy_dpz = Sy;
+    const float dCy_dpz = Sy;
+    const float dAz_dpz = -Sz;
+    const float dBz_dpz = -Sz;
+    const float dCz_dpz = -Sz;
 
     const float dU_dpx = Cx * dBy_dpx + By * dCx_dpx - Cy * dBx_dpx - Bx * dCy_dpx;
     const float dU_dpy = Cx * dBy_dpy + By * dCx_dpy - Cy * dBx_dpy - Bx * dCy_dpy;
@@ -452,17 +467,16 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
     const float dT_dpz = dU_dpz * Az + U * dAz_dpz + dV_dpz * Bz + V * dBz_dpz + dW_dpz * Cz + W * dCz_dpz;
     const vec3 dT_dp = vec3(dT_dpx, dT_dpy, dT_dpz);
 
-    const float dDet_dpx = dU_dpx + dV_dpx + dW_dpx
-    const float dDet_dpy = dU_dpy + dV_dpy + dW_dpy
-    const float dDet_dpz = dU_dpz + dV_dpz + dW_dpz
+    const float dDet_dpx = dU_dpx + dV_dpx + dW_dpx;
+    const float dDet_dpy = dU_dpy + dV_dpy + dW_dpy;
+    const float dDet_dpz = dU_dpz + dV_dpz + dW_dpz;
     const vec3 dDet_dp = vec3(dDet_dpx, dDet_dpy, dDet_dpz);
 
     const vec3 du_dp = rcpDet * dU_dp + -U * rcpDetSq * dDet_dp;
     const vec3 dv_dp = rcpDet * dV_dp + -V * rcpDetSq * dDet_dp;
-    const vec3 dw_dp = rcpDet * dW_dp + -W * rcpDetSq * dDet_dp;
     const vec3 dt_dp = rcpDet * dT_dp + -T * rcpDetSq * dDet_dp;
 
-    adj_p_swapped += adj_u*du_dp + adj_v*dv_dp + adj_w*dw_dp + adj_t*dt_dp;
+    vec3 adj_p_swapped = adj_u*du_dp + adj_v*dv_dp + adj_t*dt_dp;
     adj_p[kx] += adj_p_swapped[0];
     adj_p[ky] += adj_p_swapped[1];
     adj_p[kz] += adj_p_swapped[2];
@@ -472,12 +486,22 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
     const float dAx_dDx = -Sz * A[kz];
     const float dBx_dDx = -Sz * B[kz];
     const float dCx_dDx = -Sz * C[kz];
-    const float dAy_dDx = dBy_dDx = dCy_dDx = 0.f;
+    const float dAy_dDx = 0.f;
+    const float dBy_dDx = 0.f;
+    const float dCy_dDx = 0.f;
+    const float dAz_dDx = 0.f;
+    const float dBz_dDx = 0.f;
+    const float dCz_dDx = 0.f;
     
-    const float dAx_dDy = dBx_dDy = dCx_dDy = 0.f;
+    const float dAx_dDy = 0.f;
+    const float dBx_dDy = 0.f;
+    const float dCx_dDy = 0.f;
     const float dAy_dDy = -Sz * A[kz];
     const float dBy_dDy = -Sz * B[kz];
     const float dCy_dDy = -Sz * C[kz];
+    const float dAz_dDy = 0.f;
+    const float dBz_dDy = 0.f;
+    const float dCz_dDy = 0.f;
     
     const float dAx_dDz = Dx * Sz * Sz * A[kz];
     const float dBx_dDz = Dx * Sz * Sz * B[kz];
@@ -485,6 +509,9 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
     const float dAy_dDz = Dy * Sz * Sz * A[kz];
     const float dBy_dDz = Dy * Sz * Sz * B[kz];
     const float dCy_dDz = Dy * Sz * Sz * C[kz];
+    const float dAz_dDz = -Sz * Sz * A[kz];
+    const float dBz_dDz = -Sz * Sz * B[kz];
+    const float dCz_dDz = -Sz * Sz * C[kz];
 
     const float dU_dDx = Cx * dBy_dDx + By * dCx_dDx - Cy * dBx_dDx - Bx * dCy_dDx;
     const float dU_dDy = Cx * dBy_dDy + By * dCx_dDy - Cy * dBx_dDy - Bx * dCy_dDy;
@@ -504,19 +531,18 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
     const float dT_dDx = dU_dDx * Az + U * dAz_dDx + dV_dDx * Bz + V * dBz_dDx + dW_dDx * Cz + W * dCz_dDx;
     const float dT_dDy = dU_dDy * Az + U * dAz_dDy + dV_dDy * Bz + V * dBz_dDy + dW_dDy * Cz + W * dCz_dDy;
     const float dT_dDz = dU_dDz * Az + U * dAz_dDz + dV_dDz * Bz + V * dBz_dDz + dW_dDz * Cz + W * dCz_dDz;
-    const vec3 dT_dp = vec3(dT_dDx, dT_dDy, dT_dDz);
+    const vec3 dT_dD = vec3(dT_dDx, dT_dDy, dT_dDz);
 
-    const float dDet_dDx = dU_dDx + dV_dDx + dW_dDx
-    const float dDet_dDy = dU_dDy + dV_dDy + dW_dDy
-    const float dDet_dDz = dU_dDz + dV_dDz + dW_dDz
+    const float dDet_dDx = dU_dDx + dV_dDx + dW_dDx;
+    const float dDet_dDy = dU_dDy + dV_dDy + dW_dDy;
+    const float dDet_dDz = dU_dDz + dV_dDz + dW_dDz;
     const vec3 dDet_dD = vec3(dDet_dDx, dDet_dDy, dDet_dDz);
 
     const vec3 du_dD = rcpDet * dU_dD + -U * rcpDetSq * dDet_dD;
     const vec3 dv_dD = rcpDet * dV_dD + -V * rcpDetSq * dDet_dD;
-    const vec3 dw_dD = rcpDet * dW_dD + -W * rcpDetSq * dDet_dD;
     const vec3 dt_dD = rcpDet * dT_dD + -T * rcpDetSq * dDet_dD;
 
-    adj_dir_swapped = adj_u*du_dD + adj_v*dv_dD + adj_w*dw_dD + adj_t*dt_dD;
+    vec3 adj_dir_swapped = adj_u*du_dD + adj_v*dv_dD + adj_t*dt_dD;
     adj_dir[kx] += adj_dir_swapped[0];
     adj_dir[ky] += adj_dir_swapped[1];
     adj_dir[kz] += adj_dir_swapped[2];
