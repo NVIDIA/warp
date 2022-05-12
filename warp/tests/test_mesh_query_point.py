@@ -53,42 +53,44 @@ def triangle_closest_point(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
     d2 = wp.dot(ac, ap)
 
     if (d1 <= 0.0 and d2 <= 0.0):
-        return wp.vec3(1.0, 0.0, 0.0)
+        return wp.vec2(1.0, 0.0)
 
     bp = p - b
     d3 = wp.dot(ab, bp)
     d4 = wp.dot(ac, bp)
 
     if (d3 >= 0.0 and d4 <= d3):
-        return wp.vec3(0.0, 1.0, 0.0)
+        return wp.vec2(0.0, 1.0)
 
     vc = d1 * d4 - d3 * d2
     v = d1 / (d1 - d3)
     if (vc <= 0.0 and d1 >= 0.0 and d3 <= 0.0):
-        return wp.vec3(1.0 - v, v, 0.0)
+        return wp.vec2(1.0 - v, v)
 
     cp = p - c
     d5 = wp.dot(ab, cp)
     d6 = wp.dot(ac, cp)
 
     if (d6 >= 0.0 and d5 <= d6):
-        return wp.vec3(0.0, 0.0, 1.0)
+        return wp.vec2(0.0, 0.0)
 
     vb = d5 * d2 - d1 * d6
     w = d2 / (d2 - d6)
     if (vb <= 0.0 and d2 >= 0.0 and d6 <= 0.0):
-        return wp.vec3(1.0 - w, 0.0, w)
+        return wp.vec2(1.0 - w, 0.0)
 
     va = d3 * d6 - d5 * d4
     w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
     if (va <= 0.0 and (d4 - d3) >= 0.0 and (d5 - d6) >= 0.0):
-        return wp.vec3(0.0, w, 1.0 - w)
+        return wp.vec2(0.0, 1.0 - w)
 
     denom = 1.0 / (va + vb + vc)
     v = vb * denom
     w = vc * denom
+    u = 1.0 - v - w
 
-    return wp.vec3(1.0 - v - w, v, w)
+    return wp.vec2(u, v)
+
 
 @wp.func
 def solid_angle(v0: wp.vec3, v1: wp.vec3, v2: wp.vec3, p: wp.vec3):
@@ -135,8 +137,10 @@ def sample_mesh_brute(
         winding_angle += solid_angle(a, b, c, p)
 
         bary = triangle_closest_point(a, b, c, p)
+        u = bary[0]
+        v = bary[1]
 
-        cp = bary[0]*a + bary[1]*b + bary[2]*c
+        cp = u*a + v*b + (1.0-u-v)*c
         cp_dist = wp.length(cp - p)
 
         if (cp_dist < min_dist):
@@ -196,7 +200,6 @@ def test_mesh_query_point(test, device):
         velocities=None,
         indices=mesh_indices)
 
-    num_particles = 1000
     p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
 
     query_count = len(p)
@@ -258,6 +261,109 @@ def test_mesh_query_point(test, device):
 
     # stage.save()
 
+
+@wp.kernel
+def mesh_query_point_loss(mesh: wp.uint64,
+                query_points: wp.array(dtype=wp.vec3),
+                projected_points: wp.array(dtype=wp.vec3),
+                loss: wp.array(dtype=float)):
+    
+    tid = wp.tid()
+
+    face_index = int(0)
+    face_u = float(0.0)
+    face_v = float(0.0)
+    sign = float(0.0)
+
+    max_dist = 10012.0
+
+    p = query_points[tid]
+    
+    wp.mesh_query_point(mesh, p, max_dist, sign, face_index, face_u, face_v)
+    q = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
+
+    projected_points[tid] = q
+
+    dist = wp.length(wp.sub(p, q))
+    loss[tid] = dist
+
+
+def test_adj_mesh_query_point(test, device):
+
+    from pxr import Usd, UsdGeom, Gf, Sdf
+
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.usda")))
+    mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
+
+    mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
+    mesh_indices = mesh_geom.GetFaceVertexIndicesAttr().Get()
+
+    tri_indices = triangulate(mesh_counts, mesh_indices)
+
+    mesh_points = wp.array(np.array(mesh_geom.GetPointsAttr().Get()), dtype=wp.vec3, device=device)
+    mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
+
+    # test tri
+    # print("Testing Single Triangle")
+    # mesh_points = wp.array(np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]), dtype=wp.vec3, device=device)
+    # mesh_indices = wp.array(np.array([0,1,2]), dtype=int, device=device)
+
+    # create mesh
+    mesh = wp.Mesh(
+        points=mesh_points, 
+        velocities=None,
+        indices=mesh_indices)
+
+    # p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
+    p = wp.vec3(50.0, 50.0, 50.0)
+
+    tape = wp.Tape()
+
+    # analytic gradients
+    with tape:
+
+        query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
+        projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
+        loss = wp.zeros(n=1, dtype=float, device=device)
+
+        wp.launch(kernel=mesh_query_point_loss, dim=1, inputs=[mesh.id, query_points, projected_points, loss], device=device)
+
+    tape.backward(loss=loss)
+    analytic = tape.gradients[query_points].numpy().flatten()
+
+    # numeric gradients
+    eps = 1.e-3
+    loss_values = []
+    numeric = np.zeros(3)
+
+    offset_query_points = [
+        wp.vec3(p[0] - eps, p[1], p[2]), wp.vec3(p[0] + eps, p[1], p[2]),
+        wp.vec3(p[0], p[1] - eps, p[2]), wp.vec3(p[0], p[1] + eps, p[2]),
+        wp.vec3(p[0], p[1], p[2] - eps), wp.vec3(p[0], p[1], p[2] + eps)]
+
+    for i in range(6):
+        q = offset_query_points[i]
+
+        query_points = wp.array(q, dtype=wp.vec3, device=device)
+        projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
+        loss = wp.zeros(n=1, dtype=float, device=device)
+
+        wp.launch(kernel=mesh_query_point_loss, dim=1, inputs=[mesh.id, query_points, projected_points, loss], device=device)
+
+        loss_values.append(loss.numpy()[0])
+
+    for i in range(3):
+        l_0 = loss_values[i*2]
+        l_1 = loss_values[i*2+1]
+        gradient = (l_1 - l_0) / (2.0*eps)
+        numeric[i] = gradient
+
+    error = ((analytic - numeric) * (analytic - numeric)).sum(axis=0)
+
+    tolerance = 1.e-3
+    test.assertTrue(error < tolerance, f"error is {error} which is >= {tolerance}")
+
+
 def register(parent):
 
     devices = wp.get_devices()
@@ -266,6 +372,7 @@ def register(parent):
         pass
 
     add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
+    add_function_test(TestMeshQuery, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
 
     return TestMeshQuery
 

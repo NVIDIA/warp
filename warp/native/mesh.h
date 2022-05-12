@@ -93,8 +93,11 @@ CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, f
 				vec3 q = mesh.points[j];
 				vec3 r = mesh.points[k];
 
-				float v, w;
-				vec3 c = closest_point_to_triangle(p, q, r, point, v, w);
+				vec2 barycentric = closest_point_to_triangle(p, q, r, point);
+				float u = barycentric[0];
+				float v = barycentric[1];
+				float w = 1.f - u - v;
+				vec3 c = u*p + v*q + w*r;
 
 				float dist_sq = length_sq(c-point);
 
@@ -216,8 +219,11 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 			if (length(normal)/(dot(e0,e0) + dot(e1,e1) + dot(e2,e2)) < 1.e-6f)
 				continue;
 
-			float v, w;
-			vec3 c = closest_point_to_triangle(p, q, r, point, v, w);
+			vec2 barycentric = closest_point_to_triangle(p, q, r, point);
+			float u = barycentric[0];
+			float v = barycentric[1];
+			float w = 1.f - u - v;
+			vec3 c = u*p + v*q + w*r;
 
 			float angle = dot(normal, point-c);
 			float dist_sq = length_sq(c-point);
@@ -357,11 +363,25 @@ printf("%d\n", tests);
 	}
 }
 
-//CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, float sign, uint64_t& adj_id, vec3& adj_point, float& adj_max_dist, float& adj_sign, const vec3& adj_ret)
-CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& v, float& w,
-											   uint64_t, vec3&, float&, float&, int&, float&, float&, bool&)
+CUDA_CALLABLE inline void adj_mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v,
+											   uint64_t adj_id, vec3& adj_point, float& adj_max_dist, float& adj_inside, int& adj_face, float& adj_u, float& adj_v, bool& adj_ret)
 {
+	Mesh mesh = mesh_get(id);
+	
+	// face is determined by BVH in forward pass
+	int i = mesh.indices[face*3+0];
+	int j = mesh.indices[face*3+1];
+	int k = mesh.indices[face*3+2];
 
+	vec3 p = mesh.points[i];
+	vec3 q = mesh.points[j];
+	vec3 r = mesh.points[k];
+
+	vec3 adj_p, adj_q, adj_r;
+
+	vec2 adj_uv(adj_u, adj_v);
+
+	adj_closest_point_to_triangle(p, q, r, point, adj_p, adj_q, adj_r, adj_point, adj_uv);
 }
 
 
@@ -413,10 +433,10 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 				vec3 q = mesh.points[j];
 				vec3 r = mesh.points[k];
 
-				float t, u, v, w, sign;
+				float t, u, v, sign;
 				vec3 n;
 				
-				if (intersect_ray_tri_woop(start, dir, p, q, r, t, u, v, w, sign, &n))
+				if (intersect_ray_tri_woop(start, dir, p, q, r, t, u, v, sign, &n))
 				{
 					if (t < min_t && t >= 0.0f)
 					{
@@ -461,7 +481,22 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 	uint64_t id, const vec3& start, const vec3& dir, float max_t, float& t, float& u, float& v, float& sign, vec3& n, int& face,
 	uint64_t adj_id, vec3& adj_start, vec3& adj_dir, float& adj_max_t, float& adj_t, float& adj_u, float& adj_v, float& adj_sign, vec3& adj_n, int& adj_face, bool adj_ret)
 {
-	// nop
+
+	Mesh mesh = mesh_get(id);
+	
+	// face is determined by BVH in forward pass
+	int i = mesh.indices[face*3+0];
+	int j = mesh.indices[face*3+1];
+	int k = mesh.indices[face*3+2];
+
+	vec3 a = mesh.points[i];
+	vec3 b = mesh.points[j];
+	vec3 c = mesh.points[k];
+
+	vec3 adj_a, adj_b, adj_c;
+
+	adj_intersect_ray_tri_woop(start, dir, a, b, c, t, u, v, sign, &n, adj_start, adj_dir, adj_a, adj_b, adj_c, adj_t, adj_u, adj_v, adj_sign, &adj_n, adj_ret);
+
 }
 
 // stores state required to traverse the BVH nodes that 
@@ -696,11 +731,49 @@ CUDA_CALLABLE inline vec3 mesh_eval_velocity(uint64_t id, int tri, float u, floa
 }
 
 
-CUDA_CALLABLE inline void adj_mesh_eval_position(uint64_t id, int tri, float v, float w,
-												 uint64_t&, int&, float&, float&, const vec3&) {}
+CUDA_CALLABLE inline void adj_mesh_eval_position(uint64_t id, int tri, float u, float v,
+												 uint64_t& adj_id, int& adj_tri, float& adj_u, float& adj_v, const vec3& adj_ret)
+{
+	Mesh mesh = mesh_get(id);
 
-CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float v, float w,
-												 uint64_t&, int&, float&, float&, const vec3&) {}
+	if (!mesh.points)
+		return;
+
+	assert(tri < mesh.num_tris);
+
+	int i = mesh.indices[tri*3+0];
+	int j = mesh.indices[tri*3+1];
+	int k = mesh.indices[tri*3+2];
+
+	vec3 p = mesh.points[i];
+	vec3 q = mesh.points[j];
+	vec3 r = mesh.points[k];
+
+	adj_u += (p.x - r.x) * adj_ret.x + (p.y - r.y) * adj_ret.y + (p.z - r.z) * adj_ret.z;
+	adj_v += (q.x - r.x) * adj_ret.x + (q.y - r.y) * adj_ret.y + (q.z - r.z) * adj_ret.z;
+}
+
+CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float u, float v,
+												 uint64_t& adj_id, int& adj_tri, float& adj_u, float& adj_v, const vec3& adj_ret)
+{
+	Mesh mesh = mesh_get(id);
+
+	if (!mesh.velocities)
+		return;
+
+	assert(tri < mesh.num_tris);
+
+	int i = mesh.indices[tri*3+0];
+	int j = mesh.indices[tri*3+1];
+	int k = mesh.indices[tri*3+2];
+
+	vec3 vp = mesh.velocities[i];
+	vec3 vq = mesh.velocities[j];
+	vec3 vr = mesh.velocities[k];
+
+	adj_u += (vp.x - vr.x) * adj_ret.x + (vp.y - vr.y) * adj_ret.y + (vp.z - vr.z) * adj_ret.z;
+	adj_v += (vq.x - vr.x) * adj_ret.x + (vq.y - vr.y) * adj_ret.y + (vq.z - vr.z) * adj_ret.z;
+}
 
 
 bool mesh_get_descriptor(uint64_t id, Mesh& mesh);
