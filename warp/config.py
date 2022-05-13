@@ -24,3 +24,4 @@ verbose = False
 host_compiler = None    # user can specify host compiler here, otherwise will attempt to find one automatically
 
 cache_kernels = True
+kernel_cache_dir = None # path to kernel cache directory, if None a default path will be used

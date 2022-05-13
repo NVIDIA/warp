@@ -15,6 +15,7 @@ archive
 /_build
 /_repo
 examples/assets/.thumbs
+/examples/tmp
 /docs/_build/doctrees
 /docs/_build/html/_static/fonts
 /nvidia_warp.egg-info
