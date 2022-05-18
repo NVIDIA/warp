@@ -996,32 +996,49 @@ def capture_launch(graph: int):
     runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
 
 
-def copy(dest: warp.array, src: warp.array):
+def copy(dest: warp.array, src: warp.array, dest_offset: int = 0, src_offset: int = 0, count: int = 0):
     """Copy array contents from src to dest
 
     Args:
         dest: Destination array, must be at least as big as source buffer
         src: Source array
+        dest_offset: Element offset in the destination array
+        src_offset: Element offset in the source array
+        count: Number of array elements to copy (will copy all elements if set to 0)
 
     """
 
-    src_bytes = src.size*type_size_in_bytes(src.dtype)
-    dst_bytes = dest.size*type_size_in_bytes(dest.dtype)
+    if count <= 0:
+        count = src.size
 
-    if (src_bytes > dst_bytes):
-        raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")
+    bytes_to_copy = count * type_size_in_bytes(src.dtype)
+
+    src_size_in_bytes = src.size * type_size_in_bytes(src.dtype)
+    dst_size_in_bytes = dest.size * type_size_in_bytes(dest.dtype)
+
+    src_offset_in_bytes = src_offset * type_size_in_bytes(src.dtype)
+    dst_offset_in_bytes = dest_offset * type_size_in_bytes(dest.dtype)
+
+    src_ptr = src.ptr + src_offset_in_bytes
+    dst_ptr = dest.ptr + dst_offset_in_bytes
+
+    if src_offset_in_bytes + bytes_to_copy > src_size_in_bytes:
+        raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) from offset ({src_offset_in_bytes}) is larger than source size ({src_size_in_bytes})")
+
+    if dst_offset_in_bytes + bytes_to_copy > dst_size_in_bytes:
+        raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) to offset ({dst_offset_in_bytes}) is larger than destination size ({dst_size_in_bytes})")
 
     if (src.device == "cpu" and dest.device == "cuda"):
-        runtime.core.memcpy_h2d(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_h2d(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
 
     elif (src.device == "cuda" and dest.device == "cpu"):
-        runtime.core.memcpy_d2h(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_d2h(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
 
     elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.core.memcpy_h2h(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_h2h(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
 
     elif (src.device == "cuda" and dest.device == "cuda"):
-        runtime.core.memcpy_d2d(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_d2d(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
     
     else:
         raise RuntimeError("Unexpected source and destination combination")
