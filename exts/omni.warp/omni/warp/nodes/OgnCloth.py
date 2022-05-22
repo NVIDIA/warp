@@ -360,7 +360,7 @@ class OgnCloth:
                 with wp.ScopedTimer("Write", active=False):
                     
                     # timeline not playing and sim. not yet initialized, just pass through outputs
-                    if context.model is None:
+                    if context.model is None and db.inputs.cloth.valid:
                         db.outputs.positions = read_points_bundle(db.inputs.cloth)
 
 

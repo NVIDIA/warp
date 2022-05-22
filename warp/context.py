@@ -237,7 +237,7 @@ class Module:
     def load(self):
 
         # early out to avoid repeatedly attemping to rebuild
-        if (self.build_failed == True):
+        if self.build_failed:
             return False
 
         with ScopedTimer(f"Module {self.name} load"):
@@ -247,11 +247,10 @@ class Module:
 
             module_name = "wp_" + self.name
 
-            include_path = os.path.dirname(os.path.realpath(__file__))
-            build_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
-            gen_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "gen")
+            build_path = warp.build.kernel_bin_dir
+            gen_path = warp.build.kernel_gen_dir
 
-            cache_path = os.path.join(build_path, module_name + ".hash")
+            hash_path = os.path.join(build_path, module_name + ".hash")
             module_path = os.path.join(build_path, module_name)
 
             ptx_path = module_path + ".ptx"
@@ -267,42 +266,42 @@ class Module:
             # test cache
             module_hash = self.hash_module()
 
-            if warp.config.cache_kernels and os.path.exists(cache_path):
+            build_cpu = enable_cpu
+            build_cuda = enable_cuda
 
-                f = open(cache_path, 'rb')
+            if warp.config.cache_kernels and os.path.exists(hash_path):
+
+                f = open(hash_path, 'rb')
                 cache_hash = f.read()
                 f.close()
 
-                if (cache_hash == module_hash):
+                if cache_hash == module_hash:
                     
-                    if (warp.config.verbose):
-                        print("Warp: Using cached kernels for module {}".format(self.name))
-                        
-                    if (enable_cpu):
+                    if enable_cpu and os.path.isfile(dll_path):
                         self.dll = warp.build.load_dll(dll_path)
-                        
-                        if (self.dll == None):
-                            raise Exception(f"Could not load dll from cache {dll_path}")
+                        if self.dll is not None:
+                            build_cpu = False
 
-                    if (enable_cuda):
+                    if enable_cuda and os.path.isfile(ptx_path):
                         self.cuda = warp.build.load_cuda(ptx_path)
+                        if self.cuda is not None:
+                            build_cuda = False
 
-                        if (self.cuda == None):
-                            raise Exception(f"Could not load ptx from cache path: {ptx_path}")
+                    if not build_cuda and not build_cpu:
+                        if warp.config.verbose:
+                            print("Warp: Using cached kernels for module {}".format(self.name))
+                        self.loaded = True
+                        return True
 
-                    self.loaded = True
-                    return
-
-            if (warp.config.verbose):
+            if warp.config.verbose:
                 print("Warp: Rebuilding kernels for module {}".format(self.name))
 
-
             # generate kernel source
-            if (enable_cpu):
+            if build_cpu:
                 cpp_path = os.path.join(gen_path, module_name + ".cpp")
                 cpp_source = warp.codegen.cpu_module_header
             
-            if (enable_cuda):
+            if build_cuda:
                 cu_path = os.path.join(gen_path, module_name + ".cu")
                 cu_source = warp.codegen.cuda_module_header
 
@@ -314,10 +313,10 @@ class Module:
             
                 func.adj.build(builtin_functions, self.functions, self.options)
                 
-                if (enable_cpu):
+                if build_cpu:
                     cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
 
-                if (enable_cuda):
+                if build_cuda:
                     cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
 
                 # complete the function return type after we have analyzed it (inferred from return statement in ast)
@@ -339,14 +338,14 @@ class Module:
                 kernel.adj.build(builtin_functions, self.functions, self.options)
 
                 # each kernel gets an entry point in the module
-                if (enable_cpu):
+                if build_cpu:
                     entry_points.append(kernel.func.__name__ + "_cpu_forward")
                     entry_points.append(kernel.func.__name__ + "_cpu_backward")
 
                     cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
                     cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
 
-                if (enable_cuda):                
+                if build_cuda:
                     entry_points.append(kernel.func.__name__ + "_cuda_forward")
                     entry_points.append(kernel.func.__name__ + "_cuda_backward")
 
@@ -355,44 +354,47 @@ class Module:
 
 
             # write cpp sources
-            if (enable_cpu):
+            if build_cpu:
                 cpp_file = open(cpp_path, "w")
                 cpp_file.write(cpp_source)
                 cpp_file.close()
 
             # write cuda sources
-            if (enable_cuda):
+            if build_cuda:
                 cu_file = open(cu_path, "w")
                 cu_file.write(cu_source)
                 cu_file.close()
         
             try:
-                
-                if (enable_cpu):
+                if build_cpu:
                     with ScopedTimer("Compile x86", active=warp.config.verbose):
                         warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"])
 
-                if (enable_cuda):
+                if build_cuda:
                     with ScopedTimer("Compile CUDA", active=warp.config.verbose):
                         warp.build.build_cuda(cu_path, ptx_path, config=self.options["mode"])
 
                 # update cached output
-                f = open(cache_path, 'wb')
+                f = open(hash_path, 'wb')
                 f.write(module_hash)
                 f.close()
 
             except Exception as e:
-
                 self.build_failed = True
-
                 print(e)
                 raise(e)
 
-            if (enable_cpu):
+            if build_cpu:
                 self.dll = warp.build.load_dll(dll_path)
 
-            if (enable_cuda):
+            if build_cuda:
                 self.cuda = warp.build.load_cuda(ptx_path)
+
+            if enable_cpu and self.dll is None:
+                raise Exception("Failed to load CPU module")
+
+            if enable_cuda and self.cuda is None:
+                raise Exception("Failed to load CUDA module")
 
             self.loaded = True
             return True
@@ -583,15 +585,18 @@ class Runtime:
         if (warp.config.host_compiler == None):
             warp.config.host_compiler = warp.build.find_host_compiler()
 
+        # initialize kernel cache
+        warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
+
         # print device and version information
         print("Warp initialized:")
         print("   Version: {}".format(warp.config.version))
         print("   Using CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
-        
         if (warp.config.host_compiler):
             print("   Using CPU compiler: {}".format(warp.config.host_compiler.rstrip()))
         else:
-            print("   Using CPU compiler: Not found")
+            print("   Using CPU compiler: Not found")        
+        print("   Kernel cache: {}".format(warp.config.kernel_cache_dir))
 
         # global tape
         self.tape = None
@@ -991,32 +996,49 @@ def capture_launch(graph: int):
     runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
 
 
-def copy(dest: warp.array, src: warp.array):
+def copy(dest: warp.array, src: warp.array, dest_offset: int = 0, src_offset: int = 0, count: int = 0):
     """Copy array contents from src to dest
 
     Args:
         dest: Destination array, must be at least as big as source buffer
         src: Source array
+        dest_offset: Element offset in the destination array
+        src_offset: Element offset in the source array
+        count: Number of array elements to copy (will copy all elements if set to 0)
 
     """
 
-    src_bytes = src.size*type_size_in_bytes(src.dtype)
-    dst_bytes = dest.size*type_size_in_bytes(dest.dtype)
+    if count <= 0:
+        count = src.size
 
-    if (src_bytes > dst_bytes):
-        raise RuntimeError(f"Trying to copy source buffer with size ({src_bytes}) > dest buffer ({dst_bytes})")
+    bytes_to_copy = count * type_size_in_bytes(src.dtype)
+
+    src_size_in_bytes = src.size * type_size_in_bytes(src.dtype)
+    dst_size_in_bytes = dest.size * type_size_in_bytes(dest.dtype)
+
+    src_offset_in_bytes = src_offset * type_size_in_bytes(src.dtype)
+    dst_offset_in_bytes = dest_offset * type_size_in_bytes(dest.dtype)
+
+    src_ptr = src.ptr + src_offset_in_bytes
+    dst_ptr = dest.ptr + dst_offset_in_bytes
+
+    if src_offset_in_bytes + bytes_to_copy > src_size_in_bytes:
+        raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) from offset ({src_offset_in_bytes}) is larger than source size ({src_size_in_bytes})")
+
+    if dst_offset_in_bytes + bytes_to_copy > dst_size_in_bytes:
+        raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) to offset ({dst_offset_in_bytes}) is larger than destination size ({dst_size_in_bytes})")
 
     if (src.device == "cpu" and dest.device == "cuda"):
-        runtime.core.memcpy_h2d(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_h2d(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
 
     elif (src.device == "cuda" and dest.device == "cpu"):
-        runtime.core.memcpy_d2h(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_d2h(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
 
     elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.core.memcpy_h2h(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_h2h(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
 
     elif (src.device == "cuda" and dest.device == "cuda"):
-        runtime.core.memcpy_d2d(ctypes.c_void_p(dest.ptr), ctypes.c_void_p(src.ptr), ctypes.c_size_t(src_bytes))
+        runtime.core.memcpy_d2d(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
     
     else:
         raise RuntimeError("Unexpected source and destination combination")

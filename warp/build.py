@@ -14,7 +14,9 @@ import ctypes
 import _ctypes
 
 import warp.config
+import warp.utils
 from warp.utils import ScopedTimer
+from warp.thirdparty import appdirs
 
 def run_cmd(cmd, capture=False):
     
@@ -124,7 +126,7 @@ def build_cuda(cu_path, ptx_path, config="release", force=False):
     src = src_file.read().encode('utf-8')
     src_file.close()
 
-    inc_path = os.path.dirname(cu_path).encode('utf-8')
+    inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode('utf-8')
     ptx_path = ptx_path.encode('utf-8')
 
     err = warp.context.runtime.core.cuda_compile_program(src, inc_path, False, warp.config.verbose, ptx_path)
@@ -200,17 +202,19 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
     else:
         cuda_disabled = 0
 
+    native_dir = os.path.join(warp_home, "native")
+
     if os.name == 'nt':
 
         cpp_out = cpp_path + ".obj"
 
         if (config == "debug"):
-            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{nanovdb_home}"'
+            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}"'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{nanovdb_home}"'
+            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{native_dir}" /I"{nanovdb_home}"'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -229,10 +233,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I{warp_home}/native/cub -I"{nanovdb_home}" -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{native_dir}/cub" -I"{nanovdb_home}" -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52 -I{warp_home}/native/cub -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52  -I"{native_dir}" -I"{native_dir}/cub" -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -248,12 +252,12 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
         cpp_out = cpp_path + ".o"
 
         if (config == "debug"):
-            cpp_flags = f"-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -fkeep-inline-functions"
+            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -fkeep-inline-functions -I"{native_dir}"'
             ld_flags = "-D_DEBUG"
             ld_inputs = []
 
         if (config == "release"):
-            cpp_flags = f"-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11"
+            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -I"{native_dir}"'
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
@@ -269,10 +273,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -I{warp_home}/native/cub -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -I"{native_dir}" -I"{native_dir}/cub" -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC -gencode=arch=compute_52,code=compute_52 --use_fast_math -DWP_CUDA -I{warp_home}/native/cub -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC -gencode=arch=compute_52,code=compute_52 --use_fast_math -DWP_CUDA -I"{native_dir}" -I"{native_dir}/cub" -o "{cu_out}" -c "{cu_path}"'
 
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
@@ -321,3 +325,64 @@ def force_unload_dll(dll_path):
         return
 
 
+kernel_bin_dir = None
+kernel_gen_dir = None
+
+
+def init_kernel_cache(path=None):
+    """Initialize kernel cache directory.
+
+    This function is used during Warp initialization, but it can also be called directly to change the cache location.
+    If the path is not explicitly specified, a default location will be chosen based on OS-specific conventions.
+
+    To change the default cache location, set warp.config.kernel_cache_dir before calling warp.init().
+    """
+
+    warp_root_dir = os.path.dirname(os.path.realpath(__file__))
+    warp_bin_dir = os.path.join(warp_root_dir, "bin")
+
+    if path is not None:
+        cache_root_dir = os.path.realpath(path)
+    else:
+        cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA Corporation", version=warp.config.version)
+
+    cache_bin_dir = os.path.join(cache_root_dir, "bin")
+    cache_gen_dir = os.path.join(cache_root_dir, "gen")
+
+    if not os.path.isdir(cache_root_dir):
+        #print("Creating cache directory '%s'" % cache_root_dir)
+        os.makedirs(cache_root_dir, exist_ok=True)
+
+    if not os.path.isdir(cache_gen_dir):
+        #print("Creating codegen directory '%s'" % cache_gen_dir)
+        os.makedirs(cache_gen_dir, exist_ok=True)
+
+    if not os.path.isdir(cache_bin_dir):
+        #print("Creating binary directory '%s'" % cache_bin_dir)
+        os.makedirs(cache_bin_dir, exist_ok=True)
+
+    warp.config.kernel_cache_dir = cache_root_dir
+    
+    global kernel_bin_dir, kernel_gen_dir
+    kernel_bin_dir = cache_bin_dir
+    kernel_gen_dir = cache_gen_dir
+
+
+def clear_kernel_cache():
+    """Clear the kernel cache."""
+
+    import glob
+
+    paths = []
+
+    if kernel_bin_dir is not None and os.path.isdir(kernel_bin_dir):
+        pattern = os.path.join(kernel_bin_dir, "wp_*")
+        paths += glob.glob(pattern)
+
+    if kernel_gen_dir is not None and os.path.isdir(kernel_gen_dir):
+        pattern = os.path.join(kernel_gen_dir, "wp_*")
+        paths += glob.glob(pattern)
+
+    for p in paths:
+        if os.path.isfile(p):
+            os.remove(p)

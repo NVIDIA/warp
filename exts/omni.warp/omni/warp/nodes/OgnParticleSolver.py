@@ -341,7 +341,7 @@ class OgnParticleSolver:
                 with wp.ScopedTimer("Write", active=profile_enabled):
                     
                     # timeline not playing and sim. not yet initialized, just pass through outputs
-                    if state.model is None:
+                    if state.model is None and db.inputs.spawn_particles.valid:
 
                         particle_points = db.inputs.spawn_particles.attribute_by_name(db.tokens.points).value
                         particle_velocities = db.inputs.spawn_particles.attribute_by_name(db.tokens.velocities).value
