@@ -15,16 +15,35 @@ def from_torch(t, dtype=warp.types.float32):
     # ensure tensors are contiguous
     assert(t.is_contiguous())
 
-    # placeholder for warp.types.float16
-    assert dtype == warp.types.float32 or dtype == warp.types.float32, "Warp arrays can be constructed as wp.float32 only"
-
     if (t.dtype != torch.float32 and t.dtype != torch.int32):
         raise RuntimeError("Error aliasing Torch tensor to Warp array. Torch tensor must be float32 or int32 type")
+
+    # if target is a vector or matrix type
+    # then check if trailing dimensions match
+    # the target type and update the shape
+    if hasattr(dtype, "_shape_"):
+        
+        try:
+            num_dims = len(dtype._shape_)
+            type_dims = dtype._shape_
+            source_dims = t.shape[-num_dims:]
+
+            for i in range(len(type_dims)):
+                if source_dims[i] != type_dims[i]:
+                    raise RuntimeError()
+
+            shape = t.shape[:-num_dims]
+
+        except:
+            raise RuntimeError(f"Could not convert source Torch tensor with shape {t.shape}, to Warp array with dtype={dtype}, ensure that trailing dimensions match ({source_dims} != {type_dims}")
+    
+    else:
+        shape = t.shape
 
     a = warp.types.array(
         ptr=t.data_ptr(),
         dtype=dtype,
-        shape=t.shape,
+        shape=shape,
         copy=False,
         owner=False,
         requires_grad=True,
@@ -32,7 +51,6 @@ def from_torch(t, dtype=warp.types.float32):
 
     # save a reference to the source tensor, otherwise it will be deallocated
     a.tensor = t
-    
     return a
 
 

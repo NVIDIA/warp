@@ -1066,16 +1066,6 @@ def transform_wrench(t: wp.transform, x: wp.spatial_vector):
 
     return wp.spatial_vector(w, v)
 
-@wp.func
-def transform_inverse(t: wp.transform):
-
-    p = transform_get_translation(t)
-    q = transform_get_rotation(t)
-
-    q_inv = quat_inverse(q)
-    return transform(quat_rotate(q_inv, p)*(0.0 - 1.0), q_inv)
-
-
 
 # computes adj_t^-T*I*adj_t^-1 (tensor change of coordinates), Frank & Park, section 8.2.3, pg 290
 @wp.func
@@ -1281,7 +1271,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         axis_c = wp.transform_vector(X_wc, axis)
 
         # swing twist decomposition
-        twist = wp.quat_twist(axis, r_err)
+        twist = quat_twist(axis, r_err)
 
         q = wp.acos(twist[3])*2.0*wp.sign(wp.dot(axis, wp.vec3(twist[0], twist[1], twist[2])))
         qd = wp.dot(w_err, axis_p)
@@ -1309,7 +1299,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
         
         # decompose to a compound rotation each axis 
-        angles = wp.quat_decompose(q_pc)
+        angles = quat_decompose(q_pc)
 
         # reconstruct rotation axes
         axis_0 = wp.vec3(1.0, 0.0, 0.0)
@@ -1337,7 +1327,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
        
         # decompose to a compound rotation each axis 
-        angles = wp.quat_decompose(q_pc)
+        angles = quat_decompose(q_pc)
 
         # reconstruct rotation axes
         axis_0 = wp.vec3(1.0, 0.0, 0.0)

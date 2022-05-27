@@ -140,11 +140,9 @@ class Adjoint:
         adj.label_count = 0
 
     # generate function ssa form and adjoint
-    def build(adj, builtin_fuctions, user_functions, options):
+    def build(adj, builder):
 
-        adj.builtin_functions = builtin_fuctions
-        adj.user_functions = user_functions
-        adj.options = options
+        adj.builder = builder
 
         # recursively evaluate function body
         adj.eval(adj.tree.body[0])
@@ -268,15 +266,11 @@ class Adjoint:
 
     def add_call(adj, func, inputs, min_outputs=None):
 
-        # promote func to list
-        if isinstance(func, list) == False:
-            func = [func,]
-
         # if func is overloaded then perform overload resolution here
         # we validate argument types before they go to generated native code
         resolved_func = None
 
-        for f in func:
+        for f in func.overloads:
             match = True
 
             # skip type checking for variadic functions
@@ -335,12 +329,17 @@ class Adjoint:
                 if isinstance(x, warp.context.Function):
                     arg_types += "function" + ", "
 
-            raise Exception(f"Couldn't find function overload for '{func[0].key}' that matched inputs with types: {arg_types}")
+            raise Exception(f"Couldn't find function overload for '{func.key}' that matched inputs with types: {arg_types}")
 
         else:
             func = resolved_func
 
 
+        # if it is a user-function then build it recursively
+        if not func.is_builtin():
+            adj.builder.build_function(func)
+
+        # evaluate the function type based on inputs
         value_type = func.value_func(inputs)
 
         # handle expression (zero output), e.g.: void do_something();
@@ -359,7 +358,7 @@ class Adjoint:
 
             return None
 
-        # handle multiple value function
+        # handle multiple value functions
         elif (isinstance(value_type, list)):
 
             output = [adj.add_var(v) for v in value_type]
@@ -449,7 +448,7 @@ class Adjoint:
         adj.add_forward(f"if (iter_cmp(var_{iter}) == 0) goto for_end_{cond_block.label};")
 
         # evaluate iter
-        val = adj.add_call(adj.builtin_functions["iter_next"], [iter])
+        val = adj.add_call(warp.context.builtin_functions["iter_next"], [iter])
 
         adj.begin_block()
 
@@ -614,7 +613,7 @@ class Adjoint:
 
                     if var1 != var2:
                         # insert a phi function that selects var1, var2 based on cond
-                        out = adj.add_call(adj.builtin_functions["select"], [cond, var1, var2])
+                        out = adj.add_call(warp.context.builtin_functions["select"], [cond, var1, var2])
                         adj.symbols[sym] = out
 
 
@@ -641,7 +640,7 @@ class Adjoint:
                     if var1 != var2:
                         # insert a phi function that selects var1, var2 based on cond
                         # note the reversed order of vars since we want to use !cond as our select
-                        out = adj.add_call(adj.builtin_functions["select"], [cond, var2, var1])
+                        out = adj.add_call(warp.context.builtin_functions["select"], [cond, var2, var1])
                         adj.symbols[sym] = out
 
 
@@ -720,11 +719,17 @@ class Adjoint:
                 if key in adj.symbols:
                     return adj.symbols[key]
                 else:
+
+                    # try and resolve to either a wp.constant
+                    # or a wp.func object
                     obj = attribute_to_val(node, adj.func.__globals__)
-                    if not isinstance(obj, warp.constant):
-                        raise TypeError(f"'{key}' is not a local variable or of type warp.constant")
-                    out = adj.add_constant(obj.val)
-                    adj.symbols[key] = out
+                    
+                    if isinstance(obj, warp.constant):
+                        out = adj.add_constant(obj.val)
+                        adj.symbols[key] = out          # if referencing a constant
+                    else:
+                        raise TypeError(f"'{key}' is not a local variable, warp function, or warp constant")
+
                     return out
 
             elif (isinstance(node, ast.Str)):
@@ -751,7 +756,7 @@ class Adjoint:
                 right = adj.eval(node.right)
 
                 name = builtin_operators[type(node.op)]
-                func = adj.builtin_functions[name]
+                func = warp.context.builtin_functions[name]
 
                 out = adj.add_call(func, [left, right])
                 return out
@@ -761,7 +766,7 @@ class Adjoint:
                 arg = adj.eval(node.operand)
 
                 name = builtin_operators[type(node.op)]
-                func = adj.builtin_functions[name]
+                func = warp.context.builtin_functions[name]
 
                 out = adj.add_call(func, [arg])
                 return out
@@ -792,7 +797,7 @@ class Adjoint:
                             raise Exception("Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
                         
                         # overwrite the old variable value (violates SSA)
-                        adj.add_call(adj.builtin_functions["copy"], [var1, var2])
+                        adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
 
                         # reset the symbol to point to the original variable
                         adj.symbols[sym] = var1
@@ -853,7 +858,7 @@ class Adjoint:
 
                         # test if we're above max unroll count
                         max_iters = abs(end-start)//abs(step)
-                        max_unroll = adj.options["max_unroll"]
+                        max_unroll = adj.builder.options["max_unroll"]
 
                         if max_iters > max_unroll:
 
@@ -905,7 +910,7 @@ class Adjoint:
                                 raise Exception("Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
                             
                             # overwrite the old variable value (violates SSA)
-                            adj.add_call(adj.builtin_functions["copy"], [var1, var2])
+                            adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
 
                             # reset the symbol to point to the original variable
                             adj.symbols[sym] = var1
@@ -918,23 +923,27 @@ class Adjoint:
             elif (isinstance(node, ast.Call)):
 
                 name = None
+                
+                # resolve path (e.g.: module.submodule.attr) expression to a list of module names
+                path = adj.resolve_path(node.func)
+                
+                try:
+                    # try and look up path in function globals
+                    func = eval(".".join(path), adj.func.__globals__)
 
-                # determine if call is to a builtin (e.g.: wp.cos(x)), or to a free-func, e.g.: my_func(x)
-                if (isinstance(node.func, ast.Attribute)):
-                    name = node.func.attr
-                elif (isinstance(node.func, ast.Name)):
-                    name = node.func.id
+                    if isinstance(func, warp.context.Function) == False:
+                        raise RuntimeError()
+                        
+                except Exception as e:
 
-                # built in function
-                if name in adj.builtin_functions:
-                    func = adj.builtin_functions[name]
-
-                # user-defined function in this module
-                elif name in adj.user_functions:
-                    func = adj.user_functions[name]
-
-                else:
-                    raise KeyError("Could not find function {}".format(name))
+                    # try and lookup in builtins, this allows users to avoid 
+                    # using "wp." prefix, and also handles type constructors
+                    # e.g.: wp.vec3 which aren't explicitly a function object
+                    attr = path[-1]
+                    if attr in warp.context.builtin_functions:
+                        func = warp.context.builtin_functions[attr]
+                    else:
+                        raise RuntimeError(f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel.")
 
                 args = []
 
@@ -965,13 +974,13 @@ class Adjoint:
                 indices = []
 
                 if isinstance(node.slice, ast.Tuple):
-                    # handles the x[i, j] case (Python 3.8.x upward)
+                    # handles the x[i,j] case (Python 3.8.x upward)
                     for arg in node.slice.elts:
                         var = adj.eval(arg)
                         indices.append(var)
 
                 elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-                    # handles the x[i, j] case (Python 3.7.x)
+                    # handles the x[i,j] case (Python 3.7.x)
                     for arg in node.slice.value.elts:
                         var = adj.eval(arg)
                         indices.append(var)
@@ -982,17 +991,16 @@ class Adjoint:
 
                 if isinstance(target.type, array):
                     
-                    # handles array loads
                     if len(indices) == target.type.ndim:
-                        # handles array loads
-                        out = adj.add_call(adj.builtin_functions["load"], [target, *indices])
+                        # handles array loads (where each dimension has an index specified)
+                        out = adj.add_call(warp.context.builtin_functions["load"], [target, *indices])
                     else:
-                        # handles array views
-                        out = adj.add_call(adj.builtin_functions["view"], [target, *indices])
+                        # handles array views (fewer indices than dimensions)
+                        out = adj.add_call(warp.context.builtin_functions["view"], [target, *indices])
 
                 else:
                     # handles non-array type indexing, e.g: vec3, mat33, etc
-                    out = adj.add_call(adj.builtin_functions["index"], [target, *indices])
+                    out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
 
                 return out
 
@@ -1055,7 +1063,7 @@ class Adjoint:
                         indices.append(var)                    
 
                     if (isinstance(target.type, array)):
-                        adj.add_call(adj.builtin_functions["store"], [target, *indices, value])
+                        adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
                     else:
                         raise RuntimeError("Can only subscript assign array types")
 
@@ -1078,7 +1086,7 @@ class Adjoint:
                     # handle simple assignment case (a = b), where we generate a value copy rather than reference
                     if isinstance(node.value, ast.Name):
                         out = adj.add_var(rhs.type)
-                        adj.add_call(adj.builtin_functions["copy"], [out, rhs])
+                        adj.add_call(warp.context.builtin_functions["copy"], [out, rhs])
                     else:
                         out = rhs
 
@@ -1110,7 +1118,7 @@ class Adjoint:
 
                 # lookup 
                 name = builtin_operators[type(node.op)]
-                func = adj.builtin_functions[name]
+                func = warp.context.builtin_functions[name]
 
                 out = adj.add_call(func, [left, right])
 
@@ -1139,6 +1147,24 @@ class Adjoint:
             print("Error: {} while transforming node {} in func: {} at line: {} col: {}: \n    {}".format(e, type(node), adj.func.__name__, node.lineno, node.col_offset, lines[max(node.lineno-1, 0)]))
             raise
 
+
+    # helper to evaluate expressions of the form
+    # obj1.obj2.obj3.attr in the function's global scope
+    def resolve_path(adj, node):
+
+        modules = []
+
+        while isinstance(node, ast.Attribute):
+            modules.append(node.attr)
+            node = node.value
+
+        if (isinstance(node, ast.Name)):
+            modules.append(node.id)
+
+        # reverse list since ast presents it backward order
+        return [*reversed(modules)]
+
+        
 
 #----------------
 # code generation

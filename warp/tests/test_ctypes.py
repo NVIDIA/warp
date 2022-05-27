@@ -103,11 +103,11 @@ def test_vec3_transform(test, device, n):
 
 def test_transform_multiply(test, device, n):
 
-    a = wp.transform((0.0, 1.0, 0.0), wp.quat_identity())
+    a = wp.transform((0.0, 1.0, 0.0), wp.utils.quat_identity())
 
     x = []
     for i in range(10):
-        x.append(wp.transform_identity())
+        x.append(wp.utils.transform_identity())
 
     xforms = wp.array(x, dtype=wp.transform, device=device)
     wp.launch(transform_multiply, dim=n, inputs=[xforms, a], device=device)

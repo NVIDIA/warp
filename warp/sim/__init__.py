@@ -5,7 +5,24 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from . model import *
+
+from . model import State, Model, ModelBuilder, Mesh
+
+from . model import GEO_SPHERE
+from . model import GEO_BOX
+from . model import GEO_CAPSULE
+from . model import GEO_MESH
+from . model import GEO_SDF
+from . model import GEO_PLANE
+from . model import GEO_NONE
+
+from . model import JOINT_PRISMATIC
+from . model import JOINT_REVOLUTE
+from . model import JOINT_BALL
+from . model import JOINT_FIXED
+from . model import JOINT_FREE
+from . model import JOINT_COMPOUND
+from . model import JOINT_UNIVERSAL
 
 from . integrator_euler import SemiImplicitIntegrator
 from . integrator_euler import VariationalImplicitIntegrator

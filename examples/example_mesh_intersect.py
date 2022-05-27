@@ -13,7 +13,6 @@
 ##############################################################################
 
 import warp as wp
-import warp.render
 
 import numpy as np
 np.random.seed(42)

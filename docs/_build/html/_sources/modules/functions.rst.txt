@@ -34,151 +34,126 @@ Vector Types
 
 Scalar Math
 ---------------
-.. function:: min(x: int, y: int) -> int
+.. function:: min(x: int32, y: int32) -> int
 
    Return the minimum of two integers.
 
 
-.. function:: min(x: float, y: float) -> float
-
-   Return the minimum of two floats.
-
-
-.. function:: max(x: int, y: int) -> int
+.. function:: max(x: int32, y: int32) -> int
 
    Return the maximum of two integers.
 
 
-.. function:: max(x: float, y: float) -> float
-
-   Return the maximum of two floats.
-
-
-.. function:: clamp(x: int, a: int, b: int) -> int
+.. function:: clamp(x: int32, a: int32, b: int32) -> int
 
    Clamp the value of x to the range [a, b].
 
 
-.. function:: clamp(x: float, a: float, b: float) -> float
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: abs(x: int) -> int
+.. function:: abs(x: int32) -> int
 
    Return the absolute value of x.
 
 
-.. function:: abs(x: float) -> float
-
-   Return the absolute value of x.
-
-
-.. function:: sign(x: int) -> int
+.. function:: sign(x: int32) -> int
 
    Return -1 if x < 0, return 1 otherwise.
 
 
-.. function:: sign(x: float) -> float
-
-   Return -1.0 if x < 0.0, return 1.0 otherwise.
-
-
-.. function:: step(x: float) -> float
+.. function:: step(x: float32) -> float
 
    Return 1.0 if x < 0.0, return 0.0 otherwise.
 
 
-.. function:: nonzero(x: float) -> float
+.. function:: nonzero(x: float32) -> float
 
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
 
-.. function:: sin(x: float) -> float
+.. function:: sin(x: float32) -> float
 
    Return the sine of x in radians.
 
 
-.. function:: cos(x: float) -> float
+.. function:: cos(x: float32) -> float
 
    Return the cosine of x in radians.
 
 
-.. function:: acos(x: float) -> float
+.. function:: acos(x: float32) -> float
 
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: asin(x: float) -> float
+.. function:: asin(x: float32) -> float
 
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: sqrt(x: float) -> float
+.. function:: sqrt(x: float32) -> float
 
    Return the sqrt of x, where x is positive.
 
 
-.. function:: tan(x: float) -> float
+.. function:: tan(x: float32) -> float
 
    Return tangent of x in radians.
 
 
-.. function:: atan(x: float) -> float
+.. function:: atan(x: float32) -> float
 
    Return arctan of x.
 
 
-.. function:: atan2(y: float, x: float) -> float
+.. function:: atan2(y: float32, x: float32) -> float
 
    Return atan2 of x.
 
 
-.. function:: sinh(x: float) -> float
+.. function:: sinh(x: float32) -> float
 
    Return the sinh of x.
 
 
-.. function:: cosh(x: float) -> float
+.. function:: cosh(x: float32) -> float
 
    Return the cosh of x.
 
 
-.. function:: tanh(x: float) -> float
+.. function:: tanh(x: float32) -> float
 
    Return the tanh of x.
 
 
-.. function:: log(x: float) -> float
+.. function:: log(x: float32) -> float
 
    Return the natural log (base-e) of x, where x is positive.
 
 
-.. function:: exp(x: float) -> float
+.. function:: exp(x: float32) -> float
 
    Return base-e exponential, e^x.
 
 
-.. function:: pow(x: float, y: float) -> float
+.. function:: pow(x: float32, y: float32) -> float
 
    Return the result of x raised to power of y.
 
 
-.. function:: round(x: float) -> float
+.. function:: round(x: float32) -> float
 
    Calculate the nearest integer value, rounding halfway cases away from zero.
    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
    Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
 
 
-.. function:: rint(x: float) -> float
+.. function:: rint(x: float32) -> float
 
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
    It is generally faster than ``warp.round()``.
    Equivalent to ``numpy.rint()``.
 
 
-.. function:: trunc(x: float) -> float
+.. function:: trunc(x: float32) -> float
 
    Calculate the nearest integer that is closer to zero than x.
    In other words, it discards the fractional part of x.
@@ -186,12 +161,12 @@ Scalar Math
    Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 
-.. function:: floor(x: float) -> float
+.. function:: floor(x: float32) -> float
 
    Calculate the largest integer that is less than or equal to x.
 
 
-.. function:: ceil(x: float) -> float
+.. function:: ceil(x: float32) -> float
 
    Calculate the smallest integer that is greater than or equal to x.
 
@@ -205,29 +180,9 @@ Vector Math
    Compute the dot product between two 2d vectors.
 
 
-.. function:: dot(x: vec3, y: vec3) -> float
-
-   Compute the dot product between two 3d vectors.
-
-
-.. function:: dot(x: vec4, y: vec4) -> float
-
-   Compute the dot product between two 4d vectors.
-
-
-.. function:: dot(x: quat, y: quat) -> float
-
-   Compute the dot product between two quaternions.
-
-
 .. function:: outer(x: vec2, y: vec2) -> mat22
 
    Compute the outer product x*y^T for two vec2 objects.
-
-
-.. function:: outer(x: vec3, y: vec3) -> mat33
-
-   Compute the outer product x*y^T for two vec3 objects.
 
 
 .. function:: cross(x: vec3, y: vec3) -> vec3
@@ -245,52 +200,12 @@ Vector Math
    Compute the length of a 2d vector.
 
 
-.. function:: length(x: vec3) -> float
-
-   Compute the length of a 3d vector.
-
-
-.. function:: length(x: vec4) -> float
-
-   Compute the length of a 4d vector.
-
-
 .. function:: normalize(x: vec2) -> vec2
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec3) -> vec3
-
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-
-
-.. function:: normalize(x: vec4) -> vec4
-
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-
-
-.. function:: normalize(x: quat) -> quat
-
-   Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
-
-
 .. function:: transpose(m: mat22) -> mat22
-
-   Return the transpose of the matrix m
-
-
-.. function:: transpose(m: mat33) -> mat33
-
-   Return the transpose of the matrix m
-
-
-.. function:: transpose(m: mat44) -> mat44
-
-   Return the transpose of the matrix m
-
-
-.. function:: transpose(m: spatial_matrix) -> spatial_matrix
 
    Return the transpose of the matrix m
 
@@ -300,27 +215,7 @@ Vector Math
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat33) -> mat33
-
-   Return the inverse of the matrix m
-
-
-.. function:: inverse(m: mat44) -> mat44
-
-   Return the inverse of the matrix m
-
-
 .. function:: determinant(m: mat22) -> float
-
-   Return the determinant of the matrix m
-
-
-.. function:: determinant(m: mat33) -> float
-
-   Return the determinant of the matrix m
-
-
-.. function:: determinant(m: mat44) -> float
 
    Return the determinant of the matrix m
 
@@ -330,29 +225,9 @@ Vector Math
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec3) -> mat33
-
-   Returns a matrix with the components of the vector d on the diagonal
-
-
-.. function:: diag(d: vec4) -> mat44
-
-   Returns a matrix with the components of the vector d on the diagonal
-
-
 .. function:: cw_mul(x: vec2, y: vec2) -> vec2
 
    Component wise multiply of two 2d vectors.
-
-
-.. function:: cw_mul(x: vec3, y: vec3) -> vec3
-
-   Component wise multiply of two 3d vectors.
-
-
-.. function:: cw_mul(x: vec4, y: vec4) -> vec4
-
-   Component wise multiply of two 4d vectors.
 
 
 .. function:: cw_div(x: vec2, y: vec2) -> vec2
@@ -360,29 +235,9 @@ Vector Math
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec3, y: vec3) -> vec3
-
-   Component wise division of two 3d vectors.
-
-
-.. function:: cw_div(x: vec4, y: vec4) -> vec3
-
-   Component wise division of two 4d vectors.
-
-
 .. function:: vec2() -> vec2
 
    Construct a zero-initialized 2d vector.
-
-
-.. function:: vec2(x: float, y: float) -> vec2
-
-   Construct a 2d vector with compontents x, y.
-
-
-.. function:: vec2(s: float) -> vec2
-
-   Construct a 2d vector with all components set to s.
 
 
 .. function:: vec3() -> vec3
@@ -390,29 +245,9 @@ Vector Math
    Construct a zero-initialized 3d vector.
 
 
-.. function:: vec3(x: float, y: float, z: float) -> vec3
-
-   Construct a 3d vector with compontents x, y, z.
-
-
-.. function:: vec3(s: float) -> vec3
-
-   Construct a 3d vector with all components set to s.
-
-
 .. function:: vec4() -> vec4
 
    Construct a zero-initialized 4d vector.
-
-
-.. function:: vec4(x: float, y: float, z: float, w: float) -> vec4
-
-   Construct a 4d vector with compontents x, y, z, w.
-
-
-.. function:: vec4(s: float) -> vec4
-
-   Construct a 4d vector with all components set to s.
 
 
 .. function:: mat22(c0: vec2, c1: vec2) -> mat22
@@ -420,34 +255,14 @@ Vector Math
    Construct a 2x2 matrix from column vectors c0, c1.
 
 
-.. function:: mat22(m00: float, m01: float, m10: float, m11: float) -> mat22
-
-   Construct a 2x2 matrix from components.
-
-
 .. function:: mat33(c0: vec3, c1: vec3, c2: vec3) -> mat33
 
    Construct a 3x3 matrix from column vectors c0, c1, c2.
 
 
-.. function:: mat33(m00: float, m01: float, m02: float, m10: float, m11: float, m12: float, m20: float, m21: float, m22: float) -> mat33
-
-   Construct a 3x3 matrix from components.
-
-
 .. function:: mat44(c0: vec4, c1: vec4, c2: vec4, c3: vec4) -> mat44
 
    Construct a 4x4 matrix from column vectors c0, c1, c2, c4.
-
-
-.. function:: mat44(m00: float, m01: float, m02: float, m03: float, m10: float, m11: float, m12: float, m13: float, m20: float, m21: float, m22: float, m23: float, m30: float, m31: float, m32: float, m33: float) -> mat44
-
-   Construct a 4x4 matrix from components.
-
-
-.. function:: mat44(pos: vec3, rot: quat, scale: vec3) -> mat44
-
-   Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
 
 .. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None
@@ -466,22 +281,12 @@ Quaternion Math
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.
 
 
-.. function:: quat(x: float, y: float, z: float, w: float) -> quat
-
-   Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.
-
-
-.. function:: quat(i: vec3, r: float) -> quat
-
-   Construct a quaternion from it's imaginary components i, and real part r
-
-
 .. function:: quat_identity() -> quat
 
    Construct an identity quaternion with zero imaginary part and real part of 1.0
 
 
-.. function:: quat_from_axis_angle(axis: vec3, angle: float) -> quat
+.. function:: quat_from_axis_angle(axis: vec3, angle: float32) -> quat
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
@@ -489,6 +294,11 @@ Quaternion Math
 .. function:: quat_from_matrix(m: mat33) -> quat
 
    Construct a quaternion from a 3x3 matrix.
+
+
+.. function:: quat_rpy(roll: float32, pitch: float32, yaw: float32) -> quat
+
+   Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
 .. function:: quat_inverse(q: quat) -> quat
@@ -545,23 +355,9 @@ Transformations
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(m: mat44, p: vec3) -> vec3
-
-   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
-   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the tranformation matrix before calling this method.
-
-
 .. function:: transform_vector(t: transform, v: vec3) -> vec3
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
-
-
-.. function:: transform_vector(m: mat44, v: vec3) -> vec3
-
-   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the tranformation matrix before calling this method.
 
 
 .. function:: transform_inverse(t: transform) -> transform
@@ -576,21 +372,6 @@ Spatial Math
 .. function:: spatial_vector() -> spatial_vector
 
    Construct a zero-initialized 6d screw vector. Screw vectors may be used to represent rigid body wrenches and twists (velocites).
-
-
-.. function:: spatial_vector(a: float, b: float, c: float, d: float, e: float, f: float) -> spatial_vector
-
-   Construct a 6d screw vector from it's components.
-
-
-.. function:: spatial_vector(w: vec3, v: vec3) -> spatial_vector
-
-   Construct a 6d screw vector from two 3d vectors.
-
-
-.. function:: spatial_vector(s: float) -> spatial_vector
-
-   Construct a 6d screw vector with all components set to s
 
 
 .. function:: spatial_matrix() -> spatial_matrix
@@ -628,17 +409,17 @@ Spatial Math
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_jacobian(S: array[spatial_vector], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int, joint_count: int, J_start: int, J_out: array[float32]) -> None
+.. function:: spatial_jacobian(S: array[spatial_vector], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: array[float32]) -> None
 
 
-.. function:: spatial_mass(I_s: array[spatial_matrix], joint_start: int, joint_count: int, M_start: int, M: array[float32]) -> None
+.. function:: spatial_mass(I_s: array[spatial_matrix], joint_start: int32, joint_count: int32, M_start: int32, M: array[float32]) -> None
 
 
 
 
 Utility
 ---------------
-.. function:: mlp(weights: array[float32], bias: array[float32], activation: Callable, index: int, x: array[float32], out: array[float32]) -> None
+.. function:: mlp(weights: array[float32], bias: array[float32], activation: Callable, index: int32, x: array[float32], out: array[float32]) -> None
 
    Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
 
@@ -668,64 +449,19 @@ Utility
    where dim is the parameter passed to kernel launch.
 
 
-.. function:: tid() -> int, int
-
-   Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-
-
-.. function:: tid() -> int, int, int
-
-   Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-
-
-.. function:: tid() -> int, int, int, int
-
-   Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-
-
 .. function:: select(cond: bool, arg1: Any, arg2: Any)
 
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
 
 
-.. function:: atomic_add(a: array[Any], i: int, value: Any)
+.. function:: atomic_add(a: array[Any], i: int32, value: Any)
 
    Atomically add ``value`` onto the array at location given by index.
 
 
-.. function:: atomic_add(a: array[Any], i: int, j: int, value: Any)
-
-   Atomically add ``value`` onto the array at location given by indices.
-
-
-.. function:: atomic_add(a: array[Any], i: int, j: int, k: int, value: Any)
-
-   Atomically add ``value`` onto the array at location given by indices.
-
-
-.. function:: atomic_add(a: array[Any], i: int, j: int, k: int, l: int, value: Any) -> atomic_op_value_type
-
-   Atomically add ``value`` onto the array at location given by indices.
-
-
-.. function:: atomic_sub(a: array[Any], i: int, value: Any)
+.. function:: atomic_sub(a: array[Any], i: int32, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by index.
-
-
-.. function:: atomic_sub(a: array[Any], i: int, j: int, value: Any)
-
-   Atomically subtract ``value`` onto the array at location given by indices.
-
-
-.. function:: atomic_sub(a: array[Any], i: int, j: int, k: int, value: Any)
-
-   Atomically subtract ``value`` onto the array at location given by indices.
-
-
-.. function:: atomic_sub(a: array[Any], i: int, j: int, k: int, l: int, value: Any)
-
-   Atomically subtract ``value`` onto the array at location given by indices.
 
 
 .. function:: expect_eq(arg1: int8, arg2: int8) -> None
@@ -733,116 +469,16 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: uint8, arg2: uint8) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int16, arg2: int16) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint16, arg2: uint16) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int32, arg2: int32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint32, arg2: uint32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int64, arg2: int64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint64, arg2: uint64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: float32, arg2: float32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: float64, arg2: float64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec2, arg2: vec2) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec3, arg2: vec3) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec4, arg2: vec4) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: mat22, arg2: mat22) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: mat33, arg2: mat33) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: mat44, arg2: mat44) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: quat, arg2: quat) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: transform, arg2: transform) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: spatial_vector, arg2: spatial_vector) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: spatial_matrix, arg2: spatial_matrix) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_near(arg1: float, arg2: float, tolerance: float) -> None
+.. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
-
-
-.. function:: expect_near(arg1: vec3, arg2: vec3, tolerance: float) -> None
-
-   Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
 
 
 
 
 Geometry
 ---------------
-.. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float, inside: float, face: int, bary_u: float, bary_v: float) -> bool
+.. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
 
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -855,7 +491,7 @@ Geometry
    :param bary_v: Retruns the barycentric v coordinate of the closest point
 
 
-.. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float, t: float, bary_u: float, bary_v: float, sign: float, normal: vec3, face: int) -> bool
+.. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec3, face: int32) -> bool
 
    Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
 
@@ -881,35 +517,35 @@ Geometry
    :param upper: The upper bound of the bounding box in mesh space
 
 
-.. function:: mesh_query_aabb_next(query: mesh_query_aabb_t, index: int) -> bool
+.. function:: mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool
 
    Move to the next triangle overlapping the query bounding box. The index of the current face is stored in ``index``, returns ``False``
    if there are no more overlapping triangles.
 
 
-.. function:: mesh_eval_position(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
+.. function:: mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3
 
    Evaluates the position on the mesh given a face index, and barycentric coordinates.
 
 
-.. function:: mesh_eval_velocity(id: uint64, face: int, bary_u: float, bary_v: float) -> vec3
+.. function:: mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3
 
    Evaluates the velocity on the mesh given a face index, and barycentric coordinates.
 
 
-.. function:: hash_grid_query(id: uint64, point: vec3, max_dist: float) -> hash_grid_query_t
+.. function:: hash_grid_query(id: uint64, point: vec3, max_dist: float32) -> hash_grid_query_t
 
    Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
    fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
 
 
-.. function:: hash_grid_query_next(query: hash_grid_query_t, index: int) -> bool
+.. function:: hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool
 
    Move to the next point in the hash grid query. The index of the current neighbor is stored in ``index``, returns ``False``
    if there are no more neighbors.
 
 
-.. function:: hash_grid_point_id(id: uint64, index: int) -> int
+.. function:: hash_grid_point_id(id: uint64, index: int32) -> int
 
    Return the index of a point in the grid, this can be used to re-order threads such that grid 
    traversal occurs in a spatially coherent order.
@@ -917,29 +553,29 @@ Geometry
 
 .. function:: intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3) -> int
 
-   Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.
+   Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.
 
 
 
 
 Volumes
 ---------------
-.. function:: volume_sample_f(id: uint64, uvw: vec3, sampling_mode: int) -> float
+.. function:: volume_sample_f(id: uint64, uvw: vec3, sampling_mode: int32) -> float
 
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
-.. function:: volume_lookup_f(id: uint64, i: int, j: int, k: int) -> float
+.. function:: volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float
 
    Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
-.. function:: volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int) -> vec3
+.. function:: volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int32) -> vec3
 
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
-.. function:: volume_lookup_v(id: uint64, i: int, j: int, k: int) -> vec3
+.. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3
 
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
@@ -949,7 +585,7 @@ Volumes
    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
 
 
-.. function:: volume_lookup_i(id: uint64, i: int, j: int, k: int) -> int
+.. function:: volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int
 
    Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
@@ -978,16 +614,9 @@ Volumes
 
 Random
 ---------------
-.. function:: rand_init(seed: int) -> uint32
+.. function:: rand_init(seed: int32) -> uint32
 
    Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
-
-
-.. function:: rand_init(seed: int, offset: int) -> uint32
-
-   Initialize a new random number generator given a user-defined seed and an offset. 
-   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
-   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``
 
 
 .. function:: randi(state: uint32) -> int
@@ -995,19 +624,9 @@ Random
    Return a random integer between [0, 2^32)
 
 
-.. function:: randi(state: uint32, min: int, max: int) -> int
-
-   Return a random integer between [min, max)
-
-
 .. function:: randf(state: uint32) -> float
 
    Return a random float between [0.0, 1.0)
-
-
-.. function:: randf(state: uint32, min: float, max: float) -> float
-
-   Return a random float between [min, max)
 
 
 .. function:: randn(state: uint32) -> float
@@ -1015,44 +634,14 @@ Random
    Sample a normal distribution
 
 
-.. function:: noise(state: uint32, x: float) -> float
+.. function:: noise(state: uint32, x: float32) -> float
 
    Non-periodic Perlin-style noise in 1d.
 
 
-.. function:: noise(state: uint32, xy: vec2) -> float
-
-   Non-periodic Perlin-style noise in 2d.
-
-
-.. function:: noise(state: uint32, xyz: vec3) -> float
-
-   Non-periodic Perlin-style noise in 3d.
-
-
-.. function:: noise(state: uint32, xyzt: vec4) -> float
-
-   Non-periodic Perlin-style noise in 4d.
-
-
-.. function:: pnoise(state: uint32, x: float, px: int) -> float
+.. function:: pnoise(state: uint32, x: float32, px: int32) -> float
 
    Periodic Perlin-style noise in 1d.
-
-
-.. function:: pnoise(state: uint32, xy: vec2, px: int, py: int) -> float
-
-   Periodic Perlin-style noise in 2d.
-
-
-.. function:: pnoise(state: uint32, xyz: vec3, px: int, py: int, pz: int) -> float
-
-   Periodic Perlin-style noise in 3d.
-
-
-.. function:: pnoise(state: uint32, xyzt: vec4, px: int, py: int, pz: int, pt: int) -> float
-
-   Periodic Perlin-style noise in 4d.
 
 
 .. function:: curlnoise(state: uint32, xy: vec2) -> vec2
@@ -1060,204 +649,29 @@ Random
    Divergence-free vector field based on the gradient of a Perlin noise function.
 
 
-.. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
-
-   Divergence-free vector field based on the curl of three Perlin noise functions.
-
-
-.. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
-
-   Divergence-free vector field based on the curl of three Perlin noise functions.
-
-
 
 
 Operators
 ---------------
-.. function:: add(x: int, y: int) -> int
+.. function:: add(x: int32, y: int32) -> int
 
 
-.. function:: add(x: float, y: float) -> float
+.. function:: sub(x: int32, y: int32) -> int
 
 
-.. function:: add(x: vec2, y: vec2) -> vec2
+.. function:: mul(x: int32, y: int32) -> int
 
 
-.. function:: add(x: vec3, y: vec3) -> vec3
+.. function:: mod(x: int32, y: int32) -> int
 
 
-.. function:: add(x: vec4, y: vec4) -> vec4
+.. function:: div(x: int32, y: int32) -> int
 
 
-.. function:: add(x: quat, y: quat) -> quat
+.. function:: floordiv(x: int32, y: int32) -> int
 
 
-.. function:: add(x: mat22, y: mat22) -> mat22
-
-
-.. function:: add(x: mat33, y: mat33) -> mat33
-
-
-.. function:: add(x: mat44, y: mat44) -> mat44
-
-
-.. function:: add(x: spatial_vector, y: spatial_vector) -> spatial_vector
-
-
-.. function:: add(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
-
-
-.. function:: sub(x: int, y: int) -> int
-
-
-.. function:: sub(x: float, y: float) -> float
-
-
-.. function:: sub(x: vec2, y: vec2) -> vec2
-
-
-.. function:: sub(x: vec3, y: vec3) -> vec3
-
-
-.. function:: sub(x: vec4, y: vec4) -> vec4
-
-
-.. function:: sub(x: mat22, y: mat22) -> mat22
-
-
-.. function:: sub(x: mat33, y: mat33) -> mat33
-
-
-.. function:: sub(x: mat44, y: mat44) -> mat44
-
-
-.. function:: sub(x: spatial_vector, y: spatial_vector) -> spatial_vector
-
-
-.. function:: sub(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
-
-
-.. function:: mul(x: int, y: int) -> int
-
-
-.. function:: mul(x: float, y: float) -> float
-
-
-.. function:: mul(x: float, y: vec2) -> vec2
-
-
-.. function:: mul(x: float, y: vec3) -> vec3
-
-
-.. function:: mul(x: float, y: vec4) -> vec4
-
-
-.. function:: mul(x: float, y: quat) -> quat
-
-
-.. function:: mul(x: vec2, y: float) -> vec2
-
-
-.. function:: mul(x: vec3, y: float) -> vec3
-
-
-.. function:: mul(x: vec4, y: float) -> vec4
-
-
-.. function:: mul(x: quat, y: float) -> quat
-
-
-.. function:: mul(x: quat, y: quat) -> quat
-
-
-.. function:: mul(x: mat22, y: float) -> mat22
-
-
-.. function:: mul(x: mat22, y: vec2) -> vec2
-
-
-.. function:: mul(x: mat22, y: mat22) -> mat22
-
-
-.. function:: mul(x: mat33, y: float) -> mat33
-
-
-.. function:: mul(x: mat33, y: vec3) -> vec3
-
-
-.. function:: mul(x: mat33, y: mat33) -> mat33
-
-
-.. function:: mul(x: mat44, y: float) -> mat44
-
-
-.. function:: mul(x: mat44, y: vec4) -> vec4
-
-
-.. function:: mul(x: mat44, y: mat44) -> mat44
-
-
-.. function:: mul(x: spatial_vector, y: float) -> spatial_vector
-
-
-.. function:: mul(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
-
-
-.. function:: mul(x: spatial_matrix, y: spatial_vector) -> spatial_vector
-
-
-.. function:: mul(x: transform, y: transform) -> transform
-
-
-.. function:: mod(x: int, y: int) -> int
-
-
-.. function:: mod(x: float, y: float) -> float
-
-
-.. function:: div(x: int, y: int) -> int
-
-
-.. function:: div(x: float, y: float) -> float
-
-
-.. function:: div(x: vec2, y: float) -> vec2
-
-
-.. function:: div(x: vec3, y: float) -> vec3
-
-
-.. function:: div(x: vec4, y: float) -> vec4
-
-
-.. function:: floordiv(x: int, y: int) -> int
-
-
-.. function:: floordiv(x: float, y: float) -> float
-
-
-.. function:: neg(x: int) -> int
-
-
-.. function:: neg(x: float) -> float
-
-
-.. function:: neg(x: vec2) -> vec2
-
-
-.. function:: neg(x: vec3) -> vec3
-
-
-.. function:: neg(x: vec4) -> vec4
-
-
-.. function:: neg(x: quat) -> quat
-
-
-.. function:: neg(x: mat33) -> mat33
-
-
-.. function:: neg(x: mat44) -> mat44
+.. function:: neg(x: int32) -> int
 
 
 .. function:: unot(b: bool) -> bool
