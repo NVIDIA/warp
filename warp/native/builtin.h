@@ -131,6 +131,8 @@ inline CUDA_CALLABLE float min(float a, float b) { return a<b?a:b; }
 inline CUDA_CALLABLE float max(float a, float b) { return a>b?a:b; }
 inline CUDA_CALLABLE float mod(float a, float b) { return fmodf(a, b); }
 inline CUDA_CALLABLE float log(float a) { return logf(a); }
+inline CUDA_CALLABLE float log2(float a) { return log2f(a); }
+inline CUDA_CALLABLE float log10(float a) { return log10f(a); }
 inline CUDA_CALLABLE float exp(float a) { return expf(a); }
 inline CUDA_CALLABLE float pow(float a, float b) { return powf(a, b); }
 inline CUDA_CALLABLE float floordiv(float a, float b) { return float(int(a/b)); }
@@ -170,6 +172,8 @@ inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, 
     printf("adj_mod not implemented for floating point types\n");
 }
 inline CUDA_CALLABLE void adj_log(float a, float& adj_a, float adj_ret) { adj_a += (1.f/a)*adj_ret; }
+inline CUDA_CALLABLE void adj_log2(float a, float& adj_a, float adj_ret) { adj_a += (1.f/a)*(1.f/log(2.f))*adj_ret; }
+inline CUDA_CALLABLE void adj_log10(float a, float& adj_a, float adj_ret) { adj_a += (1.f/a)*(1.f/log(10.f))*adj_ret; }
 inline CUDA_CALLABLE void adj_exp(float a, float& adj_a, float adj_ret) { adj_a += exp(a)*adj_ret; }
 inline CUDA_CALLABLE void adj_pow(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*pow(a, b-1.f)*adj_ret; adj_b += log(a)*pow(a, b)*adj_ret; }
 inline CUDA_CALLABLE void adj_floordiv(float a, float b, float& adj_a, float& adj_b, float adj_ret) { }
