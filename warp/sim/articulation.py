@@ -308,7 +308,7 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
 
         # swing twist decomposition
         q_pc = wp.quat_inverse(q_p)*q_c
-        twist = wp.quat_twist(axis, q_pc)
+        twist = quat_twist(axis, q_pc)
 
         q = wp.acos(twist[3])*2.0*wp.sign(wp.dot(axis, wp.vec3(twist[0], twist[1], twist[2])))
         qd = wp.dot(w_err, axis_p)
@@ -363,7 +363,7 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
         q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
 
         # decompose to a compound rotation each axis 
-        angles = wp.quat_decompose(q_pc)
+        angles = quat_decompose(q_pc)
 
         # reconstruct rotation axes
         axis_0 = wp.vec3(1.0, 0.0, 0.0)
@@ -393,7 +393,7 @@ def eval_articulation_ik(body_q: wp.array(dtype=wp.transform),
         q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
 
         # decompose to a compound rotation each axis 
-        angles = wp.quat_decompose(q_pc)
+        angles = quat_decompose(q_pc)
 
         # reconstruct rotation axes
         axis_0 = wp.vec3(1.0, 0.0, 0.0)

@@ -73,7 +73,6 @@ def sdf(p: wp.vec3):
                     sdf_box(wp.vec3(1.0, 0.5, 0.5), p))
                     #sdf_sphere(p + sphere_1, 1.0))
 
-
     # ground plane
     d = op_union(d, sdf_plane(p, wp.vec4(0.0, 1.0, 0.0, 1.0)))
 
@@ -85,9 +84,9 @@ def normal(p: wp.vec3):
     eps = 1.e-5
 
     # compute gradient of the SDF using finite differences
-    dx = wp.sdf(p + wp.vec3(eps, 0.0, 0.0)) - wp.sdf(p - wp.vec3(eps, 0.0, 0.0))
-    dy = wp.sdf(p + wp.vec3(0.0, eps, 0.0)) - wp.sdf(p - wp.vec3(0.0, eps, 0.0))
-    dz = wp.sdf(p + wp.vec3(0.0, 0.0, eps)) - wp.sdf(p - wp.vec3(0.0, 0.0, eps))
+    dx = sdf(p + wp.vec3(eps, 0.0, 0.0)) - sdf(p - wp.vec3(eps, 0.0, 0.0))
+    dy = sdf(p + wp.vec3(0.0, eps, 0.0)) - sdf(p - wp.vec3(0.0, eps, 0.0))
+    dz = sdf(p + wp.vec3(0.0, 0.0, eps)) - sdf(p - wp.vec3(0.0, 0.0, eps))
 
     return wp.normalize(wp.vec3(dx, dy, dz))
 
@@ -142,7 +141,7 @@ def draw(cam_pos: wp.vec3,
     if d < 0.01:
 
         p = ro + rd*t
-        n = wp.normal(p)        
+        n = normal(p)        
         l = wp.normalize(wp.vec3(0.6, 0.4, 0.5))
         
         # half-vector

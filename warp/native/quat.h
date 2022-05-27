@@ -25,7 +25,13 @@ struct quat
 
     inline CUDA_CALLABLE quat(float x=0.0f, float y=0.0f, float z=0.0f, float w=0.0) : x(x), y(y), z(z), w(w) {}    
     explicit inline CUDA_CALLABLE quat(const vec3& v, float w=0.0f) : x(v.x), y(v.y), z(v.z), w(w) {}
+
 };
+
+inline CUDA_CALLABLE bool operator==(const quat& a, const quat& b)
+{
+    return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+}
 
 inline CUDA_CALLABLE quat atomic_add(quat * addr, quat value) 
 {
@@ -66,6 +72,24 @@ inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
 
     return quat(v.x, v.y, v.z, w);
 }
+
+inline CUDA_CALLABLE quat quat_rpy(float roll, float pitch, float yaw)
+{
+    float cy = cos(yaw * 0.5);
+    float sy = sin(yaw * 0.5);
+    float cr = cos(roll * 0.5);
+    float sr = sin(roll * 0.5);
+    float cp = cos(pitch * 0.5);
+    float sp = sin(pitch * 0.5);
+
+    float w = (cy * cr * cp + sy * sr * sp);
+    float x = (cy * sr * cp - sy * cr * sp);
+    float y = (cy * cr * sp + sy * sr * cp);
+    float z = (sy * cr * cp - cy * sr * sp);
+
+    return quat(x, y, z, w);
+}
+
 
 inline CUDA_CALLABLE quat quat_identity()
 {
@@ -243,6 +267,11 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle
 
     adj_axis += v*s;
     adj_angle += dot(dqda, adj_ret);
+}
+
+inline CUDA_CALLABLE void adj_quat_rpy(float roll, float pitch, float yaw, float& adj_roll, float& adj_pitch, float& adj_yaw, const quat& adj_ret)
+{
+    // todo
 }
 
 inline CUDA_CALLABLE void adj_quat_identity(const quat& adj_ret)

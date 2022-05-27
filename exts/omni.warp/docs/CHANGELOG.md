@@ -1,8 +1,26 @@
 # CHANGELOG
 
-## [0.2.1] - 2022-05-11
+## [0.2.1] - 2022-05-26
 
+- Fix for `from import *` inside Warp initialization
+- Fix for body space velocity when using deforming Mesh objects with scale
+- Fix for noise gradient discontinuities affecting `wp.curlnoise()`
+- Fix for `wp.from_torch()` to correctly preserve shape
+- Fix for URDF parser incorrectly passing density to scale parameter
 - Fix for unit tests in Kit
+- Add support for custom kernel cache location, Warp will now store generated binaries in the user's application directory
+- Add support for cross-module function references, e.g.: call another modules @wp.func functions
+- Add support for overloading `@wp.func` functions based on argument type
+- Add support for calling built-in functions directly from Python interpreter outside kernels (experimental)
+- Add support for auto-complete and docstring lookup for builtins in IDEs like VSCode, PyCharm, etc
+- Add support for doing partial array copys, see `wp.copy()` for details
+
+### Breaking Changes
+
+- Builtin methods such as `wp.quat_identity()` now call the Warp native implementation directly and will return a `wp.quat` object instead of NumPy array
+- Numpy implementations of many builtin methods have been moved to `warp.utils` and will be deprecated
+- Local `@wp.func` functions should not be namespaced when called, e.g.: previously `wp.myfunc()` would work even if `myfunc()` was not a builtin
+ 
 
 ## [0.2.0] - 2022-05-02
 

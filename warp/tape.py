@@ -128,7 +128,7 @@ class Tape:
             # try and find adjoint array in map
             return self.gradients[a]
                     
-        elif wp.type_is_int(a.dtype) or a.requires_grad == False:
+        elif wp.types.type_is_int(a.dtype) or a.requires_grad == False:
             # otherwise if input is an array that is integer typed or doesn't require grad then return null array
             return None
 

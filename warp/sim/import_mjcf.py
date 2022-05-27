@@ -203,7 +203,7 @@ def parse_mjcf(
                     start = geom_fromto[0:3]
                     end = geom_fromto[3:6]
 
-                    # compute rotation to align dflex capsule (along x-axis), with mjcf fromto direction                        
+                    # compute rotation to align the Warp capsule (along x-axis), with mjcf fromto direction                        
                     axis = wp.normalize(end-start)
                     angle = math.acos(np.dot(axis, (1.0, 0.0, 0.0)))
                     axis = wp.normalize(np.cross(axis, (1.0, 0.0, 0.0)))

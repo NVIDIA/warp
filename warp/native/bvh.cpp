@@ -6,10 +6,10 @@
  * license agreement from NVIDIA CORPORATION is strictly prohibited.
  */
 
-#include "bvh.h"
-
 #include <vector>
 #include <algorithm>
+
+#include "bvh.h"
 
 
 namespace wp

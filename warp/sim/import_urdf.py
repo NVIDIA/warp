@@ -27,19 +27,19 @@ def urdf_add_collision(builder, link, collisions, density, shape_ke, shape_kd, s
         origin = urdfpy.matrix_to_xyz_rpy(collision.origin)
 
         pos = origin[0:3]
-        rot = wp.rpy2quat(*origin[3:6])
+        rot = wp.quat_rpy(*origin[3:6])
 
         geo = collision.geometry
 
         if geo.box:
             builder.add_shape_box(
-                link,
-                pos,
-                rot,
-                geo.box.size[0]*0.5,
-                geo.box.size[1]*0.5,
-                geo.box.size[2]*0.5,
-                density,
+                body=link,
+                pos=pos,
+                rot=rot,
+                hx=geo.box.size[0]*0.5,
+                hy=geo.box.size[1]*0.5,
+                hz=geo.box.size[2]*0.5,
+                density=density,
                 ke=shape_ke,
                 kd=shape_kd,
                 kf=shape_kf,
@@ -47,11 +47,11 @@ def urdf_add_collision(builder, link, collisions, density, shape_ke, shape_kd, s
 
         if geo.sphere:
             builder.add_shape_sphere(
-                link,
-                pos,
-                rot,
-                geo.sphere.radius,
-                density,
+                body=link,
+                pos=pos,
+                rot=rot,
+                radius=geo.sphere.radius,
+                density=density,
                 ke=shape_ke,
                 kd=shape_kd,
                 kf=shape_kf,
@@ -63,12 +63,12 @@ def urdf_add_collision(builder, link, collisions, density, shape_ke, shape_kd, s
             r = wp.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi*0.5)
 
             builder.add_shape_capsule(
-                link,
-                pos,
-                wp.quat_multiply(rot, r),
-                geo.cylinder.radius,
-                geo.cylinder.length*0.5,
-                density,
+                body=link,
+                pos=pos,
+                rot=wp.mul(rot, r),
+                radius=geo.cylinder.radius,
+                half_width=geo.cylinder.length*0.5,
+                density=density,
                 ke=shape_ke,
                 kd=shape_kd,
                 kf=shape_kf,
@@ -91,11 +91,11 @@ def urdf_add_collision(builder, link, collisions, density, shape_ke, shape_kd, s
                 mesh = wp.Mesh(vertices, faces)
 
                 builder.add_shape_mesh(
-                    link,
-                    pos,
-                    rot,
-                    mesh,
-                    density,
+                    body=link,
+                    pos=pos,
+                    rot=rot,
+                    mesh=mesh,
+                    density=density,
                     ke=shape_ke,
                     kd=shape_kd,
                     kf=shape_kf,
@@ -191,7 +191,7 @@ def parse_urdf(
 
         origin = urdfpy.matrix_to_xyz_rpy(joint.origin)
         pos = origin[0:3]
-        rot = wp.rpy2quat(*origin[3:6])
+        rot = wp.quat_rpy(*origin[3:6])
 
         lower = -1.e+3
         upper = 1.e+3
