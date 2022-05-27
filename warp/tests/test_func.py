@@ -53,29 +53,29 @@ def test_func_export(test, device):
     # tests calling native functions from Python
     
     q = wp.quat_identity()
-    test.assertEqual([*q], [0.0, 0.0, 0.0, 1.0])
+    assert_np_equal(np.array([*q]), np.array([0.0, 0.0, 0.0, 1.0]))
 
     r = wp.quat_from_axis_angle((1.0, 0.0, 0.0), 2.0)
-    test.assertAlmostEqual([*r], [0.8414709568023682, 0.0, 0.0, 0.5403022170066833], places=4)
+    assert_np_equal(np.array([*r]), np.array([0.8414709568023682, 0.0, 0.0, 0.5403022170066833]), tol=1.e-3)
 
     q = wp.quat(1.0, 2.0, 3.0, 4.0)
     q = wp.normalize(q)
-    test.assertAlmostEqual([*q], [0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782], places=4)
+    assert_np_equal(np.array([*q]), np.array([0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782]), tol=1.e-3)
 
     v2 = wp.vec2(1.0, 2.0)
     v2 = wp.normalize(v2)
-    test.assertAlmostEqual([*v2], [0.4472135901451111, 0.8944271802902222], places=4)
+    assert_np_equal(np.array([*v2]), np.array([0.4472135901451111, 0.8944271802902222]), tol=1.e-3)
 
     v3 = wp.vec3(1.0, 2.0, 3.0)
     v3 = wp.normalize(v3)
-    test.assertAlmostEqual([*v3], [0.26726123690605164, 0.5345224738121033, 0.8017836809158325], places=4)
+    assert_np_equal(np.array([*v3]), np.array([0.26726123690605164, 0.5345224738121033, 0.8017836809158325]), tol=1.e-3)
 
     v4 = wp.vec4(1.0, 2.0, 3.0, 4.0)
     v4 = wp.normalize(v4)
-    test.assertAlmostEqual([*v4], [0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782], places=4)
+    assert_np_equal(np.array([*v4]), np.array([0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782]), tol=1.e-3)
 
     t = wp.transform_identity()
-    test.assertEqual([*t], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+    assert_np_equal(np.array([*t]), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
 
     f = wp.sin(math.pi*0.5)
     test.assertAlmostEqual(f, 1.0, places=3)
