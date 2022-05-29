@@ -70,7 +70,7 @@
             
             
               <div class="version">
-                0.2.1
+                0.2.2
               </div>
             
           
@@ -919,6 +919,30 @@ traversal occurs in a spatially coherent order.</p>
 <dt class="sig sig-object py" id="warp.intersect_tri_tri">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">intersect_tri_tri</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">v1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">v2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp.intersect_tri_tri" title="Permalink to this definition">¶</a></dt>
 <dd><p>Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller’s method. Returns &gt; 0 if triangles intersect.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.mesh_eval_face_normal">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_eval_face_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">face</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></span><a class="headerlink" href="#warp.mesh_eval_face_normal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluates the face normal the mesh given a face index.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.mesh_get_point">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_get_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></span><a class="headerlink" href="#warp.mesh_get_point" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the point of the mesh given a index.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.mesh_get_velocity">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_get_velocity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#warp.vec3" title="warp.types.vec3"><span class="pre">vec3</span></a></span></span><a class="headerlink" href="#warp.mesh_get_velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the velocity of the mesh given a index.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.mesh_get_index">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">mesh_get_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#warp.mesh_get_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the point-index of the mesh given a face-vertex index.</p>
 </dd></dl>
 
 </div>

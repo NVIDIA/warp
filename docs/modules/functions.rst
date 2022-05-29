@@ -556,6 +556,26 @@ Geometry
    Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.
 
 
+.. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3
+
+   Evaluates the face normal the mesh given a face index.
+
+
+.. function:: mesh_get_point(id: uint64, index: int32) -> vec3
+
+   Returns the point of the mesh given a index.
+
+
+.. function:: mesh_get_velocity(id: uint64, index: int32) -> vec3
+
+   Returns the velocity of the mesh given a index.
+
+
+.. function:: mesh_get_index(id: uint64, index: int32) -> int
+
+   Returns the point-index of the mesh given a face-vertex index.
+
+
 
 
 Volumes

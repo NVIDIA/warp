@@ -341,7 +341,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     raise RuntimeError(f"Trying to register builtin function '{key}' that would overwrite existing object.")
 
             setattr(warp, key, func)
-
+            
 
 # global dictionary of modules
 user_modules = {}
@@ -1427,7 +1427,7 @@ def export_stubs(file):
             print(f'   """', file=file)
             print(textwrap.indent(text=f.doc, prefix="   "), file=file)
             print(f'   """', file=file)
-            print(f"   pass\n", file=file)
+            print(f"   ...\n", file=file)
             
 
 
