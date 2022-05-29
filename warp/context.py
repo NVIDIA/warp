@@ -691,102 +691,100 @@ class Runtime:
 
     def __init__(self):
 
-        with warp.ScopedTimer("load_dll"):
 
-            bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
-            
-            if (os.name == 'nt'):
+        bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
+        
+        if (os.name == 'nt'):
 
-                if (sys.version_info[0] > 3 or
-                    sys.version_info[0] == 3 and sys.version_info[1] >= 8):
-                    
-                    # Python >= 3.8 this method to add dll search paths
-                    os.add_dll_directory(bin_path)
-
-                else:
-                    # Python < 3.8 we add dll directory to path
-                    os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
-
-
-                warp_lib = "warp.dll"
-                self.core = warp.build.load_dll(os.path.join(bin_path, warp_lib))
-
-            elif sys.platform == "darwin":
-
-                warp_lib = os.path.join(bin_path, "warp.dylib")
-                self.core = warp.build.load_dll(warp_lib)
+            if (sys.version_info[0] > 3 or
+                sys.version_info[0] == 3 and sys.version_info[1] >= 8):
+                
+                # Python >= 3.8 this method to add dll search paths
+                os.add_dll_directory(bin_path)
 
             else:
+                # Python < 3.8 we add dll directory to path
+                os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
 
-                warp_lib = os.path.join(bin_path, "warp.so")
-                self.core = warp.build.load_dll(warp_lib)
 
-            # setup c-types for warp.dll
-            self.core.alloc_host.restype = ctypes.c_void_p
-            self.core.alloc_device.restype = ctypes.c_void_p
-            
-            self.core.mesh_create_host.restype = ctypes.c_uint64
-            self.core.mesh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+            warp_lib = "warp.dll"
+            self.core = warp.build.load_dll(os.path.join(bin_path, warp_lib))
 
-            self.core.mesh_create_device.restype = ctypes.c_uint64
-            self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        elif sys.platform == "darwin":
 
-            self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
-            self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
+            warp_lib = os.path.join(bin_path, "warp.dylib")
+            self.core = warp.build.load_dll(warp_lib)
 
-            self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
-            self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
+        else:
 
-            self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-            self.core.hash_grid_create_host.restype = ctypes.c_uint64
-            self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
-            self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
-            self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            warp_lib = os.path.join(bin_path, "warp.so")
+            self.core = warp.build.load_dll(warp_lib)
 
-            self.core.hash_grid_create_device.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-            self.core.hash_grid_create_device.restype = ctypes.c_uint64
-            self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
-            self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
-            self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
+        # setup c-types for warp.dll
+        self.core.alloc_host.restype = ctypes.c_void_p
+        self.core.alloc_device.restype = ctypes.c_void_p
+        
+        self.core.mesh_create_host.restype = ctypes.c_uint64
+        self.core.mesh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
-            self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
-            self.core.volume_create_host.restype = ctypes.c_uint64
-            self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
-            self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
+        self.core.mesh_create_device.restype = ctypes.c_uint64
+        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
-            self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
-            self.core.volume_create_device.restype = ctypes.c_uint64
-            self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
-            self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+        self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
+        self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
 
-            # load CUDA entry points on supported platforms
-            self.core.cuda_check_device.restype = ctypes.c_uint64
-            self.core.cuda_get_context.restype = ctypes.c_void_p
-            self.core.cuda_get_stream.restype = ctypes.c_void_p
-            self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
-            self.core.cuda_get_device_name.restype = ctypes.c_char_p
+        self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
+        self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
 
-            self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
-            self.core.cuda_compile_program.restype = ctypes.c_size_t
+        self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.hash_grid_create_host.restype = ctypes.c_uint64
+        self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
+        self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
+        self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-            self.core.cuda_load_module.argtypes = [ctypes.c_char_p]
-            self.core.cuda_load_module.restype = ctypes.c_void_p
+        self.core.hash_grid_create_device.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.hash_grid_create_device.restype = ctypes.c_uint64
+        self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
+        self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
+        self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-            self.core.cuda_unload_module.argtypes = [ctypes.c_void_p]
+        self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self.core.volume_create_host.restype = ctypes.c_uint64
+        self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+        self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
-            self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-            self.core.cuda_get_kernel.restype = ctypes.c_void_p
-            
-            self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
-            self.core.cuda_launch_kernel.restype = ctypes.c_size_t
+        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self.core.volume_create_device.restype = ctypes.c_uint64
+        self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+        self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
 
-            self.core.init.restype = ctypes.c_int
-            
-        with warp.ScopedTimer("init_core"):
-            error = self.core.init()
+        # load CUDA entry points on supported platforms
+        self.core.cuda_check_device.restype = ctypes.c_uint64
+        self.core.cuda_get_context.restype = ctypes.c_void_p
+        self.core.cuda_get_stream.restype = ctypes.c_void_p
+        self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
+        self.core.cuda_get_device_name.restype = ctypes.c_char_p
 
-            if (error > 0):
-                raise Exception("Warp Initialization failed, CUDA not found")
+        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
+        self.core.cuda_compile_program.restype = ctypes.c_size_t
+
+        self.core.cuda_load_module.argtypes = [ctypes.c_char_p]
+        self.core.cuda_load_module.restype = ctypes.c_void_p
+
+        self.core.cuda_unload_module.argtypes = [ctypes.c_void_p]
+
+        self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self.core.cuda_get_kernel.restype = ctypes.c_void_p
+        
+        self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
+        self.core.cuda_launch_kernel.restype = ctypes.c_size_t
+
+        self.core.init.restype = ctypes.c_int
+        
+        error = self.core.init()
+
+        if (error > 0):
+            raise Exception("Warp Initialization failed, CUDA not found")
 
         # allocation functions, these are function local to 
         # force other classes to go through the allocator objects
@@ -814,9 +812,8 @@ class Runtime:
         self.cuda_device = self.core.cuda_get_context()
         self.cuda_stream = self.core.cuda_get_stream()
 
-        with warp.ScopedTimer("init cache"):
-            # initialize kernel cache        
-            warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
+        # initialize kernel cache        
+        warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
 
         # print device and version information
         print("Warp initialized:")
