@@ -424,6 +424,19 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
 add_builtin("intersect_tri_tri", input_types={"v0": vec3, "v1": vec3, "v2": vec3, "u0": vec3, "u1": vec3, "u2": vec3}, value_type=int, group="Geometry", 
     doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.")
 
+add_builtin("mesh_eval_face_normal", input_types={"id": uint64, "face": int}, value_type=vec3, group="Geometry",
+    doc="""Evaluates the face normal the mesh given a face index.""")
+
+add_builtin("mesh_get_point", input_types={"id": uint64, "index": int}, value_type=vec3, group="Geometry",
+    doc="""Returns the point of the mesh given a index.""")
+
+add_builtin("mesh_get_velocity", input_types={"id": uint64, "index": int}, value_type=vec3, group="Geometry",
+    doc="""Returns the velocity of the mesh given a index.""")
+
+add_builtin("mesh_get_index", input_types={"id": uint64, "index": int}, value_type=int, group="Geometry",
+    doc="""Returns the point-index of the mesh given a face-vertex index.""")
+
+
 #---------------------------------
 # Ranges
 

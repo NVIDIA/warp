@@ -775,6 +775,89 @@ CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float u, 
 	adj_v += (vq.x - vr.x) * adj_ret.x + (vq.y - vr.y) * adj_ret.y + (vq.z - vr.z) * adj_ret.z;
 }
 
+CUDA_CALLABLE inline vec3 mesh_eval_face_normal(uint64_t id, int tri)
+{
+	Mesh mesh = mesh_get(id);
+
+	if (!mesh.points)
+		return vec3();
+
+	assert(tri < mesh.num_tris);
+
+	int i = mesh.indices[tri*3+0];
+	int j = mesh.indices[tri*3+1];
+	int k = mesh.indices[tri*3+2];
+
+	vec3 p = mesh.points[i];
+	vec3 q = mesh.points[j];
+	vec3 r = mesh.points[k];
+
+	return normalize(cross(q - p, r - p));
+}
+
+CUDA_CALLABLE inline void adj_mesh_eval_face_normal(uint64_t id, int tri,
+												    uint64_t& adj_id, int& adj_tri, const vec3& adj_ret)
+{
+	// no-op
+}
+
+CUDA_CALLABLE inline vec3 mesh_get_point(uint64_t id, int index)
+{
+	Mesh mesh = mesh_get(id);
+
+	if (!mesh.points)
+		return vec3();
+
+	assert(index < mesh.num_tris * 3);
+
+	int i = mesh.indices[index];
+
+	return mesh.points[i];
+}
+
+CUDA_CALLABLE inline void adj_mesh_get_point(uint64_t id, int index,
+										     uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
+{
+	// no-op
+}
+
+CUDA_CALLABLE inline vec3 mesh_get_velocity(uint64_t id, int index)
+{
+	Mesh mesh = mesh_get(id);
+
+	if (!mesh.velocities)
+		return vec3();
+
+	assert(index < mesh.num_tris * 3);
+
+	int i = mesh.indices[index];
+
+	return mesh.velocities[i];
+}
+
+CUDA_CALLABLE inline void adj_mesh_get_velocity(uint64_t id, int index,
+										     uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
+{
+	// no-op
+}
+
+CUDA_CALLABLE inline int mesh_get_index(uint64_t id, int face_vertex_index)
+{
+	Mesh mesh = mesh_get(id);
+
+	if (!mesh.indices)
+		return -1;
+
+	assert(face_vertex_index < mesh.num_tris * 3);
+
+	return mesh.indices[face_vertex_index];
+}
+
+CUDA_CALLABLE inline void adj_mesh_get_index(uint64_t id, int index,
+										     uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
+{
+	// no-op
+}
 
 bool mesh_get_descriptor(uint64_t id, Mesh& mesh);
 void mesh_add_descriptor(uint64_t id, const Mesh& mesh);
