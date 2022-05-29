@@ -63,18 +63,17 @@ class Function:
             # user defined (Python) function
             self.adj = warp.codegen.Adjoint(func)
 
-            # create a value func for the return type
-            if "return" in self.adj.symbols:
-                
-                def value_func(args):
-                    return self.adj.symbols["return"].type
-
-                self.value_func = value_func
-
             # record input types    
-            self.input_types = {}            
-            for a in self.adj.args:
-                self.input_types[a.label] = a.type
+            self.input_types = {}
+            for name, type in self.adj.arg_types.items():
+                
+                if name == "return":
+                    def value_func(args):
+                        return type
+                    self.value_func = value_func
+                
+                else:
+                    self.input_types[name] = type
 
         else:
 
@@ -451,11 +450,11 @@ class Module:
 
         self.kernels = []
         self.functions = []
-        
+        self.constants = []
+
         self.dll = None
         self.cuda = None
 
-        self.loaded = False
         self.build_failed = False
 
         self.options = {"max_unroll": 16,
@@ -475,7 +474,6 @@ class Module:
                 
             self.dll = None
             self.cuda = None
-            self.loaded = False
 
         # register new kernel
         self.kernels.append(kernel)
@@ -483,7 +481,7 @@ class Module:
 
     def register_function(self, func):
         self.functions.append(func)
-            
+
 
     def hash_module(self):
         
@@ -499,26 +497,41 @@ class Module:
             s = kernel.adj.source
             h.update(bytes(s, 'utf-8'))
 
-        # configuration parameters
+         # configuration parameters
         for k in sorted(self.options.keys()):
             s = f"{k}={self.options[k]}"
             h.update(bytes(s, 'utf-8'))
-        
-        # compile-time constants (global)
-        h.update(warp.constant.get_hash())
+       
+        # # compile-time constants (global)
+        # if warp.types.constant._hash:
+        #     h.update(warp.constant._hash.digest())
 
         return h.digest()
 
-    def load(self):
+    def load(self, device):
 
         # early out to avoid repeatedly attemping to rebuild
         if self.build_failed:
             return False
 
-        with warp.utils.ScopedTimer(f"Module {self.name} load"):
+        build_cpu = False
+        build_cuda = False
 
-            enable_cpu = warp.is_cpu_available()
-            enable_cuda = warp.is_cuda_available()
+        if device == "cpu":
+            if self.dll:
+                return True
+            else:
+                build_cpu = warp.is_cpu_available()
+
+        # early out if cuda already loaded
+        if device == "cuda":
+            if self.cuda:
+                return True
+            else:
+                build_cuda = warp.is_cuda_available()
+
+
+        with warp.utils.ScopedTimer(f"Module {self.name} load"):
 
             module_name = "wp_" + self.name
 
@@ -541,9 +554,6 @@ class Module:
             # test cache
             module_hash = self.hash_module()
 
-            build_cpu = enable_cpu
-            build_cuda = enable_cuda
-
             if warp.config.cache_kernels and os.path.exists(hash_path):
 
                 f = open(hash_path, 'rb')
@@ -552,21 +562,16 @@ class Module:
 
                 if cache_hash == module_hash:
                     
-                    if enable_cpu and os.path.isfile(dll_path):
+                    if build_cpu and os.path.isfile(dll_path):
                         self.dll = warp.build.load_dll(dll_path)
                         if self.dll is not None:
-                            build_cpu = False
+                            return True
 
-                    if enable_cuda and os.path.isfile(ptx_path):
+                    if build_cuda and os.path.isfile(ptx_path):
                         self.cuda = warp.build.load_cuda(ptx_path)
                         if self.cuda is not None:
-                            build_cuda = False
+                            return True
 
-                    if not build_cuda and not build_cpu:
-                        if warp.config.verbose:
-                            print("Warp: Using cached kernels for module {}".format(self.name))
-                        self.loaded = True
-                        return True
 
             if warp.config.verbose:
                 print("Warp: Rebuilding kernels for module {}".format(self.name))
@@ -613,17 +618,15 @@ class Module:
 
             if build_cpu:
                 self.dll = warp.build.load_dll(dll_path)
+                if self.dll is None:
+                    raise Exception("Failed to load CPU module")
+
 
             if build_cuda:
                 self.cuda = warp.build.load_cuda(ptx_path)
+                if self.cuda is None:
+                    raise Exception("Failed to load CUDA module")
 
-            if enable_cpu and self.dll is None:
-                raise Exception("Failed to load CPU module")
-
-            if enable_cuda and self.cuda is None:
-                raise Exception("Failed to load CUDA module")
-
-            self.loaded = True
             return True
 
 #-------------------------------------------
@@ -688,99 +691,102 @@ class Runtime:
 
     def __init__(self):
 
-        bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
-        
-        if (os.name == 'nt'):
+        with warp.ScopedTimer("load_dll"):
 
-            if (sys.version_info[0] > 3 or
-                sys.version_info[0] == 3 and sys.version_info[1] >= 8):
-                
-                # Python >= 3.8 this method to add dll search paths
-                os.add_dll_directory(bin_path)
+            bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
+            
+            if (os.name == 'nt'):
+
+                if (sys.version_info[0] > 3 or
+                    sys.version_info[0] == 3 and sys.version_info[1] >= 8):
+                    
+                    # Python >= 3.8 this method to add dll search paths
+                    os.add_dll_directory(bin_path)
+
+                else:
+                    # Python < 3.8 we add dll directory to path
+                    os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
+
+
+                warp_lib = "warp.dll"
+                self.core = warp.build.load_dll(os.path.join(bin_path, warp_lib))
+
+            elif sys.platform == "darwin":
+
+                warp_lib = os.path.join(bin_path, "warp.dylib")
+                self.core = warp.build.load_dll(warp_lib)
 
             else:
-                # Python < 3.8 we add dll directory to path
-                os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
 
+                warp_lib = os.path.join(bin_path, "warp.so")
+                self.core = warp.build.load_dll(warp_lib)
 
-            warp_lib = "warp.dll"
-            self.core = warp.build.load_dll(os.path.join(bin_path, warp_lib))
+            # setup c-types for warp.dll
+            self.core.alloc_host.restype = ctypes.c_void_p
+            self.core.alloc_device.restype = ctypes.c_void_p
+            
+            self.core.mesh_create_host.restype = ctypes.c_uint64
+            self.core.mesh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
-        elif sys.platform == "darwin":
+            self.core.mesh_create_device.restype = ctypes.c_uint64
+            self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
-            warp_lib = os.path.join(bin_path, "warp.dylib")
-            self.core = warp.build.load_dll(warp_lib)
+            self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
 
-        else:
+            self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
+            self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
 
-            warp_lib = os.path.join(bin_path, "warp.so")
-            self.core = warp.build.load_dll(warp_lib)
+            self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.hash_grid_create_host.restype = ctypes.c_uint64
+            self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
+            self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-        # setup c-types for warp.dll
-        self.core.alloc_host.restype = ctypes.c_void_p
-        self.core.alloc_device.restype = ctypes.c_void_p
-        
-        self.core.mesh_create_host.restype = ctypes.c_uint64
-        self.core.mesh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+            self.core.hash_grid_create_device.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.hash_grid_create_device.restype = ctypes.c_uint64
+            self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
+            self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-        self.core.mesh_create_device.restype = ctypes.c_uint64
-        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+            self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.volume_create_host.restype = ctypes.c_uint64
+            self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+            self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
-        self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
-        self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.volume_create_device.restype = ctypes.c_uint64
+            self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+            self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
 
-        self.core.mesh_refit_host.argtypes = [ctypes.c_uint64]
-        self.core.mesh_refit_device.argtypes = [ctypes.c_uint64]
+            # load CUDA entry points on supported platforms
+            self.core.cuda_check_device.restype = ctypes.c_uint64
+            self.core.cuda_get_context.restype = ctypes.c_void_p
+            self.core.cuda_get_stream.restype = ctypes.c_void_p
+            self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
+            self.core.cuda_get_device_name.restype = ctypes.c_char_p
 
-        self.core.hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.hash_grid_create_host.restype = ctypes.c_uint64
-        self.core.hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
-        self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
-        self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
+            self.core.cuda_compile_program.restype = ctypes.c_size_t
 
-        self.core.hash_grid_create_device.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.hash_grid_create_device.restype = ctypes.c_uint64
-        self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
-        self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
-        self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.cuda_load_module.argtypes = [ctypes.c_char_p]
+            self.core.cuda_load_module.restype = ctypes.c_void_p
 
-        self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
-        self.core.volume_create_host.restype = ctypes.c_uint64
-        self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
-        self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.cuda_unload_module.argtypes = [ctypes.c_void_p]
 
-        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
-        self.core.volume_create_device.restype = ctypes.c_uint64
-        self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
-        self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+            self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            self.core.cuda_get_kernel.restype = ctypes.c_void_p
+            
+            self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
+            self.core.cuda_launch_kernel.restype = ctypes.c_size_t
 
-        # load CUDA entry points on supported platforms
-        self.core.cuda_check_device.restype = ctypes.c_uint64
-        self.core.cuda_get_context.restype = ctypes.c_void_p
-        self.core.cuda_get_stream.restype = ctypes.c_void_p
-        self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
-        self.core.cuda_get_device_name.restype = ctypes.c_char_p
+            self.core.init.restype = ctypes.c_int
+            
+        with warp.ScopedTimer("init_core"):
+            error = self.core.init()
 
-        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
-        self.core.cuda_compile_program.restype = ctypes.c_size_t
-
-        self.core.cuda_load_module.argtypes = [ctypes.c_char_p]
-        self.core.cuda_load_module.restype = ctypes.c_void_p
-
-        self.core.cuda_unload_module.argtypes = [ctypes.c_void_p]
-
-        self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        self.core.cuda_get_kernel.restype = ctypes.c_void_p
-        
-        self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
-        self.core.cuda_launch_kernel.restype = ctypes.c_size_t
-
-        self.core.init.restype = ctypes.c_int
-        
-        error = self.core.init()
-
-        if (error > 0):
-            raise Exception("Warp Initialization failed, CUDA not found")
+            if (error > 0):
+                raise Exception("Warp Initialization failed, CUDA not found")
 
         # allocation functions, these are function local to 
         # force other classes to go through the allocator objects
@@ -808,21 +814,14 @@ class Runtime:
         self.cuda_device = self.core.cuda_get_context()
         self.cuda_stream = self.core.cuda_get_stream()
 
-        # initialize host build env
-        if (warp.config.host_compiler == None):
-            warp.config.host_compiler = warp.build.find_host_compiler()
-
-        # initialize kernel cache
-        warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
+        with warp.ScopedTimer("init cache"):
+            # initialize kernel cache        
+            warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
 
         # print device and version information
         print("Warp initialized:")
         print("   Version: {}".format(warp.config.version))
-        print("   Using CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
-        if (warp.config.host_compiler):
-            print("   Using CPU compiler: {}".format(warp.config.host_compiler.rstrip()))
-        else:
-            print("   Using CPU compiler: Not found")        
+        print("   CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
         print("   Kernel cache: {}".format(warp.config.kernel_cache_dir))
 
         # global tape
@@ -844,7 +843,13 @@ class Runtime:
 
 # global entry points 
 def is_cpu_available():
-    return warp.config.host_compiler != None
+    
+    # initialize host build env (do this lazily) since
+    # it takes 5secs to run all the batch files to locate MSVC
+    if warp.config.host_compiler == None:
+        warp.config.host_compiler = warp.build.find_host_compiler()
+
+    return warp.config.host_compiler != ""
 
 def is_cuda_available():
     return runtime.cuda_device != None
@@ -853,7 +858,7 @@ def is_device_available(device):
     return device in get_devices()
 
 def get_devices():
-    """Returns a list of device strings supported by in this environment.
+    """Returns a list of device strings supported in this environment.
     """
     devices = []
     if (is_cpu_available()):
@@ -1003,11 +1008,13 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         adjoint: Whether to run forward or backward pass (typically use False)
     """
 
+    
+
     # check device available
     if is_device_available(device) == False:
         raise RuntimeError(f"Error launching kernel, device '{device}' is not available.")
 
-    # check kernel is a function
+    # check function is a Kernel
     if isinstance(kernel, Kernel) == False:
         raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
 
@@ -1016,10 +1023,9 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
     # delay load modules
-    if (kernel.module.loaded == False):
-        success = kernel.module.load()
-        if (success == False):
-            return
+    success = kernel.module.load(device)
+    if (success == False):
+        return
 
     # construct launch bounds
     bounds = warp.types.launch_bounds_t(dim)
@@ -1151,9 +1157,11 @@ def force_load():
     """Force all user-defined kernels to be compiled
     """
 
-    for m in user_modules.values():
-        if (m.loaded == False):
-            m.load()
+    devices = get_devices()
+
+    for d in devices:
+        for m in user_modules.values():
+            m.load(d)
 
 def set_module_options(options: Dict[str, Any]):
     """Set options for the current module.
@@ -1195,7 +1203,8 @@ def capture_begin():
 
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
-    force_load()
+    for m in user_modules.values():
+        m.load("cuda")    
 
     runtime.core.cuda_graph_begin_capture()
 

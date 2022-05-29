@@ -24,26 +24,16 @@ class constant:
         x: Compile-time constant value, can be any of the built-in math types.    
     """
 
-    _hash = hashlib.sha256()
-    _hash_digest = None
-
     def __init__(self, x):
 
         self.val = x
-        curframe = inspect.currentframe()
-        calframe = inspect.getouterframes(curframe)
-        line_src = calframe[1][4][0]
-        constant._hash.update(bytes(line_src, 'utf-8'))
+        constant._hash.update(bytes(str(x), 'utf-8'))
 
     def __eq__(self, other):
         return self.val == other
 
-    @classmethod
-    def get_hash(cls):
-
-        if cls._hash_digest is None:
-            cls._hash_digest = cls._hash.digest()
-        return cls._hash_digest
+    # shared hash for all constants    
+    _hash = hashlib.sha256()
 
 #----------------------
 # built-in types

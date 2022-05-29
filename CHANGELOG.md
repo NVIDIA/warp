@@ -8,12 +8,15 @@
 - Fix for `wp.from_torch()` to correctly preserve shape
 - Fix for URDF parser incorrectly passing density to scale parameter
 - Fix for unit tests in Kit
+- Fix for `wp.constant()` slow startup time (7s -> 1s in Kit)
 - Add support for custom kernel cache location, Warp will now store generated binaries in the user's application directory
 - Add support for cross-module function references, e.g.: call another modules @wp.func functions
 - Add support for overloading `@wp.func` functions based on argument type
 - Add support for calling built-in functions directly from Python interpreter outside kernels (experimental)
 - Add support for auto-complete and docstring lookup for builtins in IDEs like VSCode, PyCharm, etc
 - Add support for doing partial array copys, see `wp.copy()` for details
+- Change to only compile for targets where kernel is launched (e.g.: will not compile CPU unless explicitly requested)
+
 
 ### Breaking Changes
 

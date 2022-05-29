@@ -23,9 +23,11 @@ import test_func
 def test_import_func():
 
     # test a cross-module function reference is resolved correctly
-    v = test_func.sqr(2.0)
-    
-    wp.expect_eq(v, 4.0)
+    x = test_func.sqr(2.0)
+    y = test_func.cube(2.0)
+
+    wp.expect_eq(x, 4.0)
+    wp.expect_eq(y, 8.0)
 
 
 

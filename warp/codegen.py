@@ -102,14 +102,7 @@ class Adjoint:
     def __init__(adj, func):
 
         adj.func = func
-
-        adj.symbols = {}            # map from symbols to adjoint variables
-        adj.variables = []          # list of local variables (in order)
-        adj.args = []               # list of function arguments (in order)
-
-        adj.cond = None             # condition variable if in branch
-        adj.return_var = None       # return type for function or kernel
-
+        
         # build AST from function object
         adj.source = inspect.getsource(func)
         
@@ -120,15 +113,30 @@ class Adjoint:
         adj.tree = ast.parse(adj.source)
 
         # parse argument types
-        arg_types = typing.get_type_hints(func)
+        adj.arg_types = typing.get_type_hints(func)
+        adj.args = []
 
-        # add variables and symbol map for each argument
-        for name, t in arg_types.items():
-            adj.symbols[name] = Var(name, t, False)
+        for name, type in adj.arg_types.items():
 
-        # build ordered list of args
-        for a in adj.tree.body[0].args.args:
-            adj.args.append(adj.symbols[a.arg])
+            # skip return hint
+            if name == "return":
+                continue
+            
+            # add variable for argument
+            arg = Var(name, type, False)
+            adj.args.append(arg)
+
+
+    # generate function ssa form and adjoint
+    def build(adj, builder):
+
+        adj.builder = builder
+
+        adj.symbols = {}            # map from symbols to adjoint variables
+        adj.variables = []          # list of local variables (in order)
+
+        adj.cond = None             # condition variable if in branch
+        adj.return_var = None       # return type for function or kernel
 
         # blocks
         adj.blocks = [Block()]
@@ -139,10 +147,9 @@ class Adjoint:
         # used to generate new label indices
         adj.label_count = 0
 
-    # generate function ssa form and adjoint
-    def build(adj, builder):
-
-        adj.builder = builder
+        # update symbol map for each argument
+        for a in adj.args:
+            adj.symbols[a.label] = a
 
         # recursively evaluate function body
         adj.eval(adj.tree.body[0])

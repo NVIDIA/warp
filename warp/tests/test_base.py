@@ -132,8 +132,7 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
                 args.append(output)
 
             # force load so that we don't generate any log output during launch
-            if (kernel.module.loaded == False):
-                kernel.module.load()
+            kernel.module.load(device)
 
             capture = StdOutCapture()
             capture.begin()

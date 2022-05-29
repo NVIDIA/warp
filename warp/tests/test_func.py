@@ -20,6 +20,12 @@ wp.init()
 def sqr(x: float):
     return x*x
 
+# test nested user function calls
+# and explicit return type hints
+@wp.func
+def cube(x: float) -> float:
+    return sqr(x)*x
+
 
 @wp.func
 def custom(x: int):

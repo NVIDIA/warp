@@ -65,22 +65,19 @@ def find_host_compiler():
             vswhere_path = r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"
             vswhere_path = os.path.expandvars(vswhere_path)
             if not os.path.exists(vswhere_path):
-                return None
+                return ""
 
-            vs_path = (
-                os.popen('"{}" -latest -property installationPath'.format(vswhere_path))
-                .read()
-                .rstrip()
-            )
+            vs_path = run_cmd('"{}" -latest -property installationPath'.format(vswhere_path)).decode().rstrip()
             vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
-            output = os.popen('"{}" && set'.format(vsvars_path)).read()
+
+            output = run_cmd('"{}" && set'.format(vsvars_path)).decode()
             
             for line in output.splitlines():
                 pair = line.split("=", 1)
                 if (len(pair) >= 2):
                     os.environ[pair[0]] = pair[1]
                 
-            cl_path = subprocess.check_output("where cl.exe").decode()
+            cl_path = run_cmd("where cl.exe")
             cl_version = os.environ["VCToolsVersion"].split(".")
 
             # ensure at least VS2017 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
@@ -91,21 +88,21 @@ def find_host_compiler():
                 (int(cl_version[0]) == cl_required_major) and int(cl_version[1]) < cl_required_minor):
                 
                 print(f"Warp: MSVC found but compiler version too old, found {cl_version[0]}.{cl_version[1]}, but must be {cl_required_major}.{cl_required_minor} or higher, kernel host compilation will be disabled.")
-                return None
+                return ""
                 
             return cl_path
         
-        except:
-            
+        except Exception as e:
+
             # couldn't find host compiler
-            return None
+            return ""
     else:
         
         # try and find g++
         try:
             return run_cmd("which g++").decode()
         except:
-            return None
+            return ""
 
 
 
