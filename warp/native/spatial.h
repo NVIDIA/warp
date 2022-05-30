@@ -38,6 +38,12 @@ struct spatial_vector
     }
 };
 
+inline CUDA_CALLABLE bool operator==(const spatial_vector& a, const spatial_vector& b)
+{
+    return a.w == b.w && a.v == b.v;
+}
+
+
 CUDA_CALLABLE inline spatial_vector operator - (spatial_vector a)
 {
     return spatial_vector(-a.w, -a.v);
@@ -222,6 +228,12 @@ struct transform
         return (&p.x)[index];
     }    
 };
+
+inline CUDA_CALLABLE bool operator==(const transform& a, const transform& b)
+{
+    return a.p == b.p && a.q == b.q;
+}
+
 
 CUDA_CALLABLE inline transform transform_identity()
 {
@@ -559,6 +571,15 @@ struct spatial_matrix
 };
 
 
+inline CUDA_CALLABLE bool operator==(const spatial_matrix& a, const spatial_matrix& b)
+{
+    for(int i=0; i < 6; ++i)
+        for (int j=0; j < 6; ++j)
+            if (a.data[i][j] != b.data[i][j])
+                return false;
+
+    return true;
+}
 
 inline CUDA_CALLABLE float index(const spatial_matrix& m, int row, int col)
 {
@@ -573,6 +594,17 @@ inline CUDA_CALLABLE spatial_matrix add(const spatial_matrix& a, const spatial_m
     for (int i=0; i < 6; ++i)
         for (int j=0; j < 6; ++j)
             out.data[i][j] = a.data[i][j] + b.data[i][j];
+
+    return out;
+}
+
+inline CUDA_CALLABLE spatial_matrix sub(const spatial_matrix& a, const spatial_matrix& b)
+{
+    spatial_matrix out;
+
+    for (int i=0; i < 6; ++i)
+        for (int j=0; j < 6; ++j)
+            out.data[i][j] = a.data[i][j] - b.data[i][j];
 
     return out;
 }
@@ -709,6 +741,13 @@ inline CUDA_CALLABLE void adj_add(const spatial_matrix& a, const spatial_matrix&
     adj_a += adj_ret;
     adj_b += adj_ret;
 }
+
+inline CUDA_CALLABLE void adj_sub(const spatial_matrix& a, const spatial_matrix& b, spatial_matrix& adj_a, spatial_matrix& adj_b, const spatial_matrix& adj_ret)
+{
+    adj_a += adj_ret;
+    adj_b -= adj_ret;
+}
+
 
 inline CUDA_CALLABLE void adj_mul(const spatial_matrix& a, const spatial_vector& b, spatial_matrix& adj_a, spatial_vector& adj_b, const spatial_vector& adj_ret)
 {

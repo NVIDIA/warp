@@ -29,6 +29,8 @@ import warp.tests.test_grad
 import warp.tests.test_intersect
 import warp.tests.test_array
 import warp.tests.test_launch
+import warp.tests.test_import
+import warp.tests.test_func
 
 def run():
 
@@ -54,6 +56,11 @@ def run():
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_intersect.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_array.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_launch.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_import.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_func.register(unittest.TestCase)))
+
+    # force rebuild of all kernels
+    wp.build.clear_kernel_cache()
 
     # load all modules
     wp.force_load()

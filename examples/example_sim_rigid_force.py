@@ -21,7 +21,6 @@ import numpy as np
 import warp as wp
 import warp.sim
 import warp.sim.render
-import warp.render
 
 wp.init()
 

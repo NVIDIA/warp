@@ -180,6 +180,7 @@ def create_soft_contacts(
             shape_v = wp.mesh_eval_velocity(mesh, face_index, face_u, face_v)
 
             shape_p = shape_p*geo_scale[0]
+            shape_v = shape_v*geo_scale[0]
 
             delta = x_local-shape_p
             d = wp.length(delta)*sign
@@ -204,7 +205,6 @@ def create_soft_contacts(
             soft_contact_body_vel[index] = body_vel
             soft_contact_particle[index] = particle_index
             soft_contact_normal[index] = world_normal
-
 
 def collide(model, state):
 

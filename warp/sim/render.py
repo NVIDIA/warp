@@ -10,7 +10,6 @@ from pxr import Usd, UsdGeom, Gf, Sdf
 import math
 
 import warp as wp
-import warp.render
 import warp.sim
 
 class SimRenderer(warp.render.UsdRenderer):
@@ -50,7 +49,7 @@ class SimRenderer(warp.render.UsdRenderer):
                 geo_src = shape_geo_src[s]
 
                 # shape transform in body frame
-                X_bs = warp.utils.transform_expand(shape_transform[s])
+                X_bs = warp.transform_expand(shape_transform[s])
 
                 if (geo_type == warp.sim.GEO_PLANE):
 
@@ -181,7 +180,7 @@ class SimRenderer(warp.render.UsdRenderer):
                     node = UsdGeom.Xform(self.stage.GetPrimAtPath(self.root.GetPath().AppendChild("body_" + str(b))))
 
                     # unpack rigid transform
-                    X_sb = warp.utils.transform_expand(body_q[b])
+                    X_sb = warp.transform_expand(body_q[b])
 
                     wp.render._usd_set_xform(node, X_sb.p, X_sb.q, (1.0, 1.0, 1.0), self.time)
 

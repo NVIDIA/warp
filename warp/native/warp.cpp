@@ -11,6 +11,17 @@
 #include "stdlib.h"
 #include "string.h"
 
+
+namespace wp
+{
+
+extern "C"
+{
+    #include "exports.h"
+}
+
+} // namespace wp
+
 int cuda_init();
 
 int init()

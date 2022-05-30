@@ -54,7 +54,7 @@ def quat_inverse(q):
 
 
 def quat_from_axis_angle(axis, angle):
-    v = np.array(axis)
+    v = normalize(np.array(axis))
 
     half = angle * 0.5
     w = math.cos(half)
@@ -359,22 +359,6 @@ def spatial_solve(I, b):
     return np.dot(np.linalg.inv(I), b)
 
 
-def rpy2quat(roll, pitch, yaw):
-
-    cy = math.cos(yaw * 0.5)
-    sy = math.sin(yaw * 0.5)
-    cr = math.cos(roll * 0.5)
-    sr = math.sin(roll * 0.5)
-    cp = math.cos(pitch * 0.5)
-    sp = math.sin(pitch * 0.5)
-
-    w = cy * cr * cp + sy * sr * sp
-    x = cy * sr * cp - sy * cr * sp
-    y = cy * cr * sp + sy * sr * cp
-    z = sy * cr * cp - cy * sr * sp
-
-    return (x, y, z, w)
-
 
 # helper to retrive body angular velocity from a twist v_s in se(3)
 def get_body_angular_velocity(v_s):
@@ -515,8 +499,21 @@ def lame_parameters(E, nu):
 
     return (l, mu)
 
-# timer utils
+# ensures that correct CUDA is set for the guards lifetime
+# restores the previous CUDA context on exit
+class ScopedCudaGuard:
 
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        wp.runtime.core.cuda_acquire_context()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        wp.runtime.core.cuda_restore_context()
+
+
+# timer utils
 class ScopedTimer:
 
     indent = -1
