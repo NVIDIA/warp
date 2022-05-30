@@ -110,7 +110,7 @@ class Mesh:
                     # displacement of quadrature point from COM
                     d = quads[j] - com
 
-                    I += weight * volume * (wp.length_sq(d) * np.eye(3, 3) - np.outer(d, d))
+                    I += weight * volume * (wp.dot(d,d) * np.eye(3, 3) - np.outer(d, d))
                     mass += weight * volume
 
             self.I = I
@@ -321,7 +321,6 @@ class Model:
         self.tri_ke = 100.0
         self.tri_ka = 100.0
         self.tri_kd = 10.0
-        self.tri_kb = 100.0
         self.tri_drag = 0.0
         self.tri_lift = 0.0
 
@@ -635,8 +634,8 @@ class ModelBuilder:
         self, 
         origin : Transform, 
         parent : int=-1,
-        joint_xform : Transform=wp.transform_identity(),    # transform of joint in parent space
-        joint_xform_child: Transform=wp.transform_identity(),
+        joint_xform : Transform=wp.transform(),    # transform of joint in parent space
+        joint_xform_child: Transform=wp.transform(),
         joint_axis : Vec3=(0.0, 0.0, 0.0),
         joint_type : wp.constant=JOINT_FREE,
         joint_target_ke: float=0.0,
@@ -1158,7 +1157,7 @@ class ModelBuilder:
             for x in range(0, dim_x + 1):
 
                 g = np.array((x * cell_x, y * cell_y, 0.0))
-                p = wp.quat_rotate(rot, g) + pos
+                p = np.array(wp.quat_rotate(rot, g)) + pos
                 m = mass
 
                 if (x == 0 and fix_left):
@@ -1204,7 +1203,7 @@ class ModelBuilder:
 
         # bending constraints, could create these explicitly for a grid but this
         # is a good test of the adjacency structure
-        adj = wp.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
+        adj = wp.utils.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
         for k, e in adj.edges.items():
 
@@ -1243,7 +1242,7 @@ class ModelBuilder:
         # particles
         for i, v in enumerate(vertices):
 
-            p = wp.quat_rotate(rot, v * scale) + pos
+            p = np.array(wp.quat_rotate(rot, v * scale)) + pos
 
             self.add_particle(p, vel, 0.0)
 
@@ -1269,7 +1268,7 @@ class ModelBuilder:
         end_vertex = len(self.particle_q)
         end_tri = len(self.tri_indices)
 
-        adj = wp.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
+        adj = wp.utils.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
         # bend constraints
         for k, e in adj.edges.items():
@@ -1303,7 +1302,7 @@ class ModelBuilder:
                     v = np.array((x * cell_x, y * cell_y, z * cell_z))
                     m = mass
 
-                    p = wp.quat_rotate(rot, v) + pos + np.random.rand(3)*jitter
+                    p = np.array(wp.quat_rotate(rot, v)) + pos + np.random.rand(3)*jitter
 
                     self.add_particle(p, vel, m)
 
@@ -1374,7 +1373,7 @@ class ModelBuilder:
                     if (fix_bottom and y == 0):
                         m = 0.0
 
-                    p = wp.quat_rotate(rot, v) + pos
+                    p = np.array(wp.quat_rotate(rot, v)) + pos
 
                     self.add_particle(p, vel, m)
 
@@ -1590,6 +1589,13 @@ class ModelBuilder:
             s = scale[0]
             return (density * src.mass * s * s * s, density * src.I * s * s * s * s * s)
 
+
+    def _transform_inertia(self, m, I, p, q):
+        R = np.array(wp.quat_to_matrix(q)).reshape(3,3)
+
+        # Steiner's theorem
+        return R @ I @ R.T + m * (np.dot(p, p) * np.eye(3) - np.outer(p, p))
+
     
     # incrementally updates rigid body mass with additional mass and inertia expressed at a local to the body
     def _update_body_mass(self, i, m, I, p, q):
@@ -1609,7 +1615,7 @@ class ModelBuilder:
         com_offset = new_com - self.body_com[i]
         shape_offset = new_com - p
 
-        new_inertia = wp.transform_inertia(self.body_mass[i], self.body_inertia[i], com_offset, wp.quat_identity()) + wp.transform_inertia(
+        new_inertia = self._transform_inertia(self.body_mass[i], self.body_inertia[i], com_offset, wp.quat_identity()) + self._transform_inertia(
             m, I, shape_offset, q)
 
         self.body_mass[i] = new_mass

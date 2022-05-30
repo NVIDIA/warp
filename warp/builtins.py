@@ -149,47 +149,47 @@ add_builtin("cw_div", input_types={"x": vec2, "y": vec2}, value_type=vec2, group
     doc="Component wise division of two 2d vectors.")
 add_builtin("cw_div", input_types={"x": vec3, "y": vec3}, value_type=vec3, group="Vector Math",
     doc="Component wise division of two 3d vectors.")
-add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec3, group="Vector Math",
+add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec4, group="Vector Math",
     doc="Component wise division of two 4d vectors.")
 
 # type construtors for compute types (int, float)
 for t in scalar_types:
-    add_builtin("int", input_types={"x": t}, value_type=int, doc="Construct an 32-bit signed integer variable, larger precision types will be truncated.", hidden=True, group="Scalar Math")
-    add_builtin("float", input_types={"x": t}, value_type=float, doc="Construct a 32-bit floating point variable, larger precision types will be truncated.", hidden=True, group="Scalar Math")
+    add_builtin("int", input_types={"x": t}, value_type=int, doc="Construct an 32-bit signed integer variable, larger precision types will be truncated.", hidden=True, group="Scalar Math", export=False)
+    add_builtin("float", input_types={"x": t}, value_type=float, doc="Construct a 32-bit floating point variable, larger precision types will be truncated.", hidden=True, group="Scalar Math", export=False)
 
 # type construtors for storage types 
 for t in scalar_types:
-    add_builtin(t.__name__, input_types={"x": int}, value_type=t, doc="", hidden=True, group="Scalar Math")
-    add_builtin(t.__name__, input_types={"x": float}, value_type=t, doc="", hidden=True, group="Scalar Math")
+    add_builtin(t.__name__, input_types={"x": int}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
+    add_builtin(t.__name__, input_types={"x": float}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
 
-add_builtin("vec2", input_types={}, value_type=vec2, doc="Construct a zero-initialized 2d vector.", group="Vector Math")
-add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="Construct a 2d vector with compontents x, y.", group="Vector Math")
-add_builtin("vec2", input_types={"s": float}, value_type=vec2, doc="Construct a 2d vector with all components set to s.", group="Vector Math")
+add_builtin("vec2", input_types={}, value_type=vec2, doc="Construct a zero-initialized 2d vector.", group="Vector Math", export=False)
+add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="Construct a 2d vector with compontents x, y.", group="Vector Math", export=False)
+add_builtin("vec2", input_types={"s": float}, value_type=vec2, doc="Construct a 2d vector with all components set to s.", group="Vector Math", export=False)
 
-add_builtin("vec3", input_types={}, value_type=vec3, doc="Construct a zero-initialized 3d vector.", group="Vector Math")
-add_builtin("vec3", input_types={"x": float, "y": float, "z": float}, value_type=vec3, doc="Construct a 3d vector with compontents x, y, z.", group="Vector Math")
-add_builtin("vec3", input_types={"s": float}, value_type=vec3, doc="Construct a 3d vector with all components set to s.", group="Vector Math")
+add_builtin("vec3", input_types={}, value_type=vec3, doc="Construct a zero-initialized 3d vector.", group="Vector Math", export=False)
+add_builtin("vec3", input_types={"x": float, "y": float, "z": float}, value_type=vec3, doc="Construct a 3d vector with compontents x, y, z.", group="Vector Math", export=False)
+add_builtin("vec3", input_types={"s": float}, value_type=vec3, doc="Construct a 3d vector with all components set to s.", group="Vector Math", export=False)
 
-add_builtin("vec4", input_types={}, value_type=vec4, doc="Construct a zero-initialized 4d vector.", group="Vector Math")
-add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="Construct a 4d vector with compontents x, y, z, w.", group="Vector Math")
-add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="Construct a 4d vector with all components set to s.", group="Vector Math")
+add_builtin("vec4", input_types={}, value_type=vec4, doc="Construct a zero-initialized 4d vector.", group="Vector Math", export=False)
+add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="Construct a 4d vector with compontents x, y, z, w.", group="Vector Math", export=False)
+add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="Construct a 4d vector with all components set to s.", group="Vector Math", export=False)
 
-add_builtin("mat22", input_types={"c0": vec2, "c1": vec2 }, value_type=mat22, doc="Construct a 2x2 matrix from column vectors c0, c1.", group="Vector Math")
-add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="Construct a 2x2 matrix from components.", group="Vector Math")
+add_builtin("mat22", input_types={"c0": vec2, "c1": vec2 }, value_type=mat22, doc="Construct a 2x2 matrix from column vectors c0, c1.", group="Vector Math", export=False)
+add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="Construct a 2x2 matrix from components.", group="Vector Math", export=False)
 
-add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="Construct a 3x3 matrix from column vectors c0, c1, c2.", group="Vector Math")
+add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="Construct a 3x3 matrix from column vectors c0, c1, c2.", group="Vector Math", export=False)
 add_builtin("mat33", input_types={"m00": float, "m01": float, "m02": float,
                                   "m10": float, "m11": float, "m12": float,
-                                  "m20": float, "m21": float, "m22": float}, value_type=mat33, doc="Construct a 3x3 matrix from components.", group="Vector Math")
+                                  "m20": float, "m21": float, "m22": float}, value_type=mat33, doc="Construct a 3x3 matrix from components.", group="Vector Math", export=False)
 
-add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="Construct a 4x4 matrix from column vectors c0, c1, c2, c4.", group="Vector Math")
+add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="Construct a 4x4 matrix from column vectors c0, c1, c2, c4.", group="Vector Math", export=False)
 add_builtin("mat44", input_types={"m00": float, "m01": float, "m02": float, "m03": float,
                                   "m10": float, "m11": float, "m12": float, "m13": float,
                                   "m20": float, "m21": float, "m22": float, "m23": float,
-                                  "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="Construct a 4x4 matrix from components.", group="Vector Math")
+                                  "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="Construct a 4x4 matrix from components.", group="Vector Math", export=False)
 
 add_builtin("mat44", input_types={"pos": vec3, "rot": quat, "scale": vec3}, value_type=mat44, 
-    doc="""Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""", group="Vector Math")
+    doc="""Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""", group="Vector Math", export=False)
 
 add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, group="Vector Math",
     doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
@@ -200,17 +200,19 @@ add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}
 
 add_builtin("quat", input_types={}, value_type=quat, group="Quaternion Math", 
     doc="""Construct a zero-initialized quaternion, quaternions are laid out as
-   [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.""")
+   [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.""", export=False)
 add_builtin("quat", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=quat, group="Quaternion Math",
-    doc="Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.")
+    doc="Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.", export=False)
 add_builtin("quat", input_types={"i": vec3, "r": float}, value_type=quat, group="Quaternion Math",
-    doc="Construct a quaternion from it's imaginary components i, and real part r")
+    doc="Construct a quaternion from it's imaginary components i, and real part r", export=False)
 add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion Math",
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0")
 add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
 add_builtin("quat_from_matrix", input_types={"m": mat33}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion from a 3x3 matrix.")
+add_builtin("quat_rpy", input_types={"roll": float, "pitch": float, "yaw": float}, value_type=quat, group="Quaternion Math",
+    doc="Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.")
 add_builtin("quat_inverse", input_types={"q": quat}, value_type=quat, group="Quaternion Math",
     doc="Compute quaternion conjugate.")
 add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
@@ -224,7 +226,7 @@ add_builtin("quat_to_matrix", input_types={"q": quat}, value_type=mat33, group="
 # Transformations 
 
 add_builtin("transform", input_types={"p": vec3, "q": quat}, value_type=transform, group="Transformations",
-    doc="Construct a rigid body transformation with translation part p and rotation q.")
+    doc="Construct a rigid body transformation with translation part p and rotation q.", export=False)
 add_builtin("transform_identity", input_types={}, value_type=transform, group="Transformations",
     doc="Construct an identity transform with zero translation and identity rotation.")
 add_builtin("transform_get_translation", input_types={"t": transform}, value_type=vec3, group="Transformations",
@@ -251,18 +253,18 @@ add_builtin("transform_inverse", input_types={"t": transform}, value_type=transf
 # Spatial Math 
 
 add_builtin("spatial_vector", input_types={}, value_type=spatial_vector, group="Spatial Math",
-    doc="Construct a zero-initialized 6d screw vector. Screw vectors may be used to represent rigid body wrenches and twists (velocites).")
+    doc="Construct a zero-initialized 6d screw vector. Screw vectors may be used to represent rigid body wrenches and twists (velocites).", export=False)
 add_builtin("spatial_vector", input_types={"a": float, "b": float, "c": float, "d": float, "e": float, "f": float}, value_type=spatial_vector, group="Spatial Math",
-    doc="Construct a 6d screw vector from it's components.")
+    doc="Construct a 6d screw vector from it's components.", export=False)
 add_builtin("spatial_vector", input_types={"w": vec3, "v": vec3}, value_type=spatial_vector, group="Spatial Math",
-    doc="Construct a 6d screw vector from two 3d vectors.")
+    doc="Construct a 6d screw vector from two 3d vectors.", export=False)
 add_builtin("spatial_vector", input_types={"s": float}, value_type=spatial_vector, group="Spatial Math",
-    doc="Construct a 6d screw vector with all components set to s")
+    doc="Construct a 6d screw vector with all components set to s", export=False)
 
 add_builtin("spatial_matrix", input_types={}, value_type=spatial_matrix, group="Spatial Math",
-    doc="Construct a 6x6 zero-initialized spatial inertia matrix")
+    doc="Construct a 6x6 zero-initialized spatial inertia matrix", export=False)
 add_builtin("spatial_adjoint", input_types={"r": mat33, "s": mat33}, value_type=spatial_matrix, group="Spatial Math",
-    doc="Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.")
+    doc="Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.", export=False)
 
 add_builtin("spatial_dot", input_types={"a": spatial_vector, "b": spatial_vector}, value_type=float, group="Spatial Math",
     doc="Compute the dot product of two 6d screw vectors.")
@@ -422,14 +424,27 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
    traversal occurs in a spatially coherent order.""")
 
 add_builtin("intersect_tri_tri", input_types={"v0": vec3, "v1": vec3, "v2": vec3, "u0": vec3, "u1": vec3, "u2": vec3}, value_type=int, group="Geometry", 
-    doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method. Returns > 0 if triangles intersect.")
+    doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.")
+
+add_builtin("mesh_eval_face_normal", input_types={"id": uint64, "face": int}, value_type=vec3, group="Geometry",
+    doc="""Evaluates the face normal the mesh given a face index.""")
+
+add_builtin("mesh_get_point", input_types={"id": uint64, "index": int}, value_type=vec3, group="Geometry",
+    doc="""Returns the point of the mesh given a index.""")
+
+add_builtin("mesh_get_velocity", input_types={"id": uint64, "index": int}, value_type=vec3, group="Geometry",
+    doc="""Returns the velocity of the mesh given a index.""")
+
+add_builtin("mesh_get_index", input_types={"id": uint64, "index": int}, value_type=int, group="Geometry",
+    doc="""Returns the point-index of the mesh given a face-vertex index.""")
+
 
 #---------------------------------
 # Ranges
 
-add_builtin("range", input_types={"end": int}, value_type=range_t, group="Utility", hidden=True)
-add_builtin("range", input_types={"start": int, "end": int}, value_type=range_t, group="Utility", hidden=True)
-add_builtin("range", input_types={"start": int, "end": int, "step": int}, value_type=range_t, group="Utility", hidden=True)
+add_builtin("range", input_types={"end": int}, value_type=range_t, group="Utility", export=False, hidden=True)
+add_builtin("range", input_types={"start": int, "end": int}, value_type=range_t, group="Utility", export=False, hidden=True)
+add_builtin("range", input_types={"start": int, "end": int, "step": int}, value_type=range_t, group="Utility", export=False, hidden=True)
 
 #---------------------------------
 # Iterators
@@ -520,7 +535,7 @@ add_builtin("curlnoise", input_types={"state": uint32, "xyzt": vec4}, value_type
 add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility",
     doc="Allows printing formatted strings, using C-style format specifiers.")
 
-add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout", group="Utility")
+add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout", export=False, group="Utility")
 
 # helpers
 add_builtin("tid", input_types={}, value_type=int, group="Utility",
@@ -537,7 +552,7 @@ add_builtin("tid", input_types={}, value_type=[int, int, int, int], group="Utili
     doc="""Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.""")
 
 
-add_builtin("copy", variadic=True, hidden=True, group="Utility")
+add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
 
 # does argument checking and type progagation for load()
@@ -648,7 +663,7 @@ def atomic_op_value_type(args):
 add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
 add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_type=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)

@@ -13,7 +13,8 @@ import zlib
 import numpy as np
 
 from typing import Tuple
-
+from typing import TypeVar
+from typing import Generic
 
 
 class constant:
@@ -23,26 +24,16 @@ class constant:
         x: Compile-time constant value, can be any of the built-in math types.    
     """
 
-    _hash = hashlib.sha256()
-    _hash_digest = None
-
     def __init__(self, x):
 
         self.val = x
-        curframe = inspect.currentframe()
-        calframe = inspect.getouterframes(curframe)
-        line_src = calframe[1][4][0]
-        constant._hash.update(bytes(line_src, 'utf-8'))
+        constant._hash.update(bytes(str(x), 'utf-8'))
 
     def __eq__(self, other):
         return self.val == other
 
-    @classmethod
-    def get_hash(cls):
-
-        if cls._hash_digest is None:
-            cls._hash_digest = cls._hash.digest()
-        return cls._hash_digest
+    # shared hash for all constants    
+    _hash = hashlib.sha256()
 
 #----------------------
 # built-in types
@@ -108,7 +99,7 @@ class transform(ctypes.Array):
     _shape_ = (7,)
     _type_ = ctypes.c_float
 
-    def __init__(self, p, q):
+    def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
         self[0:3] = vec3(*p)
         self[3:7] = quat(*q)
 
@@ -289,6 +280,16 @@ class array_t(ctypes.Structure):
         self.ndim = 0       
         
 
+def type_ctype(dtype):
+
+    if dtype == float:
+        return ctypes.c_float
+    elif dtype == int:
+        return ctypes.c_int32
+    else:
+        # scalar type
+        return dtype._type_
+
 def type_length(dtype):
     if (dtype == float or dtype == int):
         return 1
@@ -301,13 +302,13 @@ def type_size_in_bytes(dtype):
     else:
         return dtype._length_*ctypes.sizeof(dtype._type_)
 
-def type_ctype(dtype):
+def type_to_warp(dtype):
     if (dtype == float):
-        return ctypes.c_float
+        return float32
     elif (dtype == int):
-        return ctypes.c_int32
+        return int32
     else:
-        return dtype._type_
+        return dtype
 
 def type_typestr(ctype):
    
@@ -372,10 +373,11 @@ def types_equal(a, b):
     else:
         return a == b
 
+T = TypeVar('T')
 
-class array:
+class array (Generic[T]):
 
-    def __init__(self, data=None, dtype=None, shape=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
+    def __init__(self, data=None, dtype: T=None, shape=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
         """ Constructs a new Warp array object from existing data.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.

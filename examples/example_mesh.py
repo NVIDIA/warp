@@ -18,7 +18,6 @@
 import numpy as np
 
 import warp as wp
-import warp.render
 from pxr import Usd, UsdGeom
 
 import os

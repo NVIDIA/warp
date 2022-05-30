@@ -258,7 +258,7 @@ CUDA_CALLABLE inline void adj_mlp(const array_t<float>& weights, const array_t<f
         {
             // adjoint w.r.t M_i
             if (adj_weights.data)
-                atomic_add(&adj_weights.data[i*n + j], x.data[index + b*j]*adj_f);    // todo: reduce these atomic stores using warp/bock level reductions
+                atomic_add(&adj_weights.data[i*n + j], x.data[index + b*j]*adj_f);    // todo: reduce these atomic stores using warp/block level reductions
 
             // adjoint w.r.t x
             if (adj_x.data)
