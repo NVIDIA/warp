@@ -572,7 +572,7 @@ def view_value_func(args):
     num_dims = args[0].type.ndim
 
     if num_indices >= num_dims:
-        raise RuntimeError(f"Trying to create an array view with {num_indices} indices, but array only has {num_dims} dimensions.")
+        raise RuntimeError(f"Trying to create an array view with {num_indices} indices, but the array only has {num_dims} dimension(s). Ensure that the argument type on the function or kernel specifies the expected number of dimensions, e.g.: def func(param: wp.array3d(dtype=float):")
 
     # check index types
     for a in args[1:]:
@@ -655,12 +655,14 @@ add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
-
 # used to index into builtin types, i.e.: y = vec3[1]
 add_builtin("index", variadic=True, hidden=True, value_type=float, group="Utility")
 
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
+
+    if type_is_int(t) == False:
+        add_builtin("lerp", input_types={"a": t, "b": t, "t": float}, value_type=t, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")

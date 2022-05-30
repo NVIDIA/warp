@@ -18,6 +18,12 @@ import warp.utils
 from warp.utils import ScopedTimer
 from warp.thirdparty import appdirs
 
+# return from funtions without type -> C++ compile error
+# array[i,j] += x -> augassign not handling target of subscript
+
+
+
+
 def run_cmd(cmd, capture=False):
     
     if (warp.config.verbose):
