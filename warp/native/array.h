@@ -35,7 +35,7 @@ template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
 {
     assert(arr.ndim == 1);
-    assert(arr.shape[0] > i);
+    assert(i >= 0 && i < arr.shape[0]);
     
     const int idx = i;
 
@@ -46,8 +46,8 @@ template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
 {
     assert(arr.ndim == 2);
-    assert(arr.shape[0] > i);
-    assert(arr.shape[1] > j);
+    assert(i >= 0 && i < arr.shape[0]);
+    assert(j >= 0 && j < arr.shape[1]);
 
     const int idx = i*arr.shape[1] + j;
 
@@ -58,9 +58,9 @@ template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
 {
     assert(arr.ndim == 3);
-    assert(arr.shape[0] > i);
-    assert(arr.shape[1] > j);
-    assert(arr.shape[2] > k);
+    assert(i >= 0 && i < arr.shape[0]);
+    assert(j >= 0 && j < arr.shape[1]);
+    assert(k >= 0 && k < arr.shape[2]);
 
     const int idx = i*arr.shape[1]*arr.shape[2] + 
                     j*arr.shape[2] +
@@ -73,10 +73,10 @@ template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
 {
     assert(arr.ndim == 3);
-    assert(arr.shape[0] > i);
-    assert(arr.shape[1] > j);
-    assert(arr.shape[2] > k);
-    assert(arr.shape[3] > l);
+    assert(i >= 0 && i < arr.shape[0]);
+    assert(j >= 0 && j < arr.shape[1]);
+    assert(k >= 0 && k < arr.shape[2]);
+    assert(l >= 0 && l < arr.shape[3]);
 
     const int idx = i*arr.shape[1]*arr.shape[2]*arr.shape[3] + 
                     j*arr.shape[2]*arr.shape[3] + 
