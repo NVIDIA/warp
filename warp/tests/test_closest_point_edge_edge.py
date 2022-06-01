@@ -7,6 +7,8 @@
 
 import numpy as np
 
+import unittest
+
 import warp as wp
 from warp.tests.test_base import *
 
