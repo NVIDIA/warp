@@ -17,6 +17,7 @@ import os
 import xml.etree.ElementTree as ET
 
 import warp as wp
+from warp.sim.model import Mesh
 
 
 def urdf_add_collision(builder, link, collisions, density, shape_ke, shape_kd, shape_kf, shape_mu):
@@ -88,7 +89,7 @@ def urdf_add_collision(builder, link, collisions, density, shape_ke, shape_kd, s
                     faces.append(int(f[1]))
                     faces.append(int(f[2]))
 
-                mesh = wp.Mesh(vertices, faces)
+                mesh = Mesh(vertices, faces)
 
                 builder.add_shape_mesh(
                     body=link,
