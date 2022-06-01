@@ -17,7 +17,7 @@ import unittest
 wp.init()
 
 #from test_func import sqr
-import test_func
+import warp.tests.test_func as test_func
 
 @wp.kernel
 def test_import_func():
