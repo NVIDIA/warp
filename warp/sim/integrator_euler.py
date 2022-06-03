@@ -156,13 +156,17 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
                    indices: wp.array2d(dtype=int),
                    pose: wp.array(dtype=wp.mat22),
                    activation: wp.array(dtype=float),
-                   k_mu: float,
-                   k_lambda: float,
-                   k_damp: float,
-                   k_drag: float,
-                   k_lift: float,
+                   materials: wp.array2d(dtype=float),
                    f: wp.array(dtype=wp.vec3)):
     tid = wp.tid()
+
+    mats = materials[tid]
+    
+    k_mu = mats[0]
+    k_lambda = mats[1]
+    k_damp = mats[2]
+    k_drag = mats[3]
+    k_lift = mats[4]
 
     i = indices[tid, 0]
     j = indices[tid, 1]
@@ -1448,7 +1452,7 @@ def compute_forces(model, state, particle_f, body_f):
             particle_f)
 
     # triangle elastic and lift/drag forces
-    if (model.tri_count and model.tri_ke > 0.0):
+    if (model.tri_count):
 
         wp.launch(kernel=eval_triangles,
                     dim=model.tri_count,
@@ -1458,11 +1462,7 @@ def compute_forces(model, state, particle_f, body_f):
                         model.tri_indices,
                         model.tri_poses,
                         model.tri_activations,
-                        model.tri_ke,
-                        model.tri_ka,
-                        model.tri_kd,
-                        model.tri_drag,
-                        model.tri_lift
+                        model.tri_materials
                     ],
                     outputs=[particle_f],
                     device=model.device)

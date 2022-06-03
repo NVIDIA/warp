@@ -55,7 +55,10 @@ class Example:
             cell_x=0.1, 
             cell_y=0.1, 
             mass=0.1, 
-            fix_left=True)
+            fix_left=True,
+            tri_ke=1.e+3,
+            tri_ka=1.e+3,
+            tri_kd=1.e+1)
 
         usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/bunny/bunny"))
@@ -77,10 +80,6 @@ class Example:
 
         self.model = builder.finalize(device=self.device)
         self.model.ground = True
-        self.model.tri_ke = 1.e+3
-        self.model.tri_ka = 1.e+3
-        self.model.tri_kb = 1.0
-        self.model.tri_kd = 1.e+1
         self.model.soft_contact_kd = 1.e+2
 
         self.integrator = wp.sim.SemiImplicitIntegrator()

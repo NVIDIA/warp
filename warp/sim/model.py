@@ -273,6 +273,7 @@ class Model:
         self.tri_indices = None
         self.tri_poses = None
         self.tri_activations = None
+        self.tri_materials = None
 
         self.edge_indices = None
         self.edge_rest_angle = None
@@ -318,11 +319,6 @@ class Model:
         self.soft_contact_kf = 1.e+3
         self.soft_contact_mu = 0.5
 
-        self.tri_ke = 100.0
-        self.tri_ka = 100.0
-        self.tri_kd = 10.0
-        self.tri_drag = 0.0
-        self.tri_lift = 0.0
 
         self.edge_ke = 100.0
         self.edge_kd = 0.0
@@ -563,6 +559,7 @@ class ModelBuilder:
         self.tri_indices = []
         self.tri_poses = []
         self.tri_activations = []
+        self.tri_materials = []
 
         # edges (bending)
         self.edge_indices = []
@@ -1036,7 +1033,8 @@ class ModelBuilder:
 
         self.spring_rest_length.append(l)
 
-    def add_triangle(self, i : int, j : int, k : int) -> float:
+    def add_triangle(self, i : int, j : int, k : int, tri_ke : float=100.0, tri_ka : float=100.0, tri_kd :float=10.0, tri_drag : float=0.0, tri_lift : float = 0.0) -> float:
+
         """Adds a trianglular FEM element between three particles in the system. 
 
         Triangles are modeled as viscoelastic elements with elastic stiffness and damping
@@ -1089,6 +1087,7 @@ class ModelBuilder:
             self.tri_indices.append((i, j, k))
             self.tri_poses.append(inv_D.tolist())
             self.tri_activations.append(0.0)
+            self.tri_materials.append((tri_ke, tri_ka, tri_kd, tri_drag, tri_lift))
             return area
 
     def add_tetrahedron(self, i: int, j: int, k: int, l: int, k_mu: float=1.e+3, k_lambda: float=1.e+3, k_damp: float=0.0) -> float:
@@ -1194,7 +1193,12 @@ class ModelBuilder:
                        fix_left: bool=False,
                        fix_right: bool=False,
                        fix_top: bool=False,
-                       fix_bottom: bool=False):
+                       fix_bottom: bool=False,
+                       tri_ke: float=100.0,
+                       tri_ka: float=100.0,
+                       tri_kd: float=10.0,
+                       tri_drag: float=0.0,
+                       tri_lift: float=0.0):
 
         """Helper to create a regular planar cloth grid
 
@@ -1254,8 +1258,8 @@ class ModelBuilder:
                                 start_vertex + grid_index(x, y, dim_x + 1),
                                 start_vertex + grid_index(x - 1, y, dim_x + 1))
 
-                        self.add_triangle(*tri1)
-                        self.add_triangle(*tri2)
+                        self.add_triangle(*tri1, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
+                        self.add_triangle(*tri2, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
                     else:
 
@@ -1267,8 +1271,8 @@ class ModelBuilder:
                                 start_vertex + grid_index(x, y, dim_x + 1),
                                 start_vertex + grid_index(x - 1, y, dim_x + 1))
 
-                        self.add_triangle(*tri1)
-                        self.add_triangle(*tri2)
+                        self.add_triangle(*tri1, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
+                        self.add_triangle(*tri2, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
         end_vertex = len(self.particle_q)
         end_tri = len(self.tri_indices)
@@ -1285,7 +1289,12 @@ class ModelBuilder:
 
             self.add_edge(e.o0, e.o1, e.v0, e.v1)          # opposite 0, opposite 1, vertex 0, vertex 1
 
-    def add_cloth_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, edge_callback=None, face_callback=None):
+    def add_cloth_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, edge_callback=None, face_callback=None,
+                       tri_ke: float=100.0,
+                       tri_ka: float=100.0,
+                       tri_kd: float=10.0,
+                       tri_drag: float=0.0,
+                       tri_lift: float=0.0):
         """Helper to create a cloth model from a regular triangle mesh
 
         Creates one FEM triangle element and one bending element for every face
@@ -1328,7 +1337,7 @@ class ModelBuilder:
             if (face_callback):
                 face_callback(i, j, k)
 
-            area = self.add_triangle(i, j, k)
+            area = self.add_triangle(i, j, k, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
             # add area fraction to particles
             if (area > 0.0):
@@ -1395,7 +1404,12 @@ class ModelBuilder:
                       fix_left: bool=False,
                       fix_right: bool=False,
                       fix_top: bool=False,
-                      fix_bottom: bool=False):
+                      fix_bottom: bool=False,
+                      tri_ke: float=100.0,
+                      tri_ka: float=100.0,
+                      tri_kd: float=10.0,
+                      tri_drag: float=0.0,
+                      tri_lift: float=0.0):
         """Helper to create a rectangular tetrahedral FEM grid
 
         Creates a regular grid of FEM tetrhedra and surface triangles. Useful for example
@@ -1502,9 +1516,14 @@ class ModelBuilder:
 
         # add triangles
         for k, v in faces.items():
-            self.add_triangle(v[0], v[1], v[2])
+            self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
-    def add_soft_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, k_mu: float, k_lambda: float, k_damp: float):
+    def add_soft_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, k_mu: float, k_lambda: float, k_damp: float,
+                       tri_ke: float=100.0,
+                       tri_ka: float=100.0,
+                       tri_kd: float=10.0,
+                       tri_drag: float=0.0,
+                       tri_lift: float=0.0):
         """Helper to create a tetrahedral model from an input tetrahedral mesh
 
         Args:
@@ -1568,7 +1587,7 @@ class ModelBuilder:
         # add triangles
         for k, v in faces.items():
             try:
-                self.add_triangle(v[0], v[1], v[2])
+                self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
             except np.linalg.LinAlgError:
                 continue
 
@@ -1785,6 +1804,7 @@ class ModelBuilder:
         m.tri_indices = wp.array(self.tri_indices, dtype=wp.int32, device=device)
         m.tri_poses = wp.array(self.tri_poses, dtype=wp.mat22, device=device)
         m.tri_activations = wp.array(self.tri_activations, dtype=wp.float32, device=device)
+        m.tri_materials = wp.array(self.tri_materials, dtype=wp.float32, device=device)
 
         #---------------------
         # edges
