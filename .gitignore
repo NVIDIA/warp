@@ -1,5 +1,6 @@
 __pycache__
 .idea
+.history
 *.net
 *.prof
 warp/kernels
