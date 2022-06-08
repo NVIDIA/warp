@@ -533,6 +533,11 @@ class ModelBuilder:
     default_tri_kd = 10.0
     default_tri_drag = 0.0
     default_tri_lift = 0.0
+
+    # Default edge bending properties
+    default_edge_ke = 100.0
+    default_edge_kd = 0.0
+
     
     def __init__(self):
 
@@ -570,8 +575,6 @@ class ModelBuilder:
         self.edge_indices = []
         self.edge_rest_angle = []
         self.edge_bending_properties = []
-        self.default_edge_ke = 100.0
-        self.default_edge_kd = 0.0
 
         # tetrahedra
         self.tet_indices = []
@@ -1146,7 +1149,7 @@ class ModelBuilder:
 
         return volume
 
-    def add_edge(self, i: int, j: int, k: int, l: int, rest: float=None, edge_ke: float=None, edge_kd: float=None):
+    def add_edge(self, i: int, j: int, k: int, l: int, rest: float=None, edge_ke: float=default_edge_ke, edge_kd: float=default_edge_kd):
         """Adds a bending edge element between four particles in the system. 
 
         Bending elements are designed to be between two connected triangles. Then
@@ -1187,10 +1190,6 @@ class ModelBuilder:
 
         self.edge_indices.append((i, j, k, l))
         self.edge_rest_angle.append(rest)
-        if(edge_ke == None):
-            edge_ke = self.default_edge_ke
-        if(edge_kd == None):
-            edge_kd = self.default_edge_kd
         self.edge_bending_properties.append((edge_ke, edge_kd))
 
     def add_cloth_grid(self,
@@ -1212,8 +1211,8 @@ class ModelBuilder:
                        tri_kd: float=default_tri_kd,
                        tri_drag: float=default_tri_drag,
                        tri_lift: float=default_tri_lift, 
-                       edge_ke: float=None,
-                       edge_kd: float=None):
+                       edge_ke: float=default_edge_ke,
+                       edge_kd: float=default_edge_kd):
 
         """Helper to create a regular planar cloth grid
 
@@ -1310,8 +1309,8 @@ class ModelBuilder:
                        tri_kd: float=default_tri_kd,
                        tri_drag: float=default_tri_drag,
                        tri_lift: float=default_tri_lift,
-                       edge_ke: float=None,
-                       edge_kd: float=None):
+                       edge_ke: float=default_edge_ke,
+                       edge_kd: float=default_edge_kd):
         """Helper to create a cloth model from a regular triangle mesh
 
         Creates one FEM triangle element and one bending element for every face
