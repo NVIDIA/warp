@@ -571,11 +571,12 @@ def eval_bending(
         v: wp.array(dtype=wp.vec3),
         indices: wp.array2d(dtype=int),
         rest: wp.array(dtype=float),
-        ke: float,
-        kd: float,
+        bending_properties: wp.array2d(dtype=float),
         f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
+    ke = bending_properties[tid,0]
+    kd = bending_properties[tid,1]
 
     i = indices[tid,0]
     j = indices[tid,1]
@@ -1491,7 +1492,7 @@ def compute_forces(model, state, particle_f, body_f):
 
         wp.launch(kernel=eval_bending,
                     dim=model.edge_count,
-                    inputs=[state.particle_q, state.particle_qd, model.edge_indices, model.edge_rest_angle, model.edge_ke, model.edge_kd],
+                    inputs=[state.particle_q, state.particle_qd, model.edge_indices, model.edge_rest_angle, model.edge_bending_properties],
                     outputs=[particle_f],
                     device=model.device)
 

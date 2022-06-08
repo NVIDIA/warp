@@ -277,6 +277,7 @@ class Model:
 
         self.edge_indices = None
         self.edge_rest_angle = None
+        self.edge_bending_properties = None
 
         self.tet_indices = None
         self.tet_poses = None
@@ -319,9 +320,7 @@ class Model:
         self.soft_contact_kf = 1.e+3
         self.soft_contact_mu = 0.5
 
-
-        self.edge_ke = 100.0
-        self.edge_kd = 0.0
+        self.edge_bending_properties = None
 
         self.particle_radius = 0.0
         self.particle_ke = 1.e+3
@@ -570,6 +569,9 @@ class ModelBuilder:
         # edges (bending)
         self.edge_indices = []
         self.edge_rest_angle = []
+        self.edge_bending_properties = []
+        self.default_edge_ke = 100.0
+        self.default_edge_kd = 0.0
 
         # tetrahedra
         self.tet_indices = []
@@ -1144,7 +1146,7 @@ class ModelBuilder:
 
         return volume
 
-    def add_edge(self, i: int, j: int, k: int, l: int, rest: float=None):
+    def add_edge(self, i: int, j: int, k: int, l: int, rest: float=None, edge_ke: float=None, edge_kd: float=None):
         """Adds a bending edge element between four particles in the system. 
 
         Bending elements are designed to be between two connected triangles. Then
@@ -1185,6 +1187,11 @@ class ModelBuilder:
 
         self.edge_indices.append((i, j, k, l))
         self.edge_rest_angle.append(rest)
+        if(edge_ke == None):
+            edge_ke = self.default_edge_ke
+        if(edge_kd == None):
+            edge_kd = self.default_edge_kd
+        self.edge_bending_properties.append((edge_ke, edge_kd))
 
     def add_cloth_grid(self,
                        pos: Vec3,
@@ -1204,7 +1211,9 @@ class ModelBuilder:
                        tri_ka: float=default_tri_ka,
                        tri_kd: float=default_tri_kd,
                        tri_drag: float=default_tri_drag,
-                       tri_lift: float=default_tri_lift):
+                       tri_lift: float=default_tri_lift, 
+                       edge_ke: float=None,
+                       edge_kd: float=None):
 
         """Helper to create a regular planar cloth grid
 
@@ -1293,14 +1302,16 @@ class ModelBuilder:
             if (e.f0 == -1 or e.f1 == -1):
                 continue
 
-            self.add_edge(e.o0, e.o1, e.v0, e.v1)          # opposite 0, opposite 1, vertex 0, vertex 1
+            self.add_edge(e.o0, e.o1, e.v0, e.v1, edge_ke=edge_ke, edge_kd=edge_kd)          # opposite 0, opposite 1, vertex 0, vertex 1
 
     def add_cloth_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, edge_callback=None, face_callback=None,
                        tri_ke: float=default_tri_ke,
                        tri_ka: float=default_tri_ka,
                        tri_kd: float=default_tri_kd,
                        tri_drag: float=default_tri_drag,
-                       tri_lift: float=default_tri_lift):
+                       tri_lift: float=default_tri_lift,
+                       edge_ke: float=None,
+                       edge_kd: float=None):
         """Helper to create a cloth model from a regular triangle mesh
 
         Creates one FEM triangle element and one bending element for every face
@@ -1367,7 +1378,7 @@ class ModelBuilder:
             if (edge_callback):
                 edge_callback(e.f0, e.f1)
 
-            self.add_edge(e.o0, e.o1, e.v0, e.v1)
+            self.add_edge(e.o0, e.o1, e.v0, e.v1, edge_ke=edge_ke, edge_kd=edge_kd)
 
     def add_particle_grid(self,
                       pos: Vec3,
@@ -1817,6 +1828,7 @@ class ModelBuilder:
 
         m.edge_indices = wp.array(self.edge_indices, dtype=wp.int32, device=device)
         m.edge_rest_angle = wp.array(self.edge_rest_angle, dtype=wp.float32, device=device)
+        m.edge_bending_properties = wp.array(self.edge_bending_properties, dtype=wp.float32, device=device)
 
         #---------------------
         # tetrahedra
