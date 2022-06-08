@@ -528,6 +528,12 @@ class ModelBuilder:
         than creating your own Model object directly, however it is possible to do so if 
         desired.
     """
+
+    default_tri_ke = 100.0
+    default_tri_ka = 100.0
+    default_tri_kd = 10.0
+    default_tri_drag = 0.0
+    default_tri_lift = 0.0
     
     def __init__(self):
 
@@ -1033,7 +1039,7 @@ class ModelBuilder:
 
         self.spring_rest_length.append(l)
 
-    def add_triangle(self, i : int, j : int, k : int, tri_ke : float=100.0, tri_ka : float=100.0, tri_kd :float=10.0, tri_drag : float=0.0, tri_lift : float = 0.0) -> float:
+    def add_triangle(self, i : int, j : int, k : int, tri_ke : float=default_tri_ke, tri_ka : float=default_tri_ka, tri_kd :float=default_tri_kd, tri_drag : float=default_tri_drag, tri_lift : float = default_tri_lift) -> float:
 
         """Adds a trianglular FEM element between three particles in the system. 
 
@@ -1194,11 +1200,11 @@ class ModelBuilder:
                        fix_right: bool=False,
                        fix_top: bool=False,
                        fix_bottom: bool=False,
-                       tri_ke: float=100.0,
-                       tri_ka: float=100.0,
-                       tri_kd: float=10.0,
-                       tri_drag: float=0.0,
-                       tri_lift: float=0.0):
+                       tri_ke: float=default_tri_ke,
+                       tri_ka: float=default_tri_ka,
+                       tri_kd: float=default_tri_kd,
+                       tri_drag: float=default_tri_drag,
+                       tri_lift: float=default_tri_lift):
 
         """Helper to create a regular planar cloth grid
 
@@ -1290,11 +1296,11 @@ class ModelBuilder:
             self.add_edge(e.o0, e.o1, e.v0, e.v1)          # opposite 0, opposite 1, vertex 0, vertex 1
 
     def add_cloth_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, edge_callback=None, face_callback=None,
-                       tri_ke: float=100.0,
-                       tri_ka: float=100.0,
-                       tri_kd: float=10.0,
-                       tri_drag: float=0.0,
-                       tri_lift: float=0.0):
+                       tri_ke: float=default_tri_ke,
+                       tri_ka: float=default_tri_ka,
+                       tri_kd: float=default_tri_kd,
+                       tri_drag: float=default_tri_drag,
+                       tri_lift: float=default_tri_lift):
         """Helper to create a cloth model from a regular triangle mesh
 
         Creates one FEM triangle element and one bending element for every face
@@ -1405,11 +1411,11 @@ class ModelBuilder:
                       fix_right: bool=False,
                       fix_top: bool=False,
                       fix_bottom: bool=False,
-                      tri_ke: float=100.0,
-                      tri_ka: float=100.0,
-                      tri_kd: float=10.0,
-                      tri_drag: float=0.0,
-                      tri_lift: float=0.0):
+                      tri_ke: float=default_tri_ke,
+                      tri_ka: float=default_tri_ka,
+                      tri_kd: float=default_tri_kd,
+                      tri_drag: float=default_tri_drag,
+                      tri_lift: float=default_tri_lift):
         """Helper to create a rectangular tetrahedral FEM grid
 
         Creates a regular grid of FEM tetrhedra and surface triangles. Useful for example
@@ -1519,11 +1525,11 @@ class ModelBuilder:
             self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
     def add_soft_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, k_mu: float, k_lambda: float, k_damp: float,
-                       tri_ke: float=100.0,
-                       tri_ka: float=100.0,
-                       tri_kd: float=10.0,
-                       tri_drag: float=0.0,
-                       tri_lift: float=0.0):
+                       tri_ke: float=default_tri_ke,
+                       tri_ka: float=default_tri_ka,
+                       tri_kd: float=default_tri_kd,
+                       tri_drag: float=default_tri_drag,
+                       tri_lift: float=default_tri_lift):
         """Helper to create a tetrahedral model from an input tetrahedral mesh
 
         Args:
