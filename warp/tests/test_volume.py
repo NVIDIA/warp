@@ -274,7 +274,7 @@ def register(parent):
 
             for device in devices:
                 points = rng.uniform(-10., 10., size=(100, 3))
-                values = wp.array(np.zeros(1), dtype=wp.float32, device=device)
+                values = wp.array(np.zeros(1), dtype=wp.float32, device=device, requires_grad=True)
                 for case in points:
                     uvws = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
                     xyzs = wp.array(case * 0.25, dtype=wp.vec3, device=device, requires_grad=True)
@@ -303,7 +303,7 @@ def register(parent):
 
             for device in devices:
                 points = rng.uniform(-10., 10., size=(100, 3))
-                values = wp.array(np.zeros(1), dtype=wp.float32, device=device)
+                values = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
                 for case in points:
                     uvws = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
                     xyzs = wp.array(case * 0.25, dtype=wp.vec3, device=device, requires_grad=True)
@@ -329,8 +329,8 @@ def register(parent):
         def test_volume_transform_gradient(self):
 
             for device in devices:
-                values = wp.array(np.zeros(1), dtype=wp.float32, device=device)
-                grad_values = wp.array(np.zeros(3), dtype=wp.vec3, device=device)
+                values = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+                grad_values = wp.zeros(1, dtype=wp.vec3, device=device)
                 points = rng.uniform(-10., 10., size=(10, 3))
                 for case in points:
                     points = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
@@ -338,12 +338,13 @@ def register(parent):
                     with tape:
                         wp.launch(test_volume_index_to_world, dim=1, inputs=[volumes["torus"][device].id, points, values, grad_values], device=device)
                     tape.backward(values)
-
+               
                     grad_computed = tape.gradients[points].numpy()
                     grad_expected = grad_values.numpy()
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
-                    tape = wp.Tape()
+                    tape.reset()
+
                     with tape:
                         wp.launch(test_volume_world_to_index, dim=1, inputs=[volumes["torus"][device].id, points, values, grad_values], device=device)
                     tape.backward(values)

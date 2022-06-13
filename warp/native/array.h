@@ -72,7 +72,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
 template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
 {
-    assert(arr.ndim == 3);
+    assert(arr.ndim == 4);
     assert(arr.shape[0] > i);
     assert(arr.shape[1] > j);
     assert(arr.shape[2] > k);

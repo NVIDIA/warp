@@ -12,6 +12,7 @@ import struct
 import zlib
 import numpy as np
 
+from typing import Any
 from typing import Tuple
 from typing import TypeVar
 from typing import Generic
@@ -404,6 +405,7 @@ class array (Generic[T]):
         """
 
         self.owner = False
+        self.grad = None
 
         if shape == None:
             shape = (length,)   
@@ -534,9 +536,6 @@ class array (Generic[T]):
         for d in self.shape:
             self.size *= d
 
-        # save flag, controls if gradients will be computed in by wp.Tape
-        self.requires_grad = requires_grad
-
         # store flat shape (including type shape)
         if dtype in vector_types:
             # vector type, flatten the dimensions into one tuple
@@ -564,6 +563,11 @@ class array (Generic[T]):
                 "typestr": type_typestr(type_ctype(self.dtype)),
                 "version": 2
             }
+
+        # controls if gradients will be computed in by wp.Tape
+        # this will trigger allocation of a gradient array if it doesn't exist already
+        self.requires_grad = requires_grad
+
 
     def __del__(self):
         
@@ -611,6 +615,18 @@ class array (Generic[T]):
 
         return a        
 
+    def __setattr__(self, __name: str, __value: Any) -> None:
+
+        if __name == "requires_grad" and __value == True and self.grad == None:
+            self._alloc_grad()
+
+        return super().__setattr__(__name, __value)
+
+    def _alloc_grad(self):
+
+        from warp.context import zeros
+        self.grad = zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+
 
     def zero_(self):
 
@@ -622,6 +638,24 @@ class array (Generic[T]):
         if(self.device == "cuda"):
             runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
+
+    def fill_(self, value):
+
+        from warp.context import runtime
+
+        # convert value to array type
+        src_type = type_ctype(self.dtype)
+        src_value = src_type(value)
+
+        # cast to a 4-byte integer for memset
+        dest_ptr = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int))
+        dest_value = dest_ptr.contents
+
+        if (self.device == "cpu"):
+            runtime.core.memset_host(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
+
+        if(self.device == "cuda"):
+            runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
     # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):

@@ -103,7 +103,7 @@ def test_adj_mesh_query_ray(test, device):
         query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
         query_dirs = wp.array(D, dtype=wp.vec3, device=device, requires_grad=True)
         intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
-        loss = wp.zeros(n=1, dtype=float, device=device)
+        loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
 
         wp.launch(kernel=mesh_query_ray_loss, dim=1, inputs=[mesh.id, query_points, query_dirs, intersection_points, loss], device=device)
 

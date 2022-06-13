@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [0.2.3] - 2022-06-13
+
+- Array gradients are now allocated along with the arrays and accessible as `wp.array.grad`, users should take care to always call `wp.Tape.zero()` to clear gradients between different invocations of `wp.Tape.backward()`
+- Added `wp.array.fill_()` to set all entries to a scalar value (4-byte values only currently)
+
+
+### Breaking Changes
+
+- Tape `capture` option has been removed, users can now capture tapes inside existing CUDA graphs (e.g.: inside Torch)
+- Scalar loss arrays should now explicitly set `requires_grad=True` at creation time
+
 ## [0.2.2] - 2022-05-30
 
 - Fix for `from import *` inside Warp initialization

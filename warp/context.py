@@ -503,8 +503,8 @@ class Module:
             h.update(bytes(s, 'utf-8'))
        
         # # compile-time constants (global)
-        # if warp.types.constant._hash:
-        #     h.update(warp.constant._hash.digest())
+        if warp.types.constant._hash:
+            h.update(warp.constant._hash.digest())
 
         return h.digest()
 
@@ -823,6 +823,7 @@ class Runtime:
 
         # global tape
         self.tape = None
+
 
     def verify_device(self):
 
@@ -1148,6 +1149,8 @@ def synchronize():
     """
 
     runtime.core.synchronize()
+
+    runtime.verify_device()
 
 
 def force_load():
@@ -1486,5 +1489,4 @@ def init():
 
     if (runtime == None):
         runtime = Runtime()
-
 

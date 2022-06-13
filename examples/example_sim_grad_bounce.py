@@ -189,14 +189,16 @@ class Bounce:
         print(f"numeric grad: {x_grad_numeric}")
         print(f"analytic grad: {x_grad_analytic}")
 
+        tape.zero()
 
 
-    def train(self, mode='gd'):
 
-        tape = wp.Tape()
+    def train(self):
 
         for i in range(self.train_iters):
-   
+
+            tape = wp.Tape()
+
             with wp.ScopedTimer("Forward", active=self.profile):
                 with tape:
                     self.compute_loss()
@@ -216,39 +218,46 @@ class Bounce:
 
                 wp.launch(self.step_kernel, dim=len(x), inputs=[x, x_grad, self.train_rate], device=self.device)
 
-            tape.reset()
+            tape.zero()
 
 
-    def train_graph(self, mode='gd'):
+    def train_graph(self):
 
         # capture forward/backward passes
-        tape = wp.Tape(capture=True)
+        wp.capture_begin()
+
+        tape = wp.Tape()
         with tape:
             self.compute_loss()
 
         tape.backward(self.loss)
 
+        self.graph = wp.capture_end()
+
         # replay and optimize
         for i in range(self.train_iters):
    
-            with wp.ScopedTimer("Replay", active=self.profile):
-                tape.replay()
+            with wp.ScopedTimer("Step", active=self.profile):
+
+                # forward + backward
+                wp.capture_launch(self.graph)
+
+                # gradient descent step
+                x = self.states[0].particle_qd
+                wp.launch(self.step_kernel, dim=len(x), inputs=[x, x.grad, self.train_rate], device=self.device)
+
+                print(f"Iter: {i} Loss: {self.loss}")
+                print(tape.gradients[self.states[0].particle_qd])
+
+                # clear grads for next iteration
+                tape.zero()
 
             with wp.ScopedTimer("Render", active=self.profile):
                 self.render(i)
-
-            with wp.ScopedTimer("Step", active=self.profile):
-                x = self.states[0].particle_qd
-                x_grad = tape.gradients[self.states[0].particle_qd]
-
-                print(f"Iter: {i} Loss: {self.loss}")
-                
-                wp.launch(self.step_kernel, dim=len(x), inputs=[x, x_grad, self.train_rate], device=self.device)
-
 
 
 
 bounce = Bounce(adapter=wp.get_preferred_device(), profile=False, render=True)
 bounce.check_grad()
-bounce.train_graph('gd')
+bounce.train_graph()
  

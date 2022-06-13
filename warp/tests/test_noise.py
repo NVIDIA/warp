@@ -227,7 +227,7 @@ def test_adj_noise(test, device):
 
         query_positions = wp.array(positions, dtype=wp.vec2, device=device, requires_grad=True)
         noise_values = wp.zeros(N, dtype=float, device=device)
-        noise_loss = wp.zeros(n=1, dtype=float, device=device)
+        noise_loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
 
         wp.launch(kernel=noise_loss_kernel, dim=N, inputs=[seed, query_positions, noise_values, noise_loss], device=device)
 
