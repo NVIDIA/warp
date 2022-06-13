@@ -469,6 +469,11 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
+.. function:: lerp(a: float32, b: float32, t: float32) -> float32
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
 .. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
