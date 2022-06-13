@@ -520,6 +520,26 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 namespace wp
 {
 
+
+// dot for scalar types just to make some templated compile for scalar/vector
+inline CUDA_CALLABLE float dot(float a, float b) { return mul(a, b); }
+inline CUDA_CALLABLE void dot(float a, float b, float& adj_a, float& adj_b, float adj_ret) { return adj_mul(a, b, adj_a, adj_b, adj_ret); }
+
+
+template <typename T>
+CUDA_CALLABLE inline T lerp(const T& a, const T& b, float t)
+{
+    return a*(1.0-t) + b*t;
+}
+
+template <typename T>
+CUDA_CALLABLE inline void adj_lerp(const T& a, const T& b, float t, T& adj_a, T& adj_b, float& adj_t, const T& adj_ret)
+{
+    adj_a += adj_ret*(1.0-t);
+    adj_b += adj_ret*t;
+    adj_t += dot(b, adj_ret) - dot(a, adj_ret);
+}
+
 inline CUDA_CALLABLE void print(const str s)
 {
     printf("%s\n", s);
