@@ -538,7 +538,9 @@ class Module:
             build_path = warp.build.kernel_bin_dir
             gen_path = warp.build.kernel_gen_dir
 
-            hash_path = os.path.join(build_path, module_name + ".hash")
+            cpu_hash_path = os.path.join(build_path, module_name + ".cpu.hash")
+            cuda_hash_path = os.path.join(build_path, module_name + ".cuda.hash")
+
             module_path = os.path.join(build_path, module_name)
 
             ptx_path = module_path + ".ptx"
@@ -554,20 +556,29 @@ class Module:
             # test cache
             module_hash = self.hash_module()
 
-            if warp.config.cache_kernels and os.path.exists(hash_path):
 
-                f = open(hash_path, 'rb')
+            # check CPU cache
+            if build_cpu and warp.config.cache_kernels and os.path.exists(cpu_hash_path):
+
+                f = open(cpu_hash_path, 'rb')
                 cache_hash = f.read()
                 f.close()
 
                 if cache_hash == module_hash:
-                    
-                    if build_cpu and os.path.isfile(dll_path):
+                    if os.path.isfile(dll_path):
                         self.dll = warp.build.load_dll(dll_path)
                         if self.dll is not None:
                             return True
 
-                    if build_cuda and os.path.isfile(ptx_path):
+            # check GPU cache
+            if build_cuda and warp.config.cache_kernels and os.path.exists(cuda_hash_path):
+
+                f = open(cuda_hash_path, 'rb')
+                cache_hash = f.read()
+                f.close()
+
+                if cache_hash == module_hash:
+                    if os.path.isfile(ptx_path):
                         self.cuda = warp.build.load_cuda(ptx_path)
                         if self.cuda is not None:
                             return True
@@ -606,10 +617,17 @@ class Module:
                     with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
                         warp.build.build_cuda(cu_path, ptx_path, config=self.options["mode"])
 
-                # update cached output
-                f = open(hash_path, 'wb')
-                f.write(module_hash)
-                f.close()
+                # update cpu hash
+                if build_cpu:
+                    f = open(cpu_hash_path, 'wb')
+                    f.write(module_hash)
+                    f.close()
+
+                # update cuda hash
+                if build_cuda:
+                    f = open(cuda_hash_path, 'wb')
+                    f.write(module_hash)
+                    f.close()
 
             except Exception as e:
                 self.build_failed = True

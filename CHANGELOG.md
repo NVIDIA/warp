@@ -2,6 +2,8 @@
 
 ## [0.2.3] - 2022-06-13
 
+- Fix for incorrect 4d array bounds checking
+- Fix for `wp.constant` changes not updating module hash
 - Array gradients are now allocated along with the arrays and accessible as `wp.array.grad`, users should take care to always call `wp.Tape.zero()` to clear gradients between different invocations of `wp.Tape.backward()`
 - Added `wp.array.fill_()` to set all entries to a scalar value (4-byte values only currently)
 
