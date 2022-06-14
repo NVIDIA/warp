@@ -18,8 +18,6 @@ static void* GetProcAddress(void* handle, const char* name) { return dlsym(handl
 
 #if defined(_WIN32)
 #include <windows.h>
-#include <stdlib.h>  // for exit
-#include <math.h>  // for _finitef
 #endif
 
 #include "nvrtc.h"
