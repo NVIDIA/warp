@@ -33,6 +33,11 @@ inline CUDA_CALLABLE bool operator==(const quat& a, const quat& b)
     return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
 }
 
+inline bool CUDA_CALLABLE isfinite(const quat& q)
+{
+    return ::isfinite(q.x) && ::isfinite(q.y) && ::isfinite(q.z) && ::isfinite(q.w);
+}
+
 inline CUDA_CALLABLE quat atomic_add(quat * addr, quat value) 
 {
     float x = atomic_add(&(addr -> x), value.x);
@@ -233,7 +238,7 @@ inline CUDA_CALLABLE float index(const quat& a, int idx)
     if (idx < 0 || idx > 3)
     {
         printf("quat index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
-        exit(1);
+        // exit(1);
     }
 #endif
 
@@ -247,7 +252,7 @@ inline CUDA_CALLABLE void adj_index(const quat& a, int idx, quat& adj_a, int & a
     if (idx < 0 || idx > 3)
     {
         printf("quat index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
-        exit(1);
+        // exit(1);
     }
 #endif
 

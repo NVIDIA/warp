@@ -18,8 +18,26 @@ struct vec3
     float z;
 
     inline CUDA_CALLABLE vec3() : x(0.0f), y(0.0f), z(0.0f) {}
-    inline CUDA_CALLABLE vec3(float x, float y, float z) : x(x), y(y), z(z) {}
-    inline CUDA_CALLABLE vec3(float s) : x(s), y(s), z(s) {}
+    inline CUDA_CALLABLE vec3(float x, float y, float z) : x(x), y(y), z(z)
+    {
+#if FP_CHECK
+        assert(::isfinite(x) && ::isfinite(y) && ::isfinite(z));
+        if (!::isfinite(x) || !::isfinite(y) || !::isfinite(z))
+        {
+            printf("vec3 (%f, %f, %f)\n", x, y, z);
+        }
+#endif
+    }
+    inline CUDA_CALLABLE vec3(float s) : x(s), y(s), z(s)
+    {
+#if FP_CHECK
+        assert(::isfinite(s));
+        if (!::isfinite(s))
+        {
+            printf("vec3 (%f)\n", s);
+        }
+#endif
+    }
 
     explicit inline CUDA_CALLABLE vec3(const float* p) : x(p[0]), y(p[1]), z(p[2]) {}
 
@@ -142,7 +160,7 @@ inline CUDA_CALLABLE float index(const vec3 & a, int idx)
     if (idx < 0 || idx > 2)
     {
         printf("vec3 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
-        exit(1);
+        // exit(1);
     }
 #endif
 
@@ -156,7 +174,7 @@ inline CUDA_CALLABLE void adj_index(const vec3 & a, int idx, vec3 & adj_a, int &
     if (idx < 0 || idx > 2)
     {
         printf("vec3 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
-        exit(1);
+        // exit(1);
     }
 #endif
 
@@ -194,12 +212,26 @@ inline CUDA_CALLABLE void adj_vec3(float x, float y, float z, float& adj_x, floa
 {
     adj_x += adj_ret.x;
     adj_y += adj_ret.y;
-    adj_z += adj_ret.z;
+    adj_z += adj_ret.z;    
+#if FP_CHECK
+        assert(::isfinite(x) && ::isfinite(y) && ::isfinite(z) && ::isfinite(adj_x) && ::isfinite(adj_y) && ::isfinite(adj_z) && isfinite(adj_ret));
+        if (!::isfinite(x) || !::isfinite(y) || !::isfinite(z) || !::isfinite(adj_x) || !::isfinite(adj_y) || !::isfinite(adj_z) || !isfinite(adj_ret))
+        {
+            printf("adj_vec3(%f, %f, %f, %f, %f, %f, (%f, %f, %f))\n", x, y, z, adj_x, adj_y, adj_z, adj_ret.x, adj_ret.y, adj_ret.z);
+        }
+#endif
 }
 
 inline CUDA_CALLABLE void adj_vec3(float s, float& adj_s, const vec3& adj_ret)
 {
     adj_s += adj_ret.x + adj_ret.y + adj_ret.z;
+    #if FP_CHECK
+        assert(::isfinite(s) && ::isfinite(adj_s) && isfinite(adj_ret));
+        if (!::isfinite(s) || !::isfinite(adj_s) || !isfinite(adj_ret))
+        {
+            printf("adj_vec3(%f, %f, (%f, %f, %f))\n", s, adj_s, adj_ret.x, adj_ret.y, adj_ret.z);
+        }
+#endif
 }
 
 

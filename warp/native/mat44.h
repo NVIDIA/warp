@@ -164,6 +164,15 @@ inline CUDA_CALLABLE void adj_mat44(
     a3 += adj_ret.get_col(3);
 }
 
+inline bool CUDA_CALLABLE isfinite(const mat44& m)
+{
+    for(int i=0; i < 4; ++i)
+        for (int j=0; j < 4; ++j)
+            if (!::isfinite(m.data[i][j]))
+                return false;
+    return true;
+}
+
 inline CUDA_CALLABLE void adj_mat44(const vec3& pos, const quat& rot, const vec3& scale,
                                     vec3& adj_pos, quat& adj_rot, vec3& adj_scale, const mat44& adj_ret)
 {

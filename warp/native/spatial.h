@@ -43,12 +43,15 @@ inline CUDA_CALLABLE bool operator==(const spatial_vector& a, const spatial_vect
     return a.w == b.w && a.v == b.v;
 }
 
+inline bool CUDA_CALLABLE isfinite(const spatial_vector& s)
+{
+    return isfinite(s.w) && isfinite(s.v);
+}
 
 CUDA_CALLABLE inline spatial_vector operator - (spatial_vector a)
 {
     return spatial_vector(-a.w, -a.v);
 }
-
 
 CUDA_CALLABLE inline spatial_vector add(const spatial_vector& a, const spatial_vector& b)
 {
@@ -232,6 +235,12 @@ struct transform
 inline CUDA_CALLABLE bool operator==(const transform& a, const transform& b)
 {
     return a.p == b.p && a.q == b.q;
+}
+
+
+inline bool CUDA_CALLABLE isfinite(const transform& t)
+{
+    return isfinite(t.p) && isfinite(t.q);
 }
 
 
@@ -578,6 +587,15 @@ inline CUDA_CALLABLE bool operator==(const spatial_matrix& a, const spatial_matr
             if (a.data[i][j] != b.data[i][j])
                 return false;
 
+    return true;
+}
+
+inline bool CUDA_CALLABLE isfinite(const spatial_matrix& m)
+{
+    for(int i=0; i < 6; ++i)
+        for (int j=0; j < 6; ++j)
+            if (!::isfinite(m.data[i][j]))
+                return false;
     return true;
 }
 

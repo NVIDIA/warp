@@ -131,7 +131,7 @@ inline CUDA_CALLABLE float index(const vec2 & a, int idx)
     if (idx < 0 || idx > 2)
     {
         printf("vec2 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
-        exit(1);
+        // exit(1);
     }
 #endif
 
@@ -145,7 +145,7 @@ inline CUDA_CALLABLE void adj_index(const vec2 & a, int idx, vec2 & adj_a, int &
     if (idx < 0 || idx > 2)
     {
         printf("vec2 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
-        exit(1);
+        // exit(1);
     }
 #endif
 
@@ -199,7 +199,7 @@ inline CUDA_CALLABLE void adj_mul(vec2 a, float s, vec2& adj_a, float& adj_s, co
 
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(s) || !isfinite(adj_a) || !isfinite(adj_s) || !isfinite(adj_ret))
-        printf("adj_mul((%f %f %f), %f, (%f %f %f), %f, (%f %f %f)\n", a.x, a.y, a.z, s, adj_a.x, adj_a.y, adj_a.z, adj_s, adj_ret.x, adj_ret.y, adj_ret.z);
+        printf("adj_mul((%f %f), %f, (%f %f), %f, (%f %f)\n", a.x, a.y, s, adj_a.x, adj_a.y, adj_s, adj_ret.x, adj_ret.y);
 #endif
 }
 
@@ -223,7 +223,7 @@ inline CUDA_CALLABLE void adj_div(vec2 a, float s, vec2& adj_a, float& adj_s, co
 
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(s) || !isfinite(adj_a) || !isfinite(adj_s) || !isfinite(adj_ret))
-        printf("adj_div((%f %f %f), %f, (%f %f %f), %f, (%f %f %f)\n", a.x, a.y, a.z, s, adj_a.x, adj_a.y, adj_a.z, adj_s, adj_ret.x, adj_ret.y, adj_ret.z);
+        printf("adj_div((%f %f), %f, (%f %f), %f, (%f %f)\n", a.x, a.y, s, adj_a.x, adj_a.y, adj_s, adj_ret.x, adj_ret.y);
 #endif
 }
 
@@ -282,7 +282,7 @@ inline CUDA_CALLABLE void adj_dot(vec2 a, vec2 b, vec2& adj_a, vec2& adj_b, cons
 
 #if FP_CHECK
     if (!isfinite(a) || !isfinite(b) || !isfinite(adj_a) || !isfinite(adj_b) || !isfinite(adj_ret))
-        printf("adj_dot((%f %f %f), (%f %f %f), (%f %f %f), (%f %f %f), %f)\n", a.x, a.y, a.z, b.x, b.y, b.z, adj_a.x, adj_a.y, adj_a.z, adj_b.x, adj_b.y, adj_b.z, adj_ret);
+        printf("adj_dot((%f %f), (%f %f), (%f %f), (%f %f), %f)\n", a.x, a.y, b.x, b.y, adj_a.x, adj_a.y, adj_b.x, adj_b.y, adj_ret);
 #endif
 
 }
@@ -302,7 +302,7 @@ inline CUDA_CALLABLE void adj_length(vec2 a, vec2& adj_a, const float adj_ret)
 
 #if FP_CHECK
     if (!isfinite(adj_a))
-        printf("%s:%d - adj_length((%f %f %f), (%f %f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, a.z, adj_a.x, adj_a.y, adj_a.z, adj_ret);
+        printf("%s:%d - adj_length((%f %f), (%f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, adj_a.x, adj_a.y, adj_ret);
 #endif
 }
 
@@ -320,8 +320,7 @@ inline CUDA_CALLABLE void adj_normalize(vec2 a, vec2& adj_a, const vec2& adj_ret
 
 #if FP_CHECK
         if (!isfinite(adj_a))
-            printf("%s:%d - adj_normalize((%f %f %f), (%f %f %f), (%f, %f, %f))\n", __FILE__, __LINE__, a.x, a.y, a.z, adj_a.x, adj_a.y, adj_a.z, adj_ret.x, adj_ret.y, adj_ret.z);
-
+            printf("%s:%d - adj_normalize((%f %f), (%f %f), (%f, %f))\n", __FILE__, __LINE__, a.x, a.y, adj_a.x, adj_a.y, adj_ret.x, adj_ret.y);
 #endif
     }
 }

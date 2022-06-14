@@ -86,6 +86,15 @@ inline CUDA_CALLABLE void adj_mat22(float m00, float m01, float m10, float m11, 
     printf("todo\n");
 }
 
+inline bool CUDA_CALLABLE isfinite(const mat22& m)
+{
+    for(int i=0; i < 2; ++i)
+        for (int j=0; j < 2; ++j)
+            if (!::isfinite(m.data[i][j]))
+                return false;
+    return true;
+}
+
 inline CUDA_CALLABLE float index(const mat22& m, int row, int col)
 {
     return m.data[row][col];
