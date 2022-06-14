@@ -18,6 +18,8 @@ static void* GetProcAddress(void* handle, const char* name) { return dlsym(handl
 
 #if defined(_WIN32)
 #include <windows.h>
+#include <stdlib.h>  // for exit
+#include <math.h>  // for _finitef
 #endif
 
 #include "nvrtc.h"
@@ -274,7 +276,7 @@ const char* cuda_get_device_name()
     return prop.name;
 }
 
-size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool debug, bool verbose, const char* output_file)
+size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool debug, bool verbose, bool verify_fp, const char* output_file)
 {
     nvrtcResult res;
 
@@ -309,12 +311,13 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
         "--use_fast_math",
         "--std=c++11",
         "--define-macro=WP_CUDA",
+        (verify_fp ? "--define-macro=WP_VERIFY_FP" : "--undefine-macro=WP_VERIFY_FP"),
         "--define-macro=WP_NO_CRT",
-        "--define-macro=NDEBUG",
+        (debug ? "--define-macro=DEBUG" : "--define-macro=NDEBUG"),
         include_opt
     };
 
-    res = nvrtcCompileProgram(prog, 8, opts);
+    res = nvrtcCompileProgram(prog, 9, opts);
 
     if (res == NVRTC_SUCCESS)
     {

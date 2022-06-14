@@ -501,6 +501,10 @@ class Module:
         for k in sorted(self.options.keys()):
             s = f"{k}={self.options[k]}"
             h.update(bytes(s, 'utf-8'))
+
+        # ensure to trigger recompilation if verify_fp flag is changed
+        if warp.config.verify_fp:
+            h.update(bytes("verify_fp", 'utf-8'))
        
         # # compile-time constants (global)
         # if warp.types.constant._hash:
@@ -600,11 +604,11 @@ class Module:
             try:
                 if build_cpu:
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"])
+                        warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
                 if build_cuda:
                     with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, ptx_path, config=self.options["mode"])
+                        warp.build.build_cuda(cu_path, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
                 # update cached output
                 f = open(hash_path, 'wb')
@@ -765,7 +769,7 @@ class Runtime:
         self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
         self.core.cuda_get_device_name.restype = ctypes.c_char_p
 
-        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
+        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
         self.core.cuda_compile_program.restype = ctypes.c_size_t
 
         self.core.cuda_load_module.argtypes = [ctypes.c_char_p]
