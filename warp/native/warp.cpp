@@ -50,7 +50,16 @@ void memcpy_h2h(void* dest, void* src, size_t n)
 
 void memset_host(void* dest, int value, size_t n)
 {
-    memset(dest, value, n);
+    if ((n%4) > 0)
+    {
+        memset(dest, value, n);
+    }
+    else
+    {
+        const int num_words = n/4;
+        for (int i=0; i < num_words; ++i)
+            ((int*)dest)[i] = value;
+    }
 }
 
 void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len)

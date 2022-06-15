@@ -197,27 +197,32 @@ class Cloth:
 
     def train_graph(self, mode='gd'):
 
-        tape = wp.Tape(capture=True)
+        wp.capture_begin()
+
+        tape = wp.Tape()
         with tape:
             self.compute_loss()
 
         tape.backward(self.loss)
 
+        self.graph = wp.capture_end()
+
         for i in range(self.train_iters):
    
             with wp.ScopedTimer("Replay", active=self.profile):
-                tape.replay()
+                wp.capture_launch(self.graph)
 
             with wp.ScopedTimer("Render", active=self.profile):
                 self.render(i)
 
             with wp.ScopedTimer("Step", active=self.profile):
                 x = self.states[0].particle_qd
-                x_grad = tape.gradients[self.states[0].particle_qd]
 
                 print(f"Iter: {i} Loss: {self.loss}")
 
-                wp.launch(self.step_kernel, dim=len(x), inputs=[x, x_grad, self.train_rate], device=self.device)
+                wp.launch(self.step_kernel, dim=len(x), inputs=[x, x.grad, self.train_rate], device=self.device)
+
+            tape.zero()
 
 
 bounce = Cloth(adapter="cuda", profile=False, render=True)

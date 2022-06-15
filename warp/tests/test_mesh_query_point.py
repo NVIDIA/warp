@@ -324,7 +324,7 @@ def test_adj_mesh_query_point(test, device):
 
         query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
         projected_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
-        loss = wp.zeros(n=1, dtype=float, device=device)
+        loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
 
         wp.launch(kernel=mesh_query_point_loss, dim=1, inputs=[mesh.id, query_points, projected_points, loss], device=device)
 

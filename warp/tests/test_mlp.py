@@ -147,7 +147,7 @@ def test_mlp_grad(test, device):
     y = wp.array(torch_y, dtype=float, device=device, requires_grad=True)
     y.zero_()
 
-    loss = wp.zeros(1, dtype=float, device=device)
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
 
     m = torch_weights.shape[0]
     n = torch_weights.shape[1]

@@ -18,6 +18,12 @@ import warp.utils
 from warp.utils import ScopedTimer
 from warp.thirdparty import appdirs
 
+# return from funtions without type -> C++ compile error
+# array[i,j] += x -> augassign not handling target of subscript
+
+
+
+
 def run_cmd(cmd, capture=False):
     
     if (warp.config.verbose):
@@ -287,9 +293,12 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             run_cmd(link_cmd)
 
     
-def load_dll(dll_path):
-    
-    dll = ctypes.CDLL(dll_path)
+def load_dll(dll_path):    
+    if (sys.version_info[0] > 3 or
+        sys.version_info[0] == 3 and sys.version_info[1] >= 8):
+        dll = ctypes.CDLL(dll_path, winmode=0)
+    else:
+        dll = ctypes.CDLL(dll_path)
     return dll
 
 def unload_dll(dll):
