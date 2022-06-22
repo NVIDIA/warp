@@ -74,12 +74,14 @@ def bourke_color_map(low, high, v):
 class UsdRenderer:
     """A USD renderer
     """  
-    def __init__(self, stage, upaxis="y"):
+    def __init__(self, stage, upaxis="y", fps=60):
         """Construct a UsdRenderer object
         
         Args:
             model: A simulation model
             stage (Usd.Stage): A USD stage (either in memory or on disk)            
+            upaxis (str): The upfacing axis of the stage
+            fps: The number of frames per second to use in the USD file
         """
 
         if isinstance(stage, str):
@@ -89,6 +91,7 @@ class UsdRenderer:
         else:
             print("Failed to create stage in renderer. Please construct with stage path or stage object.")
         self.upaxis = upaxis
+        self.fps = float(fps)
 
         self.draw_points = True
         self.draw_springs = False
@@ -99,7 +102,7 @@ class UsdRenderer:
         self.stage.SetDefaultPrim(self.root.GetPrim())
         self.stage.SetStartTimeCode(0.0)
         self.stage.SetEndTimeCode(0.0)
-        self.stage.SetTimeCodesPerSecond(1.0)
+        self.stage.SetTimeCodesPerSecond(self.fps)
 
         if upaxis == "x":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.x)
@@ -124,8 +127,8 @@ class UsdRenderer:
         UsdGeom.Xform(light_1.GetPrim()).AddRotateXOp().Set(value=(-45.0))
 
     def begin_frame(self, time):
-        self.stage.SetEndTimeCode(time)
-        self.time = time
+        self.stage.SetEndTimeCode(time * self.fps)
+        self.time = time * self.fps
 
     def end_frame(self):
         pass
