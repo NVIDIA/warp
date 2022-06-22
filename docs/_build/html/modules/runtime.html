@@ -464,7 +464,7 @@ and dtype parameter appropriately.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> (<em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.10)"><em>tuple</em></a><em>, </em><em>ndarray</em><em>]</em>) – </p></li>
-<li><p><strong>dtype</strong> (<em>Union</em>) – One of the built-in types, e.g.: <a class="reference internal" href="functions.html#id4" title="warp.mat33"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.mat33</span></code></a>, if dtype is None and data an ndarray then it will be inferred from the array data type</p></li>
+<li><p><strong>dtype</strong> (<em>Union</em>) – One of the built-in types, e.g.: <a class="reference internal" href="functions.html#id39" title="warp.mat33"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.mat33</span></code></a>, if dtype is None and data an ndarray then it will be inferred from the array data type</p></li>
 <li><p><strong>shape</strong> (<em>Tuple</em>) – Dimensions of the array</p></li>
 <li><p><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of elements (rows) of the data type (deprecated, users should use <cite>shape</cite> argument)</p></li>
 <li><p><strong>ptr</strong> (<a class="reference internal" href="functions.html#warp.uint64" title="warp.uint64"><em>uint64</em></a>) – Address of an external memory address to alias (data should be None)</p></li>
@@ -781,9 +781,9 @@ and dtype parameter appropriately.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex positions of type <a class="reference internal" href="functions.html#id1" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a></p></li>
+<li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex positions of type <a class="reference internal" href="functions.html#id32" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a></p></li>
 <li><p><strong>indices</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of triangle indices of type <a class="reference internal" href="functions.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>, should be length 3*number of triangles</p></li>
-<li><p><strong>velocities</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex velocities of type <a class="reference internal" href="functions.html#id1" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> (optional)</p></li>
+<li><p><strong>velocities</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex velocities of type <a class="reference internal" href="functions.html#id32" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> (optional)</p></li>
 </ul>
 </dd>
 </dl>
@@ -959,7 +959,7 @@ of points changes.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of points of type <a class="reference internal" href="functions.html#id1" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a></p></li>
+<li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of points of type <a class="reference internal" href="functions.html#id32" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a></p></li>
 <li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – The cell size to use for bucketing points, cells are cubes with edges of this width.
 For best performance the radius used to construct the grid should match closely to
 the radius used when performing queries.</p></li>
