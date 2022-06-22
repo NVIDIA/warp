@@ -1374,31 +1374,23 @@ def print_builtins(file):
     groups = {}
 
     for k, f in builtin_functions.items():
-        
-        g = None
 
-        if (isinstance(f, list)):
-            # assumes all overloads have the same group
-            g = f[0].group
-        else:
-            g = f.group
-
-        if (g not in groups):
-            groups[g] = []
+        # build dict of groups
+        if f.group not in groups:
+            groups[f.group] = []
         
-        groups[g].append(f)
+        # append all overloads to the group
+        for o in f.overloads:
+            groups[f.group].append(o)
 
     for k, g in groups.items():
         print("\n", file=file)
         print(k, file=file)
         print("---------------", file=file)
 
-        for f in g:            
-            if isinstance(f, list):
-                for x in f:
-                    print_function(x, file=file)
-            else:
-                print_function(f, file=file)
+        for f in g:
+            print_function(f, file=file)
+
 
 def export_stubs(file):
     """ Generates stub file for auto-complete of builtin functions"""
