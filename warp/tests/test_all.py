@@ -31,6 +31,7 @@ import warp.tests.test_array
 import warp.tests.test_launch
 import warp.tests.test_import
 import warp.tests.test_func
+import warp.tests.test_fp16
 
 def run():
 
@@ -58,6 +59,7 @@ def run():
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_launch.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_import.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_func.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_fp16.register(unittest.TestCase)))
 
     # force rebuild of all kernels
     wp.build.clear_kernel_cache()
