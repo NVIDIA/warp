@@ -629,12 +629,28 @@ class ModelBuilder:
     def add_articulation(self):
         self.articulation_start.append(self.joint_count)
     
-    def add_rigid_articulation(self, articulation):
+    def add_rigid_articulation(self, articulation, xform=None):
         """Copies a rigid articulation from `articulation`, another `ModelBuilder`.
         
         Args:
             articulation: a model builder to add rigid articulation from.
+            xform: root position of this body (overrides that in the articulation_builder)
         """
+
+        if xform is not None:
+            if articulation.joint_type[0] == wp.sim.JOINT_FREE:
+                start = articulation.joint_q_start[0]
+
+                articulation.joint_q[start + 0] = xform.p[0]
+                articulation.joint_q[start + 1] = xform.p[1]
+                articulation.joint_q[start + 2] = xform.p[2]
+
+                articulation.joint_q[start + 3] = xform.q[0]
+                articulation.joint_q[start + 4] = xform.q[1]
+                articulation.joint_q[start + 5] = xform.q[2]
+                articulation.joint_q[start + 6] = xform.q[3]
+            else:
+                articulation.joint_X_p[0] = xform
 
         self.add_articulation() 
 
@@ -682,6 +698,7 @@ class ModelBuilder:
         
         self.joint_count += articulation.joint_count
         self.joint_dof_count += articulation.joint_dof_count
+        self.joint_coord_count += articulation.joint_coord_count
 
 
     # register a rigid body and return its index.

@@ -67,9 +67,10 @@ class Robot:
         builder = wp.sim.ModelBuilder()
 
         for i in range(num_envs):
-            wp.sim.import_urdf.add_rigid_articulation(
-                    builder, articulation_builder,
-                    xform=wp.transform(np.array((i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)))
+            builder.add_rigid_articulation(
+                articulation_builder,
+                xform=wp.transform(np.array((i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5))
+            )
 
             # joint initial positions
             builder.joint_q[-3:] = [0.0, 0.3, 0.0]
