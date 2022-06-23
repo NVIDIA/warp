@@ -243,3 +243,30 @@ def parse_urdf(
 
         # add ourselves to the index
         link_index[joint.child] = link
+
+def add_rigid_articulation(builder, articulation_builder, xform=None):
+    """Add an articulation composed of rigid bodies to the model.
+    
+    Args:
+        builder: builder to add the articulation to.
+        articulation_builder: builder containing the articulation to add.
+        xform: root position of this body (overrides that in the articulation_builder)
+    """
+
+    if xform is not None:
+        if articulation_builder.joint_type[0] == wp.sim.JOINT_FREE:
+            start = articulation_builder.joint_q_start[0]
+
+            articulation_builder.joint_q[start + 0] = xform.p[0]
+            articulation_builder.joint_q[start + 1] = xform.p[1]
+            articulation_builder.joint_q[start + 2] = xform.p[2]
+
+            articulation_builder.joint_q[start + 3] = xform.q[0]
+            articulation_builder.joint_q[start + 4] = xform.q[1]
+            articulation_builder.joint_q[start + 5] = xform.q[2]
+            articulation_builder.joint_q[start + 6] = xform.q[3]
+        else:
+            articulation_builder.joint_X_p[0] = xform
+    
+    builder.add_articulation()
+
