@@ -12,6 +12,7 @@ import struct
 import zlib
 import numpy as np
 
+from typing import Any
 from typing import Tuple
 from typing import TypeVar
 from typing import Generic
@@ -116,6 +117,14 @@ class void:
     def __init__(self):
         pass
 
+class float16:
+
+    _length_ = 1
+    _type_ = ctypes.c_uint16
+
+    def __init__(self, x=0.0):
+        self.value = x
+
 class float32:
 
     _length_ = 1
@@ -197,7 +206,7 @@ class uint64:
         self.value = x
 
                
-scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64]
+scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64]
 vector_types = [vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix]
 
 
@@ -213,6 +222,7 @@ np_dtype_to_warp_type = {
     np.dtype(np.uint64): uint64,
     np.dtype(np.byte): int8,
     np.dtype(np.ubyte): uint8,
+    np.dtype(np.float16): float16,
     np.dtype(np.float32): float32,
     np.dtype(np.float64): float64
 }
@@ -310,28 +320,33 @@ def type_to_warp(dtype):
     else:
         return dtype
 
-def type_typestr(ctype):
+def type_typestr(dtype):
    
-    if (ctype == ctypes.c_float):
+    if dtype == float16:
+        return "<f2"
+    elif dtype == float32:
         return "<f4"
-    elif (ctype == ctypes.c_double):
+    elif dtype == float64:
         return "<f8"
-    elif (ctype == ctypes.c_int8):
+    elif dtype == int8:
         return "b"
-    elif (ctype == ctypes.c_uint8):
+    elif dtype == uint8:
         return "B"
-    elif (ctype == ctypes.c_int16):
+    elif dtype == int16:
         return "<i2"
-    elif (ctype == ctypes.c_uint16):
+    elif dtype == uint16:
         return "<u2"
-    elif (ctype == ctypes.c_int32):
+    elif dtype == int32:
         return "<i4"
-    elif (ctype == ctypes.c_uint32):
+    elif dtype == uint32:
         return "<u4"
-    elif (ctype == ctypes.c_int64):
+    elif dtype == int64:
         return "<i8"
-    elif (ctype == ctypes.c_uint64):
+    elif dtype == uint64:
         return "<u8"
+    elif issubclass(dtype, ctypes.Array):
+        # vector types all currently float type
+        return "<f4"
     else:
         raise Exception("Unknown ctype")
 
@@ -404,6 +419,7 @@ class array (Generic[T]):
         """
 
         self.owner = False
+        self.grad = None
 
         if shape == None:
             shape = (length,)   
@@ -441,7 +457,7 @@ class array (Generic[T]):
 
             try:
                 # try to convert src array to destination type
-                arr = arr.astype(dtype=type_typestr(dtype._type_))
+                arr = arr.astype(dtype=type_typestr(dtype), copy=False)
             except:
                 raise RuntimeError(f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}")
             
@@ -534,9 +550,6 @@ class array (Generic[T]):
         for d in self.shape:
             self.size *= d
 
-        # save flag, controls if gradients will be computed in by wp.Tape
-        self.requires_grad = requires_grad
-
         # store flat shape (including type shape)
         if dtype in vector_types:
             # vector type, flatten the dimensions into one tuple
@@ -551,7 +564,7 @@ class array (Generic[T]):
             self.__array_interface__ = { 
                 "data": (self.ptr, False), 
                 "shape": arr_shape,  
-                "typestr": type_typestr(type_ctype(self.dtype)), 
+                "typestr": type_typestr(self.dtype), 
                 "version": 3 
             }
 
@@ -561,9 +574,14 @@ class array (Generic[T]):
             self.__cuda_array_interface__ = {
                 "data": (self.ptr, False),
                 "shape": arr_shape,
-                "typestr": type_typestr(type_ctype(self.dtype)),
+                "typestr": type_typestr(self.dtype),
                 "version": 2
             }
+
+        # controls if gradients will be computed in by wp.Tape
+        # this will trigger allocation of a gradient array if it doesn't exist already
+        self.requires_grad = requires_grad
+
 
     def __del__(self):
         
@@ -611,6 +629,18 @@ class array (Generic[T]):
 
         return a        
 
+    def __setattr__(self, __name: str, __value: Any) -> None:
+
+        if __name == "requires_grad" and __value == True and self.grad == None:
+            self._alloc_grad()
+
+        return super().__setattr__(__name, __value)
+
+    def _alloc_grad(self):
+
+        from warp.context import zeros
+        self.grad = zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+
 
     def zero_(self):
 
@@ -622,6 +652,24 @@ class array (Generic[T]):
         if(self.device == "cuda"):
             runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
+
+    def fill_(self, value):
+
+        from warp.context import runtime
+
+        # convert value to array type
+        src_type = type_ctype(self.dtype)
+        src_value = src_type(value)
+
+        # cast to a 4-byte integer for memset
+        dest_ptr = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int))
+        dest_value = dest_ptr.contents
+
+        if (self.device == "cpu"):
+            runtime.core.memset_host(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
+
+        if(self.device == "cuda"):
+            runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
     # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):

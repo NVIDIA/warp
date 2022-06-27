@@ -39,12 +39,27 @@ Scalar Math
    Return the minimum of two integers.
 
 
+.. function:: min(x: float32, y: float32) -> float
+
+   Return the minimum of two floats.
+
+
 .. function:: max(x: int32, y: int32) -> int
 
    Return the maximum of two integers.
 
 
+.. function:: max(x: float32, y: float32) -> float
+
+   Return the maximum of two floats.
+
+
 .. function:: clamp(x: int32, a: int32, b: int32) -> int
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: float32, a: float32, b: float32) -> float
 
    Clamp the value of x to the range [a, b].
 
@@ -54,9 +69,19 @@ Scalar Math
    Return the absolute value of x.
 
 
+.. function:: abs(x: float32) -> float
+
+   Return the absolute value of x.
+
+
 .. function:: sign(x: int32) -> int
 
    Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: float32) -> float
+
+   Return -1.0 if x < 0.0, return 1.0 otherwise.
 
 
 .. function:: step(x: float32) -> float
@@ -180,9 +205,29 @@ Vector Math
    Compute the dot product between two 2d vectors.
 
 
+.. function:: dot(x: vec3, y: vec3) -> float
+
+   Compute the dot product between two 3d vectors.
+
+
+.. function:: dot(x: vec4, y: vec4) -> float
+
+   Compute the dot product between two 4d vectors.
+
+
+.. function:: dot(x: quat, y: quat) -> float
+
+   Compute the dot product between two quaternions.
+
+
 .. function:: outer(x: vec2, y: vec2) -> mat22
 
    Compute the outer product x*y^T for two vec2 objects.
+
+
+.. function:: outer(x: vec3, y: vec3) -> mat33
+
+   Compute the outer product x*y^T for two vec3 objects.
 
 
 .. function:: cross(x: vec3, y: vec3) -> vec3
@@ -200,12 +245,52 @@ Vector Math
    Compute the length of a 2d vector.
 
 
+.. function:: length(x: vec3) -> float
+
+   Compute the length of a 3d vector.
+
+
+.. function:: length(x: vec4) -> float
+
+   Compute the length of a 4d vector.
+
+
 .. function:: normalize(x: vec2) -> vec2
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
+.. function:: normalize(x: vec3) -> vec3
+
+   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+
+
+.. function:: normalize(x: vec4) -> vec4
+
+   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+
+
+.. function:: normalize(x: quat) -> quat
+
+   Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
+
+
 .. function:: transpose(m: mat22) -> mat22
+
+   Return the transpose of the matrix m
+
+
+.. function:: transpose(m: mat33) -> mat33
+
+   Return the transpose of the matrix m
+
+
+.. function:: transpose(m: mat44) -> mat44
+
+   Return the transpose of the matrix m
+
+
+.. function:: transpose(m: spatial_matrix) -> spatial_matrix
 
    Return the transpose of the matrix m
 
@@ -215,7 +300,27 @@ Vector Math
    Return the inverse of the matrix m
 
 
+.. function:: inverse(m: mat33) -> mat33
+
+   Return the inverse of the matrix m
+
+
+.. function:: inverse(m: mat44) -> mat44
+
+   Return the inverse of the matrix m
+
+
 .. function:: determinant(m: mat22) -> float
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat33) -> float
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat44) -> float
 
    Return the determinant of the matrix m
 
@@ -225,9 +330,29 @@ Vector Math
    Returns a matrix with the components of the vector d on the diagonal
 
 
+.. function:: diag(d: vec3) -> mat33
+
+   Returns a matrix with the components of the vector d on the diagonal
+
+
+.. function:: diag(d: vec4) -> mat44
+
+   Returns a matrix with the components of the vector d on the diagonal
+
+
 .. function:: cw_mul(x: vec2, y: vec2) -> vec2
 
    Component wise multiply of two 2d vectors.
+
+
+.. function:: cw_mul(x: vec3, y: vec3) -> vec3
+
+   Component wise multiply of two 3d vectors.
+
+
+.. function:: cw_mul(x: vec4, y: vec4) -> vec4
+
+   Component wise multiply of two 4d vectors.
 
 
 .. function:: cw_div(x: vec2, y: vec2) -> vec2
@@ -235,9 +360,29 @@ Vector Math
    Component wise division of two 2d vectors.
 
 
+.. function:: cw_div(x: vec3, y: vec3) -> vec3
+
+   Component wise division of two 3d vectors.
+
+
+.. function:: cw_div(x: vec4, y: vec4) -> vec4
+
+   Component wise division of two 4d vectors.
+
+
 .. function:: vec2() -> vec2
 
    Construct a zero-initialized 2d vector.
+
+
+.. function:: vec2(x: float32, y: float32) -> vec2
+
+   Construct a 2d vector with compontents x, y.
+
+
+.. function:: vec2(s: float32) -> vec2
+
+   Construct a 2d vector with all components set to s.
 
 
 .. function:: vec3() -> vec3
@@ -245,9 +390,29 @@ Vector Math
    Construct a zero-initialized 3d vector.
 
 
+.. function:: vec3(x: float32, y: float32, z: float32) -> vec3
+
+   Construct a 3d vector with compontents x, y, z.
+
+
+.. function:: vec3(s: float32) -> vec3
+
+   Construct a 3d vector with all components set to s.
+
+
 .. function:: vec4() -> vec4
 
    Construct a zero-initialized 4d vector.
+
+
+.. function:: vec4(x: float32, y: float32, z: float32, w: float32) -> vec4
+
+   Construct a 4d vector with compontents x, y, z, w.
+
+
+.. function:: vec4(s: float32) -> vec4
+
+   Construct a 4d vector with all components set to s.
 
 
 .. function:: mat22(c0: vec2, c1: vec2) -> mat22
@@ -255,14 +420,34 @@ Vector Math
    Construct a 2x2 matrix from column vectors c0, c1.
 
 
+.. function:: mat22(m00: float32, m01: float32, m10: float32, m11: float32) -> mat22
+
+   Construct a 2x2 matrix from components.
+
+
 .. function:: mat33(c0: vec3, c1: vec3, c2: vec3) -> mat33
 
    Construct a 3x3 matrix from column vectors c0, c1, c2.
 
 
+.. function:: mat33(m00: float32, m01: float32, m02: float32, m10: float32, m11: float32, m12: float32, m20: float32, m21: float32, m22: float32) -> mat33
+
+   Construct a 3x3 matrix from components.
+
+
 .. function:: mat44(c0: vec4, c1: vec4, c2: vec4, c3: vec4) -> mat44
 
    Construct a 4x4 matrix from column vectors c0, c1, c2, c4.
+
+
+.. function:: mat44(m00: float32, m01: float32, m02: float32, m03: float32, m10: float32, m11: float32, m12: float32, m13: float32, m20: float32, m21: float32, m22: float32, m23: float32, m30: float32, m31: float32, m32: float32, m33: float32) -> mat44
+
+   Construct a 4x4 matrix from components.
+
+
+.. function:: mat44(pos: vec3, rot: quat, scale: vec3) -> mat44
+
+   Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
 
 .. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None
@@ -279,6 +464,16 @@ Quaternion Math
 
    Construct a zero-initialized quaternion, quaternions are laid out as
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.
+
+
+.. function:: quat(x: float32, y: float32, z: float32, w: float32) -> quat
+
+   Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.
+
+
+.. function:: quat(i: vec3, r: float32) -> quat
+
+   Construct a quaternion from it's imaginary components i, and real part r
 
 
 .. function:: quat_identity() -> quat
@@ -355,9 +550,23 @@ Transformations
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
+.. function:: transform_point(m: mat44, p: vec3) -> vec3
+
+   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.
+
+
 .. function:: transform_vector(t: transform, v: vec3) -> vec3
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
+
+
+.. function:: transform_vector(m: mat44, v: vec3) -> vec3
+
+   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
+   note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
+   then users should transpose the tranformation matrix before calling this method.
 
 
 .. function:: transform_inverse(t: transform) -> transform
@@ -372,6 +581,21 @@ Spatial Math
 .. function:: spatial_vector() -> spatial_vector
 
    Construct a zero-initialized 6d screw vector. Screw vectors may be used to represent rigid body wrenches and twists (velocites).
+
+
+.. function:: spatial_vector(a: float32, b: float32, c: float32, d: float32, e: float32, f: float32) -> spatial_vector
+
+   Construct a 6d screw vector from it's components.
+
+
+.. function:: spatial_vector(w: vec3, v: vec3) -> spatial_vector
+
+   Construct a 6d screw vector from two 3d vectors.
+
+
+.. function:: spatial_vector(s: float32) -> spatial_vector
+
+   Construct a 6d screw vector with all components set to s
 
 
 .. function:: spatial_matrix() -> spatial_matrix
@@ -449,6 +673,21 @@ Utility
    where dim is the parameter passed to kernel launch.
 
 
+.. function:: tid() -> Tuple[int, int]
+
+   Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+
+
+.. function:: tid() -> Tuple[int, int, int]
+
+   Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+
+
+.. function:: tid() -> Tuple[int, int, int, int]
+
+   Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+
+
 .. function:: select(cond: bool, arg1: Any, arg2: Any)
 
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
@@ -459,9 +698,39 @@ Utility
    Atomically add ``value`` onto the array at location given by index.
 
 
+.. function:: atomic_add(a: array[Any], i: int32, j: int32, value: Any)
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_add(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+
+   Atomically add ``value`` onto the array at location given by indices.
+
+
 .. function:: atomic_sub(a: array[Any], i: int32, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by index.
+
+
+.. function:: atomic_sub(a: array[Any], i: int32, j: int32, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
+
+
+.. function:: atomic_sub(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+
+   Atomically subtract ``value`` onto the array at location given by indices.
 
 
 .. function:: expect_eq(arg1: int8, arg2: int8) -> None
@@ -469,9 +738,169 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
+.. function:: expect_eq(arg1: uint8, arg2: uint8) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: int16, arg2: int16) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: uint16, arg2: uint16) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: int32, arg2: int32) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: uint32, arg2: uint32) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: int64, arg2: int64) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: uint64, arg2: uint64) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: float32, arg2: float32) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: float64, arg2: float64) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: vec2, arg2: vec2) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: vec3, arg2: vec3) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: vec4, arg2: vec4) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat22, arg2: mat22) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat33, arg2: mat33) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat44, arg2: mat44) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: quat, arg2: quat) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: transform, arg2: transform) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: spatial_vector, arg2: spatial_vector) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: spatial_matrix, arg2: spatial_matrix) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: lerp(a: float32, b: float32, t: float32) -> float32
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: float64, b: float64, t: float32) -> float64
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: vec2, b: vec2, t: float32) -> vec2
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: vec3, b: vec3, t: float32) -> vec3
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: vec4, b: vec4, t: float32) -> vec4
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: mat22, b: mat22, t: float32) -> mat22
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: mat33, b: mat33, t: float32) -> mat33
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: mat44, b: mat44, t: float32) -> mat44
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: quat, b: quat, t: float32) -> quat
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: transform, b: transform, t: float32) -> transform
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: spatial_vector, b: spatial_vector, t: float32) -> spatial_vector
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
+.. function:: lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+
+
 .. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
+
+
+.. function:: expect_near(arg1: vec3, arg2: vec3, tolerance: float32) -> None
+
+   Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
 
 
 
@@ -639,14 +1068,31 @@ Random
    Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
 
 
+.. function:: rand_init(seed: int32, offset: int32) -> uint32
+
+   Initialize a new random number generator given a user-defined seed and an offset. 
+   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
+   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``
+
+
 .. function:: randi(state: uint32) -> int
 
    Return a random integer between [0, 2^32)
 
 
+.. function:: randi(state: uint32, min: int32, max: int32) -> int
+
+   Return a random integer between [min, max)
+
+
 .. function:: randf(state: uint32) -> float
 
    Return a random float between [0.0, 1.0)
+
+
+.. function:: randf(state: uint32, min: float32, max: float32) -> float
+
+   Return a random float between [min, max)
 
 
 .. function:: randn(state: uint32) -> float
@@ -659,14 +1105,54 @@ Random
    Non-periodic Perlin-style noise in 1d.
 
 
+.. function:: noise(state: uint32, xy: vec2) -> float
+
+   Non-periodic Perlin-style noise in 2d.
+
+
+.. function:: noise(state: uint32, xyz: vec3) -> float
+
+   Non-periodic Perlin-style noise in 3d.
+
+
+.. function:: noise(state: uint32, xyzt: vec4) -> float
+
+   Non-periodic Perlin-style noise in 4d.
+
+
 .. function:: pnoise(state: uint32, x: float32, px: int32) -> float
 
    Periodic Perlin-style noise in 1d.
 
 
+.. function:: pnoise(state: uint32, xy: vec2, px: int32, py: int32) -> float
+
+   Periodic Perlin-style noise in 2d.
+
+
+.. function:: pnoise(state: uint32, xyz: vec3, px: int32, py: int32, pz: int32) -> float
+
+   Periodic Perlin-style noise in 3d.
+
+
+.. function:: pnoise(state: uint32, xyzt: vec4, px: int32, py: int32, pz: int32, pt: int32) -> float
+
+   Periodic Perlin-style noise in 4d.
+
+
 .. function:: curlnoise(state: uint32, xy: vec2) -> vec2
 
    Divergence-free vector field based on the gradient of a Perlin noise function.
+
+
+.. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
+
+   Divergence-free vector field based on the curl of three Perlin noise functions.
+
+
+.. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
+
+   Divergence-free vector field based on the curl of three Perlin noise functions.
 
 
 
@@ -676,22 +1162,187 @@ Operators
 .. function:: add(x: int32, y: int32) -> int
 
 
+.. function:: add(x: float32, y: float32) -> float
+
+
+.. function:: add(x: vec2, y: vec2) -> vec2
+
+
+.. function:: add(x: vec3, y: vec3) -> vec3
+
+
+.. function:: add(x: vec4, y: vec4) -> vec4
+
+
+.. function:: add(x: quat, y: quat) -> quat
+
+
+.. function:: add(x: mat22, y: mat22) -> mat22
+
+
+.. function:: add(x: mat33, y: mat33) -> mat33
+
+
+.. function:: add(x: mat44, y: mat44) -> mat44
+
+
+.. function:: add(x: spatial_vector, y: spatial_vector) -> spatial_vector
+
+
+.. function:: add(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
+
+
 .. function:: sub(x: int32, y: int32) -> int
+
+
+.. function:: sub(x: float32, y: float32) -> float
+
+
+.. function:: sub(x: vec2, y: vec2) -> vec2
+
+
+.. function:: sub(x: vec3, y: vec3) -> vec3
+
+
+.. function:: sub(x: vec4, y: vec4) -> vec4
+
+
+.. function:: sub(x: mat22, y: mat22) -> mat22
+
+
+.. function:: sub(x: mat33, y: mat33) -> mat33
+
+
+.. function:: sub(x: mat44, y: mat44) -> mat44
+
+
+.. function:: sub(x: spatial_vector, y: spatial_vector) -> spatial_vector
+
+
+.. function:: sub(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
 
 
 .. function:: mul(x: int32, y: int32) -> int
 
 
+.. function:: mul(x: float32, y: float32) -> float
+
+
+.. function:: mul(x: float32, y: vec2) -> vec2
+
+
+.. function:: mul(x: float32, y: vec3) -> vec3
+
+
+.. function:: mul(x: float32, y: vec4) -> vec4
+
+
+.. function:: mul(x: float32, y: quat) -> quat
+
+
+.. function:: mul(x: vec2, y: float32) -> vec2
+
+
+.. function:: mul(x: vec3, y: float32) -> vec3
+
+
+.. function:: mul(x: vec4, y: float32) -> vec4
+
+
+.. function:: mul(x: quat, y: float32) -> quat
+
+
+.. function:: mul(x: quat, y: quat) -> quat
+
+
+.. function:: mul(x: mat22, y: float32) -> mat22
+
+
+.. function:: mul(x: mat22, y: vec2) -> vec2
+
+
+.. function:: mul(x: mat22, y: mat22) -> mat22
+
+
+.. function:: mul(x: mat33, y: float32) -> mat33
+
+
+.. function:: mul(x: mat33, y: vec3) -> vec3
+
+
+.. function:: mul(x: mat33, y: mat33) -> mat33
+
+
+.. function:: mul(x: mat44, y: float32) -> mat44
+
+
+.. function:: mul(x: mat44, y: vec4) -> vec4
+
+
+.. function:: mul(x: mat44, y: mat44) -> mat44
+
+
+.. function:: mul(x: spatial_vector, y: float32) -> spatial_vector
+
+
+.. function:: mul(x: spatial_matrix, y: spatial_matrix) -> spatial_matrix
+
+
+.. function:: mul(x: spatial_matrix, y: spatial_vector) -> spatial_vector
+
+
+.. function:: mul(x: transform, y: transform) -> transform
+
+
 .. function:: mod(x: int32, y: int32) -> int
+
+
+.. function:: mod(x: float32, y: float32) -> float
 
 
 .. function:: div(x: int32, y: int32) -> int
 
 
+.. function:: div(x: float32, y: float32) -> float
+
+
+.. function:: div(x: vec2, y: float32) -> vec2
+
+
+.. function:: div(x: vec3, y: float32) -> vec3
+
+
+.. function:: div(x: vec4, y: float32) -> vec4
+
+
 .. function:: floordiv(x: int32, y: int32) -> int
 
 
+.. function:: floordiv(x: float32, y: float32) -> float
+
+
 .. function:: neg(x: int32) -> int
+
+
+.. function:: neg(x: float32) -> float
+
+
+.. function:: neg(x: vec2) -> vec2
+
+
+.. function:: neg(x: vec3) -> vec3
+
+
+.. function:: neg(x: vec4) -> vec4
+
+
+.. function:: neg(x: quat) -> quat
+
+
+.. function:: neg(x: mat33) -> mat33
+
+
+.. function:: neg(x: mat44) -> mat44
 
 
 .. function:: unot(b: bool) -> bool

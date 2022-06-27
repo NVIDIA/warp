@@ -41,6 +41,7 @@
 namespace wp
 {
 
+
 // numeric types (used from generated kernels)
 typedef float float32;
 typedef double float64;
@@ -57,8 +58,155 @@ typedef uint32_t uint32;
 typedef int64_t int64;
 typedef uint64_t uint64;
 
+
 // matches Python string type for constant strings
 typedef char* str;
+
+
+
+struct half;
+
+CUDA_CALLABLE half float_to_half(float x);
+CUDA_CALLABLE float half_to_float(half x);
+
+struct half
+{
+    CUDA_CALLABLE inline half() : u(0) {}
+
+    CUDA_CALLABLE inline half(float f)
+    {
+        *this = float_to_half(f);
+    }
+
+    unsigned short u;
+
+    CUDA_CALLABLE inline bool operator==(const half& h) const { return u == h.u; }
+
+    CUDA_CALLABLE inline operator float32() const { return float32(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator float64() const { return float64(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator int8() const { return int8(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator uint8() const { return uint8(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator int16() const { return int16(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator uint16() const { return uint16(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator int32() const { return int32(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator uint32() const { return uint32(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator int64() const { return int64(half_to_float(*this)); }
+    CUDA_CALLABLE inline operator uint64() const { return uint64(half_to_float(*this)); }
+};
+
+static_assert(sizeof(half) == 2, "Size of half / float16 type must be 2-bytes");
+
+typedef half float16;
+
+#if __CUDA_ARCH__
+
+CUDA_CALLABLE inline half float_to_half(float x)
+{
+    half h;
+    asm("{  cvt.rn.f16.f32 %0, %1;}\n" : "=h"(h.u) : "f"(x));  
+    return h;
+}
+
+CUDA_CALLABLE inline float half_to_float(half x)
+{
+    float val;
+    asm("{  cvt.f32.f16 %0, %1;}\n" : "=f"(val) : "h"(x.u));
+    return val;
+}
+
+#else
+
+// adapted from Fabien Giesen's post: https://gist.github.com/rygorous/2156668
+inline half float_to_half(float x)
+{
+    union fp32
+    {
+        uint32 u;
+        float f;
+
+        struct
+        {
+            unsigned int mantissa : 23;
+            unsigned int exponent : 8;
+            unsigned int sign : 1;
+        };
+    };
+
+    fp32 f;
+    f.f = x;
+
+    fp32 f32infty = { 255 << 23 };
+    fp32 f16infty = { 31 << 23 };
+    fp32 magic = { 15 << 23 };
+    uint32 sign_mask = 0x80000000u;
+    uint32 round_mask = ~0xfffu; 
+    half o;
+
+    uint32 sign = f.u & sign_mask;
+    f.u ^= sign;
+
+    // NOTE all the integer compares in this function can be safely
+    // compiled into signed compares since all operands are below
+    // 0x80000000. Important if you want fast straight SSE2 code
+    // (since there's no unsigned PCMPGTD).
+
+    if (f.u >= f32infty.u) // Inf or NaN (all exponent bits set)
+        o.u = (f.u > f32infty.u) ? 0x7e00 : 0x7c00; // NaN->qNaN and Inf->Inf
+    else // (De)normalized number or zero
+    {
+        f.u &= round_mask;
+        f.f *= magic.f;
+        f.u -= round_mask;
+        if (f.u > f16infty.u) f.u = f16infty.u; // Clamp to signed infinity if overflowed
+
+        o.u = f.u >> 13; // Take the bits!
+    }
+
+    o.u |= sign >> 16;
+    return o;
+}
+
+
+inline float half_to_float(half h)
+{
+    union fp32
+    {
+        uint32 u;
+        float f;
+
+        struct
+        {
+            unsigned int mantissa : 23;
+            unsigned int exponent : 8;
+            unsigned int sign : 1;
+        };
+    };
+
+    static const fp32 magic = { 113 << 23 };
+    static const uint32 shifted_exp = 0x7c00 << 13; // exponent mask after shift
+    fp32 o;
+
+    o.u = (h.u & 0x7fff) << 13;     // exponent/mantissa bits
+    uint32 exp = shifted_exp & o.u;   // just the exponent
+    o.u += (127 - 15) << 23;        // exponent adjust
+
+    // handle exponent special cases
+    if (exp == shifted_exp) // Inf/NaN?
+        o.u += (128 - 16) << 23;    // extra exp adjust
+    else if (exp == 0) // Zero/Denormal?
+    {
+        o.u += 1 << 23;             // extra exp adjust
+        o.f -= magic.f;             // renormalize
+    }
+
+    o.u |= (h.u & 0x8000) << 16;    // sign bit
+    return o.f;
+}
+
+
+#endif
+
+
 
 
 template <typename T>
@@ -68,7 +216,7 @@ template <typename T>
 CUDA_CALLABLE int cast_int(T x) { return (int)(x); }
 
 template <typename T>
-CUDA_CALLABLE void adj_cast_float(T x, T& adj_x, float adj_ret) { adj_x += adj_ret; }
+CUDA_CALLABLE void adj_cast_float(T x, T& adj_x, float adj_ret) { adj_x += T(adj_ret); }
 
 template <typename T>
 CUDA_CALLABLE void adj_cast_int(T x, T& adj_x, int adj_ret) { adj_x += adj_ret; }
@@ -90,10 +238,13 @@ CUDA_CALLABLE inline void adj_int64(T, T&, int64) {}
 template <typename T>
 CUDA_CALLABLE inline void adj_uint64(T, T&, uint64) {}
 
+
 template <typename T>
-CUDA_CALLABLE inline void adj_float32(T x, T& adj_x, float32 adj_ret) { adj_x += adj_ret; }
+CUDA_CALLABLE inline void adj_float16(T x, T& adj_x, float16 adj_ret) { adj_x += T(adj_ret); }
 template <typename T>
-CUDA_CALLABLE inline void adj_float64(T x, T& adj_x, float64 adj_ret) { adj_x += adj_ret; }
+CUDA_CALLABLE inline void adj_float32(T x, T& adj_x, float32 adj_ret) { adj_x += T(adj_ret); }
+template <typename T>
+CUDA_CALLABLE inline void adj_float64(T x, T& adj_x, float64 adj_ret) { adj_x += T(adj_ret); }
 
 
 #define kEps 0.0f
@@ -474,6 +625,9 @@ inline CUDA_CALLABLE void adj_ceil(float x, float& adj_x, float adj_ret)
     // nop
 }
 
+// basic arithmetic for fp16, this is only called for adjoint accumulation
+inline CUDA_CALLABLE half add(half a, half b) { return half(float(a)+float(b)); }
+
 
 template <typename T>
 CUDA_CALLABLE inline T select(bool cond, const T& a, const T& b) { return cond?b:a; }
@@ -637,6 +791,42 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 #endif
 }
 
+template<>
+inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
+{
+#if defined(WP_CPU)
+    float16 old = buf[0];
+    buf[0] += value;
+    return old;
+#elif defined(WP_CUDA)
+    //return atomicAdd(buf, value);
+    
+    /* Define __PTR for atomicAdd prototypes below, undef after done */
+    #if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
+    #define __PTR   "l"
+    #else
+    #define __PTR   "r"
+    #endif /*(defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)*/
+   
+    half r = 0.0;
+
+    #if __CUDA_ARCH__ 
+
+        asm volatile ("{ atom.add.noftz.f16 %0,[%1],%2; }\n"
+                    : "=h"(r.u)
+                    : __PTR(buf), "h"(value.u)
+                    : "memory");
+    #endif
+
+    return r;
+
+    #undef __PTR
+
+#endif // defined(WP_CUDA)
+
+}
+
+
 
 inline bool CUDA_CALLABLE isfinite(float x)
 {
@@ -731,6 +921,11 @@ inline CUDA_CALLABLE void print(unsigned long long i)
     printf("%llu\n", i);
 }
 
+inline CUDA_CALLABLE void print(float16 f)
+{
+    printf("%g\n", half_to_float(f));
+}
+
 inline CUDA_CALLABLE void print(float f)
 {
     printf("%g\n", f);
@@ -810,7 +1005,8 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
 
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
-inline CUDA_CALLABLE void adj_print(float i, float& adj_i) { printf("%g adj: %g\n", i, adj_i); }
+inline CUDA_CALLABLE void adj_print(float f, float& adj_f) { printf("%g adj: %g\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(half h, half& adj_h) { printf("%g adj: %g\n", half_to_float(h), half_to_float(adj_h)); }
 inline CUDA_CALLABLE void adj_print(vec2 v, vec2& adj_v) { printf("%g %g adj: %g %g \n", v.x, v.y, adj_v.x, adj_v.y); }
 inline CUDA_CALLABLE void adj_print(vec3 v, vec3& adj_v) { printf("%g %g %g adj: %g %g %g \n", v.x, v.y, v.z, adj_v.x, adj_v.y, adj_v.z); }
 inline CUDA_CALLABLE void adj_print(vec4 v, vec4& adj_v) { printf("%g %g %g %g adj: %g %g %g %g\n", v.x, v.y, v.z, v.w, adj_v.x, adj_v.y, adj_v.z, adj_v.w); }

@@ -130,10 +130,11 @@ class Robot:
         train_rate = 0.01
 
         # optimization variables
+        self.loss = wp.zeros(1, dtype=float, device=self.device)
+
         self.model.joint_q.requires_grad = True
         self.state.body_q.requires_grad = True
-
-        self.loss = wp.zeros(1, dtype=float, device=self.device)
+        self.loss.requires_grad = True
 
         for i in range(train_iters):
 
@@ -156,6 +157,9 @@ class Robot:
             
             # gradient descent
             wp.launch(step_kernel, dim=len(self.model.joint_q), inputs=[self.model.joint_q, tape.gradients[self.model.joint_q], train_rate], device=self.device)
+
+            # zero gradients
+            tape.zero()
 
             # render
             self.renderer.begin_frame(render_time)

@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [0.2.3] - 2022-06-13
+
+- Fix for incorrect 4d array bounds checking
+- Fix for `wp.constant` changes not updating module hash
+- Fix for stale CUDA kernel cache when CPU kernels launched first
+- Array gradients are now allocated along with the arrays and accessible as `wp.array.grad`, users should take care to always call `wp.Tape.zero()` to clear gradients between different invocations of `wp.Tape.backward()`
+- Added `wp.array.fill_()` to set all entries to a scalar value (4-byte values only currently)
+
+
+### Breaking Changes
+
+- Tape `capture` option has been removed, users can now capture tapes inside existing CUDA graphs (e.g.: inside Torch)
+- Scalar loss arrays should now explicitly set `requires_grad=True` at creation time
+
 ## [0.2.2] - 2022-05-30
 
 - Fix for `from import *` inside Warp initialization
@@ -7,8 +21,7 @@
 - Fix for noise gradient discontinuities affecting `wp.curlnoise()`
 - Fix for `wp.from_torch()` to correctly preserve shape
 - Fix for URDF parser incorrectly passing density to scale parameter
-- Fix for unit tests in Kit
-- Fix for `wp.constant()` slow startup time (7s -> 1s in Kit)
+- Optimizations for startup time from 3s -> 0.3s
 - Add support for custom kernel cache location, Warp will now store generated binaries in the user's application directory
 - Add support for cross-module function references, e.g.: call another modules @wp.func functions
 - Add support for overloading `@wp.func` functions based on argument type

@@ -1232,6 +1232,90 @@ def expect_eq(arg1: spatial_matrix, arg2: spatial_matrix):
    ...
 
 @overload
+def lerp(a: float32, b: float32, t: float32) -> float32:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: float64, b: float64, t: float32) -> float64:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: vec2, b: vec2, t: float32) -> vec2:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: vec3, b: vec3, t: float32) -> vec3:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: vec4, b: vec4, t: float32) -> vec4:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: mat22, b: mat22, t: float32) -> mat22:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: mat33, b: mat33, t: float32) -> mat33:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: mat44, b: mat44, t: float32) -> mat44:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: quat, b: quat, t: float32) -> quat:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: transform, b: transform, t: float32) -> transform:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: spatial_vector, b: spatial_vector, t: float32) -> spatial_vector:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
+def lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
+   """
+   ...
+
+@overload
 def expect_near(arg1: float32, arg2: float32, tolerance: float32):
    """
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude

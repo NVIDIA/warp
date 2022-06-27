@@ -155,7 +155,7 @@ void memset_device(void* dest, int value, size_t n)
     }
     else
     {
-        // custom kernel mostly to reduce launch overhead
+        // custom kernel to support 4-byte values (and slightly lower host overhead)
         const int num_words = n/4;
         wp_launch_device(memset_kernel, num_words, ((int*)dest, value, num_words));
     }
@@ -220,8 +220,14 @@ void* cuda_graph_end_capture()
 
     if (graph)
     {
+        // enable to create debug GraphVis visualization of graph
+        //cudaGraphDebugDotPrint(graph, "graph.dot", cudaGraphDebugDotFlagsVerbose);
+
         cudaGraphExec_t graph_exec = NULL;
         check_cuda(cudaGraphInstantiate(&graph_exec, graph, NULL, NULL, 0))
+        
+        // can use after CUDA 11.4 to permit graphs to capture cudaMallocAsync() operations
+        //check_cuda(cudaGraphInstantiateWithFlags(&graph_exec, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
 
         // free source graph
         check_cuda(cudaGraphDestroy(graph));
@@ -305,7 +311,7 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
     const char *opts[] = 
     {   
         "--device-as-default-execution-space",
-        "--gpu-architecture=compute_52",
+        "--gpu-architecture=compute_70",
         "--use_fast_math",
         "--std=c++11",
         "--define-macro=WP_CUDA",

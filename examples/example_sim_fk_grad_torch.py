@@ -60,10 +60,10 @@ class ForwardKinematics(torch.autograd.Function):
     def backward(ctx, adj_body_q, adj_body_qd):
 
         # map incoming Torch grads to our output variables
-        grads = { ctx.state.body_q: wp.from_torch(adj_body_q, dtype=wp.transform),
-                  ctx.state.body_qd: wp.from_torch(adj_body_qd, dtype=wp.spatial_vector) }
+        ctx.state.body_q.grad = wp.from_torch(adj_body_q, dtype=wp.transform)
+        ctx.state.body_qd.grad = wp.from_torch(adj_body_qd, dtype=wp.spatial_vector)
 
-        ctx.tape.backward(grads=grads)
+        ctx.tape.backward()
 
         # return adjoint w.r.t. inputs
         return (wp.to_torch(ctx.tape.gradients[ctx.joint_q]), 
@@ -175,7 +175,6 @@ class Robot:
             self.renderer.render(s)
             self.renderer.render_sphere(name="target", pos=target, rot=wp.quat_identity(), radius=0.1)
             self.renderer.end_frame()
-
 
             render_time += 1.0/60.0
 

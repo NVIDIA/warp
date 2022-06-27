@@ -18,7 +18,7 @@ def mul_constant(
     y : wp.array(dtype=float)):
 
     tid = wp.tid()
-
+    
     y[tid] = x[tid]*2.0
 
 @wp.kernel
@@ -63,10 +63,10 @@ def test_tape_mul_constant(test, device):
             x = y
 
     # loss = wp.sum(x)
-    loss_grad = wp.array(np.ones(dim), device=device, dtype=wp.float32)
+    x.grad = wp.array(np.ones(dim), device=device, dtype=wp.float32)
 
     # run backward
-    tape.backward(grads={x: loss_grad})
+    tape.backward()
 
     # grad = 2.0^iters
     assert_np_equal(tape.gradients[x0].numpy(), np.ones(dim)*(2**iters))
@@ -88,10 +88,10 @@ def test_tape_mul_variable(test, device):
         wp.launch(kernel=mul_variable, dim=dim, inputs=[x, y], outputs=[z], device=device)
 
     # loss = wp.sum(x)
-    loss_grad = wp.array(np.ones(dim), device=device, dtype=wp.float32)
+    z.grad =wp.array(np.ones(dim), device=device, dtype=wp.float32)
 
     # run backward
-    tape.backward(grads={z: loss_grad})
+    tape.backward()
 
     # grad_x=y, grad_y=x
     assert_np_equal(tape.gradients[x].numpy(), y.numpy())
@@ -100,7 +100,7 @@ def test_tape_mul_variable(test, device):
     # run backward again with different incoming gradient
     # should accumulate the same gradients again onto output
     # so gradients = 2.0*prev
-    tape.backward(grads={z: loss_grad})
+    tape.backward()
 
     assert_np_equal(tape.gradients[x].numpy(), y.numpy()*2.0)
     assert_np_equal(tape.gradients[y].numpy(), x.numpy()*2.0)
@@ -117,7 +117,7 @@ def test_tape_dot_product(test, device):
         # input data
         x = wp.array(np.ones(dim)*16.0, dtype=wp.float32, device=device, requires_grad=True)
         y = wp.array(np.ones(dim)*32.0, dtype=wp.float32, device=device, requires_grad=True)
-        z = wp.zeros(n=1, dtype=wp.float32, device=device)
+        z = wp.zeros(n=1, dtype=wp.float32, device=device, requires_grad=True)
 
         wp.launch(kernel=dot_product, dim=dim, inputs=[x, y], outputs=[z], device=device)
 
