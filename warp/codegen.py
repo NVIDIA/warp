@@ -1037,7 +1037,7 @@ class Adjoint:
                     
                     for name, rhs in zip(names, out):
                         if (name in adj.symbols):
-                            if (rhs.type != adj.symbols[name].type):
+                            if not types_equal(rhs.type, adj.symbols[name].type):
                                 raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
 
                         adj.symbols[name] = rhs
