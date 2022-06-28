@@ -48,20 +48,29 @@ class Robot:
 
         self.num_envs = num_envs
 
+        articulation_builder = wp.sim.ModelBuilder()
+
+        wp.sim.parse_urdf(os.path.join(os.path.dirname(__file__), "assets/cartpole.urdf"), articulation_builder,
+            xform=wp.transform(np.array((0.0, 0.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)),
+            floating=False, 
+            density=0,
+            armature=0.1,
+            stiffness=0.0,
+            damping=0.0,
+            shape_ke=1.e+4,
+            shape_kd=1.e+2,
+            shape_kf=1.e+2,
+            shape_mu=1.0,
+            limit_ke=1.e+4,
+            limit_kd=1.e+1)
+
+        builder = wp.sim.ModelBuilder()
+
         for i in range(num_envs):
-            wp.sim.parse_urdf(os.path.join(os.path.dirname(__file__), "assets/cartpole.urdf"), builder,
-                xform=wp.transform(np.array((i*2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)),
-                floating=False, 
-                density=0,
-                armature=0.1,
-                stiffness=0.0,
-                damping=0.0,
-                shape_ke=1.e+4,
-                shape_kd=1.e+2,
-                shape_kf=1.e+2,
-                shape_mu=1.0,
-                limit_ke=1.e+4,
-                limit_kd=1.e+1)
+            builder.add_rigid_articulation(
+                articulation_builder,
+                xform=wp.transform(np.array((i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5))
+            )
 
             # joint initial positions
             builder.joint_q[-3:] = [0.0, 0.3, 0.0]
