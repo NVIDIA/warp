@@ -1185,7 +1185,7 @@ class Adjoint:
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):
         if adj.lineno is None or adj.lineno != lineno:
-            line = lineno+adj.fun_lineno
+            line = lineno + adj.fun_lineno
             source = adj.raw_source[lineno].strip().ljust(70)
             adj.add_forward(f'// {source}       <L {line}>')
             adj.add_reverse(f'// adj: {source}  <L {line}>')

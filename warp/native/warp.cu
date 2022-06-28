@@ -375,10 +375,25 @@ void* cuda_load_module(const char* path)
         return NULL;
     }
 
+    CUjit_option options[2];
+    void *optionVals[2];
+    char error_log[8192];
+    unsigned int logSize = 8192;
+    // Setup linker options
+    // Pass a buffer for error message
+    options[0] = CU_JIT_ERROR_LOG_BUFFER;
+    optionVals[0] = (void *) error_log;
+    // Pass the size of the error buffer
+    options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
+    optionVals[1] = (void *) (long) logSize;
+
     CUmodule module = NULL;
-    CUresult res = cuModuleLoadDataEx_f(&module, buf, 0, 0, 0);
-    if (res != CUDA_SUCCESS)
+    CUresult res = cuModuleLoadDataEx_f(&module, buf, 2, options, optionVals);
+    if (res != CUDA_SUCCESS) {
         printf("Warp: Loading PTX module failed with error: %d\n", res);
+        // print error log
+        fprintf(stderr, "PTX linker error:\n%s\n", error_log);
+    }
 
     free(buf);
 
