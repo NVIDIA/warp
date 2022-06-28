@@ -235,10 +235,10 @@ inline CUDA_CALLABLE quat quat_from_matrix(const mat33& m)
 inline CUDA_CALLABLE float index(const quat& a, int idx)
 {
 #if FP_CHECK
+    assert(idx >= 0 && idx <= 3);
     if (idx < 0 || idx > 3)
     {
         printf("quat index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
-        // exit(1);
     }
 #endif
 
@@ -249,10 +249,10 @@ inline CUDA_CALLABLE float index(const quat& a, int idx)
 inline CUDA_CALLABLE void adj_index(const quat& a, int idx, quat& adj_a, int & adj_idx, float & adj_ret)
 {
 #if FP_CHECK
+    assert(idx >= 0 && idx <= 3);
     if (idx < 0 || idx > 3)
     {
         printf("quat index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
-        // exit(1);
     }
 #endif
 

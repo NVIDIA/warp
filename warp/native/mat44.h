@@ -214,6 +214,18 @@ inline CUDA_CALLABLE void adj_mat44(float m00, float m01, float m02, float m03,
 
 inline CUDA_CALLABLE float index(const mat44& m, int row, int col)
 {
+#if FP_CHECK
+    assert(row >= 0 && row <= 3);
+    if (row < 0 || row > 3)
+    {
+        printf("mat44 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+    }
+    assert(col >= 0 && col <= 3);
+    if (col < 0 || col > 3)
+    {
+        printf("mat44 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+    }
+#endif
     return m.data[row][col];
 }
 
@@ -590,6 +602,18 @@ inline CUDA_CALLABLE void adj_transform_vector(const mat44& m, const vec3& v, ma
 
 inline void CUDA_CALLABLE adj_index(const mat44& m, int row, int col, mat44& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {
+#if FP_CHECK
+    assert(row >= 0 && row <= 3);
+    if (row < 0 || row > 3)
+    {
+        printf("mat44 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+    }
+    assert(col >= 0 && col <= 3);
+    if (col < 0 || col > 3)
+    {
+        printf("mat44 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+    }
+#endif
     adj_m.data[row][col] += adj_ret;
 }
 

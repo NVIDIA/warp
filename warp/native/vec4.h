@@ -98,10 +98,10 @@ inline CUDA_CALLABLE float dot(vec4 a, vec4 b)
 inline CUDA_CALLABLE float index(const vec4 & a, int idx)
 {
 #if FP_CHECK
+    assert(idx >= 0 && idx <= 3);
     if (idx < 0 || idx > 3)
     {
         printf("vec4 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
-        // exit(1);
     }
 #endif
 
@@ -112,10 +112,10 @@ inline CUDA_CALLABLE float index(const vec4 & a, int idx)
 inline CUDA_CALLABLE void adj_index(const vec4 & a, int idx, vec4 & adj_a, int & adj_idx, float & adj_ret)
 {
 #if FP_CHECK
+    assert(idx >= 0 && idx <= 3);
     if (idx < 0 || idx > 3)
     {
         printf("vec4 index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
-        // exit(1);
     }
 #endif
 

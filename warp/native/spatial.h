@@ -106,11 +106,25 @@ CUDA_CALLABLE inline vec3 spatial_bottom(const spatial_vector& a)
 
 inline CUDA_CALLABLE float index(const spatial_vector& v, int i)
 {
+#if FP_CHECK
+    assert(i >= 0 && i <= 5);
+    if (i < 0 || i > 5)
+    {
+        printf("spatial_vector index %d out of bounds at %s %d\n", i, __FILE__, __LINE__);
+    }
+#endif
     return v[i];
 }
 
 inline void CUDA_CALLABLE adj_index(const spatial_vector& m, int i, spatial_vector& adj_v, int& adj_i, float adj_ret)
 {
+#if FP_CHECK
+    assert(i >= 0 && i <= 5);
+    if (i < 0 || i > 5)
+    {
+        printf("spatial_vector index %d out of bounds at %s %d\n", i, __FILE__, __LINE__);
+    }
+#endif
     adj_v[i] += adj_ret;
 }
 

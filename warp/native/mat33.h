@@ -143,6 +143,18 @@ inline bool CUDA_CALLABLE isfinite(const mat33& m)
 
 inline CUDA_CALLABLE float index(const mat33& m, int row, int col)
 {
+#if FP_CHECK
+    assert(row >= 0 && row <= 2);
+    if (row < 0 || row > 2)
+    {
+        printf("mat33 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+    }
+    assert(col >= 0 && col <= 2);
+    if (col < 0 || col > 2)
+    {
+        printf("mat33 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+    }
+#endif
     return m.data[row][col];
 }
 
@@ -302,6 +314,18 @@ inline CUDA_CALLABLE mat33 skew(const vec3& a)
 
 inline void CUDA_CALLABLE adj_index(const mat33& m, int row, int col, mat33& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {
+#if FP_CHECK
+    assert(row >= 0 && row <= 2);
+    if (row < 0 || row > 2)
+    {
+        printf("mat33 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+    }
+    assert(col >= 0 && col <= 2);
+    if (col < 0 || col > 2)
+    {
+        printf("mat33 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+    }
+#endif
     adj_m.data[row][col] += adj_ret;
 }
 

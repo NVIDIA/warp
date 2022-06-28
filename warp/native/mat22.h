@@ -97,6 +97,18 @@ inline bool CUDA_CALLABLE isfinite(const mat22& m)
 
 inline CUDA_CALLABLE float index(const mat22& m, int row, int col)
 {
+#if FP_CHECK
+    assert(row >= 0 && row <= 1);
+    if (row < 0 || row > 1)
+    {
+        printf("mat22 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+    }
+    assert(col >= 0 && col <= 1);
+    if (col < 0 || col > 1)
+    {
+        printf("mat22 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+    }
+#endif
     return m.data[row][col];
 }
 
@@ -231,6 +243,18 @@ inline CUDA_CALLABLE void adj_outer(const vec2& a, const vec2& b, vec2& adj_a, v
 
 inline void CUDA_CALLABLE adj_index(const mat22& m, int row, int col, mat22& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {
+#if FP_CHECK
+    assert(row >= 0 && row <= 1);
+    if (row < 0 || row > 1)
+    {
+        printf("mat22 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+    }
+    assert(col >= 0 && col <= 1);
+    if (col < 0 || col > 1)
+    {
+        printf("mat22 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+    }
+#endif
     adj_m.data[row][col] += adj_ret;
 }
 
