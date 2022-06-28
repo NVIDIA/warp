@@ -968,7 +968,7 @@ def clone(src: warp.array) -> warp.array:
         A warp.array object representing the allocation
     """
 
-    dest = empty(len(src), dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
+    dest = empty(shape = src.shape, dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
     copy(dest, src)
 
     return dest
@@ -1268,6 +1268,9 @@ def copy(dest: warp.array, src: warp.array, dest_offset: int = 0, src_offset: in
 
     if count == 0:
         return
+
+    if not dest.is_contiguous or not src.is_contiguous:
+        raise RuntimeError(f"Copying to or from a non-continuguous array is unsupported.")
 
     bytes_to_copy = count * warp.types.type_size_in_bytes(src.dtype)
 

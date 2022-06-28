@@ -15,20 +15,23 @@ struct array_t
 
     T* data;
     int shape[ARRAY_MAX_DIMS];
+    int strides[ARRAY_MAX_DIMS];
     int ndim;
 
     CUDA_CALLABLE inline operator T*() const { return data; }
 };
 
-// return stride (in elements) of the given index
+// return stride (in bytes) of the given index
 template <typename T>
 CUDA_CALLABLE inline int stride(const array_t<T>& a, int dim)
 {
-    int stride = 1;
-    for (int i=dim+1; i < a.ndim; ++i)
-        stride = stride*a.shape[i];
+    return a.strides[dim];
+}
 
-    return stride;
+template <typename T>
+CUDA_CALLABLE inline T* data_at_byte_offset(const array_t<T>& a, int byte_offset)
+{
+    return reinterpret_cast<T*>(reinterpret_cast<char*>(a.data) + byte_offset);
 }
 
 template <typename T>
@@ -37,9 +40,9 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
     assert(arr.ndim == 1);
     assert(i >= 0 && i < arr.shape[0]);
     
-    const int idx = i;
+    const int byte_offset = i*stride(arr, 0);
 
-    return arr.data[idx];
+    return *data_at_byte_offset(arr, byte_offset);
 }
 
 template <typename T>
@@ -49,9 +52,9 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
     assert(i >= 0 && i < arr.shape[0]);
     assert(j >= 0 && j < arr.shape[1]);
 
-    const int idx = i*arr.shape[1] + j;
+    const int byte_offset = i*stride(arr,0) + j*stride(arr,1);
 
-    return arr.data[idx];
+    return *data_at_byte_offset(arr, byte_offset);
 }
 
 template <typename T>
@@ -62,11 +65,11 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
     assert(j >= 0 && j < arr.shape[1]);
     assert(k >= 0 && k < arr.shape[2]);
 
-    const int idx = i*arr.shape[1]*arr.shape[2] + 
-                    j*arr.shape[2] +
-                    k;
+    const int byte_offset = i*stride(arr,0) + 
+                            j*stride(arr,1) +
+                            k*stride(arr,2);
        
-    return arr.data[idx];
+    return *data_at_byte_offset(arr, byte_offset);
 }
 
 template <typename T>
@@ -78,22 +81,25 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
     assert(k >= 0 && k < arr.shape[2]);
     assert(l >= 0 && l < arr.shape[3]);
 
-    const int idx = i*arr.shape[1]*arr.shape[2]*arr.shape[3] + 
-                    j*arr.shape[2]*arr.shape[3] + 
-                    k*arr.shape[3] + 
-                    l;
+    const int byte_offset = i*stride(arr,0) + 
+                            j*stride(arr,1) + 
+                            k*stride(arr,2) + 
+                            l*stride(arr,3);
 
-    return arr.data[idx];
+    return *data_at_byte_offset(arr, byte_offset);
 }
 
 template <typename T>
 CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i)
 {
     array_t<T> a;
-    a.data = src.data + i*stride(src, 0);
+    a.data = data_at_byte_offset(src, i*stride(src, 0));
     a.shape[0] = src.shape[1];
     a.shape[1] = src.shape[2];
     a.shape[2] = src.shape[3];
+    a.strides[0] = src.strides[1];
+    a.strides[1] = src.strides[2];
+    a.strides[2] = src.strides[3];
     a.ndim = src.ndim-1; 
 
     return a;
@@ -103,9 +109,11 @@ template <typename T>
 CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j)
 {
     array_t<T> a;
-    a.data = src.data + i*stride(src, 0) + j*stride(src,1);
+    a.data = data_at_byte_offset(src, i*stride(src, 0) + j*stride(src,1));
     a.shape[0] = src.shape[2];
     a.shape[1] = src.shape[3];
+    a.strides[0] = src.strides[2];
+    a.strides[1] = src.strides[3];
     a.ndim = src.ndim-2;
     
     return a;
@@ -115,8 +123,9 @@ template <typename T>
 CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j, int k)
 {
     array_t<T> a;
-    a.data = src.data + i*stride(src, 0) + j*stride(src,1) + k*stride(src,2);
+    a.data = data_at_byte_offset(src, i*stride(src, 0) + j*stride(src,1) + k*stride(src,2));
     a.shape[0] = src.shape[3];
+    a.strides[0] = src.strides[3];
     a.ndim = src.ndim-3;
     
     return a;
