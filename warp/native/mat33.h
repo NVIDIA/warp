@@ -77,7 +77,7 @@ struct mat33
 
 inline CUDA_CALLABLE bool operator==(const mat33& a, const mat33& b)
 {
-    for(int i=0; i < 3; ++i)
+    for (int i=0; i < 3; ++i)
         for (int j=0; j < 3; ++j)
             if (a.data[i][j] != b.data[i][j])
                 return false;
@@ -134,7 +134,7 @@ inline CUDA_CALLABLE void adj_mat33(float m00, float m01, float m02,
 
 inline bool CUDA_CALLABLE isfinite(const mat33& m)
 {
-    for(int i=0; i < 3; ++i)
+    for (int i=0; i < 3; ++i)
         for (int j=0; j < 3; ++j)
             if (!::isfinite(m.data[i][j]))
                 return false;
@@ -144,15 +144,15 @@ inline bool CUDA_CALLABLE isfinite(const mat33& m)
 inline CUDA_CALLABLE float index(const mat33& m, int row, int col)
 {
 #if FP_CHECK
-    assert(row >= 0 && row <= 2);
     if (row < 0 || row > 2)
     {
         printf("mat33 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
     }
-    assert(col >= 0 && col <= 2);
     if (col < 0 || col > 2)
     {
         printf("mat33 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
     }
 #endif
     return m.data[row][col];
@@ -315,15 +315,15 @@ inline CUDA_CALLABLE mat33 skew(const vec3& a)
 inline void CUDA_CALLABLE adj_index(const mat33& m, int row, int col, mat33& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {
 #if FP_CHECK
-    assert(row >= 0 && row <= 2);
     if (row < 0 || row > 2)
     {
         printf("mat33 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
     }
-    assert(col >= 0 && col <= 2);
     if (col < 0 || col > 2)
     {
         printf("mat33 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
     }
 #endif
     adj_m.data[row][col] += adj_ret;
