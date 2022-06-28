@@ -1186,7 +1186,6 @@ cpu_module_header = '''
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
 
-
 using namespace wp;
 
 '''
