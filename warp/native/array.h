@@ -15,7 +15,7 @@ struct array_t
 
     T* data;
     int shape[ARRAY_MAX_DIMS];
-    int byte_strides[ARRAY_MAX_DIMS];
+    int strides[ARRAY_MAX_DIMS];
     int ndim;
 
     CUDA_CALLABLE inline operator T*() const { return data; }
@@ -23,9 +23,9 @@ struct array_t
 
 // return stride (in bytes) of the given index
 template <typename T>
-CUDA_CALLABLE inline int byte_stride(const array_t<T>& a, int dim)
+CUDA_CALLABLE inline int stride(const array_t<T>& a, int dim)
 {
-    return a.byte_strides[dim];
+    return a.strides[dim];
 }
 
 template <typename T>
@@ -40,7 +40,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
     assert(arr.ndim == 1);
     assert(i >= 0 && i < arr.shape[0]);
     
-    const int byte_offset = i*byte_stride(arr, 0);
+    const int byte_offset = i*stride(arr, 0);
 
     return *data_at_byte_offset(arr, byte_offset);
 }
@@ -52,7 +52,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
     assert(i >= 0 && i < arr.shape[0]);
     assert(j >= 0 && j < arr.shape[1]);
 
-    const int byte_offset = i*byte_stride(arr,0) + j*byte_stride(arr,1);
+    const int byte_offset = i*stride(arr,0) + j*stride(arr,1);
 
     return *data_at_byte_offset(arr, byte_offset);
 }
@@ -65,9 +65,9 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
     assert(j >= 0 && j < arr.shape[1]);
     assert(k >= 0 && k < arr.shape[2]);
 
-    const int byte_offset = i*byte_stride(arr,0) + 
-                            j*byte_stride(arr,1) +
-                            k*byte_stride(arr,2);
+    const int byte_offset = i*stride(arr,0) + 
+                            j*stride(arr,1) +
+                            k*stride(arr,2);
        
     return *data_at_byte_offset(arr, byte_offset);
 }
@@ -81,10 +81,10 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
     assert(k >= 0 && k < arr.shape[2]);
     assert(l >= 0 && l < arr.shape[3]);
 
-    const int byte_offset = i*byte_stride(arr,0) + 
-                            j*byte_stride(arr,1) + 
-                            k*byte_stride(arr,2) + 
-                            l*byte_stride(arr,3);
+    const int byte_offset = i*stride(arr,0) + 
+                            j*stride(arr,1) + 
+                            k*stride(arr,2) + 
+                            l*stride(arr,3);
 
     return *data_at_byte_offset(arr, byte_offset);
 }
@@ -93,13 +93,13 @@ template <typename T>
 CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i)
 {
     array_t<T> a;
-    a.data = data_at_byte_offset(src, i*byte_stride(src, 0));
+    a.data = data_at_byte_offset(src, i*stride(src, 0));
     a.shape[0] = src.shape[1];
     a.shape[1] = src.shape[2];
     a.shape[2] = src.shape[3];
-    a.byte_strides[0] = src.byte_strides[1];
-    a.byte_strides[1] = src.byte_strides[2];
-    a.byte_strides[2] = src.byte_strides[3];
+    a.strides[0] = src.strides[1];
+    a.strides[1] = src.strides[2];
+    a.strides[2] = src.strides[3];
     a.ndim = src.ndim-1; 
 
     return a;
@@ -109,11 +109,11 @@ template <typename T>
 CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j)
 {
     array_t<T> a;
-    a.data = data_at_byte_offset(src, i*byte_stride(src, 0) + j*byte_stride(src,1));
+    a.data = data_at_byte_offset(src, i*stride(src, 0) + j*stride(src,1));
     a.shape[0] = src.shape[2];
     a.shape[1] = src.shape[3];
-    a.byte_strides[0] = src.byte_strides[2];
-    a.byte_strides[1] = src.byte_strides[3];
+    a.strides[0] = src.strides[2];
+    a.strides[1] = src.strides[3];
     a.ndim = src.ndim-2;
     
     return a;
@@ -123,9 +123,9 @@ template <typename T>
 CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j, int k)
 {
     array_t<T> a;
-    a.data = data_at_byte_offset(src, i*byte_stride(src, 0) + j*byte_stride(src,1) + k*byte_stride(src,2));
+    a.data = data_at_byte_offset(src, i*stride(src, 0) + j*stride(src,1) + k*stride(src,2));
     a.shape[0] = src.shape[3];
-    a.byte_strides[0] = src.byte_strides[3];
+    a.strides[0] = src.strides[3];
     a.ndim = src.ndim-3;
     
     return a;

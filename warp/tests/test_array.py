@@ -177,12 +177,12 @@ def test_4d_transposed(test, device):
     # Transpose the array manually, as using the wp.array() constructor with arr.T would make it contiguous first
     a_T = a.T
     arr_T = wp.array(
-        dtype=arr.dtype, shape=a_T.shape, byte_strides=a_T.__array_interface__["strides"],
+        dtype=arr.dtype, shape=a_T.shape, strides=a_T.__array_interface__["strides"],
         capacity=arr.capacity, ptr=arr.ptr, owner=False, requires_grad=arr.requires_grad, device=device)
 
     test.assertFalse(arr_T.is_contiguous)
     test.assertEqual(arr_T.shape, a_T.shape)
-    test.assertEqual(arr_T.byte_strides, a_T.__array_interface__["strides"])
+    test.assertEqual(arr_T.strides, a_T.__array_interface__["strides"])
     test.assertEqual(arr_T.size, a_T.size)
     test.assertEqual(arr_T.ndim, a_T.ndim)
 

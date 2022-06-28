@@ -282,13 +282,13 @@ class array_t(ctypes.Structure):
 
     _fields_ = [("data", ctypes.c_uint64),
                 ("shape", ctypes.c_int32*ARRAY_MAX_DIMS),
-                ("byte_strides", ctypes.c_int32*ARRAY_MAX_DIMS),
+                ("strides", ctypes.c_int32*ARRAY_MAX_DIMS),
                 ("ndim", ctypes.c_int32)]
     
     def __init__(self):
         self.data = 0
         self.shape = (0,)*ARRAY_MAX_DIMS
-        self.byte_strides = (0,)*ARRAY_MAX_DIMS
+        self.strides = (0,)*ARRAY_MAX_DIMS
         self.ndim = 0       
         
 
@@ -392,7 +392,7 @@ def types_equal(a, b):
     else:
         return a == b
 
-def byte_strides_from_shape(shape:Tuple, dtype):
+def strides_from_shape(shape:Tuple, dtype):
     lower_dims = np.array(shape+(1,))[1:]
     # use 'C' (row-major) ordering by default
     reverse_dim_prod = np.cumprod(lower_dims[::-1])[::-1]
@@ -402,7 +402,7 @@ T = TypeVar('T')
 
 class array (Generic[T]):
 
-    def __init__(self, data=None, dtype: T=None, shape=None, byte_strides = None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
+    def __init__(self, data=None, dtype: T=None, shape=None, strides = None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
         """ Constructs a new Warp array object from existing data.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
@@ -418,7 +418,7 @@ class array (Generic[T]):
             data (Union[list, tuple, ndarray]) An object to construct the array from, can be a Tuple, List, or generally any type convertable to an np.array
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is None and data an ndarray then it will be inferred from the array data type
             shape (Tuple): Dimensions of the array
-            byte_strides (Tuple): Number of bytes in each dimension between successive elements of the array
+            strides (Tuple): Number of bytes in each dimension between successive elements of the array
             length (int): Number of elements (rows) of the data type (deprecated, users should use `shape` argument)
             ptr (uint64): Address of an external memory address to alias (data should be None)
             capacity (int): Maximum size in bytes of the ptr allocation (data should be None)
@@ -481,7 +481,7 @@ class array (Generic[T]):
 
             ptr = arr.__array_interface__["data"][0]
             shape = arr.__array_interface__["shape"]
-            byte_strides = arr.__array_interface__.get("strides", None)
+            strides = arr.__array_interface__.get("strides", None)
 
             # Convert input shape to Warp
             if type_length(dtype) > 1:
@@ -504,8 +504,8 @@ class array (Generic[T]):
 
                 shape = leading_shape
             
-                if byte_strides is not None:
-                    byte_strides = byte_strides[0:-dtype_ndim]
+                if strides is not None:
+                    strides = strides[0:-dtype_ndim]
             
 
 
@@ -515,7 +515,7 @@ class array (Generic[T]):
                 self.ptr = ptr
                 self.dtype=dtype
                 self.shape=shape
-                self.byte_strides = byte_strides
+                self.strides = strides
                 self.capacity=arr.size*type_size_in_bytes(dtype)
                 self.device = device
                 self.owner = False
@@ -530,7 +530,7 @@ class array (Generic[T]):
                 # otherwise, we must transfer to device memory
                 # create a host wrapper around the numpy array
                 # and a new destination array to copy it to
-                src = array(dtype=dtype, shape=shape, byte_strides=byte_strides, capacity=arr.size*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
+                src = array(dtype=dtype, shape=shape, strides=strides, capacity=arr.size*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
                 dest = empty(shape, dtype=dtype, device=device, requires_grad=requires_grad)
                 dest.owner = False
                 
@@ -547,7 +547,7 @@ class array (Generic[T]):
             
             # explicit construction from ptr to external memory
             self.shape = shape
-            self.byte_strides = byte_strides
+            self.strides = strides
             self.capacity = capacity
             self.dtype = dtype
             self.ptr = ptr
@@ -569,24 +569,24 @@ class array (Generic[T]):
             self.size *= d
 
         # update byte strides and contiguous flag
-        contiguous_byte_strides = byte_strides_from_shape(self.shape, self.dtype)
-        if byte_strides is None:
-            self.byte_strides = contiguous_byte_strides
+        contiguous_strides = strides_from_shape(self.shape, self.dtype)
+        if strides is None:
+            self.strides = contiguous_strides
             self.is_contiguous = True
         else:
-            self.byte_strides = byte_strides
-            self.is_contiguous = byte_strides[:ndim] == contiguous_byte_strides[:ndim]
+            self.strides = strides
+            self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
 
         # store flat shape (including type shape)
         if dtype in vector_types:
             # vector type, flatten the dimensions into one tuple
             arr_shape = (*self.shape, *self.dtype._shape_)
-            dtype_byte_strides =  byte_strides_from_shape(self.dtype._shape_, self.dtype._type_) 
-            arr_byte_strides = (*self.byte_strides, *dtype_byte_strides)
+            dtype_strides =  strides_from_shape(self.dtype._shape_, self.dtype._type_) 
+            arr_strides = (*self.strides, *dtype_strides)
         else:
             # scalar type
             arr_shape = self.shape
-            arr_byte_strides = self.byte_strides
+            arr_strides = self.strides
 
         # set up array interface access so we can treat this object as a numpy array
         if device == "cpu":
@@ -594,7 +594,7 @@ class array (Generic[T]):
             self.__array_interface__ = { 
                 "data": (self.ptr, False), 
                 "shape": arr_shape,  
-                "strides": arr_byte_strides,  
+                "strides": arr_strides,  
                 "typestr": type_typestr(self.dtype), 
                 "version": 3 
             }
@@ -605,7 +605,7 @@ class array (Generic[T]):
             self.__cuda_array_interface__ = {
                 "data": (self.ptr, False),
                 "shape": arr_shape,
-                "strides": arr_byte_strides,
+                "strides": arr_strides,
                 "typestr": type_typestr(self.dtype),
                 "version": 2
             }
@@ -658,7 +658,7 @@ class array (Generic[T]):
 
         for i in range(a.ndim):
             a.shape[i] = self.shape[i]
-            a.byte_strides[i] = self.byte_strides[i]
+            a.strides[i] = self.strides[i]
 
         return a        
 
