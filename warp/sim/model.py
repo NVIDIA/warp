@@ -628,6 +628,78 @@ class ModelBuilder:
     
     def add_articulation(self):
         self.articulation_start.append(self.joint_count)
+    
+    def add_rigid_articulation(self, articulation, xform=None):
+        """Copies a rigid articulation from `articulation`, another `ModelBuilder`.
+        
+        Args:
+            articulation: a model builder to add rigid articulation from.
+            xform: root position of this body (overrides that in the articulation_builder)
+        """
+
+        if xform is not None:
+            if articulation.joint_type[0] == wp.sim.JOINT_FREE:
+                start = articulation.joint_q_start[0]
+
+                articulation.joint_q[start + 0] = xform.p[0]
+                articulation.joint_q[start + 1] = xform.p[1]
+                articulation.joint_q[start + 2] = xform.p[2]
+
+                articulation.joint_q[start + 3] = xform.q[0]
+                articulation.joint_q[start + 4] = xform.q[1]
+                articulation.joint_q[start + 5] = xform.q[2]
+                articulation.joint_q[start + 6] = xform.q[3]
+            else:
+                articulation.joint_X_p[0] = xform
+
+        self.add_articulation() 
+
+        start_body_idx = len(self.body_mass)
+
+        # offset the indices
+        self.joint_parent.extend([p + self.joint_count if p != -1 else -1 for p in articulation.joint_parent])
+        self.joint_child.extend([c + self.joint_count for c in articulation.joint_child])
+
+        self.joint_q_start.extend([c + self.joint_coord_count for c in articulation.joint_q_start])
+        self.joint_qd_start.extend([c + self.joint_dof_count for c in articulation.joint_qd_start])
+
+        self.shape_body.extend([b + start_body_idx for b in articulation.shape_body])
+
+        rigid_articulation_attrs = [
+            "body_inertia",
+            "body_mass",
+            "body_com",
+            "body_q",
+            "body_qd",
+            "joint_type",
+            "joint_X_p",
+            "joint_X_c",
+            "joint_armature",
+            "joint_axis",
+            "joint_q",
+            "joint_qd",
+            "joint_act",
+            "joint_limit_lower",
+            "joint_limit_upper",
+            "joint_limit_ke",
+            "joint_limit_kd",
+            "joint_target_ke",
+            "joint_target_kd",
+            "joint_target",
+            "shape_transform",
+            "shape_geo_type",
+            "shape_geo_scale",
+            "shape_geo_src",
+            "shape_materials",
+        ]
+
+        for attr in rigid_articulation_attrs:
+            getattr(self, attr).extend(getattr(articulation, attr))
+        
+        self.joint_count += articulation.joint_count
+        self.joint_dof_count += articulation.joint_dof_count
+        self.joint_coord_count += articulation.joint_coord_count
+
 
     # register a rigid body and return its index.
     def add_body(
