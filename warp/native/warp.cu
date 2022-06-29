@@ -57,12 +57,17 @@ int cuda_init()
 {
     #if defined(_WIN32)
         static HMODULE hCudaDriver = LoadLibrary("nvcuda.dll");
+        if (hCudaDriver == NULL) {
+            fprintf(stderr, "Error: Could not open nvcuda.dll.\n");
+            return false;
+        }
     #elif defined(__linux__)
         static void* hCudaDriver = dlopen("libcuda.so", RTLD_NOW);
+        if (hCudaDriver == NULL) {
+            fprintf(stderr, "Error: Could not open libcuda.so.\n");
+            return false;
+        }
     #endif
-
-    if (hCudaDriver == NULL)
-        return false;
 
 	cuInit_f = (cuInit_t*)GetProcAddress(hCudaDriver, "cuInit");
 	cuCtxSetCurrent_f = (cuCtxSetCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxSetCurrent");
@@ -76,8 +81,12 @@ int cuda_init()
         return -1;
 
     CUresult err = cuInit_f(0);
-    if (err != CUDA_SUCCESS)
-		return err;
+    if (err != CUDA_SUCCESS) {
+        fprintf(stderr, "Error from cuInit: %i ", err);
+        cudaError_t e = cudaGetLastError();
+        fprintf(stderr, "(%s)\n%s\n", cudaGetErrorName(e), cudaGetErrorString(e));
+        return err;
+    }
 
     CUcontext ctx;
     cuCtxGetCurrent_f(&ctx);
