@@ -563,7 +563,7 @@ class array (Generic[T]):
 
             self.__array_interface__ = { 
                 "data": (self.ptr, False), 
-                "shape": arr_shape,  
+                "shape": tuple(arr_shape),  
                 "typestr": type_typestr(self.dtype), 
                 "version": 3 
             }
@@ -573,7 +573,7 @@ class array (Generic[T]):
 
             self.__cuda_array_interface__ = {
                 "data": (self.ptr, False),
-                "shape": arr_shape,
+                "shape": tuple(arr_shape),
                 "typestr": type_typestr(self.dtype),
                 "version": 2
             }
