@@ -63,7 +63,7 @@ class StructInstance:
         if isinstance(self._struct_.vars[name].type, array):
             # wp.array
             assert isinstance(value, array)
-            assert value.dtype == self._struct_.vars[name].type.dtype
+            assert value.dtype == self._struct_.vars[name].type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(name, self._struct_.vars[name].type.dtype, value.dtype)
             setattr(self._c_struct_, name, value.__ctype__())
         elif issubclass(self._struct_.vars[name].type, ctypes.Array):
             # array type e.g. vec3
