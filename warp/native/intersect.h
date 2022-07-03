@@ -253,6 +253,17 @@ CUDA_CALLABLE inline int max_dim(vec3 a)
 	return longest_axis(vec3(x, y, z));
 }
 
+// computes the difference of products a*b - c*d using 
+// FMA instructions for improved numerical precision
+CUDA_CALLABLE inline float diff_product(float a, float b, float c, float d) 
+{
+    float cd = c * d;
+    float diff = fmaf(a, b, -cd);
+    float error = fmaf(-c, d, cd);
+
+    return diff + error;
+}
+
 // http://jcgt.org/published/0002/01/05/
 CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir, const vec3& a, const vec3& b, const vec3& c, float& t, float& u, float& v, float& sign, vec3* normal)
 {
@@ -286,9 +297,9 @@ CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir,
 	const float Cx = C[kx] - Sx*C[kz];
 	const float Cy = C[ky] - Sy*C[kz];
 		
-	float U = Cx*By - Cy*Bx;
-	float V = Ax*Cy - Ay*Cx;
-	float W = Bx*Ay - By*Ax;
+    float U = diff_product(Cx, By, Cy, Bx);
+    float V = diff_product(Ax, Cy, Ay, Cx);
+    float W = diff_product(Bx, Ay, By, Ax);
 
 	if (U == 0.0f || V == 0.0f || W == 0.0f) 
 	{
@@ -304,12 +315,16 @@ CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir,
 	}
 
 	if ((U<0.0f || V<0.0f || W<0.0f) &&	(U>0.0f || V>0.0f || W>0.0f)) 
-		return false;
+    {
+        return false;
+    }
 
 	float det = U+V+W;
 
 	if (det == 0.0f) 
+    {
 		return false;
+    }
 
 	const float Az = Sz*A[kz];
 	const float Bz = Sz*B[kz];
@@ -318,7 +333,9 @@ CUDA_CALLABLE inline bool intersect_ray_tri_woop(const vec3& p, const vec3& dir,
 
 	int det_sign = sign_mask(det);
 	if (xorf(T,det_sign) < 0.0f)// || xorf(T,det_sign) > hit.t * xorf(det, det_sign)) // early out if hit.t is specified
+    {
 		return false;
+    }
 
 	const float rcpDet = 1.0f/det;
 	u = U*rcpDet;
