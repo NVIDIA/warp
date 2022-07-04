@@ -367,7 +367,7 @@ class ModuleBuilder:
             self.build_function(func)
 
         # build all kernel entry points
-        for kernel in module.kernels:
+        for kernel in module.kernels.values():
             self.build_kernel(kernel)
 
 
@@ -408,7 +408,7 @@ class ModuleBuilder:
         for func in self.functions.keys():
             cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
 
-        for kernel in self.module.kernels:
+        for kernel in self.module.kernels.values():
 
             # each kernel gets an entry point in the module
             cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
@@ -427,7 +427,7 @@ class ModuleBuilder:
         for func in self.functions.keys():
             cu_source += warp.codegen.codegen_func(func.adj, device="cuda") 
 
-        for kernel in self.module.kernels:
+        for kernel in self.module.kernels.values():
 
             cu_source += warp.codegen.codegen_kernel(kernel, device="cuda")
             cu_source += warp.codegen.codegen_module(kernel, device="cuda")
@@ -448,7 +448,7 @@ class Module:
 
         self.name = name
 
-        self.kernels = []
+        self.kernels = {}
         self.functions = []
         self.constants = []
 
@@ -463,7 +463,7 @@ class Module:
     def register_kernel(self, kernel):
 
         if kernel.key in self.kernels:
-            
+
             # if kernel is replacing an old one then assume it has changed and 
             # force a rebuild / reload of the dynamic library 
             if (self.dll):
@@ -476,7 +476,7 @@ class Module:
             self.cuda = None
 
         # register new kernel
-        self.kernels.append(kernel)
+        self.kernels[kernel.key] = kernel
 
 
     def register_function(self, func):
@@ -493,7 +493,7 @@ class Module:
             h.update(bytes(s, 'utf-8'))
             
         # kernel source
-        for kernel in self.kernels:
+        for kernel in self.kernels.values():
             s = kernel.adj.source
             h.update(bytes(s, 'utf-8'))
 
