@@ -290,7 +290,8 @@ def register(parent):
     add_function_test(TestGrad, "test_for_loop_nested_for_grad", test_for_loop_nested_for_grad, devices=devices)
     add_function_test(TestGrad, "test_scalar_grad", test_scalar_grad, devices=devices)
     add_function_test(TestGrad, "test_for_loop_grad", test_for_loop_grad, devices=devices)
-    add_function_test(TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=["cuda"])
+    if wp.is_cuda_available():
+        add_function_test(TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=["cuda"])
     add_function_test(TestGrad, "test_for_loop_nested_if_grad", test_for_loop_nested_if_grad, devices=devices)
     add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)
 
