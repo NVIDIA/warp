@@ -214,7 +214,7 @@ class UsdRenderer:
         _usd_set_xform(ref, pos, rot, scale, self.time)
 
 
-    def render_mesh(self, name: str, points, indices, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0)):
+    def render_mesh(self, name: str, points, indices, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0), update_topology=False):
         
         mesh_path = self.root.GetPath().AppendChild(name)
         mesh = UsdGeom.Mesh.Get(self.stage, mesh_path)
@@ -223,11 +223,14 @@ class UsdRenderer:
             mesh = UsdGeom.Mesh.Define(self.stage, mesh_path)
             _usd_add_xform(mesh)
 
-            # only set topology on first render
-            mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
-            mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
+            # force topology update on first frame
+            update_topology = True
 
         mesh.GetPointsAttr().Set(points, self.time)
+
+        if update_topology:
+            mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
+            mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
 
         _usd_set_xform(mesh, pos, rot, scale, self.time)
 

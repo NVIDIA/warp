@@ -91,6 +91,7 @@ void array_sum_host(uint64_t a, uint64_t out, int len)
 #include "hashgrid.cpp"
 #include "sort.cpp"
 #include "volume.cpp"
+#include "marching.cpp"
 //#include "spline.inl"
 
 

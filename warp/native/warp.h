@@ -89,6 +89,10 @@ extern "C"
     WP_API void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_destroy_device(uint64_t id);
 
+    WP_API uint64_t marching_cubes_create_device();
+    WP_API void marching_cubes_destroy_device(uint64_t id);
+    WP_API int marching_cubes_surface_device(uint64_t id, const float* field, int nx, int ny, int nz, float threshold, wp::vec3* verts, int* triangles, int max_verts, int max_tris, int* out_num_verts, int* out_num_tris);
+
     WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
 
