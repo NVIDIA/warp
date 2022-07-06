@@ -203,55 +203,6 @@ namespace wp {
 	};
 
 
-/*	// -----------------------------------------------------------------------------
-	__global__ void deviceComputeParticleDensity(vec3* deviceParticlePos, int numParticles, MarchingCubes mc)
-	{
-		int pNr = blockIdx.x * blockDim.x + threadIdx.x;
-		if (pNr >= numParticles)
-			return;
-
-		vec3 p = deviceParticlePos[pNr] - mc.orig;
-
-		if (p.x < 0.0f || p.y < 0.0f || p.z < 0.0f)
-			return;
-
-		int cxi = (int)floorf(p.x / mc.spacing);
-		int cyi = (int)floorf(p.y / mc.spacing);
-		int czi = (int)floorf(p.z / mc.spacing);
-
-		if (cxi >= mc.nx - 1 || cyi >= mc.ny - 1 || czi >= mc.nz - 1)
-			return;
-
-		float h = 1.5f * mc.spacing;
-		float h2 = h * h;
-		float kernelScale = 315.0f / (64.0f * 3.14159265f * h2 * h2 * h2 * h2 * h) / mc.restDensity;
-
-		float rho = 0.0f;
-		vec3 n = vec3(Zero);
-
-		for (int xi = cxi; xi <= cxi + 1; xi++) {
-			for (int yi = cyi; yi <= cyi + 1; yi++) {
-				for (int zi = czi; zi <= czi + 1; zi++) {
-
-					vec3 cellPos = vec3(xi * mc.spacing, yi * mc.spacing, zi * mc.spacing);
-					vec3 r = p - cellPos;
-					float r2 = r.magnitudeSquared();
-					if (r2 < h2) {
-						float w = (h2 - r2);
-						w = kernelScale * w * w * w;
-
-						int cell_index = mc.cell_index(xi, yi, zi);
-						atomicAdd(&density[cell_index], w);
-						r.normalize();
-						r *= -w;
-						atomicAdd3(&densityNormal[cell_index], r);
-					}
-				}
-			}
-		}
-	}
-*/
-
 	// -----------------------------------------------------------------------------------
 	__global__ void count_cell_verts(MarchingCubes mc, const float* density, float threshold)
 	{
@@ -488,122 +439,6 @@ namespace wp {
 	}
 
 
-	// // -----------------------------------------------------------------------------------
-	// void create(PbSim::vec3* deviceParticlePos, int numParticles)
-	// {
-	// 	if (!density)
-	// 		return;
-
-	// 	// create density field
-
-	// 	clearDeviceBuffer(density, mc.num_cells);
-	// 	clearDeviceBuffer(densityNormal, mc.num_cells);
-
-	// 	deviceComputeParticleDensity << < numParticles / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (
-	// 		deviceParticlePos, numParticles, data);
-
-	// 	if (mc.restDensity == 1.0f) {
-
-	// 		// initialize rest density
-
-	// 		std::vector<float> density;
-	// 		getDeviceBuffer(density, density, mc.num_cells);
-
-	// 		float sum = 0.0f;
-	// 		int num = 0;
-	// 		for (int i = 0; i < mc.num_cells; i++) {
-	// 			if (density[i] > 0.0) {
-	// 				sum += density[i];
-	// 				num++;
-	// 			}
-	// 		}
-
-	// 		if (num > 0)
-	// 			mc.restDensity = sum / (float)num;
-
-	// 		clearDeviceBuffer(density, mc.num_cells);
-	// 		clearDeviceBuffer(densityNormal, mc.num_cells);
-
-	// 		deviceComputeParticleDensity << < numParticles / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (
-	// 			deviceParticlePos, numParticles, data);
-	// 	}
-
-	// 	// create vertices
-
-	// 	count_cell_verts << < mc.num_cells / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-
-	// 	int numLast;
-	// 	getDeviceObject(numLast, mc.first_cell_vert, mc.num_cells - 1);
-
-	// 	thrust::exclusive_scan(
-	// 		thrust::device_ptr<int>(mc.first_cell_vert),
-	// 		thrust::device_ptr<int>(mc.first_cell_vert + mc.num_cells),
-	// 		thrust::device_ptr<int>(mc.first_cell_vert));
-
-	// 	getDeviceObject(mc.numVerts, mc.first_cell_vert, mc.num_cells - 1);
-	// 	mc.numVerts += numLast;
-
-	// 	if (mc.numVerts > mc.maxVerts) {
-	// 		mc.maxVerts = 2 * mc.numVerts;
-	// 		freeDeviceBuffers(mc.verts, mc.normals);
-	// 		allocDeviceBuffer(mc.verts, mc.maxVerts);
-	// 		allocDeviceBuffer(mc.normals, mc.maxVerts);
-
-	// 		freeDeviceBuffers(mc.avg_verts, mc.avg_num);
-	// 		allocDeviceBuffer(mc.avg_verts, mc.maxVerts);
-	// 		allocDeviceBuffer(mc.avg_num, mc.maxVerts);
-	// 	}
-
-	// 	create_cell_verts << < mc.num_cells / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-
-	// 	// create triangles
-
-	// 	count_cell_tris << < mc.num_cells / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-
-	// 	getDeviceObject(numLast, mc.first_cell_tri, mc.num_cells - 1);
-
-	// 	thrust::exclusive_scan(
-	// 		thrust::device_ptr<int>(mc.first_cell_tri),
-	// 		thrust::device_ptr<int>(mc.first_cell_tri + mc.num_cells),
-	// 		thrust::device_ptr<int>(mc.first_cell_tri));
-
-	// 	getDeviceObject(mc.numTriIds, mc.first_cell_tri, mc.num_cells - 1);
-	// 	mc.numTriIds += numLast;
-
-	// 	if (mc.numTriIds > mc.maxTriIds) {
-	// 		mc.maxTriIds = 2 * mc.numTriIds;
-	// 		freeDeviceBuffers(mc.triIds);
-	// 		allocDeviceBuffer(mc.triIds, mc.maxTriIds);
-	// 	}
-
-	// 	create_cell_tris << < mc.num_cells / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-
-	// 	// smooth verts
-
-	// 	int numTris = mc.numTriIds / 3;
-
-	// 	for (int i = 0; i < 3; i++) {
-	// 		clearDeviceBuffer(mc.avg_num, mc.numVerts);
-	// 		clearDeviceBuffer(mc.avg_verts, mc.numVerts);
-
-	// 		smooth_verts << < numTris / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-	// 		average_verts << < mc.numVerts / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-	// 	}
-
-	// 	// compute normals
-
-	// 	clearDeviceBuffer(mc.normals, mc.numVerts);
-
-	// 	compute_normals << < numTris / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-	// 	normalize_normals << < mc.numVerts / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-
-	// 	//for (int i = 0; i < 5; i++)
-	// 	//	smooth_normals <<<  numTris / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-
-	// 	//normalize_normals << < mc.numVerts / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-	// }
-
-
     // -------------------------
     void marching_cubes_resize(MarchingCubes& mc, int nx, int ny, int nz, int max_vertices)
     {
@@ -648,75 +483,7 @@ namespace wp {
         free_device(mc.avg_num);
     }
 
-
-
-	// // ------------------------------------------------------------------------------------
-	// void readBackSurface(std::vector<PbSim::vec3>& vertices, std::vector<PbSim::vec3>& normals, std::vector<int>& triIds)
-	// {
-	// 	vertices.resize(mc.numVerts);
-	// 	normals.resize(mc.numVerts);
-	// 	triIds.resize(mc.numTriIds);
-
-	// 	if (mc.numVerts == 0 || mc.numTriIds == 0)
-	// 		return;
-
-	// 	getDeviceBuffer(vertices, mc.verts);
-	// 	getDeviceBuffer(normals, mc.normals);
-	// 	getDeviceBuffer(triIds, mc.triIds);
-	// }
-
-	// // -----
-	// void read_mesh(float *vertices, float* normals, int* triIds)
-	// {
-	// 	cudaCheck(cudaMemcpy(vertices, mc.verts, 3*mc.numVerts * sizeof(float), cudaMemcpyDeviceToHost));
-	// 	cudaCheck(cudaMemcpy(normals, mc.normals, 3*mc.numVerts * sizeof(float), cudaMemcpyDeviceToHost));
-	// 	cudaCheck(cudaMemcpy(triIds, mc.triIds, mc.numTriIds * sizeof(int), cudaMemcpyDeviceToHost));
-	// }
-
-
-// ///////////////////////////////////////////////
-// Data libdata;
-// Data& initlib(float ax, float ay, float az, 
-// 			 float bx, float by, float bz,
-// 			 float step, 
-// 			 float threshold)
-// {
-//     Bounds3 worldBounds(vec3(ax,ay,az), vec3(bx,by,bz));
-//     init(worldBounds, step, threshold);
-
-// 	libmc.num_cells = mc.num_cells;
-// 	libmc.nx = mc.nx;
-// 	libmc.ny = mc.ny;
-// 	libmc.nz = mc.nz;
-	
-// 	return libdata;
-// }
-
-// int set_sdf(std::vector<float> host_sdf){
-// 	if (host_sdf.size() != mc.num_cells)
-// 		return -1;
-
-// 	setDeviceBuffer(density, host_sdf);
-// 	return 0;
-// }
-
-// int send_sdf2device(float *host_data, int n)
-// {
-// 	if (mc.num_cells != n)
-// 		return -1;
-// 	cudaCheck(cudaMemcpy(density, host_data, n * sizeof(float), cudaMemcpyHostToDevice));	
-// 	return 0;
-// }
-// void make_mesh(int *nvert, int *nnorm, int *ntris)
-// {
-// 	create_mesh();
-// 	*nvert = mc.numVerts;
-// 	*nnorm = mc.numVerts;
-// 	*ntris = mc.numTriIds;
-
-// }
-
-}
+} // namespace wp
 
 uint64_t marching_cubes_create_device()
 {
@@ -790,18 +557,6 @@ WP_API int marching_cubes_surface_device(
         return -1;
     }
 
-    // if (mc.numVerts > mc.maxVerts) 
-    // {
-    // 	mc.maxVerts = 2 * mc.numVerts;
-    // 	freeDeviceBuffers(mc.verts, mc.normals);
-    // 	allocDeviceBuffer(mc.verts, mc.maxVerts);
-    // 	allocDeviceBuffer(mc.normals, mc.maxVerts);
-
-    // 	freeDeviceBuffers(mc.avg_verts, mc.avg_num);
-    // 	allocDeviceBuffer(mc.avg_verts, mc.maxVerts);
-    // 	allocDeviceBuffer(mc.avg_num, mc.maxVerts);
-    // }
-
     // create vertices
     wp_launch_device(wp::create_cell_verts, mc.num_cells, (mc, verts, NULL, field, threshold));
 
@@ -831,41 +586,10 @@ WP_API int marching_cubes_surface_device(
         return -1;
     }
 
-    // if (mc.numTriIds > mc.maxTriIds) {
-    // 	mc.maxTriIds = 2 * mc.numTriIds;
-    // 	freeDeviceBuffers(mc.triIds);
-    // 	allocDeviceBuffer(mc.triIds, mc.maxTriIds);
-    // }
-
     wp_launch_device(create_cell_tris, mc.num_cells, (mc, field, triangles, threshold));
-
 
     *out_num_verts = num_verts;
     *out_num_tris = num_tris;
 
     return 0;
-
-    // // smooth verts
-
-    // int numTris = mc.numTriIds / 3;
-
-    // for (int i = 0; i < 3; i++) {
-    // 	clearDeviceBuffer(mc.avg_num, mc.numVerts);
-    // 	clearDeviceBuffer(mc.avg_verts, mc.numVerts);
-
-    // 	smooth_verts << < numTris / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-    // 	average_verts << < mc.numVerts / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-    // }
-
-    // compute normals
-
-    // clearDeviceBuffer(mc.normals, mc.numVerts);
-
-    // compute_normals << < numTris / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-    // normalize_normals << < mc.numVerts / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-
-    //for (int i = 0; i < 5; i++)
-    //	smooth_normals <<<  numTris / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
-
-    //normalize_normals << < mc.numVerts / THREADS_PER_BLOCK + 1, THREADS_PER_BLOCK >> > (data);
 }
