@@ -86,6 +86,19 @@ inline CUDA_CALLABLE void adj_mat22(float m00, float m01, float m10, float m11, 
     printf("todo\n");
 }
 
+inline CUDA_CALLABLE vec2 index(const mat22& m, int row)
+{
+    return vec2(m.data[row][0], m.data[row][1]);
+}
+
+inline CUDA_CALLABLE void adj_index(const mat22& m, int row, mat22& adj_m, int& adj_row, const vec2& adj_ret)
+{
+    adj_m.data[row][0] += adj_ret[0];
+    adj_m.data[row][1] += adj_ret[1];
+}
+
+
+
 inline CUDA_CALLABLE float index(const mat22& m, int row, int col)
 {
     return m.data[row][col];
@@ -237,7 +250,7 @@ inline CUDA_CALLABLE void adj_add(const mat22& a, const mat22& b, mat22& adj_a, 
     }
 }
 
-inline CUDA_CALLABLE void adj_mul(const mat22& a, float b, mat22& adj_a, float& adj_b, mat22& adj_ret)
+inline CUDA_CALLABLE void adj_mul(const mat22& a, float b, mat22& adj_a, float& adj_b, const mat22& adj_ret)
 {
     for (int i=0; i < 2; ++i)
     {

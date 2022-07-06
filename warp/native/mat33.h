@@ -137,6 +137,20 @@ inline CUDA_CALLABLE float index(const mat33& m, int row, int col)
     return m.data[row][col];
 }
 
+
+inline CUDA_CALLABLE vec3 index(const mat33& m, int row)
+{
+    return vec3(m.data[row][0], m.data[row][1], m.data[row][2]);
+}
+
+inline CUDA_CALLABLE void adj_index(const mat33& m, int row, mat33& adj_m, int& adj_row, const vec3& adj_ret)
+{
+    adj_m.data[row][0] += adj_ret[0];
+    adj_m.data[row][1] += adj_ret[1];
+    adj_m.data[row][2] += adj_ret[2];
+}
+
+
 inline CUDA_CALLABLE mat33 add(const mat33& a, const mat33& b)
 {
     mat33 t;
