@@ -13,6 +13,7 @@ class Tape:
     def __init__(self):
 
         self.gradients = {}
+        self.const_gradients = set()
         self.launches = []
 
         self.loss = None
@@ -56,6 +57,7 @@ class Tape:
         if grads:
             for a, g in grads.items():
                 a.grad = g
+                self.const_gradients.add(a)
 
         # run launches backwards
         for launch in reversed(self.launches):
@@ -116,6 +118,7 @@ class Tape:
 
     def zero(self):
 
-        for a in self.gradients.values():
-            a.zero_()
+        for a, g in self.gradients.items():
+            if a not in self.const_gradients:
+                g.zero_()
 
