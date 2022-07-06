@@ -114,7 +114,25 @@ class Struct:
             module.register_struct(self)
 
     def __call__(self):
-        return StructInstance(self)
+        '''
+        This function returns s = StructInstance(self)
+        s uses self.cls as template.
+        To enable autocomplete on s, we inherit from self.cls.
+        For example,
+
+        @wp.struct
+        class A:
+            # annotations
+            ...
+
+        The type annotations are inherited in A(), allowing autocomplete in kernels
+        '''
+        # return StructInstance(self)
+
+        class NewStructInstance(self.cls, StructInstance):
+            def __init__(inst):
+                StructInstance.__init__(inst, self)
+        return NewStructInstance()
 
 class Var:
     def __init__(self, label, type, requires_grad=False, constant=None):
