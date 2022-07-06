@@ -671,7 +671,19 @@ add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
 # used to index into builtin types, i.e.: y = vec3[1]
-add_builtin("index", variadic=True, hidden=True, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": vec2, "i": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": vec3, "i": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": vec4, "i": int}, value_type=float,  group="Utility")
+
+add_builtin("index", input_types={"a": mat22, "i": int}, value_type=vec2,  group="Utility")
+add_builtin("index", input_types={"a": mat22, "i": int, "j": int}, value_type=float,  group="Utility")
+
+add_builtin("index", input_types={"a": mat33, "i": int}, value_type=vec3,  group="Utility")
+add_builtin("index", input_types={"a": mat33, "i": int, "j": int}, value_type=float,  group="Utility")
+
+add_builtin("index", input_types={"a": mat44, "i": int}, value_type=vec4,  group="Utility")
+add_builtin("index", input_types={"a": mat44, "i": int, "j": int}, value_type=float,  group="Utility")
+
 
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
@@ -715,6 +727,9 @@ add_builtin("mul", input_types={"x": float, "y": vec2}, value_type=vec2, doc="",
 add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": quat}, value_type=quat, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": mat22}, value_type=mat22, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": mat33}, value_type=mat33, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": mat44}, value_type=mat44, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec2, "y": float}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")
