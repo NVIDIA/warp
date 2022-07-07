@@ -544,7 +544,9 @@ class Module:
 
             module_path = os.path.join(build_path, module_name)
 
-            ptx_path = module_path + ".ptx"
+            cuda_arch = runtime.core.cuda_get_device_arch()
+
+            ptx_path = module_path + f"_sm{cuda_arch}.ptx"
 
             if (os.name == 'nt'):
                 dll_path = module_path + ".dll"
@@ -616,7 +618,7 @@ class Module:
 
                 if build_cuda:
                     with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, ptx_path, config=self.options["mode"])
+                        warp.build.build_cuda(cu_path, cuda_arch, ptx_path, config=self.options["mode"])
 
                 # update cpu hash
                 if build_cpu:
@@ -783,8 +785,9 @@ class Runtime:
         self.core.cuda_get_stream.restype = ctypes.c_void_p
         self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
         self.core.cuda_get_device_name.restype = ctypes.c_char_p
+        self.core.cuda_get_device_arch.restype = ctypes.c_int
 
-        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
+        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
         self.core.cuda_compile_program.restype = ctypes.c_size_t
 
         self.core.cuda_load_module.argtypes = [ctypes.c_char_p]

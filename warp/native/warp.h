@@ -112,13 +112,14 @@ extern "C"
     WP_API void cuda_set_context(void* ctx);
     WP_API void* cuda_get_stream();
     WP_API const char* cuda_get_device_name();
+    WP_API int cuda_get_device_arch();
 
     WP_API void cuda_graph_begin_capture();
     WP_API void* cuda_graph_end_capture();
     WP_API void cuda_graph_launch(void* graph);
     WP_API void cuda_graph_destroy(void* graph);
 
-    WP_API size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool debug, bool verbose, const char* output_file);
+    WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, const char* output_file);
     WP_API void* cuda_load_module(const char* ptx);
     WP_API void cuda_unload_module(void* module);
     WP_API void* cuda_get_kernel(void* module, const char* name);

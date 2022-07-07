@@ -138,11 +138,12 @@ WP_API void* cuda_get_context() { return NULL;}
 WP_API void cuda_set_context(void* ctx) {}
 WP_API void* cuda_get_stream() { return NULL; }
 WP_API const char* cuda_get_device_name() { return "Not supported"; }
+WP_API int cuda_get_device_arch() { return 0; }
 WP_API void cuda_graph_begin_capture() {}
 WP_API void* cuda_graph_end_capture() { return NULL; }
 WP_API void cuda_graph_launch(void* graph) {}
 WP_API void cuda_graph_destroy(void* graph) {}
-WP_API size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool debug, bool verbose, const char* output_file) { return 0; }
+WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, const char* output_file) { return 0; }
 WP_API void* cuda_load_module(const char* ptx) { return NULL; }
 WP_API void cuda_unload_module(void* module) {}
 WP_API void* cuda_get_kernel(void* module, const char* name) { return NULL; }

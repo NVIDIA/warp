@@ -280,7 +280,15 @@ const char* cuda_get_device_name()
     return prop.name;
 }
 
-size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool debug, bool verbose, const char* output_file)
+int cuda_get_device_arch()
+{
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
+
+    return 10 * prop.major + prop.minor;
+}
+
+size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, const char* output_file)
 {
     nvrtcResult res;
 
@@ -308,10 +316,14 @@ size_t cuda_compile_program(const char* cuda_src, const char* include_dir, bool 
     strcpy(include_opt, "--include-path=");
     strcat(include_opt, include_dir);
 
+    const int max_arch = 256;
+    char arch_opt[max_arch];
+    sprintf(arch_opt, "--gpu-architecture=compute_%d", arch);
+
     const char *opts[] = 
-    {   
+    {
         "--device-as-default-execution-space",
-        "--gpu-architecture=compute_70",
+        arch_opt,
         "--use_fast_math",
         "--std=c++11",
         "--define-macro=WP_CUDA",

@@ -82,8 +82,12 @@ def register(parent):
 
     class TestFp16(parent):
         pass
-
-    devices = wp.get_devices()
+    
+    devices = []
+    if wp.is_cpu_available():
+        devices.append("cpu")
+    if wp.is_cuda_available() and wp.context.runtime.core.cuda_get_device_arch() >= 70:
+        devices.append("cuda")
 
     add_function_test(TestFp16, "test_fp16_conversion", test_fp16_conversion, devices=devices)
     add_function_test(TestFp16, "test_fp16_grad", test_fp16_grad, devices=devices)
