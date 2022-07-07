@@ -281,14 +281,15 @@ class Kernel:
 
 # decorator to register function, @func
 def func(f):
+    name = warp.codegen.make_func_name(f)
 
     m = get_module(f.__module__)
-    func = Function(func=f, key=f.__name__, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
+    func = Function(func=f, key=name, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
 
     # if the function already exists in the module
     # then add an overload and return original
     for x in m.functions:
-        if x.key == f.__name__:
+        if x.key == name:
             x.add_overload(func)
             return x
 
@@ -299,7 +300,7 @@ def func(f):
 def kernel(f):
     
     m = get_module(f.__module__)
-    k = Kernel(func=f, key=f.__name__, module=m)
+    k = Kernel(func=f, key=warp.codegen.make_func_name(f), module=m)
 
     return k
 
