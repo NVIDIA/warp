@@ -8,6 +8,8 @@
 
 #pragma once
 
+#define WIN32_LEAN_AND_MEAN
+
 #if defined(__CUDACC__)
 
     #if _DEBUG   
