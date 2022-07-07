@@ -5,6 +5,87 @@
 namespace wp
 {
 
+#if FP_CHECK
+
+#define FP_ASSERT_FWD(value) \
+    print(value); \
+    printf(")\n"); \
+    assert(0); \
+
+#define FP_ASSERT_ADJ(value, adj_value) \
+    print(value); \
+    printf(", "); \
+    print(adj_value); \
+    printf(")\n"); \
+    assert(0); \
+
+#define FP_VERIFY_FWD_1(value) \
+    if (!isfinite(value)) { \
+        printf("%s:%d - %s(arr, %d) ", __FILE__, __LINE__, __FUNCTION__, i); \
+        FP_ASSERT_FWD(value) \
+    } \
+
+#define FP_VERIFY_FWD_2(value) \
+    if (!isfinite(value)) { \
+        printf("%s:%d - %s(arr, %d, %d) ", __FILE__, __LINE__, __FUNCTION__, i, j); \
+        FP_ASSERT_FWD(value) \
+    } \
+
+#define FP_VERIFY_FWD_3(value) \
+    if (!isfinite(value)) { \
+        printf("%s:%d - %s(arr, %d, %d, %d) ", __FILE__, __LINE__, __FUNCTION__, i, j, k); \
+        FP_ASSERT_FWD(value) \
+    } \
+
+#define FP_VERIFY_FWD_4(value) \
+    if (!isfinite(value)) { \
+        printf("%s:%d - %s(arr, %d, %d, %d, %d) ", __FILE__, __LINE__, __FUNCTION__, i, j, k, l); \
+        FP_ASSERT_FWD(value) \
+    } \
+
+#define FP_VERIFY_ADJ_1(value, adj_value) \
+    if (!isfinite(value) || !isfinite(adj_value)) \
+    { \
+        printf("%s:%d - %s(arr, %d) ",  __FILE__, __LINE__, __FUNCTION__, i); \
+        FP_ASSERT_ADJ(value, adj_value); \
+    } \
+
+#define FP_VERIFY_ADJ_2(value, adj_value) \
+    if (!isfinite(value) || !isfinite(adj_value)) \
+    { \
+        printf("%s:%d - %s(arr, %d, %d) ",  __FILE__, __LINE__, __FUNCTION__, i, j); \
+        FP_ASSERT_ADJ(value, adj_value); \
+    } \
+
+#define FP_VERIFY_ADJ_3(value, adj_value) \
+    if (!isfinite(value) || !isfinite(adj_value)) \
+    { \
+        printf("%s:%d - %s(arr, %d, %d, %d) ", __FILE__, __LINE__, __FUNCTION__, i, j, k); \
+        FP_ASSERT_ADJ(value, adj_value); \
+    } \
+
+#define FP_VERIFY_ADJ_4(value, adj_value) \
+    if (!isfinite(value) || !isfinite(adj_value)) \
+    { \
+        printf("%s:%d - %s(arr, %d, %d, %d, %d) ", __FILE__, __LINE__, __FUNCTION__, i, j, k, l); \
+        FP_ASSERT_ADJ(value, adj_value); \
+    } \
+
+
+#else
+
+#define FP_VERIFY_FWD_1(value) {}
+#define FP_VERIFY_FWD_2(value) {}
+#define FP_VERIFY_FWD_3(value) {}
+#define FP_VERIFY_FWD_4(value) {}
+
+#define FP_VERIFY_ADJ_1(value, adj_value) {}
+#define FP_VERIFY_ADJ_2(value, adj_value) {}
+#define FP_VERIFY_ADJ_3(value, adj_value) {}
+#define FP_VERIFY_ADJ_4(value, adj_value) {}
+
+#endif  // WP_FP_CHECK
+
 const int ARRAY_MAX_DIMS = 4;    // must match constant in types.py
 
 template <typename T>
@@ -43,14 +124,8 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
     const int byte_offset = i*stride(arr, 0);
 
     T& result = *data_at_byte_offset(arr, byte_offset);
-#if FP_CHECK
-    if (!isfinite(result)) {
-        printf("%s:%d - index(arr, %d) = ", __FILE__, __LINE__, i);
-        print(result);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+    FP_VERIFY_FWD_1(result)
+
     return result;
 }
 
@@ -64,14 +139,8 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
     const int byte_offset = i*stride(arr,0) + j*stride(arr,1);
 
     T& result = *data_at_byte_offset(arr, byte_offset);
-#if FP_CHECK
-    if (!isfinite(result)) {
-        printf("%s:%d - index(arr, %d, %d) = ", __FILE__, __LINE__, i, j);
-        print(result);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+    FP_VERIFY_FWD_2(result)
+
     return result;
 }
 
@@ -88,14 +157,8 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
                             k*stride(arr,2);
        
     T& result = *data_at_byte_offset(arr, byte_offset);
-#if FP_CHECK
-    if (!isfinite(result)) {
-        printf("%s:%d - index(arr, %d, %d, %d) = ", __FILE__, __LINE__, i, j, k);
-        print(result);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+    FP_VERIFY_FWD_3(result)
+
     return result;
 }
 
@@ -114,14 +177,8 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
                             l*stride(arr,3);
 
     T& result = *data_at_byte_offset(arr, byte_offset);
-#if FP_CHECK
-    if (!isfinite(result)) {
-        printf("%s:%d - index(arr, %d, %d, %d, %d) = ", __FILE__, __LINE__, i, j, k, l);
-        print(result);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+    FP_VERIFY_FWD_4(result)
+
     return result;
 }
 
@@ -191,54 +248,26 @@ template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i, i
 
 template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, T value)
 {
-#if FP_CHECK
-    if (!isfinite(value))
-    {
-        printf("%s:%d - store(arr, %d, ", __FILE__, __LINE__, i);
-        print(value);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+    FP_VERIFY_FWD_1(value)
+
     index(buf, i) = value;
 }
 template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, T value)
 {
-#if FP_CHECK
-    if (!isfinite(value))
-    {
-        printf("%s:%d - store(arr, %d, %d, ", __FILE__, __LINE__, i, j);
-        print(value);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+    FP_VERIFY_FWD_2(value)
+
     index(buf, i, j) = value;
 }
 template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, int k, T value)
 {
-#if FP_CHECK
-    if (!isfinite(value))
-    {
-        printf("%s:%d - store(arr, %d, %d, %d, ", __FILE__, __LINE__, i, j, k);
-        print(value);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+    FP_VERIFY_FWD_3(value)
+
     index(buf, i, j, k) = value;
 }
 template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, int k, int l, T value)
 {
-#if FP_CHECK
-    if (!isfinite(value))
-    {
-        printf("%s:%d - store(arr, %d, %d, %d, %d, ", __FILE__, __LINE__, i, j, k, l);
-        print(value);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+    FP_VERIFY_FWD_4(value)
+
     index(buf, i, j, k, l) = value;
 }
 
@@ -264,142 +293,64 @@ template<typename T> inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, i
 template<typename T> inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, int j, int k, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, const T& adj_output) { if (adj_buf.data) { adj_atomic_add(&index(adj_buf, i, j, k), adj_output); } }
 template<typename T> inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, int j, int k, int l, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int & adj_l, const T& adj_output) { if (adj_buf.data) { adj_atomic_add(&index(adj_buf, i, j, k, l), adj_output); } }
 
+
 template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i);
-#if FP_CHECK
-    if (!isfinite(value) || !isfinite(adj_value))
-    {
-        printf("%s:%d - adj_store(arr, %d, ", __FILE__, __LINE__, i);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_1(value, adj_value)
 }
 template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j);
-#if FP_CHECK
-    if (!isfinite(value) || !isfinite(adj_value))
-    {
-        printf("%s:%d - adj_store(arr, %d, %d, ", __FILE__, __LINE__, i, j);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_2(value, adj_value)
+
 }
 template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j, k);
-#if FP_CHECK
-    if (!isfinite(value) || !isfinite(adj_value))
-    {
-        printf("%s:%d - adj_store(arr, %d, %d, %d, ", __FILE__, __LINE__, i, j, k);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_3(value, adj_value)
 }
 template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j, k, l);
-#if FP_CHECK
-    if (!isfinite(value) || !isfinite(adj_value))
-    {
-        printf("%s:%d - adj_store(arr, %d, %d, %d, %d, ", __FILE__, __LINE__, i, j, k, l);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_4(value, adj_value)
 }
 
 template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i);
-#if FP_CHECK
-    if (!isfinite(adj_value) || !isfinite(adj_ret))
-    {
-        printf("%s:%d - adj_atomic_add(arr, %d, ", __FILE__, __LINE__, i);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(", ");
-        print(adj_ret);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_1(value, adj_value)
 }
 template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j);
-#if FP_CHECK
-    if (!isfinite(adj_value) || !isfinite(adj_ret))
-    {
-        printf("%s:%d - adj_atomic_add(arr, %d, %d, ", __FILE__, __LINE__, i, j);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(", ");
-        print(adj_ret);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_2(value, adj_value)
 }
 template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j, k);
-#if FP_CHECK
-    if (!isfinite(adj_value) || !isfinite(adj_ret))
-    {
-        printf("%s:%d - adj_atomic_add(arr, %d, %d, %d, ", __FILE__, __LINE__, i, j, k);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(", ");
-        print(adj_ret);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_3(value, adj_value)
 }
 template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value += index(adj_buf, i, j, k, l);
-#if FP_CHECK
-    if (!isfinite(adj_value) || !isfinite(adj_ret))
-    {
-        printf("%s:%d - adj_atomic_add(arr, %d, %d, %d, %d, ", __FILE__, __LINE__, i, j, k, l);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(", ");
-        print(adj_ret);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_4(value, adj_value)
 }
 
 
@@ -407,73 +358,29 @@ template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& 
 {
     if (adj_buf.data)
         adj_value -= index(adj_buf, i);
-#if FP_CHECK
-    if (!isfinite(adj_value) || !isfinite(adj_ret))
-    {
-        printf("%s:%d - adj_atomic_sub(arr, %d, ", __FILE__, __LINE__, i);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(", ");
-        print(adj_ret);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_1(value, adj_value)
 }
 template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value -= index(adj_buf, i, j);
-#if FP_CHECK
-    if (!isfinite(adj_value) || !isfinite(adj_ret))
-    {
-        printf("%s:%d - adj_atomic_sub(arr, %d, %d, ", __FILE__, __LINE__, i, j);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(", ");
-        print(adj_ret);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_2(value, adj_value)
 }
 template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value -= index(adj_buf, i, j, k);
-#if FP_CHECK
-    if (!isfinite(adj_value) || !isfinite(adj_ret))
-    {
-        printf("%s:%d - adj_atomic_sub(arr, %d, %d, %d, ", __FILE__, __LINE__, i, j, k);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(", ");
-        print(adj_ret);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_3(value, adj_value)
 }
 template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
 {
     if (adj_buf.data)
         adj_value -= index(adj_buf, i, j, k, l);
-#if FP_CHECK
-    if (!isfinite(adj_value) || !isfinite(adj_ret))
-    {
-        printf("%s:%d - adj_atomic_sub(arr, %d, %d, %d, %d, ", __FILE__, __LINE__, i, j, k, l);
-        print(value);
-        printf(", ");
-        print(adj_value);
-        printf(", ");
-        print(adj_ret);
-        printf(")\n");
-        assert(0);
-    }
-#endif
+
+    FP_VERIFY_ADJ_4(value, adj_value)
 }
 
 } // namespace wp
