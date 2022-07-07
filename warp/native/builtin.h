@@ -99,16 +99,26 @@ typedef half float16;
 
 CUDA_CALLABLE inline half float_to_half(float x)
 {
+#if __CUDA_ARCH__ >= 700
     half h;
     asm("{  cvt.rn.f16.f32 %0, %1;}\n" : "=h"(h.u) : "f"(x));  
     return h;
+#else
+    // fp16 not supported
+    return half();
+#endif
 }
 
 CUDA_CALLABLE inline float half_to_float(half x)
 {
+#if __CUDA_ARCH__ >= 700
     float val;
     asm("{  cvt.f32.f16 %0, %1;}\n" : "=f"(val) : "h"(x.u));
     return val;
+#else
+    // fp16 not supported
+    return 0.0f;
+#endif
 }
 
 #else
@@ -667,7 +677,7 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
    
     half r = 0.0;
 
-    #if __CUDA_ARCH__ 
+    #if __CUDA_ARCH__ >= 700
 
         asm volatile ("{ atom.add.noftz.f16 %0,[%1],%2; }\n"
                     : "=h"(r.u)
