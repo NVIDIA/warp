@@ -305,19 +305,22 @@ def load_dll(dll_path):
     return dll
 
 def unload_dll(dll):
-    
+
     handle = dll._handle
     del dll
-   
+
+    # force garbage collection to eliminate any Python references to the dll
+    import gc
+    gc.collect()
+
     # platform dependent unload, removes *all* references to the dll
     # note this should only be performed if you know there are no dangling
     # refs to the dll inside the Python program
-    if (os.name == "nt"): 
-
+    if os.name == "nt":
         max_attempts = 100
         for i in range(max_attempts):
-            success = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
-            if (not success):
+            result = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
+            if result != 0:
                 return
     else:
         _ctypes.dlclose(handle)
