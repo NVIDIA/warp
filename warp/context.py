@@ -462,18 +462,16 @@ class Module:
 
     def register_kernel(self, kernel):
 
-        if kernel.key in self.kernels:
+        # if kernel is replacing an old one then assume it has changed and 
+        # force a rebuild / reload of the dynamic library 
+        if (self.dll):
+            warp.build.unload_dll(self.dll)
 
-            # if kernel is replacing an old one then assume it has changed and 
-            # force a rebuild / reload of the dynamic library 
-            if (self.dll):
-                warp.build.unload_dll(self.dll)
-
-            if (self.cuda):
-                runtime.core.cuda_unload_module(self.cuda)
-                
-            self.dll = None
-            self.cuda = None
+        if (self.cuda):
+            runtime.core.cuda_unload_module(self.cuda)
+            
+        self.dll = None
+        self.cuda = None
 
         # register new kernel
         self.kernels[kernel.key] = kernel
