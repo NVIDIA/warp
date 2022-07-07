@@ -24,13 +24,13 @@ struct vec4
 
     explicit inline CUDA_CALLABLE vec4(const float* p) : x(p[0]), y(p[1]), z(p[2]), w(p[3]) {}
 
-    float operator[](int index) const
+    CUDA_CALLABLE float operator[](int index) const
     {
         assert(index < 4);
         return (&x)[index];
     }
 
-    float& operator[](int index)
+    CUDA_CALLABLE float& operator[](int index)
     {
         assert(index < 4);
         return (&x)[index];

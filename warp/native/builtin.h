@@ -26,9 +26,10 @@
 
 #if !defined(__CUDACC__)
     #define CUDA_CALLABLE
-
+    #define CUDA_CALLABLE_DEVICE
 #else
     #define CUDA_CALLABLE __host__ __device__ 
+    #define CUDA_CALLABLE_DEVICE __device__
 #endif
 
 
@@ -597,7 +598,7 @@ inline CUDA_CALLABLE int tid()
 #endif
 }
 
-inline CUDA_CALLABLE void tid(int& i, int& j)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
 {
     const int index = tid();
 
@@ -608,7 +609,7 @@ inline CUDA_CALLABLE void tid(int& i, int& j)
     j = index%n;
 }
 
-inline CUDA_CALLABLE void tid(int& i, int& j, int& k)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
 {
     const int index = tid();
 
@@ -621,7 +622,7 @@ inline CUDA_CALLABLE void tid(int& i, int& j, int& k)
     k = index%o;
 }
 
-inline CUDA_CALLABLE void tid(int& i, int& j, int& k, int& l)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
 {
     const int index = tid();
 
