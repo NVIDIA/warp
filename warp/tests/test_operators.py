@@ -127,6 +127,108 @@ def test_operators_vec4():
     expect_eq(two, vec4(2.0, 2.0, 2.0, 2.0))
        
 
+
+@wp.kernel
+def test_operators_mat22():
+    
+    m = mat22(1.0, 2.0, 3.0, 4.0)
+    r = mat22(3.0, 6.0, 9.0, 12.0)
+
+    r0 = m*3.0
+    r1 = 3.0*m
+
+    expect_eq(r0, r)
+    expect_eq(r1, r)
+
+    expect_eq(r0[0,0], 3.0)
+    expect_eq(r0[0,1], 6.0)
+    expect_eq(r0[1,0], 9.0)
+    expect_eq(r0[1,1], 12.0)
+
+    expect_eq(r0[0], wp.vec2(3.0, 6.0))
+    expect_eq(r0[1], wp.vec2(9.0, 12.0))
+
+@wp.kernel
+def test_operators_mat33():
+    
+    m = mat33(1.0, 2.0, 3.0,
+              4.0, 5.0, 6.0,
+              7.0, 8.0, 9.0)
+
+    r = mat33(3.0, 6.0, 9.0,
+              12.0, 15.0, 18.0,
+              21.0, 24.0, 27.0)              
+
+    r0 = m*3.0
+    r1 = 3.0*m
+
+    expect_eq(r0, r)
+    expect_eq(r1, r)
+
+    expect_eq(r0[0,0], 3.0)
+    expect_eq(r0[0,1], 6.0)
+    expect_eq(r0[0,2], 9.0)
+
+    expect_eq(r0[1,0], 12.0)
+    expect_eq(r0[1,1], 15.0)
+    expect_eq(r0[1,2], 18.0)
+
+    expect_eq(r0[2,0], 21.0)
+    expect_eq(r0[2,1], 24.0)
+    expect_eq(r0[2,2], 27.0)
+
+    expect_eq(r0[0], wp.vec3(3.0, 6.0, 9.0))
+    expect_eq(r0[1], wp.vec3(12.0, 15.0, 18.0))
+    expect_eq(r0[2], wp.vec3(21.0, 24.0, 27.0))
+
+
+
+@wp.kernel
+def test_operators_mat44():
+    
+    m = mat44(1.0, 2.0, 3.0, 4.0,
+              5.0, 6.0, 7.0, 8.0,
+              9.0, 10.0, 11.0, 12.0,
+              13.0, 14.0, 15.0, 16.0)
+
+    r = mat44(3.0, 6.0, 9.0, 12.0,
+              15.0, 18.0, 21.0, 24.0,
+              27.0, 30.0, 33.0, 36.0,
+              39.0, 42.0, 45.0, 48.0)
+
+    r0 = m*3.0
+    r1 = 3.0*m
+
+    expect_eq(r0, r)
+    expect_eq(r1, r)
+
+    expect_eq(r0[0,0], 3.0)
+    expect_eq(r0[0,1], 6.0)
+    expect_eq(r0[0,2], 9.0)
+    expect_eq(r0[0,3], 12.0)
+
+    expect_eq(r0[1,0], 15.0)
+    expect_eq(r0[1,1], 18.0)
+    expect_eq(r0[1,2], 21.0)
+    expect_eq(r0[1,3], 24.0)
+
+    expect_eq(r0[2,0], 27.0)
+    expect_eq(r0[2,1], 30.0)
+    expect_eq(r0[2,2], 33.0)
+    expect_eq(r0[2,3], 36.0)
+
+    expect_eq(r0[3,0], 39.0)
+    expect_eq(r0[3,1], 42.0)
+    expect_eq(r0[3,2], 45.0)
+    expect_eq(r0[3,3], 48.0)
+
+    expect_eq(r0[0], wp.vec4(3.0, 6.0, 9.0, 12.0))
+    expect_eq(r0[1], wp.vec4(15.0, 18.0, 21.0, 24.0))
+    expect_eq(r0[2], wp.vec4(27.0, 30.0, 33.0, 36.0))
+    expect_eq(r0[3], wp.vec4(39.0, 42.0, 45.0, 48.0))
+
+
+
 def register(parent):
 
     devices = wp.get_devices()
@@ -141,8 +243,14 @@ def register(parent):
     add_kernel_test(TestOperators, test_operators_vec3, dim=1, devices=devices)
     add_kernel_test(TestOperators, test_operators_vec4, dim=1, devices=devices)
 
+    add_kernel_test(TestOperators, test_operators_mat22, dim=1, devices=devices)
+    add_kernel_test(TestOperators, test_operators_mat33, dim=1, devices=devices)
+    add_kernel_test(TestOperators, test_operators_mat44, dim=1, devices=devices)
+
     return TestOperators
 
 if __name__ == '__main__':
+    wp.force_load()
+
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

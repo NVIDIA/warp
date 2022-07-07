@@ -281,14 +281,15 @@ class Kernel:
 
 # decorator to register function, @func
 def func(f):
+    name = warp.codegen.make_func_name(f)
 
     m = get_module(f.__module__)
-    func = Function(func=f, key=f.__name__, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
+    func = Function(func=f, key=name, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
 
     # if the function already exists in the module
     # then add an overload and return original
     for x in m.functions:
-        if x.key == f.__name__:
+        if x.key == name:
             x.add_overload(func)
             return x
 
@@ -299,7 +300,7 @@ def func(f):
 def kernel(f):
     
     m = get_module(f.__module__)
-    k = Kernel(func=f, key=f.__name__, module=m)
+    k = Kernel(func=f, key=warp.codegen.make_func_name(f), module=m)
 
     return k
 
@@ -541,7 +542,9 @@ class Module:
 
             module_path = os.path.join(build_path, module_name)
 
-            ptx_path = module_path + ".ptx"
+            cuda_arch = runtime.core.cuda_get_device_arch()
+
+            ptx_path = module_path + f"_sm{cuda_arch}.ptx"
 
             if (os.name == 'nt'):
                 dll_path = module_path + ".dll"
@@ -613,7 +616,7 @@ class Module:
 
                 if build_cuda:
                     with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, ptx_path, config=self.options["mode"])
+                        warp.build.build_cuda(cu_path, cuda_arch, ptx_path, config=self.options["mode"])
 
                 # update cpu hash
                 if build_cpu:
@@ -780,8 +783,9 @@ class Runtime:
         self.core.cuda_get_stream.restype = ctypes.c_void_p
         self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
         self.core.cuda_get_device_name.restype = ctypes.c_char_p
+        self.core.cuda_get_device_arch.restype = ctypes.c_int
 
-        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
+        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
         self.core.cuda_compile_program.restype = ctypes.c_size_t
 
         self.core.cuda_load_module.argtypes = [ctypes.c_char_p]

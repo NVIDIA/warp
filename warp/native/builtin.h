@@ -26,9 +26,10 @@
 
 #if !defined(__CUDACC__)
     #define CUDA_CALLABLE
-
+    #define CUDA_CALLABLE_DEVICE
 #else
     #define CUDA_CALLABLE __host__ __device__ 
+    #define CUDA_CALLABLE_DEVICE __device__
 #endif
 
 
@@ -99,16 +100,26 @@ typedef half float16;
 
 CUDA_CALLABLE inline half float_to_half(float x)
 {
+#if __CUDA_ARCH__ >= 700
     half h;
     asm("{  cvt.rn.f16.f32 %0, %1;}\n" : "=h"(h.u) : "f"(x));  
     return h;
+#else
+    // fp16 not supported
+    return half();
+#endif
 }
 
 CUDA_CALLABLE inline float half_to_float(half x)
 {
+#if __CUDA_ARCH__ >= 700
     float val;
     asm("{  cvt.f32.f16 %0, %1;}\n" : "=f"(val) : "h"(x.u));
     return val;
+#else
+    // fp16 not supported
+    return 0.0f;
+#endif
 }
 
 #else
@@ -597,7 +608,7 @@ inline CUDA_CALLABLE int tid()
 #endif
 }
 
-inline CUDA_CALLABLE void tid(int& i, int& j)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
 {
     const int index = tid();
 
@@ -608,7 +619,7 @@ inline CUDA_CALLABLE void tid(int& i, int& j)
     j = index%n;
 }
 
-inline CUDA_CALLABLE void tid(int& i, int& j, int& k)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
 {
     const int index = tid();
 
@@ -621,7 +632,7 @@ inline CUDA_CALLABLE void tid(int& i, int& j, int& k)
     k = index%o;
 }
 
-inline CUDA_CALLABLE void tid(int& i, int& j, int& k, int& l)
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
 {
     const int index = tid();
 
@@ -667,7 +678,7 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
    
     half r = 0.0;
 
-    #if __CUDA_ARCH__ 
+    #if __CUDA_ARCH__ >= 700
 
         asm volatile ("{ atom.add.noftz.f16 %0,[%1],%2; }\n"
                     : "=h"(r.u)
@@ -709,6 +720,14 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 //--------------
 namespace wp
 {
+
+
+// define scalar multiplication in reverse order i.e.: s*M, individual types just implement M*s
+template <typename T>
+T mul(float s, const T& x) { return mul(x, s); }
+
+template <typename T>
+void adj_mul(float s, const T& x, float& adj_s, T& adj_x, const T& adj_ret) { adj_mul(x, s, adj_x, adj_s, adj_ret); }
 
 
 // dot for scalar types just to make some templated compile for scalar/vector

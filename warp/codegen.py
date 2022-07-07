@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import os
+import re
 import sys
 import imp
 import ast
@@ -1376,6 +1377,9 @@ def indent(args, stops=1):
     #return sep + args.replace(", ", "," + sep)
     return sep.join(args)
 
+# generates a C function name based on the python function name
+def make_func_name(func):
+    return re.sub('[^0-9a-zA-Z_]+', '', func.__qualname__.replace('.', '__'))
 
 def codegen_func_forward_body(adj, device='cpu', indent=4):
     body = []
@@ -1505,7 +1509,7 @@ def codegen_func(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=adj.func.__name__,
+    s = template.format(name=make_func_name(adj.func),
                         return_type=return_type,
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
