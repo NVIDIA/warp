@@ -43,12 +43,15 @@ inline CUDA_CALLABLE bool operator==(const spatial_vector& a, const spatial_vect
     return a.w == b.w && a.v == b.v;
 }
 
+inline bool CUDA_CALLABLE isfinite(const spatial_vector& s)
+{
+    return isfinite(s.w) && isfinite(s.v);
+}
 
 CUDA_CALLABLE inline spatial_vector operator - (spatial_vector a)
 {
     return spatial_vector(-a.w, -a.v);
 }
-
 
 CUDA_CALLABLE inline spatial_vector add(const spatial_vector& a, const spatial_vector& b)
 {
@@ -103,11 +106,25 @@ CUDA_CALLABLE inline vec3 spatial_bottom(const spatial_vector& a)
 
 inline CUDA_CALLABLE float index(const spatial_vector& v, int i)
 {
+#if FP_CHECK
+    if (i < 0 || i > 5)
+    {
+        printf("spatial_vector index %d out of bounds at %s %d\n", i, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
     return v[i];
 }
 
 inline void CUDA_CALLABLE adj_index(const spatial_vector& m, int i, spatial_vector& adj_v, int& adj_i, float adj_ret)
 {
+#if FP_CHECK
+    if (i < 0 || i > 5)
+    {
+        printf("spatial_vector index %d out of bounds at %s %d\n", i, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
     adj_v[i] += adj_ret;
 }
 
@@ -232,6 +249,12 @@ struct transform
 inline CUDA_CALLABLE bool operator==(const transform& a, const transform& b)
 {
     return a.p == b.p && a.q == b.q;
+}
+
+
+inline bool CUDA_CALLABLE isfinite(const transform& t)
+{
+    return isfinite(t.p) && isfinite(t.q);
 }
 
 
@@ -573,7 +596,7 @@ struct spatial_matrix
 
 inline CUDA_CALLABLE bool operator==(const spatial_matrix& a, const spatial_matrix& b)
 {
-    for(int i=0; i < 6; ++i)
+    for (int i=0; i < 6; ++i)
         for (int j=0; j < 6; ++j)
             if (a.data[i][j] != b.data[i][j])
                 return false;
@@ -581,8 +604,29 @@ inline CUDA_CALLABLE bool operator==(const spatial_matrix& a, const spatial_matr
     return true;
 }
 
+inline bool CUDA_CALLABLE isfinite(const spatial_matrix& m)
+{
+    for (int i=0; i < 6; ++i)
+        for (int j=0; j < 6; ++j)
+            if (!::isfinite(m.data[i][j]))
+                return false;
+    return true;
+}
+
 inline CUDA_CALLABLE float index(const spatial_matrix& m, int row, int col)
 {
+#if FP_CHECK
+    if (row < 0 || row > 5)
+    {
+        printf("spatial_matrix row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col > 5)
+    {
+        printf("spatial_matrix col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
     return m.data[row][col];
 }
 
@@ -779,6 +823,18 @@ inline CUDA_CALLABLE void adj_transform_inertia(
 
 inline void CUDA_CALLABLE adj_index(const spatial_matrix& m, int row, int col, spatial_matrix& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {
+#if FP_CHECK
+    if (row < 0 || row > 5)
+    {
+        printf("spatial_matrix row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col > 5)
+    {
+        printf("spatial_matrix col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
     adj_m.data[row][col] += adj_ret;
 }
 

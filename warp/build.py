@@ -123,7 +123,7 @@ def find_cuda():
     
 
 # builds cuda->ptx using NVRTC
-def build_cuda(cu_path, arch, ptx_path, config="release", force=False):
+def build_cuda(cu_path, arch, ptx_path, config="release", force=False, verify_fp=False):
 
     src_file = open(cu_path)
     src = src_file.read().encode('utf-8')
@@ -132,7 +132,7 @@ def build_cuda(cu_path, arch, ptx_path, config="release", force=False):
     inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode('utf-8')
     ptx_path = ptx_path.encode('utf-8')
 
-    err = warp.context.runtime.core.cuda_compile_program(src, arch, inc_path, False, warp.config.verbose, ptx_path)
+    err = warp.context.runtime.core.cuda_compile_program(src, arch, inc_path, False, warp.config.verbose, verify_fp, ptx_path)    
     if (err):
         raise Exception("CUDA build failed")
 
@@ -146,7 +146,7 @@ def load_cuda(ptx_path):
 def quote(path):
     return "\"" + path + "\""
 
-def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
+def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, force=False):
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
@@ -226,6 +226,9 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
         else:
             raise RuntimeError("Unrecognized build configuration (debug, release), got: {}".format(config))
 
+        if verify_fp:
+            cpp_flags += ' /D "WP_VERIFY_FP"'
+
 
         with ScopedTimer("build", active=warp.config.verbose):
             cpp_cmd = f'cl.exe {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
@@ -266,6 +269,8 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
+        if verify_fp:
+            cpp_flags += ' -DWP_VERIFY_FP'
 
         with ScopedTimer("build", active=warp.config.verbose):
             build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'

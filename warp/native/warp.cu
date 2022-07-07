@@ -57,12 +57,17 @@ int cuda_init()
 {
     #if defined(_WIN32)
         static HMODULE hCudaDriver = LoadLibrary("nvcuda.dll");
+        if (hCudaDriver == NULL) {
+            fprintf(stderr, "Error: Could not open nvcuda.dll.\n");
+            return false;
+        }
     #elif defined(__linux__)
         static void* hCudaDriver = dlopen("libcuda.so", RTLD_NOW);
+        if (hCudaDriver == NULL) {
+            fprintf(stderr, "Error: Could not open libcuda.so.\n");
+            return false;
+        }
     #endif
-
-    if (hCudaDriver == NULL)
-        return false;
 
 	cuInit_f = (cuInit_t*)GetProcAddress(hCudaDriver, "cuInit");
 	cuCtxSetCurrent_f = (cuCtxSetCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxSetCurrent");
@@ -76,8 +81,12 @@ int cuda_init()
         return -1;
 
     CUresult err = cuInit_f(0);
-    if (err != CUDA_SUCCESS)
-		return err;
+    if (err != CUDA_SUCCESS) {
+        fprintf(stderr, "Error from cuInit: %i ", err);
+        cudaError_t e = cudaGetLastError();
+        fprintf(stderr, "(%s)\n%s\n", cudaGetErrorName(e), cudaGetErrorString(e));
+        return err;
+    }
 
     CUcontext ctx;
     cuCtxGetCurrent_f(&ctx);
@@ -288,7 +297,7 @@ int cuda_get_device_arch()
     return 10 * prop.major + prop.minor;
 }
 
-size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, const char* output_file)
+size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, const char* output_file)
 {
     nvrtcResult res;
 
@@ -327,12 +336,13 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
         "--use_fast_math",
         "--std=c++11",
         "--define-macro=WP_CUDA",
+        (verify_fp ? "--define-macro=WP_VERIFY_FP" : "--undefine-macro=WP_VERIFY_FP"),
         "--define-macro=WP_NO_CRT",
-        "--define-macro=NDEBUG",
+        (debug ? "--define-macro=DEBUG" : "--define-macro=NDEBUG"),
         include_opt
     };
 
-    res = nvrtcCompileProgram(prog, 8, opts);
+    res = nvrtcCompileProgram(prog, 9, opts);
 
     if (res == NVRTC_SUCCESS)
     {
@@ -386,10 +396,25 @@ void* cuda_load_module(const char* path)
         return NULL;
     }
 
+    CUjit_option options[2];
+    void *optionVals[2];
+    char error_log[8192];
+    unsigned int logSize = 8192;
+    // Setup linker options
+    // Pass a buffer for error message
+    options[0] = CU_JIT_ERROR_LOG_BUFFER;
+    optionVals[0] = (void *) error_log;
+    // Pass the size of the error buffer
+    options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
+    optionVals[1] = (void *) (long) logSize;
+
     CUmodule module = NULL;
-    CUresult res = cuModuleLoadDataEx_f(&module, buf, 0, 0, 0);
-    if (res != CUDA_SUCCESS)
+    CUresult res = cuModuleLoadDataEx_f(&module, buf, 2, options, optionVals);
+    if (res != CUDA_SUCCESS) {
         printf("Warp: Loading PTX module failed with error: %d\n", res);
+        // print error log
+        fprintf(stderr, "PTX linker error:\n%s\n", error_log);
+    }
 
     free(buf);
 

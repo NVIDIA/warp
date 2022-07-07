@@ -106,12 +106,21 @@ class Adjoint:
         
         # build AST from function object
         adj.source = inspect.getsource(func)
+
+        # get source code lines and line number where function starts
+        adj.raw_source, adj.fun_lineno = inspect.getsourcelines(func)
+
+        # keep track of line number in function code
+        adj.lineno = None
         
         # ensures that indented class methods can be parsed as kernels
-        adj.source = textwrap.dedent(adj.source)    
+        adj.source = textwrap.dedent(adj.source)
+        
+        # extract name of source file
+        adj.filename = inspect.getsourcefile(func) or "unknown source file"
 
         # build AST
-        adj.tree = ast.parse(adj.source)
+        adj.tree = ast.parse(adj.source)                
 
         # parse argument types
         adj.arg_types = typing.get_type_hints(func)
@@ -576,6 +585,8 @@ class Adjoint:
     def eval(adj, node):
 
         try:
+            if hasattr(node, "lineno"):
+                adj.set_lineno(node.lineno-1)                
 
             # top level entry point for a function
             if (isinstance(node, ast.FunctionDef)):
@@ -1172,6 +1183,14 @@ class Adjoint:
         # reverse list since ast presents it backward order
         return [*reversed(modules)]
 
+    # annotate generated code with the original source code line
+    def set_lineno(adj, lineno):
+        if adj.lineno is None or adj.lineno != lineno:
+            line = lineno + adj.fun_lineno
+            source = adj.raw_source[lineno].strip().ljust(70)
+            adj.add_forward(f'// {source}       <L {line}>')
+            adj.add_reverse(f'// adj: {source}  <L {line}>')
+        adj.lineno = lineno
         
 
 #----------------
@@ -1207,27 +1226,31 @@ using namespace wp;
 '''
 
 cpu_function_template = '''
+// {filename}:{lineno}
 static {return_type} {name}({forward_args})
 {{
-    {forward_body}
+{forward_body}
 }}
 
+// {filename}:{lineno}
 static void adj_{name}({reverse_args})
 {{
-    {reverse_body}
+{reverse_body}
 }}
 
 '''
 
 cuda_function_template = '''
+// {filename}:{lineno}
 static CUDA_CALLABLE {return_type} {name}({forward_args})
 {{
-    {forward_body}
+{forward_body}
 }}
 
+// {filename}:{lineno}
 static CUDA_CALLABLE void adj_{name}({reverse_args})
 {{
-    {reverse_body}
+{reverse_body}
 }}
 
 '''
@@ -1242,7 +1265,7 @@ extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 
     set_launch_bounds(dim);
 
-    {forward_body}
+{forward_body}
 }}
 
 
@@ -1254,7 +1277,7 @@ extern "C" __global__ void {name}_cuda_kernel_backward({reverse_args})
 
     set_launch_bounds(dim);
 
-    {reverse_body}
+{reverse_body}
 }}
 
 '''
@@ -1263,12 +1286,12 @@ cpu_kernel_template = '''
 
 void {name}_cpu_kernel_forward({forward_args})
 {{
-    {forward_body}
+{forward_body}
 }}
 
 void {name}_cpu_kernel_backward({reverse_args})
 {{
-    {reverse_body}
+{reverse_body}
 }}
 
 '''
@@ -1514,7 +1537,9 @@ def codegen_func(adj, device='cpu'):
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
                         forward_body=forward_body,
-                        reverse_body=reverse_body)
+                        reverse_body=reverse_body,
+                        filename=adj.filename,
+                        lineno=adj.fun_lineno)
 
     return s
 

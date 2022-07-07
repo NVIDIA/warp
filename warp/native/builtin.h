@@ -32,8 +32,11 @@
     #define CUDA_CALLABLE_DEVICE __device__
 #endif
 
-
+#ifdef WP_VERIFY_FP
+#define FP_CHECK 1
+#else
 #define FP_CHECK 0
+#endif
 
 
 namespace wp
@@ -286,16 +289,78 @@ inline CUDA_CALLABLE void adj_floordiv(int a, int b, int& adj_a, int& adj_b, int
 
 // basic ops for float types
 inline CUDA_CALLABLE float mul(float a, float b) { return a*b; }
-inline CUDA_CALLABLE float div(float a, float b) { return a/b; }
+inline CUDA_CALLABLE float div(float a, float b)
+{
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(b) || b == 0.0f)
+    {
+        printf("%s:%d div(%f, %f)\n", __FILE__, __LINE__, a, b);
+        assert(0);
+    }
+#endif
+    return a/b;
+}
 inline CUDA_CALLABLE float add(float a, float b) { return a+b; }
 inline CUDA_CALLABLE float sub(float a, float b) { return a-b; }
 inline CUDA_CALLABLE float min(float a, float b) { return a<b?a:b; }
 inline CUDA_CALLABLE float max(float a, float b) { return a>b?a:b; }
-inline CUDA_CALLABLE float mod(float a, float b) { return fmodf(a, b); }
-inline CUDA_CALLABLE float log(float a) { return logf(a); }
-inline CUDA_CALLABLE float exp(float a) { return expf(a); }
-inline CUDA_CALLABLE float pow(float a, float b) { return powf(a, b); }
-inline CUDA_CALLABLE float floordiv(float a, float b) { return float(int(a/b)); }
+inline CUDA_CALLABLE float mod(float a, float b)
+{
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(b) || b == 0.0f)
+    {
+        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, a, b);
+        assert(0);
+    }
+#endif
+    return fmodf(a, b);
+}
+inline CUDA_CALLABLE float log(float a)
+{
+#if FP_CHECK
+    if (!isfinite(a) || a < 0.0f)
+    {
+        printf("%s:%d log(%f)\n", __FILE__, __LINE__, a);
+        assert(0);
+    }
+#endif
+    return logf(a);
+}
+inline CUDA_CALLABLE float exp(float a)
+{
+    float result = expf(a);
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(result))
+    {
+        printf("%s:%d exp(%f) = %f\n", __FILE__, __LINE__, a, result);
+        assert(0);
+    }
+#endif
+    return result;
+}
+inline CUDA_CALLABLE float pow(float a, float b)
+{
+    float result = powf(a, b);
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(b) || !isfinite(result))
+    {
+        printf("%s:%d pow(%f, %f) = %f\n", __FILE__, __LINE__, a, b, result);
+        assert(0);
+    }
+#endif
+    return result;
+}
+inline CUDA_CALLABLE float floordiv(float a, float b)
+{
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(b) || b == 0.0f)
+    {
+        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, a, b);
+        assert(0);
+    }
+#endif
+    return float(int(a/b));
+}
 
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
@@ -305,13 +370,29 @@ inline CUDA_CALLABLE float sign(float x) { return x < 0.0f ? -1.0f : 1.0f; }
 inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
-inline CUDA_CALLABLE float acos(float x) { return ::acos(min(max(x, -1.0f), 1.0f)); }
-inline CUDA_CALLABLE float asin(float x) { return ::asin(min(max(x, -1.0f), 1.0f)); }
+inline CUDA_CALLABLE float acos(float x)
+{
+    return ::acos(min(max(x, -1.0f), 1.0f));
+}
+inline CUDA_CALLABLE float asin(float x)
+{
+    return ::asin(min(max(x, -1.0f), 1.0f));
+}
 inline CUDA_CALLABLE float atan(float x) { return ::atan(x); }
 inline CUDA_CALLABLE float atan2(float y, float x) { return ::atan2(y, x); }
 inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
 inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
-inline CUDA_CALLABLE float sqrt(float x) { return ::sqrt(x); }
+inline CUDA_CALLABLE float sqrt(float x)
+{
+#if FP_CHECK
+    if (x < 0.0f)
+    {
+        printf("%s:%d sqrt(%f)\n", __FILE__, __LINE__, x);
+        assert(0);
+    }
+#endif
+    return ::sqrt(x);
+}
 inline CUDA_CALLABLE float tan(float x) { return ::tan(x); }
 inline CUDA_CALLABLE float sinh(float x) { return ::sinhf(x);}
 inline CUDA_CALLABLE float cosh(float x) { return ::coshf(x);}
@@ -324,16 +405,48 @@ inline CUDA_CALLABLE float floor(float x) { return ::floorf(x); }
 inline CUDA_CALLABLE float ceil(float x) { return ::ceilf(x); }
 
 inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
-inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret/b; adj_b -= adj_ret*(a/b)/b; }
+inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret)
+{
+    adj_a += adj_ret/b;
+    adj_b -= adj_ret*(a/b)/b;
+#if FP_CHECK
+    if (!isfinite(adj_a) || !isfinite(adj_b))
+    {
+        printf("%s:%d - adj_div(%f, %f, %f, %f, %f)\n", __FILE__, __LINE__, a, b, adj_a, adj_b, adj_ret);
+        assert(0);
+    }
+#endif
+}
 inline CUDA_CALLABLE void adj_add(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b += adj_ret; }
 inline CUDA_CALLABLE void adj_sub(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b -= adj_ret; }
 inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, float adj_ret)
 {
     printf("adj_mod not implemented for floating point types\n");
 }
-inline CUDA_CALLABLE void adj_log(float a, float& adj_a, float adj_ret) { adj_a += (1.f/a)*adj_ret; }
+inline CUDA_CALLABLE void adj_log(float a, float& adj_a, float adj_ret)
+{
+    adj_a += (1.f/a)*adj_ret;
+#if FP_CHECK
+    if (!isfinite(adj_a))
+    {
+        printf("%s:%d - adj_log(%f, %f, %f)\n", __FILE__, __LINE__, a, adj_a, adj_ret);
+        assert(0);
+    }
+#endif
+}
 inline CUDA_CALLABLE void adj_exp(float a, float& adj_a, float adj_ret) { adj_a += exp(a)*adj_ret; }
-inline CUDA_CALLABLE void adj_pow(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*pow(a, b-1.f)*adj_ret; adj_b += log(a)*pow(a, b)*adj_ret; }
+inline CUDA_CALLABLE void adj_pow(float a, float b, float& adj_a, float& adj_b, float adj_ret)
+{ 
+    adj_a += b*pow(a, b-1.f)*adj_ret;
+    adj_b += log(a)*pow(a, b)*adj_ret;
+#if FP_CHECK
+    if (!isfinite(adj_a) || !isfinite(adj_b))
+    {
+        printf("%s:%d - adj_pow(%f, %f, %f, %f, %f)\n", __FILE__, __LINE__, a, b, adj_a, adj_b, adj_ret);
+        assert(0);
+    }
+#endif
+}
 inline CUDA_CALLABLE void adj_floordiv(float a, float b, float& adj_a, float& adj_b, float adj_ret) { }
 
 inline CUDA_CALLABLE void adj_min(float a, float b, float& adj_a, float& adj_b, float adj_ret)
@@ -410,21 +523,49 @@ inline CUDA_CALLABLE void adj_abs(float x, float& adj_x, float adj_ret)
 inline CUDA_CALLABLE void adj_acos(float x, float& adj_x, float adj_ret)
 {
     float d = sqrt(1.0f-x*x);
+#if FP_CHECK
+    adj_x -= (1.0f/d)*adj_ret;
+    if (!isfinite(d) || !isfinite(adj_x))
+    {
+        printf("%s:%d - adj_acos(%f, %f, %f)\n", __FILE__, __LINE__, x, adj_x, adj_ret);        
+        assert(0);
+    }
+#else    
     if (d > 0.0f)
         adj_x -= (1.0f/d)*adj_ret;
+#endif
 }
 
 inline CUDA_CALLABLE void adj_asin(float x, float& adj_x, float adj_ret)
 {
     float d = sqrt(1.0f-x*x);
+#if FP_CHECK
+    adj_x += (1.0f/d)*adj_ret;
+    if (!isfinite(d) || !isfinite(adj_x))
+    {
+        printf("%s:%d - adj_asin(%f, %f, %f)\n", __FILE__, __LINE__, x, adj_x, adj_ret);   
+        assert(0);
+    }
+#else    
     if (d > 0.0f)
         adj_x += (1.0f/d)*adj_ret;
+#endif
 }
 
 inline CUDA_CALLABLE void adj_tan(float x, float& adj_x, float adj_ret)
 {
     float cos_x = cos(x);
+#if FP_CHECK
     adj_x += (1.0f/(cos_x*cos_x))*adj_ret;
+    if (!isfinite(adj_x) || cos_x == 0.0f)
+    {
+        printf("%s:%d - adj_tan(%f, %f, %f)\n", __FILE__, __LINE__, x, adj_x, adj_ret);
+        assert(0);
+    }
+#else    
+    if (cos_x > 0.0f)
+        adj_x += (1.0f/(cos_x*cos_x))*adj_ret;
+#endif
 }
 
 inline CUDA_CALLABLE void adj_atan(float x, float& adj_x, float adj_ret)
@@ -434,7 +575,22 @@ inline CUDA_CALLABLE void adj_atan(float x, float& adj_x, float adj_ret)
 
 inline CUDA_CALLABLE void adj_atan2(float y, float x, float& adj_y, float& adj_x, float adj_ret)
 {
-    printf("arctan2 adjoint not implemented");
+    float d = x*x + y*y;
+#if FP_CHECK
+    adj_x -= y/d*adj_ret;
+    adj_y += x/d*adj_ret;
+    if (!isfinite(adj_x) || !isfinite(adj_y) || d == 0.0f)
+    {
+        printf("%s:%d - adj_atan2(%f, %f, %f, %f, %f)\n", __FILE__, __LINE__, y, x, adj_y, adj_x, adj_ret);
+        assert(0);
+    }
+#else    
+    if (d > 0.0f)
+    {
+        adj_x -= y/d*adj_ret;
+        adj_y += x/d*adj_ret;
+    }
+#endif
 }
 
 inline CUDA_CALLABLE void adj_sin(float x, float& adj_x, float adj_ret)
@@ -466,6 +622,13 @@ inline CUDA_CALLABLE void adj_tanh(float x, float& adj_x, float adj_ret)
 inline CUDA_CALLABLE void adj_sqrt(float x, float& adj_x, float adj_ret)
 {
     adj_x += 0.5f*(1.0f/sqrt(x))*adj_ret;
+#if FP_CHECK    
+    if (!isfinite(adj_x))
+    {
+        printf("%s:%d - adj_sqrt(%f, %f, %f)\n", __FILE__, __LINE__, x, adj_x, adj_ret);
+        assert(0);
+    }
+#endif
 }
 
 inline CUDA_CALLABLE void adj_round(float x, float& adj_x, float adj_ret)
@@ -696,9 +859,13 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 
 
 
+inline bool CUDA_CALLABLE isfinite(float x)
+{
+    return ::isfinite(x);
+}
+
 } // namespace wp
 
-#include "array.h"
 #include "vec2.h"
 #include "vec3.h"
 #include "vec4.h"
@@ -706,7 +873,6 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 #include "mat33.h"
 #include "quat.h"
 #include "mat44.h"
-#include "matnn.h"
 #include "spatial.h"
 #include "intersect.h"
 #include "mesh.h"
@@ -943,6 +1109,8 @@ inline CUDA_CALLABLE void adj_expect_near(const T& actual, const T& expected, co
     // nop
 }
 
-
 } // namespace wp
 
+// include array.h so we have the print, isfinite functions for the inner array types defined
+#include "array.h"
+#include "matnn.h"

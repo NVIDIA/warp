@@ -42,7 +42,16 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
     
     const int byte_offset = i*stride(arr, 0);
 
-    return *data_at_byte_offset(arr, byte_offset);
+    T& result = *data_at_byte_offset(arr, byte_offset);
+#if FP_CHECK
+    if (!isfinite(result)) {
+        printf("%s:%d - index(arr, %d) = ", __FILE__, __LINE__, i);
+        print(result);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+    return result;
 }
 
 template <typename T>
@@ -54,7 +63,16 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
 
     const int byte_offset = i*stride(arr,0) + j*stride(arr,1);
 
-    return *data_at_byte_offset(arr, byte_offset);
+    T& result = *data_at_byte_offset(arr, byte_offset);
+#if FP_CHECK
+    if (!isfinite(result)) {
+        printf("%s:%d - index(arr, %d, %d) = ", __FILE__, __LINE__, i, j);
+        print(result);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+    return result;
 }
 
 template <typename T>
@@ -69,7 +87,16 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
                             j*stride(arr,1) +
                             k*stride(arr,2);
        
-    return *data_at_byte_offset(arr, byte_offset);
+    T& result = *data_at_byte_offset(arr, byte_offset);
+#if FP_CHECK
+    if (!isfinite(result)) {
+        printf("%s:%d - index(arr, %d, %d, %d) = ", __FILE__, __LINE__, i, j, k);
+        print(result);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+    return result;
 }
 
 template <typename T>
@@ -86,7 +113,16 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
                             k*stride(arr,2) + 
                             l*stride(arr,3);
 
-    return *data_at_byte_offset(arr, byte_offset);
+    T& result = *data_at_byte_offset(arr, byte_offset);
+#if FP_CHECK
+    if (!isfinite(result)) {
+        printf("%s:%d - index(arr, %d, %d, %d, %d) = ", __FILE__, __LINE__, i, j, k, l);
+        print(result);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+    return result;
 }
 
 template <typename T>
@@ -153,10 +189,58 @@ template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i, i
 template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i, int j, int k, int l) { return index(buf, i, j, k, l); }
 
 
-template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, T value) { index(buf, i) = value; }
-template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, T value) { index(buf, i, j) = value; }
-template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, int k, T value) { index(buf, i, j, k) = value; }
-template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, int k, int l, T value) { index(buf, i, j, k, l) = value; }
+template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, T value)
+{
+#if FP_CHECK
+    if (!isfinite(value))
+    {
+        printf("%s:%d - store(arr, %d, ", __FILE__, __LINE__, i);
+        print(value);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+    index(buf, i) = value;
+}
+template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, T value)
+{
+#if FP_CHECK
+    if (!isfinite(value))
+    {
+        printf("%s:%d - store(arr, %d, %d, ", __FILE__, __LINE__, i, j);
+        print(value);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+    index(buf, i, j) = value;
+}
+template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, int k, T value)
+{
+#if FP_CHECK
+    if (!isfinite(value))
+    {
+        printf("%s:%d - store(arr, %d, %d, %d, ", __FILE__, __LINE__, i, j, k);
+        print(value);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+    index(buf, i, j, k) = value;
+}
+template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int i, int j, int k, int l, T value)
+{
+#if FP_CHECK
+    if (!isfinite(value))
+    {
+        printf("%s:%d - store(arr, %d, %d, %d, %d, ", __FILE__, __LINE__, i, j, k, l);
+        print(value);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+    index(buf, i, j, k, l) = value;
+}
 
 
 // for float and vector types this is just an alias for an atomic add
@@ -180,19 +264,216 @@ template<typename T> inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, i
 template<typename T> inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, int j, int k, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, const T& adj_output) { if (adj_buf.data) { adj_atomic_add(&index(adj_buf, i, j, k), adj_output); } }
 template<typename T> inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, int j, int k, int l, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int & adj_l, const T& adj_output) { if (adj_buf.data) { adj_atomic_add(&index(adj_buf, i, j, k, l), adj_output); } }
 
-template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value) { if(adj_buf.data) adj_value += index(adj_buf, i); }
-template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value) { if(adj_buf.data) adj_value += index(adj_buf, i, j); }
-template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value) { if(adj_buf.data) adj_value += index(adj_buf, i, j, k); }
-template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value) { if(adj_buf.data) adj_value += index(adj_buf, i, j, k, l); }
+template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value)
+{
+    if (adj_buf.data)
+        adj_value += index(adj_buf, i);
+#if FP_CHECK
+    if (!isfinite(value) || !isfinite(adj_value))
+    {
+        printf("%s:%d - adj_store(arr, %d, ", __FILE__, __LINE__, i);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value)
+{
+    if (adj_buf.data)
+        adj_value += index(adj_buf, i, j);
+#if FP_CHECK
+    if (!isfinite(value) || !isfinite(adj_value))
+    {
+        printf("%s:%d - adj_store(arr, %d, %d, ", __FILE__, __LINE__, i, j);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value)
+{
+    if (adj_buf.data)
+        adj_value += index(adj_buf, i, j, k);
+#if FP_CHECK
+    if (!isfinite(value) || !isfinite(adj_value))
+    {
+        printf("%s:%d - adj_store(arr, %d, %d, %d, ", __FILE__, __LINE__, i, j, k);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value)
+{
+    if (adj_buf.data)
+        adj_value += index(adj_buf, i, j, k, l);
+#if FP_CHECK
+    if (!isfinite(value) || !isfinite(adj_value))
+    {
+        printf("%s:%d - adj_store(arr, %d, %d, %d, %d, ", __FILE__, __LINE__, i, j, k, l);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
 
-template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) { if(adj_buf.data) adj_value += index(adj_buf, i); }
-template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) { if(adj_buf.data) adj_value += index(adj_buf, i, j); }
-template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) { if(adj_buf.data) adj_value += index(adj_buf, i, j, k); }
-template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) { if(adj_buf.data) adj_value += index(adj_buf, i, j, k, l); }
+template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
+{
+    if (adj_buf.data)
+        adj_value += index(adj_buf, i);
+#if FP_CHECK
+    if (!isfinite(adj_value) || !isfinite(adj_ret))
+    {
+        printf("%s:%d - adj_atomic_add(arr, %d, ", __FILE__, __LINE__, i);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(", ");
+        print(adj_ret);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
+{
+    if (adj_buf.data)
+        adj_value += index(adj_buf, i, j);
+#if FP_CHECK
+    if (!isfinite(adj_value) || !isfinite(adj_ret))
+    {
+        printf("%s:%d - adj_atomic_add(arr, %d, %d, ", __FILE__, __LINE__, i, j);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(", ");
+        print(adj_ret);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
+{
+    if (adj_buf.data)
+        adj_value += index(adj_buf, i, j, k);
+#if FP_CHECK
+    if (!isfinite(adj_value) || !isfinite(adj_ret))
+    {
+        printf("%s:%d - adj_atomic_add(arr, %d, %d, %d, ", __FILE__, __LINE__, i, j, k);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(", ");
+        print(adj_ret);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
+{
+    if (adj_buf.data)
+        adj_value += index(adj_buf, i, j, k, l);
+#if FP_CHECK
+    if (!isfinite(adj_value) || !isfinite(adj_ret))
+    {
+        printf("%s:%d - adj_atomic_add(arr, %d, %d, %d, %d, ", __FILE__, __LINE__, i, j, k, l);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(", ");
+        print(adj_ret);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
 
-template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) { if(adj_buf.data) adj_value -= index(adj_buf, i); }
-template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) { if(adj_buf.data) adj_value -= index(adj_buf, i, j); }
-template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) { if(adj_buf.data) adj_value -= index(adj_buf, i, j, k); }
-template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) { if(adj_buf.data) adj_value -= index(adj_buf, i, j, k, l); }
+
+template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
+{
+    if (adj_buf.data)
+        adj_value -= index(adj_buf, i);
+#if FP_CHECK
+    if (!isfinite(adj_value) || !isfinite(adj_ret))
+    {
+        printf("%s:%d - adj_atomic_sub(arr, %d, ", __FILE__, __LINE__, i);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(", ");
+        print(adj_ret);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
+{
+    if (adj_buf.data)
+        adj_value -= index(adj_buf, i, j);
+#if FP_CHECK
+    if (!isfinite(adj_value) || !isfinite(adj_ret))
+    {
+        printf("%s:%d - adj_atomic_sub(arr, %d, %d, ", __FILE__, __LINE__, i, j);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(", ");
+        print(adj_ret);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
+{
+    if (adj_buf.data)
+        adj_value -= index(adj_buf, i, j, k);
+#if FP_CHECK
+    if (!isfinite(adj_value) || !isfinite(adj_ret))
+    {
+        printf("%s:%d - adj_atomic_sub(arr, %d, %d, %d, ", __FILE__, __LINE__, i, j, k);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(", ");
+        print(adj_ret);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
+{
+    if (adj_buf.data)
+        adj_value -= index(adj_buf, i, j, k, l);
+#if FP_CHECK
+    if (!isfinite(adj_value) || !isfinite(adj_ret))
+    {
+        printf("%s:%d - adj_atomic_sub(arr, %d, %d, %d, %d, ", __FILE__, __LINE__, i, j, k, l);
+        print(value);
+        printf(", ");
+        print(adj_value);
+        printf(", ");
+        print(adj_ret);
+        printf(")\n");
+        assert(0);
+    }
+#endif
+}
 
 } // namespace wp
