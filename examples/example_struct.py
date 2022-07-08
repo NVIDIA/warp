@@ -1,27 +1,71 @@
+# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+###########################################################################
+# Example Struct
+#
+# Shows how to define a custom struct and use it during gradient computation
+#
+###########################################################################
+
+import os
+import numpy as np
 import warp as wp
+import warp.sim
+import warp.sim.render
 
 wp.init()
 
-
 @wp.struct
-class State:
-    test: float
-    particle_q: wp.array(dtype=wp.vec3)
-    particle_qd: wp.array(dtype=wp.vec3)
-
-
-arr = wp.zeros(10, dtype=wp.vec3, device="cuda")
-state = State()
-state.test = 0.01
-state.particle_q = arr
+class TestStruct:
+    x: wp.vec3
+    a: wp.array(dtype=wp.vec3)
+    b: wp.array(dtype=wp.vec3)
 
 
 @wp.kernel
-def test_print(state: State, arr: wp.array(dtype=wp.vec3)):
-    state.particle_q[0] = wp.vec3(1.0, 1.0, 1.0)
-    print(state.test)
+def test_kernel(s: TestStruct):
+    tid = wp.tid()
+
+    s.b[tid] = s.a[tid] + s.x
 
 
-wp.launch(kernel=test_print, dim=1, inputs=[state, arr], outputs=[], device="cuda")
-wp.synchronize()
-print(state.particle_q)
+@wp.kernel
+def loss_kernel(s: TestStruct, 
+                loss: wp.array(dtype=float)):
+    
+    tid = wp.tid()
+    
+    v = s.b[tid]
+    wp.atomic_add(loss, 0, float(tid + 1) * (v[0] + 2.0 * v[1] + 3.0 * v[2]))
+
+device = wp.get_preferred_device()
+
+# create struct
+ts = TestStruct()
+
+# set members
+ts.x = wp.vec3(1.0, 2.0, 3.0)
+ts.a = wp.array(
+    np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
+    dtype=wp.vec3,
+    device=device,
+    requires_grad=True,
+)
+ts.b = wp.zeros(2, dtype=wp.vec3, device=device, requires_grad=True)
+
+loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+tape = wp.Tape()
+with tape:
+    wp.launch(test_kernel, dim=2, inputs=[ts], device=device)
+    wp.launch(loss_kernel, dim=2, inputs=[ts, loss], device=device)
+
+tape.backward(loss)
+
+print(loss)
+print(tape.gradients[ts].a)

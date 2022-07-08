@@ -23,7 +23,6 @@ import warp.sim
 import warp.sim.render
 
 wp.init()
-wp.config.verify_cuda = True
 
 class Robot:
 
