@@ -653,6 +653,23 @@ inline CUDA_CALLABLE spatial_matrix sub(const spatial_matrix& a, const spatial_m
     return out;
 }
 
+inline CUDA_CALLABLE spatial_matrix mul(const spatial_matrix& a, float b)
+{
+    spatial_matrix out;
+
+    for (int i=0; i < 6; ++i)
+    {
+        for (int j=0; j < 6; ++j)
+        {
+            for (int k=0; k < 6; ++k)
+            {
+                out.data[i][j] += a.data[i][k]*b;
+            }
+        }
+    }
+    return out;
+}
+
 
 inline CUDA_CALLABLE spatial_vector mul(const spatial_matrix& a, const spatial_vector& b)
 {

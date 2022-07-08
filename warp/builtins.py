@@ -676,6 +676,7 @@ add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int
 add_builtin("index", input_types={"a": vec2, "i": int}, value_type=float,  group="Utility")
 add_builtin("index", input_types={"a": vec3, "i": int}, value_type=float,  group="Utility")
 add_builtin("index", input_types={"a": vec4, "i": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": quat, "i": int}, value_type=float,  group="Utility")
 
 add_builtin("index", input_types={"a": mat22, "i": int}, value_type=vec2,  group="Utility")
 add_builtin("index", input_types={"a": mat22, "i": int, "j": int}, value_type=float,  group="Utility")
