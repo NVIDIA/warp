@@ -16,6 +16,7 @@ Scalar Types
 .. autoclass:: uint32
 .. autoclass:: int64
 .. autoclass:: uint64
+.. autoclass:: float16
 .. autoclass:: float32
 .. autoclass:: float64
 Vector Types
@@ -152,6 +153,16 @@ Scalar Math
 .. function:: log(x: float32) -> float
 
    Return the natural log (base-e) of x, where x is positive.
+
+
+.. function:: log2(x: float32) -> float
+
+   Return the natural log (base-2) of x, where x is positive.
+
+
+.. function:: log10(x: float32) -> float
+
+   Return the natural log (base-10) of x, where x is positive.
 
 
 .. function:: exp(x: float32) -> float
@@ -733,6 +744,36 @@ Utility
    Atomically subtract ``value`` onto the array at location given by indices.
 
 
+.. function:: index(a: vec2, i: int32) -> float
+
+
+.. function:: index(a: vec3, i: int32) -> float
+
+
+.. function:: index(a: vec4, i: int32) -> float
+
+
+.. function:: index(a: quat, i: int32) -> float
+
+
+.. function:: index(a: mat22, i: int32) -> vec2
+
+
+.. function:: index(a: mat22, i: int32, j: int32) -> float
+
+
+.. function:: index(a: mat33, i: int32) -> vec3
+
+
+.. function:: index(a: mat33, i: int32, j: int32) -> float
+
+
+.. function:: index(a: mat44, i: int32) -> vec4
+
+
+.. function:: index(a: mat44, i: int32, j: int32) -> float
+
+
 .. function:: expect_eq(arg1: int8, arg2: int8) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -769,6 +810,11 @@ Utility
 
 
 .. function:: expect_eq(arg1: uint64, arg2: uint64) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: float16, arg2: float16) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
@@ -831,6 +877,11 @@ Utility
 .. function:: expect_eq(arg1: spatial_matrix, arg2: spatial_matrix) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: lerp(a: float16, b: float16, t: float32) -> float16
+
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
 .. function:: lerp(a: float32, b: float32, t: float32) -> float32
@@ -1238,6 +1289,15 @@ Operators
 
 
 .. function:: mul(x: float32, y: quat) -> quat
+
+
+.. function:: mul(x: float32, y: mat22) -> mat22
+
+
+.. function:: mul(x: float32, y: mat33) -> mat33
+
+
+.. function:: mul(x: float32, y: mat44) -> mat44
 
 
 .. function:: mul(x: vec2, y: float32) -> vec2
