@@ -13,7 +13,7 @@ from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64,
 from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix
 from warp.types import Mesh, HashGrid, Volume, MarchingCubes
 
-from warp.context import init, func, kernel, runtime
+from warp.context import init, func, kernel, struct, runtime
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
 from warp.context import zeros, zeros_like, clone, empty, empty_like, copy, from_numpy, launch, synchronize, force_load

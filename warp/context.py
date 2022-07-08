@@ -305,6 +305,15 @@ def kernel(f):
     return k
 
 
+# decorator to register struct, @struct
+def struct(c):
+
+    m = get_module(c.__module__)
+    s = warp.codegen.Struct(cls=c, key=c.__name__, module=m)
+
+    return s
+
+
 builtin_functions = {}
 
 
@@ -403,7 +412,10 @@ class ModuleBuilder:
     def codegen_cpu(self):
 
         cpp_source = ""
-        cu_source = ""
+
+        # code-gen structs
+        for struct in self.module.structs:
+            cpp_source += warp.codegen.codegen_struct(struct)
 
         # code-gen all imported functions
         for func in self.functions.keys():
@@ -423,6 +435,10 @@ class ModuleBuilder:
     def codegen_cuda(self):
 
         cu_source = ""
+
+        # code-gen structs
+        for struct in self.module.structs:
+            cu_source += warp.codegen.codegen_struct(struct)
 
         # code-gen all imported functions
         for func in self.functions.keys():
@@ -452,6 +468,7 @@ class Module:
         self.kernels = {}
         self.functions = []
         self.constants = []
+        self.structs = []
 
         self.dll = None
         self.cuda = None
@@ -460,6 +477,9 @@ class Module:
 
         self.options = {"max_unroll": 16,
                         "mode": warp.config.mode}
+
+    def register_struct(self, struct):
+        self.structs.append(struct)
 
     def register_kernel(self, kernel):
 
@@ -485,6 +505,11 @@ class Module:
     def hash_module(self):
         
         h = hashlib.sha256()
+
+        # struct source
+        for struct in self.structs:
+            s = inspect.getsource(struct.cls)
+            h.update(bytes(s, 'utf-8'))
 
         # functions source
         for func in self.functions:
@@ -1092,6 +1117,10 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                             raise RuntimeError(f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={a.device}.")
                         
                         params.append(a.__ctype__())
+
+                elif (isinstance(arg_type, warp.codegen.Struct)):
+                    assert a is not None
+                    params.append(a._c_struct_)
 
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):

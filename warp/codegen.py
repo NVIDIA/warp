@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from __future__ import annotations
+
 import os
 import re
 import sys
@@ -52,6 +54,86 @@ builtin_operators[ast.LtE] = "<="
 builtin_operators[ast.Eq] = "=="
 builtin_operators[ast.NotEq] = "!="
 
+class StructInstance:
+    def __init__(self, struct: Struct):
+        self.__dict__['_struct_'] = struct
+        self.__dict__['_c_struct_'] = struct.ctype()
+
+    def __setattr__(self, name, value):
+        assert name in self._struct_.vars, "invalid struct member variable {}".format(name)
+        if isinstance(self._struct_.vars[name].type, array):
+            # wp.array
+            assert isinstance(value, array)
+            assert value.dtype == self._struct_.vars[name].type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(name, self._struct_.vars[name].type.dtype, value.dtype)
+            setattr(self._c_struct_, name, value.__ctype__())
+        elif issubclass(self._struct_.vars[name].type, ctypes.Array):
+            # array type e.g. vec3
+            setattr(self._c_struct_, name, self._struct_.vars[name].type(*value))
+        else:
+            # primitive type
+            setattr(self._c_struct_, name, self._struct_.vars[name].type._type_(value))
+
+        self.__dict__[name] = value
+
+    def __repr__(self):
+        lines = []
+        for k, v in self.__dict__.items():
+            if not k.startswith('_'):
+                lines.append(' ' * 4 + f"{k}: {v.__repr__()}")
+        return "StructInstance(\n" + "\n".join(lines) + "\n)\n"
+
+
+class Struct:
+    def __init__(self, cls, key, module):
+        self.cls = cls
+        self.module = module
+        self.key = key
+
+        self.vars = {}
+        for label, type in self.cls.__annotations__.items():
+            if type == float:
+                type = float32
+            elif type == int:
+                type = int32
+            self.vars[label] = Var(label, type)
+
+        fields = []
+        for label, var in self.vars.items():
+            if isinstance(var.type, array):
+                fields.append((label, array_t))
+            elif issubclass(var.type, ctypes.Array):
+                fields.append((label, var.type))
+            else:
+                fields.append((label, var.type._type_))
+
+        class StructType(ctypes.Structure):
+            _fields_ = fields
+
+        self.ctype = StructType
+
+        if (module):
+            module.register_struct(self)
+
+    def __call__(self):
+        '''
+        This function returns s = StructInstance(self)
+        s uses self.cls as template.
+        To enable autocomplete on s, we inherit from self.cls.
+        For example,
+
+        @wp.struct
+        class A:
+            # annotations
+            ...
+
+        The type annotations are inherited in A(), allowing autocomplete in kernels
+        '''
+        # return StructInstance(self)
+
+        class NewStructInstance(self.cls, StructInstance):
+            def __init__(inst):
+                StructInstance.__init__(inst, self)
+        return NewStructInstance()
 
 class Var:
     def __init__(self, label, type, requires_grad=False, constant=None):
@@ -74,6 +156,8 @@ class Var:
         if (isinstance(self.type, array)):
             #return str(self.type.dtype.__name__) + "*"
             return f"array_t<{str(self.type.dtype.__name__)}>"
+        if (isinstance(self.type, Struct)):
+            return self.type.cls.__name__
         else:
             return str(self.type.__name__)
 
@@ -737,6 +821,11 @@ class Adjoint:
 
                 if key in adj.symbols:
                     return adj.symbols[key]
+                elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
+                    # access struct attribute
+                    out = Var(key, adj.symbols[node.value.id].type.vars[node.attr].type)
+                    adj.symbols[key] = out
+                    return adj.symbols[key]
                 else:
 
                     # try and resolve to either a wp.constant
@@ -1225,6 +1314,14 @@ using namespace wp;
 
 '''
 
+struct_template = '''
+struct {name}
+{{
+{struct_body}
+}};
+
+'''
+
 cpu_function_template = '''
 // {filename}:{lineno}
 static {return_type} {name}({forward_args})
@@ -1403,6 +1500,20 @@ def indent(args, stops=1):
 # generates a C function name based on the python function name
 def make_func_name(func):
     return re.sub('[^0-9a-zA-Z_]+', '', func.__qualname__.replace('.', '__'))
+
+def codegen_struct(struct, indent=4):
+    body = []
+    indent_block = " " * indent
+    for label, var in struct.vars.items():
+        assert not (isinstance(var.type, Struct))
+
+        body.append(var.ctype() + " " + label + ";\n")
+
+    return struct_template.format(
+        name=struct.cls.__name__,
+        struct_body="".join([indent_block + l for l in body])
+    )
+
 
 def codegen_func_forward_body(adj, device='cpu', indent=4):
     body = []
