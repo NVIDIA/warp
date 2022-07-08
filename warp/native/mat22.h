@@ -83,7 +83,10 @@ inline CUDA_CALLABLE mat22 atomic_add(mat22 * addr, mat22 value) {
 
 inline CUDA_CALLABLE void adj_mat22(float m00, float m01, float m10, float m11, float& adj_m00, float& adj_m01, float& adj_m10, float& adj_m11, const mat22& adj_ret)
 {
-    printf("todo\n");
+    adj_m00 += adj_ret.data[0][0];
+    adj_m01 += adj_ret.data[0][1];
+    adj_m10 += adj_ret.data[1][0];
+    adj_m11 += adj_ret.data[1][1];
 }
 
 inline CUDA_CALLABLE vec2 index(const mat22& m, int row)
@@ -277,8 +280,20 @@ inline CUDA_CALLABLE void adj_add(const mat22& a, const mat22& b, mat22& adj_a, 
     {
         for (int j=0; j < 2; ++j)
         {
-            adj_a.data[i][j] = adj_ret.data[i][j];
-            adj_b.data[i][j] = adj_ret.data[i][j];
+            adj_a.data[i][j] += adj_ret.data[i][j];
+            adj_b.data[i][j] += adj_ret.data[i][j];
+        }
+    }
+}
+
+inline CUDA_CALLABLE void adj_sub(const mat22& a, const mat22& b, mat22& adj_a, mat22& adj_b, const mat22& adj_ret)
+{
+    for (int i=0; i < 2; ++i)
+    {
+        for (int j=0; j < 2; ++j)
+        {
+            adj_a.data[i][j] += adj_ret.data[i][j];
+            adj_b.data[i][j] -= adj_ret.data[i][j];
         }
     }
 }

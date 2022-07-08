@@ -16,12 +16,13 @@
 - Remove custom CUB version and improve compatability with CUDA 11.7
 - Fix to preserve external user-gradients when calling `wp.Tape.zero()`
 - Fix to only allocate gradient of a Torch tensor if `requires_grad=True`
+- Fix for missing `wp.mat22` constructor adjoint
 - Fix for ray-cast precision in edge case on GPU (watertightness issue)
 - Fix for kernel hot-reload when definition changes
 - Fix for NVCC warnings on Linux
 - Fix for generated function names when kernels are defined as class functions 
 - Fix for reload of generated CPU kernel code on Linux
-- Fix for example scripts to output USD at 60 timecodes per-second (better Kit compatability)
+- Fix for example scripts to output USD at 60 timecodes per-second (better Kit compatibility)
 
 
 ## [0.2.3] - 2022-06-13

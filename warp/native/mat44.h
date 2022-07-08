@@ -643,6 +643,19 @@ inline CUDA_CALLABLE void adj_add(const mat44& a, const mat44& b, mat44& adj_a, 
     }
 }
 
+inline CUDA_CALLABLE void adj_sub(const mat44& a, const mat44& b, mat44& adj_a, mat44& adj_b, const mat44& adj_ret)
+{
+    for (int i=0; i < 4; ++i)
+    {
+        for (int j=0; j < 4; ++j)
+        {
+            adj_a.data[i][j] += adj_ret.data[i][j];
+            adj_b.data[i][j] -= adj_ret.data[i][j];
+        }
+    }
+}
+
+
 inline CUDA_CALLABLE void adj_mul(const mat44& a, float b, mat44& adj_a, float& adj_b, const mat44& adj_ret)
 {
     for (int i=0; i < 4; ++i)
