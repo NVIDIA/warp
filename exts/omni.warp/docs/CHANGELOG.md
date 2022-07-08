@@ -21,7 +21,7 @@
 - Fix for NVCC warnings on Linux
 - Fix for generated function names when kernels are defined as class functions 
 - Fix for reload of generated CPU kernel code on Linux
-- Fix for example scripts to ouput USD at 60 timecodes per-second (better Kit compatability)
+- Fix for example scripts to output USD at 60 timecodes per-second (better Kit compatability)
 
 
 ## [0.2.3] - 2022-06-13
