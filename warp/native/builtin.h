@@ -286,7 +286,6 @@ inline CUDA_CALLABLE void adj_sign(int x, int adj_x, int& adj_ret) { }
 inline CUDA_CALLABLE void adj_clamp(int x, int a, int b, int& adj_x, int& adj_a, int& adj_b, int adj_ret) { }
 inline CUDA_CALLABLE void adj_floordiv(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
 
-
 // basic ops for float types
 inline CUDA_CALLABLE float mul(float a, float b) { return a*b; }
 inline CUDA_CALLABLE float div(float a, float b)
@@ -326,6 +325,33 @@ inline CUDA_CALLABLE float log(float a)
 #endif
     return logf(a);
 }
+
+inline CUDA_CALLABLE float log2(float a) 
+{
+#if FP_CHECK
+    if (!isfinite(a) || a < 0.0f)
+    {
+        printf("%s:%d log2(%f)\n", __FILE__, __LINE__, a);
+        assert(0);
+    }
+#endif
+
+    return log2f(a);    
+}
+inline CUDA_CALLABLE float log10(float a) 
+{
+#if FP_CHECK
+    if (!isfinite(a) || a < 0.0f)
+    {
+        printf("%s:%d log10(%f)\n", __FILE__, __LINE__, a);
+        assert(0);
+    }
+#endif
+
+    return log10f(a); 
+}
+
+
 inline CUDA_CALLABLE float exp(float a)
 {
     float result = expf(a);
@@ -434,6 +460,33 @@ inline CUDA_CALLABLE void adj_log(float a, float& adj_a, float adj_ret)
     }
 #endif
 }
+
+inline CUDA_CALLABLE void adj_log2(float a, float& adj_a, float adj_ret) 
+{ 
+    adj_a += (1.f/a)*(1.f/log(2.f))*adj_ret; 
+    
+#if FP_CHECK
+    if (!isfinite(adj_a))
+    {
+        printf("%s:%d - adj_log2(%f, %f, %f)\n", __FILE__, __LINE__, a, adj_a, adj_ret);
+        assert(0);
+    }
+#endif    
+}
+
+inline CUDA_CALLABLE void adj_log10(float a, float& adj_a, float adj_ret)
+{
+    adj_a += (1.f/a)*(1.f/log(10.f))*adj_ret; 
+    
+#if FP_CHECK
+    if (!isfinite(adj_a))
+    {
+        printf("%s:%d - adj_log10(%f, %f, %f)\n", __FILE__, __LINE__, a, adj_a, adj_ret);
+        assert(0);
+    }
+#endif
+}
+
 inline CUDA_CALLABLE void adj_exp(float a, float& adj_a, float adj_ret) { adj_a += exp(a)*adj_ret; }
 inline CUDA_CALLABLE void adj_pow(float a, float b, float& adj_a, float& adj_b, float adj_ret)
 { 

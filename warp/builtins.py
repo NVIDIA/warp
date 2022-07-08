@@ -47,6 +47,8 @@ add_builtin("cosh", input_types={"x": float}, value_type=float, doc="Return the 
 add_builtin("tanh", input_types={"x": float}, value_type=float, doc="Return the tanh of x.", group="Scalar Math")
 
 add_builtin("log", input_types={"x": float}, value_type=float, doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
+add_builtin("log2", input_types={"x": float}, value_type=float, doc="Return the natural log (base-2) of x, where x is positive.", group="Scalar Math")
+add_builtin("log10", input_types={"x": float}, value_type=float, doc="Return the natural log (base-10) of x, where x is positive.", group="Scalar Math")
 add_builtin("exp", input_types={"x": float}, value_type=float, doc="Return base-e exponential, e^x.", group="Scalar Math")
 add_builtin("pow", input_types={"x": float, "y": float}, value_type=float, doc="Return the result of x raised to power of y.", group="Scalar Math")
 
