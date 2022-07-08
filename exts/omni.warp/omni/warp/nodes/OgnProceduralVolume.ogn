@@ -1,0 +1,48 @@
+{
+    "OgnProceduralVolume": {
+        "version": 1,
+        "description": "Generates a procedural volume",
+        "language": "Python",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Execution input",
+                "default": 0
+            },
+            "dim_x": {
+                "type": "int",
+                "description": "Number of voxels in x-axis",
+                "default": 64
+            },
+            "dim_y": {
+                "type": "int",
+                "description": "Number of voxels in y-axis",
+                "default": 64
+            },
+            "dim_z": {
+                "type": "int",
+                "description": "Number of voxels in z-axis",
+                "default": 64
+            },
+            "time": {
+                "type": "float",
+                "description": "Time parameter",
+                "default": 0.0
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Execution output",
+                "default": 0
+            },
+            "volume": {
+                "type": "bundle",
+                "description": "Volume bundle"
+            }
+        },
+        "state": {
+            "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
+        }
+    }
+}
