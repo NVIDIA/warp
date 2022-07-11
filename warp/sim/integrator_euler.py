@@ -395,26 +395,28 @@ def eval_triangles_contact(
     num_particles: int,                # size of particles
     x: wp.array(dtype=wp.vec3),
     v: wp.array(dtype=wp.vec3),
-    indices: wp.array(dtype=int),
+    indices: wp.array2d(dtype=int),
     pose: wp.array(dtype=wp.mat22),
     activation: wp.array(dtype=float),
-    k_mu: float,
-    k_lambda: float,
-    k_damp: float,
-    k_drag: float,
-    k_lift: float,
+    materials: wp.array2d(dtype=float),     
     f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
     face_no = tid // num_particles     # which face
     particle_no = tid % num_particles  # which particle
 
+    k_mu = materials[face_no,0]
+    k_lambda = materials[face_no,1]
+    k_damp = materials[face_no,2]
+    k_drag = materials[face_no,3]
+    k_lift = materials[face_no,4]
+
     # at the moment, just one particle
     pos = x[particle_no]
 
-    i = indices[face_no * 3 + 0]
-    j = indices[face_no * 3 + 1]
-    k = indices[face_no * 3 + 2]
+    i = indices[face_no, 0]
+    j = indices[face_no, 1]
+    k = indices[face_no, 2]
 
     if (i == particle_no or j == particle_no or k == particle_no):
         return
@@ -1467,7 +1469,7 @@ def compute_forces(model, state, particle_f, body_f):
                     device=model.device)
 
     # triangle/triangle contacts
-    if (model.enable_tri_collisions and model.tri_count and model.tri_ke > 0.0):
+    if (model.enable_tri_collisions and model.tri_count):
 
         wp.launch(kernel=eval_triangles_contact,
                     dim=model.tri_count * model.particle_count,
@@ -1478,11 +1480,7 @@ def compute_forces(model, state, particle_f, body_f):
                         model.tri_indices,
                         model.tri_poses,
                         model.tri_activations,
-                        model.tri_ke,
-                        model.tri_ka,
-                        model.tri_kd,
-                        model.tri_drag,
-                        model.tri_lift
+                        model.tri_materials
                     ],
                     outputs=[particle_f],
                     device=model.device)
