@@ -809,6 +809,20 @@ def mesh_get_index(id: uint64, index: int32) -> int:
    ...
 
 @overload
+def closest_point_edge_edge(p1: vec3, q1: vec3, p2: vec3, q2: vec3, epsilon: float32) -> vec3:
+   """
+   Finds the closest points between two edges. Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
+
+      :param p1: First point of first edge
+      :param q1: Second point of first edge
+      :param p2: First point of second edge
+      :param q2: Second point of second edge
+      :param epsilon: Zero tolerance for determining if points in an edge are degenerate.
+      :param out: vec3 output containing (s,t,d), where `s` in [0,1] is the barycentric weight for the first edge, `t` is the barycentric weight for the second edge, and `d` is the distance between the two edges at these two closest points.
+   """
+   ...
+
+@overload
 def volume_sample_f(id: uint64, uvw: vec3, sampling_mode: int32) -> float:
    """
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``

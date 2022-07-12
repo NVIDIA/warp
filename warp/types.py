@@ -1086,8 +1086,14 @@ class MarchingCubes:
         # destroy surfacer
         self.free(self.id)
 
-    def resize():
-        pass
+    def resize(self, nx: int, ny: int, nz: int, max_verts: int, max_tris: int):
+        
+        # actual allocations will be resized on next call to surface()
+        self.nx = nx
+        self.ny = ny
+        self.nz = nz
+        self.max_verts = max_verts
+        self.max_tris = max_tris
 
 
     def surface(self, field: array(dtype=float), threshold: float):
