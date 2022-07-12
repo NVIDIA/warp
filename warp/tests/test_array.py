@@ -150,6 +150,44 @@ def test_4d(test, device):
         wp.launch(kernel_4d, dim=arr.size, inputs=[arr, dim_x, dim_y, dim_z, dim_w], device=device)
         
 
+@wp.kernel
+def kernel_4d_transposed(a: wp.array(dtype=int, ndim=4), m: int, n: int, o: int, p: int):
+
+    i = wp.tid()//(n*o*p)
+    j = wp.tid()%(n*o*p)//(o*p)
+    k = wp.tid()%(o*p)/p
+    l = wp.tid()%p
+
+    wp.expect_eq(a[l,k,j,i], wp.tid())
+    wp.expect_eq(a[l][k][j][i], wp.tid())
+
+
+def test_4d_transposed(test, device):
+    
+    dim_x = 16
+    dim_y = 8
+    dim_z = 4
+    dim_w = 2
+
+    a = np.arange(0, dim_x*dim_y*dim_z*dim_w, dtype=np.int32)
+    a = a.reshape(dim_x, dim_y, dim_z, dim_w)
+    
+    arr = wp.array(a, device=device)
+
+    # Transpose the array manually, as using the wp.array() constructor with arr.T would make it contiguous first
+    a_T = a.T
+    arr_T = wp.array(
+        dtype=arr.dtype, shape=a_T.shape, strides=a_T.__array_interface__["strides"],
+        capacity=arr.capacity, ptr=arr.ptr, owner=False, requires_grad=arr.requires_grad, device=device)
+
+    test.assertFalse(arr_T.is_contiguous)
+    test.assertEqual(arr_T.shape, a_T.shape)
+    test.assertEqual(arr_T.strides, a_T.__array_interface__["strides"])
+    test.assertEqual(arr_T.size, a_T.size)
+    test.assertEqual(arr_T.ndim, a_T.ndim)
+
+    with CheckOutput(test):
+        wp.launch(kernel_4d_transposed, dim=arr_T.size, inputs=[arr_T, dim_x, dim_y, dim_z, dim_w], device=device)
 
 
 def register(parent):
@@ -163,6 +201,7 @@ def register(parent):
     add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)
     add_function_test(TestArray, "test_3d_array", test_3d, devices=devices)
     add_function_test(TestArray, "test_4d_array", test_4d, devices=devices)
+    add_function_test(TestArray, "test_4d_array_transposed", test_4d_transposed, devices=devices)
 
     return TestArray
 

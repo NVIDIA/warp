@@ -5,7 +5,7 @@ from typing import Tuple
 from typing import Callable
 from typing import overload
 from warp.types import array, array2d, array3d, array4d, constant
-from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix
 from warp.types import mesh_query_aabb_t, hash_grid_query_t
 
@@ -175,6 +175,20 @@ def tanh(x: float32) -> float:
 def log(x: float32) -> float:
    """
    Return the natural log (base-e) of x, where x is positive.
+   """
+   ...
+
+@overload
+def log2(x: float32) -> float:
+   """
+   Return the natural log (base-2) of x, where x is positive.
+   """
+   ...
+
+@overload
+def log10(x: float32) -> float:
+   """
+   Return the natural log (base-10) of x, where x is positive.
    """
    ...
 
@@ -795,6 +809,20 @@ def mesh_get_index(id: uint64, index: int32) -> int:
    ...
 
 @overload
+def closest_point_edge_edge(p1: vec3, q1: vec3, p2: vec3, q2: vec3, epsilon: float32) -> vec3:
+   """
+   Finds the closest points between two edges. Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
+
+      :param p1: First point of first edge
+      :param q1: Second point of first edge
+      :param p2: First point of second edge
+      :param q2: Second point of second edge
+      :param epsilon: Zero tolerance for determining if points in an edge are degenerate.
+      :param out: vec3 output containing (s,t,d), where `s` in [0,1] is the barycentric weight for the first edge, `t` is the barycentric weight for the second edge, and `d` is the distance between the two edges at these two closest points.
+   """
+   ...
+
+@overload
 def volume_sample_f(id: uint64, uvw: vec3, sampling_mode: int32) -> float:
    """
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
@@ -1092,6 +1120,76 @@ def atomic_sub(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
    ...
 
 @overload
+def index(a: vec2, i: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: vec3, i: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: vec4, i: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: quat, i: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: mat22, i: int32) -> vec2:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: mat22, i: int32, j: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: mat33, i: int32) -> vec3:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: mat33, i: int32, j: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: mat44, i: int32) -> vec4:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: mat44, i: int32, j: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
 def expect_eq(arg1: int8, arg2: int8):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -1142,6 +1240,13 @@ def expect_eq(arg1: int64, arg2: int64):
 
 @overload
 def expect_eq(arg1: uint64, arg2: uint64):
+   """
+   Prints an error to stdout if arg1 and arg2 are not equal
+   """
+   ...
+
+@overload
+def expect_eq(arg1: float16, arg2: float16):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
    """
@@ -1228,6 +1333,13 @@ def expect_eq(arg1: spatial_vector, arg2: spatial_vector):
 def expect_eq(arg1: spatial_matrix, arg2: spatial_matrix):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
+   """
+   ...
+
+@overload
+def lerp(a: float16, b: float16, t: float32) -> float16:
+   """
+   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """
    ...
 
@@ -1513,6 +1625,27 @@ def mul(x: float32, y: vec4) -> vec4:
 
 @overload
 def mul(x: float32, y: quat) -> quat:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float32, y: mat22) -> mat22:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float32, y: mat33) -> mat33:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float32, y: mat44) -> mat44:
    """
 
    """

@@ -43,25 +43,27 @@ class Robot:
     def __init__(self, render=True, num_envs=1, device='cpu'):
 
         builder = wp.sim.ModelBuilder()
+        articulation_builder = wp.sim.ModelBuilder()
 
         self.device = device
         self.render = render
 
         self.num_envs = num_envs
 
-        for i in range(num_envs):
+        wp.sim.parse_mjcf(os.path.join(os.path.dirname(__file__), "assets/nv_humanoid.xml"), articulation_builder,
+            stiffness=0.0,
+            damping=0.1,
+            armature=0.007,
+            armature_scale=10.0,
+            contact_ke=1.e+4,
+            contact_kd=1.e+2,
+            contact_kf=1.e+2,
+            contact_mu=0.5,
+            limit_ke=1.e+2,
+            limit_kd=1.e+1)
 
-            wp.sim.parse_mjcf(os.path.join(os.path.dirname(__file__), "assets/nv_humanoid.xml"), builder,
-                stiffness=0.0,
-                damping=0.1,
-                armature=0.007,
-                armature_scale=10.0,
-                contact_ke=1.e+4,
-                contact_kd=1.e+2,
-                contact_kf=1.e+2,
-                contact_mu=0.5,
-                limit_ke=1.e+2,
-                limit_kd=1.e+1)
+        for i in range(num_envs):
+            builder.add_rigid_articulation(articulation_builder)
  
             coord_count = 28 
             dof_count = 27

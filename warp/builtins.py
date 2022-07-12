@@ -47,6 +47,8 @@ add_builtin("cosh", input_types={"x": float}, value_type=float, doc="Return the 
 add_builtin("tanh", input_types={"x": float}, value_type=float, doc="Return the tanh of x.", group="Scalar Math")
 
 add_builtin("log", input_types={"x": float}, value_type=float, doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
+add_builtin("log2", input_types={"x": float}, value_type=float, doc="Return the natural log (base-2) of x, where x is positive.", group="Scalar Math")
+add_builtin("log10", input_types={"x": float}, value_type=float, doc="Return the natural log (base-10) of x, where x is positive.", group="Scalar Math")
 add_builtin("exp", input_types={"x": float}, value_type=float, doc="Return base-e exponential, e^x.", group="Scalar Math")
 add_builtin("pow", input_types={"x": float, "y": float}, value_type=float, doc="Return the result of x raised to power of y.", group="Scalar Math")
 
@@ -439,6 +441,16 @@ add_builtin("mesh_get_index", input_types={"id": uint64, "index": int}, value_ty
     doc="""Returns the point-index of the mesh given a face-vertex index.""")
 
 
+add_builtin("closest_point_edge_edge", input_types={"p1":vec3, "q1":vec3, "p2":vec3, "q2":vec3, "epsilon":float}, value_type=vec3, group="Geometry",
+    doc="""Finds the closest points between two edges. Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
+
+   :param p1: First point of first edge
+   :param q1: Second point of first edge
+   :param p2: First point of second edge
+   :param q2: Second point of second edge
+   :param epsilon: Zero tolerance for determining if points in an edge are degenerate.
+   :param out: vec3 output containing (s,t,d), where `s` in [0,1] is the barycentric weight for the first edge, `t` is the barycentric weight for the second edge, and `d` is the distance between the two edges at these two closest points.""")
+
 #---------------------------------
 # Ranges
 
@@ -671,7 +683,20 @@ add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
 # used to index into builtin types, i.e.: y = vec3[1]
-add_builtin("index", variadic=True, hidden=True, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": vec2, "i": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": vec3, "i": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": vec4, "i": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": quat, "i": int}, value_type=float,  group="Utility")
+
+add_builtin("index", input_types={"a": mat22, "i": int}, value_type=vec2,  group="Utility")
+add_builtin("index", input_types={"a": mat22, "i": int, "j": int}, value_type=float,  group="Utility")
+
+add_builtin("index", input_types={"a": mat33, "i": int}, value_type=vec3,  group="Utility")
+add_builtin("index", input_types={"a": mat33, "i": int, "j": int}, value_type=float,  group="Utility")
+
+add_builtin("index", input_types={"a": mat44, "i": int}, value_type=vec4,  group="Utility")
+add_builtin("index", input_types={"a": mat44, "i": int, "j": int}, value_type=float,  group="Utility")
+
 
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
@@ -715,6 +740,9 @@ add_builtin("mul", input_types={"x": float, "y": vec2}, value_type=vec2, doc="",
 add_builtin("mul", input_types={"x": float, "y": vec3}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": vec4}, value_type=vec4, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": quat}, value_type=quat, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": mat22}, value_type=mat22, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": mat33}, value_type=mat33, doc="", group="Operators")
+add_builtin("mul", input_types={"x": float, "y": mat44}, value_type=mat44, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec2, "y": float}, value_type=vec2, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec3, "y": float}, value_type=vec3, doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec4, "y": float}, value_type=vec4, doc="", group="Operators")

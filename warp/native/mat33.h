@@ -77,7 +77,7 @@ struct mat33
 
 inline CUDA_CALLABLE bool operator==(const mat33& a, const mat33& b)
 {
-    for(int i=0; i < 3; ++i)
+    for (int i=0; i < 3; ++i)
         for (int j=0; j < 3; ++j)
             if (a.data[i][j] != b.data[i][j])
                 return false;
@@ -132,10 +132,45 @@ inline CUDA_CALLABLE void adj_mat33(float m00, float m01, float m02,
     printf("todo\n");
 }
 
+inline bool CUDA_CALLABLE isfinite(const mat33& m)
+{
+    for (int i=0; i < 3; ++i)
+        for (int j=0; j < 3; ++j)
+            if (!::isfinite(m.data[i][j]))
+                return false;
+    return true;
+}
+
 inline CUDA_CALLABLE float index(const mat33& m, int row, int col)
 {
+#if FP_CHECK
+    if (row < 0 || row > 2)
+    {
+        printf("mat33 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col > 2)
+    {
+        printf("mat33 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
     return m.data[row][col];
 }
+
+
+inline CUDA_CALLABLE vec3 index(const mat33& m, int row)
+{
+    return vec3(m.data[row][0], m.data[row][1], m.data[row][2]);
+}
+
+inline CUDA_CALLABLE void adj_index(const mat33& m, int row, mat33& adj_m, int& adj_row, const vec3& adj_ret)
+{
+    adj_m.data[row][0] += adj_ret[0];
+    adj_m.data[row][1] += adj_ret[1];
+    adj_m.data[row][2] += adj_ret[2];
+}
+
 
 inline CUDA_CALLABLE mat33 add(const mat33& a, const mat33& b)
 {
@@ -293,6 +328,18 @@ inline CUDA_CALLABLE mat33 skew(const vec3& a)
 
 inline void CUDA_CALLABLE adj_index(const mat33& m, int row, int col, mat33& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {
+#if FP_CHECK
+    if (row < 0 || row > 2)
+    {
+        printf("mat33 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col > 2)
+    {
+        printf("mat33 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
     adj_m.data[row][col] += adj_ret;
 }
 

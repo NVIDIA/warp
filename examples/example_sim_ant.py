@@ -48,18 +48,27 @@ class Robot:
 
         self.num_envs = num_envs
 
+        builder = wp.sim.ModelBuilder()
+
+        articulation_builder = wp.sim.ModelBuilder()
+
+        wp.sim.parse_mjcf(os.path.join(os.path.dirname(__file__), "assets/nv_ant.xml"), articulation_builder,
+            stiffness=0.0,
+            damping=1.0,
+            armature=0.1,
+            contact_ke=1.e+4,
+            contact_kd=1.e+2,
+            contact_kf=1.e+4,
+            contact_mu=1.0,
+            limit_ke=1.e+4,
+            limit_kd=1.e+1)
+
+
         for i in range(num_envs):
 
-            wp.sim.parse_mjcf(os.path.join(os.path.dirname(__file__), "assets/nv_ant.xml"), builder,
-                stiffness=0.0,
-                damping=1.0,
-                armature=0.1,
-                contact_ke=1.e+4,
-                contact_kd=1.e+2,
-                contact_kf=1.e+4,
-                contact_mu=1.0,
-                limit_ke=1.e+4,
-                limit_kd=1.e+1)
+            builder.add_rigid_articulation(
+                articulation_builder,
+            )
 
             coord_count = 15
             dof_count = 14
@@ -69,7 +78,7 @@ class Robot:
 
             # set joint targets to rest pose in mjcf
 
-            # base
+            # # base
             builder.joint_q[coord_start:coord_start+3] = [i*2.0, 0.70, 0.0]
             builder.joint_q[coord_start+3:coord_start+7] = wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)
 

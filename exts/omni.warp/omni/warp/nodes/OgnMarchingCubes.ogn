@@ -1,0 +1,56 @@
+{
+    "OgnMarchingCubes": {
+        "version": 1,
+        "description": "Marching Cubes node",
+        "language": "Python",
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Execution input",
+                "default": 0
+            },
+            "volume": {
+                "type": "bundle",
+                "description": "Collision Prim"
+            },
+            "threshold": {
+                "type": "float",
+                "description": "Iso-value for the surface extraction",
+                "default": 0.0
+            },
+            "max_vertices": {
+                "type": "int",
+                "description": "Maximum number of vertices to produce",
+                "default": 1000000
+            },
+            "max_triangles": {
+                "type": "int",
+                "description": "Maximum number of triangles to produce",
+                "default": 1000000
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Execution output",
+                "default": 0
+            },
+            "points": {
+                "type": "pointf[3][]",
+                "description": "Particle positions"
+            },
+            "faceVertexCounts": {
+                "type": "int[]",
+                "description": "Triangle vertex counts"
+            },
+            "faceVertexIndices": {
+                "type": "int[]",
+                "description": "Triangle vertex indices"
+            }
+        },
+        "state": {
+            "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"
+        },
+        "tokens": ["points", "velocities", "worldMatrix", "primPath", "faceVertexCounts", "faceVertexIndices", "transform"]
+    }
+}

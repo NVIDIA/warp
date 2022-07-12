@@ -46,7 +46,7 @@ def from_torch(t, dtype=warp.types.float32):
         shape=shape,
         copy=False,
         owner=False,
-        requires_grad=True,
+        requires_grad=t.requires_grad,
         device=t.device.type)
 
     # save a reference to the source tensor, otherwise it will be deallocated

@@ -120,7 +120,7 @@ struct mat44
 
 inline CUDA_CALLABLE bool operator==(const mat44& a, const mat44& b)
 {
-    for(int i=0; i < 4; ++i)
+    for (int i=0; i < 4; ++i)
         for (int j=0; j < 4; ++j)
             if (a.data[i][j] != b.data[i][j])
                 return false;
@@ -164,6 +164,15 @@ inline CUDA_CALLABLE void adj_mat44(
     a3 += adj_ret.get_col(3);
 }
 
+inline bool CUDA_CALLABLE isfinite(const mat44& m)
+{
+    for (int i=0; i < 4; ++i)
+        for (int j=0; j < 4; ++j)
+            if (!::isfinite(m.data[i][j]))
+                return false;
+    return true;
+}
+
 inline CUDA_CALLABLE void adj_mat44(const vec3& pos, const quat& rot, const vec3& scale,
                                     vec3& adj_pos, quat& adj_rot, vec3& adj_scale, const mat44& adj_ret)
 {
@@ -205,8 +214,34 @@ inline CUDA_CALLABLE void adj_mat44(float m00, float m01, float m02, float m03,
 
 inline CUDA_CALLABLE float index(const mat44& m, int row, int col)
 {
+#if FP_CHECK
+    if (row < 0 || row > 3)
+    {
+        printf("mat44 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col > 3)
+    {
+        printf("mat44 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
     return m.data[row][col];
 }
+
+inline CUDA_CALLABLE vec4 index(const mat44& m, int row)
+{
+    return vec4(m.data[row][0], m.data[row][1], m.data[row][2], m.data[row][3]);
+}
+
+inline CUDA_CALLABLE void adj_index(const mat44& m, int row, mat44& adj_m, int& adj_row, const vec4& adj_ret)
+{
+    adj_m.data[row][0] += adj_ret[0];
+    adj_m.data[row][1] += adj_ret[1];
+    adj_m.data[row][2] += adj_ret[2];
+    adj_m.data[row][3] += adj_ret[3];
+}
+
 
 inline CUDA_CALLABLE mat44 add(const mat44& a, const mat44& b)
 {
@@ -581,6 +616,18 @@ inline CUDA_CALLABLE void adj_transform_vector(const mat44& m, const vec3& v, ma
 
 inline void CUDA_CALLABLE adj_index(const mat44& m, int row, int col, mat44& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {
+#if FP_CHECK
+    if (row < 0 || row > 3)
+    {
+        printf("mat44 row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+    if (col < 0 || col > 3)
+    {
+        printf("mat44 col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
     adj_m.data[row][col] += adj_ret;
 }
 
@@ -595,6 +642,19 @@ inline CUDA_CALLABLE void adj_add(const mat44& a, const mat44& b, mat44& adj_a, 
         }
     }
 }
+
+inline CUDA_CALLABLE void adj_sub(const mat44& a, const mat44& b, mat44& adj_a, mat44& adj_b, const mat44& adj_ret)
+{
+    for (int i=0; i < 4; ++i)
+    {
+        for (int j=0; j < 4; ++j)
+        {
+            adj_a.data[i][j] += adj_ret.data[i][j];
+            adj_b.data[i][j] -= adj_ret.data[i][j];
+        }
+    }
+}
+
 
 inline CUDA_CALLABLE void adj_mul(const mat44& a, float b, mat44& adj_a, float& adj_b, const mat44& adj_ret)
 {

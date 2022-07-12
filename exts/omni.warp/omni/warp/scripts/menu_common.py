@@ -54,6 +54,7 @@ SCENE_CLOTH_MENU_ITEM = "Warp/Scenes/Cloth"
 SCENE_DEFORM_MENU_ITEM = "Warp/Scenes/Deform"
 SCENE_PARTICLES_MENU_ITEM = "Warp/Scenes/Particles"
 SCENE_WAVE_MENU_ITEM = "Warp/Scenes/Wave"
+SCENE_MARCHING_MENU_ITEM = "Warp/Scenes/Marching Cubes"
 SCENE_BROWSE_MENU_ITEM = "Warp/Scenes/Browse"
 
 # EXAMPLE SCENES
@@ -61,3 +62,4 @@ SCENE_CLOTH = "example_cloth.usd"
 SCENE_DEFORM = "example_deform.usd"
 SCENE_PARTICLES = "example_particles.usd"
 SCENE_WAVE = "example_wave.usd"
+SCENE_MARCHING = "example_marching_cubes.usd"

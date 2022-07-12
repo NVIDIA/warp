@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## [0.3.1] - 2022-07-12
+
+- Fix for marching cubes reallocation after initialization
+- Add support for closest point between line segment tests, see `wp.closest_point_edge_edge()` builtin
+- Add support for per-triangle elasticity coefficients in simulation, see `wp.sim.ModelBuilder.add_cloth_mesh()`
+
+## [0.3.0] - 2022-07-08
+
+- Add support for FP16 storage type, see `wp.float16`
+- Add support for per-dimension byte strides, see `wp.array.strides`
+- Add support for passing Python classes as kernel arguments, see `@wp.struct` decorator
+- Add additional bounds checks for builtin matrix types
+- Add additional floating point checks, see `wp.config.verify_fp`
+- Add interleaved user source with generated code to aid debugging
+- Add generalized GPU marching cubes implementation, see `wp.MarchingCubes` class 
+- Add additional scalar*matrix vector operators
+- Add support for retrieving a single row from builtin types, e.g.: `r = m33[i]`
+- Add  `wp.log2()` and `wp.log10()` builtins
+- Add support for quickly instancing `wp.sim.ModelBuilder` objects to improve env. creation performance for RL
+- Remove custom CUB version and improve compatability with CUDA 11.7
+- Fix to preserve external user-gradients when calling `wp.Tape.zero()`
+- Fix to only allocate gradient of a Torch tensor if `requires_grad=True`
+- Fix for missing `wp.mat22` constructor adjoint
+- Fix for ray-cast precision in edge case on GPU (watertightness issue)
+- Fix for kernel hot-reload when definition changes
+- Fix for NVCC warnings on Linux
+- Fix for generated function names when kernels are defined as class functions 
+- Fix for reload of generated CPU kernel code on Linux
+- Fix for example scripts to output USD at 60 timecodes per-second (better Kit compatibility)
+
+
 ## [0.2.3] - 2022-06-13
 
 - Fix for incorrect 4d array bounds checking

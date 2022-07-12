@@ -66,7 +66,7 @@ def mesh_query_ray_loss(mesh: wp.uint64,
     loss[tid] = l
 
 
-def test_adj_mesh_query_ray(test, device):
+def test_mesh_query_ray_grad(test, device):
 
     from pxr import Usd, UsdGeom, Gf, Sdf
 
@@ -176,6 +176,78 @@ def test_adj_mesh_query_ray(test, device):
     test.assertTrue(error_p < tolerance, f"error is {error_p} which is >= {tolerance}")
     test.assertTrue(error_D < tolerance, f"error is {error_D} which is >= {tolerance}")
 
+
+
+@wp.kernel
+def raycast_kernel(mesh: wp.uint64,
+                ray_starts: wp.array(dtype=wp.vec3),
+                ray_directions: wp.array(dtype=wp.vec3),
+                ray_hits: wp.array(dtype=wp.vec3),
+                count: wp.array(dtype=int)):
+
+    t = float(0.0)                   # hit distance along ray
+    u = float(0.0)                   # hit face barycentric u
+    v = float(0.0)                   # hit face barycentric v
+    sign = float(0.0)                # hit face sign
+    n = wp.vec3()                    # hit face normal
+    f = int(0)                       # hit face index
+    max_dist = 1e6                   # max raycast disance
+
+    # ray cast against the mesh
+    tid = wp.tid()
+
+    if wp.mesh_query_ray(mesh, ray_starts[tid], ray_directions[tid], max_dist, t, u, v, sign, n, f):
+        wp.atomic_add(count, 0, 1)
+
+
+# tests rays against a quad of two connected triangles
+# with rays exactly falling on the edge, tests that
+# there are no leaks
+
+def test_mesh_query_ray_edge(test, device):
+
+    # Create raycast starts and directions
+    xx, yy = np.meshgrid(np.arange(0.1, 0.4, 0.01), np.arange(0.1, 0.4, 0.01))
+    xx = xx.flatten().reshape(-1, 1)
+    yy = yy.flatten().reshape(-1, 1)
+    zz = np.ones_like(xx)
+
+    ray_starts = np.concatenate((xx, yy, zz), axis=1)
+    ray_dirs = np.zeros_like(ray_starts)
+    ray_dirs[:, 2] = -1.0
+
+
+    # Create simple square mesh
+    vertices = np.array([[0., 0., 0.],
+                        [0., 0.5, 0.],
+                        [0.5, 0., 0.],
+                        [0.5, 0.5, 0.]], dtype=np.float32)
+
+    triangles = np.array([[1, 0, 2],
+                          [1, 2, 3]], dtype=np.int32)
+
+
+    mesh = wp.Mesh(points=wp.array(vertices, dtype=wp.vec3, device=device),
+                indices=wp.array(triangles.flatten(), dtype=int, device=device))
+    
+
+    counts = wp.zeros(1, dtype=int, device=device)
+
+    n = len(ray_starts)
+    
+    ray_starts = wp.array(ray_starts, shape=(n,), dtype=wp.vec3, device=device)
+    ray_dirs = wp.array(ray_dirs, shape=(n,), dtype=wp.vec3, device=device)
+    ray_hits = wp.zeros((n, ), dtype=wp.vec3, device=device)
+    
+    wp.launch(kernel=raycast_kernel,
+            dim=n,
+            inputs=[mesh.id, ray_starts, ray_dirs, ray_hits, counts],
+            device=device)
+    wp.synchronize()
+
+    test.assertEqual(counts.numpy()[0], n)
+
+
 def register(parent):
 
     devices = wp.get_devices()
@@ -183,8 +255,9 @@ def register(parent):
     class TestMeshQueryRay(parent):
         pass
 
-    add_function_test(TestMeshQueryRay, "test_adj_mesh_query_ray", test_adj_mesh_query_ray, devices=devices)
-
+    add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
+    add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
+    
     return TestMeshQueryRay
 
 if __name__ == '__main__':

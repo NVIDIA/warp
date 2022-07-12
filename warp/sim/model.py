@@ -273,9 +273,11 @@ class Model:
         self.tri_indices = None
         self.tri_poses = None
         self.tri_activations = None
+        self.tri_materials = None
 
         self.edge_indices = None
         self.edge_rest_angle = None
+        self.edge_bending_properties = None
 
         self.tet_indices = None
         self.tet_poses = None
@@ -318,14 +320,7 @@ class Model:
         self.soft_contact_kf = 1.e+3
         self.soft_contact_mu = 0.5
 
-        self.tri_ke = 100.0
-        self.tri_ka = 100.0
-        self.tri_kd = 10.0
-        self.tri_drag = 0.0
-        self.tri_lift = 0.0
-
-        self.edge_ke = 100.0
-        self.edge_kd = 0.0
+        self.edge_bending_properties = None
 
         self.particle_radius = 0.0
         self.particle_ke = 1.e+3
@@ -532,6 +527,17 @@ class ModelBuilder:
         than creating your own Model object directly, however it is possible to do so if 
         desired.
     """
+
+    default_tri_ke = 100.0
+    default_tri_ka = 100.0
+    default_tri_kd = 10.0
+    default_tri_drag = 0.0
+    default_tri_lift = 0.0
+
+    # Default edge bending properties
+    default_edge_ke = 100.0
+    default_edge_kd = 0.0
+
     
     def __init__(self):
 
@@ -563,10 +569,12 @@ class ModelBuilder:
         self.tri_indices = []
         self.tri_poses = []
         self.tri_activations = []
+        self.tri_materials = []
 
         # edges (bending)
         self.edge_indices = []
         self.edge_rest_angle = []
+        self.edge_bending_properties = []
 
         # tetrahedra
         self.tet_indices = []
@@ -628,6 +636,78 @@ class ModelBuilder:
     
     def add_articulation(self):
         self.articulation_start.append(self.joint_count)
+    
+    def add_rigid_articulation(self, articulation, xform=None):
+        """Copies a rigid articulation from `articulation`, another `ModelBuilder`.
+        
+        Args:
+            articulation: a model builder to add rigid articulation from.
+            xform: root position of this body (overrides that in the articulation_builder)
+        """
+
+        if xform is not None:
+            if articulation.joint_type[0] == wp.sim.JOINT_FREE:
+                start = articulation.joint_q_start[0]
+
+                articulation.joint_q[start + 0] = xform.p[0]
+                articulation.joint_q[start + 1] = xform.p[1]
+                articulation.joint_q[start + 2] = xform.p[2]
+
+                articulation.joint_q[start + 3] = xform.q[0]
+                articulation.joint_q[start + 4] = xform.q[1]
+                articulation.joint_q[start + 5] = xform.q[2]
+                articulation.joint_q[start + 6] = xform.q[3]
+            else:
+                articulation.joint_X_p[0] = xform
+
+        self.add_articulation() 
+
+        start_body_idx = len(self.body_mass)
+
+        # offset the indices
+        self.joint_parent.extend([p + self.joint_count if p != -1 else -1 for p in articulation.joint_parent])
+        self.joint_child.extend([c + self.joint_count for c in articulation.joint_child])
+
+        self.joint_q_start.extend([c + self.joint_coord_count for c in articulation.joint_q_start])
+        self.joint_qd_start.extend([c + self.joint_dof_count for c in articulation.joint_qd_start])
+
+        self.shape_body.extend([b + start_body_idx for b in articulation.shape_body])
+
+        rigid_articulation_attrs = [
+            "body_inertia",
+            "body_mass",
+            "body_com",
+            "body_q",
+            "body_qd",
+            "joint_type",
+            "joint_X_p",
+            "joint_X_c",
+            "joint_armature",
+            "joint_axis",
+            "joint_q",
+            "joint_qd",
+            "joint_act",
+            "joint_limit_lower",
+            "joint_limit_upper",
+            "joint_limit_ke",
+            "joint_limit_kd",
+            "joint_target_ke",
+            "joint_target_kd",
+            "joint_target",
+            "shape_transform",
+            "shape_geo_type",
+            "shape_geo_scale",
+            "shape_geo_src",
+            "shape_materials",
+        ]
+
+        for attr in rigid_articulation_attrs:
+            getattr(self, attr).extend(getattr(articulation, attr))
+        
+        self.joint_count += articulation.joint_count
+        self.joint_dof_count += articulation.joint_dof_count
+        self.joint_coord_count += articulation.joint_coord_count
+
 
     # register a rigid body and return its index.
     def add_body(
@@ -964,7 +1044,8 @@ class ModelBuilder:
 
         self.spring_rest_length.append(l)
 
-    def add_triangle(self, i : int, j : int, k : int) -> float:
+    def add_triangle(self, i : int, j : int, k : int, tri_ke : float=default_tri_ke, tri_ka : float=default_tri_ka, tri_kd :float=default_tri_kd, tri_drag : float=default_tri_drag, tri_lift : float = default_tri_lift) -> float:
+
         """Adds a trianglular FEM element between three particles in the system. 
 
         Triangles are modeled as viscoelastic elements with elastic stiffness and damping
@@ -1017,6 +1098,7 @@ class ModelBuilder:
             self.tri_indices.append((i, j, k))
             self.tri_poses.append(inv_D.tolist())
             self.tri_activations.append(0.0)
+            self.tri_materials.append((tri_ke, tri_ka, tri_kd, tri_drag, tri_lift))
             return area
 
     def add_tetrahedron(self, i: int, j: int, k: int, l: int, k_mu: float=1.e+3, k_lambda: float=1.e+3, k_damp: float=0.0) -> float:
@@ -1067,7 +1149,7 @@ class ModelBuilder:
 
         return volume
 
-    def add_edge(self, i: int, j: int, k: int, l: int, rest: float=None):
+    def add_edge(self, i: int, j: int, k: int, l: int, rest: float=None, edge_ke: float=default_edge_ke, edge_kd: float=default_edge_kd):
         """Adds a bending edge element between four particles in the system. 
 
         Bending elements are designed to be between two connected triangles. Then
@@ -1108,6 +1190,7 @@ class ModelBuilder:
 
         self.edge_indices.append((i, j, k, l))
         self.edge_rest_angle.append(rest)
+        self.edge_bending_properties.append((edge_ke, edge_kd))
 
     def add_cloth_grid(self,
                        pos: Vec3,
@@ -1122,7 +1205,14 @@ class ModelBuilder:
                        fix_left: bool=False,
                        fix_right: bool=False,
                        fix_top: bool=False,
-                       fix_bottom: bool=False):
+                       fix_bottom: bool=False,
+                       tri_ke: float=default_tri_ke,
+                       tri_ka: float=default_tri_ka,
+                       tri_kd: float=default_tri_kd,
+                       tri_drag: float=default_tri_drag,
+                       tri_lift: float=default_tri_lift, 
+                       edge_ke: float=default_edge_ke,
+                       edge_kd: float=default_edge_kd):
 
         """Helper to create a regular planar cloth grid
 
@@ -1182,8 +1272,8 @@ class ModelBuilder:
                                 start_vertex + grid_index(x, y, dim_x + 1),
                                 start_vertex + grid_index(x - 1, y, dim_x + 1))
 
-                        self.add_triangle(*tri1)
-                        self.add_triangle(*tri2)
+                        self.add_triangle(*tri1, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
+                        self.add_triangle(*tri2, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
                     else:
 
@@ -1195,8 +1285,8 @@ class ModelBuilder:
                                 start_vertex + grid_index(x, y, dim_x + 1),
                                 start_vertex + grid_index(x - 1, y, dim_x + 1))
 
-                        self.add_triangle(*tri1)
-                        self.add_triangle(*tri2)
+                        self.add_triangle(*tri1, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
+                        self.add_triangle(*tri2, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
         end_vertex = len(self.particle_q)
         end_tri = len(self.tri_indices)
@@ -1211,9 +1301,16 @@ class ModelBuilder:
             if (e.f0 == -1 or e.f1 == -1):
                 continue
 
-            self.add_edge(e.o0, e.o1, e.v0, e.v1)          # opposite 0, opposite 1, vertex 0, vertex 1
+            self.add_edge(e.o0, e.o1, e.v0, e.v1, edge_ke=edge_ke, edge_kd=edge_kd)          # opposite 0, opposite 1, vertex 0, vertex 1
 
-    def add_cloth_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, edge_callback=None, face_callback=None):
+    def add_cloth_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, edge_callback=None, face_callback=None,
+                       tri_ke: float=default_tri_ke,
+                       tri_ka: float=default_tri_ka,
+                       tri_kd: float=default_tri_kd,
+                       tri_drag: float=default_tri_drag,
+                       tri_lift: float=default_tri_lift,
+                       edge_ke: float=default_edge_ke,
+                       edge_kd: float=default_edge_kd):
         """Helper to create a cloth model from a regular triangle mesh
 
         Creates one FEM triangle element and one bending element for every face
@@ -1256,7 +1353,7 @@ class ModelBuilder:
             if (face_callback):
                 face_callback(i, j, k)
 
-            area = self.add_triangle(i, j, k)
+            area = self.add_triangle(i, j, k, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
             # add area fraction to particles
             if (area > 0.0):
@@ -1280,7 +1377,7 @@ class ModelBuilder:
             if (edge_callback):
                 edge_callback(e.f0, e.f1)
 
-            self.add_edge(e.o0, e.o1, e.v0, e.v1)
+            self.add_edge(e.o0, e.o1, e.v0, e.v1, edge_ke=edge_ke, edge_kd=edge_kd)
 
     def add_particle_grid(self,
                       pos: Vec3,
@@ -1323,7 +1420,12 @@ class ModelBuilder:
                       fix_left: bool=False,
                       fix_right: bool=False,
                       fix_top: bool=False,
-                      fix_bottom: bool=False):
+                      fix_bottom: bool=False,
+                      tri_ke: float=default_tri_ke,
+                      tri_ka: float=default_tri_ka,
+                      tri_kd: float=default_tri_kd,
+                      tri_drag: float=default_tri_drag,
+                      tri_lift: float=default_tri_lift):
         """Helper to create a rectangular tetrahedral FEM grid
 
         Creates a regular grid of FEM tetrhedra and surface triangles. Useful for example
@@ -1430,9 +1532,14 @@ class ModelBuilder:
 
         # add triangles
         for k, v in faces.items():
-            self.add_triangle(v[0], v[1], v[2])
+            self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
 
-    def add_soft_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, k_mu: float, k_lambda: float, k_damp: float):
+    def add_soft_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, k_mu: float, k_lambda: float, k_damp: float,
+                       tri_ke: float=default_tri_ke,
+                       tri_ka: float=default_tri_ka,
+                       tri_kd: float=default_tri_kd,
+                       tri_drag: float=default_tri_drag,
+                       tri_lift: float=default_tri_lift):
         """Helper to create a tetrahedral model from an input tetrahedral mesh
 
         Args:
@@ -1496,7 +1603,7 @@ class ModelBuilder:
         # add triangles
         for k, v in faces.items():
             try:
-                self.add_triangle(v[0], v[1], v[2])
+                self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
             except np.linalg.LinAlgError:
                 continue
 
@@ -1713,12 +1820,14 @@ class ModelBuilder:
         m.tri_indices = wp.array(self.tri_indices, dtype=wp.int32, device=device)
         m.tri_poses = wp.array(self.tri_poses, dtype=wp.mat22, device=device)
         m.tri_activations = wp.array(self.tri_activations, dtype=wp.float32, device=device)
+        m.tri_materials = wp.array(self.tri_materials, dtype=wp.float32, device=device)
 
         #---------------------
         # edges
 
         m.edge_indices = wp.array(self.edge_indices, dtype=wp.int32, device=device)
         m.edge_rest_angle = wp.array(self.edge_rest_angle, dtype=wp.float32, device=device)
+        m.edge_bending_properties = wp.array(self.edge_bending_properties, dtype=wp.float32, device=device)
 
         #---------------------
         # tetrahedra

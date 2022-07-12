@@ -165,7 +165,12 @@ class OgnCloth:
                                                    vel=(0.0, 0.0, 0.0),
                                                    vertices=world_positions,
                                                    indices=cloth_indices,
-                                                   density=density)
+                                                   density=density,
+                                                   tri_ke=db.inputs.k_tri_elastic,
+                                                   tri_ka=db.inputs.k_tri_area,
+                                                   tri_kd=db.inputs.k_tri_damp,
+                                                   edge_ke=db.inputs.k_edge_bend,
+                                                   edge_kd=db.inputs.k_edge_damp)
 
 
                             avg_mass = np.mean(builder.particle_mass)
@@ -225,15 +230,8 @@ class OgnCloth:
                 context.model.ground_plane = np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2], 0.0))
 
                 # stretch properties
-                context.model.tri_ke = db.inputs.k_tri_elastic
-                context.model.tri_ka = db.inputs.k_tri_area
-                context.model.tri_kd = db.inputs.k_tri_damp
                 context.model.gravity = db.inputs.gravity
                 
-                # bending properties
-                context.model.edge_ke = db.inputs.k_edge_bend
-                context.model.edge_kd = db.inputs.k_edge_damp
-
                 # contact properties
                 context.model.soft_contact_ke = db.inputs.k_contact_elastic
                 context.model.soft_contact_kd = db.inputs.k_contact_damp
@@ -250,8 +248,7 @@ class OgnCloth:
                         # swap prev/curr mesh positions
                         context.swap()
 
-                        # update current, todo: make this zero alloc and memcpy directly from numpy memory
-
+                        # update current
                         collider_points_host = wp.array(read_points_bundle(db.inputs.collider), dtype=wp.vec3, copy=False, device="cpu")
                         wp.copy(context.collider_positions_current, collider_points_host)
 

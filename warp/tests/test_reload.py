@@ -10,43 +10,73 @@ import warp as wp
 
 import math
 
+import warp as wp
+from warp.tests.test_base import *
+
+import unittest
+
+
 wp.init()
 
+def test_reload(test, device):
+        
 
-@wp.kernel
-def basic(x: wp.array(dtype=float)):
+    #--------------------------------------------
+    # first pass
+
+    @wp.kernel
+    def basic(x: wp.array(dtype=float)):
+        
+        tid = wp.tid()
+
+        x[tid] = float(tid)*1.0
+
+    n = 32
+
+    x = wp.zeros(n, dtype=float, device=device)
+
+    wp.launch(
+        kernel=basic, 
+        dim=n, 
+        inputs=[x], 
+        device=device)
+
+    #--------------------------------------------
+    # redefine kernel, should trigger a recompile
+
+    @wp.kernel
+    def basic(x: wp.array(dtype=float)):
+        
+        tid = wp.tid()
+
+        x[tid] = float(tid)*2.0
+        
+    y = wp.zeros(n, dtype=float, device=device)
+
+    wp.launch(
+        kernel=basic, 
+        dim=n, 
+        inputs=[y], 
+        device=device)
+
+
+    assert_np_equal(np.arange(0, n, 1), x.numpy())
+    assert_np_equal(np.arange(0, n, 1)*2.0, y.numpy())
+
     
-    tid = wp.tid()
-
-    x[tid] = float(tid)*1.0
 
 
-device = "cuda"
-n = 32
+def register(parent):
 
-x = wp.zeros(n, dtype=float, device="cuda")
+    devices = wp.get_devices()
 
-wp.launch(
-    kernel=basic, 
-    dim=n, 
-    inputs=[x], 
-    device=device)
-
-print(x.to("cpu").numpy())
-
-# redefine kernel
-@wp.kernel
-def basic(x: wp.array(dtype=float)):
+    class TestReload(parent):
+        pass
     
-    tid = wp.tid()
-
-    x[tid] = float(tid)*2.0
+    add_function_test(TestReload, "test_reload", test_reload, devices=devices)
     
+    return TestReload
 
-wp.launch(
-    kernel=basic, 
-    dim=n, 
-    inputs=[x], 
-    device=device)
-
-print(x.to("cpu").numpy())
+if __name__ == '__main__':
+    c = register(unittest.TestCase)
+    unittest.main(verbosity=2, failfast=False)

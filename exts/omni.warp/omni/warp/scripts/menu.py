@@ -120,6 +120,11 @@ class WarpMenu:
                 lambda _, value: self._on_scene_menu_click(menu_common.SCENE_WAVE),
                 toggle=False, value=False
             )
+            self._scene_MARCHING_menu_item = editor_menu.add_item(
+                f"Window/{menu_common.SCENE_MARCHING_MENU_ITEM}", 
+                lambda _, value: self._on_scene_menu_click(menu_common.SCENE_MARCHING),
+                toggle=False, value=False
+            )            
             self._scene_BROWSE_menu_item = editor_menu.add_item(
                 f"Window/{menu_common.SCENE_BROWSE_MENU_ITEM}", 
                 lambda _, value: self._on_browse_scenes_click(),

@@ -123,7 +123,7 @@ def find_cuda():
     
 
 # builds cuda->ptx using NVRTC
-def build_cuda(cu_path, ptx_path, config="release", force=False):
+def build_cuda(cu_path, arch, ptx_path, config="release", force=False, verify_fp=False):
 
     src_file = open(cu_path)
     src = src_file.read().encode('utf-8')
@@ -132,7 +132,7 @@ def build_cuda(cu_path, ptx_path, config="release", force=False):
     inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode('utf-8')
     ptx_path = ptx_path.encode('utf-8')
 
-    err = warp.context.runtime.core.cuda_compile_program(src, inc_path, False, warp.config.verbose, ptx_path)
+    err = warp.context.runtime.core.cuda_compile_program(src, arch, inc_path, False, warp.config.verbose, verify_fp, ptx_path)    
     if (err):
         raise Exception("CUDA build failed")
 
@@ -146,7 +146,7 @@ def load_cuda(ptx_path):
 def quote(path):
     return "\"" + path + "\""
 
-def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
+def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, force=False):
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
@@ -207,6 +207,8 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
 
     native_dir = os.path.join(warp_home, "native")
 
+    gencode_opts = "-gencode=arch=compute_52,code=compute_52 -gencode=arch=compute_70,code=compute_70"
+
     if os.name == 'nt':
 
         cpp_out = cpp_path + ".obj"
@@ -224,6 +226,9 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
         else:
             raise RuntimeError("Unrecognized build configuration (debug, release), got: {}".format(config))
 
+        if verify_fp:
+            cpp_flags += ' /D "WP_VERIFY_FP"'
+
 
         with ScopedTimer("build", active=warp.config.verbose):
             cpp_cmd = f'cl.exe {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
@@ -236,10 +241,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{native_dir}/cub" -I"{nanovdb_home}" -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {gencode_opts} -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 -gencode=arch=compute_52,code=compute_52  -I"{native_dir}" -I"{native_dir}/cub" -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {gencode_opts}  -I"{native_dir}" -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -264,6 +269,8 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
+        if verify_fp:
+            cpp_flags += ' -DWP_VERIFY_FP'
 
         with ScopedTimer("build", active=warp.config.verbose):
             build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
@@ -276,10 +283,11 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", force=False):
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info -gencode=arch=compute_52,code=compute_52 -DWP_CUDA -I"{native_dir}" -I"{native_dir}/cub" -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {gencode_opts} -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC -gencode=arch=compute_52,code=compute_52 --use_fast_math -DWP_CUDA -I"{native_dir}" -I"{native_dir}/cub" -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC {gencode_opts} --use_fast_math -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
+
 
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
@@ -302,19 +310,22 @@ def load_dll(dll_path):
     return dll
 
 def unload_dll(dll):
-    
+
     handle = dll._handle
     del dll
-   
+
+    # force garbage collection to eliminate any Python references to the dll
+    import gc
+    gc.collect()
+
     # platform dependent unload, removes *all* references to the dll
     # note this should only be performed if you know there are no dangling
     # refs to the dll inside the Python program
-    if (os.name == "nt"): 
-
+    if os.name == "nt":
         max_attempts = 100
         for i in range(max_attempts):
-            success = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
-            if (not success):
+            result = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
+            if result != 0:
                 return
     else:
         _ctypes.dlclose(handle)

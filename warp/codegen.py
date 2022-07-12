@@ -5,7 +5,10 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from __future__ import annotations
+
 import os
+import re
 import sys
 import imp
 import ast
@@ -51,6 +54,86 @@ builtin_operators[ast.LtE] = "<="
 builtin_operators[ast.Eq] = "=="
 builtin_operators[ast.NotEq] = "!="
 
+class StructInstance:
+    def __init__(self, struct: Struct):
+        self.__dict__['_struct_'] = struct
+        self.__dict__['_c_struct_'] = struct.ctype()
+
+    def __setattr__(self, name, value):
+        assert name in self._struct_.vars, "invalid struct member variable {}".format(name)
+        if isinstance(self._struct_.vars[name].type, array):
+            # wp.array
+            assert isinstance(value, array)
+            assert value.dtype == self._struct_.vars[name].type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(name, self._struct_.vars[name].type.dtype, value.dtype)
+            setattr(self._c_struct_, name, value.__ctype__())
+        elif issubclass(self._struct_.vars[name].type, ctypes.Array):
+            # array type e.g. vec3
+            setattr(self._c_struct_, name, self._struct_.vars[name].type(*value))
+        else:
+            # primitive type
+            setattr(self._c_struct_, name, self._struct_.vars[name].type._type_(value))
+
+        self.__dict__[name] = value
+
+    def __repr__(self):
+        lines = []
+        for k, v in self.__dict__.items():
+            if not k.startswith('_'):
+                lines.append(' ' * 4 + f"{k}: {v.__repr__()}")
+        return "StructInstance(\n" + "\n".join(lines) + "\n)\n"
+
+
+class Struct:
+    def __init__(self, cls, key, module):
+        self.cls = cls
+        self.module = module
+        self.key = key
+
+        self.vars = {}
+        for label, type in self.cls.__annotations__.items():
+            if type == float:
+                type = float32
+            elif type == int:
+                type = int32
+            self.vars[label] = Var(label, type)
+
+        fields = []
+        for label, var in self.vars.items():
+            if isinstance(var.type, array):
+                fields.append((label, array_t))
+            elif issubclass(var.type, ctypes.Array):
+                fields.append((label, var.type))
+            else:
+                fields.append((label, var.type._type_))
+
+        class StructType(ctypes.Structure):
+            _fields_ = fields
+
+        self.ctype = StructType
+
+        if (module):
+            module.register_struct(self)
+
+    def __call__(self):
+        '''
+        This function returns s = StructInstance(self)
+        s uses self.cls as template.
+        To enable autocomplete on s, we inherit from self.cls.
+        For example,
+
+        @wp.struct
+        class A:
+            # annotations
+            ...
+
+        The type annotations are inherited in A(), allowing autocomplete in kernels
+        '''
+        # return StructInstance(self)
+
+        class NewStructInstance(self.cls, StructInstance):
+            def __init__(inst):
+                StructInstance.__init__(inst, self)
+        return NewStructInstance()
 
 class Var:
     def __init__(self, label, type, requires_grad=False, constant=None):
@@ -73,6 +156,8 @@ class Var:
         if (isinstance(self.type, array)):
             #return str(self.type.dtype.__name__) + "*"
             return f"array_t<{str(self.type.dtype.__name__)}>"
+        if (isinstance(self.type, Struct)):
+            return self.type.cls.__name__
         else:
             return str(self.type.__name__)
 
@@ -105,12 +190,21 @@ class Adjoint:
         
         # build AST from function object
         adj.source = inspect.getsource(func)
+
+        # get source code lines and line number where function starts
+        adj.raw_source, adj.fun_lineno = inspect.getsourcelines(func)
+
+        # keep track of line number in function code
+        adj.lineno = None
         
         # ensures that indented class methods can be parsed as kernels
-        adj.source = textwrap.dedent(adj.source)    
+        adj.source = textwrap.dedent(adj.source)
+        
+        # extract name of source file
+        adj.filename = inspect.getsourcefile(func) or "unknown source file"
 
         # build AST
-        adj.tree = ast.parse(adj.source)
+        adj.tree = ast.parse(adj.source)                
 
         # parse argument types
         adj.arg_types = typing.get_type_hints(func)
@@ -575,6 +669,8 @@ class Adjoint:
     def eval(adj, node):
 
         try:
+            if hasattr(node, "lineno"):
+                adj.set_lineno(node.lineno-1)                
 
             # top level entry point for a function
             if (isinstance(node, ast.FunctionDef)):
@@ -724,6 +820,11 @@ class Adjoint:
                 key = attribute_to_str(node)
 
                 if key in adj.symbols:
+                    return adj.symbols[key]
+                elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
+                    # access struct attribute
+                    out = Var(key, adj.symbols[node.value.id].type.vars[node.attr].type)
+                    adj.symbols[key] = out
                     return adj.symbols[key]
                 else:
 
@@ -1037,7 +1138,7 @@ class Adjoint:
                     
                     for name, rhs in zip(names, out):
                         if (name in adj.symbols):
-                            if (rhs.type != adj.symbols[name].type):
+                            if not types_equal(rhs.type, adj.symbols[name].type):
                                 raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
 
                         adj.symbols[name] = rhs
@@ -1171,6 +1272,14 @@ class Adjoint:
         # reverse list since ast presents it backward order
         return [*reversed(modules)]
 
+    # annotate generated code with the original source code line
+    def set_lineno(adj, lineno):
+        if adj.lineno is None or adj.lineno != lineno:
+            line = lineno + adj.fun_lineno
+            source = adj.raw_source[lineno].strip().ljust(70)
+            adj.add_forward(f'// {source}       <L {line}>')
+            adj.add_reverse(f'// adj: {source}  <L {line}>')
+        adj.lineno = lineno
         
 
 #----------------
@@ -1185,7 +1294,6 @@ cpu_module_header = '''
 
 #define int(x) cast_int(x)
 #define adj_int(x, adj_x, adj_ret) adj_cast_int(x, adj_x, adj_ret)
-
 
 using namespace wp;
 
@@ -1206,28 +1314,40 @@ using namespace wp;
 
 '''
 
+struct_template = '''
+struct {name}
+{{
+{struct_body}
+}};
+
+'''
+
 cpu_function_template = '''
+// {filename}:{lineno}
 static {return_type} {name}({forward_args})
 {{
-    {forward_body}
+{forward_body}
 }}
 
+// {filename}:{lineno}
 static void adj_{name}({reverse_args})
 {{
-    {reverse_body}
+{reverse_body}
 }}
 
 '''
 
 cuda_function_template = '''
+// {filename}:{lineno}
 static CUDA_CALLABLE {return_type} {name}({forward_args})
 {{
-    {forward_body}
+{forward_body}
 }}
 
+// {filename}:{lineno}
 static CUDA_CALLABLE void adj_{name}({reverse_args})
 {{
-    {reverse_body}
+{reverse_body}
 }}
 
 '''
@@ -1242,7 +1362,7 @@ extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 
     set_launch_bounds(dim);
 
-    {forward_body}
+{forward_body}
 }}
 
 
@@ -1254,7 +1374,7 @@ extern "C" __global__ void {name}_cuda_kernel_backward({reverse_args})
 
     set_launch_bounds(dim);
 
-    {reverse_body}
+{reverse_body}
 }}
 
 '''
@@ -1263,12 +1383,12 @@ cpu_kernel_template = '''
 
 void {name}_cpu_kernel_forward({forward_args})
 {{
-    {forward_body}
+{forward_body}
 }}
 
 void {name}_cpu_kernel_backward({reverse_args})
 {{
-    {reverse_body}
+{reverse_body}
 }}
 
 '''
@@ -1376,6 +1496,23 @@ def indent(args, stops=1):
 
     #return sep + args.replace(", ", "," + sep)
     return sep.join(args)
+
+# generates a C function name based on the python function name
+def make_func_name(func):
+    return re.sub('[^0-9a-zA-Z_]+', '', func.__qualname__.replace('.', '__'))
+
+def codegen_struct(struct, indent=4):
+    body = []
+    indent_block = " " * indent
+    for label, var in struct.vars.items():
+        assert not (isinstance(var.type, Struct))
+
+        body.append(var.ctype() + " " + label + ";\n")
+
+    return struct_template.format(
+        name=struct.cls.__name__,
+        struct_body="".join([indent_block + l for l in body])
+    )
 
 
 def codegen_func_forward_body(adj, device='cpu', indent=4):
@@ -1506,12 +1643,14 @@ def codegen_func(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=adj.func.__name__,
+    s = template.format(name=make_func_name(adj.func),
                         return_type=return_type,
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
                         forward_body=forward_body,
-                        reverse_body=reverse_body)
+                        reverse_body=reverse_body,
+                        filename=adj.filename,
+                        lineno=adj.fun_lineno)
 
     return s
 

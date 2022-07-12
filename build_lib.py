@@ -18,6 +18,7 @@ parser.add_argument('--sdk_path', type=str, help='Path to WinSDK (optional if al
 parser.add_argument('--cuda_path', type=str, help='Path to CUDA SDK')
 parser.add_argument('--mode', type=str, default="release", help="Build configuration, either 'release' or 'debug'")
 parser.add_argument('--verbose', type=bool, default=True, help="Verbose building output, default True")
+parser.add_argument('--verify_fp', type=bool, default=False, help="Verify kernel inputs and outputs are finite after each launch, default False")
 args = parser.parse_args()
 
 # set build output path off this file
@@ -27,6 +28,7 @@ print(args)
 
 warp.config.verbose = args.verbose
 warp.config.mode = args.mode
+warp.config.verify_fp = args.verify_fp
 
 # setup CUDA paths
 if sys.platform == 'darwin':
@@ -75,6 +77,7 @@ try:
                         cu_path=None, 
                         dll_path=dll_path,
                         config=warp.config.mode,
+                        verify_fp=warp.config.verify_fp,
                         force=True)
 
     else:
@@ -84,6 +87,7 @@ try:
                         cu_path=os.path.join(build_path, "native/warp.cu"), 
                         dll_path=dll_path,
                         config=warp.config.mode,
+                        verify_fp=warp.config.verify_fp,
                         force=True)
                     
 except Exception as e:
