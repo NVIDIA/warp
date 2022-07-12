@@ -62,7 +62,12 @@ class Cloth:
                                dim_y=dim_y,
                                cell_x=1.0/dim_x,
                                cell_y=1.0/dim_y,
-                               mass=1.0)
+                               mass=1.0,
+                               tri_ke = 10000.0,
+                               tri_ka = 10000.0,
+                               tri_kd = 100.0,
+                               tri_lift = 10.0,
+                               tri_drag = 5.0)
 
 
         self.device = adapter
@@ -71,12 +76,12 @@ class Cloth:
         self.model = builder.finalize(adapter)
         self.model.ground = False
 
-        self.model.tri_ke = 10000.0
-        self.model.tri_ka = 10000.0
-        self.model.tri_kd = 100.0
-        self.model.tri_kb = 0.0
-        self.model.tri_lift = 10.0
-        self.model.tri_drag = 5.0
+        # self.model.tri_ke = 10000.0
+        # self.model.tri_ka = 10000.0
+        # self.model.tri_kd = 100.0
+        # self.model.tri_kb = 0.0
+        # self.model.tri_lift = 10.0
+        # self.model.tri_drag = 5.0
         
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
