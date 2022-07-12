@@ -38,8 +38,6 @@ class Example:
 
         self.radius = 0.1
 
-        self.device = wp.get_preferred_device()
-
         builder = wp.sim.ModelBuilder()
 
         builder.add_particle_grid(
@@ -55,7 +53,7 @@ class Example:
             mass=0.1,
             jitter=self.radius*0.1)
 
-        self.model = builder.finalize(self.device)
+        self.model = builder.finalize()
         self.model.particle_radius = self.radius
         self.model.particle_kf = 25.0
 

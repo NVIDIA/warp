@@ -76,6 +76,6 @@ void radix_sort_pairs_host(int* keys, int* values, int n)
 
 #if WP_DISABLE_CUDA
 
-void radix_sort_reserve(int n) {}
+void radix_sort_reserve(int n, void** mem_out, size_t* size_out) {}
 
 #endif // WP_DISABLE_CUDA

@@ -48,7 +48,7 @@ class Cloth:
     train_iters = 64
     train_rate = 5.0
 
-    def __init__(self, render=True, profile=False, adapter='cpu'):
+    def __init__(self, render=True, profile=False, adapter=None):
 
         builder = wp.sim.ModelBuilder()
 
@@ -70,10 +70,10 @@ class Cloth:
                                tri_drag = 5.0)
 
 
-        self.device = adapter
+        self.device = wp.get_device(adapter)
         self.profile = profile
 
-        self.model = builder.finalize(adapter)
+        self.model = builder.finalize(self.device)
         self.model.ground = False
 
         # self.model.tri_ke = 10000.0
@@ -86,8 +86,8 @@ class Cloth:
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         self.target = (8.0, 0.0, 0.0)
-        self.com = wp.zeros(1, dtype=wp.vec3, device=adapter, requires_grad=True)  
-        self.loss = wp.zeros(1, dtype=wp.float32, device=adapter, requires_grad=True)  
+        self.com = wp.zeros(1, dtype=wp.vec3, device=self.device, requires_grad=True)
+        self.loss = wp.zeros(1, dtype=wp.float32, device=self.device, requires_grad=True)
 
         # allocate sim states for trajectory
         self.states = []
@@ -230,6 +230,5 @@ class Cloth:
             tape.zero()
 
 
-bounce = Cloth(adapter="cuda", profile=False, render=True)
+bounce = Cloth(profile=False, render=True)
 bounce.train_graph('gd')
- 

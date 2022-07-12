@@ -44,8 +44,6 @@ class Example:
         self.lift_speed = 2.5/self.sim_duration*2.0 # from Smith et al.
         self.rot_speed = math.pi/self.sim_duration
 
-        self.device = wp.get_preferred_device()
-
         builder = wp.sim.ModelBuilder()
 
         cell_dim = 15
@@ -70,7 +68,7 @@ class Example:
             k_lambda=5000.0,
             k_damp=0.0)
 
-        self.model = builder.finalize(device=self.device)
+        self.model = builder.finalize()
         self.model.ground = False
         self.model.gravity[1] = 0.0
 
@@ -82,7 +80,7 @@ class Example:
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.volume = wp.zeros(1, dtype=wp.float32, device=self.device)
+        self.volume = wp.zeros(1, dtype=wp.float32)
 
         self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
@@ -91,7 +89,7 @@ class Example:
         with wp.ScopedTimer("simulate"):
 
             xform = (*(0.0, self.lift_speed*self.sim_time, 0.0), *wp.quat_from_axis_angle((0.0, 1.0, 0.0), self.rot_speed*self.sim_time))
-            wp.launch(kernel=self.twist_points, dim=len(self.state_0.particle_q), inputs=[self.rest.particle_q, self.state_0.particle_q, self.model.particle_mass, xform], device=self.device)
+            wp.launch(kernel=self.twist_points, dim=len(self.state_0.particle_q), inputs=[self.rest.particle_q, self.state_0.particle_q, self.model.particle_mass, xform])
 
             for s in range(self.sim_substeps):
 
@@ -105,7 +103,7 @@ class Example:
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
             self.volume.zero_()
-            wp.launch(kernel=self.compute_volume, dim=self.model.tet_count, inputs=[self.state_0.particle_q, self.model.tet_indices, self.volume], device=self.device)
+            wp.launch(kernel=self.compute_volume, dim=self.model.tet_count, inputs=[self.state_0.particle_q, self.model.tet_indices, self.volume])
 
     def render(self, is_live=False):
             

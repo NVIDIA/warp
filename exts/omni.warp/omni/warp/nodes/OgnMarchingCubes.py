@@ -39,21 +39,21 @@ class OgnMarchingCubes:
 
             state = db.internal_state
         
-            with wp.ScopedCudaGuard():
+            with wp.ScopedDevice("cuda:0"):
 
                 dim = (db.inputs.volume.attribute_by_name("dim_x").value,
                        db.inputs.volume.attribute_by_name("dim_y").value,
                        db.inputs.volume.attribute_by_name("dim_z").value) 
 
                 if state.mc == None:
-                    state.mc = wp.MarchingCubes(dim[0], dim[1], dim[2], db.inputs.max_vertices, db.inputs.max_triangles, device="cuda")
+                    state.mc = wp.MarchingCubes(dim[0], dim[1], dim[2], db.inputs.max_vertices, db.inputs.max_triangles)
 
                 # resize in case any dimensions changed    
                 state.mc.resize(dim[0], dim[1], dim[2], db.inputs.max_vertices, db.inputs.max_triangles)
 
                 # alias the incoming memory to a Warp array
                 ptr = db.inputs.volume.attribute_by_name("data").value
-                field = wp.array(ptr=ptr, dtype=float, shape=dim, owner=False, device="cuda")
+                field = wp.array(ptr=ptr, dtype=float, shape=dim, owner=False)
 
                 with wp.ScopedTimer("Surface Extraction", active=False):
                     state.mc.surface(field, db.inputs.threshold)

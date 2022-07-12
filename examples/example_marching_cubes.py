@@ -103,14 +103,13 @@ class Example:
 
         self.time = 0.0
 
-        self.field = wp.zeros(shape=(self.dim, self.dim, self.dim), dtype=float, device="cuda")
+        self.field = wp.zeros(shape=(self.dim, self.dim, self.dim), dtype=float)
         
         self.iso = wp.MarchingCubes(nx=self.dim,
                                     ny=self.dim,
                                     nz=self.dim,
                                     max_verts=self.max_verts,
-                                    max_tris=self.max_tris,
-                                    device="cuda")
+                                    max_tris=self.max_tris)
 
         self.renderer = wp.render.UsdRenderer(stage)
 
@@ -120,7 +119,7 @@ class Example:
     def render(self, is_live=False):
 
         with wp.ScopedTimer("Update Field"):
-            wp.launch(make_field, dim=self.field.shape, inputs=[self.field, wp.vec3(self.dim/2, self.dim/2, self.dim/2), self.dim/4, self.time], device="cuda")
+            wp.launch(make_field, dim=self.field.shape, inputs=[self.field, wp.vec3(self.dim/2, self.dim/2, self.dim/2), self.dim/4, self.time])
 
         with wp.ScopedTimer("Surface Extraction"):
             self.iso.surface(field=self.field, threshold=math.sin(self.time)*self.dim/8)

@@ -10,6 +10,7 @@ import math
 import timeit
 import cProfile
 import numpy as np
+from typing import Union
 
 import warp as wp
 
@@ -499,18 +500,53 @@ def lame_parameters(E, nu):
 
     return (l, mu)
 
+# **Deprecated: use ScopedDevice instead
 # ensures that correct CUDA is set for the guards lifetime
 # restores the previous CUDA context on exit
 class ScopedCudaGuard:
 
     def __init__(self):
-        pass
+        import warnings
+        warnings.warn("ScopedCudaGuard is deprecated, use ScopedDevice instead")
+
+        if wp.context.runtime.cuda_devices:
+            self.device = wp.context.runtime.initial_cuda_device
+        else:
+            self.device = None
 
     def __enter__(self):
-        wp.runtime.core.cuda_acquire_context()
+        if self.device is not None:
+            self.device.context_guard.__enter__()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        wp.runtime.core.cuda_restore_context()
+        if self.device is not None:
+            self.device.context_guard.__exit__(exc_type, exc_value, traceback)
+
+
+class ScopedDevice:
+
+    def __init__(self, device):
+        
+        self.device = wp.get_device(device)
+
+    def __enter__(self):
+
+        # save the previous default device
+        self.saved_device = self.device.runtime.default_device
+
+        # make this the default device
+        self.device.runtime.default_device = self.device
+
+        # make it the current CUDA device so that device alias "cuda" will evaluate to this device
+        self.device.context_guard.__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+
+        # restore original CUDA context
+        self.device.context_guard.__exit__(exc_type, exc_value, traceback)
+
+        # restore original target device
+        self.device.runtime.default_device = self.saved_device
 
 
 # timer utils

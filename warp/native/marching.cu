@@ -438,7 +438,7 @@ WP_API int marching_cubes_surface_device(
 
     int num_verts;
     memcpy_d2h(&num_verts, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
-    synchronize();
+    cuda_context_synchronize();
     
     num_verts += num_last;
 
@@ -467,7 +467,7 @@ WP_API int marching_cubes_surface_device(
 
     int num_indices;
     memcpy_d2h(&num_indices, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
-    synchronize();
+    cuda_context_synchronize();
 
     num_indices += num_last;
 

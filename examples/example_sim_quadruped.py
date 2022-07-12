@@ -38,12 +38,12 @@ class Robot:
     sim_time = 0.0
     render_time = 0.0
 
-    def __init__(self, render=True, num_envs=1, device='cpu'):
+    def __init__(self, render=True, num_envs=1, device=None):
 
         builder = wp.sim.ModelBuilder()
         articulation_builder = wp.sim.ModelBuilder()
 
-        self.device = device
+        self.device = wp.get_device(device)
         self.render = render
 
         self.num_envs = num_envs
@@ -82,7 +82,7 @@ class Robot:
                                           0.2, -0.4, 0.6]
         np.set_printoptions(suppress=True)
         # finalize model
-        self.model = builder.finalize(device)
+        self.model = builder.finalize(self.device)
         self.model.ground = True
 
         self.model.joint_attach_ke = 16000.0
@@ -194,5 +194,5 @@ if profile:
 
 else:
 
-    robot = Robot(render=True, device=wp.get_preferred_device(), num_envs=10)
+    robot = Robot(render=True, num_envs=10)
     robot.run()

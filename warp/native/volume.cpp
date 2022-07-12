@@ -62,7 +62,7 @@ void volume_rem_descriptor(uint64_t id)
 
 // Creates a volume on the specified device
 // NB: buf must be a pointer on the same device
-template<Device device>
+template<DeviceType device>
 uint64_t volume_create(void* buf, uint64_t size)
 {
     if (size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t)) { // This cannot be a valid NanoVDB grid with data
@@ -70,8 +70,8 @@ uint64_t volume_create(void* buf, uint64_t size)
     }
 
     VolumeDesc volumeDesc;
-    memcpy<device, Device::CPU>(&volumeDesc.grid_data, buf, sizeof(pnanovdb_grid_t));
-    memcpy<device, Device::CPU>(&volumeDesc.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
+    memcpy<device, DeviceType::CPU>(&volumeDesc.grid_data, buf, sizeof(pnanovdb_grid_t));
+    memcpy<device, DeviceType::CPU>(&volumeDesc.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
 
     if (volumeDesc.grid_data.magic != PNANOVDB_MAGIC_NUMBER) {
         return 0;
@@ -93,16 +93,16 @@ uint64_t volume_create(void* buf, uint64_t size)
 
 uint64_t volume_create_host(void* buf, uint64_t size)
 {
-    return volume_create<Device::CPU>(buf, size);
+    return volume_create<DeviceType::CPU>(buf, size);
 }
 
 uint64_t volume_create_device(void* buf, uint64_t size)
 {
-    return volume_create<Device::CUDA>(buf, size);
+    return volume_create<DeviceType::CUDA>(buf, size);
 }
 
 
-template<Device device>
+template<DeviceType device>
 void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 {
     *buf = 0;
@@ -117,15 +117,15 @@ void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 
 void volume_get_buffer_info_host(uint64_t id, void** buf, uint64_t* size)
 {
-    volume_get_buffer_info<Device::CPU>(id, buf, size);
+    volume_get_buffer_info<DeviceType::CPU>(id, buf, size);
 }
 
 void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size)
 {
-    volume_get_buffer_info<Device::CUDA>(id, buf, size);
+    volume_get_buffer_info<DeviceType::CUDA>(id, buf, size);
 }
 
-template<Device device>
+template<DeviceType device>
 void volume_destroy(uint64_t id)
 {
     free<device>((void*)id);
@@ -134,12 +134,12 @@ void volume_destroy(uint64_t id)
 
 void volume_destroy_host(uint64_t id)
 {
-    volume_destroy<Device::CPU>(id);
+    volume_destroy<DeviceType::CPU>(id);
 }
 
 void volume_destroy_device(uint64_t id)
 {
-    volume_destroy<Device::CUDA>(id);
+    volume_destroy<DeviceType::CUDA>(id);
 }
 
 // stubs for non-CUDA platforms

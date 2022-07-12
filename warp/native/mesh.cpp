@@ -91,7 +91,7 @@ uint64_t mesh_create_device(vec3* points, vec3* velocities, int* indices, int nu
 
         memcpy_d2h(points_host, points, sizeof(vec3)*num_points);
         memcpy_d2h(indices_host, indices, sizeof(int)*num_tris*3);
-        synchronize();
+        cuda_context_synchronize();
 
         for (int i=0; i < num_tris; ++i)
         {

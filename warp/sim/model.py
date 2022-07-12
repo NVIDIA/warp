@@ -126,14 +126,16 @@ class Mesh:
 
 
     # construct simulation ready buffers from points
-    def finalize(self, device):
+    def finalize(self, device=None):
 
-        pos = wp.array(self.vertices, dtype=wp.vec3, device=device)
-        vel = wp.zeros_like(pos)
-        indices = wp.array(self.indices, dtype=wp.int32, device=device)
+        with wp.ScopedDevice(device):
 
-        self.mesh = wp.Mesh(points=pos, velocities=vel, indices=indices)
-        return self.mesh.id
+            pos = wp.array(self.vertices, dtype=wp.vec3)
+            vel = wp.zeros_like(pos)
+            indices = wp.array(self.indices, dtype=wp.int32)
+
+            self.mesh = wp.Mesh(points=pos, velocities=vel, indices=indices)
+            return self.mesh.id
 
 
 class State:
@@ -250,7 +252,7 @@ class Model:
         desired.
     """
 
-    def __init__(self, device):
+    def __init__(self, device=None):
 
         self.particle_q = None
         self.particle_qd = None
@@ -331,7 +333,7 @@ class Model:
         self.particle_adhesion = 0.0
         self.particle_grid = None
 
-        self.device = device
+        self.device = wp.get_device(device)
 
     def state(self, requires_grad=False) -> State:
         """Returns a state object for the model
@@ -487,11 +489,13 @@ class Model:
                     add_contact(shape_body[i], -1, X_bs, p, 0.0, i)
 
         # send to wp
-        self.contact_body0 = wp.array(body0, dtype=wp.int32, device=self.device)
-        self.contact_body1 = wp.array(body1, dtype=wp.int32, device=self.device)
-        self.contact_point0 = wp.array(point, dtype=wp.vec3, device=self.device)
-        self.contact_dist = wp.array(dist, dtype=wp.float32, device=self.device)
-        self.contact_material = wp.array(mat, dtype=wp.int32, device=self.device)
+        with wp.ScopedDevice(self.device):
+
+            self.contact_body0 = wp.array(body0, dtype=wp.int32)
+            self.contact_body1 = wp.array(body1, dtype=wp.int32)
+            self.contact_point0 = wp.array(point, dtype=wp.vec3)
+            self.contact_dist = wp.array(dist, dtype=wp.float32)
+            self.contact_material = wp.array(mat, dtype=wp.int32)
 
         self.contact_count = len(body0)
 
@@ -1730,7 +1734,7 @@ class ModelBuilder:
         self.body_com[i] = new_com
 
 
-    def finalize(self, device: str) -> Model:
+    def finalize(self, device=None) -> Model:
         """Convert this builder object to a concrete model for simulation.
 
         After building simulation elements this method should be called to transfer
@@ -1771,165 +1775,167 @@ class ModelBuilder:
             else:
                 body_inv_inertia.append(i)
 
-        #-------------------------------------
-        # construct Model (non-time varying) data
+        with wp.ScopedDevice(device):
 
-        m = Model(device)
+            #-------------------------------------
+            # construct Model (non-time varying) data
 
-        #---------------------        
-        # particles
+            m = Model()
 
-        # state (initial)
-        m.particle_q = wp.array(self.particle_q, dtype=wp.vec3, device=device)
-        m.particle_qd = wp.array(self.particle_qd, dtype=wp.vec3, device=device)
-        m.particle_mass = wp.array(self.particle_mass, dtype=wp.float32, device=device)
-        m.particle_inv_mass = wp.array(particle_inv_mass, dtype=wp.float32, device=device)
+            #---------------------        
+            # particles
 
-        #---------------------
-        # collision geometry
+            # state (initial)
+            m.particle_q = wp.array(self.particle_q, dtype=wp.vec3)
+            m.particle_qd = wp.array(self.particle_qd, dtype=wp.vec3)
+            m.particle_mass = wp.array(self.particle_mass, dtype=wp.float32)
+            m.particle_inv_mass = wp.array(particle_inv_mass, dtype=wp.float32)
 
-        m.shape_transform = wp.array(self.shape_transform, dtype=wp.transform, device=device)
-        m.shape_body = wp.array(self.shape_body, dtype=wp.int32, device=device)
-        m.shape_geo_type = wp.array(self.shape_geo_type, dtype=wp.int32, device=device)
-        m.shape_geo_src = self.shape_geo_src
+            #---------------------
+            # collision geometry
 
-        # build list of ids for geometry sources (meshes, sdfs)
-        shape_geo_id = []
-        for geo in self.shape_geo_src:
-            if (geo):
-                shape_geo_id.append(geo.finalize(device=device))
-            else:
-                shape_geo_id.append(-1)
+            m.shape_transform = wp.array(self.shape_transform, dtype=wp.transform)
+            m.shape_body = wp.array(self.shape_body, dtype=wp.int32)
+            m.shape_geo_type = wp.array(self.shape_geo_type, dtype=wp.int32)
+            m.shape_geo_src = self.shape_geo_src
 
-        m.shape_geo_id = wp.array(shape_geo_id, dtype=wp.uint64, device=device)
-        m.shape_geo_scale = wp.array(self.shape_geo_scale, dtype=wp.vec3, device=device)
-        m.shape_materials = wp.array(self.shape_materials, dtype=wp.vec4, device=device)
+            # build list of ids for geometry sources (meshes, sdfs)
+            shape_geo_id = []
+            for geo in self.shape_geo_src:
+                if (geo):
+                    shape_geo_id.append(geo.finalize())
+                else:
+                    shape_geo_id.append(-1)
 
-        #---------------------
-        # springs
+            m.shape_geo_id = wp.array(shape_geo_id, dtype=wp.uint64)
+            m.shape_geo_scale = wp.array(self.shape_geo_scale, dtype=wp.vec3)
+            m.shape_materials = wp.array(self.shape_materials, dtype=wp.vec4)
 
-        m.spring_indices = wp.array(self.spring_indices, dtype=wp.int32, device=device)
-        m.spring_rest_length = wp.array(self.spring_rest_length, dtype=wp.float32, device=device)
-        m.spring_stiffness = wp.array(self.spring_stiffness, dtype=wp.float32, device=device)
-        m.spring_damping = wp.array(self.spring_damping, dtype=wp.float32, device=device)
-        m.spring_control = wp.array(self.spring_control, dtype=wp.float32, device=device)
+            #---------------------
+            # springs
 
-        #---------------------
-        # triangles
+            m.spring_indices = wp.array(self.spring_indices, dtype=wp.int32)
+            m.spring_rest_length = wp.array(self.spring_rest_length, dtype=wp.float32)
+            m.spring_stiffness = wp.array(self.spring_stiffness, dtype=wp.float32)
+            m.spring_damping = wp.array(self.spring_damping, dtype=wp.float32)
+            m.spring_control = wp.array(self.spring_control, dtype=wp.float32)
 
-        m.tri_indices = wp.array(self.tri_indices, dtype=wp.int32, device=device)
-        m.tri_poses = wp.array(self.tri_poses, dtype=wp.mat22, device=device)
-        m.tri_activations = wp.array(self.tri_activations, dtype=wp.float32, device=device)
-        m.tri_materials = wp.array(self.tri_materials, dtype=wp.float32, device=device)
+            #---------------------
+            # triangles
 
-        #---------------------
-        # edges
+            m.tri_indices = wp.array(self.tri_indices, dtype=wp.int32)
+            m.tri_poses = wp.array(self.tri_poses, dtype=wp.mat22)
+            m.tri_activations = wp.array(self.tri_activations, dtype=wp.float32)
+            m.tri_materials = wp.array(self.tri_materials, dtype=wp.float32)
 
-        m.edge_indices = wp.array(self.edge_indices, dtype=wp.int32, device=device)
-        m.edge_rest_angle = wp.array(self.edge_rest_angle, dtype=wp.float32, device=device)
-        m.edge_bending_properties = wp.array(self.edge_bending_properties, dtype=wp.float32, device=device)
+            #---------------------
+            # edges
 
-        #---------------------
-        # tetrahedra
+            m.edge_indices = wp.array(self.edge_indices, dtype=wp.int32)
+            m.edge_rest_angle = wp.array(self.edge_rest_angle, dtype=wp.float32)
+            m.edge_bending_properties = wp.array(self.edge_bending_properties, dtype=wp.float32)
 
-        m.tet_indices = wp.array(self.tet_indices, dtype=wp.int32, device=device)
-        m.tet_poses = wp.array(self.tet_poses, dtype=wp.mat33, device=device)
-        m.tet_activations = wp.array(self.tet_activations, dtype=wp.float32, device=device)
-        m.tet_materials = wp.array(self.tet_materials, dtype=wp.float32, device=device)
+            #---------------------
+            # tetrahedra
 
-        #-----------------------
-        # muscles
+            m.tet_indices = wp.array(self.tet_indices, dtype=wp.int32)
+            m.tet_poses = wp.array(self.tet_poses, dtype=wp.mat33)
+            m.tet_activations = wp.array(self.tet_activations, dtype=wp.float32)
+            m.tet_materials = wp.array(self.tet_materials, dtype=wp.float32)
 
-        # close the muscle waypoint indices
-        self.muscle_start.append(len(self.muscle_bodies))
+            #-----------------------
+            # muscles
 
-        m.muscle_start = wp.array(self.muscle_start, dtype=wp.int32, device=device)
-        m.muscle_params = wp.array(self.muscle_params, dtype=wp.float32, device=device)
-        m.muscle_bodies = wp.array(self.muscle_bodies, dtype=wp.int32, device=device)
-        m.muscle_points = wp.array(self.muscle_points, dtype=wp.vec3, device=device)
-        m.muscle_activation = wp.array(self.muscle_activation, dtype=wp.float32, device=device)
+            # close the muscle waypoint indices
+            self.muscle_start.append(len(self.muscle_bodies))
 
-        #--------------------------------------
-        # rigid bodies
-        
-        m.body_q = wp.array(self.body_q, dtype=wp.transform, device=device)
-        m.body_qd = wp.array(self.body_qd, dtype=wp.spatial_vector, device=device)
-        m.body_inertia = wp.array(self.body_inertia, dtype=wp.mat33, device=device)
-        m.body_inv_inertia = wp.array(body_inv_inertia, dtype=wp.mat33, device=device)
-        m.body_mass = wp.array(self.body_mass, dtype=wp.float32, device=device)
-        m.body_inv_mass = wp.array(body_inv_mass, dtype=wp.float32, device=device)
-        m.body_com = wp.array(self.body_com, dtype=wp.vec3, device=device)
+            m.muscle_start = wp.array(self.muscle_start, dtype=wp.int32)
+            m.muscle_params = wp.array(self.muscle_params, dtype=wp.float32)
+            m.muscle_bodies = wp.array(self.muscle_bodies, dtype=wp.int32)
+            m.muscle_points = wp.array(self.muscle_points, dtype=wp.vec3)
+            m.muscle_activation = wp.array(self.muscle_activation, dtype=wp.float32)
 
-        # model
-        m.joint_type = wp.array(self.joint_type, dtype=wp.int32, device=device)
-        m.joint_parent = wp.array(self.joint_parent, dtype=wp.int32, device=device)
-        m.joint_child = wp.array(self.joint_child, dtype=wp.int32, device=device)
-        m.joint_X_p = wp.array(self.joint_X_p, dtype=wp.transform, device=device)
-        m.joint_X_c = wp.array(self.joint_X_c, dtype=wp.transform, device=device)
-        m.joint_axis = wp.array(self.joint_axis, dtype=wp.vec3, device=device)
-        m.joint_q = wp.array(self.joint_q, dtype=float, device=device)
-        m.joint_qd = wp.array(self.joint_qd, dtype=float, device=device)
+            #--------------------------------------
+            # rigid bodies
+            
+            m.body_q = wp.array(self.body_q, dtype=wp.transform)
+            m.body_qd = wp.array(self.body_qd, dtype=wp.spatial_vector)
+            m.body_inertia = wp.array(self.body_inertia, dtype=wp.mat33)
+            m.body_inv_inertia = wp.array(body_inv_inertia, dtype=wp.mat33)
+            m.body_mass = wp.array(self.body_mass, dtype=wp.float32)
+            m.body_inv_mass = wp.array(body_inv_mass, dtype=wp.float32)
+            m.body_com = wp.array(self.body_com, dtype=wp.vec3)
 
-        # dynamics properties
-        m.joint_armature = wp.array(self.joint_armature, dtype=wp.float32, device=device)
-        m.joint_target = wp.array(self.joint_target, dtype=wp.float32, device=device)
-        m.joint_target_ke = wp.array(self.joint_target_ke, dtype=wp.float32, device=device)
-        m.joint_target_kd = wp.array(self.joint_target_kd, dtype=wp.float32, device=device)
-        m.joint_act = wp.array(self.joint_act, dtype=wp.float32, device=device)
+            # model
+            m.joint_type = wp.array(self.joint_type, dtype=wp.int32)
+            m.joint_parent = wp.array(self.joint_parent, dtype=wp.int32)
+            m.joint_child = wp.array(self.joint_child, dtype=wp.int32)
+            m.joint_X_p = wp.array(self.joint_X_p, dtype=wp.transform)
+            m.joint_X_c = wp.array(self.joint_X_c, dtype=wp.transform)
+            m.joint_axis = wp.array(self.joint_axis, dtype=wp.vec3)
+            m.joint_q = wp.array(self.joint_q, dtype=float)
+            m.joint_qd = wp.array(self.joint_qd, dtype=float)
 
-        m.joint_limit_lower = wp.array(self.joint_limit_lower, dtype=wp.float32, device=device)
-        m.joint_limit_upper = wp.array(self.joint_limit_upper, dtype=wp.float32, device=device)
-        m.joint_limit_ke = wp.array(self.joint_limit_ke, dtype=wp.float32, device=device)
-        m.joint_limit_kd = wp.array(self.joint_limit_kd, dtype=wp.float32, device=device)
+            # dynamics properties
+            m.joint_armature = wp.array(self.joint_armature, dtype=wp.float32)
+            m.joint_target = wp.array(self.joint_target, dtype=wp.float32)
+            m.joint_target_ke = wp.array(self.joint_target_ke, dtype=wp.float32)
+            m.joint_target_kd = wp.array(self.joint_target_kd, dtype=wp.float32)
+            m.joint_act = wp.array(self.joint_act, dtype=wp.float32)
 
-        # 'close' the start index arrays with a sentinel value
-        self.joint_q_start.append(self.joint_coord_count)
-        self.joint_qd_start.append(self.joint_dof_count)
-        self.articulation_start.append(self.joint_count)
+            m.joint_limit_lower = wp.array(self.joint_limit_lower, dtype=wp.float32)
+            m.joint_limit_upper = wp.array(self.joint_limit_upper, dtype=wp.float32)
+            m.joint_limit_ke = wp.array(self.joint_limit_ke, dtype=wp.float32)
+            m.joint_limit_kd = wp.array(self.joint_limit_kd, dtype=wp.float32)
 
-        m.joint_q_start = wp.array(self.joint_q_start, dtype=int, device=device) 
-        m.joint_qd_start = wp.array(self.joint_qd_start, dtype=int, device=device)
-        m.articulation_start = wp.array(self.articulation_start, dtype=int, device=device)
+            # 'close' the start index arrays with a sentinel value
+            self.joint_q_start.append(self.joint_coord_count)
+            self.joint_qd_start.append(self.joint_dof_count)
+            self.articulation_start.append(self.joint_count)
 
-        # contacts
-        m.soft_contact_max = 64*1024
+            m.joint_q_start = wp.array(self.joint_q_start, dtype=int) 
+            m.joint_qd_start = wp.array(self.joint_qd_start, dtype=int)
+            m.articulation_start = wp.array(self.articulation_start, dtype=int)
 
-        m.soft_contact_count = wp.zeros(1, dtype=wp.int32, device=device)
-        m.soft_contact_particle = wp.zeros(m.soft_contact_max, dtype=int, device=device)
-        m.soft_contact_body = wp.zeros(m.soft_contact_max, dtype=int, device=device)
-        m.soft_contact_body_pos = wp.zeros(m.soft_contact_max, dtype=wp.vec3, device=device)
-        m.soft_contact_body_vel = wp.zeros(m.soft_contact_max, dtype=wp.vec3, device=device)
-        m.soft_contact_normal = wp.zeros(m.soft_contact_max, dtype=wp.vec3, device=device)
+            # contacts
+            m.soft_contact_max = 64*1024
 
-        # counts
-        m.particle_count = len(self.particle_q)
-        m.body_count = len(self.body_q)
-        m.shape_count = len(self.shape_geo_type)
-        m.tri_count = len(self.tri_poses)
-        m.tet_count = len(self.tet_poses)
-        m.edge_count = len(self.edge_rest_angle)
-        m.spring_count = len(self.spring_rest_length)
-        m.muscle_count = len(self.muscle_start)-1               # -1 due to sentinel value
-        m.articulation_count = len(self.articulation_start)-1   # -1 due to sentinel value
-        
-        m.joint_dof_count = self.joint_dof_count
-        m.joint_coord_count = self.joint_coord_count
+            m.soft_contact_count = wp.zeros(1, dtype=wp.int32)
+            m.soft_contact_particle = wp.zeros(m.soft_contact_max, dtype=int)
+            m.soft_contact_body = wp.zeros(m.soft_contact_max, dtype=int)
+            m.soft_contact_body_pos = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
+            m.soft_contact_body_vel = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
+            m.soft_contact_normal = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
 
-        m.contact_count = 0
-        
-        # hash-grid for particle interactions
-        m.particle_grid = wp.HashGrid(128, 128, 128, device)
+            # counts
+            m.particle_count = len(self.particle_q)
+            m.body_count = len(self.body_q)
+            m.shape_count = len(self.shape_geo_type)
+            m.tri_count = len(self.tri_poses)
+            m.tet_count = len(self.tet_poses)
+            m.edge_count = len(self.edge_rest_angle)
+            m.spring_count = len(self.spring_rest_length)
+            m.muscle_count = len(self.muscle_start)-1               # -1 due to sentinel value
+            m.articulation_count = len(self.articulation_start)-1   # -1 due to sentinel value
+            
+            m.joint_dof_count = self.joint_dof_count
+            m.joint_coord_count = self.joint_coord_count
 
-        # store refs to geometry
-        m.geo_meshes = self.geo_meshes
-        m.geo_sdfs = self.geo_sdfs
+            m.contact_count = 0
+            
+            # hash-grid for particle interactions
+            m.particle_grid = wp.HashGrid(128, 128, 128)
 
-        # enable ground plane
-        m.ground = True
-        m.ground_plane = np.array((0.0, 1.0, 0.0, 0.0))
+            # store refs to geometry
+            m.geo_meshes = self.geo_meshes
+            m.geo_sdfs = self.geo_sdfs
 
-        m.enable_tri_collisions = False
+            # enable ground plane
+            m.ground = True
+            m.ground_plane = np.array((0.0, 1.0, 0.0, 0.0))
 
-        return m
+            m.enable_tri_collisions = False
+
+            return m
 
 

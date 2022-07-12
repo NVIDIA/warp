@@ -99,8 +99,6 @@ class Example:
         self.sim_restitution = 0.0
         self.sim_margin = 0.1
 
-        self.device = wp.get_preferred_device()
-
         self.renderer = wp.render.UsdRenderer(stage)
 
         usd_stage = Usd.Stage.Open(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"))
@@ -109,15 +107,15 @@ class Example:
 
         # create collision mesh
         self.mesh = wp.Mesh(
-            points=wp.array(usd_geom.GetPointsAttr().Get()*usd_scale, dtype=wp.vec3, device=self.device),
-            indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int, device=self.device))
+            points=wp.array(usd_geom.GetPointsAttr().Get()*usd_scale, dtype=wp.vec3),
+            indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int))
  
         # random particles
         init_pos = (np.random.rand(self.num_particles, 3) - np.array([0.5, -1.5, 0.5]))*10.0
         init_vel = np.random.rand(self.num_particles, 3)*0.0
 
-        self.positions = wp.from_numpy(init_pos, dtype=wp.vec3, device=self.device)
-        self.velocities = wp.from_numpy(init_vel, dtype=wp.vec3, device=self.device)
+        self.positions = wp.from_numpy(init_pos, dtype=wp.vec3)
+        self.velocities = wp.from_numpy(init_vel, dtype=wp.vec3)
 
     def update(self):
 
@@ -126,8 +124,7 @@ class Example:
             wp.launch(
                 kernel=deform,
                 dim=len(self.mesh.points),
-                inputs=[self.mesh.points, self.sim_time],
-                device=self.device)
+                inputs=[self.mesh.points, self.sim_time])
 
             # refit the mesh BVH to account for the deformation
             self.mesh.refit()
@@ -135,8 +132,7 @@ class Example:
             wp.launch(
                 kernel=simulate, 
                 dim=self.num_particles, 
-                inputs=[self.positions, self.velocities, self.mesh.id, self.sim_restitution, self.sim_margin, self.sim_dt], 
-                device=self.device)
+                inputs=[self.positions, self.velocities, self.mesh.id, self.sim_restitution, self.sim_margin, self.sim_dt])
 
     def render(self, is_live=False):
 

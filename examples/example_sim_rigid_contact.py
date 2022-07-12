@@ -40,8 +40,6 @@ class Example:
         self.kd = 250.0
         self.kf = 500.0
 
-        self.device = wp.get_preferred_device()
-
         builder = wp.sim.ModelBuilder()
 
         # boxes
@@ -90,7 +88,7 @@ class Example:
         for i in range(len(builder.body_qd)):
             builder.body_qd[i] = (0.0, 2.0, 10.0, 0.0, 0.0, 0.0)
         
-        self.model = builder.finalize(self.device)
+        self.model = builder.finalize()
         self.model.ground = True
 
         self.integrator = wp.sim.SemiImplicitIntegrator()

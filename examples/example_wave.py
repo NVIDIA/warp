@@ -136,8 +136,6 @@ class Example:
         self.grid_size = 0.1
         self.grid_displace = 0.5
 
-        self.device = wp.get_preferred_device()
-
         self.renderer = wp.render.UsdRenderer(stage)
 
         vertices = []
@@ -165,9 +163,9 @@ class Example:
                     self.indices.append(grid_index(x, z, self.sim_width))
 
         # simulation grids
-        self.sim_grid0 = wp.zeros(self.sim_width*self.sim_height, dtype=float, device=self.device)
-        self.sim_grid1 = wp.zeros(self.sim_width*self.sim_height, dtype=float, device=self.device)
-        self.sim_verts = wp.array(vertices, dtype=wp.vec3, device=self.device)
+        self.sim_grid0 = wp.zeros(self.sim_width*self.sim_height, dtype=float)
+        self.sim_grid1 = wp.zeros(self.sim_width*self.sim_height, dtype=float)
+        self.sim_verts = wp.array(vertices, dtype=wp.vec3)
 
         #create surface displacment around a point
         self.cx = self.sim_width/2 + math.sin(self.sim_time)*self.sim_width/3
@@ -186,15 +184,13 @@ class Example:
                 wp.launch(
                     kernel=wave_displace, 
                     dim=self.sim_width*self.sim_height, 
-                    inputs=[self.sim_grid0, self.sim_grid1, self.sim_width, self.sim_height, self.cx, self.cy, 10.0, self.grid_displace, -math.pi*0.5],  
-                    device=self.device)
+                    inputs=[self.sim_grid0, self.sim_grid1, self.sim_width, self.sim_height, self.cx, self.cy, 10.0, self.grid_displace, -math.pi*0.5])
 
                 # integrate wave equation
                 wp.launch(
                     kernel=wave_solve, 
                     dim=self.sim_width*self.sim_height, 
-                    inputs=[self.sim_grid0, self.sim_grid1, self.sim_width, self.sim_height, 1.0/self.grid_size, self.k_speed, self.k_damp, self.sim_dt], 
-                    device=self.device)
+                    inputs=[self.sim_grid0, self.sim_grid1, self.sim_width, self.sim_height, 1.0/self.grid_size, self.k_speed, self.k_damp, self.sim_dt])
 
                 # swap grids
                 (self.sim_grid0, self.sim_grid1) = (self.sim_grid1, self.sim_grid0)
@@ -206,8 +202,7 @@ class Example:
             # update grid vertices from heights 
             wp.launch(kernel=grid_update,
                         dim=self.sim_width*self.sim_height,
-                        inputs=[self.sim_grid0, self.sim_verts],
-                        device=self.device)
+                        inputs=[self.sim_grid0, self.sim_verts])
 
     def render(self, is_live=False):
 

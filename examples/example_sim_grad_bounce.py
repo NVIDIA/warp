@@ -47,17 +47,17 @@ class Bounce:
     train_iters = 250
     train_rate = 0.01
 
-    def __init__(self, render=True, profile=False, adapter='cpu'):
+    def __init__(self, render=True, profile=False, adapter=None):
 
         builder = wp.sim.ModelBuilder()
 
         builder.add_particle(pos=(-0.5, 1.0, 0.0), vel=(5.0, -5.0, 0.0), mass=1.0)
         builder.add_shape_box(body=-1, pos=(2.0, 1.0, 0.0), hx=0.25, hy=1.0, hz=1.0)
 
-        self.device = adapter
+        self.device = wp.get_device(adapter)
         self.profile = profile
 
-        self.model = builder.finalize(adapter)
+        self.model = builder.finalize(self.device)
         self.model.ground = True
 
         self.model.soft_contact_ke = 1.e+4
@@ -69,7 +69,7 @@ class Bounce:
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         self.target = (-2.0, 1.5, 0.0)
-        self.loss = wp.zeros(1, dtype=wp.float32, device=adapter, requires_grad=True)  
+        self.loss = wp.zeros(1, dtype=wp.float32, device=self.device, requires_grad=True)  
 
         # allocate sim states for trajectory
         self.states = []
@@ -257,7 +257,7 @@ class Bounce:
 
 
 
-bounce = Bounce(adapter=wp.get_preferred_device(), profile=False, render=True)
+bounce = Bounce(profile=False, render=True)
 bounce.check_grad()
 bounce.train_graph()
  
