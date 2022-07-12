@@ -126,9 +126,8 @@ class OgnCloth:
 
         timeline =  omni.timeline.get_timeline_interface()
         context = db.internal_state
-        device = "cuda"
 
-        with wp.ScopedCudaGuard():
+        with wp.ScopedDevice("cuda:0"):
 
             # reset on stop
             if (timeline.is_stopped()):
@@ -189,8 +188,8 @@ class OgnCloth:
                             collider_indices = read_indices_bundle(db.inputs.collider)
 
                             # save local copy
-                            context.collider_positions_current = wp.array(collider_positions, dtype=wp.vec3, device=device)
-                            context.collider_positions_previous = wp.array(collider_positions, dtype=wp.vec3, device=device)
+                            context.collider_positions_current = wp.array(collider_positions, dtype=wp.vec3)
+                            context.collider_positions_previous = wp.array(collider_positions, dtype=wp.vec3)
 
                             world_positions = []
                             for i in range(len(collider_positions)):
@@ -209,7 +208,7 @@ class OgnCloth:
                                 scale=(1.0, 1.0, 1.0))
 
                     # finalize sim model
-                    model = builder.finalize(device)
+                    model = builder.finalize()
                     
                     # create integrator
                     context.integrator = wp.sim.SemiImplicitIntegrator()
@@ -220,7 +219,7 @@ class OgnCloth:
                     context.state_1 = model.state()
 
                     context.positions_host = wp.zeros(model.particle_count, dtype=wp.vec3, device="cpu")
-                    context.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3, device=device)
+                    context.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3)
 
                     context.collider_xform = read_transform_bundle(db.inputs.collider)
 
@@ -267,8 +266,7 @@ class OgnCloth:
                                     context.mesh.mesh.points,
                                     context.mesh.mesh.velocities,
                                     1.0/60.0,
-                                    alpha],
-                                    device=device)
+                                    alpha])
 
                         context.collider_xform = current_xform
 
@@ -338,8 +336,7 @@ class OgnCloth:
                               dim=context.model.particle_count, 
                               inputs=[context.state_0.particle_q, 
                                       context.positions_device, 
-                                      np.array(cloth_xform_inv).T],
-                              device=device)
+                                      np.array(cloth_xform_inv).T])
 
                 with wp.ScopedTimer("Synchronize", active=False):
 

@@ -88,19 +88,20 @@ class WpIntegrator:
 
     def __init__(self, cloth, device):
 
-        self.device = device
+        self.device = wp.get_device(device)
 
-        self.positions = wp.from_numpy(cloth.positions, dtype=wp.vec3, device=device)
-        self.positions_host = wp.from_numpy(cloth.positions, dtype=wp.vec3, device="cpu")
-        self.invmass = wp.from_numpy(cloth.inv_masses, dtype=float, device=device)
+        with wp.ScopedDevice(self.device):
+            self.positions = wp.from_numpy(cloth.positions, dtype=wp.vec3)
+            self.positions_host = wp.from_numpy(cloth.positions, dtype=wp.vec3, device="cpu")
+            self.invmass = wp.from_numpy(cloth.inv_masses, dtype=float)
 
-        self.velocities = wp.zeros(cloth.num_particles, dtype=wp.vec3, device=device)
-        self.forces = wp.zeros(cloth.num_particles, dtype=wp.vec3, device=device)
+            self.velocities = wp.zeros(cloth.num_particles, dtype=wp.vec3)
+            self.forces = wp.zeros(cloth.num_particles, dtype=wp.vec3)
 
-        self.spring_indices = wp.from_numpy(cloth.spring_indices, dtype=int, device=device)
-        self.spring_lengths = wp.from_numpy(cloth.spring_lengths, dtype=float, device=device)
-        self.spring_stiffness = wp.from_numpy(cloth.spring_stiffness, dtype=float, device=device)
-        self.spring_damping = wp.from_numpy(cloth.spring_damping, dtype=float, device=device)
+            self.spring_indices = wp.from_numpy(cloth.spring_indices, dtype=int)
+            self.spring_lengths = wp.from_numpy(cloth.spring_lengths, dtype=float)
+            self.spring_stiffness = wp.from_numpy(cloth.spring_stiffness, dtype=float)
+            self.spring_damping = wp.from_numpy(cloth.spring_damping, dtype=float)
 
         self.cloth = cloth
 
@@ -138,7 +139,7 @@ class WpIntegrator:
 
 
         # copy data back to host
-        if (self.device == "cuda"):
+        if self.device.is_cuda:
             wp.copy(self.positions_host, self.positions)
             wp.synchronize()
     

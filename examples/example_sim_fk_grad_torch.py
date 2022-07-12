@@ -34,6 +34,9 @@ class ForwardKinematics(torch.autograd.Function):
     @staticmethod
     def forward(ctx, joint_q, joint_qd, model):
 
+        # ensure Torch operations complete before running Warp
+        wp.synchronize_device()
+
         ctx.tape = wp.Tape()
         ctx.model = model        
         ctx.joint_q = wp.from_torch(joint_q)
@@ -51,6 +54,9 @@ class ForwardKinematics(torch.autograd.Function):
                 None,
                 ctx.state)
 
+        # ensure Warp operations complete before returning data to Torch
+        wp.synchronize_device()
+
         return (wp.to_torch(ctx.state.body_q),
                 wp.to_torch(ctx.state.body_qd))
 
@@ -59,11 +65,17 @@ class ForwardKinematics(torch.autograd.Function):
     @staticmethod
     def backward(ctx, adj_body_q, adj_body_qd):
 
+        # ensure Torch operations complete before running Warp
+        wp.synchronize_device()
+
         # map incoming Torch grads to our output variables
         ctx.state.body_q.grad = wp.from_torch(adj_body_q, dtype=wp.transform)
         ctx.state.body_qd.grad = wp.from_torch(adj_body_qd, dtype=wp.spatial_vector)
 
         ctx.tape.backward()
+
+        # ensure Warp operations complete before returning data to Torch
+        wp.synchronize_device()
 
         # return adjoint w.r.t. inputs
         return (wp.to_torch(ctx.tape.gradients[ctx.joint_q]), 
@@ -72,7 +84,7 @@ class ForwardKinematics(torch.autograd.Function):
 
 class Robot:
 
-    def __init__(self, render=True, num_envs=1, device='cpu'):
+    def __init__(self, render=True, num_envs=1, device=None):
 
         builder = wp.sim.ModelBuilder()
 
@@ -133,7 +145,7 @@ class Robot:
         self.model = builder.finalize(device)
         self.model.ground = False
 
-        self.device = device
+        self.torch_device = wp.device_to_torch(self.model.device)
 
         #-----------------------
         # set up Usd renderer
@@ -146,11 +158,11 @@ class Robot:
         train_iters = 1024
         train_rate = 0.01
 
-        target = torch.from_numpy(np.array((2.0, 1.0, 0.0)))
+        target = torch.from_numpy(np.array((2.0, 1.0, 0.0))).to(self.torch_device)
 
         # optimization variable
-        joint_q = torch.zeros(len(self.model.joint_q), device=self.device, requires_grad=True)
-        joint_qd = torch.zeros(len(self.model.joint_qd), device=self.device, requires_grad=True)
+        joint_q = torch.zeros(len(self.model.joint_q), requires_grad=True, device=self.torch_device)
+        joint_qd = torch.zeros(len(self.model.joint_qd), requires_grad=True, device=self.torch_device)
 
         for i in range(train_iters):
 
@@ -181,5 +193,5 @@ class Robot:
         self.renderer.save()
         
 
-robot = Robot(render=True, device="cpu", num_envs=1)
+robot = Robot(render=True, device="cuda", num_envs=1)
 robot.run()

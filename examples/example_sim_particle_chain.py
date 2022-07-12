@@ -39,8 +39,6 @@ class Example:
         self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
         self.sim_time = 0.0
 
-        self.device = wp.get_preferred_device()
- 
         builder = wp.sim.ModelBuilder()
 
         # anchor
@@ -51,7 +49,7 @@ class Example:
             builder.add_particle((i, 1.0, 0.0), (0.0, 0., 0.0), 1.0)
             builder.add_spring(i - 1, i, 1.e+6, 0.0, 0)
 
-        self.model = builder.finalize(device=self.device)
+        self.model = builder.finalize()
         self.model.ground = False
 
         self.integrator = wp.sim.SemiImplicitIntegrator()

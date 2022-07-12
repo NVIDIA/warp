@@ -35,8 +35,6 @@ class Example:
 
         self.scale = 0.5
 
-        self.device = wp.get_preferred_device()
-
         builder = wp.sim.ModelBuilder()
 
         builder.add_body(
@@ -64,7 +62,7 @@ class Example:
         # initial spin 
         builder.body_qd[0] = (25.0, 0.01, 0.01, 0.0, 0.0, 0.0)
 
-        self.model = builder.finalize(self.device)
+        self.model = builder.finalize()
         self.model.gravity[1] = 0.0
         self.model.ground = False
 

@@ -43,8 +43,6 @@ class Example:
                             wp.sim.JOINT_UNIVERSAL,
                             wp.sim.JOINT_COMPOUND]
 
-        self.device = wp.get_preferred_device()
-
         builder = wp.sim.ModelBuilder()
 
         for c, t in enumerate(self.chain_types):
@@ -113,7 +111,7 @@ class Example:
                         body=b)
 
 
-        self.model = builder.finalize(self.device)
+        self.model = builder.finalize()
         self.model.ground = False
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
@@ -141,7 +139,7 @@ class Example:
 
 
 if __name__ == '__main__':
-    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_rigid_chain.usd")
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_chain.usd")
 
     example = Example(stage_path)
 

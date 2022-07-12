@@ -63,7 +63,6 @@ class Example:
 
     def __init__(self):
 
-        self.device = wp.get_preferred_device()
         self.width = 1024
         self.height = 1024
         self.cam_pos = (0.0, 1.0, 2.0)
@@ -74,13 +73,13 @@ class Example:
         points = np.array(mesh_geom.GetPointsAttr().Get())
         indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get())
 
-        self.pixels = wp.zeros(self.width*self.height, dtype=wp.vec3, device=self.device)
+        self.pixels = wp.zeros(self.width*self.height, dtype=wp.vec3)
 
         # create wp mesh
         self.mesh = wp.Mesh(
-            points=wp.array(points, dtype=wp.vec3, device=self.device),
+            points=wp.array(points, dtype=wp.vec3),
             velocities=None,
-            indices=wp.array(indices, dtype=int, device=self.device))
+            indices=wp.array(indices, dtype=int))
 
     def update(self):
         pass
@@ -92,10 +91,9 @@ class Example:
             wp.launch(
                 kernel=draw,
                 dim=self.width*self.height,
-                inputs=[self.mesh.id, self.cam_pos, self.width, self.height, self.pixels],
-                device=self.device)
+                inputs=[self.mesh.id, self.cam_pos, self.width, self.height, self.pixels])
 
-            wp.synchronize()
+            wp.synchronize_device()
 
         plt.imshow(self.pixels.numpy().reshape((self.height, self.width, 3)), origin="lower", interpolation="antialiased")
         plt.show()

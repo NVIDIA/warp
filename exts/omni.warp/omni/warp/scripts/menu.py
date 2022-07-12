@@ -179,7 +179,7 @@ class WarpMenu:
 
         timeline = omni.timeline.get_timeline_interface()
         if timeline.is_playing() and self._example is not None:
-            with wp.ScopedCudaGuard():
+            with wp.ScopedDevice("cuda:0"):
                 self._example.update()
                 self._example.render(is_live=self._is_live)
 
@@ -195,7 +195,7 @@ class WarpMenu:
         if self._example is not None:
             stage = omni.usd.get_context().get_stage()
             stage.GetRootLayer().Clear()
-            with wp.ScopedCudaGuard():
+            with wp.ScopedDevice("cuda:0"):
                 self._example.init(stage)
                 self._example.render(is_live=self._is_live)
 
@@ -233,7 +233,7 @@ class WarpMenu:
                 log_error("Example missing render() function")
                 return
 
-            with wp.ScopedCudaGuard():
+            with wp.ScopedDevice("cuda:0"):
                 self._example.init(stage)
                 self._example.render(is_live=self._is_live)
 

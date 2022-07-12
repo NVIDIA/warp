@@ -137,8 +137,13 @@ def build_cuda(cu_path, arch, ptx_path, config="release", force=False, verify_fp
         raise Exception("CUDA build failed")
 
 # load ptx to a CUDA runtime module    
-def load_cuda(ptx_path):
+def load_cuda(ptx_path, device):
 
+    if not device.is_cuda:
+        raise("Not a CUDA device")
+
+    # hmmm, use a scoped guard here?
+    device.make_current()
     module = warp.context.runtime.core.cuda_load_module(ptx_path.encode('utf-8'))
     return module
 
@@ -213,13 +218,18 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
 
         cpp_out = cpp_path + ".obj"
 
+        if cuda_disabled:
+            cuda_includes = ""
+        else:
+            cuda_includes = f' /I"{cuda_home}/include"'
+
         if (config == "debug"):
-            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}"'
+            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{native_dir}" /I"{nanovdb_home}"'
+            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -259,13 +269,18 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
 
         cpp_out = cpp_path + ".o"
 
+        if cuda_disabled:
+            cuda_includes = ""
+        else:
+            cuda_includes = f' -I"{cuda_home}/include"'
+
         if (config == "debug"):
-            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -fkeep-inline-functions -I"{native_dir}"'
+            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -fkeep-inline-functions -I"{native_dir}" {cuda_includes}'
             ld_flags = "-D_DEBUG"
             ld_inputs = []
 
         if (config == "release"):
-            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -I"{native_dir}"'
+            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -I"{native_dir}" {cuda_includes}'
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 

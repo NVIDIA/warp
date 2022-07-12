@@ -130,9 +130,8 @@ class OgnParticleSolver:
 
         timeline =  omni.timeline.get_timeline_interface()
         state = db.internal_state
-        device = "cuda"
        
-        with wp.ScopedCudaGuard():
+        with wp.ScopedDevice("cuda:0"):
 
             # reset on stop
             if (timeline.is_stopped()):
@@ -176,8 +175,8 @@ class OgnParticleSolver:
                             collider_xform = read_transform_bundle(collider)
 
                             # save local copy
-                            state.collider_positions_current = wp.array(collider_points, dtype=wp.vec3, device=device)
-                            state.collider_positions_previous = wp.array(collider_points, dtype=wp.vec3, device=device)
+                            state.collider_positions_current = wp.array(collider_points, dtype=wp.vec3)
+                            state.collider_positions_previous = wp.array(collider_points, dtype=wp.vec3)
 
                             world_positions = []
                             for i in range(len(collider_points)):
@@ -198,7 +197,7 @@ class OgnParticleSolver:
                             state.collider_xform = read_transform_bundle(db.inputs.collider)
 
                     # finalize sim model
-                    model = builder.finalize(device)
+                    model = builder.finalize()
                     
                     # create integrator
                     state.integrator = wp.sim.SemiImplicitIntegrator()
@@ -210,7 +209,7 @@ class OgnParticleSolver:
                     state.state_1 = model.state()
 
                     state.positions_host = wp.zeros(model.particle_count, dtype=wp.vec3, device="cpu")
-                    state.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3, device=device)
+                    state.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3)
 
                     
                 # update dynamic properties
@@ -263,8 +262,7 @@ class OgnParticleSolver:
                                     state.mesh.mesh.points,
                                     state.mesh.mesh.velocities,
                                     1.0/60.0,
-                                    alpha],
-                                    device=device)
+                                    alpha])
 
                         state.collider_xform = current_xform
 

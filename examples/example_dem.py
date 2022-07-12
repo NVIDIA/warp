@@ -132,8 +132,6 @@ class Example:
         self.sim_steps = self.frame_count*self.sim_substeps
         self.sim_time = 0.0
 
-        self.device = wp.get_preferred_device()
-
         self.point_radius = 0.1
 
         self.k_contact = 8000.0
@@ -146,16 +144,16 @@ class Example:
         self.renderer = wp.render.UsdRenderer(stage)
         self.renderer.render_ground()
 
-        self.grid = wp.HashGrid(128, 128, 128, self.device)
+        self.grid = wp.HashGrid(128, 128, 128)
         self.grid_cell_size = self.point_radius*5.0
 
         self.points = self.particle_grid(32, 128, 32, (0.0, 0.3, 0.0), self.point_radius, 0.1)
 
-        self.x = wp.array(self.points, dtype=wp.vec3, device=self.device)
-        self.v = wp.array(np.ones([len(self.x), 3])*np.array([0.0, 0.0, 10.0]), dtype=wp.vec3, device=self.device)
+        self.x = wp.array(self.points, dtype=wp.vec3)
+        self.v = wp.array(np.ones([len(self.x), 3])*np.array([0.0, 0.0, 10.0]), dtype=wp.vec3)
         self.f = wp.zeros_like(self.v)
 
-        self.use_graph = (self.device == "cuda")
+        self.use_graph = wp.get_device().is_cuda
 
         if (self.use_graph):
 
@@ -164,8 +162,8 @@ class Example:
             for s in range(self.sim_substeps):
 
                 with wp.ScopedTimer("forces", active=False):
-                    wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu], device=self.device)
-                    wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass], device=self.device)
+                    wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu])
+                    wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass])
                 
             self.graph = wp.capture_end()
 
@@ -189,8 +187,8 @@ class Example:
                         self.grid.build(self.x, self.point_radius)
 
                     with wp.ScopedTimer("forces", active=False):
-                        wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu], device=self.device)
-                        wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass], device=self.device)
+                        wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu])
+                        wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass])
                 
                 wp.synchronize()
 

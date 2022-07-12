@@ -6,6 +6,20 @@
 - Fix for marching cubes reallocation after initialization
 - Add support for closest point between line segment tests, see `wp.closest_point_edge_edge()` builtin
 - Add support for per-triangle elasticity coefficients in simulation, see `wp.sim.ModelBuilder.add_cloth_mesh()`
+- Add support for specifying default device, see `wp.set_device()`, `wp.get_device()`, `wp.ScopedDevice`
+- Add support for multiple GPUs (e.g., `"cuda:0"`, `"cuda:1"`), see `wp.get_cuda_devices()`, `wp.get_cuda_device_count()`, `wp.get_cuda_device()`
+- Add support for explicitly targeting the current CUDA context using device alias `"cuda"`
+- Add support for using arbitrary external CUDA contexts, see `wp.map_cuda_device()`, `wp.unmap_cuda_device()`
+- Add PyTorch device aliasing functions, see `wp.device_from_torch()`, `wp.device_to_torch()`
+
+
+### Breaking Changes
+
+- A CUDA device is used by default, if available (aligned with `wp.get_preferred_device()`)
+- `wp.ScopedCudaGuard` is deprecated, use `wp.ScopedDevice` instead
+- `wp.synchronize()` now synchronizes all devices; for finer-grained control, use `wp.synchronize_device()`
+- Device alias `"cuda"` now refers to the current CUDA context, rather than a specific device like `"cuda:0"` or `"cuda:1"`
+
 
 ## [0.3.0] - 2022-07-08
 

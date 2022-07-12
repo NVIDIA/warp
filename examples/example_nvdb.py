@@ -94,22 +94,20 @@ class Example:
         self.sim_restitution = 0.0
         self.sim_margin = 15.0
 
-        self.device = wp.get_preferred_device()
-
         self.renderer = wp.render.UsdRenderer(stage, upaxis="z")
         self.renderer.render_ground(size=10000.0)
 
         init_pos = 1000.0*(np.random.rand(self.num_particles, 3)*2.0 - 1.0) + np.array((0.0, 0.0, 3000.0))
         init_vel = np.random.rand(self.num_particles, 3)
 
-        self.positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3, device=self.device)
-        self.velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3, device=self.device)
+        self.positions = wp.from_numpy(init_pos.astype(np.float32), dtype=wp.vec3)
+        self.velocities = wp.from_numpy(init_vel.astype(np.float32), dtype=wp.vec3)
 
         # load collision volume
         file = open(os.path.join(os.path.dirname(__file__), "assets/rocks.nvdb"), "rb")
 
         # create Volume object
-        self.volume = wp.Volume.load_from_nvdb(file, device=self.device)
+        self.volume = wp.Volume.load_from_nvdb(file)
 
     def update(self):
 
@@ -119,10 +117,9 @@ class Example:
                 wp.launch(
                     kernel=simulate, 
                     dim=self.num_particles, 
-                    inputs=[self.positions, self.velocities, self.volume.id, self.sim_restitution, self.sim_margin, self.sim_dt/float(self.sim_substeps)], 
-                    device=self.device)
+                    inputs=[self.positions, self.velocities, self.volume.id, self.sim_restitution, self.sim_margin, self.sim_dt/float(self.sim_substeps)])
 
-            wp.synchronize()
+            wp.synchronize_device()
     
     def render(self, is_live=False):
 

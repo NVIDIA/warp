@@ -207,23 +207,22 @@ class Example:
         self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
         self.sim_time = 0.0
 
-        self.device = wp.get_preferred_device()
+        self.device = wp.get_device()
 
         shape = (grid_width.val, grid_height.val)
 
-        self.u0 = wp.zeros(shape, dtype=wp.vec2, device=self.device)
-        self.u1 = wp.zeros(shape, dtype=wp.vec2, device=self.device)
+        self.u0 = wp.zeros(shape, dtype=wp.vec2)
+        self.u1 = wp.zeros(shape, dtype=wp.vec2)
 
-        self.rho0 = wp.zeros(shape, dtype=float, device=self.device)
-        self.rho1 = wp.zeros(shape, dtype=float, device=self.device)
+        self.rho0 = wp.zeros(shape, dtype=float)
+        self.rho1 = wp.zeros(shape, dtype=float)
 
-        self.p0 = wp.zeros(shape, dtype=float, device=self.device)
-        self.p1 = wp.zeros(shape, dtype=float, device=self.device)
-        self.div = wp.zeros(shape, dtype=float, device=self.device)
-
+        self.p0 = wp.zeros(shape, dtype=float)
+        self.p1 = wp.zeros(shape, dtype=float)
+        self.div = wp.zeros(shape, dtype=float)
 
         # capture pressure solve as a CUDA graph
-        if self.device == "cuda":
+        if self.device.is_cuda:
             wp.capture_begin()
             self.solve()
             self.graph = wp.capture_end()
@@ -235,7 +234,7 @@ class Example:
     def solve(self):
                             
         for i in range(self.iterations):
-            wp.launch(pressure_solve, dim=self.p0.shape, inputs=[self.p0, self.p1, self.div], device=self.device)
+            wp.launch(pressure_solve, dim=self.p0.shape, inputs=[self.p0, self.p1, self.div])
             
             # swap pressure fields
             (self.p0, self.p1) = (self.p1, self.p0)
@@ -256,27 +255,27 @@ class Example:
                               math.sin(angle)*speed)
                 
                 # update emitters
-                wp.launch(init, dim=shape, inputs=[self.rho0, self.u0, 5, vel], device=self.device)
+                wp.launch(init, dim=shape, inputs=[self.rho0, self.u0, 5, vel])
 
                 # force integrate
-                wp.launch(integrate, dim=shape, inputs=[self.u0, self.rho0, dt], device=self.device)
-                wp.launch(divergence, dim=shape, inputs=[self.u0, self.div], device=self.device)
+                wp.launch(integrate, dim=shape, inputs=[self.u0, self.rho0, dt])
+                wp.launch(divergence, dim=shape, inputs=[self.u0, self.div])
 
                 # pressure solve
                 self.p0.zero_()
                 self.p1.zero_()
 
-                if self.device == "cuda":
+                if self.device.is_cuda:
                     wp.capture_launch(self.graph)
 
                 else:
                     self.solve()                
 
                 # velocity update
-                wp.launch(pressure_apply, dim=shape, inputs=[self.p0, self.u0], device=self.device)
+                wp.launch(pressure_apply, dim=shape, inputs=[self.p0, self.u0])
 
                 # semi-Lagrangian advection
-                wp.launch(advect, dim=shape, inputs=[self.u0, self.u1, self.rho0, self.rho1, dt], device=self.device)
+                wp.launch(advect, dim=shape, inputs=[self.u0, self.u1, self.rho0, self.rho1, dt])
 
                 # swap buffers
                 (self.u0, self.u1) = (self.u1, self.u0)

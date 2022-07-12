@@ -89,7 +89,6 @@ class Example:
 
     def __init__(self, stage):
         
-        self.device = wp.get_preferred_device()
         self.query_count = 1024
         self.has_queried = False
         
@@ -98,8 +97,8 @@ class Example:
         self.path_0 = "assets/cube.usda"
         self.path_1 = "assets/sphere.usda"
 
-        self.mesh_0 = self.load_mesh(self.path_0, "/Cube/Cube_001", self.device)
-        self.mesh_1 = self.load_mesh(self.path_1, "/Sphere/Sphere", self.device)
+        self.mesh_0 = self.load_mesh(self.path_0, "/Cube/Cube_001")
+        self.mesh_1 = self.load_mesh(self.path_1, "/Sphere/Sphere")
 
         self.query_num_faces = int(len(self.mesh_0.indices)/3)
         self.query_num_points = len(self.mesh_0.points)
@@ -121,8 +120,8 @@ class Example:
             self.xforms.append(wp.transform(p, q))
 
 
-        self.array_result = wp.zeros(self.query_count, dtype=int, device=self.device)
-        self.array_xforms = wp.array(self.xforms, dtype=wp.transform, device=self.device)
+        self.array_result = wp.zeros(self.query_count, dtype=int)
+        self.array_xforms = wp.array(self.xforms, dtype=wp.transform)
 
         # force module load (for accurate profiling)
         wp.force_load()
@@ -130,7 +129,7 @@ class Example:
     def update(self):
 
         with wp.ScopedTimer("intersect", active=True):
-            wp.launch(kernel=intersect, dim=self.query_num_faces*self.query_count, inputs=[self.mesh_0.id, self.mesh_1.id, self.query_num_faces, self.array_xforms, self.array_result], device=self.device)
+            wp.launch(kernel=intersect, dim=self.query_num_faces*self.query_count, inputs=[self.mesh_0.id, self.mesh_1.id, self.query_num_faces, self.array_xforms, self.array_result])
             wp.synchronize()
 
     def render(self, is_live=False):
@@ -159,15 +158,15 @@ class Example:
             self.renderer.end_frame()
 
     # create collision meshes
-    def load_mesh(self, path, prim, device):
+    def load_mesh(self, path, prim):
 
         usd_path = os.path.join(os.path.dirname(__file__), path)
         usd_stage = Usd.Stage.Open(usd_path)
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath(prim)) 
 
         mesh = wp.Mesh(
-            points=wp.array(usd_geom.GetPointsAttr().Get(), dtype=wp.vec3, device=device),
-            indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int, device=device))
+            points=wp.array(usd_geom.GetPointsAttr().Get(), dtype=wp.vec3),
+            indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int))
 
         return mesh
 
