@@ -54,7 +54,21 @@ def transform_points(src: wp.array(dtype=wp.vec3),
 
     dest[tid] = m
 
+@wp.kernel
+def update_tri_materials(dest: wp.array2d(dtype=float),tri_ke:float, tri_ka:float, tri_kd:float, tri_lift:float, tri_drag:float):
+    tid = wp.tid()
+    dest[tid,0]=tri_ke
+    dest[tid,1]=tri_ka
+    dest[tid,2]=tri_kd
+    dest[tid,3]=tri_drag
+    dest[tid,4]=tri_lift
 
+@wp.kernel
+def update_edge_properties(dest: wp.array2d(dtype=float), edge_ke:float, edge_kd:float):
+    tid = wp.tid()
+    dest[tid,0]=edge_ke
+    dest[tid,1]=edge_kd
+    
 
 # update mesh data given two sets of collider positions
 # computes velocities and transforms points to world-space
@@ -223,6 +237,15 @@ class OgnCloth:
 
                     context.collider_xform = read_transform_bundle(db.inputs.collider)
 
+                    # store stretch properties in model
+                    context.model.tri_ke = db.inputs.k_tri_elastic
+                    context.model.tri_ka = db.inputs.k_tri_area
+                    context.model.tri_kd = db.inputs.k_tri_damp  
+
+                    # store bending properties in model
+                    context.model.edge_ke = db.inputs.k_edge_bend
+                    context.model.edge_kd = db.inputs.k_edge_damp 
+
 
                 # update dynamic properties
                 context.model.ground = db.inputs.ground
@@ -238,6 +261,24 @@ class OgnCloth:
                 context.model.soft_contact_mu = db.inputs.k_contact_mu
                 context.model.soft_contact_distance = db.inputs.collider_offset
                 context.model.soft_contact_margin = db.inputs.collider_offset*10.0
+
+                # Update tri properties if required:
+                if(db.inputs.k_tri_elastic != context.model.tri_ke or
+                    db.inputs.k_tri_area != context.model.tri_ka or
+                    db.inputs.k_tri_damp != context.model.tri_kd):
+                    wp.launch(update_tri_materials, 
+                        dim=context.model.tri_count,
+                        inputs=[context.model.tri_materials, db.inputs.k_tri_elastic, db.inputs.k_tri_area, db.inputs.k_tri_damp,0.0,0.0],
+                        device=self.device
+                    )
+
+                # Update bending properties if required:
+                if(db.inputs.k_edge_bend != context.model.edge_ke or db.inputs.k_edge_damp != context.model.edge_kd):
+                    wp.launch(update_edge_properties, 
+                        dim=context.model.edge_count,
+                        inputs=[context.model.edge_bending_properties, db.inputs.k_edge_bend, db.inputs.k_edge_damp],
+                        device=self.device
+                    )
 
                 # update collider positions
                 with wp.ScopedTimer("Refit", active=False):
