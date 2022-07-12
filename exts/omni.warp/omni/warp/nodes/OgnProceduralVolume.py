@@ -105,7 +105,7 @@ class OgnProceduralVolumeState:
 
     def __init__(self):
         self.field = None
-    
+        self.dim = None
 
 class OgnProceduralVolume:
 
@@ -122,14 +122,15 @@ class OgnProceduralVolume:
 
         if db.inputs.execIn:
 
+            state = db.internal_state
             time = db.inputs.time
             dim = (db.inputs.dim_x, db.inputs.dim_y, db.inputs.dim_z)
 
             with wp.ScopedCudaGuard():
-
-                state = db.internal_state
-                if state.field == None:
+               
+                if state.dim != dim:
                     state.field = wp.zeros(shape=dim, dtype=float, device="cuda")
+                    state.dim = dim
 
                 wp.launch(make_field, dim=state.field.shape, inputs=[state.field, wp.vec3(dim[0]/2, dim[1]/4, dim[2]/2), dim[0]/4, time], device="cuda")
 

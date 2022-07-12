@@ -190,16 +190,8 @@ namespace wp {
 		int* first_cell_tri;
 		int* cell_verts;
 
-        // used for computing normals
-		vec3* avg_verts;
-		int* avg_num;
-
         int num_cells;   
-
-        // capacity limits
         int max_cells;
-        int max_verts;
-
 	};
 
 
@@ -351,96 +343,8 @@ namespace wp {
 		}
 	}
 
-	// -----------------------------------------------------------------------------------
-	__global__ void smooth_verts(MarchingCubes mc, vec3* vertices, int* triangles, int num_tris)
-	{
-		int triNr = blockIdx.x * blockDim.x + threadIdx.x;
-		if (triNr >= num_tris / 3)
-			return;
-
-		for (int i = 0; i < 3; i++)
-        {
-			int id0 = triangles[3 * triNr + i];
-			int id1 = triangles[3 * triNr + (i + 1) % 3];
-			int id2 = triangles[3 * triNr + (i + 2) % 3];
-
-			vec3 p1 = vertices[id1];
-			vec3 p2 = vertices[id2];
-
-			atomic_add(&mc.avg_num[id0], 2);
-			atomic_add(&mc.avg_verts[id0], p1);
-			atomic_add(&mc.avg_verts[id0], p2);
-		}
-	}
-
-	// -----------------------------------------------------------------------------------
-	__global__ void average_verts(MarchingCubes mc, vec3* vertices, int num_verts)
-	{
-		int vNr = blockIdx.x * blockDim.x + threadIdx.x;
-		if (vNr >= num_verts)
-			return;
-		
-		int num = mc.avg_num[vNr];
-		if (num > 0)
-			vertices[vNr] = mc.avg_verts[vNr] / (float)num;
-	}
-
-	// -----------------------------------------------------------------------------------
-	__global__ void compute_normals(MarchingCubes mc, const vec3* __restrict__ vertices, vec3* normals, const int* __restrict__ triangles, int num_verts, int num_tris)
-	{
-		int triNr = blockIdx.x * blockDim.x + threadIdx.x;
-		if (triNr >= num_tris / 3)
-			return;
-
-		int id0 = triangles[3 * triNr];
-		int id1 = triangles[3 * triNr + 1];
-		int id2 = triangles[3 * triNr + 2];
-
-		vec3 p0 = vertices[id0];
-		vec3 p1 = vertices[id1];
-		vec3 p2 = vertices[id2];
-		vec3 n = cross(p1 - p0, p2 - p0);
-
-		atomic_add(&normals[id0], n);
-		atomic_add(&normals[id1], n);
-		atomic_add(&normals[id2], n);
-	}
-
-	// -----------------------------------------------------------------------------------
-	__global__ void smooth_normals(MarchingCubes mc, vec3* normals, const int* __restrict__ triangles, int num_tris)
-	{
-		int triNr = blockIdx.x * blockDim.x + threadIdx.x;
-		if (triNr >= num_tris / 3)
-			return;
-
-		int id0 = triangles[3 * triNr];
-		int id1 = triangles[3 * triNr + 1];
-		int id2 = triangles[3 * triNr + 2];
-
-		vec3 n0 = normals[id0];
-		vec3 n1 = normals[id1];
-		vec3 n2 = normals[id2];
-
-		vec3 n = normalize(n0 + n1 + n2);
-
-		atomic_add(&normals[id0], n);
-		atomic_add(&normals[id1], n);
-		atomic_add(&normals[id2], n);
-	}
-
-	// -----------------------------------------------------------------------------------
-	__global__ void normalize_normals(vec3* normals, int num_verts)
-	{
-		int vNr = blockIdx.x * blockDim.x + threadIdx.x;
-		if (vNr >= num_verts)
-			return;
-
-		normals[vNr] = normalize(normals[vNr]);
-	}
-
-
     // -------------------------
-    void marching_cubes_resize(MarchingCubes& mc, int nx, int ny, int nz, int max_vertices)
+    void marching_cubes_resize(MarchingCubes& mc, int nx, int ny, int nz)
     {
         mc.nx = nx;
         mc.ny = ny;
@@ -452,24 +356,16 @@ namespace wp {
         {
             const int num_to_alloc = mc.num_cells*3/2;
 
+            free_device(mc.first_cell_vert);
+            free_device(mc.first_cell_tri);
+            free_device(mc.cell_verts);
+
             mc.first_cell_vert = (int*)alloc_device(sizeof(int) * num_to_alloc);
             mc.first_cell_tri = (int*)alloc_device(sizeof(int) * num_to_alloc);
             mc.cell_verts = (int*)alloc_device(sizeof(int) * 3 * num_to_alloc);
 
             mc.max_cells = num_to_alloc;
-
         }
-        
-        if (max_vertices > mc.max_verts)
-        {
-            const int num_to_alloc = max_vertices*3/2;
-
-            mc.avg_verts = (vec3*)alloc_device(sizeof(vec3) * num_to_alloc);
-            mc.avg_num = (int*)alloc_device(sizeof(int) * num_to_alloc);
-
-            mc.max_verts = num_to_alloc;
-        }
-
     }
 
     // -------------------------
@@ -478,9 +374,6 @@ namespace wp {
         free_device(mc.first_cell_vert);
         free_device(mc.first_cell_tri);
         free_device(mc.cell_verts);
-
-        free_device(mc.avg_verts);
-        free_device(mc.avg_num);
     }
 
 } // namespace wp
@@ -530,7 +423,7 @@ WP_API int marching_cubes_surface_device(
     *out_num_tris = 0;
 
     // resize temporary memory
-    marching_cubes_resize(mc, nx, ny, nz, max_verts);
+    marching_cubes_resize(mc, nx, ny, nz);
 
     // create vertices
     wp_launch_device(wp::count_cell_verts, mc.num_cells, (mc, field, threshold) );

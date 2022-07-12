@@ -48,6 +48,9 @@ class OgnMarchingCubes:
                 if state.mc == None:
                     state.mc = wp.MarchingCubes(dim[0], dim[1], dim[2], db.inputs.max_vertices, db.inputs.max_triangles, device="cuda")
 
+                # resize in case any dimensions changed    
+                state.mc.resize(dim[0], dim[1], dim[2], db.inputs.max_vertices, db.inputs.max_triangles)
+
                 # alias the incoming memory to a Warp array
                 ptr = db.inputs.volume.attribute_by_name("data").value
                 field = wp.array(ptr=ptr, dtype=float, shape=dim, owner=False, device="cuda")
