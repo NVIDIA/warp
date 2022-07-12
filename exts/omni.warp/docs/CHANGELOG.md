@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.3.1] - 2022-07-12
+
+- Fix for marching cubes reallocation after initialization
+- Add support for closest point between line segment tests, see `wp.closest_point_edge_edge()` builtin
+- Add support for per-triangle elasticity coefficients in simulation, see `wp.sim.ModelBuilder.add_cloth_mesh()`
+
 ## [0.3.0] - 2022-07-08
 
 - Add support for FP16 storage type, see `wp.float16`

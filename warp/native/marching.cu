@@ -1,5 +1,4 @@
 #include "warp.h"
-#include "marching.h"
 
 #include "thrust/device_ptr.h"
 #include "thrust/sort.h"
