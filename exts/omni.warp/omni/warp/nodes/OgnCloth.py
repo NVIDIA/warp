@@ -183,7 +183,8 @@ class OgnCloth:
                                                    tri_ka=db.inputs.k_tri_area,
                                                    tri_kd=db.inputs.k_tri_damp,
                                                    edge_ke=db.inputs.k_edge_bend,
-                                                   edge_kd=db.inputs.k_edge_damp)
+                                                   edge_kd=db.inputs.k_edge_damp
+                                                   )
 
 
                             avg_mass = np.mean(builder.particle_mass)
@@ -268,16 +269,14 @@ class OgnCloth:
                     db.inputs.k_tri_damp != context.model.tri_kd):
                     wp.launch(update_tri_materials, 
                         dim=context.model.tri_count,
-                        inputs=[context.model.tri_materials, db.inputs.k_tri_elastic, db.inputs.k_tri_area, db.inputs.k_tri_damp,0.0,0.0],
-                        device=self.device
+                        inputs=[context.model.tri_materials, db.inputs.k_tri_elastic, db.inputs.k_tri_area, db.inputs.k_tri_damp,0.0,0.0]
                     )
 
                 # Update bending properties if required:
                 if(db.inputs.k_edge_bend != context.model.edge_ke or db.inputs.k_edge_damp != context.model.edge_kd):
                     wp.launch(update_edge_properties, 
                         dim=context.model.edge_count,
-                        inputs=[context.model.edge_bending_properties, db.inputs.k_edge_bend, db.inputs.k_edge_damp],
-                        device=self.device
+                        inputs=[context.model.edge_bending_properties, db.inputs.k_edge_bend, db.inputs.k_edge_damp]
                     )
 
                 # update collider positions
