@@ -77,6 +77,7 @@ void hash_grid_destroy_host(uint64_t id)
     free_host(grid->point_ids);
     free_host(grid->point_cells);
     free_host(grid->cell_starts);
+    free_host(grid->cell_ends);
 
     delete grid;
 }
@@ -181,6 +182,7 @@ void hash_grid_destroy_device(uint64_t id)
         free_device(grid.point_ids);
         free_device(grid.point_cells);
         free_device(grid.cell_starts);
+        free_device(grid.cell_ends);
 
         free_device((HashGrid*)id);
         
