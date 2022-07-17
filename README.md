@@ -32,7 +32,6 @@ import numpy as np
 wp.init()
 
 num_points = 1024
-device = "cuda"
 
 @wp.kernel
 def length(points: wp.array(dtype=wp.vec3),
@@ -46,14 +45,13 @@ def length(points: wp.array(dtype=wp.vec3),
 
 
 # allocate an array of 3d points
-points = wp.array(np.random.rand(num_points, 3), dtype=wp.vec3, device=device)
-lengths = wp.zeros(num_points, dtype=float, device=device)
+points = wp.array(np.random.rand(num_points, 3), dtype=wp.vec3)
+lengths = wp.zeros(num_points, dtype=float)
 
 # launch kernel
 wp.launch(kernel=length,
           dim=len(points),
-          inputs=[points, lengths],
-          device=device)
+          inputs=[points, lengths])
 
 print(lengths)
 ```
@@ -107,7 +105,7 @@ Enabling the extension will automatically install and initialize the Warp Python
 
 Please see the following resources for additional background on Warp:
 
-* [GTC 2022 Presentation](https://www.nvidia.com/gtc/session-catalog/?search=warp&tab.scheduledorondemand=1583520458947001NJiE&search=warp#/session/16384065793850013gEx).
+* [GTC 2022 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599/).
 * [GTC 2021 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838/)
 * [SIGGRAPH Asia 2021 Differentiable Simulation Course](https://dl.acm.org/doi/abs/10.1145/3476117.3483433)
 
