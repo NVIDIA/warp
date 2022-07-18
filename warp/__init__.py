@@ -30,13 +30,8 @@ from warp.tape import Tape
 from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice
 from warp.utils import transform_expand
 
-# optional on PyTorch being installed
-try:
-    from warp.torch import from_torch, to_torch
-    from warp.torch import device_from_torch, device_to_torch
-
-except ModuleNotFoundError:
-    pass
+from warp.torch import from_torch, to_torch
+from warp.torch import device_from_torch, device_to_torch
 
 # optional on USD being installed
 try:
