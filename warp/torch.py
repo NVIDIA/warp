@@ -6,7 +6,6 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp
-import torch
 import numpy
 
 
@@ -28,6 +27,9 @@ def device_to_torch(wp_device):
 
 # wrap a torch tensor to a wp array, data is not copied
 def from_torch(t, dtype=warp.types.float32):
+
+    import torch
+
     # ensure tensors are contiguous
     assert(t.is_contiguous())
 
@@ -71,6 +73,9 @@ def from_torch(t, dtype=warp.types.float32):
 
 
 def to_torch(a):
+
+    import torch
+
     if a.device.is_cpu:
         # Torch has an issue wrapping CPU objects 
         # that support the __array_interface__ protocol
