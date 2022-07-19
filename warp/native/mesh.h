@@ -49,107 +49,6 @@ CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower,
 // fwd
 CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p);
 
-// these can be called inside kernels so need to be inline
-CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, float max_dist, float& inside)
-{
-    Mesh mesh = mesh_get(id);
-
-	if (mesh.bvh.num_nodes == 0)
-		return vec3();
-
-	int stack[32];
-    stack[0] = mesh.bvh.root;
-
-	int count = 1;
-
-	float min_dist_sq = max_dist*max_dist;
-	vec3 min_point;
-	inside = 1.0f;
-
-#if BVH_DEBUG
-	int tests = 0;
-#endif
-
-	while (count)
-	{
-		const int nodeIndex = stack[--count];
-
-		BVHPackedNodeHalf lower = mesh.bvh.node_lowers[nodeIndex];
-		BVHPackedNodeHalf upper = mesh.bvh.node_uppers[nodeIndex];
-
-		const float dist_sq = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
-
-		if (dist_sq < min_dist_sq)
-		{
-			const int left_index = lower.i;
-			const int right_index = upper.i;
-
-			if (lower.b)
-			{	
-                // compute closest point on tri
-				int i = mesh.indices[left_index*3+0];
-				int j = mesh.indices[left_index*3+1];
-				int k = mesh.indices[left_index*3+2];
-
-				vec3 p = mesh.points[i];
-				vec3 q = mesh.points[j];
-				vec3 r = mesh.points[k];
-
-				vec2 barycentric = closest_point_to_triangle(p, q, r, point);
-				float u = barycentric[0];
-				float v = barycentric[1];
-				float w = 1.f - u - v;
-				vec3 c = u*p + v*q + w*r;
-
-				float dist_sq = length_sq(c-point);
-
-				if (dist_sq < min_dist_sq)
-				{
-					min_dist_sq = dist_sq;
-					min_point = c;
-
-					// if this is a 'new point', i.e.: strictly closer than previous best then update sign
-					vec3 normal = cross(q-p, r-p);
-					inside = sign(dot(normal, point-c));
-				}
-				else if (dist_sq == min_dist_sq)
-				{
-					// if the test point is equal, then test if inside should be updated
-					// point considered inside if *any* of the incident faces enclose the point
-					vec3 normal = cross(q-p, r-p);
-					if (dot(normal, point-c) < 0.0f)
-						inside = -1.0f;
-				}
-#if BVH_DEBUG
-				tests++;
-#endif 				
-			}
-			else
-			{
-				stack[count++] = left_index;
-				stack[count++] = right_index;
-			}
-		}
-	}
-
-
-#if BVH_DEBUG
-    static int max_tests = 0;
-	static vec3 max_point;
-	static float max_point_dist = 0.0f;
-
-    if (tests > max_tests)
-	{
-        max_tests = tests;
-		max_point = point;
-		max_point_dist = sqrtf(min_dist_sq);
-
-		printf("max_tests: %d max_point: %f %f %f max_point_dist: %f\n", max_tests, max_point.x, max_point.y, max_point.z, max_point_dist);
-	}
-#endif
-
-	return min_point;
-}
 
 // returns true if there is a point (strictly) < distance max_dist
 CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v)
@@ -170,10 +69,8 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 	float min_w;
 	float min_inside = 1.0f;
 
-	int tests = 0;
-
 #if BVH_DEBUG
-	
+	int tests = 0;
 	int secondary_culls = 0;
 
 	std::vector<int> test_history;
@@ -227,7 +124,6 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 			float w = 1.f - u - v;
 			vec3 c = u*p + v*q + w*r;
 
-			float angle = dot(normal, point-c);
 			float dist_sq = length_sq(c-point);
 
 			if (dist_sq < min_dist_sq)
@@ -236,21 +132,11 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 				min_v = v;
 				min_w = w;
 				min_face = left_index;
-				
-				// this is a 'new point', i.e.: strictly closer than previous so update sign
-				min_inside = sign(angle);
 			}
-			else if (dist_sq == min_dist_sq)	// todo: should probably use fuzzy equality here
-			{
-				// if the test point is equally close, then the point is point considered 
-				// inside if *any* of the incident faces enclose the point
-				if (angle < 0.0f)
-					min_inside = -1.0f;
-			}
-
-			tests++;
 
 #if BVH_DEBUG
+
+			tests++;
 
 			bounds3 b;
 			b = bounds_union(b, p);
@@ -278,12 +164,15 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 			float left_dist_sq = distance_to_aabb_sq(point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z));
 			float right_dist_sq = distance_to_aabb_sq(point, vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z));
 
+
+			// traverse smaller area first
 			//float left_score = bounds3(vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z)).area();
 			//float right_score = bounds3(vec3(right_lower.x, right_lower.y, right_lower.z), vec3(right_upper.x, right_upper.y, right_upper.z)).area();
 
 			float left_score = left_dist_sq;
 			float right_score = right_dist_sq;
 
+			// tie break based on distance to centroid if point inside both bounds
 			// if (left_score == right_score)
 			// {
 			// 	// use distance from box centroid to order children
@@ -318,7 +207,7 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 
 
 #if BVH_DEBUG
-printf("%d\n", tests);
+	printf("%d\n", tests);
 
     static int max_tests = 0;
 	static vec3 max_point;
@@ -355,8 +244,8 @@ printf("%d\n", tests);
 		u = 1.0f - min_v - min_w;
 		v = min_v;
 		face = min_face;
-		//inside = min_inside;
-
+		
+		// determine inside outside using ray-cast parity check
 		inside = mesh_query_inside(id, point);
 		
 		return true;
