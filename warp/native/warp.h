@@ -110,22 +110,3 @@ extern "C"
     WP_API size_t cuda_launch_kernel(void* kernel, size_t dim, void** args);
 
 } // extern "C"
-
-namespace wp
-{
-enum class DeviceType { CPU, CUDA };
-
-template<DeviceType Source, DeviceType Target> void memcpy(void* dest, void* src, size_t n);
-template<> inline void memcpy<DeviceType::CPU, DeviceType::CPU>(void* dest, void* src, size_t n)   { memcpy_h2h(dest, src, n); }
-template<> inline void memcpy<DeviceType::CPU, DeviceType::CUDA>(void* dest, void* src, size_t n)  { memcpy_h2d(dest, src, n); }
-template<> inline void memcpy<DeviceType::CUDA, DeviceType::CPU>(void* dest, void* src, size_t n)  { memcpy_d2h(dest, src, n); }
-template<> inline void memcpy<DeviceType::CUDA, DeviceType::CUDA>(void* dest, void* src, size_t n) { memcpy_d2d(dest, src, n); }
-
-template<DeviceType device> void* alloc(size_t s);
-template<> inline void* alloc<DeviceType::CPU>(size_t s)  { return alloc_host(s); }
-template<> inline void* alloc<DeviceType::CUDA>(size_t s) { return alloc_device(s); }
-
-template<DeviceType device> void free(void* ptr);
-template<> inline void free<DeviceType::CPU>(void* ptr)  { free_host(ptr); }
-template<> inline void free<DeviceType::CUDA>(void* ptr) { free_device(ptr); }
-} // namespace wp

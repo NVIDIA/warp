@@ -7,10 +7,7 @@
  */
 
 #include "volume.h"
-
 #include "warp.h"
-
-#ifndef WP_CUDA
 
 #include <map>
 
@@ -18,6 +15,7 @@ using namespace wp;
 
 namespace
 {
+
 struct VolumeDesc
 {
     // NanoVDB buffer either in device or host memory
@@ -58,93 +56,96 @@ void volume_rem_descriptor(uint64_t id)
 {
     g_volume_descriptors.erase(id);
 }
+
 } // anonymous namespace
 
-// Creates a volume on the specified device
-// NB: buf must be a pointer on the same device
-template<DeviceType device>
-uint64_t volume_create(void* buf, uint64_t size)
+
+// NB: buf must be a host pointer
+uint64_t volume_create_host(void* buf, uint64_t size)
 {
-    if (size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t)) { // This cannot be a valid NanoVDB grid with data
+    if (size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t))
+        return 0;  // This cannot be a valid NanoVDB grid with data
+
+    VolumeDesc volume;
+    memcpy_h2h(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
+    memcpy_h2h(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
+
+    if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER)
         return 0;
-    }
 
-    VolumeDesc volumeDesc;
-    memcpy<device, DeviceType::CPU>(&volumeDesc.grid_data, buf, sizeof(pnanovdb_grid_t));
-    memcpy<device, DeviceType::CPU>(&volumeDesc.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
+    volume.size_in_bytes = size;
+    volume.buffer = alloc_host(size);
+    memcpy_h2h(volume.buffer, buf, size);
 
-    if (volumeDesc.grid_data.magic != PNANOVDB_MAGIC_NUMBER) {
-        return 0;
-    }
+    volume.first_voxel_data_offs =
+        sizeof(pnanovdb_grid_t) + volume.tree_data.node_offset_leaf + PNANOVDB_GRID_TYPE_GET(PNANOVDB_GRID_TYPE_FLOAT, leaf_off_table);
 
-    volumeDesc.size_in_bytes = size;
-    volumeDesc.buffer = alloc<device>(size);
-    memcpy<device, device>(volumeDesc.buffer, buf, size);
+    uint64_t id = (uint64_t)volume.buffer;
 
-    volumeDesc.first_voxel_data_offs =
-        sizeof(pnanovdb_grid_t) + volumeDesc.tree_data.node_offset_leaf + PNANOVDB_GRID_TYPE_GET(PNANOVDB_GRID_TYPE_FLOAT, leaf_off_table);
-
-    const uint64_t id = (uint64_t)volumeDesc.buffer;
-
-    volume_add_descriptor(id, volumeDesc);
+    volume_add_descriptor(id, volume);
 
     return id;
 }
 
-uint64_t volume_create_host(void* buf, uint64_t size)
-{
-    return volume_create<DeviceType::CPU>(buf, size);
-}
-
+// NB: buf must be a pointer on the same device
 uint64_t volume_create_device(void* buf, uint64_t size)
 {
-    return volume_create<DeviceType::CUDA>(buf, size);
+    if (size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t))
+        return 0;  // This cannot be a valid NanoVDB grid with data
+
+    VolumeDesc volume;
+    memcpy_d2h(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
+    memcpy_d2h(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
+
+    if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER)
+        return 0;
+
+    volume.size_in_bytes = size;
+    volume.buffer = alloc_device(size);
+    memcpy_d2d(volume.buffer, buf, size);
+
+    volume.first_voxel_data_offs =
+        sizeof(pnanovdb_grid_t) + volume.tree_data.node_offset_leaf + PNANOVDB_GRID_TYPE_GET(PNANOVDB_GRID_TYPE_FLOAT, leaf_off_table);
+
+    uint64_t id = (uint64_t)volume.buffer;
+
+    volume_add_descriptor(id, volume);
+
+    return id;
 }
 
 
-template<DeviceType device>
-void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
+static void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 {
     *buf = 0;
     *size = 0;
 
-    VolumeDesc volumeDesc;
-    if (volume_get_descriptor(id, volumeDesc)) {
-        *buf = volumeDesc.buffer;
-        *size = volumeDesc.size_in_bytes;
+    VolumeDesc volume;
+    if (volume_get_descriptor(id, volume))
+    {
+        *buf = volume.buffer;
+        *size = volume.size_in_bytes;
     }
 }
 
 void volume_get_buffer_info_host(uint64_t id, void** buf, uint64_t* size)
 {
-    volume_get_buffer_info<DeviceType::CPU>(id, buf, size);
+    volume_get_buffer_info(id, buf, size);
 }
 
 void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size)
 {
-    volume_get_buffer_info<DeviceType::CUDA>(id, buf, size);
-}
-
-template<DeviceType device>
-void volume_destroy(uint64_t id)
-{
-    free<device>((void*)id);
-    volume_rem_descriptor(id);
+    volume_get_buffer_info(id, buf, size);
 }
 
 void volume_destroy_host(uint64_t id)
 {
-    volume_destroy<DeviceType::CPU>(id);
+    free_host((void*)id);
+    volume_rem_descriptor(id);
 }
 
 void volume_destroy_device(uint64_t id)
 {
-    volume_destroy<DeviceType::CUDA>(id);
+    free_device((void*)id);
+    volume_rem_descriptor(id);
 }
-
-// stubs for non-CUDA platforms
-#if WP_DISABLE_CUDA
-
-#endif // WP_DISABLE_CUDA
-
-#endif // WP_CUDA
