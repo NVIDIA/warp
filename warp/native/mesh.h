@@ -46,6 +46,8 @@ CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower,
 }
 
 
+// fwd
+CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p);
 
 // these can be called inside kernels so need to be inline
 CUDA_CALLABLE inline vec3 mesh_query_point_old(uint64_t id, const vec3& point, float max_dist, float& inside)
@@ -353,7 +355,9 @@ printf("%d\n", tests);
 		u = 1.0f - min_v - min_w;
 		v = min_v;
 		face = min_face;
-		inside = min_inside;
+		//inside = min_inside;
+
+		inside = mesh_query_inside(id, point);
 		
 		return true;
 	}
@@ -499,6 +503,34 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 
 }
 
+
+// determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)
+CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
+{
+    float t, u, v, sign;
+	vec3 n;
+	int face;
+
+    int parity = 0;
+
+    // x-axis
+    if (mesh_query_ray(id, p, vec3(1.0f, 0.0f, 0.0f), FLT_MAX, t, u, v, sign, n, face))
+        parity++;
+    // y-axis
+    if (mesh_query_ray(id, p, vec3(0.0f, 1.0f, 0.0f), FLT_MAX, t, u, v, sign, n, face))
+        parity++;
+    // z-axis
+    if (mesh_query_ray(id, p, vec3(0.0f, 0.0f, 1.0f), FLT_MAX, t, u, v, sign, n, face))
+        parity++;
+
+    // if all 3 rays inside then return -1
+    if (parity == 3)
+        return -1.0f;
+    else
+        return 1.0f;
+}
+
+
 // stores state required to traverse the BVH nodes that 
 // overlap with a query AABB.
 struct mesh_query_aabb_t
@@ -642,6 +674,7 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& in
     return false;
 }
 
+
 CUDA_CALLABLE inline int iter_next(mesh_query_aabb_t& query)
 {
     return query.face;
@@ -665,29 +698,6 @@ CUDA_CALLABLE inline void adj_mesh_query_aabb_next(mesh_query_aabb_t& query, int
 {
 
 }
-
-// // determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)
-// CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
-// {
-//     float t, u, v, sign;
-//     int parity = 0;
-
-//     // x-axis
-//     if (mesh_query_ray(id, p, vec3(1.0f, 0.0f, 0.0f), FLT_MAX, t, u, v, sign))
-//         parity++;
-//     // y-axis
-//     if (mesh_query_ray(id, p, vec3(0.0f, 1.0f, 0.0f), FLT_MAX, t, u, v, sign))
-//         parity++;
-//     // z-axis
-//     if (mesh_query_ray(id, p, vec3(0.0f, 0.0f, 1.0f), FLT_MAX, t, u, v, sign))
-//         parity++;
-
-//     // if all 3 rays inside then return -1
-//     if (parity == 3)
-//         return -1.0f;
-//     else
-//         return 1.0f;
-// }
 
 
 CUDA_CALLABLE inline vec3 mesh_eval_position(uint64_t id, int tri, float u, float v)
