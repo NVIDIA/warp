@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [0.3.2] - 2022-07-19
+
+- Remove Torch import from `__init__.py`, defer import to `wp.from_torch()`, `wp.to_torch()`
 
 ## [0.3.1] - 2022-07-12
 
