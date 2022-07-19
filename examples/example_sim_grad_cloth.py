@@ -75,13 +75,6 @@ class Cloth:
 
         self.model = builder.finalize(self.device)
         self.model.ground = False
-
-        # self.model.tri_ke = 10000.0
-        # self.model.tri_ka = 10000.0
-        # self.model.tri_kd = 100.0
-        # self.model.tri_kb = 0.0
-        # self.model.tri_lift = 10.0
-        # self.model.tri_drag = 5.0
         
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
