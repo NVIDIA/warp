@@ -450,7 +450,7 @@ class array (Generic[T]):
 
         if data is not None or ptr is not None:
             from warp.context import runtime
-            device = runtime.acquire_device(device)
+            device = runtime.get_device(device)
 
         if data is not None:
 
@@ -678,7 +678,6 @@ class array (Generic[T]):
             raise RuntimeError(f"Assigning to non-continuguous arrays is unsupported.")
 
         if self.device is not None and self.ptr is not None:
-            self.device.make_current()
             self.device.memset(ctypes.c_void_p(self.ptr), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
 
@@ -697,7 +696,6 @@ class array (Generic[T]):
             dest_ptr = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int))
             dest_value = dest_ptr.contents
 
-            self.device.make_current()
             self.device.memset(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
     # equivalent to wrapping src data in an array and copying to self
@@ -843,8 +841,8 @@ class Mesh:
                 int(len(points)), 
                 int(len(indices)/3))
         else:
-            self.device.make_current()
             self.id = runtime.core.mesh_create_device(
+                self.device.context,
                 get_data(points), 
                 get_data(velocities), 
                 get_data(indices), 
@@ -876,9 +874,8 @@ class Mesh:
         if self.device.is_cpu:
             runtime.core.mesh_refit_host(self.id)
         else:
-            self.device.make_current()
             runtime.core.mesh_refit_device(self.id)
-            runtime.verify_device()
+            runtime.verify_cuda_device(self.device)
 
 
 
@@ -910,8 +907,7 @@ class Volume:
         if self.device.is_cpu:
             self.id = self.context.core.volume_create_host(ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
         else:
-            self.device.make_current()
-            self.id = self.context.core.volume_create_device(ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
+            self.id = self.context.core.volume_create_device(self.device.context, ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
 
         if self.id == 0:
             raise RuntimeError("Failed to create volume from input array")
@@ -1000,8 +996,7 @@ class HashGrid:
         if self.device.is_cpu:
             self.id = runtime.core.hash_grid_create_host(dim_x, dim_y, dim_z)
         else:
-            self.device.make_current()
-            self.id = runtime.core.hash_grid_create_device(dim_x, dim_y, dim_z)
+            self.id = runtime.core.hash_grid_create_device(self.device.context, dim_x, dim_y, dim_z)
 
 
     def build(self, points, radius):
@@ -1026,7 +1021,6 @@ class HashGrid:
         if self.device.is_cpu:
             runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
         else:
-            self.device.make_current()
             runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
 
 
@@ -1037,7 +1031,6 @@ class HashGrid:
         if self.device.is_cpu:
             runtime.core.hash_grid_reserve_host(self.id, num_points)
         else:
-            self.device.make_current()
             runtime.core.hash_grid_reserve_device(self.id, num_points)
 
 
@@ -1077,7 +1070,8 @@ class MarchingCubes:
         self.max_tris = max_tris
 
         # bindings to warp.so
-        self.alloc = runtime.core.marching_cubes_create_device        
+        self.alloc = runtime.core.marching_cubes_create_device
+        self.alloc.argtypes = [ctypes.c_void_p]
         self.alloc.restype = ctypes.c_uint64
         self.free = runtime.core.marching_cubes_destroy_device
 
@@ -1087,8 +1081,7 @@ class MarchingCubes:
         self.indices = zeros(max_tris*3, dtype=int, device=self.device)
 
         # alloc surfacer
-        self.device.make_current()
-        self.id = ctypes.c_uint64(self.alloc())
+        self.id = ctypes.c_uint64(self.alloc(self.device.context))
 
     def __del__(self):
 
@@ -1116,8 +1109,6 @@ class MarchingCubes:
         num_tris = ctypes.c_int(0)
 
         runtime.core.marching_cubes_surface_device.restype = ctypes.c_int
-
-        self.device.make_current()
 
         error = runtime.core.marching_cubes_surface_device(self.id,
                                                            ctypes.cast(field.ptr, ctypes.c_void_p),

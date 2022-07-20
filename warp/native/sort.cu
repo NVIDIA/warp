@@ -7,6 +7,7 @@
  */
 
 #include "warp.h"
+#include "cuda_util.h"
 #include "sort.h"
 
 #define THRUST_IGNORE_CUB_VERSION_CHECK
@@ -23,10 +24,13 @@ struct RadixSortTemp
 };
 
 // map temp buffers to CUDA contexts
-static std::map<CUcontext, RadixSortTemp> g_radix_sort_temp_map;
+static std::map<void*, RadixSortTemp> g_radix_sort_temp_map;
 
-void radix_sort_reserve(int n, void** mem_out, size_t* size_out)
+
+void radix_sort_reserve(void* context, int n, void** mem_out, size_t* size_out)
 {
+    ContextGuard guard(context);
+
     cub::DoubleBuffer<int> d_keys;
 	cub::DoubleBuffer<int> d_values;
 
@@ -34,15 +38,15 @@ void radix_sort_reserve(int n, void** mem_out, size_t* size_out)
 	size_t sort_temp_size;
 	cub::DeviceRadixSort::SortPairs(NULL, sort_temp_size, d_keys, d_values, int(n), 0, 32, (cudaStream_t)cuda_stream_get_current());
 
-    CUcontext ctx;
-    check_cu(cuCtxGetCurrent_f(&ctx));
+    if (!context)
+        context = cuda_context_get_current();
 
-    RadixSortTemp& temp = g_radix_sort_temp_map[ctx];
+    RadixSortTemp& temp = g_radix_sort_temp_map[context];
 
     if (sort_temp_size > temp.size)
     {
-	    free_device(temp.mem);
-        temp.mem = alloc_device(sort_temp_size);
+	    free_device(WP_CURRENT_CONTEXT, temp.mem);
+        temp.mem = alloc_device(WP_CURRENT_CONTEXT, sort_temp_size);
         temp.size = sort_temp_size;
     }
     
@@ -52,13 +56,15 @@ void radix_sort_reserve(int n, void** mem_out, size_t* size_out)
         *size_out = temp.size;
 }
 
-void radix_sort_pairs_device(int* keys, int* values, int n)
+void radix_sort_pairs_device(void* context, int* keys, int* values, int n)
 {
+    ContextGuard guard(context);
+
     cub::DoubleBuffer<int> d_keys(keys, keys + n);
 	cub::DoubleBuffer<int> d_values(values, values + n);
 
     RadixSortTemp temp;
-    radix_sort_reserve(n, &temp.mem, &temp.size);
+    radix_sort_reserve(WP_CURRENT_CONTEXT, n, &temp.mem, &temp.size);
 
     // sort
     cub::DeviceRadixSort::SortPairs(
@@ -70,8 +76,8 @@ void radix_sort_pairs_device(int* keys, int* values, int n)
         (cudaStream_t)cuda_stream_get_current());
 
 	if (d_keys.Current() != keys)
-		memcpy_d2d(keys, d_keys.Current(), sizeof(int)*n);
+		memcpy_d2d(WP_CURRENT_CONTEXT, keys, d_keys.Current(), sizeof(int)*n);
 
 	if (d_values.Current() != values)
-		memcpy_d2d(values, d_values.Current(), sizeof(int)*n);
+		memcpy_d2d(WP_CURRENT_CONTEXT, values, d_values.Current(), sizeof(int)*n);
 }

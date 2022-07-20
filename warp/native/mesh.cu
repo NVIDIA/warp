@@ -7,6 +7,7 @@
  */
 
 #include "warp.h"
+#include "cuda_util.h"
 #include "mesh.h"
 #include "bvh.h"
 
@@ -44,7 +45,9 @@ void mesh_refit_device(uint64_t id)
     wp::Mesh m;
     if (mesh_get_descriptor(id, m))
     {
-        wp_launch_device(wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.bounds));
+        ContextGuard guard(m.context);
+
+        wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, m.num_tris, (m.num_tris, m.points, m.indices, m.bounds));
 
         bvh_refit_device(m.bvh, m.bounds);
     }

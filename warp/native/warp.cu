@@ -43,6 +43,16 @@ static std::map<CUdevice, DeviceInfo*> g_device_map;
 static std::map<CUcontext, ContextInfo> g_contexts;
 
 
+void cuda_set_context_restore_policy(bool always_restore)
+{
+    ContextGuard::always_restore = always_restore;
+}
+
+int cuda_get_context_restore_policy()
+{
+    return int(ContextGuard::always_restore);
+}
+
 int cuda_init()
 {
     if (!init_cuda_driver())
@@ -121,7 +131,7 @@ static ContextInfo* get_context_info(CUcontext ctx)
     else
     {
         // previously unseen context, add the info
-        ContextGuard guard(ctx);
+        ContextGuard guard(ctx, true);
         ContextInfo context_info;
         CUdevice device;
         if (check_cu(cuCtxGetDevice_f(&device)))
@@ -148,38 +158,50 @@ static ContextInfo* get_context_info(CUcontext ctx)
 //     cudaFreeHost(ptr);
 // }
 
-void* alloc_device(size_t s)
+void* alloc_device(void* context, size_t s)
 {
+    ContextGuard guard(context);
+
     void* ptr;
     check_cuda(cudaMalloc(&ptr, s));
     return ptr;
 }
 
-void free_device(void* ptr)
+void free_device(void* context, void* ptr)
 {
+    ContextGuard guard(context);
+
     check_cuda(cudaFree(ptr));
 }
 
-void memcpy_h2d(void* dest, void* src, size_t n)
+void memcpy_h2d(void* context, void* dest, void* src, size_t n)
 {
+    ContextGuard guard(context);
+    
     check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyHostToDevice, get_current_stream()));
 }
 
-void memcpy_d2h(void* dest, void* src, size_t n)
+void memcpy_d2h(void* context, void* dest, void* src, size_t n)
 {
+    ContextGuard guard(context);
+
     check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToHost, get_current_stream()));
 }
 
-void memcpy_d2d(void* dest, void* src, size_t n)
+void memcpy_d2d(void* context, void* dest, void* src, size_t n)
 {
+    ContextGuard guard(context);
+
     check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice, get_current_stream()));
 }
 
-void memcpy_peer(void* dest, void* dest_ctx, void* src, void* src_ctx, size_t n)
+void memcpy_peer(void* dest_context, void* dest, void* src_context, void* src, size_t n)
 {
+    ContextGuard guard(dest_context);
+
     check_cu(cuMemcpyPeerAsync_f(
-        reinterpret_cast<CUdeviceptr>(dest), static_cast<CUcontext>(dest_ctx),
-        reinterpret_cast<CUdeviceptr>(src), static_cast<CUcontext>(src_ctx),
+        reinterpret_cast<CUdeviceptr>(dest), static_cast<CUcontext>(dest_context),
+        reinterpret_cast<CUdeviceptr>(src), static_cast<CUcontext>(src_context),
         n, get_current_stream()
     ));
 }
@@ -194,8 +216,10 @@ __global__ void memset_kernel(int* dest, int value, int n)
     }
 }
 
-void memset_device(void* dest, int value, size_t n)
+void memset_device(void* context, void* dest, int value, size_t n)
 {
+    ContextGuard guard(context);
+
     if ((n%4) > 0)
     {
         // for unaligned lengths fallback to CUDA memset
@@ -205,7 +229,7 @@ void memset_device(void* dest, int value, size_t n)
     {
         // custom kernel to support 4-byte values (and slightly lower host overhead)
         const int num_words = n/4;
-        wp_launch_device(memset_kernel, num_words, ((int*)dest, value, num_words));
+        wp_launch_device(WP_CURRENT_CONTEXT, memset_kernel, num_words, ((int*)dest, value, num_words));
     }
 }
 
@@ -220,24 +244,6 @@ void array_sum_device(uint64_t a, uint64_t out, int len)
     
 }
 
-
-uint64_t cuda_check_device()
-{
-    cudaStreamCaptureStatus status;
-    cudaStreamIsCapturing(get_current_stream(), &status);
-    
-    // do not check during cuda stream capture
-    // since we cannot synchronize the device
-    if (status == cudaStreamCaptureStatusNone)
-    {
-        cudaDeviceSynchronize();
-        return cudaPeekAtLastError(); 
-    }
-    else
-    {
-        return 0;
-    }
-}
 
 int cuda_device_get_count()
 {
@@ -336,10 +342,33 @@ void cuda_context_destroy(void* context)
     }
 }
 
-void cuda_context_synchronize()
+void cuda_context_synchronize(void* context)
 {
+    ContextGuard guard(context);
+
     check_cu(cuCtxSynchronize_f());
 }
+
+uint64_t cuda_context_check(void* context)
+{
+    ContextGuard guard(context);
+
+    cudaStreamCaptureStatus status;
+    cudaStreamIsCapturing(get_current_stream(), &status);
+    
+    // do not check during cuda stream capture
+    // since we cannot synchronize the device
+    if (status == cudaStreamCaptureStatusNone)
+    {
+        cudaDeviceSynchronize();
+        return cudaPeekAtLastError(); 
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 
 int cuda_context_get_device_ordinal(void* context)
 {
@@ -363,7 +392,10 @@ void* cuda_context_get_stream(void* context)
     {
         // create stream on demand
         if (!info->stream)
+        {
+            ContextGuard guard(context, true);
             check_cu(cuStreamCreate_f(&info->stream, CU_STREAM_NON_BLOCKING));
+        }
         return info->stream;
     }
     return NULL;
@@ -407,7 +439,7 @@ int cuda_context_enable_peer_access(void* context, void* peer_context)
     else
     {
         // different devices, try to enable
-        ContextGuard guard(ctx);
+        ContextGuard guard(ctx, true);
         CUresult result = cuCtxEnablePeerAccess_f(peer_ctx, 0);
         if (result == CUDA_SUCCESS || result == CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED)
         {
@@ -449,7 +481,7 @@ int cuda_context_can_access_peer(void* context, void* peer_context)
     {
         // different devices, try to enable
         // TODO: is there a better way to check?
-        ContextGuard guard(ctx);
+        ContextGuard guard(ctx, true);
         CUresult result = cuCtxEnablePeerAccess_f(peer_ctx, 0);
         if (result == CUDA_SUCCESS || result == CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED)
             return 1;
@@ -463,13 +495,17 @@ void* cuda_stream_get_current()
     return get_current_stream();
 }
 
-void cuda_graph_begin_capture()
+void cuda_graph_begin_capture(void* context)
 {
+    ContextGuard guard(context);
+
     check_cuda(cudaStreamBeginCapture(get_current_stream(), cudaStreamCaptureModeGlobal));
 }
 
-void* cuda_graph_end_capture()
+void* cuda_graph_end_capture(void* context)
 {
+    ContextGuard guard(context);
+
     cudaGraph_t graph = NULL;
     check_cuda(cudaStreamEndCapture(get_current_stream(), &graph));
 
@@ -495,13 +531,17 @@ void* cuda_graph_end_capture()
     }
 }
 
-void cuda_graph_launch(void* graph_exec)
+void cuda_graph_launch(void* context, void* graph_exec)
 {
+    ContextGuard guard(context);
+
     check_cuda(cudaGraphLaunch((cudaGraphExec_t)graph_exec, get_current_stream()));
 }
 
-void cuda_graph_destroy(void* graph_exec)
+void cuda_graph_destroy(void* context, void* graph_exec)
 {
+    ContextGuard guard(context);
+
     check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
 }
 
@@ -587,8 +627,10 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     return res;
 }
 
-void* cuda_load_module(const char* path)
+void* cuda_load_module(void* context, const char* path)
 {
+    ContextGuard guard(context);
+
     FILE* file = fopen(path, "rb");
     fseek(file, 0, SEEK_END);
     size_t length = ftell(file);
@@ -629,13 +671,17 @@ void* cuda_load_module(const char* path)
     return module;
 }
 
-void cuda_unload_module(void* module)
+void cuda_unload_module(void* context, void* module)
 {
+    ContextGuard guard(context);
+
     check_cu(cuModuleUnload_f((CUmodule)module));
 }
 
-void* cuda_get_kernel(void* module, const char* name)
+void* cuda_get_kernel(void* context, void* module, const char* name)
 {
+    ContextGuard guard(context);
+
     CUfunction kernel = NULL;
     if (!check_cu(cuModuleGetFunction_f(&kernel, (CUmodule)module, name)))
         printf("Warp: Failed to lookup kernel function %s in module\n", name);
@@ -643,8 +689,10 @@ void* cuda_get_kernel(void* module, const char* name)
     return kernel;
 }
 
-size_t cuda_launch_kernel(void* kernel, size_t dim, void** args)
+size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
 {
+    ContextGuard guard(context);
+
     const int block_dim = 256;
     const int grid_dim = (dim + block_dim - 1)/block_dim;
 

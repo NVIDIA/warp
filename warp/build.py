@@ -142,9 +142,7 @@ def load_cuda(ptx_path, device):
     if not device.is_cuda:
         raise("Not a CUDA device")
 
-    # hmmm, use a scoped guard here?
-    device.make_current()
-    module = warp.context.runtime.core.cuda_load_module(ptx_path.encode('utf-8'))
+    module = warp.context.runtime.core.cuda_load_module(device.context, ptx_path.encode('utf-8'))
     return module
 
 

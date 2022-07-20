@@ -8,6 +8,7 @@
 
 #include "volume.h"
 #include "warp.h"
+#include "cuda_util.h"
 
 #include <map>
 
@@ -30,6 +31,9 @@ struct VolumeDesc
 
     // copy of the tree's metadata to keep on the host for device volumes
     pnanovdb_tree_t tree_data;
+
+    // CUDA context for this volume (NULL if CPU)
+    void* context;
 };
 
 // Host-side volume desciptors. Maps each CPU/GPU volume buffer address (id) to a CPU desc
@@ -67,6 +71,9 @@ uint64_t volume_create_host(void* buf, uint64_t size)
         return 0;  // This cannot be a valid NanoVDB grid with data
 
     VolumeDesc volume;
+
+    volume.context = NULL;
+
     memcpy_h2h(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
     memcpy_h2h(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
 
@@ -88,21 +95,26 @@ uint64_t volume_create_host(void* buf, uint64_t size)
 }
 
 // NB: buf must be a pointer on the same device
-uint64_t volume_create_device(void* buf, uint64_t size)
+uint64_t volume_create_device(void* context, void* buf, uint64_t size)
 {
     if (size < sizeof(pnanovdb_grid_t) + sizeof(pnanovdb_tree_t))
         return 0;  // This cannot be a valid NanoVDB grid with data
 
+    ContextGuard guard(context);
+
     VolumeDesc volume;
-    memcpy_d2h(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
-    memcpy_d2h(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
+
+    volume.context = context ? context : cuda_context_get_current();
+
+    memcpy_d2h(WP_CURRENT_CONTEXT, &volume.grid_data, buf, sizeof(pnanovdb_grid_t));
+    memcpy_d2h(WP_CURRENT_CONTEXT, &volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
 
     if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER)
         return 0;
 
     volume.size_in_bytes = size;
-    volume.buffer = alloc_device(size);
-    memcpy_d2d(volume.buffer, buf, size);
+    volume.buffer = alloc_device(WP_CURRENT_CONTEXT, size);
+    memcpy_d2d(WP_CURRENT_CONTEXT, volume.buffer, buf, size);
 
     volume.first_voxel_data_offs =
         sizeof(pnanovdb_grid_t) + volume.tree_data.node_offset_leaf + PNANOVDB_GRID_TYPE_GET(PNANOVDB_GRID_TYPE_FLOAT, leaf_off_table);
@@ -146,6 +158,11 @@ void volume_destroy_host(uint64_t id)
 
 void volume_destroy_device(uint64_t id)
 {
-    free_device((void*)id);
-    volume_rem_descriptor(id);
+    VolumeDesc volume;
+    if (volume_get_descriptor(id, volume))
+    {
+        ContextGuard guard(volume.context);
+        free_device(WP_CURRENT_CONTEXT, volume.buffer);
+        volume_rem_descriptor(id);
+    }
 }

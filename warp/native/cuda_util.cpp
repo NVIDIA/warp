@@ -54,6 +54,9 @@ cuLaunchKernel_t* cuLaunchKernel_f;
 cuMemcpyPeerAsync_t* cuMemcpyPeerAsync_f;
 
 
+bool ContextGuard::always_restore = false;
+
+
 bool init_cuda_driver()
 {
 #if defined(_WIN32)
