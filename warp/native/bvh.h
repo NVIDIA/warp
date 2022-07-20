@@ -126,6 +126,8 @@ struct BVH
     int num_nodes;
 
 	int root;
+
+	void* context;
 };
 
 BVH bvh_create(const bounds3* bounds, int num_bounds);
@@ -137,7 +139,7 @@ void bvh_refit_host(BVH& bvh, const bounds3* bounds);
 void bvh_refit_device(BVH& bvh, const bounds3* bounds);
 
 // copy host BVH to device
-BVH bvh_clone(const BVH& bvh_host);
+BVH bvh_clone(void* context, const BVH& bvh_host);
 
 
 

@@ -10,6 +10,6 @@
 
 #include <stddef.h>
 
-void radix_sort_reserve(int n, void** mem_out=NULL, size_t* size_out=NULL);
+void radix_sort_reserve(void* context, int n, void** mem_out=NULL, size_t* size_out=NULL);
 void radix_sort_pairs_host(int* keys, int* values, int n);
-void radix_sort_pairs_device(int* keys, int* values, int n);
+void radix_sort_pairs_device(void* context, int* keys, int* values, int n);

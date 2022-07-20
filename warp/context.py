@@ -271,12 +271,9 @@ class Kernel:
             forward = eval("self.module.dll." + self.key + "_cpu_forward")
             backward = eval("self.module.dll." + self.key + "_cpu_backward")
         else:
-            # Note: assume that the device is already current
-            #device.make_current()
-
             cu_module = self.module.cuda_modules[device.context]
-            forward = runtime.core.cuda_get_kernel(cu_module, (self.key + "_cuda_kernel_forward").encode('utf-8'))
-            backward = runtime.core.cuda_get_kernel(cu_module, (self.key + "_cuda_kernel_backward").encode('utf-8'))
+            forward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_forward").encode('utf-8'))
+            backward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_backward").encode('utf-8'))
 
         hooks = KernelHooks(forward, backward)
         self.hooks[device.context] = hooks
@@ -503,7 +500,7 @@ class Module:
             saved_context = runtime.core.cuda_context_get_current()
             for context, module in self.cuda_modules.items():
                 runtime.core.cuda_context_set_current(context)
-                runtime.core.cuda_unload_module(module)
+                runtime.core.cuda_unload_module(context, module)
             runtime.core.cuda_context_set_current(saved_context)
             self.cuda_modules = {}
 
@@ -703,8 +700,8 @@ class Module:
 #-------------------------------------------
 # execution context
 
-# a simple pooled allocator that caches allocs based 
-# on size to avoid hitting the system allocator
+# a simple allocator
+# TODO: use a pooled allocator to avoid hitting the system allocator
 class Allocator:
 
     def __init__(self, device):
@@ -712,57 +709,19 @@ class Allocator:
         self.device = device
 
         if self.device.is_cpu:
-            self.alloc_func = self.device.runtime.core.alloc_host
-            self.free_func = self.device.runtime.core.free_host
+            self._alloc_func = self.device.runtime.core.alloc_host
+            self._free_func = self.device.runtime.core.free_host
         else:
-            self.alloc_func = self.device.runtime.core.alloc_device
-            self.free_func = self.device.runtime.core.free_device
-
-        # map from size->list[allocs]
-        self.pool = {}
-
-    def __del__(self):
-        with self.device.context_guard:
-            self.clear()
+            self._alloc_func = lambda size: self.device.runtime.core.alloc_device(self.device.context, size)
+            self._free_func = lambda ptr: self.device.runtime.core.free_device(self.device.context, ptr)
 
     def alloc(self, size_in_bytes):
         
-        p = self.alloc_func(size_in_bytes)
-        return p
+        return self._alloc_func(size_in_bytes)
 
-        # if size_in_bytes in self.pool and len(self.pool[size_in_bytes]) > 0:            
-        #     return self.pool[size_in_bytes].pop()
-        # else:
-        #     return self.alloc_func(size_in_bytes)
+    def free(self, ptr, size_in_bytes):
 
-    def free(self, addr, size_in_bytes):
-
-        addr = ctypes.cast(addr, ctypes.c_void_p)
-        self.free_func(addr)
-        return
-
-        # if size_in_bytes not in self.pool:
-        #     self.pool[size_in_bytes] = [addr,]
-        # else:
-        #     self.pool[size_in_bytes].append(addr)
-
-    def print(self):
-        
-        total_size = 0
-
-        for k,v in self.pool.items():
-            print(f"alloc size: {k} num allocs: {len(v)}")
-            total_size += k*len(v)
-
-        print(f"total size: {total_size}")
-
-
-    def clear(self):
-        for s in self.pool.values():
-            for a in s:
-                self.free_func(a)
-        
-        self.pool = {}
+        self._free_func(ptr)
 
 
 class ContextGuard:
@@ -805,7 +764,7 @@ class Device:
         if self.is_cpu:
             self.memset = runtime.core.memset_host
         else:
-            self.memset = runtime.core.memset_device
+            self.memset = lambda ptr, value, size: runtime.core.memset_device(self.context, ptr, value, size)
 
     @property
     def is_cpu(self):
@@ -859,6 +818,20 @@ class Device:
 Devicelike = Union[Device, str, None]
 
 
+class Graph:
+
+    def __init__(self, device: Device, exec: ctypes.c_void_p):
+
+        self.device = device
+        self.exec = exec
+
+    def __del__(self):
+
+        # use CUDA context guard to avoid side effects during garbage collection
+        with self.device.context_guard:
+            runtime.core.cuda_graph_destroy(self.device.context, self.exec)
+
+
 class Runtime:
 
     def __init__(self):
@@ -894,21 +867,26 @@ class Runtime:
         # setup c-types for warp.dll
         self.core.alloc_host.argtypes = [ctypes.c_size_t]
         self.core.alloc_host.restype = ctypes.c_void_p
-        self.core.alloc_device.argtypes = [ctypes.c_size_t]
+        self.core.alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         self.core.alloc_device.restype = ctypes.c_void_p
+
+        self.core.free_host.argtypes = [ctypes.c_void_p]
+        self.core.free_host.restype = None
+        self.core.free_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.free_device.restype = None
 
         self.core.memset_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
         self.core.memset_host.restype = None
-        self.core.memset_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
+        self.core.memset_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
         self.core.memset_device.restype = None
 
         self.core.memcpy_h2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_h2h.restype = None
-        self.core.memcpy_h2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+        self.core.memcpy_h2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_h2d.restype = None
-        self.core.memcpy_d2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+        self.core.memcpy_d2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_d2h.restype = None
-        self.core.memcpy_d2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+        self.core.memcpy_d2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_d2d.restype = None
         self.core.memcpy_peer.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_peer.restype = None
@@ -917,7 +895,7 @@ class Runtime:
         self.core.mesh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
         self.core.mesh_create_device.restype = ctypes.c_uint64
-        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
         self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
         self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
@@ -931,7 +909,7 @@ class Runtime:
         self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
         self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-        self.core.hash_grid_create_device.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.hash_grid_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
         self.core.hash_grid_create_device.restype = ctypes.c_uint64
         self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
@@ -942,7 +920,7 @@ class Runtime:
         self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
-        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64]
         self.core.volume_create_device.restype = ctypes.c_uint64
         self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
@@ -970,8 +948,10 @@ class Runtime:
         self.core.cuda_context_create.restype = ctypes.c_void_p
         self.core.cuda_context_destroy.argtypes = [ctypes.c_void_p]
         self.core.cuda_context_destroy.restype = None
-        self.core.cuda_context_synchronize.argtypes = None
+        self.core.cuda_context_synchronize.argtypes = [ctypes.c_void_p]
         self.core.cuda_context_synchronize.restype = None
+        self.core.cuda_context_check.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_check.restype = ctypes.c_uint64
 
         self.core.cuda_context_get_device_ordinal.argtypes = [ctypes.c_void_p]
         self.core.cuda_context_get_device_ordinal.restype = ctypes.c_int
@@ -985,23 +965,28 @@ class Runtime:
         self.core.cuda_stream_get_current.argtypes = None
         self.core.cuda_stream_get_current.restype = ctypes.c_void_p
 
-        self.core.cuda_check_device.argtypes = None
-        self.core.cuda_check_device.restype = ctypes.c_uint64
-
+        self.core.cuda_graph_begin_capture.argtypes = [ctypes.c_void_p]
+        self.core.cuda_graph_begin_capture.restype = None
+        self.core.cuda_graph_end_capture.argtypes = [ctypes.c_void_p]
         self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
+        self.core.cuda_graph_launch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_graph_launch.restype = None
+        self.core.cuda_graph_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_graph_destroy.restype = None
 
         self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
         self.core.cuda_compile_program.restype = ctypes.c_size_t
 
-        self.core.cuda_load_module.argtypes = [ctypes.c_char_p]
+        self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
         self.core.cuda_load_module.restype = ctypes.c_void_p
 
-        self.core.cuda_unload_module.argtypes = [ctypes.c_void_p]
+        self.core.cuda_unload_module.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_unload_module.restype = None
 
-        self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
         self.core.cuda_get_kernel.restype = ctypes.c_void_p
         
-        self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
+        self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
         self.core.cuda_launch_kernel.restype = ctypes.c_size_t
 
         self.core.init.restype = ctypes.c_int
@@ -1074,17 +1059,11 @@ class Runtime:
             raise RuntimeError(f"Unable to resolve device from argument of type {type(ident)}")
 
 
-    def acquire_device(self, ident:Devicelike=None) -> Device:
-        
-        device = self.get_device(ident)
-        device.make_current()
-        return device
-
-
     def set_device(self, ident:Devicelike):
 
-        device = self.acquire_device(ident)
+        device = self.get_device(ident)
         self.default_device = device
+        device.make_current()
 
 
     def get_current_cuda_device(self):
@@ -1152,17 +1131,20 @@ class Runtime:
         self.cuda_devices.remove(device)
 
 
-    def verify_device(self, device:Devicelike=None):
+    def verify_cuda_device(self, device:Devicelike=None):
 
         if warp.config.verify_cuda:
 
-            device = self.get_device(device)
+            if device is None:
+                device = runtime.get_current_cuda_device()
+            else:
+                device = runtime.get_device(device)
+                if not device.is_cuda:
+                    return
 
-            if device.is_cuda:
-                device.make_current()
-                err = self.core.cuda_check_device()
-                if err != 0:
-                    raise RuntimeError(f"CUDA error detected: {err}")
+            err = self.core.cuda_context_check(device.context)
+            if err != 0:
+                raise RuntimeError(f"CUDA error detected: {err}")
 
 
 def assert_initialized():
@@ -1310,8 +1292,6 @@ def zeros(shape: Tuple=None, dtype=float, device: Devicelike=None, requires_grad
 
     if num_bytes > 0:
 
-        device.make_current()
-
         ptr = device.allocator.alloc(num_bytes)
         if ptr is None:
             raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
@@ -1403,7 +1383,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         adjoint: Whether to run forward or backward pass (typically use False)
     """
 
-    device = runtime.acquire_device(device)
+    device = runtime.get_device(device)
 
     # check function is a Kernel
     if isinstance(kernel, Kernel) == False:
@@ -1523,12 +1503,12 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if adjoint:
-                runtime.core.cuda_launch_kernel(hooks.backward, bounds.size, kernel_params)
+                runtime.core.cuda_launch_kernel(device.context, hooks.backward, bounds.size, kernel_params)
             else:
-                runtime.core.cuda_launch_kernel(hooks.forward, bounds.size, kernel_params)
+                runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
 
             try:
-                runtime.verify_device()            
+                runtime.verify_cuda_device(device)
             except Exception as e:
                 print(f"Error launching kernel: {kernel.key} on device {device}")
                 raise e
@@ -1545,14 +1525,14 @@ def synchronize():
     or memory copies have completed.
     """
 
-    # save and restore the original context to avoid side effects
+    # save the original context to avoid side effects
     saved_context = runtime.core.cuda_context_get_current()
 
     # TODO: only synchronize devices that have outstanding work
     for device in runtime.cuda_devices:
-        device.make_current()
-        runtime.core.cuda_context_synchronize()
+        runtime.core.cuda_context_synchronize(device.context)
     
+    # restore the original context to avoid side effects
     runtime.core.cuda_context_set_current(saved_context)
 
 
@@ -1569,15 +1549,18 @@ def synchronize_device(device:Devicelike=None):
     if device is None:
         device = runtime.get_current_cuda_device()
     else:
-        device = runtime.acquire_device(device)
+        device = runtime.get_device(device)
+        if not device.is_cuda:
+            return
     
-    runtime.core.cuda_context_synchronize()
+    runtime.core.cuda_context_synchronize(device.context)
 
 
 def force_load(device:Union[Device, str]=None):
     """Force all user-defined kernels to be compiled and loaded
     """
 
+    # save original context to avoid side effects
     saved_context = runtime.core.cuda_context_get_current()
 
     if device is None:
@@ -1589,6 +1572,7 @@ def force_load(device:Union[Device, str]=None):
         for m in user_modules.values():
             m.load(d)
 
+    # restore original context to avoid side effects
     runtime.core.cuda_context_set_current(saved_context)
 
 
@@ -1636,36 +1620,44 @@ def capture_begin(device:Devicelike=None):
         device = runtime.get_device(device)
         if not device.is_cuda:
             raise RuntimeError("Must be a CUDA device")
-        device.make_current()
 
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
     force_load(device)
 
-    runtime.core.cuda_graph_begin_capture()
+    runtime.core.cuda_graph_begin_capture(device.context)
 
-def capture_end()->int:
+
+def capture_end(device:Devicelike=None) -> Graph:
     """Ends the capture of a CUDA graph
 
     Returns:
         A handle to a CUDA graph object that can be launched with :func:`~warp.capture_launch()`
     """
 
-    graph = runtime.core.cuda_graph_end_capture()
+    if device is None:
+        device = runtime.get_current_cuda_device()
+    else:
+        device = runtime.get_device(device)
+        if not device.is_cuda:
+            raise RuntimeError("Must be a CUDA device")
+
+    graph = runtime.core.cuda_graph_end_capture(device.context)
     
     if graph == None:
         raise RuntimeError("Error occurred during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")
     else:
-        return graph
+        return Graph(device, graph)
 
-def capture_launch(graph: int):
+
+def capture_launch(graph: Graph):
     """Launch a previously captured CUDA graph
 
     Args:
-        graph: A handle to the graph as returned by :func:`~warp.capture_end`
+        graph: A Graph as returned by :func:`~warp.capture_end`
     """
 
-    runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
+    runtime.core.cuda_graph_launch(graph.device.context, graph.exec)
 
 
 def copy(dest: warp.array, src: warp.array, dest_offset: int = 0, src_offset: int = 0, count: int = 0):
@@ -1710,17 +1702,14 @@ def copy(dest: warp.array, src: warp.array, dest_offset: int = 0, src_offset: in
     if src.device.is_cpu and dest.device.is_cpu:
         runtime.core.memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
     elif src.device.is_cpu and dest.device.is_cuda:
-        dest.device.make_current()
-        runtime.core.memcpy_h2d(dst_ptr, src_ptr, bytes_to_copy)
+        runtime.core.memcpy_h2d(dest.device.context, dst_ptr, src_ptr, bytes_to_copy)
     elif src.device.is_cuda and dest.device.is_cpu:
-        src.device.make_current()
-        runtime.core.memcpy_d2h(dst_ptr, src_ptr, bytes_to_copy)
+        runtime.core.memcpy_d2h(src.device.context, dst_ptr, src_ptr, bytes_to_copy)
     elif src.device.is_cuda and dest.device.is_cuda:
-        dest.device.make_current()
         if src.device == dest.device:
-            runtime.core.memcpy_d2d(dst_ptr, src_ptr, bytes_to_copy)
+            runtime.core.memcpy_d2d(dest.device.context, dst_ptr, src_ptr, bytes_to_copy)
         else:
-            runtime.core.memcpy_peer(dst_ptr, dest.device.context, src_ptr, dest.device.context, bytes_to_copy)
+            runtime.core.memcpy_peer(dest.device.context, dst_ptr, src.device.context, src_ptr, bytes_to_copy)
     else:
         raise RuntimeError("Unexpected source and destination combination")
 

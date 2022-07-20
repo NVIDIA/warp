@@ -7,6 +7,7 @@
  */
 
 #include "warp.h"
+#include "cuda_util.h"
 #include "bvh.h"
 
 #include <vector>
@@ -102,10 +103,12 @@ __global__ void bvh_refit_kernel(int n, const int* __restrict__ parents, int* __
 
 void bvh_refit_device(BVH& bvh, const bounds3* b)
 {
-    // clear child counters
-    memset_device(bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
+    ContextGuard guard(bvh.context);
 
-    wp_launch_device(bvh_refit_kernel, bvh.max_nodes, (bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
+    // clear child counters
+    memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int)*bvh.max_nodes);
+
+    wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.max_nodes, (bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
 }
 
 } // namespace wp

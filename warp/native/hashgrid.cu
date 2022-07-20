@@ -7,6 +7,7 @@
  */
 
 #include "warp.h"
+#include "cuda_util.h"
 #include "hashgrid.h"
 #include "sort.h"
 
@@ -56,16 +57,18 @@ __global__ void compute_cell_offsets(int* cell_starts, int* cell_ends, const int
 
 void hash_grid_rebuild_device(const wp::HashGrid& grid, const wp::vec3* points, int num_points)
 {
-    wp_launch_device(wp::compute_cell_indices, num_points, (grid, points, num_points));
+    ContextGuard guard(grid.context);
+
+    wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_cell_indices, num_points, (grid, points, num_points));
     
-    radix_sort_pairs_device(grid.point_cells, grid.point_ids, num_points);
+    radix_sort_pairs_device(WP_CURRENT_CONTEXT, grid.point_cells, grid.point_ids, num_points);
 
     const int num_cells = grid.dim_x * grid.dim_y * grid.dim_z;
     
-    memset_device(grid.cell_starts, 0, sizeof(int) * num_cells);    
-    memset_device(grid.cell_ends, 0, sizeof(int) * num_cells);
+    memset_device(WP_CURRENT_CONTEXT, grid.cell_starts, 0, sizeof(int) * num_cells);    
+    memset_device(WP_CURRENT_CONTEXT, grid.cell_ends, 0, sizeof(int) * num_cells);
 
-    wp_launch_device(wp::compute_cell_offsets, num_points, (grid.cell_starts, grid.cell_ends, grid.point_cells, num_points));
+    wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_cell_offsets, num_points, (grid.cell_starts, grid.cell_ends, grid.point_cells, num_points));
 }
 
 

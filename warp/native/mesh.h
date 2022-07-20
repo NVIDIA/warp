@@ -30,6 +30,8 @@ struct Mesh
     int num_tris;
 
     BVH bvh;
+
+	void* context;
 };
 
 CUDA_CALLABLE inline Mesh mesh_get(uint64_t id)
