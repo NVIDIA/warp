@@ -110,6 +110,11 @@ extern cuMemcpyPeerAsync_t* cuMemcpyPeerAsync_f;
 bool init_cuda_driver();
 
 bool check_cuda_result(cudaError_t code, const char* file, int line);
+inline bool check_cuda_result(uint64_t code, const char* file, int line)
+{
+    return check_cuda_result(static_cast<cudaError_t>(code), file, line);
+}
+
 bool check_cu_result(CUresult result, const char* file, int line);
 
 
