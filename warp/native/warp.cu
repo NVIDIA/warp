@@ -394,7 +394,7 @@ void* cuda_context_get_stream(void* context)
         if (!info->stream)
         {
             ContextGuard guard(context, true);
-            check_cu(cuStreamCreate_f(&info->stream, CU_STREAM_NON_BLOCKING));
+            check_cu(cuStreamCreate_f(&info->stream, CU_STREAM_DEFAULT));
         }
         return info->stream;
     }
