@@ -40,6 +40,19 @@ CUDA_CALLABLE inline Mesh mesh_get(uint64_t id)
 }
 
 
+CUDA_CALLABLE inline int mesh_get_num_points(uint64_t id)
+{
+	Mesh mesh = mesh_get(id);
+	return mesh.num_points;
+}
+
+CUDA_CALLABLE inline int mesh_get_num_faces(uint64_t id)
+{
+	Mesh mesh = mesh_get(id);
+	return mesh.num_tris;
+}
+
+
 CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower, const vec3& upper)
 {
 	vec3 cp = closest_point_to_aabb(p, lower, upper);
@@ -291,7 +304,10 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 	stack[0] = mesh.bvh.root;
 	int count = 1;
 
-	vec3 rcp_dir = vec3(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
+	vec3 rcp_dir = vec3(
+		dir.x != 0.0f ? 1.0f/dir.x : 0.0f,
+		dir.y != 0.0f ? 1.0f/dir.y : 0.0f,
+		dir.z != 0.0f ? 1.0f/dir.z : 0.0f);
 
 	float min_t = max_t;
 	int min_face;
@@ -405,20 +421,25 @@ CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
     int parity = 0;
 
     // x-axis
-    if (mesh_query_ray(id, p, vec3(1.0f, 0.0f, 0.0f), FLT_MAX, t, u, v, sign, n, face))
-        parity++;
+    if (mesh_query_ray(id, p, vec3(1.0f, 0.0f, 0.0f), FLT_MAX, t, u, v, sign, n, face)) {
+		if (sign < 0) {
+			return -1.0f;
+		}
+	}
     // y-axis
-    if (mesh_query_ray(id, p, vec3(0.0f, 1.0f, 0.0f), FLT_MAX, t, u, v, sign, n, face))
-        parity++;
+    if (mesh_query_ray(id, p, vec3(0.0f, 1.0f, 0.0f), FLT_MAX, t, u, v, sign, n, face)) {
+		if (sign < 0) {
+			return -1.0f;
+		}
+	}
     // z-axis
-    if (mesh_query_ray(id, p, vec3(0.0f, 0.0f, 1.0f), FLT_MAX, t, u, v, sign, n, face))
-        parity++;
+    if (mesh_query_ray(id, p, vec3(0.0f, 0.0f, 1.0f), FLT_MAX, t, u, v, sign, n, face)) {
+		if (sign < 0) {
+			return -1.0f;
+		}
+	}
 
-    // if all 3 rays inside then return -1
-    if (parity == 3)
-        return -1.0f;
-    else
-        return 1.0f;
+    return 1.0f;
 }
 
 
@@ -709,11 +730,15 @@ CUDA_CALLABLE inline vec3 mesh_get_point(uint64_t id, int index)
 	if (!mesh.points)
 		return vec3();
 
-	assert(index < mesh.num_tris * 3);
+#if FP_CHECK
+	if (index >= mesh.num_points)
+	{
+		printf("mesh_get_point (%llu, %d) out of bounds at %s:%d\n", id, index, __FILE__, __LINE__);
+		assert(0);
+	}
+#endif
 
-	int i = mesh.indices[index];
-
-	return mesh.points[i];
+	return mesh.points[index];
 }
 
 CUDA_CALLABLE inline void adj_mesh_get_point(uint64_t id, int index,
@@ -729,11 +754,15 @@ CUDA_CALLABLE inline vec3 mesh_get_velocity(uint64_t id, int index)
 	if (!mesh.velocities)
 		return vec3();
 
-	assert(index < mesh.num_tris * 3);
+#if FP_CHECK
+	if (index >= mesh.num_points)
+	{
+		printf("mesh_get_velocity (%llu, %d) out of bounds at %s:%d\n", id, index, __FILE__, __LINE__);
+		assert(0);
+	}
+#endif
 
-	int i = mesh.indices[index];
-
-	return mesh.velocities[i];
+	return mesh.velocities[index];
 }
 
 CUDA_CALLABLE inline void adj_mesh_get_velocity(uint64_t id, int index,
