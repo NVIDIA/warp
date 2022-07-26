@@ -45,4 +45,6 @@ inline CUDA_CALLABLE void adj_randf(uint32& state, float min, float max, uint32&
 
 inline CUDA_CALLABLE void adj_randn(uint32& state, uint32& adj_state, float adj_ret) {}
 
+inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf) {}
+
 } // namespace wp
