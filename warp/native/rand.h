@@ -45,6 +45,57 @@ inline CUDA_CALLABLE void adj_randf(uint32& state, float min, float max, uint32&
 
 inline CUDA_CALLABLE void adj_randn(uint32& state, uint32& adj_state, float adj_ret) {}
 
-inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf) {}
+inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf, int n)
+{
+    float u = randf(state);
+    int i = 0, j = n, m = 0;
+
+    // assume cdf is ordered, binary search closest value, return index
+    while (i < j)
+    {
+        m = (i + j) / 2;
+        if (u == cdf[m])
+            return m;
+        
+        if (u < cdf[m])
+        {
+            if (m > 0 && u > cdf[m - 1])
+                return u - cdf[m - 1] >= cdf[m] - u ? m : m - 1;
+            j = m;
+        }
+        else
+        {
+            if (m < n - 1 && u < cdf[m + 1])
+                return u - cdf[m] >= cdf[m + 1] - u ? m + 1 : m;
+            i = m + 1;
+        }
+    }
+    return m;
+}
+
+inline CUDA_CALLABLE vec3 sample_unit_sphere_surface(uint32& state)
+{
+    float u = randf(state);
+    float phi = acos(1.0 - 2.0 * u);
+    float theta = randf(state, 0.0, 2.0*M_PI);
+    float x = cos(theta) * sin(phi);
+    float y = sin(theta) * sin(phi);
+    float z = cos(phi);
+    return vec3(x, y, z);
+}
+
+inline CUDA_CALLABLE vec3 sample_unit_sphere(uint32& state)
+{
+    float u = randf(state);
+    float phi = acos(1.0  - 2.0 * u);
+    float theta = randf(state, 0.0, 2.0*M_PI);
+    float x = cos(theta) * sin(phi);
+    float y = sin(theta) * sin(phi);
+    float z = cos(phi);
+    return vec3(x, y, z);
+}
+
+inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, int n, uint32& adj_state, const array_t<float>& adj_cdf, int adj_int) {}
+inline CUDA_CALLABLE void adj_sample_unit_sphere_surface(uint32& state, uint32& adj_state) {}
 
 } // namespace wp
