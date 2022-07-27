@@ -75,8 +75,7 @@ inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf, in
 
 inline CUDA_CALLABLE vec3 sample_unit_sphere_surface(uint32& state)
 {
-    float u = randf(state);
-    float phi = acos(1.0 - 2.0 * u);
+    float phi = acos(1.0 - 2.0 * randf(state));
     float theta = randf(state, 0.0, 2.0*M_PI);
     float x = cos(theta) * sin(phi);
     float y = sin(theta) * sin(phi);
@@ -86,16 +85,17 @@ inline CUDA_CALLABLE vec3 sample_unit_sphere_surface(uint32& state)
 
 inline CUDA_CALLABLE vec3 sample_unit_sphere(uint32& state)
 {
-    float u = randf(state);
-    float phi = acos(1.0  - 2.0 * u);
+    float phi = acos(1.0  - 2.0 * randf(state));
     float theta = randf(state, 0.0, 2.0*M_PI);
-    float x = cos(theta) * sin(phi);
-    float y = sin(theta) * sin(phi);
-    float z = cos(phi);
+    float r = pow(randf(state), 1.0/3.0);
+    float x = r * cos(theta) * sin(phi);
+    float y = r * sin(theta) * sin(phi);
+    float z = r * cos(phi);
     return vec3(x, y, z);
 }
 
 inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, int n, uint32& adj_state, const array_t<float>& adj_cdf, int adj_int) {}
 inline CUDA_CALLABLE void adj_sample_unit_sphere_surface(uint32& state, uint32& adj_state) {}
+inline CUDA_CALLABLE void adj_sample_unit_sphere(uint32& state, uint32& adj_state) {}
 
 } // namespace wp
