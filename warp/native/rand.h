@@ -73,6 +73,11 @@ inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf, in
     return m;
 }
 
+inline CUDA_CALLABLE vec2 sample_triangle(uint32& state)
+{
+    
+}
+
 inline CUDA_CALLABLE vec3 sample_unit_sphere_surface(uint32& state)
 {
     float phi = acos(1.0 - 2.0 * randf(state));
@@ -94,8 +99,27 @@ inline CUDA_CALLABLE vec3 sample_unit_sphere(uint32& state)
     return vec3(x, y, z);
 }
 
-inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, int n, uint32& adj_state, const array_t<float>& adj_cdf, int adj_int) {}
-inline CUDA_CALLABLE void adj_sample_unit_sphere_surface(uint32& state, uint32& adj_state) {}
-inline CUDA_CALLABLE void adj_sample_unit_sphere(uint32& state, uint32& adj_state) {}
+inline CUDA_CALLABLE vec3 sample_unit_hemisphere_surface(uint32& state)
+{
+
+}
+
+inline CUDA_CALLABLE vec3 sample_unit_hemisphere(uint32& state)
+{
+
+}
+
+inline CUDA_CALLABLE vec3 sample_unit_box(uint32& state)
+{
+
+}
+
+inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, int n, uint32& adj_state, const array_t<float>& adj_cdf, int adj_int, const int& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_triangle(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_sphere_surface(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_sphere(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_hemisphere_surface(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_hemisphere(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_box(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
 
 } // namespace wp
