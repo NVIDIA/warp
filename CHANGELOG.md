@@ -1,8 +1,20 @@
 # CHANGELOG
 
+## [0.3.3] - 2022-08-01
+
+- Fixed FP16 conversions on older hardware
+- Reduced PTX target architecture to avoid issues with older drivers, see `wp.config.ptx_target_arch`
+- Support running even if CUDA initialization failed, use `wp.is_cuda_available()` to check availability
+
+### Breaking Changes
+
+- Removed `wp.runtime` reference from the top-level module, as it should be considered private
+
+
 ## [0.3.2] - 2022-07-19
 
 - Remove Torch import from `__init__.py`, defer import to `wp.from_torch()`, `wp.to_torch()`
+
 
 ## [0.3.1] - 2022-07-12
 
