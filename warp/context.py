@@ -585,7 +585,9 @@ class Module:
 
             module_path = os.path.join(build_path, module_name)
 
-            ptx_path = module_path + f"_sm{device.arch}.ptx"
+            ptx_arch = min(device.arch, warp.config.ptx_target_arch)
+
+            ptx_path = module_path + f"_sm{ptx_arch}.ptx"
 
             if (os.name == 'nt'):
                 dll_path = module_path + ".dll"
@@ -675,8 +677,9 @@ class Module:
                     cu_file.close()
 
                     # generate PTX
+                    ptx_arch = min(device.arch, warp.config.ptx_target_arch)
                     with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, device.arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_cuda(cu_path, ptx_arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
                     # update cuda hash
                     f = open(cuda_hash_path, 'wb')
