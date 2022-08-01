@@ -5,13 +5,11 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from pxr import Usd, UsdGeom, UsdLux, Gf, Sdf
-
-import math
-
 import warp as wp
 
 def _usd_add_xform(prim):
+
+    from pxr import UsdGeom
 
     prim = UsdGeom.Xform(prim)
     prim.ClearXformOpOrder()
@@ -23,6 +21,8 @@ def _usd_add_xform(prim):
 
 def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
+    from pxr import UsdGeom, Gf
+
     xform = UsdGeom.Xform(xform)
     
     xform_ops = xform.GetOrderedXformOps()
@@ -33,6 +33,8 @@ def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
 # transforms a cylinder such that it connects the two points pos0, pos1
 def _compute_segment_xform(pos0, pos1):
+
+    from pxr import Gf
 
     mid = (pos0 + pos1) * 0.5
     height = (pos1 - pos0).GetLength()
@@ -83,6 +85,8 @@ class UsdRenderer:
             upaxis (str): The upfacing axis of the stage
             fps: The number of frames per second to use in the USD file
         """
+
+        from pxr import Usd, UsdGeom, UsdLux, Sdf, Gf
 
         if isinstance(stage, str):
             self.stage = stage = Usd.Stage.CreateNew(stage)
@@ -135,6 +139,8 @@ class UsdRenderer:
 
     def render_ground(self, size: float=100.0):
 
+        from pxr import UsdGeom
+
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
         mesh.CreateDoubleSidedAttr().Set(True)
 
@@ -164,6 +170,8 @@ class UsdRenderer:
             name: A name for the USD prim on the stage
         """
 
+        from pxr import UsdGeom
+
         sphere_path = self.root.GetPath().AppendChild(name)
         sphere = UsdGeom.Sphere.Get(self.stage, sphere_path)
         if not sphere:
@@ -190,6 +198,8 @@ class UsdRenderer:
             name: A name for the USD prim on the stage
         """
 
+        from pxr import UsdGeom
+
         box_path = self.root.GetPath().AppendChild(name)
         box = UsdGeom.Cube.Get(self.stage, box_path)
         if not box:
@@ -201,6 +211,8 @@ class UsdRenderer:
     
 
     def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple):
+
+        from pxr import UsdGeom
 
         ref_path = "/root/" + name
 
@@ -216,6 +228,8 @@ class UsdRenderer:
 
     def render_mesh(self, name: str, points, indices, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0), update_topology=False):
         
+        from pxr import UsdGeom
+
         mesh_path = self.root.GetPath().AppendChild(name)
         mesh = UsdGeom.Mesh.Get(self.stage, mesh_path)
         if not mesh:
@@ -244,6 +258,8 @@ class UsdRenderer:
             time: The time to update at
         """
         
+        from pxr import UsdGeom, Gf
+
         num_lines = int(len(indices)/2)
 
         if (num_lines < 1):
@@ -284,6 +300,8 @@ class UsdRenderer:
 
 
     def render_line_strip(self, name: str, vertices, color: tuple, radius: float=0.01):
+
+        from pxr import UsdGeom, Gf
 
         num_lines = int(len(vertices)-1)
 
@@ -326,6 +344,8 @@ class UsdRenderer:
 
     def render_points(self, name: str, points, radius):
 
+        from pxr import UsdGeom, Gf
+
         instancer_path = self.root.GetPath().AppendChild(name)
         instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
 
@@ -350,8 +370,3 @@ class UsdRenderer:
             self.stage.Save()
         except:
             print("Failed to save USD stage")
-
-
-
-
-

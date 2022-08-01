@@ -181,7 +181,7 @@ def triangulate(face_counts, face_indices):
 
 def test_mesh_query_point(test, device):
 
-    from pxr import Usd, UsdGeom, Gf, Sdf
+    from pxr import Usd, UsdGeom
 
     mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/spiky.usd")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/Cube/Cube"))
@@ -294,7 +294,7 @@ def mesh_query_point_loss(mesh: wp.uint64,
 
 def test_adj_mesh_query_point(test, device):
 
-    from pxr import Usd, UsdGeom, Gf, Sdf
+    from pxr import Usd, UsdGeom
 
     mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.usda")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
@@ -375,8 +375,15 @@ def register(parent):
     class TestMeshQuery(parent):
         pass
 
-    add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
-    add_function_test(TestMeshQuery, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
+    # USD import failures should not count as a test failure
+    try:
+        from pxr import Usd, UsdGeom
+
+        add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
+        add_function_test(TestMeshQuery, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
+
+    except ImportError:
+        pass
 
     return TestMeshQuery
 

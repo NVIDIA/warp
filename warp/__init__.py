@@ -24,8 +24,6 @@ from warp.context import capture_begin, capture_end, capture_launch
 from warp.context import print_builtins, export_builtins, export_stubs
 from warp.context import Kernel, Function
 
-import warp.builtins
-
 from warp.tape import Tape
 from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice
 from warp.utils import transform_expand
@@ -33,10 +31,4 @@ from warp.utils import transform_expand
 from warp.torch import from_torch, to_torch
 from warp.torch import device_from_torch, device_to_torch
 
-# optional on USD being installed
-try:
-    import warp.render
-except ModuleNotFoundError:
-    pass
-
-
+from . import builtins, render
