@@ -64,9 +64,9 @@ def inner(a, b, out):
         raise RuntimeError("Inner product devices do not match")
 
     if a.device.is_cpu:
-        wp.runtime.array_inner_host(a, b, out, a.length)
+        wp.context.runtime.array_inner_host(a, b, out, a.length)
     elif a.device.is_cuda:
-        wp.runtime.array_inner_device(a, b, out, a.length)
+        wp.context.runtime.array_inner_device(a, b, out, a.length)
 
 class Optimizer:
 
