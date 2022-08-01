@@ -36,7 +36,13 @@ void radix_sort_reserve(void* context, int n, void** mem_out, size_t* size_out)
 
     // compute temporary memory required
 	size_t sort_temp_size;
-	cub::DeviceRadixSort::SortPairs(NULL, sort_temp_size, d_keys, d_values, int(n), 0, 32, (cudaStream_t)cuda_stream_get_current());
+    check_cuda(cub::DeviceRadixSort::SortPairs(
+        NULL,
+        sort_temp_size,
+        d_keys,
+        d_values,
+        n, 0, 32,
+        (cudaStream_t)cuda_stream_get_current()));
 
     if (!context)
         context = cuda_context_get_current();
@@ -67,13 +73,13 @@ void radix_sort_pairs_device(void* context, int* keys, int* values, int n)
     radix_sort_reserve(WP_CURRENT_CONTEXT, n, &temp.mem, &temp.size);
 
     // sort
-    cub::DeviceRadixSort::SortPairs(
+    check_cuda(cub::DeviceRadixSort::SortPairs(
         temp.mem,
         temp.size,
         d_keys, 
         d_values, 
         n, 0, 32, 
-        (cudaStream_t)cuda_stream_get_current());
+        (cudaStream_t)cuda_stream_get_current()));
 
 	if (d_keys.Current() != keys)
 		memcpy_d2d(WP_CURRENT_CONTEXT, keys, d_keys.Current(), sizeof(int)*n);
