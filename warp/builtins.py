@@ -518,10 +518,14 @@ add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, 
 add_builtin("randn", input_types={"state": uint32}, value_type=float, group="Random", 
     doc="Sample a normal distribution")
 
-add_builtin("sample_cdf", input_types={"state": uint32, "cdf": array(dtype=float), "n": int}, value_type=int, group="Random",
+add_builtin("sample_cdf", input_types={"state": uint32, "cdf": array(dtype=float)}, value_type=int, group="Random",
     doc="Inverse transform sample a cumulative distribution function")
-add_builtin("sample_triangle", input_types={"state": uint32, "a": vec3, "b": vec3, "c": vec3}, value_type=vec2, group="Random",
-    doc="Uniformly sample a triangle")
+add_builtin("sample_triangle", input_types={"state": uint32}, value_type=vec2, group="Random",
+    doc="Uniformly sample a triangle. Returns sample barycentric coordinates")
+add_builtin("sample_unit_ring", input_types={"state": uint32}, value_type=vec2, group="Random",
+    doc="Uniformly sample a ring in the xy plane")
+add_builtin("sample_unit_disk", input_types={"state": uint32}, value_type=vec2, group="Random",
+    doc="Uniformly sample a disk in the xy plane")
 add_builtin("sample_unit_sphere_surface", input_types={"state": uint32}, value_type=vec3, group="Random",
     doc="Uniformly sample a unit sphere surface")
 add_builtin("sample_unit_sphere", input_types={"state": uint32}, value_type=vec3, group="Random",

@@ -46,81 +46,55 @@ inline CUDA_CALLABLE void adj_randf(uint32& state, float min, float max, uint32&
 
 inline CUDA_CALLABLE void adj_randn(uint32& state, uint32& adj_state, float adj_ret) {}
 
-inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf, int n)
+inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf)
 {
-    float u = randf(state);
-    int i = 0, j = n, m = 0;
+    assert(cdf.ndim == 1);
+    int n = cdf.shape[0];
 
-    // assume cdf is ordered, binary search closest value, return index
-    while (i < j)
+    float u = randf(state);
+    int lower = 0;
+    int upper = n - 1;
+
+    while(lower < upper)
     {
-        m = (i + j) / 2;
-        if (u == cdf[m])
-            return m;
-        
-        if (u < cdf[m])
+        int mid = lower + (upper - lower) / 2;
+
+        if (cdf[mid] < u)
         {
-            if (m > 0 && u > cdf[m - 1])
-                return u - cdf[m - 1] >= cdf[m] - u ? m : m - 1;
-            j = m;
+            lower = mid + 1;
         }
         else
         {
-            if (m < n - 1 && u < cdf[m + 1])
-                return u - cdf[m] >= cdf[m + 1] - u ? m + 1 : m;
-            i = m + 1;
+            upper = mid;
         }
     }
-    return m;
+
+    return lower;
 }
 
-inline CUDA_CALLABLE vec2 sample_triangle(uint32& state, const vec3& a, const vec3& b, const vec3& c)
+inline CUDA_CALLABLE vec2 sample_triangle(uint32& state)
 {
-    vec3 ab = b - a;
-    vec3 ac = c - a;
-    vec3 bc = c - b;
-
-    float length_ab = length(ab);
-    float length_ac = length(ac);
-    float length_bc = length(bc);
-    
-    // orient triangle in the xy plane
-    vec3* max_vec = length_ab > length_ac ? &ab : &ac;
-    max_vec = length_bc > length(*max_vec) ? &bc : max_vec;
-    float max_length = length(*max_vec);
-
-    vec3* support_vec = max_vec == &ab ? &ac : &ab;
-    float comp = dot(*support_vec, normalize(*max_vec));
-    float support_length = length(*support_vec);
-    
-    // best fit rectangle
-    float height = sqrt(support_length * support_length - comp * comp);
-    float width = max_length;
-
-    vec3 A = vec3(0.f, 0.f, 0.f);
-    vec3 B = vec3(max_length, 0.f, 0.f);
-    vec3 C = vec3(comp, height, 0.f);
-
-    vec3 AB = B - A;
-    vec3 AC = C - A;
-
-    float area = length(cross(B - A, C - A));
-
-    float u = -1.f;
-    float v = -1.f;
-
-    // uniformly sample the rectangle until we are inside the triangle
-    while (u < 0.f || v < 0.f || u > 1.f || v > 1.f || u + v > 1.f)
-    {
-        float X = randf(state, 0.f, width);
-        float Y = randf(state, 0.f, height);
-        vec3 P = vec3(X, Y, 0.0);
- 
-        u = length(cross(AB, P - A)) / area;
-        v = length(cross(P - A, AC)) / area;
-    }
-
+    float r = sqrt(randf(state));
+    float u = 1.0 - r;
+    float v = randf(state) * r;
     return vec2(u, v);
+}
+
+inline CUDA_CALLABLE vec2 sample_unit_ring(uint32& state)
+{
+    float theta = randf(state, 0.f, 2.f*M_PI);
+    float x = cos(theta);
+    float y = sin(theta);
+    return vec2(x, y);
+}
+
+inline CUDA_CALLABLE vec2 sample_unit_disk(uint32& state)
+{
+    float r = sqrt(randf(state));
+    float theta = randf(state, 0.f, 2.f*M_PI);
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+    return vec2(x, y);
 }
 
 inline CUDA_CALLABLE vec3 sample_unit_sphere_surface(uint32& state)
@@ -181,7 +155,9 @@ inline CUDA_CALLABLE vec3 sample_unit_cube(uint32& state)
 }
 
 inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, int n, uint32& adj_state, const array_t<float>& adj_cdf, int adj_n, const int& adj_ret) {}
-inline CUDA_CALLABLE void adj_sample_triangle(uint32& state, const vec3& a, const vec3& b, const vec3& c, uint32& adj_state, vec3& adj_a, vec3& adj_b, vec3& adj_c, const vec2& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_triangle(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_ring(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_unit_disk(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_sphere_surface(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_sphere(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_hemisphere_surface(uint32& state, uint32& adj_state, const vec3& adj_ret) {}
