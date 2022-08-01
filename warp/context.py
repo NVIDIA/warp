@@ -735,13 +735,13 @@ class ContextGuard:
     def __enter__(self):
         if self.context:
             self.core.cuda_context_push_current(self.context)
-        else:
+        elif is_cuda_available():
             self.saved_context = self.core.cuda_context_get_current()
     
     def __exit__(self, exc_type, exc_value, traceback):
         if self.context:
             self.core.cuda_context_pop_current()
-        else:
+        elif is_cuda_available():
             self.core.cuda_context_set_current(self.saved_context)
 
 
@@ -1528,15 +1528,17 @@ def synchronize():
     or memory copies have completed.
     """
 
-    # save the original context to avoid side effects
-    saved_context = runtime.core.cuda_context_get_current()
+    if is_cuda_available():
 
-    # TODO: only synchronize devices that have outstanding work
-    for device in runtime.cuda_devices:
-        runtime.core.cuda_context_synchronize(device.context)
-    
-    # restore the original context to avoid side effects
-    runtime.core.cuda_context_set_current(saved_context)
+        # save the original context to avoid side effects
+        saved_context = runtime.core.cuda_context_get_current()
+
+        # TODO: only synchronize devices that have outstanding work
+        for device in runtime.cuda_devices:
+            runtime.core.cuda_context_synchronize(device.context)
+        
+        # restore the original context to avoid side effects
+        runtime.core.cuda_context_set_current(saved_context)
 
 
 def synchronize_device(device:Devicelike=None):
@@ -1563,8 +1565,9 @@ def force_load(device:Union[Device, str]=None):
     """Force all user-defined kernels to be compiled and loaded
     """
 
-    # save original context to avoid side effects
-    saved_context = runtime.core.cuda_context_get_current()
+    if is_cuda_available():
+        # save original context to avoid side effects
+        saved_context = runtime.core.cuda_context_get_current()
 
     if device is None:
         devices = get_devices()
@@ -1575,8 +1578,9 @@ def force_load(device:Union[Device, str]=None):
         for m in user_modules.values():
             m.load(d)
 
-    # restore original context to avoid side effects
-    runtime.core.cuda_context_set_current(saved_context)
+    if is_cuda_available():
+        # restore original context to avoid side effects
+        runtime.core.cuda_context_set_current(saved_context)
 
 
 def set_module_options(options: Dict[str, Any]):

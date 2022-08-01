@@ -18,6 +18,7 @@
 #include <dlfcn.h>
 #endif
 
+static PFN_cuGetProcAddress pfn_cuGetProcAddress;
 static PFN_cuGetErrorName pfn_cuGetErrorName;
 static PFN_cuGetErrorString pfn_cuGetErrorString;
 static PFN_cuInit pfn_cuInit;
@@ -47,23 +48,37 @@ static PFN_cuMemcpyPeerAsync pfn_cuMemcpyPeerAsync;
 
 bool ContextGuard::always_restore = false;
 
+static bool get_driver_entry_point(const char* name, void** pfn)
+{
+    if (!pfn_cuGetProcAddress || !name || !pfn)
+        return false;
+
+    CUresult r = pfn_cuGetProcAddress(name, pfn, CUDA_VERSION, CU_GET_PROC_ADDRESS_DEFAULT);
+    if (r != CUDA_SUCCESS)
+    {
+        fprintf(stderr, "Warp CUDA error: Failed to get driver entry point '%s' (CUDA error %u)\n", name, unsigned(r));
+        return false;
+    }
+
+    return true;
+}
 
 bool init_cuda_driver()
 {
 #if defined(_WIN32)
     static HMODULE hCudaDriver = LoadLibraryA("nvcuda.dll");
     if (hCudaDriver == NULL) {
-        fprintf(stderr, "Warp CUDA Error: Could not open nvcuda.dll.\n");
+        fprintf(stderr, "Warp CUDA error: Could not open nvcuda.dll.\n");
         return false;
     }
-    PFN_cuGetProcAddress pfn_cuGetProcAddress = (PFN_cuGetProcAddress)GetProcAddress(hCudaDriver, "cuGetProcAddress");
+    pfn_cuGetProcAddress = (PFN_cuGetProcAddress)GetProcAddress(hCudaDriver, "cuGetProcAddress");
 #elif defined(__linux__)
     static void* hCudaDriver = dlopen("libcuda.so", RTLD_NOW);
     if (hCudaDriver == NULL) {
-        fprintf(stderr, "Warp CUDA Error: Could not open libcuda.so.\n");
+        fprintf(stderr, "Warp CUDA error: Could not open libcuda.so.\n");
         return false;
     }
-    PFN_cuGetProcAddress pfn_cuGetProcAddress = (PFN_cuGetProcAddress)dlsym(hCudaDriver, "cuGetProcAddress");
+    pfn_cuGetProcAddress = (PFN_cuGetProcAddress)dlsym(hCudaDriver, "cuGetProcAddress");
 #endif
 
     if (!pfn_cuGetProcAddress)
@@ -72,41 +87,38 @@ bool init_cuda_driver()
         return false;
     }
 
-    bool success = true;
+    // initialize driver entry points
+    get_driver_entry_point("cuGetErrorString", &(void*&)pfn_cuGetErrorString);
+    get_driver_entry_point("cuGetErrorName", &(void*&)pfn_cuGetErrorName);
+    get_driver_entry_point("cuInit", &(void*&)pfn_cuInit);
+    get_driver_entry_point("cuDeviceGet", &(void*&)pfn_cuDeviceGet);
+    get_driver_entry_point("cuDeviceGetCount", &(void*&)pfn_cuDeviceGetCount);
+    get_driver_entry_point("cuDeviceGetName", &(void*&)pfn_cuDeviceGetName);
+    get_driver_entry_point("cuDeviceGetAttribute", &(void*&)pfn_cuDeviceGetAttribute);
+    get_driver_entry_point("cuDevicePrimaryCtxRetain", &(void*&)pfn_cuDevicePrimaryCtxRetain);
+    get_driver_entry_point("cuDeviceCanAccessPeer", &(void*&)pfn_cuDeviceCanAccessPeer);
+    get_driver_entry_point("cuCtxSetCurrent", &(void*&)pfn_cuCtxSetCurrent);
+    get_driver_entry_point("cuCtxGetCurrent", &(void*&)pfn_cuCtxGetCurrent);
+    get_driver_entry_point("cuCtxPushCurrent", &(void*&)pfn_cuCtxPushCurrent);
+    get_driver_entry_point("cuCtxPopCurrent", &(void*&)pfn_cuCtxPopCurrent);
+    get_driver_entry_point("cuCtxSynchronize", &(void*&)pfn_cuCtxSynchronize);
+    get_driver_entry_point("cuCtxGetDevice", &(void*&)pfn_cuCtxGetDevice);
+    get_driver_entry_point("cuCtxCreate", &(void*&)pfn_cuCtxCreate);
+    get_driver_entry_point("cuCtxDestroy", &(void*&)pfn_cuCtxDestroy);
+    get_driver_entry_point("cuCtxEnablePeerAccess", &(void*&)pfn_cuCtxEnablePeerAccess);
+    get_driver_entry_point("cuStreamCreate", &(void*&)pfn_cuStreamCreate);
+    get_driver_entry_point("cuStreamDestroy", &(void*&)pfn_cuStreamDestroy);
+    get_driver_entry_point("cuStreamSynchronize", &(void*&)pfn_cuStreamSynchronize);
+    get_driver_entry_point("cuModuleLoadDataEx", &(void*&)pfn_cuModuleLoadDataEx);
+    get_driver_entry_point("cuModuleUnload", &(void*&)pfn_cuModuleUnload);
+    get_driver_entry_point("cuModuleGetFunction", &(void*&)pfn_cuModuleGetFunction);
+    get_driver_entry_point("cuLaunchKernel", &(void*&)pfn_cuLaunchKernel);
+    get_driver_entry_point("cuMemcpyPeerAsync", &(void*&)pfn_cuMemcpyPeerAsync);
 
-    {
-        int version = CUDA_VERSION;
-        cuuint64_t flags = CU_GET_PROC_ADDRESS_DEFAULT;
-
-        success = success && check_cu(pfn_cuGetProcAddress("cuGetErrorString", &(void*&)pfn_cuGetErrorString, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuGetErrorName", &(void*&)pfn_cuGetErrorName, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuInit", &(void*&)pfn_cuInit, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuDeviceGet", &(void*&)pfn_cuDeviceGet, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuDeviceGetCount", &(void*&)pfn_cuDeviceGetCount, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuDeviceGetName", &(void*&)pfn_cuDeviceGetName, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuDeviceGetAttribute", &(void*&)pfn_cuDeviceGetAttribute, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuDevicePrimaryCtxRetain", &(void*&)pfn_cuDevicePrimaryCtxRetain, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuDeviceCanAccessPeer", &(void*&)pfn_cuDeviceCanAccessPeer, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxSetCurrent", &(void*&)pfn_cuCtxSetCurrent, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxGetCurrent", &(void*&)pfn_cuCtxGetCurrent, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxPushCurrent", &(void*&)pfn_cuCtxPushCurrent, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxPopCurrent", &(void*&)pfn_cuCtxPopCurrent, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxSynchronize", &(void*&)pfn_cuCtxSynchronize, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxGetDevice", &(void*&)pfn_cuCtxGetDevice, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxCreate", &(void*&)pfn_cuCtxCreate, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxDestroy", &(void*&)pfn_cuCtxDestroy, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuCtxEnablePeerAccess", &(void*&)pfn_cuCtxEnablePeerAccess, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuStreamCreate", &(void*&)pfn_cuStreamCreate, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuStreamDestroy", &(void*&)pfn_cuStreamDestroy, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuStreamSynchronize", &(void*&)pfn_cuStreamSynchronize, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuModuleLoadDataEx", &(void*&)pfn_cuModuleLoadDataEx, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuModuleUnload", &(void*&)pfn_cuModuleUnload, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuModuleGetFunction", &(void*&)pfn_cuModuleGetFunction, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuLaunchKernel", &(void*&)pfn_cuLaunchKernel, version, flags));
-        success = success && check_cu(pfn_cuGetProcAddress("cuMemcpyPeerAsync", &(void*&)pfn_cuMemcpyPeerAsync, version, flags));
-    }
-
-    return success;
+    if (pfn_cuInit)
+        return check_cu(pfn_cuInit(0));
+    else
+        return false;
 }
 
 
@@ -167,7 +179,14 @@ CUresult cuDeviceGet_f(CUdevice *dev, int ordinal)
 
 CUresult cuDeviceGetCount_f(int* count)
 {
-    return pfn_cuDeviceGetCount ? pfn_cuDeviceGetCount(count) : DRIVER_ENTRY_POINT_ERROR;
+    if (pfn_cuDeviceGetCount)
+        return pfn_cuDeviceGetCount(count);
+
+    // allow calling this function even if CUDA is not available
+    if (count)
+        *count = 0;
+
+    return CUDA_SUCCESS;
 }
 
 CUresult cuDeviceGetName_f(char* name, int len, CUdevice dev)

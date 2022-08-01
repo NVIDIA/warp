@@ -58,9 +58,6 @@ int cuda_init()
     if (!init_cuda_driver())
         return -1;
 
-    if (!check_cu(cuInit_f(0)))
-		return -1;
-
     int deviceCount = 0;
     if (check_cu(cuDeviceGetCount_f(&deviceCount)))
     {
