@@ -126,7 +126,7 @@ bool check_cuda_result(cudaError_t code, const char* file, int line)
     if (code == cudaSuccess)
         return true;
 
-    fprintf(stderr, "Warp CUDA error: %s (%s:%d)\n", cudaGetErrorString(code), file, line);
+    fprintf(stderr, "Warp CUDA error %u: %s (%s:%d)\n", unsigned(code), cudaGetErrorString(code), file, line);
     return false;
 }
 
@@ -140,9 +140,9 @@ bool check_cu_result(CUresult result, const char* file, int line)
         cuGetErrorString_f(result, &errString);
 
     if (errString)
-        fprintf(stderr, "Warp CUDA error: %s (%s:%d)\n", errString, file, line);
+        fprintf(stderr, "Warp CUDA error %u: %s (%s:%d)\n", unsigned(result), errString, file, line);
     else
-        fprintf(stderr, "Warp CUDA error: Unkown error (%s:%d)\n", file, line);
+        fprintf(stderr, "Warp CUDA error %u (%s:%d)\n", unsigned(result), file, line);
 
     return false;
 }
