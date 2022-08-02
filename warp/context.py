@@ -499,7 +499,6 @@ class Module:
         if self.cuda_modules:
             saved_context = runtime.core.cuda_context_get_current()
             for context, module in self.cuda_modules.items():
-                runtime.core.cuda_context_set_current(context)
                 runtime.core.cuda_unload_module(context, module)
             runtime.core.cuda_context_set_current(saved_context)
             self.cuda_modules = {}
