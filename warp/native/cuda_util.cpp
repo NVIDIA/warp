@@ -16,108 +16,109 @@
 #include <windows.h>
 #elif defined(__linux__)
 #include <dlfcn.h>
-static void* GetProcAddress(void* handle, const char* name) { return dlsym(handle, name); }
 #endif
 
-
-cuInit_t* cuInit_f;
-cuGetErrorName_t* cuGetErrorName_f;
-cuGetErrorString_t* cuGetErrorString_f;
-
-cuDeviceGet_t* cuDeviceGet_f;
-cuDeviceGetCount_t* cuDeviceGetCount_f;
-cuDeviceGetName_t* cuDeviceGetName_f;
-cuDevicePrimaryCtxRetain_t* cuDevicePrimaryCtxRetain_f;
-cuDeviceGetAttribute_t* cuDeviceGetAttribute_f;
-cuDeviceCanAccessPeer_t* cuDeviceCanAccessPeer_f;
-
-cuCtxGetCurrent_t* cuCtxGetCurrent_f;
-cuCtxSetCurrent_t* cuCtxSetCurrent_f;
-cuCtxPushCurrent_t* cuCtxPushCurrent_f;
-cuCtxPopCurrent_t* cuCtxPopCurrent_f;
-cuCtxSynchronize_t* cuCtxSynchronize_f;
-cuCtxGetDevice_t* cuCtxGetDevice_f;
-cuCtxCreate_t* cuCtxCreate_f;
-cuCtxDestroy_t* cuCtxDestroy_f;
-cuCtxEnablePeerAccess_t* cuCtxEnablePeerAccess_f;
-
-cuStreamCreate_t* cuStreamCreate_f;
-cuStreamDestroy_t* cuStreamDestroy_f;
-cuStreamSynchronize_t* cuStreamSynchronize_f;
-
-cuModuleUnload_t* cuModuleUnload_f;
-cuModuleLoadDataEx_t* cuModuleLoadDataEx_f;
-cuModuleGetFunction_t* cuModuleGetFunction_f;
-
-cuLaunchKernel_t* cuLaunchKernel_f;
-
-cuMemcpyPeerAsync_t* cuMemcpyPeerAsync_f;
-
+static PFN_cuGetProcAddress pfn_cuGetProcAddress;
+static PFN_cuGetErrorName pfn_cuGetErrorName;
+static PFN_cuGetErrorString pfn_cuGetErrorString;
+static PFN_cuInit pfn_cuInit;
+static PFN_cuDeviceGet pfn_cuDeviceGet;
+static PFN_cuDeviceGetCount pfn_cuDeviceGetCount;
+static PFN_cuDeviceGetName pfn_cuDeviceGetName;
+static PFN_cuDeviceGetAttribute pfn_cuDeviceGetAttribute;
+static PFN_cuDevicePrimaryCtxRetain pfn_cuDevicePrimaryCtxRetain;
+static PFN_cuDeviceCanAccessPeer pfn_cuDeviceCanAccessPeer;
+static PFN_cuCtxGetCurrent pfn_cuCtxGetCurrent;
+static PFN_cuCtxSetCurrent pfn_cuCtxSetCurrent;
+static PFN_cuCtxPushCurrent pfn_cuCtxPushCurrent;
+static PFN_cuCtxPopCurrent pfn_cuCtxPopCurrent;
+static PFN_cuCtxSynchronize pfn_cuCtxSynchronize;
+static PFN_cuCtxGetDevice pfn_cuCtxGetDevice;
+static PFN_cuCtxCreate pfn_cuCtxCreate;
+static PFN_cuCtxDestroy pfn_cuCtxDestroy;
+static PFN_cuCtxEnablePeerAccess pfn_cuCtxEnablePeerAccess;
+static PFN_cuStreamCreate pfn_cuStreamCreate;
+static PFN_cuStreamDestroy pfn_cuStreamDestroy;
+static PFN_cuStreamSynchronize pfn_cuStreamSynchronize;
+static PFN_cuModuleLoadDataEx pfn_cuModuleLoadDataEx;
+static PFN_cuModuleUnload pfn_cuModuleUnload;
+static PFN_cuModuleGetFunction pfn_cuModuleGetFunction;
+static PFN_cuLaunchKernel pfn_cuLaunchKernel;
+static PFN_cuMemcpyPeerAsync pfn_cuMemcpyPeerAsync;
 
 bool ContextGuard::always_restore = false;
 
-
-bool init_cuda_driver()
+static bool get_driver_entry_point(const char* name, void** pfn)
 {
-#if defined(_WIN32)
-    static HMODULE hCudaDriver = LoadLibrary("nvcuda.dll");
-    if (hCudaDriver == NULL) {
-        fprintf(stderr, "Error: Could not open nvcuda.dll.\n");
+    if (!pfn_cuGetProcAddress || !name || !pfn)
         return false;
-    }
-#elif defined(__linux__)
-    static void* hCudaDriver = dlopen("libcuda.so", RTLD_NOW);
-    if (hCudaDriver == NULL) {
-        fprintf(stderr, "Error: Could not open libcuda.so.\n");
-        return false;
-    }
-#endif
 
-    //
-    // CAUTION: Need to be careful about version suffixes like _v2!
-    //
-    // TODO: should use cuGetProcAddress
-    //
-    cuInit_f = (cuInit_t*)GetProcAddress(hCudaDriver, "cuInit");
-    cuGetErrorName_f = (cuGetErrorName_t*)GetProcAddress(hCudaDriver, "cuGetErrorName");
-    cuGetErrorString_f = (cuGetErrorString_t*)GetProcAddress(hCudaDriver, "cuGetErrorString");
-
-    cuDeviceGet_f = (cuDeviceGet_t*)GetProcAddress(hCudaDriver, "cuDeviceGet");
-    cuDeviceGetCount_f = (cuDeviceGetCount_t*)GetProcAddress(hCudaDriver, "cuDeviceGetCount");
-    cuDeviceGetName_f = (cuDeviceGetName_t*)GetProcAddress(hCudaDriver, "cuDeviceGetName");
-    cuDevicePrimaryCtxRetain_f = (cuDevicePrimaryCtxRetain_t*)GetProcAddress(hCudaDriver, "cuDevicePrimaryCtxRetain");
-    cuDeviceGetAttribute_f = (cuDeviceGetAttribute_t*)GetProcAddress(hCudaDriver, "cuDeviceGetAttribute");
-    cuDeviceCanAccessPeer_f = (cuDeviceCanAccessPeer_t*)GetProcAddress(hCudaDriver, "cuDeviceCanAccessPeer");
-
-    cuCtxSetCurrent_f = (cuCtxSetCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxSetCurrent");
-    cuCtxGetCurrent_f = (cuCtxGetCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxGetCurrent");
-    cuCtxPushCurrent_f = (cuCtxPushCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxPushCurrent_v2"); // !!! _v2
-    cuCtxPopCurrent_f = (cuCtxPopCurrent_t*)GetProcAddress(hCudaDriver, "cuCtxPopCurrent_v2"); // !!! _v2
-    cuCtxSynchronize_f = (cuCtxSynchronize_t*)GetProcAddress(hCudaDriver, "cuCtxSynchronize");
-    cuCtxGetDevice_f = (cuCtxGetDevice_t*)GetProcAddress(hCudaDriver, "cuCtxGetDevice");
-    cuCtxCreate_f = (cuCtxCreate_t*)GetProcAddress(hCudaDriver, "cuCtxCreate_v2");  // !!! _v2
-    cuCtxDestroy_f = (cuCtxDestroy_t*)GetProcAddress(hCudaDriver, "cuCtxDestroy_v2");  // !!! _v2
-    cuCtxEnablePeerAccess_f = (cuCtxEnablePeerAccess_t*)GetProcAddress(hCudaDriver, "cuCtxEnablePeerAccess");
-
-    cuStreamCreate_f = (cuStreamCreate_t*)GetProcAddress(hCudaDriver, "cuStreamCreate");
-    cuStreamDestroy_f = (cuStreamDestroy_t*)GetProcAddress(hCudaDriver, "cuStreamDestroy");
-    cuStreamSynchronize_f = (cuStreamSynchronize_t*)GetProcAddress(hCudaDriver, "cuStreamSynchronize");
-
-    cuModuleUnload_f = (cuModuleUnload_t*)GetProcAddress(hCudaDriver, "cuModuleUnload");
-    cuModuleLoadDataEx_f = (cuModuleLoadDataEx_t*)GetProcAddress(hCudaDriver, "cuModuleLoadDataEx");
-    cuModuleGetFunction_f = (cuModuleGetFunction_t*)GetProcAddress(hCudaDriver, "cuModuleGetFunction");
-
-    cuLaunchKernel_f = (cuLaunchKernel_t*)GetProcAddress(hCudaDriver, "cuLaunchKernel");
-
-    cuMemcpyPeerAsync_f = (cuMemcpyPeerAsync_t*)GetProcAddress(hCudaDriver, "cuMemcpyPeerAsync");
-
-    if (!cuInit_f)
+    CUresult r = pfn_cuGetProcAddress(name, pfn, CUDA_VERSION, CU_GET_PROC_ADDRESS_DEFAULT);
+    if (r != CUDA_SUCCESS)
     {
-        fprintf(stderr, "Warp CUDA error: failed to load CUDA symbols\n");
+        fprintf(stderr, "Warp CUDA error: Failed to get driver entry point '%s' (CUDA error %u)\n", name, unsigned(r));
         return false;
     }
 
     return true;
+}
+
+bool init_cuda_driver()
+{
+#if defined(_WIN32)
+    static HMODULE hCudaDriver = LoadLibraryA("nvcuda.dll");
+    if (hCudaDriver == NULL) {
+        fprintf(stderr, "Warp CUDA error: Could not open nvcuda.dll.\n");
+        return false;
+    }
+    pfn_cuGetProcAddress = (PFN_cuGetProcAddress)GetProcAddress(hCudaDriver, "cuGetProcAddress");
+#elif defined(__linux__)
+    static void* hCudaDriver = dlopen("libcuda.so", RTLD_NOW);
+    if (hCudaDriver == NULL) {
+        fprintf(stderr, "Warp CUDA error: Could not open libcuda.so.\n");
+        return false;
+    }
+    pfn_cuGetProcAddress = (PFN_cuGetProcAddress)dlsym(hCudaDriver, "cuGetProcAddress");
+#endif
+
+    if (!pfn_cuGetProcAddress)
+    {
+        fprintf(stderr, "Warp CUDA error: Failed to get function cuGetProcAddress\n");
+        return false;
+    }
+
+    // initialize driver entry points
+    get_driver_entry_point("cuGetErrorString", &(void*&)pfn_cuGetErrorString);
+    get_driver_entry_point("cuGetErrorName", &(void*&)pfn_cuGetErrorName);
+    get_driver_entry_point("cuInit", &(void*&)pfn_cuInit);
+    get_driver_entry_point("cuDeviceGet", &(void*&)pfn_cuDeviceGet);
+    get_driver_entry_point("cuDeviceGetCount", &(void*&)pfn_cuDeviceGetCount);
+    get_driver_entry_point("cuDeviceGetName", &(void*&)pfn_cuDeviceGetName);
+    get_driver_entry_point("cuDeviceGetAttribute", &(void*&)pfn_cuDeviceGetAttribute);
+    get_driver_entry_point("cuDevicePrimaryCtxRetain", &(void*&)pfn_cuDevicePrimaryCtxRetain);
+    get_driver_entry_point("cuDeviceCanAccessPeer", &(void*&)pfn_cuDeviceCanAccessPeer);
+    get_driver_entry_point("cuCtxSetCurrent", &(void*&)pfn_cuCtxSetCurrent);
+    get_driver_entry_point("cuCtxGetCurrent", &(void*&)pfn_cuCtxGetCurrent);
+    get_driver_entry_point("cuCtxPushCurrent", &(void*&)pfn_cuCtxPushCurrent);
+    get_driver_entry_point("cuCtxPopCurrent", &(void*&)pfn_cuCtxPopCurrent);
+    get_driver_entry_point("cuCtxSynchronize", &(void*&)pfn_cuCtxSynchronize);
+    get_driver_entry_point("cuCtxGetDevice", &(void*&)pfn_cuCtxGetDevice);
+    get_driver_entry_point("cuCtxCreate", &(void*&)pfn_cuCtxCreate);
+    get_driver_entry_point("cuCtxDestroy", &(void*&)pfn_cuCtxDestroy);
+    get_driver_entry_point("cuCtxEnablePeerAccess", &(void*&)pfn_cuCtxEnablePeerAccess);
+    get_driver_entry_point("cuStreamCreate", &(void*&)pfn_cuStreamCreate);
+    get_driver_entry_point("cuStreamDestroy", &(void*&)pfn_cuStreamDestroy);
+    get_driver_entry_point("cuStreamSynchronize", &(void*&)pfn_cuStreamSynchronize);
+    get_driver_entry_point("cuModuleLoadDataEx", &(void*&)pfn_cuModuleLoadDataEx);
+    get_driver_entry_point("cuModuleUnload", &(void*&)pfn_cuModuleUnload);
+    get_driver_entry_point("cuModuleGetFunction", &(void*&)pfn_cuModuleGetFunction);
+    get_driver_entry_point("cuLaunchKernel", &(void*&)pfn_cuLaunchKernel);
+    get_driver_entry_point("cuMemcpyPeerAsync", &(void*&)pfn_cuMemcpyPeerAsync);
+
+    if (pfn_cuInit)
+        return check_cu(pfn_cuInit(0));
+    else
+        return false;
 }
 
 
@@ -126,7 +127,7 @@ bool check_cuda_result(cudaError_t code, const char* file, int line)
     if (code == cudaSuccess)
         return true;
 
-    fprintf(stderr, "Warp CUDA error: %s (%s:%d)\n", cudaGetErrorString(code), file, line);
+    fprintf(stderr, "Warp CUDA error %u: %s (%s:%d)\n", unsigned(code), cudaGetErrorString(code), file, line);
     return false;
 }
 
@@ -136,15 +137,162 @@ bool check_cu_result(CUresult result, const char* file, int line)
         return true;
 
     const char* errString = NULL;
-    if (cuGetErrorString_f)
-        cuGetErrorString_f(result, &errString);
+    if (pfn_cuGetErrorString)
+        pfn_cuGetErrorString(result, &errString);
 
     if (errString)
-        fprintf(stderr, "Warp CUDA error: %s (%s:%d)\n", errString, file, line);
+        fprintf(stderr, "Warp CUDA error %u: %s (%s:%d)\n", unsigned(result), errString, file, line);
     else
-        fprintf(stderr, "Warp CUDA error: Unkown error (%s:%d)\n", file, line);
+        fprintf(stderr, "Warp CUDA error %u (%s:%d)\n", unsigned(result), file, line);
 
     return false;
 }
+
+
+#define DRIVER_ENTRY_POINT_ERROR driver_entry_point_error(__FUNCTION__)
+
+static CUresult driver_entry_point_error(const char* function)
+{
+    fprintf(stderr, "Warp CUDA error: Function %s: a suitable driver entry point was not found\n", function);
+    return (CUresult)cudaErrorCallRequiresNewerDriver; // this matches what cudart would do
+}
+
+CUresult cuGetErrorName_f(CUresult result, const char** pstr)
+{
+    return pfn_cuGetErrorName ? pfn_cuGetErrorName(result, pstr) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGetErrorString_f(CUresult result, const char** pstr)
+{
+    return pfn_cuGetErrorString ? pfn_cuGetErrorString(result, pstr) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuInit_f(unsigned int flags)
+{
+    return pfn_cuInit ? pfn_cuInit(flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuDeviceGet_f(CUdevice *dev, int ordinal)
+{
+    return pfn_cuDeviceGet ? pfn_cuDeviceGet(dev, ordinal) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuDeviceGetCount_f(int* count)
+{
+    if (pfn_cuDeviceGetCount)
+        return pfn_cuDeviceGetCount(count);
+
+    // allow calling this function even if CUDA is not available
+    if (count)
+        *count = 0;
+
+    return CUDA_SUCCESS;
+}
+
+CUresult cuDeviceGetName_f(char* name, int len, CUdevice dev)
+{
+    return pfn_cuDeviceGetName ? pfn_cuDeviceGetName(name, len, dev) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuDeviceGetAttribute_f(int* value, CUdevice_attribute attrib, CUdevice dev)
+{
+    return pfn_cuDeviceGetAttribute ? pfn_cuDeviceGetAttribute(value, attrib, dev) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuDevicePrimaryCtxRetain_f(CUcontext* ctx, CUdevice dev)
+{
+    return pfn_cuDevicePrimaryCtxRetain ? pfn_cuDevicePrimaryCtxRetain (ctx, dev) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuDeviceCanAccessPeer_f(int* can_access, CUdevice dev, CUdevice peer_dev)
+{
+    return pfn_cuDeviceCanAccessPeer ? pfn_cuDeviceCanAccessPeer(can_access, dev, peer_dev) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxGetCurrent_f(CUcontext* ctx)
+{
+    return pfn_cuCtxGetCurrent ? pfn_cuCtxGetCurrent(ctx) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxSetCurrent_f(CUcontext ctx)
+{
+    return pfn_cuCtxSetCurrent ? pfn_cuCtxSetCurrent(ctx) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxPushCurrent_f(CUcontext ctx)
+{
+    return pfn_cuCtxPushCurrent ? pfn_cuCtxPushCurrent(ctx) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxPopCurrent_f(CUcontext* ctx)
+{
+    return pfn_cuCtxPopCurrent ? pfn_cuCtxPopCurrent(ctx) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxSynchronize_f()
+{
+    return pfn_cuCtxSynchronize ? pfn_cuCtxSynchronize() : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxGetDevice_f(CUdevice* dev)
+{
+    return pfn_cuCtxGetDevice ? pfn_cuCtxGetDevice(dev) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxCreate_f(CUcontext* ctx, unsigned int flags, CUdevice dev)
+{
+    return pfn_cuCtxCreate ? pfn_cuCtxCreate(ctx, flags, dev) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxDestroy_f(CUcontext ctx)
+{
+    return pfn_cuCtxDestroy ? pfn_cuCtxDestroy(ctx) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuCtxEnablePeerAccess_f(CUcontext peer_ctx, unsigned int flags)
+{
+    return pfn_cuCtxEnablePeerAccess ? pfn_cuCtxEnablePeerAccess(peer_ctx, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuStreamCreate_f(CUstream* stream, unsigned int flags)
+{
+    return pfn_cuStreamCreate ? pfn_cuStreamCreate(stream, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuStreamDestroy_f(CUstream stream)
+{
+    return pfn_cuStreamDestroy ? pfn_cuStreamDestroy(stream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuStreamSynchronize_f(CUstream stream)
+{
+    return pfn_cuStreamSynchronize ? pfn_cuStreamSynchronize(stream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues)
+{
+    return pfn_cuModuleLoadDataEx ? pfn_cuModuleLoadDataEx(module, image, numOptions, options, optionValues) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuModuleUnload_f(CUmodule hmod)
+{
+    return pfn_cuModuleUnload ? pfn_cuModuleUnload(hmod) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuModuleGetFunction_f(CUfunction *hfunc, CUmodule hmod, const char *name)
+{
+    return pfn_cuModuleGetFunction ? pfn_cuModuleGetFunction(hfunc, hmod, name) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuLaunchKernel_f(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra)
+{
+    return pfn_cuLaunchKernel ? pfn_cuLaunchKernel(f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuMemcpyPeerAsync_f(CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr src_ptr, CUcontext src_ctx, size_t n, CUstream stream)
+{
+    return pfn_cuMemcpyPeerAsync ? pfn_cuMemcpyPeerAsync(dst_ptr, dst_ctx, src_ptr, src_ctx, n, stream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
 
 #endif // !WP_DISABLE_CUDA

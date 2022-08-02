@@ -256,8 +256,17 @@ def register(parent):
         pass
 
     add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
-    add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
-    
+
+    # USD import failures should not count as a test failure
+    try:
+        from pxr import Usd, UsdGeom
+        have_usd = True
+    except:
+        have_usd = False
+
+    if have_usd:
+        add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
+
     return TestMeshQueryRay
 
 if __name__ == '__main__':

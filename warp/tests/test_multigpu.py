@@ -276,11 +276,14 @@ def register(parent):
         if len(cuda_devices) > 1 and cuda_devices[0].is_primary and cuda_devices[1].is_primary:
             try:
                 import torch
+                have_torch = True
+            except:
+                have_torch = False
+
+            if have_torch:
                 add_function_test(TestMultigpu, "test_multigpu_from_torch", test_multigpu_from_torch)
                 add_function_test(TestMultigpu, "test_multigpu_to_torch", test_multigpu_to_torch)
                 add_function_test(TestMultigpu, "test_multigpu_torch_interop", test_multigpu_torch_interop)
-            except ImportError:
-                pass
     
     return TestMultigpu
 

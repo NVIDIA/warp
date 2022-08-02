@@ -24,3 +24,5 @@ host_compiler = None    # user can specify host compiler here, otherwise will at
 
 cache_kernels = True
 kernel_cache_dir = None # path to kernel cache directory, if None a default path will be used
+
+ptx_target_arch = 70    # target architecture for PTX generation, defaults to the lowest architecture that supports all of Warp's features

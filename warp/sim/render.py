@@ -5,8 +5,6 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from pxr import Usd, UsdGeom, Gf, Sdf
-
 import math
 
 import warp as wp
@@ -15,6 +13,8 @@ import warp.sim
 class SimRenderer(warp.render.UsdRenderer):
     
     def __init__(self, model: warp.sim.Model, path):
+
+        from pxr import UsdGeom
 
         # create USD stage
         super().__init__(path)
@@ -113,6 +113,7 @@ class SimRenderer(warp.render.UsdRenderer):
 
     def render(self, state: warp.sim.State):
 
+        from pxr import UsdGeom, Gf, Sdf
 
         if (self.model.particle_count):
 

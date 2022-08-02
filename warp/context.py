@@ -499,7 +499,6 @@ class Module:
         if self.cuda_modules:
             saved_context = runtime.core.cuda_context_get_current()
             for context, module in self.cuda_modules.items():
-                runtime.core.cuda_context_set_current(context)
                 runtime.core.cuda_unload_module(context, module)
             runtime.core.cuda_context_set_current(saved_context)
             self.cuda_modules = {}
@@ -585,7 +584,9 @@ class Module:
 
             module_path = os.path.join(build_path, module_name)
 
-            ptx_path = module_path + f"_sm{device.arch}.ptx"
+            ptx_arch = min(device.arch, warp.config.ptx_target_arch)
+
+            ptx_path = module_path + f"_sm{ptx_arch}.ptx"
 
             if (os.name == 'nt'):
                 dll_path = module_path + ".dll"
@@ -675,8 +676,9 @@ class Module:
                     cu_file.close()
 
                     # generate PTX
+                    ptx_arch = min(device.arch, warp.config.ptx_target_arch)
                     with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, device.arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_cuda(cu_path, ptx_arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
                     # update cuda hash
                     f = open(cuda_hash_path, 'wb')
@@ -732,13 +734,13 @@ class ContextGuard:
     def __enter__(self):
         if self.context:
             self.core.cuda_context_push_current(self.context)
-        else:
+        elif is_cuda_available():
             self.saved_context = self.core.cuda_context_get_current()
     
     def __exit__(self, exc_type, exc_value, traceback):
         if self.context:
             self.core.cuda_context_pop_current()
-        else:
+        elif is_cuda_available():
             self.core.cuda_context_set_current(self.saved_context)
 
 
@@ -1525,15 +1527,17 @@ def synchronize():
     or memory copies have completed.
     """
 
-    # save the original context to avoid side effects
-    saved_context = runtime.core.cuda_context_get_current()
+    if is_cuda_available():
 
-    # TODO: only synchronize devices that have outstanding work
-    for device in runtime.cuda_devices:
-        runtime.core.cuda_context_synchronize(device.context)
-    
-    # restore the original context to avoid side effects
-    runtime.core.cuda_context_set_current(saved_context)
+        # save the original context to avoid side effects
+        saved_context = runtime.core.cuda_context_get_current()
+
+        # TODO: only synchronize devices that have outstanding work
+        for device in runtime.cuda_devices:
+            runtime.core.cuda_context_synchronize(device.context)
+        
+        # restore the original context to avoid side effects
+        runtime.core.cuda_context_set_current(saved_context)
 
 
 def synchronize_device(device:Devicelike=None):
@@ -1560,8 +1564,9 @@ def force_load(device:Union[Device, str]=None):
     """Force all user-defined kernels to be compiled and loaded
     """
 
-    # save original context to avoid side effects
-    saved_context = runtime.core.cuda_context_get_current()
+    if is_cuda_available():
+        # save original context to avoid side effects
+        saved_context = runtime.core.cuda_context_get_current()
 
     if device is None:
         devices = get_devices()
@@ -1572,8 +1577,9 @@ def force_load(device:Union[Device, str]=None):
         for m in user_modules.values():
             m.load(d)
 
-    # restore original context to avoid side effects
-    runtime.core.cuda_context_set_current(saved_context)
+    if is_cuda_available():
+        # restore original context to avoid side effects
+        runtime.core.cuda_context_set_current(saved_context)
 
 
 def set_module_options(options: Dict[str, Any]):

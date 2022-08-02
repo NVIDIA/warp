@@ -26,11 +26,12 @@ int cuda_init();
 
 int init()
 {
-#if WP_DISABLE_CUDA
-    return 0;
-#else
-    return cuda_init();
+#if !WP_DISABLE_CUDA
+    // note: it's safe to proceed even if CUDA initialization failed
+    cuda_init();
 #endif
+
+    return 0;
 }
 
 void shutdown()
