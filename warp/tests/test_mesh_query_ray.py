@@ -260,11 +260,12 @@ def register(parent):
     # USD import failures should not count as a test failure
     try:
         from pxr import Usd, UsdGeom
+        have_usd = True
+    except:
+        have_usd = False
 
+    if have_usd:
         add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
-
-    except ImportError:
-        pass
 
     return TestMeshQueryRay
 
