@@ -7,6 +7,7 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 echo "Installing test dependencies"
 ./_build/target-deps/python/python -m pip install matplotlib
 ./_build/target-deps/python/python -m pip install usd-core
+./_build/target-deps/python/python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cu113
 
 echo "Installing Warp to Python"
 ./_build/target-deps/python/python -m pip install -e .
