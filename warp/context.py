@@ -284,7 +284,7 @@ class Kernel:
 
 # decorator to register function, @func
 def func(f):
-    name = warp.codegen.make_func_name(f)
+    name = warp.codegen.make_full_qualified_name(f)
 
     m = get_module(f.__module__)
     func = Function(func=f, key=name, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
@@ -303,7 +303,7 @@ def func(f):
 def kernel(f):
     
     m = get_module(f.__module__)
-    k = Kernel(func=f, key=warp.codegen.make_func_name(f), module=m)
+    k = Kernel(func=f, key=warp.codegen.make_full_qualified_name(f), module=m)
 
     return k
 
@@ -312,7 +312,7 @@ def kernel(f):
 def struct(c):
 
     m = get_module(c.__module__)
-    s = warp.codegen.Struct(cls=c, key=c.__name__, module=m)
+    s = warp.codegen.Struct(cls=c, key=warp.codegen.make_full_qualified_name(c), module=m)
 
     return s
 
@@ -372,6 +372,7 @@ class ModuleBuilder:
     def __init__(self, module, options):
             
         self.functions = {}
+        self.structs = {}
         self.options = options
         self.module = module
 
@@ -383,6 +384,8 @@ class ModuleBuilder:
         for kernel in module.kernels.values():
             self.build_kernel(kernel)
 
+    def build_struct(self, struct):
+        self.structs[struct] = None
 
     def build_kernel(self, kernel):
         kernel.adj.build(self)
@@ -417,7 +420,7 @@ class ModuleBuilder:
         cpp_source = ""
 
         # code-gen structs
-        for struct in self.module.structs:
+        for struct in self.structs.keys():
             cpp_source += warp.codegen.codegen_struct(struct)
 
         # code-gen all imported functions
@@ -440,7 +443,7 @@ class ModuleBuilder:
         cu_source = ""
 
         # code-gen structs
-        for struct in self.module.structs:
+        for struct in self.structs.keys():
             cu_source += warp.codegen.codegen_struct(struct)
 
         # code-gen all imported functions
