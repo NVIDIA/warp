@@ -157,7 +157,7 @@ class Var:
             #return str(self.type.dtype.__name__) + "*"
             return f"array_t<{str(self.type.dtype.__name__)}>"
         if (isinstance(self.type, Struct)):
-            return self.type.cls.__name__
+            return make_full_qualified_name(self.type.cls)
         else:
             return str(self.type.__name__)
 
@@ -248,6 +248,9 @@ class Adjoint:
         # recursively evaluate function body
         adj.eval(adj.tree.body[0])
 
+        for a in adj.args:
+            if isinstance(a.type, Struct):
+                builder.build_struct(a.type)
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -1498,7 +1501,7 @@ def indent(args, stops=1):
     return sep.join(args)
 
 # generates a C function name based on the python function name
-def make_func_name(func):
+def make_full_qualified_name(func):
     return re.sub('[^0-9a-zA-Z_]+', '', func.__qualname__.replace('.', '__'))
 
 def codegen_struct(struct, indent=4):
@@ -1510,7 +1513,7 @@ def codegen_struct(struct, indent=4):
         body.append(var.ctype() + " " + label + ";\n")
 
     return struct_template.format(
-        name=struct.cls.__name__,
+        name=make_full_qualified_name(struct.cls),
         struct_body="".join([indent_block + l for l in body])
     )
 
@@ -1643,7 +1646,7 @@ def codegen_func(adj, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=make_func_name(adj.func),
+    s = template.format(name=make_full_qualified_name(adj.func),
                         return_type=return_type,
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
