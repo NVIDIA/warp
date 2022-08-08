@@ -6,6 +6,8 @@
 - Reduced PTX target architecture to avoid issues with older drivers, see `wp.config.ptx_target_arch`
 - Support running even if CUDA initialization failed, use `wp.is_cuda_available()` to check availability
 - Remove USD imports from `__init__.py`, defer them to individual functions that need them
+- Added CUDA version checks for toolkit and driver
+- Statically linking with the CUDA runtime library to avoid deployment issues
 
 ### Breaking Changes
 

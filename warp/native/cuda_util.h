@@ -41,6 +41,7 @@
 #endif // defined(__CUDACC__)
 
 
+CUresult cuDriverGetVersion_f(int* version);
 CUresult cuGetErrorName_f(CUresult result, const char** pstr);
 CUresult cuGetErrorString_f(CUresult result, const char** pstr);
 CUresult cuInit_f(unsigned int flags);

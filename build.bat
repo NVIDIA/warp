@@ -14,4 +14,3 @@ call %PYTHON% build_lib.py --msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.1
 
 REM Copy CUDA dependencies to bin dir
 copy _build\target-deps\cuda\bin\nvrtc*.dll warp\bin
-copy _build\target-deps\cuda\bin\cudart64*.dll warp\bin

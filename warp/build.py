@@ -257,7 +257,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append("cudart.lib cuda.lib nvrtc.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
+                ld_inputs.append("cudart_static.lib nvrtc.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
 
         with ScopedTimer("link", active=warp.config.verbose):
             link_cmd = 'link.exe {inputs} {flags} /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), flags=ld_flags, dll_path=dll_path)
@@ -301,16 +301,19 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
             elif (config == "release"):
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC {gencode_opts} --use_fast_math -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
-
-
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
 
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append('-L"{cuda_home}/lib64" -lcudart -lnvrtc'.format(cuda_home=cuda_home))
+                ld_inputs.append('-L"{cuda_home}/lib64" -lcudart_static -lnvrtc -lpthread -ldl -lrt'.format(cuda_home=cuda_home))
+
+        if sys.platform == 'darwin':
+            opt_no_undefined = "-Wl,-undefined,error"
+        else:
+            opt_no_undefined = "-Wl,--no-undefined"
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = "g++ -shared -Wl,-rpath,'$ORIGIN' -o '{dll_path}' {inputs}".format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)            
+            link_cmd = "g++ -shared -Wl,-rpath,'$ORIGIN' {no_undefined} -o '{dll_path}' {inputs}".format(no_undefined=opt_no_undefined, inputs=' '.join(ld_inputs), dll_path=dll_path)            
             run_cmd(link_cmd)
 
     
