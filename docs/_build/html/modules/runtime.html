@@ -71,7 +71,7 @@
             
             
               <div class="version">
-                0.3.0
+                0.3.2
               </div>
             
           
@@ -275,7 +275,7 @@
 </div>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.launch">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.launch" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.launch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Launch a Warp kernel on the target device</p>
 <p>Kernel launches are asynchronous with respect to the calling Python thread.</p>
 <dl class="field-list simple">
@@ -287,7 +287,7 @@
 <li><p><strong>outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The output parameters (optional)</p></li>
 <li><p><strong>adj_inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The adjoint inputs (optional)</p></li>
 <li><p><strong>adj_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The adjoint outputs (optional)</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – The device to launch on</p></li>
+<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – The device to launch on</p></li>
 <li><p><strong>adjoint</strong> – Whether to run forward or backward pass (typically use False)</p></li>
 </ul>
 </dd>
@@ -369,14 +369,14 @@ the function also declares the expected array dimension. Currently only single-i
 <p>The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.zeros">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device='cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.zeros" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a zero-initialized array</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><em>Tuple</em></a><em>]</em>) – Array dimensions</p></li>
 <li><p><strong>dtype</strong> – Type of each element, e.g.: warp.vec3, warp.mat33, etc</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Device that array will live on</p></li>
+<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – Device that array will live on</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
 </ul>
 </dd>
@@ -408,14 +408,14 @@ the function also declares the expected array dimension. Currently only single-i
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.empty">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">empty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device='cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.empty" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">empty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.empty" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns an uninitialized array</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>n</strong> – Number of elements</p></li>
 <li><p><strong>dtype</strong> – Type of each element, e.g.: <cite>warp.vec3</cite>, <cite>warp.mat33</cite>, etc</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Device that array will live on</p></li>
+<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – Device that array will live on</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
 <li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><em>Tuple</em></a><em>]</em>) – </p></li>
 </ul>
@@ -470,7 +470,7 @@ and dtype parameter appropriately.</p>
 <li><p><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of elements (rows) of the data type (deprecated, users should use <cite>shape</cite> argument)</p></li>
 <li><p><strong>ptr</strong> (<a class="reference internal" href="functions.html#warp.uint64" title="warp.uint64"><em>uint64</em></a>) – Address of an external memory address to alias (data should be None)</p></li>
 <li><p><strong>capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Maximum size in bytes of the ptr allocation (data should be None)</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a>) – Device the array lives on</p></li>
+<li><p><strong>device</strong> (<em>Devicelike</em>) – Device the array lives on</p></li>
 <li><p><strong>copy</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether the incoming data will be copied or aliased, this is only possible when the incoming <cite>data</cite> already lives on the device specified and types match</p></li>
 <li><p><strong>owner</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Should the array object try to deallocate memory when it is deleted</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether or not gradients will be tracked for this array, see <a class="reference internal" href="#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a> for details</p></li>
@@ -916,7 +916,7 @@ and dtype parameter appropriately.</p>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.HashGrid">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class representing a triangle mesh.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.HashGrid.id">
@@ -1032,22 +1032,30 @@ the radius used when performing queries.</p></li>
 <p>Note that only launch calls are recorded in the graph, any Python executed outside of the kernel code will not be recorded. Typically it only makes sense to use CUDA graphs when the graph will be reused / launched multiple times.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_begin">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_begin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_begin" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_begin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_begin" title="Permalink to this definition">¶</a></dt>
 <dd><p>Begin capture of a CUDA graph</p>
 <p>Captures all subsequent kernel launches and memory operations on CUDA devices.
 This can be used to record large numbers of kernels and replay them with low-overhead.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – </p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_end">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_end" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.capture_end" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ends the capture of a CUDA graph</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>A handle to a CUDA graph object that can be launched with <a class="reference internal" href="#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_launch()</span></code></a></p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)">int</a></p>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – </p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>warp.context.Graph</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1058,7 +1066,7 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <dd><p>Launch a previously captured CUDA graph</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>graph</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – A handle to the graph as returned by <a class="reference internal" href="#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_end()</span></code></a></p>
+<dd class="field-odd"><p><strong>graph</strong> (<em>warp.context.Graph</em>) – A Graph as returned by <a class="reference internal" href="#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_end()</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
