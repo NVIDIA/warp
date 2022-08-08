@@ -15,7 +15,6 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 ./_build/target-deps/python/python build_lib.py --cuda_path="_build/target-deps/cuda"
 
 # copy linux dependencies to bin dir
-cp _build/target-deps/cuda/lib64/libcudart.so.11.0 warp/bin
 cp _build/target-deps/cuda/lib64/libnvrtc.so.11.2 warp/bin
 cp _build/target-deps/cuda/lib64/libnvrtc-builtins.so.11.3 warp/bin
 
