@@ -18,33 +18,48 @@
 #include <dlfcn.h>
 #endif
 
-static PFN_cuGetProcAddress pfn_cuGetProcAddress;
-static PFN_cuGetErrorName pfn_cuGetErrorName;
-static PFN_cuGetErrorString pfn_cuGetErrorString;
-static PFN_cuInit pfn_cuInit;
-static PFN_cuDeviceGet pfn_cuDeviceGet;
-static PFN_cuDeviceGetCount pfn_cuDeviceGetCount;
-static PFN_cuDeviceGetName pfn_cuDeviceGetName;
-static PFN_cuDeviceGetAttribute pfn_cuDeviceGetAttribute;
-static PFN_cuDevicePrimaryCtxRetain pfn_cuDevicePrimaryCtxRetain;
-static PFN_cuDeviceCanAccessPeer pfn_cuDeviceCanAccessPeer;
-static PFN_cuCtxGetCurrent pfn_cuCtxGetCurrent;
-static PFN_cuCtxSetCurrent pfn_cuCtxSetCurrent;
-static PFN_cuCtxPushCurrent pfn_cuCtxPushCurrent;
-static PFN_cuCtxPopCurrent pfn_cuCtxPopCurrent;
-static PFN_cuCtxSynchronize pfn_cuCtxSynchronize;
-static PFN_cuCtxGetDevice pfn_cuCtxGetDevice;
-static PFN_cuCtxCreate pfn_cuCtxCreate;
-static PFN_cuCtxDestroy pfn_cuCtxDestroy;
-static PFN_cuCtxEnablePeerAccess pfn_cuCtxEnablePeerAccess;
-static PFN_cuStreamCreate pfn_cuStreamCreate;
-static PFN_cuStreamDestroy pfn_cuStreamDestroy;
-static PFN_cuStreamSynchronize pfn_cuStreamSynchronize;
-static PFN_cuModuleLoadDataEx pfn_cuModuleLoadDataEx;
-static PFN_cuModuleUnload pfn_cuModuleUnload;
-static PFN_cuModuleGetFunction pfn_cuModuleGetFunction;
-static PFN_cuLaunchKernel pfn_cuLaunchKernel;
-static PFN_cuMemcpyPeerAsync pfn_cuMemcpyPeerAsync;
+// the minimum required CUDA Toolkit version, which also determines the version of
+// driver API entry points acquired at runtime
+#define WP_CUDA_VERSION 11030
+
+#define WP_CUDA_VERSION_MAJOR(version) (version / 1000)
+#define WP_CUDA_VERSION_MINOR(version) ((version % 1000) / 10)
+
+// check if the CUDA Toolkit is too old
+#if CUDA_VERSION < WP_CUDA_VERSION
+#error Warp requires CUDA Toolkit version 11.3 or higher
+#endif
+
+// function pointers to driver API entry points
+// these are explicitly versioned according to cudaTypedefs.h from CUDA Toolkit WP_CUDA_VERSION
+static PFN_cuGetProcAddress_v11030 pfn_cuGetProcAddress;
+static PFN_cuDriverGetVersion_v2020 pfn_cuDriverGetVersion;
+static PFN_cuGetErrorName_v6000 pfn_cuGetErrorName;
+static PFN_cuGetErrorString_v6000 pfn_cuGetErrorString;
+static PFN_cuInit_v2000 pfn_cuInit;
+static PFN_cuDeviceGet_v2000 pfn_cuDeviceGet;
+static PFN_cuDeviceGetCount_v2000 pfn_cuDeviceGetCount;
+static PFN_cuDeviceGetName_v2000 pfn_cuDeviceGetName;
+static PFN_cuDeviceGetAttribute_v2000 pfn_cuDeviceGetAttribute;
+static PFN_cuDevicePrimaryCtxRetain_v7000 pfn_cuDevicePrimaryCtxRetain;
+static PFN_cuDeviceCanAccessPeer_v4000 pfn_cuDeviceCanAccessPeer;
+static PFN_cuCtxGetCurrent_v4000 pfn_cuCtxGetCurrent;
+static PFN_cuCtxSetCurrent_v4000 pfn_cuCtxSetCurrent;
+static PFN_cuCtxPushCurrent_v4000 pfn_cuCtxPushCurrent;
+static PFN_cuCtxPopCurrent_v4000 pfn_cuCtxPopCurrent;
+static PFN_cuCtxSynchronize_v2000 pfn_cuCtxSynchronize;
+static PFN_cuCtxGetDevice_v2000 pfn_cuCtxGetDevice;
+static PFN_cuCtxCreate_v3020 pfn_cuCtxCreate;
+static PFN_cuCtxDestroy_v4000 pfn_cuCtxDestroy;
+static PFN_cuCtxEnablePeerAccess_v4000 pfn_cuCtxEnablePeerAccess;
+static PFN_cuStreamCreate_v2000 pfn_cuStreamCreate;
+static PFN_cuStreamDestroy_v4000 pfn_cuStreamDestroy;
+static PFN_cuStreamSynchronize_v2000 pfn_cuStreamSynchronize;
+static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
+static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
+static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
+static PFN_cuLaunchKernel_v4000 pfn_cuLaunchKernel;
+static PFN_cuMemcpyPeerAsync_v4000 pfn_cuMemcpyPeerAsync;
 
 bool ContextGuard::always_restore = false;
 
@@ -53,7 +68,7 @@ static bool get_driver_entry_point(const char* name, void** pfn)
     if (!pfn_cuGetProcAddress || !name || !pfn)
         return false;
 
-    CUresult r = pfn_cuGetProcAddress(name, pfn, CUDA_VERSION, CU_GET_PROC_ADDRESS_DEFAULT);
+    CUresult r = pfn_cuGetProcAddress(name, pfn, WP_CUDA_VERSION, CU_GET_PROC_ADDRESS_DEFAULT);
     if (r != CUDA_SUCCESS)
     {
         fprintf(stderr, "Warp CUDA error: Failed to get driver entry point '%s' (CUDA error %u)\n", name, unsigned(r));
@@ -85,6 +100,31 @@ bool init_cuda_driver()
     {
         fprintf(stderr, "Warp CUDA error: Failed to get function cuGetProcAddress\n");
         return false;
+    }
+
+    // check the CUDA driver version and issue a warning if it's too low
+    int driver_version = 0;
+    if (get_driver_entry_point("cuDriverGetVersion", &(void*&)pfn_cuDriverGetVersion) && check_cu(pfn_cuDriverGetVersion(&driver_version)))
+    {
+        if (driver_version < CUDA_VERSION)
+        {
+            if (CUDA_VERSION > WP_CUDA_VERSION)
+            {
+                fprintf(stderr, "Warp CUDA warning: Warp was built with CUDA Toolkit %d.%d, but the driver only supports CUDA %d.%d\n",
+                    WP_CUDA_VERSION_MAJOR(CUDA_VERSION), WP_CUDA_VERSION_MINOR(CUDA_VERSION),
+                    WP_CUDA_VERSION_MAJOR(driver_version), WP_CUDA_VERSION_MINOR(driver_version));
+            }
+            else
+            {
+                fprintf(stderr, "Warp CUDA warning: Warp requires CUDA %d.%d, but the driver only supports CUDA %d.%d\n",
+                    WP_CUDA_VERSION_MAJOR(WP_CUDA_VERSION), WP_CUDA_VERSION_MINOR(WP_CUDA_VERSION),
+                    WP_CUDA_VERSION_MAJOR(driver_version), WP_CUDA_VERSION_MINOR(driver_version));
+            }
+        }
+    }
+    else
+    {
+        fprintf(stderr, "Warp CUDA warning: Unable to determine CUDA driver version\n");
     }
 
     // initialize driver entry points
@@ -155,6 +195,11 @@ static CUresult driver_entry_point_error(const char* function)
 {
     fprintf(stderr, "Warp CUDA error: Function %s: a suitable driver entry point was not found\n", function);
     return (CUresult)cudaErrorCallRequiresNewerDriver; // this matches what cudart would do
+}
+
+CUresult cuDriverGetVersion_f(int* version)
+{
+    return pfn_cuDriverGetVersion ? pfn_cuDriverGetVersion(version) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuGetErrorName_f(CUresult result, const char** pstr)
