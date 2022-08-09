@@ -34,12 +34,14 @@ class OgnDeform:
 
         with wp.ScopedDevice("cuda:0"):
 
-            # convert node inputs to a GPU array
-            points_in = wp.array(db.inputs.points, dtype=wp.vec3)
-            points_out = wp.zeros_like(points_in)
+            if len(db.inputs.points):
 
-            # launch deformation kernel
-            wp.launch(kernel=deform, dim=len(points_in), inputs=[points_in, points_out, db.inputs.time])
+                # convert node inputs to a GPU array
+                points_in = wp.array(db.inputs.points, dtype=wp.vec3)
+                points_out = wp.zeros_like(points_in)
 
-            # write node outputs
-            db.outputs.points = points_out.numpy()
+                # launch deformation kernel
+                wp.launch(kernel=deform, dim=len(points_in), inputs=[points_in, points_out, db.inputs.time])
+
+                # write node outputs
+                db.outputs.points = points_out.numpy()
