@@ -21,7 +21,7 @@ project = 'Warp'
 copyright = '2022, NVIDIA'
 author = 'NVIDIA'
 
-version = '0.3.2'
+version = '0.4.0'
 
 # -- General configuration ---------------------------------------------------
 

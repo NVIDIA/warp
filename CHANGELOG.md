@@ -1,13 +1,18 @@
 # CHANGELOG
 
-## [0.3.3] - 2022-08-01
+## [0.4.0] - 2022-08-09
 
-- Fixed FP16 conversions on older hardware
-- Reduced PTX target architecture to avoid issues with older drivers, see `wp.config.ptx_target_arch`
+- Fix for FP16 conversions on GPUs without hardware support
+- Fix for `runtime = None` errors when reloading the Warp module
+- Fix for PTX architecture version when running with older drivers, see `wp.config.ptx_target_arch`
+- Fix for USD imports from `__init__.py`, defer them to individual functions that need them
+- Fix for robustness issues with sign determination for `wp.mesh_query_point()`
+- Fix for `wp.HashGrid` memory leak when creating/destroying grids
+- Add CUDA version checks for toolkit and driver
+- Add support for cross-module `@wp.struct` references
 - Support running even if CUDA initialization failed, use `wp.is_cuda_available()` to check availability
-- Remove USD imports from `__init__.py`, defer them to individual functions that need them
-- Added CUDA version checks for toolkit and driver
 - Statically linking with the CUDA runtime library to avoid deployment issues
+  
 
 ### Breaking Changes
 
