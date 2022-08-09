@@ -190,7 +190,7 @@ Most optimizers (particularly ones that exploit stochasticity), are not sensitiv
 ### Does Warp support multi-GPU programming?
 -------
 
-Yes! Since verrsion `0.3.1` we have added support for allocating, launching, and copying between multiple GPUs in a single process. We follow the naming conventions of PyTorch and use device alias's such as `cuda:0`, `cuda:1`, `cpu`, etc.
+Yes! Since verrsion `0.4.0` we support allocating, launching, and copying between multiple GPUs in a single process. We follow the naming conventions of PyTorch and use aliases such as `cuda:0`, `cuda:1`, `cpu` to identify individual devices.
 
 ### Should I switch to Warp over IsaacGym / PhysX?
 -------
