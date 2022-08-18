@@ -78,6 +78,18 @@ inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
     return quat(v.x, v.y, v.z, w);
 }
 
+inline CUDA_CALLABLE void quat_to_axis_angle(const quat& q, vec3& axis, float& angle)
+{
+    vec3 v = vec3(q.x, q.y, q.z);
+    axis = q.w < 0.f ? -v / length(v) : v / length(v);
+    angle = 2.f * atan2(length(axis), fabs(q.w));
+}
+
+inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, float& angle, vec3& adj_axis, float& adj_angle, const quat& adj_q)
+{
+    // todo
+}
+
 inline CUDA_CALLABLE quat quat_rpy(float roll, float pitch, float yaw)
 {
     float cy = cos(yaw * 0.5);
@@ -169,6 +181,35 @@ inline CUDA_CALLABLE vec3 quat_rotate(const quat& q, const vec3& x)
 inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
 {
     return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
+}
+
+inline CUDA_CALLABLE vec3 rotate_axis_angle(const vec3& axis, float angle, const vec3& x)
+{
+    return quat_rotate(quat_from_axis_angle(axis, angle), x);
+}
+
+inline CUDA_CALLABLE void adj_rotate_axis_angle(const vec3& axis, float angle, const vec3& x, vec3& adj_axis, float& adj_angle, vec3& adj_x, const vec3& adj_ret)
+{
+    quat adj_q;
+    adj_quat_rotate(quat_from_axis_angle(axis, angle), x, adj_q, adj_x, adj_ret);
+    adj_quat_from_axis_angle(axis, angle, adj_axis, adj_angle, adj_q);
+}
+
+inline CUDA_CALLABLE quat slerp(const quat& q0, const quat& q1, float t)
+{
+    vec3 axis;
+    float angle;
+    quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
+    return mul(q0, quat_from_axis_angle(axis, t * angle));
+}
+
+inline CUDA_CALLABLE void adj_slerp(const quat& q0, const quat& q1, float t, const quat& adj_q0, const quat& adj_q1, float& adj_t, const quat& adj_ret)
+{
+    vec3 axis;
+    float angle;
+    quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
+    axis = 0.5 * t * angle * axis;
+    adj_t += dot(mul(quat(axis.x, axis.z, axis.z, 0.f), slerp(q0, q1, t)), adj_ret);
 }
 
 inline CUDA_CALLABLE mat33 quat_to_matrix(const quat& q)
