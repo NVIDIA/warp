@@ -19,9 +19,18 @@ class OmniWarpExtension(omni.ext.IExt):
         wp.init()
         self._menu = WarpMenu()
 
+        omni.kit.browser.sample.register_sample_folder(
+            "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Assets/Extensions/Samples/Warp",
+            "Warp"
+        )
+
+
     def on_shutdown(self):
         log_info("OmniWarpExtension shutdown")
 
         self._menu.shutdown()
         self._menu = None
 
+        omni.kit.browser.sample.unregister_sample_folder(
+            "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Assets/Extensions/Samples/Warp"
+        )
