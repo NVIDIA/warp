@@ -36,6 +36,7 @@ import warp.tests.test_reload
 import warp.tests.test_struct
 import warp.tests.test_closest_point_edge_edge
 import warp.tests.test_multigpu
+import warp.tests.test_quat
 
 def run():
 
@@ -68,6 +69,7 @@ def run():
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_struct.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_closest_point_edge_edge.register(unittest.TestCase)))
     tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_multigpu.register(unittest.TestCase)))
+    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_quat.register(unittest.TestCase)))
 
     # force rebuild of all kernels
     wp.build.clear_kernel_cache()

@@ -85,11 +85,6 @@ inline CUDA_CALLABLE void quat_to_axis_angle(const quat& q, vec3& axis, float& a
     angle = 2.f * atan2(length(axis), fabs(q.w));
 }
 
-inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, float& angle, vec3& adj_axis, float& adj_angle, const quat& adj_q)
-{
-    // todo
-}
-
 inline CUDA_CALLABLE quat quat_rpy(float roll, float pitch, float yaw)
 {
     float cy = cos(yaw * 0.5);
@@ -183,19 +178,21 @@ inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
     return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
 }
 
-inline CUDA_CALLABLE vec3 rotate_axis_angle(const vec3& axis, float angle, const vec3& x)
+inline CUDA_CALLABLE vec3 rotate_rodriguez(const vec3& r, const vec3& x)
 {
-    return quat_rotate(quat_from_axis_angle(axis, angle), x);
+    float angle = length(r);
+    if (angle > 0.f)
+    {
+        vec3 axis = r / angle;
+        return x * cos(angle) + cross(axis, x) * sin(angle) + axis * dot(axis, x) * (1.f - cos(angle));
+    }
+    else
+    {
+        return x;
+    }
 }
 
-inline CUDA_CALLABLE void adj_rotate_axis_angle(const vec3& axis, float angle, const vec3& x, vec3& adj_axis, float& adj_angle, vec3& adj_x, const vec3& adj_ret)
-{
-    quat adj_q;
-    adj_quat_rotate(quat_from_axis_angle(axis, angle), x, adj_q, adj_x, adj_ret);
-    adj_quat_from_axis_angle(axis, angle, adj_axis, adj_angle, adj_q);
-}
-
-inline CUDA_CALLABLE quat slerp(const quat& q0, const quat& q1, float t)
+inline CUDA_CALLABLE quat quat_slerp(const quat& q0, const quat& q1, float t)
 {
     vec3 axis;
     float angle;
@@ -203,13 +200,13 @@ inline CUDA_CALLABLE quat slerp(const quat& q0, const quat& q1, float t)
     return mul(q0, quat_from_axis_angle(axis, t * angle));
 }
 
-inline CUDA_CALLABLE void adj_slerp(const quat& q0, const quat& q1, float t, const quat& adj_q0, const quat& adj_q1, float& adj_t, const quat& adj_ret)
+inline CUDA_CALLABLE quat quat_smoothstep(const quat& q0, const quat& q1, float t)
 {
     vec3 axis;
     float angle;
     quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
-    axis = 0.5 * t * angle * axis;
-    adj_t += dot(mul(quat(axis.x, axis.z, axis.z, 0.f), slerp(q0, q1, t)), adj_ret);
+    float smoothstep = t * (3.f * t - 2.f * t * t);
+    return mul(q0, quat_from_axis_angle(axis, smoothstep * angle));
 }
 
 inline CUDA_CALLABLE mat33 quat_to_matrix(const quat& q)
@@ -312,6 +309,37 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle
 
     adj_axis += v*s;
     adj_angle += dot(dqda, adj_ret);
+}
+
+inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, float& angle, const vec3& adj_axis, const float& adj_angle, quat& adj_q)
+{   
+    float l = length(vec3(q.x, q.y, q.z));
+    assert(l > 0.f);
+    float l_inv = 1.f / l;
+    float l_inv_sq = l_inv * l_inv;
+    float l_inv_cu = l_inv_sq * l_inv;
+    
+    float ax_qx = l_inv * (1.f - q.x*q.x*l_inv_sq);
+    float ax_qy = -q.x*q.y * (l_inv_cu);
+    float ax_qz = -q.x*q.z * (l_inv_cu);
+    float ay_qx = -q.y*q.x * (l_inv_cu);
+    float ay_qy = l_inv * (1.f - q.y*q.y*l_inv_sq);
+    float ay_qz = -q.y*q.z * (l_inv_cu);
+    float az_qx = -q.z*q.x * (l_inv_cu);
+    float az_qy = -q.z*q.y * (l_inv_cu);
+    float az_qz = l_inv * (1.f - q.z*q.z*l_inv_sq);
+
+    float R = l / q.w;
+    float C = 2.f / (1.f + R * R);
+    float t_qx = C * l_inv * q.x / q.w;
+    float t_qy = C * l_inv * q.y / q.w;
+    float t_qz = C * l_inv * q.z / q.w;
+    float t_qw = -C * l_inv * l / (q.w * q.w);
+
+    adj_q.x += ax_qx * adj_axis.x + ay_qx * adj_axis.y + az_qx * adj_axis.z + t_qx * adj_angle;
+    adj_q.y += ax_qy * adj_axis.x + ay_qy * adj_axis.y + az_qy * adj_axis.z + t_qy * adj_angle;
+    adj_q.z += ax_qz * adj_axis.x + ay_qz * adj_axis.y + az_qz * adj_axis.z + t_qz * adj_angle;
+    adj_q.w += t_qw * adj_angle;
 }
 
 inline CUDA_CALLABLE void adj_quat_rpy(float roll, float pitch, float yaw, float& adj_roll, float& adj_pitch, float& adj_yaw, const quat& adj_ret)
@@ -477,6 +505,47 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
         adj_p.y += r.y*(t3+(q.y*q.y)*2.0f-1.0f)+r.x*(t4+q.x*q.y*2.0f)-r.z*(t7-q.y*q.z*2.0f);
         adj_p.z += -r.x*(t5-t6)+r.z*(t3+(q.z*q.z)*2.0f-1.0f)+r.y*(t7+q.y*q.z*2.0f);
     }
+}
+
+inline CUDA_CALLABLE void adj_rotate_rodriguez(const vec3& r, const vec3& x, vec3& adj_r, vec3& adj_x, const vec3& adj_ret)
+{
+    float magnitude = length(r);
+    vec3 axis = r / magnitude;
+    float magnitude_squared = magnitude * magnitude;
+
+    mat33 rotation_matrix = quat_to_matrix(quat_from_axis_angle(axis, magnitude));
+    mat33 inverse_rotation_matrix = quat_to_matrix(quat_inverse(quat_from_axis_angle(axis, magnitude)));
+
+    mat33 A = mul(mul(rotation_matrix, -1.f), skew(x));
+    if (!magnitude_squared)
+    {
+        adj_r += mul(A, adj_ret);
+    }
+    else{
+        float inv_magnitude_squared = 1.f / magnitude_squared;
+        mat33 B = add(outer(r,r), mul(sub(inverse_rotation_matrix, diag(vec3(1.f))), skew(r)));
+        adj_r += mul(mul(A, B), adj_ret);
+    }
+}
+
+inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t, const quat& adj_q0, const quat& adj_q1, float& adj_t, const quat& adj_ret)
+{
+    vec3 axis;
+    float angle;
+    quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
+    axis = 0.5 * angle * axis;
+    adj_t += dot(mul(quat(axis.x, axis.z, axis.z, 0.f), quat_slerp(q0, q1, t)), adj_ret);
+}
+
+inline CUDA_CALLABLE void adj_quat_smoothstep(const quat& q0, const quat& q1, float t, const quat& adj_q0, const quat& adj_q1, float& adj_t, const quat& adj_ret)
+{
+    vec3 axis;
+    float angle;
+    quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
+    float smoothstep = t * (3.f * t - 2.f * t * t);
+    float smoothstep_gradient = 6.f * t * (1.f - t);
+    axis = 0.5 * angle * smoothstep_gradient * axis;
+    adj_t += dot(mul(quat(axis.x, axis.z, axis.z, 0.f), quat_slerp(q0, q1, smoothstep)), adj_ret);
 }
 
 inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)
