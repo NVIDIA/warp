@@ -211,6 +211,8 @@ add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion 
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0")
 add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
+add_builtin("quat_to_axis_angle", input_types={"q": quat, "axis": vec3, "angle": float}, value_type=None, group="Quaternion Math",
+    doc="Extract the rotation axis and angle radians a quaternion represents.")
 add_builtin("quat_from_matrix", input_types={"m": mat33}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion from a 3x3 matrix.")
 add_builtin("quat_rpy", input_types={"roll": float, "pitch": float, "yaw": float}, value_type=quat, group="Quaternion Math",
@@ -221,6 +223,12 @@ add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, 
     doc="Rotate a vector by a quaternion.")
 add_builtin("quat_rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
     doc="Rotate a vector the inverse of a quaternion.")
+add_builtin("rotate_rodriguez", input_types={"r": vec3, "x": vec3}, value_type=vec3, group="Quaternion Math",
+    doc="Rotate the vector x by the rotator r encoding rotation axis and angle radians.")
+add_builtin("quat_slerp", input_types={"q0": quat, "q1": quat, "t": float}, value_type=quat, group="Quaternion Math",
+    doc="Linearly interpolate between two quaternions.")
+add_builtin("quat_smoothstep", input_types={"q0": quat, "q1": quat, "t": float}, value_type=quat, group="Quaternion Math",
+    doc="Smoothstep interpolation between two quaternions.")
 add_builtin("quat_to_matrix", input_types={"q": quat}, value_type=mat33, group="Quaternion Math",
     doc="Convert a quaternion to a 3x3 rotation matrix.")
 

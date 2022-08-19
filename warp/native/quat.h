@@ -181,7 +181,7 @@ inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
 inline CUDA_CALLABLE vec3 rotate_rodriguez(const vec3& r, const vec3& x)
 {
     float angle = length(r);
-    if (angle > 0.f)
+    if (angle > kEps || angle < kEps)
     {
         vec3 axis = r / angle;
         return x * cos(angle) + cross(axis, x) * sin(angle) + axis * dot(axis, x) * (1.f - cos(angle));
@@ -510,13 +510,13 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
 inline CUDA_CALLABLE void adj_rotate_rodriguez(const vec3& r, const vec3& x, vec3& adj_r, vec3& adj_x, const vec3& adj_ret)
 {
     float magnitude = length(r);
-    vec3 axis = r / magnitude;
     float magnitude_squared = magnitude * magnitude;
 
+    vec3 axis = r / magnitude;
     mat33 rotation_matrix = quat_to_matrix(quat_from_axis_angle(axis, magnitude));
     mat33 inverse_rotation_matrix = quat_to_matrix(quat_inverse(quat_from_axis_angle(axis, magnitude)));
-
     mat33 A = mul(mul(rotation_matrix, -1.f), skew(x));
+
     if (!magnitude_squared)
     {
         adj_r += mul(A, adj_ret);
