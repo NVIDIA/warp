@@ -48,28 +48,8 @@ inline CUDA_CALLABLE void adj_randn(uint32& state, uint32& adj_state, float adj_
 
 inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf)
 {
-    assert(cdf.ndim == 1);
-    int n = cdf.shape[0];
-
     float u = randf(state);
-    int lower = 0;
-    int upper = n - 1;
-
-    while(lower < upper)
-    {
-        int mid = lower + (upper - lower) / 2;
-
-        if (cdf[mid] < u)
-        {
-            lower = mid + 1;
-        }
-        else
-        {
-            upper = mid;
-        }
-    }
-
-    return lower;
+    return lower_bound<float>(u, cdf);
 }
 
 inline CUDA_CALLABLE vec2 sample_triangle(uint32& state)
@@ -154,7 +134,7 @@ inline CUDA_CALLABLE vec3 sample_unit_cube(uint32& state)
     return vec3(x, y, z);
 }
 
-inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, int n, uint32& adj_state, const array_t<float>& adj_cdf, int adj_n, const int& adj_ret) {}
+inline CUDA_CALLABLE void adj_sample_cdf(uint32& state, const array_t<float>& cdf, uint32& adj_state, array_t<float>& adj_cdf, const int& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_triangle(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_ring(uint32& state, uint32& adj_state, const vec2& adj_ret) {}
 inline CUDA_CALLABLE void adj_sample_unit_disk(uint32& state, uint32& adj_state, const vec2& adj_ret) {}

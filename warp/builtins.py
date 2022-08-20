@@ -730,6 +730,12 @@ add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance
 add_builtin("expect_near", input_types={"arg1": vec3, "arg2": vec3, "tolerance": float}, value_type=None, doc="Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 
 #---------------------------------
+# Algorithms
+
+add_builtin("lower_bound", input_types={"value": int, "arr": array(dtype=int)}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
+add_builtin("lower_bound", input_types={"value": float, "arr": array(dtype=float)}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
+
+#---------------------------------
 # Operators
 
 add_builtin("add", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
