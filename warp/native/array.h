@@ -225,7 +225,7 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j, int k)
 }
 
 template <typename T>
-CUDA_CALLABLE inline int lower_bound(T value, const array_t<T>& arr)
+CUDA_CALLABLE inline int lower_bound(const array_t<T>& arr, T value)
 {
     assert(arr.ndim == 1);
     int n = arr.shape[0];
@@ -250,7 +250,7 @@ CUDA_CALLABLE inline int lower_bound(T value, const array_t<T>& arr)
     return lower;
 }
 
-template <typename T> inline CUDA_CALLABLE void adj_lower_bound(T value, const array_t<T>& arr, T adj_value, array_t<T> adj_arr, int adj_ret) {}
+template <typename T> inline CUDA_CALLABLE void adj_lower_bound(const array_t<T>& arr, T value, array_t<T> adj_arr, T adj_value, int adj_ret) {}
 
 template <typename T> inline CUDA_CALLABLE void adj_view(array_t<T>& src, int i, array_t<T>& adj_src, int adj_i, array_t<T> adj_ret) {}
 template <typename T> inline CUDA_CALLABLE void adj_view(array_t<T>& src, int i, int j, array_t<T>& adj_src, int adj_i, int adj_j, array_t<T> adj_ret) {}

@@ -49,7 +49,7 @@ inline CUDA_CALLABLE void adj_randn(uint32& state, uint32& adj_state, float adj_
 inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf)
 {
     float u = randf(state);
-    return lower_bound<float>(u, cdf);
+    return lower_bound<float>(cdf, u);
 }
 
 inline CUDA_CALLABLE vec2 sample_triangle(uint32& state)

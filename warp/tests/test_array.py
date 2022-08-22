@@ -192,7 +192,7 @@ def test_4d_transposed(test, device):
 def lower_bound_kernel(values: wp.array(dtype=float), arr: wp.array(dtype=float), indices: wp.array(dtype=int)):
     tid = wp.tid()
 
-    indices[tid] = wp.lower_bound(values[tid], arr)
+    indices[tid] = wp.lower_bound(arr, values[tid])
 
 
 def test_lower_bound(test, device):

@@ -732,8 +732,8 @@ add_builtin("expect_near", input_types={"arg1": vec3, "arg2": vec3, "tolerance":
 #---------------------------------
 # Algorithms
 
-add_builtin("lower_bound", input_types={"value": int, "arr": array(dtype=int)}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
-add_builtin("lower_bound", input_types={"value": float, "arr": array(dtype=float)}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
+add_builtin("lower_bound", input_types={"arr": array(dtype=int), "value": int}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
+add_builtin("lower_bound", input_types={"arr": array(dtype=float), "value": float}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
 
 #---------------------------------
 # Operators
