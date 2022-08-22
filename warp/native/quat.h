@@ -509,22 +509,22 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
 
 inline CUDA_CALLABLE void adj_rotate_rodriguez(const vec3& r, const vec3& x, vec3& adj_r, vec3& adj_x, const vec3& adj_ret)
 {
-    float magnitude = length(r);
-    float magnitude_squared = magnitude * magnitude;
+    float angle = length(r);
+    float angle_squared = angle * angle;
 
-    vec3 axis = r / magnitude;
-    mat33 rotation_matrix = quat_to_matrix(quat_from_axis_angle(axis, magnitude));
-    mat33 inverse_rotation_matrix = quat_to_matrix(quat_inverse(quat_from_axis_angle(axis, magnitude)));
-    mat33 A = mul(mul(rotation_matrix, -1.f), skew(x));
+    vec3 axis = r / angle;
+    mat33 rotation_matrix = quat_to_matrix(quat_from_axis_angle(axis, angle));
+    mat33 inverse_rotation_matrix = transpose(rotation_matrix);
+    mat33 A = mul(mul(rotation_matrix, skew(x)), -1.0);
 
-    if (!magnitude_squared)
+    if (!angle_squared)
     {
-        adj_r += mul(A, adj_ret);
+        adj_r += mul(transpose(A), adj_ret);
     }
     else{
-        float inv_magnitude_squared = 1.f / magnitude_squared;
-        mat33 B = add(outer(r,r), mul(sub(inverse_rotation_matrix, diag(vec3(1.f))), skew(r)));
-        adj_r += mul(mul(A, B), adj_ret);
+        float inv_angle_squared = 1.f / angle_squared;
+        mat33 B = mul(add(outer(r,r), mul(sub(inverse_rotation_matrix, diag(vec3(1.f))), skew(r))), inv_angle_squared);
+        adj_r += mul(transpose(mul(A, B)), adj_ret);
     }
 }
 

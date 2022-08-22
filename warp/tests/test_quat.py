@@ -7,26 +7,37 @@ from warp.tests.test_base import *
 wp.init()
 
 @wp.kernel
-def rodriguez_kernel(rotators: wp.array(dtype=wp.vec3), x: wp.vec3, loss: wp.array(dtype=float), coord_idx: int):
+def rodriguez_kernel(rotators: wp.array(dtype=wp.vec3), u: wp.vec3, loss: wp.array(dtype=float), coord_idx: int):
     tid = wp.tid()
-    r = rotators[tid]
-    r_new = wp.rotate_rodriguez(r, x)
-    wp.atomic_add(loss, 0, r_new[coord_idx])
+    v = rotators[tid]
+    u_new = wp.rotate_rodriguez(v, u)
+    wp.atomic_add(loss, 0, u_new[coord_idx])
 
 @wp.kernel
-def rodriguez_kernel_autodiff(rotators: wp.array(dtype=wp.vec3), x: wp.vec3, loss: wp.array(dtype=float), coord_idx: int):
+def rodriguez_kernel_autodiff(rotators: wp.array(dtype=wp.vec3), u: wp.vec3, loss: wp.array(dtype=float), coord_idx: int):
     tid = wp.tid()
-    r = rotators[tid]
-    angle = wp.length(r)
-    if angle > 0.0 or angle < 0.0:
-        axis = r / angle
-        r_new = x * wp.cos(angle) + wp.cross(axis, x) * wp.sin(angle) + axis * wp.dot(axis, x) * (1.0 - wp.cos(angle))
+    v = rotators[tid]
+    angle = wp.length(v)
+    if angle != 0.0:
+        axis = v / angle
+        u_new = u * wp.cos(angle) + wp.cross(axis, u) * wp.sin(angle) + axis * wp.dot(axis, u) * (1.0 - wp.cos(angle))
     else:
-        r_new = x
-    wp.atomic_add(loss, 0, r_new[coord_idx])
+        u_new = u
+    wp.atomic_add(loss, 0, u_new[coord_idx])
 
-# todo: add grad wrt to input vector 
+@wp.kernel
+def rodriguez_kernel_forward(rotators: wp.array(dtype=wp.vec3), u: wp.vec3, rotated: wp.array(dtype=wp.vec3)):
+    tid = wp.tid()
+    v = rotators[tid]
+    angle = wp.length(v)
+    if angle != 0.0:
+        axis = v / angle
+        rotated[tid] = u * wp.cos(angle) + wp.cross(axis, u) * wp.sin(angle) + axis * wp.dot(axis, u) * (1.0 - wp.cos(angle))
+    else:
+        rotated[tid] = u
+
 def test_rotate_rodriguez_grad(test, device):
+    np.random.seed(42)
     num_rotators = 5
     x = wp.vec3(0.5, 0.5, 0.0)
     rotators = np.random.randn(num_rotators, 3)
@@ -119,9 +130,11 @@ def test_rotate_rodriguez_grad(test, device):
     tape.zero()
 
     # compare autodiff and adj_rotate_rodriguez
-    print(gradients_x_auto)
-    print(gradients_y_auto)
-    print(gradients_z_auto)
+    eps = 1e-6
+
+    test.assertTrue((np.abs(gradients_x - gradients_x_auto) < eps).all())
+    test.assertTrue((np.abs(gradients_y - gradients_y_auto) < eps).all())
+    test.assertTrue((np.abs(gradients_z - gradients_z_auto) < eps).all())
 
 def test_slerp_grad(test, device):
     pass
