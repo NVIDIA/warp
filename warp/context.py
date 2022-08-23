@@ -58,6 +58,9 @@ class Function:
         self.hidden = hidden            # function will not be listed in docs
         self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
 
+        # embedded linked list of all overloads
+        # the module's function dictionary holds 
+        # the list head for a given key (func name)
         self.overloads = [self]
 
         if func:
@@ -66,7 +69,6 @@ class Function:
             self.adj = warp.codegen.Adjoint(func)
 
             # record input types    
-            self.input_types = {}
             for name, type in self.adj.arg_types.items():
                 
                 if name == "return":
@@ -234,6 +236,11 @@ class Function:
         return "_".join([name, *types])
 
     def add_overload(self, f):
+
+        # todo: note that it is an error to add two functions
+        # with the exact same signature as this would cause compile
+        # errors during compile time. We should check here if there
+        # is a previously created function with the same signature
         self.overloads.append(f)
 
 
@@ -289,14 +296,8 @@ def func(f):
     m = get_module(f.__module__)
     func = Function(func=f, key=name, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
 
-    # if the function already exists in the module
-    # then add an overload and return original
-    for x in m.functions:
-        if x.key == name:
-            x.add_overload(func)
-            return x
-
-    return func
+    # return the top of the list of overloads for this key
+    return m.functions[name]
 
 # decorator to register kernel, @kernel, custom_name may be a string
 # that creates a kernel with a different name from the actual function
@@ -344,6 +345,8 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
     else:
         builtin_functions[key] = func
 
+        # export means the function will be added to the `warp` module namespace
+        # so that users can call it directly from the Python interpreter
         if export == True:
             
             if hasattr(warp, key):
@@ -359,12 +362,27 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
 # global dictionary of modules
 user_modules = {}
 
-def get_module(m):
+def get_module(name):
 
-    if (m not in user_modules):
-        user_modules[m] = warp.context.Module(str(m))
+    import sys
+    parent = sys.modules[name]
 
-    return user_modules[m]
+    if name in user_modules:
+
+        # check if the Warp module was created using a different loader object 
+        # if so, we assume the file has changed and we recreate the module to
+        # clear out old kernels / functions
+        if user_modules[name].loader is not parent.__loader__:           
+            user_modules[name].unload()
+            user_modules[name] = warp.context.Module(name, parent.__loader__)
+
+        return user_modules[name]
+
+    else:
+        
+        # else Warp module didn't exist yet, so create a new one
+        user_modules[name] = warp.context.Module(name, parent.__loader__)
+        return user_modules[name]
 
 
 class ModuleBuilder:
@@ -377,7 +395,7 @@ class ModuleBuilder:
         self.module = module
 
         # build all functions declared in the module
-        for func in module.functions:
+        for func in module.functions.values():
             self.build_function(func)
 
         # build all kernel entry points
@@ -467,13 +485,14 @@ class ModuleBuilder:
 
 class Module:
 
-    def __init__(self, name):
+    def __init__(self, name, loader):
 
         self.name = name
+        self.loader = loader
         self.path = os.path.abspath(sys.modules[name].__file__)
 
         self.kernels = {}
-        self.functions = []
+        self.functions = {}
         self.constants = []
         self.structs = []
 
@@ -491,27 +510,22 @@ class Module:
 
     def register_kernel(self, kernel):
 
-        # if kernel is replacing an old one then assume it has changed and 
-        # force a rebuild / reload of the dynamic library 
-        if self.dll is not None:
-            warp.build.unload_dll(self.dll)
-            self.dll = None
-
-        # need to unload the CUDA module from all CUDA contexts where it is loaded
-        # note: we ensure that this doesn't change the current CUDA context
-        if self.cuda_modules:
-            saved_context = runtime.core.cuda_context_get_current()
-            for context, module in self.cuda_modules.items():
-                runtime.core.cuda_unload_module(context, module)
-            runtime.core.cuda_context_set_current(saved_context)
-            self.cuda_modules = {}
-
-        # register new kernel
         self.kernels[kernel.key] = kernel
+
+        # for a reload of module on next launch
+        self.unload()
 
 
     def register_function(self, func):
-        self.functions.append(func)
+        
+        if func.key not in self.functions:
+            self.functions[func.key] = func
+        else:
+            self.functions[func.key].add_overload(func)
+
+        # for a reload of module on next launch
+        self.unload()
+
 
 
     def hash_module(self):
@@ -524,7 +538,7 @@ class Module:
             h.update(bytes(s, 'utf-8'))
 
         # functions source
-        for func in self.functions:
+        for func in self.functions.values():
             s = func.adj.source
             h.update(bytes(s, 'utf-8'))
             
@@ -701,6 +715,21 @@ class Module:
                     raise(e)
 
             return True
+
+    def unload(self):
+
+        if self.dll is not None:
+            warp.build.unload_dll(self.dll)
+            self.dll = None
+
+        # need to unload the CUDA module from all CUDA contexts where it is loaded
+        # note: we ensure that this doesn't change the current CUDA context
+        if self.cuda_modules:
+            saved_context = runtime.core.cuda_context_get_current()
+            for context, module in self.cuda_modules.items():
+                runtime.core.cuda_unload_module(context, module)
+            runtime.core.cuda_context_set_current(saved_context)
+            self.cuda_modules = {}
 
 #-------------------------------------------
 # execution context
