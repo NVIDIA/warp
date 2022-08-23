@@ -18,7 +18,7 @@ import importlib
 import os
 
 # dummy module used for testing reload
-import test_square
+import warp.tests.test_square as test_square
     
 
 wp.init()
