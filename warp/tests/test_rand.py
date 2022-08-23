@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import numpy as np
+# import matplotlib.pyplot as plt
 
 import warp as wp
 from warp.tests.test_base import *
@@ -78,6 +79,105 @@ def test_rand(test, device):
     err = np.max(np.abs(float_ab - float_ab_true))
     test.assertTrue(err < 1e-04)
 
+
+@wp.kernel
+def sample_cdf_kernel(kernel_seed: int, cdf: wp.array(dtype=float), samples: wp.array(dtype=int)):
+
+    tid = wp.tid()
+    state = wp.rand_init(kernel_seed, tid)
+
+    samples[tid] = wp.sample_cdf(state, cdf)
+
+
+def test_sample_cdf(test, device):
+
+    seed = 42
+    cdf = np.arange(0.0, 1.0, 0.01, dtype=float)
+    cdf = cdf * cdf
+    cdf = wp.array(cdf, dtype=float, device=device)
+    num_samples = 1000
+    samples = wp.zeros(num_samples, dtype=int, device=device)
+
+    wp.launch(kernel=sample_cdf_kernel, dim=num_samples, inputs=[seed, cdf, samples], device=device)
+
+    # histogram should be linear
+    # plt.hist(samples.numpy())
+    # plt.show()
+
+
+@wp.kernel
+def sampling_kernel(
+    kernel_seed: int,
+    triangle_samples: wp.array(dtype=wp.vec2),
+    square_samples: wp.array(dtype=wp.vec2),
+    ring_samples: wp.array(dtype=wp.vec2),
+    disk_samples: wp.array(dtype=wp.vec2),
+    sphere_surface_samples: wp.array(dtype=wp.vec3),
+    sphere_samples: wp.array(dtype=wp.vec3),
+    hemisphere_surface_samples: wp.array(dtype=wp.vec3),
+    hemisphere_samples: wp.array(dtype=wp.vec3),
+    cube_samples: wp.array(dtype=wp.vec3)):
+
+    tid = wp.tid()
+    state = wp.rand_init(kernel_seed, tid)
+
+    triangle_samples[tid] = wp.sample_triangle(state)
+    ring_samples[tid] = wp.sample_unit_ring(state)
+    disk_samples[tid] = wp.sample_unit_disk(state)
+    sphere_surface_samples[tid] = wp.sample_unit_sphere_surface(state)
+    sphere_samples[tid] = wp.sample_unit_sphere(state)
+    hemisphere_surface_samples[tid] = wp.sample_unit_hemisphere_surface(state)
+    hemisphere_samples[tid] = wp.sample_unit_hemisphere(state)
+    square_samples[tid] = wp.sample_unit_square(state)
+    cube_samples[tid] = wp.sample_unit_cube(state)
+
+
+def test_sampling_methods(test, device):
+    
+    seed = 42
+    num_samples = 100
+
+    triangle_samples = wp.zeros(num_samples, dtype=wp.vec2, device=device)
+    square_samples = wp.zeros(num_samples, dtype=wp.vec2, device=device)
+    ring_samples = wp.zeros(num_samples, dtype=wp.vec2, device=device)
+    disk_samples = wp.zeros(num_samples, dtype=wp.vec2, device=device)
+    sphere_surface_samples = wp.zeros(num_samples, dtype=wp.vec3, device=device)
+    sphere_samples = wp.zeros(num_samples, dtype=wp.vec3, device=device)
+    hemisphere_surface_samples = wp.zeros(num_samples, dtype=wp.vec3, device=device)
+    hemisphere_samples = wp.zeros(num_samples, dtype=wp.vec3, device=device)
+    cube_samples = wp.zeros(num_samples, dtype=wp.vec3, device=device)
+
+    wp.launch(
+        kernel=sampling_kernel,
+        dim=num_samples,
+        inputs=[seed, triangle_samples, square_samples, ring_samples, disk_samples, sphere_surface_samples, sphere_samples, hemisphere_surface_samples, hemisphere_samples, cube_samples],
+        device=device)
+
+    # bounds check
+    test.assertTrue((triangle_samples.numpy()[:,0] <= 1.0).all())
+    test.assertTrue((triangle_samples.numpy()[:,0] >= 0.0).all())
+    test.assertTrue((triangle_samples.numpy()[:,1] >= 0.0).all())
+    test.assertTrue((triangle_samples.numpy()[:,1] >= 0.0).all())
+    test.assertTrue((square_samples.numpy()[:,0] >= -0.5).all())
+    test.assertTrue((square_samples.numpy()[:,0] <= 1.5).all())
+    test.assertTrue((square_samples.numpy()[:,1] >= -0.5).all())
+    test.assertTrue((square_samples.numpy()[:,1] <= 0.5).all())
+    test.assertTrue((cube_samples.numpy()[:,0] >= -0.5).all())
+    test.assertTrue((cube_samples.numpy()[:,0] <= 0.5).all())
+    test.assertTrue((cube_samples.numpy()[:,1] >= -0.5).all())
+    test.assertTrue((cube_samples.numpy()[:,1] <= 0.5).all())
+    test.assertTrue((cube_samples.numpy()[:,2] >= -0.5).all())
+    test.assertTrue((cube_samples.numpy()[:,2] <= 0.5).all())
+    test.assertTrue((hemisphere_surface_samples.numpy()[:,2] >= 0.0).all())
+    test.assertTrue((hemisphere_samples.numpy()[:,2] >= 0.0).all())
+    test.assertTrue((np.linalg.norm(ring_samples.numpy(), axis=1) <= 1.0 + 1e6).all())
+    test.assertTrue((np.linalg.norm(disk_samples.numpy(), axis=1) <= 1.0 + 1e6).all())
+    test.assertTrue((np.linalg.norm(sphere_surface_samples.numpy(), axis=1) <= 1.0 + 1e6).all())
+    test.assertTrue((np.linalg.norm(sphere_samples.numpy(), axis=1) <= 1.0 + 1e6).all())
+    test.assertTrue((np.linalg.norm(hemisphere_surface_samples.numpy(), axis=1) <= 1.0 + 1e6).all())
+    test.assertTrue((np.linalg.norm(hemisphere_samples.numpy(), axis=1) <= 1.0 + 1e6).all())
+
+
 def register(parent):
 
     devices = wp.get_devices()
@@ -86,6 +186,8 @@ def register(parent):
         pass
 
     add_function_test(TestNoise, "test_rand", test_rand, devices=devices)
+    add_function_test(TestNoise, "test_sample_cdf", test_sample_cdf, devices=devices)
+    add_function_test(TestNoise, "test_sampling_methods", test_sampling_methods, devices=devices)
 
     return TestNoise
 

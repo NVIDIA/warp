@@ -37,37 +37,49 @@ import warp.tests.test_struct
 import warp.tests.test_closest_point_edge_edge
 import warp.tests.test_multigpu
 
+
+def register_tests(parent):
+
+    tests = []
+
+    tests.append(warp.tests.test_codegen.register(parent))
+    tests.append(warp.tests.test_mesh_query_aabb.register(parent))
+    tests.append(warp.tests.test_mesh_query_point.register(parent))
+    tests.append(warp.tests.test_mesh_query_ray.register(parent))
+    tests.append(warp.tests.test_conditional.register(parent))
+    tests.append(warp.tests.test_operators.register(parent))
+    tests.append(warp.tests.test_rounding.register(parent))
+    tests.append(warp.tests.test_hash_grid.register(parent))
+    tests.append(warp.tests.test_ctypes.register(parent))
+    tests.append(warp.tests.test_rand.register(parent))
+    tests.append(warp.tests.test_noise.register(parent))
+    tests.append(warp.tests.test_tape.register(parent))
+    tests.append(warp.tests.test_compile_consts.register(parent))
+    tests.append(warp.tests.test_volume.register(parent))
+    tests.append(warp.tests.test_mlp.register(parent))
+    tests.append(warp.tests.test_grad.register(parent))
+    tests.append(warp.tests.test_intersect.register(parent))
+    tests.append(warp.tests.test_array.register(parent))
+    tests.append(warp.tests.test_launch.register(parent))
+    tests.append(warp.tests.test_import.register(parent))
+    tests.append(warp.tests.test_func.register(parent))
+    tests.append(warp.tests.test_fp16.register(parent))
+    tests.append(warp.tests.test_reload.register(parent))
+    tests.append(warp.tests.test_struct.register(parent))
+    tests.append(warp.tests.test_closest_point_edge_edge.register(parent))
+    tests.append(warp.tests.test_multigpu.register(parent))
+
+    return tests
+
 def run():
 
-    tests = unittest.TestSuite()
+    test_suite = unittest.TestSuite()
     result = unittest.TestResult()
-   
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_codegen.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mesh_query_aabb.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mesh_query_point.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mesh_query_ray.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_conditional.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_operators.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_rounding.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_hash_grid.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_ctypes.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_rand.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_noise.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_tape.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_compile_consts.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_volume.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_mlp.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_grad.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_intersect.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_array.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_launch.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_import.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_func.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_fp16.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_reload.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_struct.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_closest_point_edge_edge.register(unittest.TestCase)))
-    tests.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(warp.tests.test_multigpu.register(unittest.TestCase)))
+
+    tests = register_tests(unittest.TestCase)
+
+    for test in tests:
+        test_suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(test))
 
     # force rebuild of all kernels
     wp.build.clear_kernel_cache()
@@ -76,7 +88,7 @@ def run():
     wp.force_load()
 
     runner = unittest.TextTestRunner(verbosity=2, failfast=False)
-    ret = not runner.run(tests).wasSuccessful()
+    ret = not runner.run(test_suite).wasSuccessful()
     return ret
 
 

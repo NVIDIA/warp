@@ -61,8 +61,6 @@ def kernel_2d(a: wp.array(dtype=int, ndim=2), m: int, n: int):
     wp.expect_eq(a[i,j], wp.tid()*2 + 1)
 
 
-
-
 def test_2d(test, device):
 
     dim_x = 4
@@ -190,6 +188,23 @@ def test_4d_transposed(test, device):
         wp.launch(kernel_4d_transposed, dim=arr_T.size, inputs=[arr_T, dim_x, dim_y, dim_z, dim_w], device=device)
 
 
+@wp.kernel
+def lower_bound_kernel(values: wp.array(dtype=float), arr: wp.array(dtype=float), indices: wp.array(dtype=int)):
+    tid = wp.tid()
+
+    indices[tid] = wp.lower_bound(arr, values[tid])
+
+
+def test_lower_bound(test, device):
+    arr = wp.array(np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0], dtype=float), dtype=float, device=device)
+    values = wp.array(np.array([-0.1, 0.0, 2.5, 4.0, 5.0, 5.5], dtype=float), dtype=float, device=device)
+    indices = wp.zeros(6, dtype=int, device=device)
+
+    wp.launch(kernel=lower_bound_kernel, dim=6, inputs=[values, arr, indices], device=device)
+
+    test.assertTrue((np.array([0, 0, 3, 4, 5, 5]) == indices.numpy()).all())
+
+
 def register(parent):
 
     devices = wp.get_devices()
@@ -202,6 +217,7 @@ def register(parent):
     add_function_test(TestArray, "test_3d_array", test_3d, devices=devices)
     add_function_test(TestArray, "test_4d_array", test_4d, devices=devices)
     add_function_test(TestArray, "test_4d_array_transposed", test_4d_transposed, devices=devices)
+    add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
 
     return TestArray
 
