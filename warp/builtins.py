@@ -526,6 +526,27 @@ add_builtin("randf", input_types={"state": uint32, "min": float, "max": float}, 
 add_builtin("randn", input_types={"state": uint32}, value_type=float, group="Random", 
     doc="Sample a normal distribution")
 
+add_builtin("sample_cdf", input_types={"state": uint32, "cdf": array(dtype=float)}, value_type=int, group="Random",
+    doc="Inverse transform sample a cumulative distribution function")
+add_builtin("sample_triangle", input_types={"state": uint32}, value_type=vec2, group="Random",
+    doc="Uniformly sample a triangle. Returns sample barycentric coordinates")
+add_builtin("sample_unit_ring", input_types={"state": uint32}, value_type=vec2, group="Random",
+    doc="Uniformly sample a ring in the xy plane")
+add_builtin("sample_unit_disk", input_types={"state": uint32}, value_type=vec2, group="Random",
+    doc="Uniformly sample a disk in the xy plane")
+add_builtin("sample_unit_sphere_surface", input_types={"state": uint32}, value_type=vec3, group="Random",
+    doc="Uniformly sample a unit sphere surface")
+add_builtin("sample_unit_sphere", input_types={"state": uint32}, value_type=vec3, group="Random",
+    doc="Uniformly sample a unit sphere")
+add_builtin("sample_unit_hemisphere_surface", input_types={"state": uint32}, value_type=vec3, group="Random",
+    doc="Uniformly sample a unit hemisphere surface")
+add_builtin("sample_unit_hemisphere", input_types={"state": uint32}, value_type=vec3, group="Random",
+    doc="Uniformly sample a unit hemisphere")
+add_builtin("sample_unit_square", input_types={"state": uint32}, value_type=vec2, group="Random",
+    doc="Uniformly sample a unit square")
+add_builtin("sample_unit_cube", input_types={"state": uint32}, value_type=vec3, group="Random",
+    doc="Uniformly sample a unit cube")
+
 add_builtin("noise", input_types={"state": uint32, "x": float}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 1d.")
 add_builtin("noise", input_types={"state": uint32, "xy": vec2}, value_type=float, group="Random",
@@ -715,6 +736,12 @@ for t in scalar_types + vector_types:
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 add_builtin("expect_near", input_types={"arg1": vec3, "arg2": vec3, "tolerance": float}, value_type=None, doc="Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
+
+#---------------------------------
+# Algorithms
+
+add_builtin("lower_bound", input_types={"arr": array(dtype=int), "value": int}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
+add_builtin("lower_bound", input_types={"arr": array(dtype=float), "value": float}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
 
 #---------------------------------
 # Operators

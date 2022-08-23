@@ -132,7 +132,7 @@ def build_cuda(cu_path, arch, ptx_path, config="release", force=False, verify_fp
     inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode('utf-8')
     ptx_path = ptx_path.encode('utf-8')
 
-    err = warp.context.runtime.core.cuda_compile_program(src, arch, inc_path, False, warp.config.verbose, verify_fp, ptx_path)    
+    err = warp.context.runtime.core.cuda_compile_program(src, arch, inc_path, config=="debug", warp.config.verbose, verify_fp, ptx_path)    
     if (err):
         raise Exception("CUDA build failed")
 
