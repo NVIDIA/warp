@@ -163,10 +163,6 @@ Users can write their own functions using the ``wp.func`` decorator, for example
 
 User functions can be called freely from within kernels inside the same module and accept arrays as inputs. 
 
-.. note:: 
-   Currently user functions must be defined in the same module as the kernels that call them.
-
-
 Data Types
 ----------
 
