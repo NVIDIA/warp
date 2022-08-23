@@ -38,7 +38,7 @@ def rodriguez_kernel_forward(rotators: wp.array(dtype=wp.vec3), u: wp.vec3, rota
 
 def test_rotate_rodriguez_grad(test, device):
     np.random.seed(42)
-    num_rotators = 5
+    num_rotators = 50
     x = wp.vec3(0.5, 0.5, 0.0)
     rotators = np.random.randn(num_rotators, 3)
     rotators = wp.array(rotators, dtype=wp.vec3, device=device, requires_grad=True)
@@ -130,7 +130,7 @@ def test_rotate_rodriguez_grad(test, device):
     tape.zero()
 
     # compare autodiff and adj_rotate_rodriguez
-    eps = 1e-6
+    eps = 2.0e-6
 
     test.assertTrue((np.abs(gradients_x - gradients_x_auto) < eps).all())
     test.assertTrue((np.abs(gradients_y - gradients_y_auto) < eps).all())
