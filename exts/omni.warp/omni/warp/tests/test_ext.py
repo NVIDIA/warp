@@ -8,8 +8,15 @@ import warp as wp
 
 from warp.tests.test_all import register_tests
 
+exclude = ["TestReload"]
+
 # build test cases using Kit async test base class
 tests = register_tests(omni.kit.test.AsyncTestCaseFailOnLogError)
+
+# test classes must be stored as local variables to be recognized
+for i, test in enumerate(tests):
+    if not any(x in str(test) for x in exclude):
+        locals()[f"{i}"] = test
 
 # ensure all modules loaded
 wp.force_load()
