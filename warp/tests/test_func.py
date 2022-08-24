@@ -39,6 +39,12 @@ def custom(x: float):
 def custom(x: wp.vec3):
     return x + wp.vec3(1.0, 0.0, 0.0)
 
+@wp.func
+def noreturn(x: wp.vec3):
+    x = x + wp.vec3(0.0, 1.0, 0.0)
+    
+    wp.expect_eq(x, wp.vec3(1.0, 1.0, 0.0))
+
 
 @wp.kernel
 def test_overload_func():
@@ -52,6 +58,8 @@ def test_overload_func():
     wp.expect_eq(i, 2)
     wp.expect_eq(f, 2.0)
     wp.expect_eq(v, wp.vec3(2.0, 0.0, 0.0))
+
+    noreturn(wp.vec3(1.0, 0.0, 0.0))
 
 
 
@@ -102,12 +110,8 @@ def register(parent):
 
 if __name__ == '__main__':
     c = register(unittest.TestCase)
-    #unittest.main(verbosity=2)
-
     wp.force_load()
-    
-    loader = unittest.defaultTestLoader
-    testSuite = loader.loadTestsFromTestCase(c)
-    testSuite.debug()
+
+    unittest.main(verbosity=2)
 
 
