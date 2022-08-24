@@ -1632,8 +1632,9 @@ def codegen_func(adj, device='cpu'):
     # reverse args
     for arg in adj.args:
         reverse_args.append(arg.ctype() + " & adj_" + arg.label)
-
-    reverse_args.append(return_type + " & adj_ret")
+    
+    if return_type != 'void':
+        reverse_args.append(return_type + " & adj_ret")
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type='function', device=device)
