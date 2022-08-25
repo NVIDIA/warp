@@ -267,6 +267,16 @@ template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, in
 template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_add(&index(buf, i, j, k), -value); }
 template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_add(&index(buf, i, j, k, l), -value); }
 
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, T value) { return atomic_min(&index(buf, i), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, T value) { return atomic_min(&index(buf, i, j), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_min(&index(buf, i, j, k), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_min(&index(buf, i, j, k, l), value); }
+
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, T value) { return atomic_max(&index(buf, i), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, T value) { return atomic_max(&index(buf, i, j), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_max(&index(buf, i, j, k), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_max(&index(buf, i, j, k, l), value); }
+
 
 template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i) { return index(buf, i); }
 template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i, int j) { return index(buf, i, j); }
