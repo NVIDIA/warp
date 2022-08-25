@@ -150,7 +150,7 @@ No, Warp supports a subset of Python that maps well to the GPU. Our goal is to n
 ### When should I call `wp.synchronize()`?
 -------
 
-One of the common sources of confusion for new users is when calls to `wp.synchronize()` are necessary. The answer is "almost never"! Synchronization is quite expensive, and should generally be avoided. Warp naturally takes care of synchronization between operations (e.g.: kernel launches, device memory copies). 
+One of the common sources of confusion for new users is when calls to `wp.synchronize()` are necessary. The answer is "almost never"! Synchronization is quite expensive, and should generally be avoided unless necessary. Warp naturally takes care of synchronization between operations (e.g.: kernel launches, device memory copies). 
 
 For example, the following requires no manual synchronization, as the conversion to NumPy will automatically synchronize:
 
