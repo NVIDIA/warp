@@ -11,13 +11,15 @@ import numpy
 
 
 # wrap a torch tensor to a wp array, data is not copied
-def from_torch(t, dtype=warp.types.float32):
+def from_torch(t, dtype=None, requires_grad=None):
     # ensure tensors are contiguous
     assert(t.is_contiguous())
-
     if (t.dtype != torch.float32 and t.dtype != torch.int32):
         raise RuntimeError("Error aliasing Torch tensor to Warp array. Torch tensor must be float32 or int32 type")
+    if dtype is None:
+        dtype = warp.types.float32 if t.dtype == torch.float32 else warp.types.int32
 
+    requires_grad = requires_grad if requires_grad is not None else t.requires_grad
     # if target is a vector or matrix type
     # then check if trailing dimensions match
     # the target type and update the shape
@@ -46,7 +48,7 @@ def from_torch(t, dtype=warp.types.float32):
         shape=shape,
         copy=False,
         owner=False,
-        requires_grad=t.requires_grad,
+        requires_grad=requires_grad,
         device=t.device.type)
 
     # save a reference to the source tensor, otherwise it will be deallocated
