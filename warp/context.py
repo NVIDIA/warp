@@ -448,7 +448,7 @@ class ModuleBuilder:
         for kernel in self.module.kernels.values():
 
             # each kernel gets an entry point in the module
-            cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
+            cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu", options=self.options)
             cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
 
         # add headers
@@ -469,8 +469,7 @@ class ModuleBuilder:
             cu_source += warp.codegen.codegen_func(func.adj, device="cuda") 
 
         for kernel in self.module.kernels.values():
-
-            cu_source += warp.codegen.codegen_kernel(kernel, device="cuda")
+            cu_source += warp.codegen.codegen_kernel(kernel, device="cuda", options=self.options)
             cu_source += warp.codegen.codegen_module(kernel, device="cuda")
 
         # add headers
@@ -503,6 +502,7 @@ class Module:
         self.cuda_build_failed = False
 
         self.options = {"max_unroll": 16,
+                        "enable_backward": True,
                         "mode": warp.config.mode}
 
     def register_struct(self, struct):
