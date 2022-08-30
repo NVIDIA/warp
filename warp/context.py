@@ -488,7 +488,6 @@ class Module:
 
         self.name = name
         self.loader = loader
-        self.path = os.path.abspath(sys.modules[name].__file__)
 
         self.kernels = {}
         self.functions = {}
@@ -626,7 +625,7 @@ class Module:
                 f.close()
 
                 if cache_hash == module_hash:
-                    if os.path.isfile(dll_path) and os.path.getmtime(dll_path) > os.path.getmtime(self.path):
+                    if os.path.isfile(dll_path):
                         self.dll = warp.build.load_dll(dll_path)
                         if self.dll is not None:
                             return True
@@ -639,7 +638,7 @@ class Module:
                 f.close()
 
                 if cache_hash == module_hash:
-                    if os.path.isfile(ptx_path) and os.path.getmtime(ptx_path) > os.path.getmtime(self.path):
+                    if os.path.isfile(ptx_path):
                         cuda_module = warp.build.load_cuda(ptx_path, device)
                         if cuda_module is not None:
                             self.cuda_modules[device.context] = cuda_module

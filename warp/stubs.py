@@ -944,6 +944,76 @@ def randn(state: uint32) -> float:
    ...
 
 @overload
+def sample_cdf(state: uint32, cdf: array[float32]) -> int:
+   """
+   Inverse transform sample a cumulative distribution function
+   """
+   ...
+
+@overload
+def sample_triangle(state: uint32) -> vec2:
+   """
+   Uniformly sample a triangle. Returns sample barycentric coordinates
+   """
+   ...
+
+@overload
+def sample_unit_ring(state: uint32) -> vec2:
+   """
+   Uniformly sample a ring in the xy plane
+   """
+   ...
+
+@overload
+def sample_unit_disk(state: uint32) -> vec2:
+   """
+   Uniformly sample a disk in the xy plane
+   """
+   ...
+
+@overload
+def sample_unit_sphere_surface(state: uint32) -> vec3:
+   """
+   Uniformly sample a unit sphere surface
+   """
+   ...
+
+@overload
+def sample_unit_sphere(state: uint32) -> vec3:
+   """
+   Uniformly sample a unit sphere
+   """
+   ...
+
+@overload
+def sample_unit_hemisphere_surface(state: uint32) -> vec3:
+   """
+   Uniformly sample a unit hemisphere surface
+   """
+   ...
+
+@overload
+def sample_unit_hemisphere(state: uint32) -> vec3:
+   """
+   Uniformly sample a unit hemisphere
+   """
+   ...
+
+@overload
+def sample_unit_square(state: uint32) -> vec2:
+   """
+   Uniformly sample a unit square
+   """
+   ...
+
+@overload
+def sample_unit_cube(state: uint32) -> vec3:
+   """
+   Uniformly sample a unit cube
+   """
+   ...
+
+@overload
 def noise(state: uint32, x: float32) -> float:
    """
    Non-periodic Perlin-style noise in 1d.
@@ -1438,6 +1508,20 @@ def expect_near(arg1: float32, arg2: float32, tolerance: float32):
 def expect_near(arg1: vec3, arg2: vec3, tolerance: float32):
    """
    Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
+   """
+   ...
+
+@overload
+def lower_bound(arr: array[int32], value: int32) -> int:
+   """
+   Search a sorted array for the closest element greater than or equal to value.
+   """
+   ...
+
+@overload
+def lower_bound(arr: array[float32], value: float32) -> int:
+   """
+   Search a sorted array for the closest element greater than or equal to value.
    """
    ...
 
