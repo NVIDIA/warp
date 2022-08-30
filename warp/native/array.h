@@ -421,4 +421,15 @@ template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
 
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+
+
 } // namespace wp
