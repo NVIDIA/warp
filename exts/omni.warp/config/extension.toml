@@ -25,6 +25,7 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.graph" = {}
 "omni.timeline" = {}
 "omni.usd" = {}
+"omni.kit.browser.sample" = {}
 
 # Main python module this extension provides, it will be publicly available as "import omni.warp".
 [[python.module]]
