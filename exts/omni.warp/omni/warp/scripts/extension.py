@@ -21,6 +21,7 @@ class OmniWarpExtension(omni.ext.IExt):
         self._menu = WarpMenu()
 
         try:
+            import omni.kit.browser.sample
             omni.kit.browser.sample.register_sample_folder(
                 sample_path,
                 "Warp"
@@ -37,6 +38,7 @@ class OmniWarpExtension(omni.ext.IExt):
         self._menu = None
 
         try:
+            import omni.kit.browser.sample
             omni.kit.browser.sample.unregister_sample_folder(
                 sample_path
             )
