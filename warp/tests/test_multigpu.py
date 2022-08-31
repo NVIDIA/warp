@@ -230,60 +230,22 @@ def test_multigpu_torch_interop(test, device):
 def register(parent):
 
     class TestMultigpu(parent):
+        pass
 
-        @classmethod
-        def setUpClass(cls):
-
-            cls.saved_device = wp.get_device()
-
-            # if there's only one GPU, emulate a second one using a custom CUDA context
-            cuda_devices = wp.get_cuda_devices()
-            if len(cuda_devices) == 1:
-                cls.emulated_device_alias = "cuda:1"
-                cls.emulated_device_context = wp.context.runtime.core.cuda_context_create(0)
-                wp.map_cuda_device(cls.emulated_device_alias, cls.emulated_device_context)
-            else:
-                cls.emulated_device_alias = None
-
-        @classmethod
-        def tearDownClass(cls):
-
-            wp.set_device(cls.saved_device)
-
-            if cls.emulated_device_alias is not None:
-
-                # Note: Destroying a custom CUDA context is tricky business.
-                # We need to ensure that all resources associated with the context get garbage collected first.
-                # (Creating/destroying contexts is not publicly exposed, but it's useful for testing.)
-
-                wp.unmap_cuda_device(cls.emulated_device_alias)
-
-                import gc
-                gc.collect()
-
-                wp.context.runtime.core.cuda_context_destroy(cls.emulated_device_context)
-
-
-    if wp.is_cuda_available():
+    if wp.get_cuda_device_count() > 1:
 
         add_function_test(TestMultigpu, "test_multigpu_set_device", test_multigpu_set_device)
         add_function_test(TestMultigpu, "test_multigpu_scoped_device", test_multigpu_scoped_device)
         add_function_test(TestMultigpu, "test_multigpu_nesting", test_multigpu_nesting)
         add_function_test(TestMultigpu, "test_multigpu_pingpong", test_multigpu_pingpong)
 
-        # if there are at least two physical CUDA devices and torch is installed
-        cuda_devices = wp.get_cuda_devices()
-        if len(cuda_devices) > 1 and cuda_devices[0].is_primary and cuda_devices[1].is_primary:
-            try:
-                import torch
-                have_torch = True
-            except:
-                have_torch = False
-
-            if have_torch:
-                add_function_test(TestMultigpu, "test_multigpu_from_torch", test_multigpu_from_torch)
-                add_function_test(TestMultigpu, "test_multigpu_to_torch", test_multigpu_to_torch)
-                add_function_test(TestMultigpu, "test_multigpu_torch_interop", test_multigpu_torch_interop)
+        try:
+            import torch
+            add_function_test(TestMultigpu, "test_multigpu_from_torch", test_multigpu_from_torch)
+            add_function_test(TestMultigpu, "test_multigpu_to_torch", test_multigpu_to_torch)
+            add_function_test(TestMultigpu, "test_multigpu_torch_interop", test_multigpu_torch_interop)
+        except:
+            pass
     
     return TestMultigpu
 
