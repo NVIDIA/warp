@@ -1168,12 +1168,9 @@ class Runtime:
 
         if warp.config.verify_cuda:
 
-            if device is None:
-                device = runtime.get_current_cuda_device()
-            else:
-                device = runtime.get_device(device)
-                if not device.is_cuda:
-                    return
+            device = runtime.get_device(device)
+            if not device.is_cuda:
+                return
 
             err = self.core.cuda_context_check(device.context)
             if err != 0:
@@ -1581,13 +1578,10 @@ def synchronize_device(device:Devicelike=None):
         device: Device to synchronize.  If None, synchronize the current CUDA device.
     """
 
-    if device is None:
-        device = runtime.get_current_cuda_device()
-    else:
-        device = runtime.get_device(device)
-        if not device.is_cuda:
-            return
-    
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        return
+
     runtime.core.cuda_context_synchronize(device.context)
 
 
@@ -1651,12 +1645,9 @@ def capture_begin(device:Devicelike=None):
     if warp.config.verify_cuda == True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
 
-    if device is None:
-        device = runtime.get_current_cuda_device()
-    else:
-        device = runtime.get_device(device)
-        if not device.is_cuda:
-            raise RuntimeError("Must be a CUDA device")
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        raise RuntimeError("Must be a CUDA device")
 
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
@@ -1672,12 +1663,9 @@ def capture_end(device:Devicelike=None) -> Graph:
         A handle to a CUDA graph object that can be launched with :func:`~warp.capture_launch()`
     """
 
-    if device is None:
-        device = runtime.get_current_cuda_device()
-    else:
-        device = runtime.get_device(device)
-        if not device.is_cuda:
-            raise RuntimeError("Must be a CUDA device")
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        raise RuntimeError("Must be a CUDA device")
 
     graph = runtime.core.cuda_graph_end_capture(device.context)
     
