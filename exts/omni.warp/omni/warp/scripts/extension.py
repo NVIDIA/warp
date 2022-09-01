@@ -20,10 +20,15 @@ class OmniWarpExtension(omni.ext.IExt):
         wp.init()
         self._menu = WarpMenu()
 
-        omni.kit.browser.sample.register_sample_folder(
-            sample_path,
-            "Warp"
-        )
+        try:
+            import omni.kit.browser.sample
+            omni.kit.browser.sample.register_sample_folder(
+                sample_path,
+                "Warp"
+            )
+        except Exception as e:
+            print(e)
+
 
 
     def on_shutdown(self):
@@ -32,6 +37,10 @@ class OmniWarpExtension(omni.ext.IExt):
         self._menu.shutdown()
         self._menu = None
 
-        omni.kit.browser.sample.unregister_sample_folder(
-            sample_path
-        )
+        try:
+            import omni.kit.browser.sample
+            omni.kit.browser.sample.unregister_sample_folder(
+                sample_path
+            )
+        except Exception as e:
+            print(e)
