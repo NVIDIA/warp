@@ -227,7 +227,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /D "NDEBUG" /fp:fast /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -252,7 +252,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {gencode_opts} -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {gencode_opts}  -I"{native_dir}" -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {gencode_opts}  -I"{native_dir}" -I"{nanovdb_home}" --use_fast_math -DNDEBUG -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -278,7 +278,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
             ld_inputs = []
 
         if (config == "release"):
-            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -I"{native_dir}" {cuda_includes}'
+            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -DNDEBUG -fPIC --std=c++11 -I"{native_dir}" {cuda_includes}'
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
@@ -299,7 +299,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {gencode_opts} -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC {gencode_opts} --use_fast_math -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC {gencode_opts} -DNDEBUG --use_fast_math -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)

@@ -380,6 +380,18 @@ class Model:
         
         return s
 
+    def allocate_soft_contacts(self, count):
+        
+        self.soft_contact_max = count
+        self.soft_contact_count = wp.zeros(1, dtype=wp.int32)
+        self.soft_contact_particle = wp.zeros(self.soft_contact_max, dtype=int)
+        self.soft_contact_body = wp.zeros(self.soft_contact_max, dtype=int)
+        self.soft_contact_body_pos = wp.zeros(self.soft_contact_max, dtype=wp.vec3)
+        self.soft_contact_body_vel = wp.zeros(self.soft_contact_max, dtype=wp.vec3)
+        self.soft_contact_normal = wp.zeros(self.soft_contact_max, dtype=wp.vec3)
+
+
+
     def flatten(self):
         """Returns a list of Tensors stored by the model
 
@@ -1898,14 +1910,7 @@ class ModelBuilder:
             m.articulation_start = wp.array(self.articulation_start, dtype=int)
 
             # contacts
-            m.soft_contact_max = 64*1024
-
-            m.soft_contact_count = wp.zeros(1, dtype=wp.int32)
-            m.soft_contact_particle = wp.zeros(m.soft_contact_max, dtype=int)
-            m.soft_contact_body = wp.zeros(m.soft_contact_max, dtype=int)
-            m.soft_contact_body_pos = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
-            m.soft_contact_body_vel = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
-            m.soft_contact_normal = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
+            m.allocate_soft_contacts(64*1024)
 
             # counts
             m.particle_count = len(self.particle_q)
@@ -1937,5 +1942,6 @@ class ModelBuilder:
             m.enable_tri_collisions = False
 
             return m
+
 
 

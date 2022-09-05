@@ -225,6 +225,9 @@ class OgnCloth:
                     # finalize sim model
                     model = builder.finalize()
                     
+                    # can only have one contact per-particle, since only one shape
+                    model.allocate_soft_contacts(model.particle_count)
+
                     # create integrator
                     context.integrator = wp.sim.SemiImplicitIntegrator()
 
