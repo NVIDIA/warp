@@ -36,3 +36,12 @@ name = "omni.warp"
 name = "warp"
 path = "."
 public = true
+
+# Kit testing flags
+[[test]]
+pyCoverageOmit = [
+    "warp/stubs.py",
+    "warp/sim/render.py",
+    "warp/sim/optimizer.py",
+    "warp/render.py"
+]
