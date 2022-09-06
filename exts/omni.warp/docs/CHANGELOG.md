@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [0.4.2] - 2022-09-07
+
+- Register Warp samples to the sample browser in Kit
+- Add NDEBUG flag to release mode kernel builds
+- Fix for particle solver node when using a large number of particles
+- Fix for broken cameras in Warp sample scenes
+
+
 ## [0.4.1] - 2022-08-30
 
 - Add geometry sampling methods, see `wp.sample_unit_cube()`, `wp.sample_unit_disk()`, etc
