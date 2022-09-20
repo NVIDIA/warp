@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.4.3] - 2022-09-20
+
+- Update all samples to use GPU interop path by default
+- Fix for arrays > 2GB in length
+- Add support for per-vertex USD mesh colors with warp.render class
+
 ## [0.4.2] - 2022-09-07
 
 - Register Warp samples to the sample browser in Kit
