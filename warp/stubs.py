@@ -7,7 +7,7 @@ from typing import overload
 from warp.types import array, array2d, array3d, array4d, constant
 from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix
-from warp.types import mesh_query_aabb_t, hash_grid_query_t
+from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
 
 
 @overload
@@ -679,6 +679,39 @@ def mlp(weights: array[float32], bias: array[float32], activation: Callable, ind
       :param out: The network output with dimensions ``(m, b)``
 
       :note: Feature and output matrices are transposed compared to some other frameworks such as PyTorch. All matrices are assumed to be stored in flattened row-major memory layout (NumPy default).
+   """
+   ...
+
+
+@overload
+def bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t:
+   """
+   Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
+      inside a volume. Returns an object that is used to track state during bvh traversal.
+    
+      :param id: The bvh identifier
+      :param lower: The lower bound of the bounding box in bvh space
+      :param upper: The upper bound of the bounding box in bvh space
+   """
+   ...
+
+@overload
+def bvh_query_ray(id: uint64, start: vec3, dir: vec3) -> bvh_query_t:
+   """
+   Construct an ray query against a bvh object. This query can be used to iterate over all bounds
+      that intersect the ray. Returns an object that is used to track state during bvh traversal.
+    
+      :param id: The bvh identifier
+      :param start: The start of the ray in bvh space
+      :param dir: The direction of the ray bvh space
+   """
+   ...
+
+@overload
+def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
+   """
+   Move to the next bound intersected by the ray. The index of the current bound is stored in ``index``, returns ``False``
+      if there are no more overlapping bounds.
    """
    ...
 

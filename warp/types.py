@@ -233,6 +233,12 @@ class range_t:
     def __init__(self):
         pass
 
+# definition just for kernel type (cannot be a parameter), see wpbvh.h
+class bvh_query_t:
+
+    def __init__(self):
+        pass
+
 # definition just for kernel type (cannot be a parameter), see mesh.h
 class mesh_query_aabb_t:
 
@@ -790,6 +796,86 @@ def array3d(*args, **kwargs):
 def array4d(*args, **kwargs):
     kwargs["ndim"] = 4
     return array(*args, **kwargs)
+
+
+class Bvh:
+
+    def __init__(self, lowers, uppers):
+        """ Class representing a bounding volume hierarchy.
+
+        Attributes:
+            id: Unique identifier for this bvh object, can be passed to kernels.
+            device: Device this object lives on, all buffers must live on the same device.
+
+        Args:
+            lowers (:class:`warp.array`): Array of lower bounds :class:`warp.vec3`
+            uppers (:class:`warp.array`): Array of upper bounds :class:`warp.vec3`
+        """
+
+        if (len(lowers) != len(uppers)):
+            raise RuntimeError("Bvh the same number of lower and upper bounds must be provided")
+
+        if (lowers.device != uppers.device):
+            raise RuntimeError("Bvh lower and upper bounds must live on the same device")
+
+        if (lowers.dtype != vec3 or not lowers.is_contiguous):
+            raise RuntimeError("Bvh lowers should be a contiguous array of type wp.vec3")
+
+        if (uppers.dtype != vec3 or not uppers.is_contiguous):
+            raise RuntimeError("Bvh uppers should be a contiguous array of type wp.vec3")
+
+
+        self.device = lowers.device
+        self.lowers = lowers
+        self.upupers = uppers
+
+        def get_data(array):
+            if (array):
+                return ctypes.c_void_p(array.ptr)
+            else:
+                return ctypes.c_void_p(0)
+
+        from warp.context import runtime
+
+        if self.device.is_cpu:
+            self.id = runtime.core.bvh_create_host(
+                get_data(lowers), 
+                get_data(uppers), 
+                int(len(lowers)))
+        else:
+            self.id = runtime.core.bvh_create_device(
+                self.device.context,
+                get_data(lowers), 
+                get_data(uppers), 
+                int(len(lowers)))
+
+
+    def __del__(self):
+
+        try:
+                
+            from warp.context import runtime
+
+            if self.device.is_cpu:
+                runtime.core.bvh_destroy_host(self.id)
+            else:
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    runtime.core.bvh_destroy_device(self.id)
+        
+        except:
+            pass
+
+    def refit(self):
+        """ Refit the Bvh. This should be called after users modify the `lowers` and `uppers` arrays."""
+                
+        from warp.context import runtime
+
+        if self.device.is_cpu:
+            runtime.core.bvh_refit_host(self.id)
+        else:
+            runtime.core.bvh_refit_device(self.id)
+            runtime.verify_cuda_device(self.device)
 
 
 class Mesh:

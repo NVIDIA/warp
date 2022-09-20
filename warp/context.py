@@ -924,6 +924,18 @@ class Runtime:
         self.core.memcpy_peer.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_peer.restype = None
 
+        self.core.bvh_create_host.restype = ctypes.c_uint64
+        self.core.bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+
+        self.core.bvh_create_device.restype = ctypes.c_uint64
+        self.core.bvh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+
+        self.core.bvh_destroy_host.argtypes = [ctypes.c_uint64]
+        self.core.bvh_destroy_device.argtypes = [ctypes.c_uint64]
+
+        self.core.bvh_refit_host.argtypes = [ctypes.c_uint64]
+        self.core.bvh_refit_device.argtypes = [ctypes.c_uint64]
+
         self.core.mesh_create_host.restype = ctypes.c_uint64
         self.core.mesh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
@@ -1844,7 +1856,7 @@ def export_stubs(file):
     print("from warp.types import array, array2d, array3d, array4d, constant", file=file)
     print("from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64", file=file)
     print("from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix", file=file)
-    print("from warp.types import mesh_query_aabb_t, hash_grid_query_t", file=file)
+    print("from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t", file=file)
 
 
     #print("from warp.types import *", file=file)

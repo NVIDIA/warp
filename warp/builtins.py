@@ -370,6 +370,26 @@ add_builtin("mlp", input_types={"weights": array(dtype=float, ndim=2), "bias": a
 #---------------------------------
 # Geometry
 
+add_builtin("bvh_query_aabb", input_types={"id": uint64, "lower": vec3, "upper": vec3}, value_type=bvh_query_t, group="Geometry",
+    doc="""Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
+   inside a bvh. Returns an object that is used to track state during bvh traversal.
+    
+   :param id: The bvh identifier
+   :param lower: The lower bound of the bounding box in bvh space
+   :param upper: The upper bound of the bounding box in bvh space""")
+
+add_builtin("bvh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3}, value_type=bvh_query_t, group="Geometry",
+    doc="""Construct a ray query against a bvh object. This query can be used to iterate over all bounds
+   that intersect the ray. Returns an object that is used to track state during bvh traversal.
+    
+   :param id: The bvh identifier
+   :param start: The start of the ray in bvh space
+   :param dir: The direction of the ray in bvh space""")
+
+add_builtin("bvh_query_next", input_types={"query": bvh_query_t, "index": int}, value_type=bool, group="Geometry",
+    doc="""Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
+   if there are no more overlapping bound.""")
+
 add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, group="Geometry",
     doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
