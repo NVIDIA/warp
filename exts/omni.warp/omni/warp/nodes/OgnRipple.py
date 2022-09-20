@@ -13,9 +13,11 @@ import math
 
 import numpy as np
 import warp as wp
+import ctypes
 
 import omni.timeline
 import omni.usd
+import omni.warp
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
@@ -386,13 +388,13 @@ class OgnRipple:
                                 inputs=[state.sim_grid0, state.verts_device],
                                 outputs=[])
 
-                    # copy data back to host
-                    wp.copy(dest=state.sim_host, src=state.sim_grid0)
-                    wp.copy(dest=state.verts_host, src=state.verts_device)
-                    wp.synchronize()
+                # allocate output array
+                db.outputs.vertices_size = len(state.verts_device)
 
-                # write outputs
-                db.outputs.vertices_size = len(state.verts_host)
-                db.outputs.vertices[:] = state.verts_host.numpy()
+                # copy points 
+                points_out = omni.warp.from_omni_graph(db.outputs.vertices, dtype=wp.vec3)
+                wp.copy(points_out, state.verts_device)
 
-            return True
+                return True
+
+    

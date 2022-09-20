@@ -3,6 +3,7 @@
         "version": 1,
         "description": "Cloth simulation node",
         "language": "Python",
+        "cudaPointers": "cpu",        
         "inputs": {
             "cloth": {
                 "type": "bundle",
@@ -99,7 +100,8 @@
         "outputs": {
             "positions": {
                 "type": "pointf[3][]",
-                "description": "Particle positions"
+                "description": "Particle positions",
+                "memoryType": "cuda"
             }
         },
         "state": {
