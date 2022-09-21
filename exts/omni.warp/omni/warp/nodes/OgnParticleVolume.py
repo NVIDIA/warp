@@ -219,9 +219,9 @@ class OgnParticleVolume:
                             print(f"Bounds for Particle Volume prim are invalid")
                             return False
 
-                        if (dim_x*dim_y*dim_z > points_max):
-                            print(f"Trying to create particle volume with {dim_x*dim_y*dim_z} > {points_max} particles, increase spacing or geometry size")
-                            return False
+                        # if (dim_x*dim_y*dim_z > points_max):
+                        #     print(f"Trying to create particle volume with {dim_x*dim_y*dim_z} > {points_max} particles, increase spacing or geometry size")
+                        #     return False
 
                         points = wp.zeros(points_max, dtype=wp.vec3)
                         points_counter = wp.zeros(1, dtype=int)
@@ -244,6 +244,8 @@ class OgnParticleVolume:
                         
                         num_points = min(int(points_counter.numpy()[0]), points_max)
                         
+                        print(f"Created volume with: {num_points} particles")
+
                         # bring back to host
                         points = points.numpy()[0:num_points]
                         velocities = np.tile(db.inputs.velocity, (len(points), 1))

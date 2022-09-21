@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## [0.4.3] - 2022-09-20
+
+- Update all samples to use GPU interop path by default
+- Fix for arrays > 2GB in length
+- Add support for per-vertex USD mesh colors with warp.render class
+
+## [0.4.2] - 2022-09-07
+
+- Register Warp samples to the sample browser in Kit
+- Add NDEBUG flag to release mode kernel builds
+- Fix for particle solver node when using a large number of particles
+- Fix for broken cameras in Warp sample scenes
+
+## [0.4.1] - 2022-08-30
+
+- Add geometry sampling methods, see `wp.sample_unit_cube()`, `wp.sample_unit_disk()`, etc
+- Add `wp.lower_bound()` for searching sorted arrays
+- Add an option for disabling code-gen of backward pass to improve compilation times, see `wp.set_module_options({"enable_backward": False})`, True by default
+- Fix for using Warp from Script Editor or when module does not have a `__file__` attribute
+- Fix for hot reload of modules containing `wp.func()` definitions
+- Fix for debug flags not being set correctly on CUDA when `wp.config.mode == "debug"`, this enables bounds checking on CUDA kernels in debug mode
+- Fix for code gen of functions that do not return a value
+
+
 ## [0.4.0] - 2022-08-09
 
 - Fix for FP16 conversions on GPUs without hardware support

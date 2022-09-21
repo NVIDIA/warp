@@ -448,7 +448,7 @@ class ModuleBuilder:
         for kernel in self.module.kernels.values():
 
             # each kernel gets an entry point in the module
-            cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
+            cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu", options=self.options)
             cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
 
         # add headers
@@ -469,8 +469,7 @@ class ModuleBuilder:
             cu_source += warp.codegen.codegen_func(func.adj, device="cuda") 
 
         for kernel in self.module.kernels.values():
-
-            cu_source += warp.codegen.codegen_kernel(kernel, device="cuda")
+            cu_source += warp.codegen.codegen_kernel(kernel, device="cuda", options=self.options)
             cu_source += warp.codegen.codegen_module(kernel, device="cuda")
 
         # add headers
@@ -489,7 +488,6 @@ class Module:
 
         self.name = name
         self.loader = loader
-        self.path = os.path.abspath(sys.modules[name].__file__)
 
         self.kernels = {}
         self.functions = {}
@@ -503,6 +501,7 @@ class Module:
         self.cuda_build_failed = False
 
         self.options = {"max_unroll": 16,
+                        "enable_backward": True,
                         "mode": warp.config.mode}
 
     def register_struct(self, struct):
@@ -626,7 +625,7 @@ class Module:
                 f.close()
 
                 if cache_hash == module_hash:
-                    if os.path.isfile(dll_path) and os.path.getmtime(dll_path) > os.path.getmtime(self.path):
+                    if os.path.isfile(dll_path):
                         self.dll = warp.build.load_dll(dll_path)
                         if self.dll is not None:
                             return True
@@ -639,7 +638,7 @@ class Module:
                 f.close()
 
                 if cache_hash == module_hash:
-                    if os.path.isfile(ptx_path) and os.path.getmtime(ptx_path) > os.path.getmtime(self.path):
+                    if os.path.isfile(ptx_path):
                         cuda_module = warp.build.load_cuda(ptx_path, device)
                         if cuda_module is not None:
                             self.cuda_modules[device.context] = cuda_module
@@ -1169,12 +1168,9 @@ class Runtime:
 
         if warp.config.verify_cuda:
 
-            if device is None:
-                device = runtime.get_current_cuda_device()
-            else:
-                device = runtime.get_device(device)
-                if not device.is_cuda:
-                    return
+            device = runtime.get_device(device)
+            if not device.is_cuda:
+                return
 
             err = self.core.cuda_context_check(device.context)
             if err != 0:
@@ -1582,13 +1578,10 @@ def synchronize_device(device:Devicelike=None):
         device: Device to synchronize.  If None, synchronize the current CUDA device.
     """
 
-    if device is None:
-        device = runtime.get_current_cuda_device()
-    else:
-        device = runtime.get_device(device)
-        if not device.is_cuda:
-            return
-    
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        return
+
     runtime.core.cuda_context_synchronize(device.context)
 
 
@@ -1652,12 +1645,9 @@ def capture_begin(device:Devicelike=None):
     if warp.config.verify_cuda == True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
 
-    if device is None:
-        device = runtime.get_current_cuda_device()
-    else:
-        device = runtime.get_device(device)
-        if not device.is_cuda:
-            raise RuntimeError("Must be a CUDA device")
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        raise RuntimeError("Must be a CUDA device")
 
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
@@ -1673,12 +1663,9 @@ def capture_end(device:Devicelike=None) -> Graph:
         A handle to a CUDA graph object that can be launched with :func:`~warp.capture_launch()`
     """
 
-    if device is None:
-        device = runtime.get_current_cuda_device()
-    else:
-        device = runtime.get_device(device)
-        if not device.is_cuda:
-            raise RuntimeError("Must be a CUDA device")
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        raise RuntimeError("Must be a CUDA device")
 
     graph = runtime.core.cuda_graph_end_capture(device.context)
     

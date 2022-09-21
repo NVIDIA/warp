@@ -1,7 +1,7 @@
 
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "0.4.0"
+version = "0.4.3"
 authors = ["NVIDIA"]
 title = "Warp"
 description="A Python framework for high-performance simulation and graphics programming"
@@ -25,6 +25,7 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.graph" = {}
 "omni.timeline" = {}
 "omni.usd" = {}
+"omni.kit.browser.sample" = {}
 
 # Main python module this extension provides, it will be publicly available as "import omni.warp".
 [[python.module]]
@@ -35,3 +36,12 @@ name = "omni.warp"
 name = "warp"
 path = "."
 public = true
+
+# Kit testing flags
+[[test]]
+pyCoverageOmit = [
+    "warp/stubs.py",
+    "warp/sim/render.py",
+    "warp/sim/optimizer.py",
+    "warp/render.py"
+]

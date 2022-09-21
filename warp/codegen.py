@@ -1368,7 +1368,6 @@ extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 {forward_body}
 }}
 
-
 extern "C" __global__ void {name}_cuda_kernel_backward({reverse_args})
 {{
     int _idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -1659,7 +1658,7 @@ def codegen_func(adj, device='cpu'):
     return s
 
 
-def codegen_kernel(kernel, device='cpu'):
+def codegen_kernel(kernel, device, options):
 
     adj = kernel.adj
 
@@ -1677,7 +1676,11 @@ def codegen_kernel(kernel, device='cpu'):
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type='kernel', device=device)
-    reverse_body = codegen_func_reverse(adj, func_type='kernel', device=device)
+
+    if options["enable_backward"]:
+        reverse_body = codegen_func_reverse(adj, func_type='kernel', device=device)
+    else:
+        reverse_body = ""
 
 
     if device == 'cpu':
@@ -1686,6 +1689,7 @@ def codegen_kernel(kernel, device='cpu'):
         template = cuda_kernel_template
     else:
         raise ValueError("Device {} is not supported".format(device))
+
 
     s = template.format(name=kernel.key,
                         forward_args=indent(forward_args),
