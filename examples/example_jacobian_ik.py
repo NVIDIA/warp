@@ -145,14 +145,6 @@ class Robot:
             device=self.device)
         return self.ee_pos
 
-    @wp.kernel
-    def compress_function_output(
-            ee_pos: wp.array(dtype=wp.vec3),
-            output_index: int,
-            output: wp.array(dtype=wp.float32)):
-        tid = wp.tid()
-        wp.atomic_add(output, 0, ee_pos[tid][output_index])
-
     def compute_jacobian(self):
         # our function has 3 outputs (EE position), so we need a 3xN jacobian per environment
         jacobians = np.empty((self.num_envs, 3, self.dof), dtype=np.float32)
