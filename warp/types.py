@@ -233,7 +233,7 @@ class range_t:
     def __init__(self):
         pass
 
-# definition just for kernel type (cannot be a parameter), see wpbvh.h
+# definition just for kernel type (cannot be a parameter), see bvh.h
 class bvh_query_t:
 
     def __init__(self):
