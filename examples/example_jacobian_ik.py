@@ -153,35 +153,21 @@ class Robot:
         tid = wp.tid()
         wp.atomic_add(output, 0, ee_pos[tid][output_index])
 
-    def compute_function(self, output_index: int, output: wp.array):
-        self.compute_ee_position()
-        # output_index selects which row of the Jacobian to evaluate in the backward pass
-        wp.launch(
-            self.compress_function_output,
-            dim=self.num_envs,
-            inputs=[
-                self.ee_pos,
-                output_index
-            ],
-            outputs=[
-                output
-            ],
-            device=self.device)
-
     def compute_jacobian(self):
-        output_1d = wp.zeros(1, dtype=wp.float32,
-                             device=self.device, requires_grad=True)
         # our function has 3 outputs (EE position), so we need a 3xN jacobian per environment
         jacobians = np.empty((self.num_envs, 3, self.dof), dtype=np.float32)
-        # jacobians = wp.zeros((self.num_envs, 3, self.dof), dtype=wp.float32, device=self.device)
         for output_index in range(3):
-            output_1d.zero_()
             tape = wp.Tape()
             with wp.ScopedTimer("Forward", active=self.profile):
                 with tape:
-                    self.compute_function(output_index, output_1d)
+                    self.compute_ee_position()
+            # select which row of the Jacobian we want to compute
+            select_index = np.zeros(3)
+            select_index[output_index] = 1.0
+            e = wp.array(np.repeat(select_index, self.num_envs),
+                         dtype=wp.vec3, device=self.device)
             with wp.ScopedTimer("Backward", active=self.profile):
-                tape.backward(output_1d)
+                tape.backward(grads={self.ee_pos: e})
             q_grad_i = tape.gradients[self.model.joint_q]
             jacobians[:, output_index, :] = q_grad_i.numpy().reshape(
                 self.num_envs, self.dof)
@@ -298,5 +284,5 @@ if profile:
 
 else:
 
-    robot = Robot(render=True, num_envs=10)
+    robot = Robot(render=True, num_envs=1)
     robot.run()
