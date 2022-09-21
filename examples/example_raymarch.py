@@ -166,13 +166,12 @@ class Example:
 
     def __init__(self):
 
-        self.device = wp.get_preferred_device()
         self.width = 2048
         self.height = 1024
         self.cam_pos = (-1.25, 1.0, 2.0)
         self.cam_rot = wp.quat_rpy(-0.5, -0.5, 0.0)
 
-        self.pixels = wp.zeros(self.width*self.height, dtype=wp.vec3, device=self.device)
+        self.pixels = wp.zeros(self.width*self.height, dtype=wp.vec3)
 
     def render(self, is_live=False):
 
@@ -181,10 +180,9 @@ class Example:
             wp.launch(
                 kernel=draw,
                 dim=self.width*self.height,
-                inputs=[self.cam_pos, self.cam_rot, self.width, self.height, self.pixels],
-                device=self.device)
+                inputs=[self.cam_pos, self.cam_rot, self.width, self.height, self.pixels])
 
-            wp.synchronize()
+            wp.synchronize_device()
 
         plt.imshow(self.pixels.numpy().reshape((self.height, self.width, 3)), origin="lower", interpolation="antialiased")
         plt.show()

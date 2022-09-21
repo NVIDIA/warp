@@ -17,6 +17,7 @@ import warp as wp
 import warp.sim
 
 import omni.timeline
+import omni.warp
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
@@ -54,7 +55,21 @@ def transform_points(src: wp.array(dtype=wp.vec3),
 
     dest[tid] = m
 
+@wp.kernel
+def update_tri_materials(dest: wp.array2d(dtype=float),tri_ke:float, tri_ka:float, tri_kd:float, tri_lift:float, tri_drag:float):
+    tid = wp.tid()
+    dest[tid,0]=tri_ke
+    dest[tid,1]=tri_ka
+    dest[tid,2]=tri_kd
+    dest[tid,3]=tri_drag
+    dest[tid,4]=tri_lift
 
+@wp.kernel
+def update_edge_properties(dest: wp.array2d(dtype=float), edge_ke:float, edge_kd:float):
+    tid = wp.tid()
+    dest[tid,0]=edge_ke
+    dest[tid,1]=edge_kd
+    
 
 # update mesh data given two sets of collider positions
 # computes velocities and transforms points to world-space
@@ -126,9 +141,8 @@ class OgnCloth:
 
         timeline =  omni.timeline.get_timeline_interface()
         context = db.internal_state
-        device = "cuda"
 
-        with wp.ScopedCudaGuard():
+        with wp.ScopedDevice("cuda:0"):
 
             # reset on stop
             if (timeline.is_stopped()):
@@ -170,7 +184,8 @@ class OgnCloth:
                                                    tri_ka=db.inputs.k_tri_area,
                                                    tri_kd=db.inputs.k_tri_damp,
                                                    edge_ke=db.inputs.k_edge_bend,
-                                                   edge_kd=db.inputs.k_edge_damp)
+                                                   edge_kd=db.inputs.k_edge_damp
+                                                   )
 
 
                             avg_mass = np.mean(builder.particle_mass)
@@ -189,8 +204,8 @@ class OgnCloth:
                             collider_indices = read_indices_bundle(db.inputs.collider)
 
                             # save local copy
-                            context.collider_positions_current = wp.array(collider_positions, dtype=wp.vec3, device=device)
-                            context.collider_positions_previous = wp.array(collider_positions, dtype=wp.vec3, device=device)
+                            context.collider_positions_current = wp.array(collider_positions, dtype=wp.vec3)
+                            context.collider_positions_previous = wp.array(collider_positions, dtype=wp.vec3)
 
                             world_positions = []
                             for i in range(len(collider_positions)):
@@ -209,8 +224,11 @@ class OgnCloth:
                                 scale=(1.0, 1.0, 1.0))
 
                     # finalize sim model
-                    model = builder.finalize(device)
+                    model = builder.finalize()
                     
+                    # can only have one contact per-particle, since only one shape
+                    model.allocate_soft_contacts(model.particle_count)
+
                     # create integrator
                     context.integrator = wp.sim.SemiImplicitIntegrator()
 
@@ -219,10 +237,18 @@ class OgnCloth:
                     context.state_0 = model.state()
                     context.state_1 = model.state()
 
-                    context.positions_host = wp.zeros(model.particle_count, dtype=wp.vec3, device="cpu")
-                    context.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3, device=device)
+                    context.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3)
 
                     context.collider_xform = read_transform_bundle(db.inputs.collider)
+
+                    # store stretch properties in model
+                    context.model.tri_ke = db.inputs.k_tri_elastic
+                    context.model.tri_ka = db.inputs.k_tri_area
+                    context.model.tri_kd = db.inputs.k_tri_damp  
+
+                    # store bending properties in model
+                    context.model.edge_ke = db.inputs.k_edge_bend
+                    context.model.edge_kd = db.inputs.k_edge_damp 
 
 
                 # update dynamic properties
@@ -239,6 +265,22 @@ class OgnCloth:
                 context.model.soft_contact_mu = db.inputs.k_contact_mu
                 context.model.soft_contact_distance = db.inputs.collider_offset
                 context.model.soft_contact_margin = db.inputs.collider_offset*10.0
+
+                # Update tri properties if required:
+                if(db.inputs.k_tri_elastic != context.model.tri_ke or
+                    db.inputs.k_tri_area != context.model.tri_ka or
+                    db.inputs.k_tri_damp != context.model.tri_kd):
+                    wp.launch(update_tri_materials, 
+                        dim=context.model.tri_count,
+                        inputs=[context.model.tri_materials, db.inputs.k_tri_elastic, db.inputs.k_tri_area, db.inputs.k_tri_damp,0.0,0.0]
+                    )
+
+                # Update bending properties if required:
+                if(db.inputs.k_edge_bend != context.model.edge_ke or db.inputs.k_edge_damp != context.model.edge_kd):
+                    wp.launch(update_edge_properties, 
+                        dim=context.model.edge_count,
+                        inputs=[context.model.edge_bending_properties, db.inputs.k_edge_bend, db.inputs.k_edge_damp]
+                    )
 
                 # update collider positions
                 with wp.ScopedTimer("Refit", active=False):
@@ -267,8 +309,7 @@ class OgnCloth:
                                     context.mesh.mesh.points,
                                     context.mesh.mesh.velocities,
                                     1.0/60.0,
-                                    alpha],
-                                    device=device)
+                                    alpha])
 
                         context.collider_xform = current_xform
 
@@ -338,27 +379,15 @@ class OgnCloth:
                               dim=context.model.particle_count, 
                               inputs=[context.state_0.particle_q, 
                                       context.positions_device, 
-                                      np.array(cloth_xform_inv).T],
-                              device=device)
-
-                with wp.ScopedTimer("Synchronize", active=False):
-
-                    # back to host for OG outputs
-                    wp.copy(context.positions_host, context.positions_device)
-                    wp.synchronize()
+                                      np.array(cloth_xform_inv).T])
 
                 with wp.ScopedTimer("Write", active=False):
 
-                    db.outputs.positions_size = len(context.positions_host)
-                    db.outputs.positions[:] = context.positions_host.numpy()
+                    db.outputs.positions_size = len(context.positions_device)
 
-            else:
-                
-                with wp.ScopedTimer("Write", active=False):
-                    
-                    # timeline not playing and sim. not yet initialized, just pass through outputs
-                    if context.model is None and db.inputs.cloth.valid:
-                        db.outputs.positions = read_points_bundle(db.inputs.cloth)
+                    # copy points 
+                    points_out = omni.warp.from_omni_graph(db.outputs.positions, dtype=wp.vec3)
+                    wp.copy(points_out, context.positions_device)
 
 
         return True

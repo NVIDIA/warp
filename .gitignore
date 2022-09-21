@@ -20,3 +20,4 @@ examples/assets/.thumbs
 /docs/_build/doctrees
 /docs/_build/html/_static/fonts
 /warp_lang.egg-info
+exts/omni.warp/omni/warp/ogn/tests/usd

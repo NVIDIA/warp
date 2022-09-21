@@ -108,49 +108,65 @@ def create_test_func(func, device, **kwargs):
     return test_func
 
 
-def add_function_test(cls, name, func, devices=["cpu"], **kwargs):
+def sanitize_identifier(s):
+    """ replace all non-identifier characters with '_' """
+
+    s = str(s)
+    if s.isidentifier():
+        return s
+    else:
+        import re
+        return re.sub('\W|^(?=\d)', '_', s)
+
+
+def add_function_test(cls, name, func, devices=None, **kwargs):
+
+    if devices is None:
+        setattr(cls, name, create_test_func(func, None, **kwargs))
+    else:
+        for device in devices:
+            setattr(cls, name + "_" + sanitize_identifier(device), create_test_func(func, device, **kwargs))
+
+
+def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=None):
     
-    for device in devices:
-        setattr(cls, name + "_" + device, create_test_func(func, device, **kwargs))
+    def test_func(self):
 
+        args = []
+        if (inputs):
+            args.extend(inputs)
 
-def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=["cpu"]):
-    
-    for device in devices:
+        if (expect):
+            # allocate outputs to match results
+            result = wp.array(expect, dtype=int, device=device)
+            output = wp.zeros_like(result)
 
-        def test_func(self):
+            args.append(output)
 
-            args = []
-            if (inputs):
-                args.extend(inputs)
+        # force load so that we don't generate any log output during launch
+        kernel.module.load(device)
 
-            if (expect):
-                # allocate outputs to match results
-                result = wp.array(expect, dtype=int, device=device)
-                output = wp.zeros_like(result)
+        capture = StdOutCapture()
+        capture.begin()
 
-                args.append(output)
+        with CheckOutput(self):
+            wp.launch(kernel, dim=dim, inputs=args, device=device)
+        
+        s = capture.end()
 
-            # force load so that we don't generate any log output during launch
-            kernel.module.load(device)
+        # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)
+        self.assertEqual(s, "")
 
-            capture = StdOutCapture()
-            capture.begin()
+        # check output values
+        if expect:
+            assert_array_equal(output, result)
 
-            with CheckOutput(self):
-                wp.launch(kernel, dim=dim, inputs=args, device=device)
-            
-            s = capture.end()
+    if name == None:
+        name = kernel.key
 
-            # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)
-            self.assertEqual(s, "")
-
-            # check output values
-            if expect:
-                assert_array_equal(output, result)
-
-        # register test func with class
-        if (name == None):
-            name = kernel.key
-
-        setattr(cls, name + "_" + device, test_func)
+    # register test func with class for the given devices
+    if devices is None:
+        setattr(cls, name, test_func)
+    else:
+        for device in devices:
+            setattr(cls, name + "_" + sanitize_identifier(device), test_func)

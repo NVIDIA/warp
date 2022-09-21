@@ -422,7 +422,7 @@ class array (Generic[T]):
             length (int): Number of elements (rows) of the data type (deprecated, users should use `shape` argument)
             ptr (uint64): Address of an external memory address to alias (data should be None)
             capacity (int): Maximum size in bytes of the ptr allocation (data should be None)
-            device (str): Device the array lives on
+            device (Devicelike): Device the array lives on
             copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified and types match
             owner (bool): Should the array object try to deallocate memory when it is deleted
             requires_grad (bool): Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
@@ -439,16 +439,18 @@ class array (Generic[T]):
         elif isinstance(shape, Tuple):
             self.shape = shape
 
-
         if len(shape) > ARRAY_MAX_DIMS:
             raise RuntimeError(f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims.")
-
 
         # canonicalize dtype
         if (dtype == int):
             dtype = int32
         elif (dtype == float):
             dtype = float32
+
+        if data is not None or ptr is not None:
+            from warp.context import runtime
+            device = runtime.get_device(device)
 
         if data is not None:
 
@@ -509,7 +511,7 @@ class array (Generic[T]):
             
 
 
-            if (device == "cpu" and copy == False):
+            if device.is_cpu and copy == False:
 
                 # ref numpy memory directly
                 self.ptr = ptr
@@ -589,26 +591,27 @@ class array (Generic[T]):
             arr_strides = self.strides
 
         # set up array interface access so we can treat this object as a numpy array
-        if device == "cpu":
+        if self.ptr:
+            if device.is_cpu:
 
-            self.__array_interface__ = { 
-                "data": (self.ptr, False), 
-                "shape": tuple(arr_shape),  
-                "strides": tuple(arr_strides),  
-                "typestr": type_typestr(self.dtype), 
-                "version": 3 
-            }
+                self.__array_interface__ = { 
+                    "data": (self.ptr, False), 
+                    "shape": tuple(arr_shape),  
+                    "strides": tuple(arr_strides),  
+                    "typestr": type_typestr(self.dtype), 
+                    "version": 3 
+                }
 
-        # set up cuda array interface access so we can treat this object as a Torch tensor
-        if device == "cuda":
+            # set up cuda array interface access so we can treat this object as a Torch tensor
+            elif device.is_cuda:
 
-            self.__cuda_array_interface__ = {
-                "data": (self.ptr, False),
-                "shape": tuple(arr_shape),
-                "strides": tuple(arr_strides),
-                "typestr": type_typestr(self.dtype),
-                "version": 2
-            }
+                self.__cuda_array_interface__ = {
+                    "data": (self.ptr, False),
+                    "shape": tuple(arr_shape),
+                    "strides": tuple(arr_strides),
+                    "typestr": type_typestr(self.dtype),
+                    "version": 2
+                }
 
         # controls if gradients will be computed in by wp.Tape
         # this will trigger allocation of a gradient array if it doesn't exist already
@@ -617,20 +620,14 @@ class array (Generic[T]):
 
     def __del__(self):
         
-        try:
-            if (self.owner):
+        if self.owner and self.device is not None and self.ptr is not None:
 
-                # this import can fail during process destruction
-                # in this case we allow OS to clean up allocations
-                from warp.context import runtime
+            # TODO: ill-timed gc could trigger superfluous context switches here
+            #       Delegate to a separate thread? (e.g., device_free_async)
 
-                if (self.device == "cpu"):
-                    runtime.host_allocator.free(self.ptr, self.capacity)
-                else:
-                    runtime.device_allocator.free(self.ptr, self.capacity)
-        
-        except Exception as e:
-            pass
+            # use CUDA context guard to avoid side effects during garbage collection
+            with self.device.context_guard:
+                self.device.allocator.free(self.ptr, self.capacity)
                 
 
     def __len__(self):
@@ -677,38 +674,29 @@ class array (Generic[T]):
 
     def zero_(self):
 
-        from warp.context import runtime
-            
         if not self.is_contiguous:
             raise RuntimeError(f"Assigning to non-continuguous arrays is unsupported.")
 
-        if (self.device == "cpu"):
-            runtime.core.memset_host(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
-
-        if(self.device == "cuda"):
-            runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
+        if self.device is not None and self.ptr is not None:
+            self.device.memset(ctypes.c_void_p(self.ptr), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
 
     def fill_(self, value):
 
-        from warp.context import runtime
-            
         if not self.is_contiguous:
             raise RuntimeError(f"Assigning to non-continuguous arrays is unsupported.")
 
-        # convert value to array type
-        src_type = type_ctype(self.dtype)
-        src_value = src_type(value)
+        if self.device is not None and self.ptr is not None:
 
-        # cast to a 4-byte integer for memset
-        dest_ptr = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int))
-        dest_value = dest_ptr.contents
+            # convert value to array type
+            src_type = type_ctype(self.dtype)
+            src_value = src_type(value)
 
-        if (self.device == "cpu"):
-            runtime.core.memset_host(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
+            # cast to a 4-byte integer for memset
+            dest_ptr = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int))
+            dest_value = dest_ptr.contents
 
-        if(self.device == "cuda"):
-            runtime.core.memset_device(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
+            self.device.memset(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
 
     # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):
@@ -728,16 +716,22 @@ class array (Generic[T]):
     # convert data from one device to another, nop if already on device
     def to(self, device):
 
+        from warp.context import get_device
+
+        device = get_device(device)
+
         if (self.device == device):
             return self
         else:
-            from warp.context import empty, copy, synchronize
+            from warp.context import empty, copy, synchronize_device
 
             dest = empty(shape=self.shape, dtype=self.dtype, device=device)
             copy(dest, self)
-            
-            # todo: only synchronize when there is a device->host transfer outstanding
-            synchronize()
+
+            if device.is_cuda:
+                synchronize_device(device)
+            elif self.device.is_cuda:
+                synchronize_device(self.device)
 
             return dest
 
@@ -839,7 +833,7 @@ class Mesh:
 
         from warp.context import runtime
 
-        if (self.device == "cpu"):
+        if self.device.is_cpu:
             self.id = runtime.core.mesh_create_host(
                 get_data(points), 
                 get_data(velocities), 
@@ -848,6 +842,7 @@ class Mesh:
                 int(len(indices)/3))
         else:
             self.id = runtime.core.mesh_create_device(
+                self.device.context,
                 get_data(points), 
                 get_data(velocities), 
                 get_data(indices), 
@@ -861,10 +856,12 @@ class Mesh:
                 
             from warp.context import runtime
 
-            if (self.device == "cpu"):
+            if self.device.is_cpu:
                 runtime.core.mesh_destroy_host(self.id)
             else:
-                runtime.core.mesh_destroy_device(self.id)
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    runtime.core.mesh_destroy_device(self.id)
         
         except:
             pass
@@ -874,11 +871,11 @@ class Mesh:
                 
         from warp.context import runtime
 
-        if (self.device == "cpu"):
+        if self.device.is_cpu:
             runtime.core.mesh_refit_host(self.id)
         else:
             runtime.core.mesh_refit_device(self.id)
-            runtime.verify_device()
+            runtime.verify_cuda_device(self.device)
 
 
 
@@ -903,14 +900,14 @@ class Volume:
         from warp.context import runtime
         self.context = runtime
 
-        if data.device != "cpu" and data.device != "cuda":
-            raise RuntimeError(f"Unknown device type '{data.device}'")
+        if data.device is None:
+            raise RuntimeError(f"Invalid device")
         self.device = data.device
 
-        if self.device == "cpu":
+        if self.device.is_cpu:
             self.id = self.context.core.volume_create_host(ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
         else:
-            self.id = self.context.core.volume_create_device(ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
+            self.id = self.context.core.volume_create_device(self.device.context, ctypes.cast(data.ptr, ctypes.c_void_p), data.size)
 
         if self.id == 0:
             raise RuntimeError("Failed to create volume from input array")
@@ -924,11 +921,12 @@ class Volume:
                 
             from warp.context import runtime
 
-            runtime.verify_device()
-            if self.device == "cpu":
+            if self.device.is_cpu:
                 runtime.core.volume_destroy_host(self.id)
             else:
-                runtime.core.volume_destroy_device(self.id)
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    runtime.core.volume_destroy_device(self.id)
 
         except:
             pass
@@ -938,14 +936,15 @@ class Volume:
 
         buf = ctypes.c_void_p(0)
         size = ctypes.c_uint64(0)
-        if self.device == "cpu":
+        if self.device.is_cpu:
             self.context.core.volume_get_buffer_info_host(self.id, ctypes.byref(buf), ctypes.byref(size))
         else:
             self.context.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
         return array(ptr=buf.value, dtype=uint8, length=size.value, device=self.device, owner=False)
 
     @classmethod
-    def load_from_nvdb(cls, file_or_buffer, device):
+    def load_from_nvdb(cls, file_or_buffer, device=None):
+
         try:
             data = file_or_buffer.read()
         except AttributeError:
@@ -977,7 +976,7 @@ class Volume:
 
 class HashGrid:
 
-    def __init__(self, dim_x, dim_y, dim_z, device):
+    def __init__(self, dim_x, dim_y, dim_z, device=None):
         """ Class representing a triangle mesh.
 
         Attributes:
@@ -990,14 +989,14 @@ class HashGrid:
             dim_z (int): Number of cells in z-axis
         """
 
-        self.device = device
-
         from warp.context import runtime
-       
-        if (device == "cpu"):
+        
+        self.device = runtime.get_device(device)
+
+        if self.device.is_cpu:
             self.id = runtime.core.hash_grid_create_host(dim_x, dim_y, dim_z)
-        elif (device == "cuda"):
-            self.id = runtime.core.hash_grid_create_device(dim_x, dim_y, dim_z)
+        else:
+            self.id = runtime.core.hash_grid_create_device(self.device.context, dim_x, dim_y, dim_z)
 
 
     def build(self, points, radius):
@@ -1019,7 +1018,7 @@ class HashGrid:
         
         from warp.context import runtime
 
-        if (self.device == "cpu"):
+        if self.device.is_cpu:
             runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
         else:
             runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
@@ -1029,7 +1028,7 @@ class HashGrid:
 
         from warp.context import runtime
 
-        if (self.device == "cpu"):
+        if self.device.is_cpu:
             runtime.core.hash_grid_reserve_host(self.id, num_points)
         else:
             runtime.core.hash_grid_reserve_device(self.id, num_points)
@@ -1041,10 +1040,12 @@ class HashGrid:
 
             from warp.context import runtime
 
-            if (self.device == "cpu"):
+            if self.device.is_cpu:
                 runtime.core.hash_grid_destroy_host(self.id)
             else:
-                runtime.core.hash_grid_destroy_device(self.id)
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    runtime.core.hash_grid_destroy_device(self.id)
 
         except:
             pass
@@ -1052,39 +1053,42 @@ class HashGrid:
 
 class MarchingCubes:
 
-    def __init__(self, nx: int, ny: int, nz: int, max_verts: int, max_tris: int, device):
+    def __init__(self, nx: int, ny: int, nz: int, max_verts: int, max_tris: int, device=None):
 
-        if device == "cpu":
+        from warp.context import runtime
+        
+        self.device = runtime.get_device(device)
+
+        if not self.device.is_cuda:
             raise RuntimeError("Only CUDA devices are supported for marching cubes")
 
         self.nx = nx
         self.ny = ny
         self.nz = nz
 
-        self.device = device
-
         self.max_verts = max_verts
         self.max_tris = max_tris
 
-        from warp.context import zeros
-
-        self.verts = zeros(max_verts, dtype=vec3, device=device)
-        self.indices = zeros(max_tris*3, dtype=int, device=device)
-
-        from warp.context import runtime
-
         # bindings to warp.so
-        self.alloc = runtime.core.marching_cubes_create_device        
+        self.alloc = runtime.core.marching_cubes_create_device
+        self.alloc.argtypes = [ctypes.c_void_p]
         self.alloc.restype = ctypes.c_uint64
         self.free = runtime.core.marching_cubes_destroy_device
 
+        from warp.context import zeros
+
+        self.verts = zeros(max_verts, dtype=vec3, device=self.device)
+        self.indices = zeros(max_tris*3, dtype=int, device=self.device)
+
         # alloc surfacer
-        self.id = ctypes.c_uint64(self.alloc())
+        self.id = ctypes.c_uint64(self.alloc(self.device.context))
 
     def __del__(self):
 
-        # destroy surfacer
-        self.free(self.id)
+        # use CUDA context guard to avoid side effects during garbage collection
+        with self.device.context_guard:
+            # destroy surfacer
+            self.free(self.id)
 
     def resize(self, nx: int, ny: int, nz: int, max_verts: int, max_tris: int):
         

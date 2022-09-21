@@ -14,11 +14,16 @@ import warp as wp
 from warp.tests.test_base import *
 
 import unittest
+import importlib 
+import os
 
+# dummy module used for testing reload
+import warp.tests.test_square as test_square
+    
 
 wp.init()
 
-def test_reload(test, device):
+def test_redefine(test, device):
         
 
     #--------------------------------------------
@@ -64,6 +69,61 @@ def test_reload(test, device):
     assert_np_equal(np.arange(0, n, 1)*2.0, y.numpy())
 
     
+square_two = """import warp as wp
+
+wp.init()
+
+@wp.func
+def sqr(x: float):
+    return x*x
+
+@wp.kernel
+def kern(expect: float):
+    wp.expect_eq(sqr(2.0), expect)
+
+
+def run(expect, device):
+    wp.launch(kern, dim=1, inputs=[expect], device=device)
+  
+"""
+
+square_four = """import warp as wp
+
+wp.init()
+
+@wp.func
+def multiply(x: float):
+    return x*x
+
+@wp.kernel
+def kern(expect: float):
+    wp.expect_eq(multiply(4.0), expect)
+
+def run(expect, device):
+    wp.launch(kern, dim=1, inputs=[expect], device=device)
+  
+"""
+
+def test_reload(test, device):
+
+    # write out the module python and import it
+    f = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "test_square.py")), "w")
+    f.writelines(square_two)
+    f.flush()
+    f.close()
+    
+    importlib.reload(test_square)
+    test_square.run(expect=4.0, device=device)    # 2*2=4
+
+    f = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "test_square.py")), "w")
+    f.writelines(square_four)
+    f.flush()
+    f.close()
+
+    # reload module, this should trigger all of the funcs / kernels to be updated
+    importlib.reload(test_square)
+    test_square.run(expect=16.0, device=device)   # 4*4 = 16
+
 
 
 def register(parent):
@@ -73,6 +133,7 @@ def register(parent):
     class TestReload(parent):
         pass
     
+    add_function_test(TestReload, "test_redefine", test_redefine, devices=devices)
     add_function_test(TestReload, "test_reload", test_reload, devices=devices)
     
     return TestReload

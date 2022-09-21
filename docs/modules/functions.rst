@@ -1163,6 +1163,56 @@ Random
    Sample a normal distribution
 
 
+.. function:: sample_cdf(state: uint32, cdf: array[float32]) -> int
+
+   Inverse transform sample a cumulative distribution function
+
+
+.. function:: sample_triangle(state: uint32) -> vec2
+
+   Uniformly sample a triangle. Returns sample barycentric coordinates
+
+
+.. function:: sample_unit_ring(state: uint32) -> vec2
+
+   Uniformly sample a ring in the xy plane
+
+
+.. function:: sample_unit_disk(state: uint32) -> vec2
+
+   Uniformly sample a disk in the xy plane
+
+
+.. function:: sample_unit_sphere_surface(state: uint32) -> vec3
+
+   Uniformly sample a unit sphere surface
+
+
+.. function:: sample_unit_sphere(state: uint32) -> vec3
+
+   Uniformly sample a unit sphere
+
+
+.. function:: sample_unit_hemisphere_surface(state: uint32) -> vec3
+
+   Uniformly sample a unit hemisphere surface
+
+
+.. function:: sample_unit_hemisphere(state: uint32) -> vec3
+
+   Uniformly sample a unit hemisphere
+
+
+.. function:: sample_unit_square(state: uint32) -> vec2
+
+   Uniformly sample a unit square
+
+
+.. function:: sample_unit_cube(state: uint32) -> vec3
+
+   Uniformly sample a unit cube
+
+
 .. function:: noise(state: uint32, x: float32) -> float
 
    Non-periodic Perlin-style noise in 1d.
@@ -1216,6 +1266,20 @@ Random
 .. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
 
    Divergence-free vector field based on the curl of three Perlin noise functions.
+
+
+
+
+Other
+---------------
+.. function:: lower_bound(arr: array[int32], value: int32) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[float32], value: float32) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
 
 
 

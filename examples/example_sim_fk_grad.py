@@ -50,7 +50,7 @@ def step_kernel(x: wp.array(dtype=float),
 
 class Robot:
 
-    def __init__(self, render=True, num_envs=1, device='cpu'):
+    def __init__(self, render=True, num_envs=1, device=None):
 
         builder = wp.sim.ModelBuilder()
 
@@ -108,13 +108,12 @@ class Robot:
                         body=b)
 
 
-
+        self.device = wp.get_device(device)
 
         # finalize model
-        self.model = builder.finalize(device)
+        self.model = builder.finalize(self.device)
         self.model.ground = False
 
-        self.device = device
         self.state = self.model.state()
 
 

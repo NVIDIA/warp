@@ -1,10 +1,73 @@
 # CHANGELOG
 
+## [0.4.3] - 2022-09-20
+
+- Update all samples to use GPU interop path by default
+- Fix for arrays > 2GB in length
+- Add support for per-vertex USD mesh colors with warp.render class
+
+## [0.4.2] - 2022-09-07
+
+- Register Warp samples to the sample browser in Kit
+- Add NDEBUG flag to release mode kernel builds
+- Fix for particle solver node when using a large number of particles
+- Fix for broken cameras in Warp sample scenes
+
+
+## [0.4.1] - 2022-08-30
+
+- Add geometry sampling methods, see `wp.sample_unit_cube()`, `wp.sample_unit_disk()`, etc
+- Add `wp.lower_bound()` for searching sorted arrays
+- Add an option for disabling code-gen of backward pass to improve compilation times, see `wp.set_module_options({"enable_backward": False})`, True by default
+- Fix for using Warp from Script Editor or when module does not have a `__file__` attribute
+- Fix for hot reload of modules containing `wp.func()` definitions
+- Fix for debug flags not being set correctly on CUDA when `wp.config.mode == "debug"`, this enables bounds checking on CUDA kernels in debug mode
+- Fix for code gen of functions that do not return a value
+
+
+## [0.4.0] - 2022-08-09
+
+- Fix for FP16 conversions on GPUs without hardware support
+- Fix for `runtime = None` errors when reloading the Warp module
+- Fix for PTX architecture version when running with older drivers, see `wp.config.ptx_target_arch`
+- Fix for USD imports from `__init__.py`, defer them to individual functions that need them
+- Fix for robustness issues with sign determination for `wp.mesh_query_point()`
+- Fix for `wp.HashGrid` memory leak when creating/destroying grids
+- Add CUDA version checks for toolkit and driver
+- Add support for cross-module `@wp.struct` references
+- Support running even if CUDA initialization failed, use `wp.is_cuda_available()` to check availability
+- Statically linking with the CUDA runtime library to avoid deployment issues
+  
+
+### Breaking Changes
+
+- Removed `wp.runtime` reference from the top-level module, as it should be considered private
+
+
+## [0.3.2] - 2022-07-19
+
+- Remove Torch import from `__init__.py`, defer import to `wp.from_torch()`, `wp.to_torch()`
+
+
 ## [0.3.1] - 2022-07-12
 
 - Fix for marching cubes reallocation after initialization
 - Add support for closest point between line segment tests, see `wp.closest_point_edge_edge()` builtin
 - Add support for per-triangle elasticity coefficients in simulation, see `wp.sim.ModelBuilder.add_cloth_mesh()`
+- Add support for specifying default device, see `wp.set_device()`, `wp.get_device()`, `wp.ScopedDevice`
+- Add support for multiple GPUs (e.g., `"cuda:0"`, `"cuda:1"`), see `wp.get_cuda_devices()`, `wp.get_cuda_device_count()`, `wp.get_cuda_device()`
+- Add support for explicitly targeting the current CUDA context using device alias `"cuda"`
+- Add support for using arbitrary external CUDA contexts, see `wp.map_cuda_device()`, `wp.unmap_cuda_device()`
+- Add PyTorch device aliasing functions, see `wp.device_from_torch()`, `wp.device_to_torch()`
+
+
+### Breaking Changes
+
+- A CUDA device is used by default, if available (aligned with `wp.get_preferred_device()`)
+- `wp.ScopedCudaGuard` is deprecated, use `wp.ScopedDevice` instead
+- `wp.synchronize()` now synchronizes all devices; for finer-grained control, use `wp.synchronize_device()`
+- Device alias `"cuda"` now refers to the current CUDA context, rather than a specific device like `"cuda:0"` or `"cuda:1"`
+
 
 ## [0.3.0] - 2022-07-08
 

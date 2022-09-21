@@ -126,13 +126,13 @@ class OgnProceduralVolume:
             time = db.inputs.time
             dim = (db.inputs.dim_x, db.inputs.dim_y, db.inputs.dim_z)
 
-            with wp.ScopedCudaGuard():
+            with wp.ScopedDevice("cuda:0"):
                
                 if state.dim != dim:
-                    state.field = wp.zeros(shape=dim, dtype=float, device="cuda")
+                    state.field = wp.zeros(shape=dim, dtype=float)
                     state.dim = dim
 
-                wp.launch(make_field, dim=state.field.shape, inputs=[state.field, wp.vec3(dim[0]/2, dim[1]/4, dim[2]/2), dim[0]/4, time], device="cuda")
+                wp.launch(make_field, dim=state.field.shape, inputs=[state.field, wp.vec3(dim[0]/2, dim[1]/4, dim[2]/2), dim[0]/4, time])
 
                 add_bundle_data(db.outputs.volume, name="dim_x", data=db.inputs.dim_x, type=og.Type(og.BaseDataType.INT, tuple_count=1, array_depth=0))
                 add_bundle_data(db.outputs.volume, name="dim_y", data=db.inputs.dim_y, type=og.Type(og.BaseDataType.INT, tuple_count=1, array_depth=0))

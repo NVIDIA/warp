@@ -15,8 +15,6 @@
 import os
 import numpy as np
 import warp as wp
-import warp.sim
-import warp.sim.render
 
 wp.init()
 
@@ -43,8 +41,6 @@ def loss_kernel(s: TestStruct,
     v = s.b[tid]
     wp.atomic_add(loss, 0, float(tid + 1) * (v[0] + 2.0 * v[1] + 3.0 * v[2]))
 
-device = wp.get_preferred_device()
-
 # create struct
 ts = TestStruct()
 
@@ -53,17 +49,16 @@ ts.x = wp.vec3(1.0, 2.0, 3.0)
 ts.a = wp.array(
     np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
     dtype=wp.vec3,
-    device=device,
     requires_grad=True,
 )
-ts.b = wp.zeros(2, dtype=wp.vec3, device=device, requires_grad=True)
+ts.b = wp.zeros(2, dtype=wp.vec3, requires_grad=True)
 
-loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+loss = wp.zeros(1, dtype=float, requires_grad=True)
 
 tape = wp.Tape()
 with tape:
-    wp.launch(test_kernel, dim=2, inputs=[ts], device=device)
-    wp.launch(loss_kernel, dim=2, inputs=[ts, loss], device=device)
+    wp.launch(test_kernel, dim=2, inputs=[ts])
+    wp.launch(loss_kernel, dim=2, inputs=[ts, loss])
 
 tape.backward(loss)
 

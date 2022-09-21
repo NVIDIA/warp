@@ -86,8 +86,9 @@ def register(parent):
     devices = []
     if wp.is_cpu_available():
         devices.append("cpu")
-    if wp.is_cuda_available() and wp.context.runtime.core.cuda_get_device_arch() >= 70:
-        devices.append("cuda")
+    for cuda_device in wp.get_cuda_devices():
+        if cuda_device.arch >= 70:
+            devices.append(cuda_device)
 
     add_function_test(TestFp16, "test_fp16_conversion", test_fp16_conversion, devices=devices)
     add_function_test(TestFp16, "test_fp16_grad", test_fp16_grad, devices=devices)

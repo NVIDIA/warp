@@ -132,14 +132,17 @@ def build_cuda(cu_path, arch, ptx_path, config="release", force=False, verify_fp
     inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode('utf-8')
     ptx_path = ptx_path.encode('utf-8')
 
-    err = warp.context.runtime.core.cuda_compile_program(src, arch, inc_path, False, warp.config.verbose, verify_fp, ptx_path)    
+    err = warp.context.runtime.core.cuda_compile_program(src, arch, inc_path, config=="debug", warp.config.verbose, verify_fp, ptx_path)    
     if (err):
         raise Exception("CUDA build failed")
 
 # load ptx to a CUDA runtime module    
-def load_cuda(ptx_path):
+def load_cuda(ptx_path, device):
 
-    module = warp.context.runtime.core.cuda_load_module(ptx_path.encode('utf-8'))
+    if not device.is_cuda:
+        raise("Not a CUDA device")
+
+    module = warp.context.runtime.core.cuda_load_module(device.context, ptx_path.encode('utf-8'))
     return module
 
 
@@ -213,13 +216,18 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
 
         cpp_out = cpp_path + ".obj"
 
+        if cuda_disabled:
+            cuda_includes = ""
+        else:
+            cuda_includes = f' /I"{cuda_home}/include"'
+
         if (config == "debug"):
-            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}"'
+            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{native_dir}" /I"{nanovdb_home}"'
+            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /fp:fast /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -244,12 +252,12 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {gencode_opts} -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {gencode_opts}  -I"{native_dir}" -I"{nanovdb_home}" --use_fast_math -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {gencode_opts}  -I"{native_dir}" -I"{nanovdb_home}" --use_fast_math -DNDEBUG -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append("cudart.lib cuda.lib nvrtc.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
+                ld_inputs.append("cudart_static.lib nvrtc.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
 
         with ScopedTimer("link", active=warp.config.verbose):
             link_cmd = 'link.exe {inputs} {flags} /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), flags=ld_flags, dll_path=dll_path)
@@ -259,13 +267,18 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
 
         cpp_out = cpp_path + ".o"
 
+        if cuda_disabled:
+            cuda_includes = ""
+        else:
+            cuda_includes = f' -I"{cuda_home}/include"'
+
         if (config == "debug"):
-            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -fkeep-inline-functions -I"{native_dir}"'
+            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -fkeep-inline-functions -I"{native_dir}" {cuda_includes}'
             ld_flags = "-D_DEBUG"
             ld_inputs = []
 
         if (config == "release"):
-            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -I"{native_dir}"'
+            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -DWP_DISABLE_CUDA={cuda_disabled} -fPIC --std=c++11 -I"{native_dir}" {cuda_includes}'
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
@@ -286,18 +299,21 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {gencode_opts} -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC {gencode_opts} --use_fast_math -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
-
-
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC {gencode_opts} -DNDEBUG --use_fast_math -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
 
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append('-L"{cuda_home}/lib64" -lcudart -lnvrtc'.format(cuda_home=cuda_home))
+                ld_inputs.append('-L"{cuda_home}/lib64" -lcudart_static -lnvrtc -lpthread -ldl -lrt'.format(cuda_home=cuda_home))
+
+        if sys.platform == 'darwin':
+            opt_no_undefined = "-Wl,-undefined,error"
+        else:
+            opt_no_undefined = "-Wl,--no-undefined"
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = "g++ -shared -Wl,-rpath,'$ORIGIN' -o '{dll_path}' {inputs}".format(cuda_home=cuda_home, inputs=' '.join(ld_inputs), dll_path=dll_path)            
+            link_cmd = "g++ -shared -Wl,-rpath,'$ORIGIN' {no_undefined} -o '{dll_path}' {inputs}".format(no_undefined=opt_no_undefined, inputs=' '.join(ld_inputs), dll_path=dll_path)            
             run_cmd(link_cmd)
 
     

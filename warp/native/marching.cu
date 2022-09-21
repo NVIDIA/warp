@@ -1,4 +1,5 @@
 #include "warp.h"
+#include "cuda_util.h"
 
 #include "thrust/device_ptr.h"
 #include "thrust/sort.h"
@@ -191,6 +192,8 @@ namespace wp {
 
         int num_cells;   
         int max_cells;
+
+        void* context;
 	};
 
 
@@ -353,15 +356,17 @@ namespace wp {
 
         if (mc.num_cells > mc.max_cells)
         {
+            ContextGuard guard(mc.context);
+
             const int num_to_alloc = mc.num_cells*3/2;
 
-            free_device(mc.first_cell_vert);
-            free_device(mc.first_cell_tri);
-            free_device(mc.cell_verts);
+            free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
+            free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
+            free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
 
-            mc.first_cell_vert = (int*)alloc_device(sizeof(int) * num_to_alloc);
-            mc.first_cell_tri = (int*)alloc_device(sizeof(int) * num_to_alloc);
-            mc.cell_verts = (int*)alloc_device(sizeof(int) * 3 * num_to_alloc);
+            mc.first_cell_vert = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
+            mc.first_cell_tri = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_to_alloc);
+            mc.cell_verts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * 3 * num_to_alloc);
 
             mc.max_cells = num_to_alloc;
         }
@@ -370,16 +375,23 @@ namespace wp {
     // -------------------------
     void marching_cubes_free(MarchingCubes& mc)
     {
-        free_device(mc.first_cell_vert);
-        free_device(mc.first_cell_tri);
-        free_device(mc.cell_verts);
+        ContextGuard guard(mc.context);
+
+        free_device(WP_CURRENT_CONTEXT, mc.first_cell_vert);
+        free_device(WP_CURRENT_CONTEXT, mc.first_cell_tri);
+        free_device(WP_CURRENT_CONTEXT, mc.cell_verts);
     }
 
 } // namespace wp
 
-uint64_t marching_cubes_create_device()
+uint64_t marching_cubes_create_device(void* context)
 {
+    ContextGuard guard(context);
+
     wp::MarchingCubes* mc = new wp::MarchingCubes();
+
+    mc->context = context ? context : cuda_context_get_current();
+
     return (uint64_t)(mc);
 }
 
@@ -417,6 +429,8 @@ WP_API int marching_cubes_surface_device(
     
     wp::MarchingCubes& mc = *(wp::MarchingCubes*)(id);
 
+    ContextGuard guard(mc.context);
+
     // reset counts
     *out_num_verts = 0;
     *out_num_tris = 0;
@@ -425,10 +439,10 @@ WP_API int marching_cubes_surface_device(
     marching_cubes_resize(mc, nx, ny, nz);
 
     // create vertices
-    wp_launch_device(wp::count_cell_verts, mc.num_cells, (mc, field, threshold) );
+    wp_launch_device(WP_CURRENT_CONTEXT, wp::count_cell_verts, mc.num_cells, (mc, field, threshold) );
 
     int num_last;		
-    memcpy_d2h(&num_last, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
+    memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
 
     thrust::exclusive_scan(
         thrust::device_ptr<int>(mc.first_cell_vert),
@@ -436,8 +450,8 @@ WP_API int marching_cubes_surface_device(
         thrust::device_ptr<int>(mc.first_cell_vert));
 
     int num_verts;
-    memcpy_d2h(&num_verts, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
-    synchronize();
+    memcpy_d2h(WP_CURRENT_CONTEXT, &num_verts, &mc.first_cell_vert[mc.num_cells - 1], sizeof(int));
+    cuda_context_synchronize(WP_CURRENT_CONTEXT);
     
     num_verts += num_last;
 
@@ -450,13 +464,13 @@ WP_API int marching_cubes_surface_device(
     }
 
     // create vertices
-    wp_launch_device(wp::create_cell_verts, mc.num_cells, (mc, verts, NULL, field, threshold));
+    wp_launch_device(WP_CURRENT_CONTEXT, wp::create_cell_verts, mc.num_cells, (mc, verts, NULL, field, threshold));
 
     // create triangles
-    wp_launch_device(wp::count_cell_tris, mc.num_cells, (mc, field, threshold));
+    wp_launch_device(WP_CURRENT_CONTEXT, wp::count_cell_tris, mc.num_cells, (mc, field, threshold));
 
     
-    memcpy_d2h(&num_last, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
+    memcpy_d2h(WP_CURRENT_CONTEXT, &num_last, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
 
     thrust::exclusive_scan(
         thrust::device_ptr<int>(mc.first_cell_tri),
@@ -465,8 +479,8 @@ WP_API int marching_cubes_surface_device(
 
 
     int num_indices;
-    memcpy_d2h(&num_indices, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
-    synchronize();
+    memcpy_d2h(WP_CURRENT_CONTEXT, &num_indices, &mc.first_cell_tri[mc.num_cells - 1], sizeof(int));
+    cuda_context_synchronize(WP_CURRENT_CONTEXT);
 
     num_indices += num_last;
 
@@ -478,7 +492,7 @@ WP_API int marching_cubes_surface_device(
         return -1;
     }
 
-    wp_launch_device(create_cell_tris, mc.num_cells, (mc, field, triangles, threshold));
+    wp_launch_device(WP_CURRENT_CONTEXT, create_cell_tris, mc.num_cells, (mc, field, triangles, threshold));
 
     *out_num_verts = num_verts;
     *out_num_tris = num_tris;

@@ -8,6 +8,8 @@
 
 #include "mesh.h"
 #include "bvh.h"
+#include "warp.h"
+#include "cuda_util.h"
 
 using namespace wp;
 
@@ -51,6 +53,8 @@ uint64_t mesh_create_host(vec3* points, vec3* velocities, int* indices, int num_
 {
     Mesh* m = new Mesh();
 
+    m->context = NULL;
+
     m->points = points;
     m->velocities = velocities;
     m->indices = indices;
@@ -72,9 +76,13 @@ uint64_t mesh_create_host(vec3* points, vec3* velocities, int* indices, int num_
     return (uint64_t)m;
 }
 
-uint64_t mesh_create_device(vec3* points, vec3* velocities, int* indices, int num_points, int num_tris)
+uint64_t mesh_create_device(void* context, vec3* points, vec3* velocities, int* indices, int num_points, int num_tris)
 {
+    ContextGuard guard(context);
+
     Mesh mesh;
+
+    mesh.context = context ? context : cuda_context_get_current();
 
     mesh.points = points;
     mesh.velocities = velocities;
@@ -89,9 +97,9 @@ uint64_t mesh_create_device(vec3* points, vec3* velocities, int* indices, int nu
         int* indices_host = (int*)alloc_host(sizeof(int)*num_tris*3);
         bounds3* bounds_host = (bounds3*)alloc_host(sizeof(bounds3)*num_tris);
 
-        memcpy_d2h(points_host, points, sizeof(vec3)*num_points);
-        memcpy_d2h(indices_host, indices, sizeof(int)*num_tris*3);
-        synchronize();
+        memcpy_d2h(WP_CURRENT_CONTEXT, points_host, points, sizeof(vec3)*num_points);
+        memcpy_d2h(WP_CURRENT_CONTEXT, indices_host, indices, sizeof(int)*num_tris*3);
+        cuda_context_synchronize(WP_CURRENT_CONTEXT);
 
         for (int i=0; i < num_tris; ++i)
         {
@@ -102,13 +110,13 @@ uint64_t mesh_create_device(vec3* points, vec3* velocities, int* indices, int nu
         }
 
         BVH bvh_host = bvh_create(bounds_host, num_tris);
-        BVH bvh_device = bvh_clone(bvh_host);
+        BVH bvh_device = bvh_clone(WP_CURRENT_CONTEXT, bvh_host);
 
         bvh_destroy_host(bvh_host);
 
         // save gpu-side copy of bounds
-        mesh.bounds = (bounds3*)alloc_device(sizeof(bounds3)*num_tris);
-        memcpy_h2d(mesh.bounds, bounds_host, sizeof(bounds3)*num_tris);
+        mesh.bounds = (bounds3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(bounds3)*num_tris);
+        memcpy_h2d(WP_CURRENT_CONTEXT, mesh.bounds, bounds_host, sizeof(bounds3)*num_tris);
 
         free_host(points_host);
         free_host(indices_host);
@@ -117,8 +125,8 @@ uint64_t mesh_create_device(vec3* points, vec3* velocities, int* indices, int nu
         mesh.bvh = bvh_device;
     }
 
-    Mesh* mesh_device = (Mesh*)alloc_device(sizeof(Mesh));
-    memcpy_h2d(mesh_device, &mesh, sizeof(Mesh));
+    Mesh* mesh_device = (Mesh*)alloc_device(WP_CURRENT_CONTEXT, sizeof(Mesh));
+    memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &mesh, sizeof(Mesh));
     
     // save descriptor
     uint64_t mesh_id = (uint64_t)mesh_device;
@@ -141,10 +149,13 @@ void mesh_destroy_device(uint64_t id)
 {
     Mesh mesh;
     if (mesh_get_descriptor(id, mesh))
-    {    
+    {
+        ContextGuard guard(mesh.context);
+
         bvh_destroy_device(mesh.bvh);
-        free_device(mesh.bounds);
-        free_device((Mesh*)id);
+
+        free_device(WP_CURRENT_CONTEXT, mesh.bounds);
+        free_device(WP_CURRENT_CONTEXT, (Mesh*)id);
 
         mesh_rem_descriptor(id);
     }

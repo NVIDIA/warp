@@ -39,11 +39,10 @@ class Robot:
     sim_time = 0.0
     render_time = 0.0
 
-    def __init__(self, render=True, num_envs=1, device='cpu'):
+    def __init__(self, render=True, num_envs=1, device=None):
 
         builder = wp.sim.ModelBuilder()
 
-        self.device = device
         self.render = render
 
         self.num_envs = num_envs
@@ -173,7 +172,7 @@ if profile:
 
     for i in range(15):
 
-        robot = Robot(render=False, device='cuda', num_envs=env_count)
+        robot = Robot(render=False, num_envs=env_count)
         steps_per_second = robot.run()
 
         env_size.append(env_count)
@@ -198,5 +197,5 @@ if profile:
 
 else:
 
-    robot = Robot(render=True, device=wp.get_preferred_device(), num_envs=64)
+    robot = Robot(render=True, num_envs=64)
     robot.run()

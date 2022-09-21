@@ -181,10 +181,10 @@ def triangulate(face_counts, face_indices):
 
 def test_mesh_query_point(test, device):
 
-    from pxr import Usd, UsdGeom, Gf, Sdf
+    from pxr import Usd, UsdGeom
 
-    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.usda")))
-    mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
+    mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/spiky.usd")))
+    mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/Cube/Cube"))
 
     mesh_counts = mesh_geom.GetFaceVertexCountsAttr().Get()
     mesh_indices = mesh_geom.GetFaceVertexIndicesAttr().Get()
@@ -200,7 +200,7 @@ def test_mesh_query_point(test, device):
         velocities=None,
         indices=mesh_indices)
 
-    p = particle_grid(32, 32, 32, np.array([-5.0, -5.0, -5.0]), 0.1, 0.1)*100.0
+    p = particle_grid(32, 32, 32, np.array([-1.1, -1.1, -1.1]), 0.05, 0.0)
 
     query_count = len(p)
     query_points = wp.array(p, dtype=wp.vec3, device=device)
@@ -240,18 +240,11 @@ def test_mesh_query_point(test, device):
     inside_query = np.array(inside_query)
     inside_brute = np.array(inside_brute)
 
-    dist_error = np.max(np.abs(dist_query - dist_brute))
-    sign_error = np.max(np.abs(inside_query - inside_brute))
-
-    tolerance = 1.5e-4
-    test.assertTrue(dist_error < tolerance, f"dist_error is {dist_error} which is >= {tolerance}")
-    test.assertTrue(sign_error < tolerance, f"sign_error is {sign_error} which is >= {tolerance}")
-
     # import warp.render
 
     # stage = warp.render.UsdRenderer("tests/outputs/test_mesh_query_point.usd")
 
-    # radius = 10.0
+    # radius = 0.1
     # stage.begin_frame(0.0)
     # stage.render_mesh(points=mesh_points.numpy(), indices=mesh_indices.numpy(), name="mesh")
     # stage.render_points(points=inside_query, radius=radius, name="query")
@@ -260,6 +253,16 @@ def test_mesh_query_point(test, device):
     # stage.end_frame()
 
     # stage.save()
+
+    test.assertTrue(len(inside_query) == len(inside_brute))
+
+    dist_error = np.max(np.abs(dist_query - dist_brute))
+    sign_error = np.max(np.abs(inside_query - inside_brute))
+
+    tolerance = 1.5e-4
+    test.assertTrue(dist_error < tolerance, f"dist_error is {dist_error} which is >= {tolerance}")
+    test.assertTrue(sign_error < tolerance, f"sign_error is {sign_error} which is >= {tolerance}")
+
 
 
 @wp.kernel
@@ -277,6 +280,7 @@ def mesh_query_point_loss(mesh: wp.uint64,
 
     max_dist = 10012.0
 
+
     p = query_points[tid]
     
     wp.mesh_query_point(mesh, p, max_dist, sign, face_index, face_u, face_v)
@@ -290,7 +294,7 @@ def mesh_query_point_loss(mesh: wp.uint64,
 
 def test_adj_mesh_query_point(test, device):
 
-    from pxr import Usd, UsdGeom, Gf, Sdf
+    from pxr import Usd, UsdGeom
 
     mesh = Usd.Stage.Open(os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.usda")))
     mesh_geom = UsdGeom.Mesh(mesh.GetPrimAtPath("/World/Torus"))
@@ -371,11 +375,20 @@ def register(parent):
     class TestMeshQuery(parent):
         pass
 
-    add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
-    add_function_test(TestMeshQuery, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
+    # USD import failures should not count as a test failure
+    try:
+        from pxr import Usd, UsdGeom
+        have_usd = True
+    except:
+        have_usd = False
+
+    if have_usd:
+        add_function_test(TestMeshQuery, "test_mesh_query_point", test_mesh_query_point, devices=devices)
+        add_function_test(TestMeshQuery, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
 
     return TestMeshQuery
 
 if __name__ == '__main__':
     c = register(unittest.TestCase)
+
     unittest.main(verbosity=2)

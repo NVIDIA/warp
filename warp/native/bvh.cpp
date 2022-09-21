@@ -10,6 +10,8 @@
 #include <algorithm>
 
 #include "bvh.h"
+#include "warp.h"
+#include "cuda_util.h"
 
 
 namespace wp
@@ -417,26 +419,32 @@ void bvh_destroy_host(BVH& bvh)
 
 void bvh_destroy_device(BVH& bvh)
 {
-    free_device(bvh.node_lowers); bvh.node_lowers = NULL;
-    free_device(bvh.node_uppers); bvh.node_uppers = NULL;
-    free_device(bvh.node_parents); bvh.node_parents = NULL;
-    free_device(bvh.node_counts); bvh.node_counts = NULL;
+    ContextGuard guard(bvh.context);
+
+    free_device(WP_CURRENT_CONTEXT, bvh.node_lowers); bvh.node_lowers = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.node_uppers); bvh.node_uppers = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.node_parents); bvh.node_parents = NULL;
+    free_device(WP_CURRENT_CONTEXT, bvh.node_counts); bvh.node_counts = NULL;
 }
 
 
-BVH bvh_clone(const BVH& bvh_host)
+BVH bvh_clone(void* context, const BVH& bvh_host)
 {
+    ContextGuard guard(context);
+
     BVH bvh_device = bvh_host;
 
-    bvh_device.node_lowers = (BVHPackedNodeHalf*)alloc_device(sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
-    bvh_device.node_uppers = (BVHPackedNodeHalf*)alloc_device(sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
-    bvh_device.node_parents = (int*)alloc_device(sizeof(int)*bvh_host.max_nodes);
-    bvh_device.node_counts = (int*)alloc_device(sizeof(int)*bvh_host.max_nodes);
+    bvh_device.context = context ? context : cuda_context_get_current();
+
+    bvh_device.node_lowers = (BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    bvh_device.node_uppers = (BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    bvh_device.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
+    bvh_device.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
 
     // copy host data to device
-    memcpy_h2d(bvh_device.node_lowers, bvh_host.node_lowers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
-    memcpy_h2d(bvh_device.node_uppers, bvh_host.node_uppers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
-    memcpy_h2d(bvh_device.node_parents, bvh_host.node_parents, sizeof(int)*bvh_host.max_nodes);
+    memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_lowers, bvh_host.node_lowers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_uppers, bvh_host.node_uppers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
+    memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_parents, bvh_host.node_parents, sizeof(int)*bvh_host.max_nodes);
 
     return bvh_device;
 }

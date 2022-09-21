@@ -11,12 +11,14 @@ import sys
 import inspect
 import hashlib
 import ctypes
+import platform
 
 from typing import Tuple
 from typing import List
 from typing import Dict
 from typing import Any
 from typing import Callable
+from typing import Union
 
 import warp
 import warp.utils
@@ -56,6 +58,9 @@ class Function:
         self.hidden = hidden            # function will not be listed in docs
         self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
 
+        # embedded linked list of all overloads
+        # the module's function dictionary holds 
+        # the list head for a given key (func name)
         self.overloads = [self]
 
         if func:
@@ -64,7 +69,6 @@ class Function:
             self.adj = warp.codegen.Adjoint(func)
 
             # record input types    
-            self.input_types = {}
             for name, type in self.adj.arg_types.items():
                 
                 if name == "return":
@@ -232,7 +236,19 @@ class Function:
         return "_".join([name, *types])
 
     def add_overload(self, f):
+
+        # todo: note that it is an error to add two functions
+        # with the exact same signature as this would cause compile
+        # errors during compile time. We should check here if there
+        # is a previously created function with the same signature
         self.overloads.append(f)
+
+
+class KernelHooks:
+    def __init__(self, forward, backward):
+        self.forward = forward
+        self.backward = backward
+
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
@@ -243,11 +259,8 @@ class Kernel:
         self.module = module
         self.key = key
 
-        self.forward_cpu = None
-        self.backward_cpu = None
-        
-        self.forward_cuda = None
-        self.backward_cuda = None
+        # lookup table for entry points per device context
+        self.hooks = {}
 
         self.adj = warp.codegen.Adjoint(func)
 
@@ -255,52 +268,43 @@ class Kernel:
             module.register_kernel(self)
 
     # lookup and cache entry points based on name, called after compilation / module load
-    def hook(self):
+    def hook(self, device):
 
-        dll = self.module.dll
-        cuda = self.module.cuda
+        hooks = self.hooks.get(device.context)
+        if hooks is not None:
+            return hooks
+        
+        if device.is_cpu:
+            forward = eval("self.module.dll." + self.key + "_cpu_forward")
+            backward = eval("self.module.dll." + self.key + "_cpu_backward")
+        else:
+            cu_module = self.module.cuda_modules[device.context]
+            forward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_forward").encode('utf-8'))
+            backward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_backward").encode('utf-8'))
 
-        if (dll):
-
-            try:
-                self.forward_cpu = eval("dll." + self.key + "_cpu_forward")
-                self.backward_cpu = eval("dll." + self.key + "_cpu_backward")
-            except:
-                print(f"Could not load CPU methods for kernel {self.key}")
-
-        if (cuda):
-
-            try:
-                self.forward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.key + "_cuda_kernel_forward").encode('utf-8'))
-                self.backward_cuda = runtime.core.cuda_get_kernel(self.module.cuda, (self.key + "_cuda_kernel_backward").encode('utf-8'))
-            except:
-                print(f"Could not load CUDA methods for kernel {self.key}")
+        hooks = KernelHooks(forward, backward)
+        self.hooks[device.context] = hooks
+        return hooks
 
 
 #----------------------
 
 # decorator to register function, @func
 def func(f):
-    name = warp.codegen.make_func_name(f)
+    name = warp.codegen.make_full_qualified_name(f)
 
     m = get_module(f.__module__)
     func = Function(func=f, key=name, namespace="", module=m, value_func=None)   # value_type not known yet, will be inferred during Adjoint.build()
 
-    # if the function already exists in the module
-    # then add an overload and return original
-    for x in m.functions:
-        if x.key == name:
-            x.add_overload(func)
-            return x
-
-    return func
+    # return the top of the list of overloads for this key
+    return m.functions[name]
 
 # decorator to register kernel, @kernel, custom_name may be a string
 # that creates a kernel with a different name from the actual function
 def kernel(f):
     
     m = get_module(f.__module__)
-    k = Kernel(func=f, key=warp.codegen.make_func_name(f), module=m)
+    k = Kernel(func=f, key=warp.codegen.make_full_qualified_name(f), module=m)
 
     return k
 
@@ -309,7 +313,7 @@ def kernel(f):
 def struct(c):
 
     m = get_module(c.__module__)
-    s = warp.codegen.Struct(cls=c, key=c.__name__, module=m)
+    s = warp.codegen.Struct(cls=c, key=warp.codegen.make_full_qualified_name(c), module=m)
 
     return s
 
@@ -341,6 +345,8 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
     else:
         builtin_functions[key] = func
 
+        # export means the function will be added to the `warp` module namespace
+        # so that users can call it directly from the Python interpreter
         if export == True:
             
             if hasattr(warp, key):
@@ -356,12 +362,27 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
 # global dictionary of modules
 user_modules = {}
 
-def get_module(m):
+def get_module(name):
 
-    if (m not in user_modules):
-        user_modules[m] = warp.context.Module(str(m))
+    import sys
+    parent = sys.modules[name]
 
-    return user_modules[m]
+    if name in user_modules:
+
+        # check if the Warp module was created using a different loader object 
+        # if so, we assume the file has changed and we recreate the module to
+        # clear out old kernels / functions
+        if user_modules[name].loader is not parent.__loader__:           
+            user_modules[name].unload()
+            user_modules[name] = warp.context.Module(name, parent.__loader__)
+
+        return user_modules[name]
+
+    else:
+        
+        # else Warp module didn't exist yet, so create a new one
+        user_modules[name] = warp.context.Module(name, parent.__loader__)
+        return user_modules[name]
 
 
 class ModuleBuilder:
@@ -369,17 +390,20 @@ class ModuleBuilder:
     def __init__(self, module, options):
             
         self.functions = {}
+        self.structs = {}
         self.options = options
         self.module = module
 
         # build all functions declared in the module
-        for func in module.functions:
+        for func in module.functions.values():
             self.build_function(func)
 
         # build all kernel entry points
         for kernel in module.kernels.values():
             self.build_kernel(kernel)
 
+    def build_struct(self, struct):
+        self.structs[struct] = None
 
     def build_kernel(self, kernel):
         kernel.adj.build(self)
@@ -414,7 +438,7 @@ class ModuleBuilder:
         cpp_source = ""
 
         # code-gen structs
-        for struct in self.module.structs:
+        for struct in self.structs.keys():
             cpp_source += warp.codegen.codegen_struct(struct)
 
         # code-gen all imported functions
@@ -424,7 +448,7 @@ class ModuleBuilder:
         for kernel in self.module.kernels.values():
 
             # each kernel gets an entry point in the module
-            cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu")
+            cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu", options=self.options)
             cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
 
         # add headers
@@ -437,7 +461,7 @@ class ModuleBuilder:
         cu_source = ""
 
         # code-gen structs
-        for struct in self.module.structs:
+        for struct in self.structs.keys():
             cu_source += warp.codegen.codegen_struct(struct)
 
         # code-gen all imported functions
@@ -445,8 +469,7 @@ class ModuleBuilder:
             cu_source += warp.codegen.codegen_func(func.adj, device="cuda") 
 
         for kernel in self.module.kernels.values():
-
-            cu_source += warp.codegen.codegen_kernel(kernel, device="cuda")
+            cu_source += warp.codegen.codegen_kernel(kernel, device="cuda", options=self.options)
             cu_source += warp.codegen.codegen_module(kernel, device="cuda")
 
         # add headers
@@ -461,21 +484,24 @@ class ModuleBuilder:
 
 class Module:
 
-    def __init__(self, name):
+    def __init__(self, name, loader):
 
         self.name = name
+        self.loader = loader
 
         self.kernels = {}
-        self.functions = []
+        self.functions = {}
         self.constants = []
         self.structs = []
 
         self.dll = None
-        self.cuda = None
+        self.cuda_modules = {} # module lookup by CUDA context
 
-        self.build_failed = False
+        self.cpu_build_failed = False
+        self.cuda_build_failed = False
 
         self.options = {"max_unroll": 16,
+                        "enable_backward": True,
                         "mode": warp.config.mode}
 
     def register_struct(self, struct):
@@ -483,23 +509,22 @@ class Module:
 
     def register_kernel(self, kernel):
 
-        # if kernel is replacing an old one then assume it has changed and 
-        # force a rebuild / reload of the dynamic library 
-        if (self.dll):
-            warp.build.unload_dll(self.dll)
-
-        if (self.cuda):
-            runtime.core.cuda_unload_module(self.cuda)
-            
-        self.dll = None
-        self.cuda = None
-
-        # register new kernel
         self.kernels[kernel.key] = kernel
+
+        # for a reload of module on next launch
+        self.unload()
 
 
     def register_function(self, func):
-        self.functions.append(func)
+        
+        if func.key not in self.functions:
+            self.functions[func.key] = func
+        else:
+            self.functions[func.key].add_overload(func)
+
+        # for a reload of module on next launch
+        self.unload()
+
 
 
     def hash_module(self):
@@ -512,7 +537,7 @@ class Module:
             h.update(bytes(s, 'utf-8'))
 
         # functions source
-        for func in self.functions:
+        for func in self.functions.values():
             s = func.adj.source
             h.update(bytes(s, 'utf-8'))
             
@@ -538,28 +563,32 @@ class Module:
 
     def load(self, device):
 
-        # early out to avoid repeatedly attemping to rebuild
-        if self.build_failed:
-            return False
+        device = get_device(device)
 
-        build_cpu = False
-        build_cuda = False
-
-        if device == "cpu":
-            if self.dll:
+        if device.is_cpu:
+            # check if already loaded
+            if self.dll is not None:
                 return True
-            else:
-                build_cpu = warp.is_cpu_available()
-
-        # early out if cuda already loaded
-        if device == "cuda":
-            if self.cuda:
+            # avoid repeated build attempts
+            if self.cpu_build_failed:
+                return False
+            if not warp.is_cpu_available():
+                raise RuntimeError("Failed to build CPU module because no CPU buildchain was found")
+            build_cpu = True
+            build_cuda = False
+        else:
+            # check if already loaded
+            if device.context in self.cuda_modules:
                 return True
-            else:
-                build_cuda = warp.is_cuda_available()
+            # avoid repeated build attempts
+            if self.cuda_build_failed:
+                return False
+            if not warp.is_cuda_available():
+                raise RuntimeError("Failed to build CUDA module because CUDA is not available")
+            build_cpu = False
+            build_cuda = True
 
-
-        with warp.utils.ScopedTimer(f"Module {self.name} load"):
+        with warp.utils.ScopedTimer(f"Module {self.name} load on device '{device}'"):
 
             module_name = "wp_" + self.name
 
@@ -571,21 +600,22 @@ class Module:
 
             module_path = os.path.join(build_path, module_name)
 
-            cuda_arch = runtime.core.cuda_get_device_arch()
+            ptx_arch = min(device.arch, warp.config.ptx_target_arch)
 
-            ptx_path = module_path + f"_sm{cuda_arch}.ptx"
+            ptx_path = module_path + f"_sm{ptx_arch}.ptx"
 
             if (os.name == 'nt'):
                 dll_path = module_path + ".dll"
             else:
                 dll_path = module_path + ".so"
 
-            if (os.path.exists(build_path) == False):
-                os.mkdir(build_path)
+            if not os.path.exists(build_path):
+                os.makedirs(build_path)
+            if not os.path.exists(gen_path):
+                os.makedirs(gen_path)
 
             # test cache
             module_hash = self.hash_module()
-
 
             # check CPU cache
             if build_cpu and warp.config.cache_kernels and os.path.exists(cpu_hash_path):
@@ -601,7 +631,7 @@ class Module:
                             return True
 
             # check GPU cache
-            if build_cuda and warp.config.cache_kernels and os.path.exists(cuda_hash_path):
+            elif build_cuda and warp.config.cache_kernels and os.path.exists(cuda_hash_path):
 
                 f = open(cuda_hash_path, 'rb')
                 cache_hash = f.read()
@@ -609,136 +639,235 @@ class Module:
 
                 if cache_hash == module_hash:
                     if os.path.isfile(ptx_path):
-                        self.cuda = warp.build.load_cuda(ptx_path)
-                        if self.cuda is not None:
+                        cuda_module = warp.build.load_cuda(ptx_path, device)
+                        if cuda_module is not None:
+                            self.cuda_modules[device.context] = cuda_module
                             return True
 
 
             if warp.config.verbose:
-                print("Warp: Rebuilding kernels for module {}".format(self.name))
+                print(f"Warp: Rebuilding kernels for module {self.name} on device {device.alias}")
 
             builder = ModuleBuilder(self, self.options)
             
-            cpp_path = os.path.join(gen_path, module_name + ".cpp")
-            cu_path = os.path.join(gen_path, module_name + ".cu")
-
-            # write cpp sources
             if build_cpu:
-                cpp_source = builder.codegen_cpu()
+                try:
+                    cpp_path = os.path.join(gen_path, module_name + ".cpp")
 
-                cpp_file = open(cpp_path, "w")
-                cpp_file.write(cpp_source)
-                cpp_file.close()
+                    # write cpp sources
+                    cpp_source = builder.codegen_cpu()
 
-            # write cuda sources
-            if build_cuda:
-                cu_source = builder.codegen_cuda()
-                
-                cu_file = open(cu_path, "w")
-                cu_file.write(cu_source)
-                cu_file.close()
-        
-            try:
-                if build_cpu:
+                    cpp_file = open(cpp_path, "w")
+                    cpp_file.write(cpp_source)
+                    cpp_file.close()
+
+                    # build DLL
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
                         warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
-                if build_cuda:
-                    with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, cuda_arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
-
-                # update cpu hash
-                if build_cpu:
+                    # update cpu hash
                     f = open(cpu_hash_path, 'wb')
                     f.write(module_hash)
                     f.close()
 
-                # update cuda hash
-                if build_cuda:
+                    # load the DLL
+                    self.dll = warp.build.load_dll(dll_path)
+                    if self.dll is None:
+                        raise Exception("Failed to load CPU module")
+
+                except Exception as e:
+                    self.cpu_build_failed = True
+                    # print(e)
+                    raise(e)
+
+            elif build_cuda:
+                try:
+                    cu_path = os.path.join(gen_path, module_name + ".cu")
+
+                    # write cuda sources
+                    cu_source = builder.codegen_cuda()
+                    
+                    cu_file = open(cu_path, "w")
+                    cu_file.write(cu_source)
+                    cu_file.close()
+
+                    # generate PTX
+                    ptx_arch = min(device.arch, warp.config.ptx_target_arch)
+                    with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
+                        warp.build.build_cuda(cu_path, ptx_arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
+
+                    # update cuda hash
                     f = open(cuda_hash_path, 'wb')
                     f.write(module_hash)
                     f.close()
 
-            except Exception as e:
-                self.build_failed = True
-                print(e)
-                raise(e)
+                    # load the PTX
+                    cuda_module = warp.build.load_cuda(ptx_path, device)
+                    if cuda_module is not None:
+                        self.cuda_modules[device.context] = cuda_module
+                    else:
+                        raise Exception("Failed to load CUDA module")
 
-            if build_cpu:
-                self.dll = warp.build.load_dll(dll_path)
-                if self.dll is None:
-                    raise Exception("Failed to load CPU module")
-
-
-            if build_cuda:
-                self.cuda = warp.build.load_cuda(ptx_path)
-                if self.cuda is None:
-                    raise Exception("Failed to load CUDA module")
+                except Exception as e:
+                    self.cuda_build_failed = True
+                    # print(e)
+                    raise(e)
 
             return True
+
+    def unload(self):
+
+        if self.dll is not None:
+            warp.build.unload_dll(self.dll)
+            self.dll = None
+
+        # need to unload the CUDA module from all CUDA contexts where it is loaded
+        # note: we ensure that this doesn't change the current CUDA context
+        if self.cuda_modules:
+            saved_context = runtime.core.cuda_context_get_current()
+            for context, module in self.cuda_modules.items():
+                runtime.core.cuda_unload_module(context, module)
+            runtime.core.cuda_context_set_current(saved_context)
+            self.cuda_modules = {}
 
 #-------------------------------------------
 # execution context
 
-# a simple pooled allocator that caches allocs based 
-# on size to avoid hitting the system allocator
+# a simple allocator
+# TODO: use a pooled allocator to avoid hitting the system allocator
 class Allocator:
 
-    def __init__(self, alloc_func, free_func):
+    def __init__(self, device):
 
-        # map from sizes to array of allocs
-        self.alloc_func = alloc_func
-        self.free_func = free_func
+        self.device = device
 
-        # map from size->list[allocs]
-        self.pool = {}
-
-    def __del__(self):
-        self.clear()       
+        if self.device.is_cpu:
+            self._alloc_func = self.device.runtime.core.alloc_host
+            self._free_func = self.device.runtime.core.free_host
+        else:
+            self._alloc_func = lambda size: self.device.runtime.core.alloc_device(self.device.context, size)
+            self._free_func = lambda ptr: self.device.runtime.core.free_device(self.device.context, ptr)
 
     def alloc(self, size_in_bytes):
         
-        p = self.alloc_func(size_in_bytes)
-        return p
+        return self._alloc_func(size_in_bytes)
 
-        # if size_in_bytes in self.pool and len(self.pool[size_in_bytes]) > 0:            
-        #     return self.pool[size_in_bytes].pop()
-        # else:
-        #     return self.alloc_func(size_in_bytes)
+    def free(self, ptr, size_in_bytes):
 
-    def free(self, addr, size_in_bytes):
-
-        addr = ctypes.cast(addr, ctypes.c_void_p)
-        self.free_func(addr)
-        return
-
-        # if size_in_bytes not in self.pool:
-        #     self.pool[size_in_bytes] = [addr,]
-        # else:
-        #     self.pool[size_in_bytes].append(addr)
-
-    def print(self):
-        
-        total_size = 0
-
-        for k,v in self.pool.items():
-            print(f"alloc size: {k} num allocs: {len(v)}")
-            total_size += k*len(v)
-
-        print(f"total size: {total_size}")
+        self._free_func(ptr)
 
 
-    def clear(self):
-        for s in self.pool.values():
-            for a in s:
-                self.free_func(a)
-        
-        self.pool = {}
+class ContextGuard:
+    def __init__(self, device):
+        self.core = device.runtime.core
+        self.context = device.context
+    
+    def __enter__(self):
+        if self.context:
+            self.core.cuda_context_push_current(self.context)
+        elif is_cuda_available():
+            self.saved_context = self.core.cuda_context_get_current()
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.context:
+            self.core.cuda_context_pop_current()
+        elif is_cuda_available():
+            self.core.cuda_context_set_current(self.saved_context)
+
+
+class Device:
+
+    def __init__(self, runtime, context, alias, name=None, arch=0, ordinal=-1, is_primary=False, is_uva=False):
+        self.runtime = runtime
+        self.context = context
+        self.alias = alias
+        self.arch = arch
+        if name is not None:
+            self.name = name
+        else:
+            self.name = alias
+        self.ordinal = ordinal
+        self.is_primary = is_primary
+        self.is_uva = is_uva
+
+        self.allocator = Allocator(self)
+        self.context_guard = ContextGuard(self)
+
+        # TODO: add more device-specific dispatch functions
+        if self.is_cpu:
+            self.memset = runtime.core.memset_host
+        else:
+            self.memset = lambda ptr, value, size: runtime.core.memset_device(self.context, ptr, value, size)
+
+    @property
+    def is_cpu(self):
+        return self.context is None
+    
+    @property
+    def is_cuda(self):
+        return self.context is not None
+
+    @property
+    def stream(self):
+        # streams are created on demand under the hood, so need to call the native getter
+        if self.context:
+            return self.runtime.core.cuda_context_get_stream(self.context)
+
+    def __str__(self):
+        return self.alias
+
+    def __repr__(self):
+        return f"'{self.alias}'"
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        elif isinstance(other, Device):
+            return self.context == other.context
+        elif isinstance(other, str):
+            if other == "cuda":
+                return self == self.runtime.get_current_cuda_device()
+            else:
+                return other == self.alias
+        else:
+            return False
+
+    def make_current(self):
+        if self.context is not None:
+            self.runtime.core.cuda_context_set_current(self.context)
+    
+    def can_access(self, other):
+        other = self.runtime.get_device(other)
+        if self.context == other.context:
+            return True
+        elif self.context is not None and other.context is not None:
+            return bool(self.runtime.core.cuda_context_can_access_peer(self.context, other.context))
+        else:
+            return False
+
+
+""" Meta-type for arguments that can be resolved to a concrete Device.
+"""
+Devicelike = Union[Device, str, None]
+
+
+class Graph:
+
+    def __init__(self, device: Device, exec: ctypes.c_void_p):
+
+        self.device = device
+        self.exec = exec
+
+    def __del__(self):
+
+        # use CUDA context guard to avoid side effects during garbage collection
+        with self.device.context_guard:
+            runtime.core.cuda_graph_destroy(self.device.context, self.exec)
+
 
 class Runtime:
 
     def __init__(self):
-
 
         bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
         
@@ -769,14 +898,37 @@ class Runtime:
             self.core = warp.build.load_dll(warp_lib)
 
         # setup c-types for warp.dll
+        self.core.alloc_host.argtypes = [ctypes.c_size_t]
         self.core.alloc_host.restype = ctypes.c_void_p
+        self.core.alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         self.core.alloc_device.restype = ctypes.c_void_p
-        
+
+        self.core.free_host.argtypes = [ctypes.c_void_p]
+        self.core.free_host.restype = None
+        self.core.free_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.free_device.restype = None
+
+        self.core.memset_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
+        self.core.memset_host.restype = None
+        self.core.memset_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
+        self.core.memset_device.restype = None
+
+        self.core.memcpy_h2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+        self.core.memcpy_h2h.restype = None
+        self.core.memcpy_h2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+        self.core.memcpy_h2d.restype = None
+        self.core.memcpy_d2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+        self.core.memcpy_d2h.restype = None
+        self.core.memcpy_d2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+        self.core.memcpy_d2d.restype = None
+        self.core.memcpy_peer.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+        self.core.memcpy_peer.restype = None
+
         self.core.mesh_create_host.restype = ctypes.c_uint64
         self.core.mesh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
         self.core.mesh_create_device.restype = ctypes.c_uint64
-        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 
         self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
         self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
@@ -790,7 +942,7 @@ class Runtime:
         self.core.hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
         self.core.hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
 
-        self.core.hash_grid_create_device.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.hash_grid_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
         self.core.hash_grid_create_device.restype = ctypes.c_uint64
         self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
@@ -801,91 +953,232 @@ class Runtime:
         self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
-        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64]
         self.core.volume_create_device.restype = ctypes.c_uint64
         self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
 
-        # load CUDA entry points on supported platforms
-        self.core.cuda_check_device.restype = ctypes.c_uint64
-        self.core.cuda_get_context.restype = ctypes.c_void_p
-        self.core.cuda_get_stream.restype = ctypes.c_void_p
+        self.core.cuda_device_get_count.argtypes = None
+        self.core.cuda_device_get_count.restype = ctypes.c_int
+        self.core.cuda_device_get_primary_context.argtypes = [ctypes.c_int]
+        self.core.cuda_device_get_primary_context.restype = ctypes.c_void_p
+        self.core.cuda_device_get_name.argtypes = [ctypes.c_int]
+        self.core.cuda_device_get_name.restype = ctypes.c_char_p
+        self.core.cuda_device_get_arch.argtypes = [ctypes.c_int]
+        self.core.cuda_device_get_arch.restype = ctypes.c_int
+        self.core.cuda_device_is_uva.argtypes = [ctypes.c_int]
+        self.core.cuda_device_is_uva.restype = ctypes.c_int
+
+        self.core.cuda_context_get_current.argtypes = None
+        self.core.cuda_context_get_current.restype = ctypes.c_void_p
+        self.core.cuda_context_set_current.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_set_current.restype = None
+        self.core.cuda_context_push_current.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_push_current.restype = None
+        self.core.cuda_context_pop_current.argtypes = None
+        self.core.cuda_context_pop_current.restype = None
+        self.core.cuda_context_create.argtypes = [ctypes.c_int]
+        self.core.cuda_context_create.restype = ctypes.c_void_p
+        self.core.cuda_context_destroy.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_destroy.restype = None
+        self.core.cuda_context_synchronize.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_synchronize.restype = None
+        self.core.cuda_context_check.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_check.restype = ctypes.c_uint64
+
+        self.core.cuda_context_get_device_ordinal.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_get_device_ordinal.restype = ctypes.c_int
+        self.core.cuda_context_is_primary.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_is_primary.restype = ctypes.c_int
+        self.core.cuda_context_get_stream.argtypes = [ctypes.c_void_p]
+        self.core.cuda_context_get_stream.restype = ctypes.c_void_p
+        self.core.cuda_context_can_access_peer.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_context_can_access_peer.restype = ctypes.c_int
+
+        self.core.cuda_stream_get_current.argtypes = None
+        self.core.cuda_stream_get_current.restype = ctypes.c_void_p
+
+        self.core.cuda_graph_begin_capture.argtypes = [ctypes.c_void_p]
+        self.core.cuda_graph_begin_capture.restype = None
+        self.core.cuda_graph_end_capture.argtypes = [ctypes.c_void_p]
         self.core.cuda_graph_end_capture.restype = ctypes.c_void_p
-        self.core.cuda_get_device_name.restype = ctypes.c_char_p
-        self.core.cuda_get_device_arch.restype = ctypes.c_int
+        self.core.cuda_graph_launch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_graph_launch.restype = None
+        self.core.cuda_graph_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_graph_destroy.restype = None
 
         self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
         self.core.cuda_compile_program.restype = ctypes.c_size_t
 
-        self.core.cuda_load_module.argtypes = [ctypes.c_char_p]
+        self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
         self.core.cuda_load_module.restype = ctypes.c_void_p
 
-        self.core.cuda_unload_module.argtypes = [ctypes.c_void_p]
+        self.core.cuda_unload_module.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_unload_module.restype = None
 
-        self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        self.core.cuda_get_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
         self.core.cuda_get_kernel.restype = ctypes.c_void_p
         
-        self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
+        self.core.cuda_launch_kernel.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p)]
         self.core.cuda_launch_kernel.restype = ctypes.c_size_t
 
         self.core.init.restype = ctypes.c_int
-        
+
         error = self.core.init()
 
-        if (error > 0):
-            raise Exception("Warp Initialization failed, CUDA not found")
+        if error != 0:
+            raise Exception("Warp initialization failed")
 
-        # allocation functions, these are function local to 
-        # force other classes to go through the allocator objects
-        def alloc_host(num_bytes):
-            ptr = self.core.alloc_host(num_bytes)       
-            return ptr
+        self.device_map = {} # device lookup by alias
+        self.context_map = {} # device lookup by context
 
-        def free_host(ptr):
-            self.core.free_host(ctypes.cast(ptr, ctypes.POINTER(ctypes.c_int)))
+        # register CPU device
+        cpu_name = platform.processor()
+        if not cpu_name:
+            cpu_name = "CPU"
+        self.cpu_device = Device(self, None, "cpu", cpu_name)
+        self.device_map["cpu"] = self.cpu_device
+        self.context_map[None] = self.cpu_device
 
-        def alloc_device(num_bytes):
-            ptr = self.core.alloc_device(ctypes.c_size_t(num_bytes))
-            return ptr
+        # register CUDA devices
+        cuda_device_count = self.core.cuda_device_get_count()
+        self.cuda_devices = []
+        for i in range(cuda_device_count):
+            alias = f"cuda:{i}"
+            context = self.core.cuda_device_get_primary_context(i)
+            self.map_cuda_device(alias, context)
 
-        def free_device(ptr):
-            # must be careful to not call any globals here
-            # since this may be called during destruction / shutdown
-            # even ctypes module may no longer exist
-            self.core.free_device(ptr)
-
-        self.host_allocator = Allocator(alloc_host, free_host)
-        self.device_allocator = Allocator(alloc_device, free_device)
-
-        # save context
-        self.cuda_device = self.core.cuda_get_context()
-        self.cuda_stream = self.core.cuda_get_stream()
+        # set default device
+        if cuda_device_count > 0:
+            if self.core.cuda_context_get_current() is not None:
+                self.set_device("cuda")
+            else:
+                self.set_device("cuda:0")
+            # save the initial CUDA device for backward compatibility with ScopedCudaGuard
+            self.initial_cuda_device = self.get_current_cuda_device()
+        else:
+            # CUDA not available
+            self.set_device("cpu")
+            self.initial_cuda_device = None
 
         # initialize kernel cache        
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
 
         # print device and version information
         print("Warp initialized:")
-        print("   Version: {}".format(warp.config.version))
-        print("   CUDA device: {}".format(self.core.cuda_get_device_name().decode()))
-        print("   Kernel cache: {}".format(warp.config.kernel_cache_dir))
+        print(f"   Version: {warp.config.version}")
+        print("   Devices:")
+        print(f"     \"{self.cpu_device.alias}\"    | {self.cpu_device.name}")
+        for cuda_device in self.cuda_devices:
+            print(f"     \"{cuda_device.alias}\" | {cuda_device.name}")
+        print(f"   Kernel cache: {warp.config.kernel_cache_dir}")
 
         # global tape
         self.tape = None
 
 
-    def verify_device(self):
+    def get_device(self, ident:Devicelike=None) -> Device:
+
+        if isinstance(ident, Device):
+            return ident
+        elif ident is None:
+            return self.default_device
+        elif isinstance(ident, str):
+            if ident == "cuda":
+                return self.get_current_cuda_device()
+            else:
+                return self.device_map[ident]
+        else:
+            raise RuntimeError(f"Unable to resolve device from argument of type {type(ident)}")
+
+
+    def set_device(self, ident:Devicelike):
+
+        device = self.get_device(ident)
+        self.default_device = device
+        device.make_current()
+
+
+    def get_current_cuda_device(self):
+
+        current_context = self.core.cuda_context_get_current()
+        if current_context is not None:
+            if current_context in self.context_map:
+                return self.context_map[current_context]
+            else:
+                # this is a previously unseen context, register it as a device
+                alias = f"cuda!{current_context:x}"
+                return self.map_cuda_device(alias, current_context)
+        raise RuntimeError("No current CUDA context")
+
+
+    def map_cuda_device(self, alias, context=None) -> Device:
+
+        if context is None:
+            context = self.core.cuda_context_get_current()
+            if context is None:
+                raise RuntimeError(f"Unable to determine CUDA context for device alias '{alias}'")
+
+        if alias in self.device_map:
+            device = self.device_map[alias]
+            if context == device.context:
+                # device already exists with the same alias, that's fine
+                return device
+            else:
+                raise RuntimeError(f"Device alias '{alias}' already exists")
+
+        if context in self.context_map:
+            # we already know this context, so just change the device alias
+            device = self.context_map[context]
+            del self.device_map[device.alias]
+            device.alias = alias
+            self.device_map[alias] = device
+            return device
+        else:
+            # this is a previously unseen context, so create a corresponding device
+            ordinal = self.core.cuda_context_get_device_ordinal(context)
+            is_primary = bool(self.core.cuda_context_is_primary(context))
+            name = self.core.cuda_device_get_name(ordinal).decode()
+            arch = self.core.cuda_device_get_arch(ordinal)
+            is_uva = self.core.cuda_device_is_uva(ordinal)
+
+            device = Device(self, context, alias, name=name, arch=arch, ordinal=ordinal, is_primary=is_primary, is_uva=is_uva)
+
+            self.device_map[alias] = device
+            self.context_map[context] = device
+            self.cuda_devices.append(device)
+
+            return device
+
+
+    def unmap_cuda_device(self, alias):
+
+        device = self.device_map.get(alias)
+
+        # make sure the alias refers to a CUDA device
+        if device is None or not device.is_cuda:
+            raise RuntimeError(f"Invalid CUDA device alias '{alias}'")
+
+        del self.device_map[alias]
+        del self.context_map[device.context]
+        self.cuda_devices.remove(device)
+
+
+    def verify_cuda_device(self, device:Devicelike=None):
 
         if warp.config.verify_cuda:
 
-            context = self.core.cuda_get_context()
-            if (context != self.cuda_device):
-                raise RuntimeError("Unexpected CUDA device, original {} current: {}".format(self.cuda_device, context))
+            device = runtime.get_device(device)
+            if not device.is_cuda:
+                return
 
-            err = self.core.cuda_check_device()
-            if (err != 0):
-                raise RuntimeError("CUDA error detected: {}".format(err))
+            err = self.core.cuda_context_check(device.context)
+            if err != 0:
+                raise RuntimeError(f"CUDA error detected: {err}")
 
+
+def assert_initialized():
+    assert runtime is not None, "Warp not initialized, call wp.init() before use"
 
 
 # global entry points 
@@ -899,34 +1192,107 @@ def is_cpu_available():
     return warp.config.host_compiler != ""
 
 def is_cuda_available():
-    return runtime.cuda_device != None
+    return get_cuda_device_count() > 0
 
 def is_device_available(device):
     return device in get_devices()
 
-def get_devices():
-    """Returns a list of device strings supported in this environment.
+def get_devices() -> List[Device]:
+    """Returns a list of devices supported in this environment.
     """
-    devices = []
-    if (is_cpu_available()):
-        devices.append("cpu")
-    if (is_cuda_available()):
-        devices.append("cuda")
 
+    assert_initialized()
+
+    devices = []
+    if is_cpu_available():
+        devices.append(runtime.cpu_device)
+    for cuda_device in runtime.cuda_devices:
+        devices.append(cuda_device)
     return devices
 
-def get_preferred_device():
-    """Returns the preferred compute device, will return "cuda" if available, "cpu" otherwise.
+def get_cuda_device_count() -> int:
+    """Returns the number of CUDA devices supported in this environment.
     """
+
+    assert_initialized()
+
+    return len(runtime.cuda_devices)
+
+def get_cuda_device(ordinal:Union[int, None]=None) -> Device:
+    """Returns the CUDA device with the given ordinal or the current CUDA device if ordinal is None.
+    """
+
+    assert_initialized()
+
+    if ordinal is None:
+        return runtime.get_current_cuda_device()
+    else:
+        return runtime.cuda_devices[ordinal]
+
+def get_cuda_devices() -> List[Device]:
+    """Returns a list of CUDA devices supported in this environment.
+    """
+
+    assert_initialized()
+
+    return runtime.cuda_devices
+
+def get_preferred_device() -> Device:
+    """Returns the preferred compute device, CUDA if available and CPU otherwise.
+    """
+
+    assert_initialized()
+
     if is_cuda_available():
-        return "cuda"
+        return runtime.cuda_devices[0]
     elif is_cpu_available():
-        return "cpu"
+        return runtime.cpu_device
     else:
         return None
 
+def get_device(ident:Devicelike=None) -> Device:
+    """Returns the device identified by the argument.
+    """
 
-def zeros(shape: Tuple=None, dtype=float, device: str="cpu", requires_grad: bool=False, **kwargs)-> warp.array:
+    assert_initialized()
+
+    return runtime.get_device(ident)
+
+def set_device(ident:Devicelike):
+    """Sets the target device identified by the argument.
+    """
+
+    assert_initialized()
+
+    runtime.set_device(ident)
+
+def map_cuda_device(alias:str, context:ctypes.c_void_p=None) -> Device:
+    """Maps a device alias to a CUDA context.
+
+    This function can be used to create a wp.Device for an external CUDA context.
+    If a wp.Device already exists for the given context, it's alias will change to the given value.
+
+    Args:
+        alias: A unique string to identify the device.
+        context: A CUDA context pointer (CUcontext).  If None, the current CUDA context will be used.
+    
+    Returns:
+        The associated wp.Device.
+    """
+
+    assert_initialized()
+
+    return runtime.map_cuda_device(alias, context)
+
+def unmap_cuda_device(alias:str):
+    """Remove a CUDA device with the given alias.
+    """
+
+    assert_initialized()
+
+    runtime.unmap_cuda_device(alias)
+
+def zeros(shape: Tuple=None, dtype=float, device: Devicelike=None, requires_grad: bool=False, **kwargs)-> warp.array:
     """Return a zero-initialized array
 
     Args:
@@ -938,16 +1304,6 @@ def zeros(shape: Tuple=None, dtype=float, device: str="cpu", requires_grad: bool
     Returns:
         A warp.array object representing the allocation                
     """
-
-    if runtime == None:
-        raise RuntimeError("Warp not initialized, call wp.init() before use")
-
-    if device != "cpu" and device != "cuda":
-        raise RuntimeError(f"Trying to allocate array on unknown device {device}")
-
-    if device == "cuda" and not is_cuda_available():
-        raise RuntimeError("Trying to allocate CUDA buffer without GPU support")
-
 
     # backwards compatability for case where users did wp.zeros(n, dtype=..), or wp.zeros(n=length, dtype=..)
     if isinstance(shape, int):
@@ -962,19 +1318,21 @@ def zeros(shape: Tuple=None, dtype=float, device: str="cpu", requires_grad: bool
 
     num_bytes = num_elements*warp.types.type_size_in_bytes(dtype)
 
-    if device == "cpu":
-        ptr = runtime.host_allocator.alloc(num_bytes) 
-        runtime.core.memset_host(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(num_bytes))
+    device = get_device(device)
 
-    elif device == "cuda":
-        ptr = runtime.device_allocator.alloc(num_bytes)
-        runtime.core.memset_device(ctypes.cast(ptr,ctypes.POINTER(ctypes.c_int)), ctypes.c_int(0), ctypes.c_size_t(num_bytes))
+    if num_bytes > 0:
 
-    if (ptr == None and num_bytes > 0):
-        raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
+        ptr = device.allocator.alloc(num_bytes)
+        if ptr is None:
+            raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
+
+        device.memset(ptr, 0, num_bytes)
+
     else:
-        # construct array
-        return warp.types.array(dtype=dtype, shape=shape, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
+        ptr = None
+
+    # construct array
+    return warp.types.array(dtype=dtype, shape=shape, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
 
 def zeros_like(src: warp.array) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
@@ -1004,7 +1362,7 @@ def clone(src: warp.array) -> warp.array:
 
     return dest
 
-def empty(shape: Tuple=None, dtype=float, device:str="cpu", requires_grad:bool=False, **kwargs) -> warp.array:
+def empty(shape: Tuple=None, dtype=float, device:Devicelike=None, requires_grad:bool=False, **kwargs) -> warp.array:
     """Returns an uninitialized array
 
     Args:
@@ -1034,12 +1392,12 @@ def empty_like(src: warp.array, requires_grad:bool=False) -> warp.array:
     return arr
 
 
-def from_numpy(arr, dtype, device="cpu", requires_grad=False):
+def from_numpy(arr, dtype, device:Devicelike=None, requires_grad=False):
 
     return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
-def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:str="cpu", adjoint=False):
+def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:Devicelike=None, adjoint=False):
     """Launch a Warp kernel on the target device
 
     Kernel launches are asynchronous with respect to the calling Python thread. 
@@ -1055,11 +1413,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         adjoint: Whether to run forward or backward pass (typically use False)
     """
 
-    
-
-    # check device available
-    if is_device_available(device) == False:
-        raise RuntimeError(f"Error launching kernel, device '{device}' is not available.")
+    device = runtime.get_device(device)
 
     # check function is a Kernel
     if isinstance(kernel, Kernel) == False:
@@ -1113,7 +1467,8 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                             raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {a.ndim} dimension(s).")
 
                         # check device
-                        if (a.device != device):
+                        #if a.device != device and not device.can_access(a.device):
+                        if a.device != device:
                             raise RuntimeError(f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={a.device}.")
                         
                         params.append(a.__ctype__())
@@ -1162,30 +1517,28 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         pack_args(adj_args, params)
 
         # late bind
-        if (kernel.forward_cpu == None or kernel.forward_cuda == None):
-            kernel.hook()
+        hooks = kernel.hook(device)
 
         # run kernel
-        if device == 'cpu':
+        if device.is_cpu:
 
-            if (adjoint):
-                kernel.backward_cpu(*params)
+            if adjoint:
+                hooks.backward(*params)
             else:
-                kernel.forward_cpu(*params)
+                hooks.forward(*params)
 
-        
-        elif device == "cuda":
+        else:
 
             kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
-            if (adjoint):
-                runtime.core.cuda_launch_kernel(kernel.backward_cuda, bounds.size, kernel_params)
+            if adjoint:
+                runtime.core.cuda_launch_kernel(device.context, hooks.backward, bounds.size, kernel_params)
             else:
-                runtime.core.cuda_launch_kernel(kernel.forward_cuda, bounds.size, kernel_params)
+                runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
 
             try:
-                runtime.verify_device()            
+                runtime.verify_cuda_device(device)
             except Exception as e:
                 print(f"Error launching kernel: {kernel.key} on device {device}")
                 raise e
@@ -1194,27 +1547,65 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
     if (runtime.tape):
         runtime.tape.record(kernel, dim, inputs, outputs, device)
 
+
 def synchronize():
-    """Manually synchronize the calling CPU thread with any outstanding CUDA work
+    """Manually synchronize the calling CPU thread with any outstanding CUDA work on all devices
 
     This method allows the host application code to ensure that any kernel launches
     or memory copies have completed.
     """
 
-    runtime.core.synchronize()
+    if is_cuda_available():
 
-    runtime.verify_device()
+        # save the original context to avoid side effects
+        saved_context = runtime.core.cuda_context_get_current()
+
+        # TODO: only synchronize devices that have outstanding work
+        for device in runtime.cuda_devices:
+            runtime.core.cuda_context_synchronize(device.context)
+        
+        # restore the original context to avoid side effects
+        runtime.core.cuda_context_set_current(saved_context)
 
 
-def force_load():
-    """Force all user-defined kernels to be compiled
+def synchronize_device(device:Devicelike=None):
+    """Manually synchronize the calling CPU thread with any outstanding CUDA work on the specified device
+
+    This method allows the host application code to ensure that any kernel launches
+    or memory copies have completed.
+
+    Args:
+        device: Device to synchronize.  If None, synchronize the current CUDA device.
     """
 
-    devices = get_devices()
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        return
+
+    runtime.core.cuda_context_synchronize(device.context)
+
+
+def force_load(device:Union[Device, str]=None):
+    """Force all user-defined kernels to be compiled and loaded
+    """
+
+    if is_cuda_available():
+        # save original context to avoid side effects
+        saved_context = runtime.core.cuda_context_get_current()
+
+    if device is None:
+        devices = get_devices()
+    else:
+        devices = [get_device(device)]
 
     for d in devices:
         for m in user_modules.values():
             m.load(d)
+
+    if is_cuda_available():
+        # restore original context to avoid side effects
+        runtime.core.cuda_context_set_current(saved_context)
+
 
 def set_module_options(options: Dict[str, Any]):
     """Set options for the current module.
@@ -1244,7 +1635,7 @@ def get_module_options() -> Dict[str, Any]:
     return get_module(m.__name__).options
 
 
-def capture_begin():
+def capture_begin(device:Devicelike=None):
     """Begin capture of a CUDA graph
 
     Captures all subsequent kernel launches and memory operations on CUDA devices.
@@ -1254,35 +1645,44 @@ def capture_begin():
     if warp.config.verify_cuda == True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
 
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        raise RuntimeError("Must be a CUDA device")
+
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
-    for m in user_modules.values():
-        m.load("cuda")    
+    force_load(device)
 
-    runtime.core.cuda_graph_begin_capture()
+    runtime.core.cuda_graph_begin_capture(device.context)
 
-def capture_end()->int:
+
+def capture_end(device:Devicelike=None) -> Graph:
     """Ends the capture of a CUDA graph
 
     Returns:
         A handle to a CUDA graph object that can be launched with :func:`~warp.capture_launch()`
     """
 
-    graph = runtime.core.cuda_graph_end_capture()
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        raise RuntimeError("Must be a CUDA device")
+
+    graph = runtime.core.cuda_graph_end_capture(device.context)
     
     if graph == None:
         raise RuntimeError("Error occurred during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")
     else:
-        return graph
+        return Graph(device, graph)
 
-def capture_launch(graph: int):
+
+def capture_launch(graph: Graph):
     """Launch a previously captured CUDA graph
 
     Args:
-        graph: A handle to the graph as returned by :func:`~warp.capture_end`
+        graph: A Graph as returned by :func:`~warp.capture_end`
     """
 
-    runtime.core.cuda_graph_launch(ctypes.c_void_p(graph))
+    runtime.core.cuda_graph_launch(graph.device.context, graph.exec)
 
 
 def copy(dest: warp.array, src: warp.array, dest_offset: int = 0, src_offset: int = 0, count: int = 0):
@@ -1324,18 +1724,17 @@ def copy(dest: warp.array, src: warp.array, dest_offset: int = 0, src_offset: in
     if dst_offset_in_bytes + bytes_to_copy > dst_size_in_bytes:
         raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) to offset ({dst_offset_in_bytes}) is larger than destination size ({dst_size_in_bytes})")
 
-    if (src.device == "cpu" and dest.device == "cuda"):
-        runtime.core.memcpy_h2d(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
-
-    elif (src.device == "cuda" and dest.device == "cpu"):
-        runtime.core.memcpy_d2h(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
-
-    elif (src.device == "cpu" and dest.device == "cpu"):
-        runtime.core.memcpy_h2h(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
-
-    elif (src.device == "cuda" and dest.device == "cuda"):
-        runtime.core.memcpy_d2d(ctypes.c_void_p(dst_ptr), ctypes.c_void_p(src_ptr), ctypes.c_size_t(bytes_to_copy))
-    
+    if src.device.is_cpu and dest.device.is_cpu:
+        runtime.core.memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
+    elif src.device.is_cpu and dest.device.is_cuda:
+        runtime.core.memcpy_h2d(dest.device.context, dst_ptr, src_ptr, bytes_to_copy)
+    elif src.device.is_cuda and dest.device.is_cpu:
+        runtime.core.memcpy_d2h(src.device.context, dst_ptr, src_ptr, bytes_to_copy)
+    elif src.device.is_cuda and dest.device.is_cuda:
+        if src.device == dest.device:
+            runtime.core.memcpy_d2d(dest.device.context, dst_ptr, src_ptr, bytes_to_copy)
+        else:
+            runtime.core.memcpy_peer(dest.device.context, dst_ptr, src.device.context, src_ptr, bytes_to_copy)
     else:
         raise RuntimeError("Unexpected source and destination combination")
 
@@ -1523,8 +1922,6 @@ def export_builtins(file):
                 print(f"WP_API void {f.mangled_name}({args}) {{ wp::{f.key}({params}); }}", file=file)
             else:
                 print(f"WP_API void {f.mangled_name}({args}, {return_type}* ret) {{ *ret = wp::{f.key}({params}); }}", file=file)
-
-
 
 
 # initialize global runtime

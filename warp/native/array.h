@@ -104,13 +104,13 @@ struct array_t
 
 // return stride (in bytes) of the given index
 template <typename T>
-CUDA_CALLABLE inline int stride(const array_t<T>& a, int dim)
+CUDA_CALLABLE inline size_t stride(const array_t<T>& a, int dim)
 {
-    return a.strides[dim];
+    return size_t(a.strides[dim]);
 }
 
 template <typename T>
-CUDA_CALLABLE inline T* data_at_byte_offset(const array_t<T>& a, int byte_offset)
+CUDA_CALLABLE inline T* data_at_byte_offset(const array_t<T>& a, size_t byte_offset)
 {
     return reinterpret_cast<T*>(reinterpret_cast<char*>(a.data) + byte_offset);
 }
@@ -121,7 +121,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
     assert(arr.ndim == 1);
     assert(i >= 0 && i < arr.shape[0]);
     
-    const int byte_offset = i*stride(arr, 0);
+    const size_t byte_offset = i*stride(arr, 0);
 
     T& result = *data_at_byte_offset(arr, byte_offset);
     FP_VERIFY_FWD_1(result)
@@ -136,7 +136,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
     assert(i >= 0 && i < arr.shape[0]);
     assert(j >= 0 && j < arr.shape[1]);
 
-    const int byte_offset = i*stride(arr,0) + j*stride(arr,1);
+    const size_t byte_offset = i*stride(arr,0) + j*stride(arr,1);
 
     T& result = *data_at_byte_offset(arr, byte_offset);
     FP_VERIFY_FWD_2(result)
@@ -152,7 +152,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
     assert(j >= 0 && j < arr.shape[1]);
     assert(k >= 0 && k < arr.shape[2]);
 
-    const int byte_offset = i*stride(arr,0) + 
+    const size_t byte_offset = i*stride(arr,0) + 
                             j*stride(arr,1) +
                             k*stride(arr,2);
        
@@ -171,7 +171,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
     assert(k >= 0 && k < arr.shape[2]);
     assert(l >= 0 && l < arr.shape[3]);
 
-    const int byte_offset = i*stride(arr,0) + 
+    const size_t byte_offset = i*stride(arr,0) + 
                             j*stride(arr,1) + 
                             k*stride(arr,2) + 
                             l*stride(arr,3);
@@ -223,6 +223,34 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j, int k)
     
     return a;
 }
+
+template <typename T>
+CUDA_CALLABLE inline int lower_bound(const array_t<T>& arr, T value)
+{
+    assert(arr.ndim == 1);
+    int n = arr.shape[0];
+
+    int lower = 0;
+    int upper = n - 1;
+
+    while(lower < upper)
+    {
+        int mid = lower + (upper - lower) / 2;
+        
+        if (arr[mid] < value)
+        {
+            lower = mid + 1;
+        }
+        else
+        {
+            upper = mid;
+        }
+    }
+
+    return lower;
+}
+
+template <typename T> inline CUDA_CALLABLE void adj_lower_bound(const array_t<T>& arr, T value, array_t<T> adj_arr, T adj_value, int adj_ret) {}
 
 template <typename T> inline CUDA_CALLABLE void adj_view(array_t<T>& src, int i, array_t<T>& adj_src, int adj_i, array_t<T> adj_ret) {}
 template <typename T> inline CUDA_CALLABLE void adj_view(array_t<T>& src, int i, int j, array_t<T>& adj_src, int adj_i, int adj_j, array_t<T> adj_ret) {}

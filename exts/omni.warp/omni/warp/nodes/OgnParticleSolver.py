@@ -107,6 +107,7 @@ class OgnParticleSolverState:
         self.time = 0.0
         
         self.capture = None
+        self.device = None
 
     # swap current / prev collider positions
     def swap(self):
@@ -130,17 +131,23 @@ class OgnParticleSolver:
 
         timeline =  omni.timeline.get_timeline_interface()
         state = db.internal_state
-        device = "cuda"
        
-        with wp.ScopedCudaGuard():
+        if state.device == None:
+            state.device = f"cuda:{db.inputs.device}"
+
+        with wp.ScopedDevice(state.device):
 
             # reset on stop
-            if (timeline.is_stopped()):
+            if (state.model and timeline.is_stopped()):
                 state.reset()               
 
+            time = timeline.get_current_time()
+
             # initialize
-            if (timeline.is_playing()):
+            if (timeline.is_playing() and state.time != time):
             
+                state.time = time
+
                 if state.model is None:
                     
                     # build particles
@@ -176,8 +183,8 @@ class OgnParticleSolver:
                             collider_xform = read_transform_bundle(collider)
 
                             # save local copy
-                            state.collider_positions_current = wp.array(collider_points, dtype=wp.vec3, device=device)
-                            state.collider_positions_previous = wp.array(collider_points, dtype=wp.vec3, device=device)
+                            state.collider_positions_current = wp.array(collider_points, dtype=wp.vec3)
+                            state.collider_positions_previous = wp.array(collider_points, dtype=wp.vec3)
 
                             world_positions = []
                             for i in range(len(collider_points)):
@@ -198,8 +205,11 @@ class OgnParticleSolver:
                             state.collider_xform = read_transform_bundle(db.inputs.collider)
 
                     # finalize sim model
-                    model = builder.finalize(device)
+                    model = builder.finalize()
                     
+                    # can only have one contact per-particle, since only one shape
+                    model.allocate_soft_contacts(model.particle_count)
+
                     # create integrator
                     state.integrator = wp.sim.SemiImplicitIntegrator()
                     #state.integrator = wp.sim.VariationalImplicitIntegrator(model, solver="nesterov", max_iters=256, alpha=0.1, report=False)
@@ -210,7 +220,7 @@ class OgnParticleSolver:
                     state.state_1 = model.state()
 
                     state.positions_host = wp.zeros(model.particle_count, dtype=wp.vec3, device="cpu")
-                    state.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3, device=device)
+                    state.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3)
 
                     
                 # update dynamic properties
@@ -234,6 +244,7 @@ class OgnParticleSolver:
                 state.model.soft_contact_mu = db.inputs.k_contact_mu
                 state.model.soft_contact_distance = db.inputs.collider_offset
                 state.model.soft_contact_margin = db.inputs.collider_offset*db.inputs.collider_margin
+                
 
                 # update collider positions
                 with wp.ScopedTimer("Refit", active=profile_enabled):
@@ -263,8 +274,7 @@ class OgnParticleSolver:
                                     state.mesh.mesh.points,
                                     state.mesh.mesh.velocities,
                                     1.0/60.0,
-                                    alpha],
-                                    device=device)
+                                    alpha])
 
                         state.collider_xform = current_xform
 
@@ -274,7 +284,7 @@ class OgnParticleSolver:
                 use_graph = True
                 if (use_graph):
                     if (state.capture == None):
-                        
+
                         wp.capture_begin()
 
                         # simulate
@@ -311,6 +321,9 @@ class OgnParticleSolver:
                         sim_substeps = db.inputs.num_substeps
                         sim_dt = (1.0/60)/sim_substeps
 
+                        # run collision detection once per-frame
+                        wp.sim.collide(state.model, state.state_0)
+
                         state.model.particle_grid.build(state.state_0.particle_q, db.inputs.radius + db.inputs.particle_margin)
 
                         for i in range(sim_substeps):
@@ -330,7 +343,8 @@ class OgnParticleSolver:
                     # back to host for OG outputs
                     wp.copy(state.positions_host, state.state_0.particle_q)
 
-                    wp.synchronize()
+                    if db.inputs.asynchronous == False:
+                        wp.synchronize()
 
                 with wp.ScopedTimer("Write", active=profile_enabled):
 
@@ -352,8 +366,8 @@ class OgnParticleSolver:
                         db.outputs.widths_size = len(particle_points)
                         db.outputs.widths[:] = np.ones(len(particle_points))*db.inputs.radius*2.0
 
-                        db.outputs.ids_size = len(particle_points)
-                        db.outputs.ids[:] = [0]*len(particle_points)
+                        # db.outputs.ids_size = len(particle_points)
+                        # db.outputs.ids[:] = [0]*len(particle_points)
 
 
         return True

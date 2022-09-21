@@ -13,9 +13,11 @@ import math
 
 import numpy as np
 import warp as wp
+import ctypes
 
 import omni.timeline
 import omni.usd
+import omni.warp
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
@@ -190,7 +192,7 @@ class OgnRipple:
 
         state = db.internal_state
 
-        with wp.ScopedCudaGuard():
+        with wp.ScopedDevice("cuda:0"):
 
             # initialization
             if db.inputs.grid.valid and state.initialized is False:
@@ -204,12 +206,12 @@ class OgnRipple:
 
                 print(f"Creating grid with dim {state.sim_width}, {state.sim_height}")
 
-                state.sim_grid0 = wp.zeros(state.sim_width*state.sim_height, dtype=float, device="cuda")
-                state.sim_grid1 = wp.zeros(state.sim_width*state.sim_height, dtype=float, device="cuda")
+                state.sim_grid0 = wp.zeros(state.sim_width*state.sim_height, dtype=float)
+                state.sim_grid1 = wp.zeros(state.sim_width*state.sim_height, dtype=float)
 
                 state.sim_host = wp.zeros(state.sim_width*state.sim_height, dtype=float, device="cpu")
                 
-                state.verts_device =  wp.zeros(state.sim_width*state.sim_height, dtype=wp.vec3, device="cuda")
+                state.verts_device =  wp.zeros(state.sim_width*state.sim_height, dtype=wp.vec3)
                 state.verts_host =  wp.zeros(state.sim_width*state.sim_height, dtype=wp.vec3, device="cpu")
 
                 # build grid mesh
@@ -357,8 +359,7 @@ class OgnRipple:
                                     kernel=wave_displace, 
                                     dim=state.sim_width*state.sim_height, 
                                     inputs=[state.sim_grid0, state.sim_grid1, state.sim_width, state.sim_height, cx, cz, cr, grid_displace, state.sim_time],  
-                                    outputs=[],
-                                    device="cuda")
+                                    outputs=[])
 
                     # colliders
                     if time > db.inputs.delay:
@@ -373,8 +374,7 @@ class OgnRipple:
                             kernel=wave_solve, 
                             dim=state.sim_width*state.sim_height, 
                             inputs=[state.sim_grid0, state.sim_grid1, state.sim_width, state.sim_height, 1.0/grid_size, k_speed, k_damp, sim_dt], 
-                            outputs=[],
-                            device="cuda")
+                            outputs=[])
 
                         # swap grids
                         (state.sim_grid0, state.sim_grid1) = (state.sim_grid1, state.sim_grid0)
@@ -386,16 +386,15 @@ class OgnRipple:
                     wp.launch(kernel=grid_update,
                                 dim=state.sim_width*state.sim_height,
                                 inputs=[state.sim_grid0, state.verts_device],
-                                outputs=[],
-                                device="cuda")
+                                outputs=[])
 
-                    # copy data back to host
-                    wp.copy(dest=state.sim_host, src=state.sim_grid0)
-                    wp.copy(dest=state.verts_host, src=state.verts_device)
-                    wp.synchronize()
+                # allocate output array
+                db.outputs.vertices_size = len(state.verts_device)
 
-                # write outputs
-                db.outputs.vertices_size = len(state.verts_host)
-                db.outputs.vertices[:] = state.verts_host.numpy()
+                # copy points 
+                points_out = omni.warp.from_omni_graph(db.outputs.vertices, dtype=wp.vec3)
+                wp.copy(points_out, state.verts_device)
 
-            return True
+                return True
+
+    

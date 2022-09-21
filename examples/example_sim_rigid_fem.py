@@ -41,8 +41,6 @@ class Example:
         self.sim_iterations = 1
         self.sim_relaxation = 1.0
 
-        self.device = wp.get_preferred_device()
-
         builder = wp.sim.ModelBuilder()
 
         builder.add_soft_grid(
@@ -63,7 +61,7 @@ class Example:
         builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
         builder.add_shape_sphere(body=0, radius=0.75, density=100.0)
 
-        self.model = builder.finalize(device=self.device)
+        self.model = builder.finalize()
         self.model.ground = True
         self.model.soft_contact_distance = 0.01
         self.model.soft_contact_ke = 1.e+3

@@ -6,12 +6,30 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp
-import torch
 import numpy
+
+
+# return the warp device corresponding to a torch device
+def device_from_torch(torch_device):
+    return warp.get_device(str(torch_device))
+
+
+# return the torch device corresponding to a warp device
+def device_to_torch(wp_device):
+    device = warp.get_device(wp_device)
+    if device.is_cpu or device.is_primary:
+        return str(device)
+    elif device.is_cuda and device.is_uva:
+        # it's not a primary context, but torch can access the data ptr directly thanks to UVA
+        return f"cuda:{device.ordinal}"
+    raise RuntimeError(f"Warp device {device} is not compatible with torch")
 
 
 # wrap a torch tensor to a wp array, data is not copied
 def from_torch(t, dtype=warp.types.float32):
+
+    import torch
+
     # ensure tensors are contiguous
     assert(t.is_contiguous())
 
@@ -47,7 +65,7 @@ def from_torch(t, dtype=warp.types.float32):
         copy=False,
         owner=False,
         requires_grad=t.requires_grad,
-        device=t.device.type)
+        device=device_from_torch(t.device))
 
     # save a reference to the source tensor, otherwise it will be deallocated
     a.tensor = t
@@ -55,18 +73,21 @@ def from_torch(t, dtype=warp.types.float32):
 
 
 def to_torch(a):
-    if a.device == "cpu":
+
+    import torch
+
+    if a.device.is_cpu:
         # Torch has an issue wrapping CPU objects 
         # that support the __array_interface__ protocol
         # in this case we need to workaround by going
         # to an ndarray first, see https://pearu.github.io/array_interface_pytorch.html
         return torch.as_tensor(numpy.asarray(a))
 
-    elif a.device == "cuda":
+    elif a.device.is_cuda:
         # Torch does support the __cuda_array_interface__
         # correctly, but we must be sure to maintain a reference
         # to the owning object to prevent memory allocs going out of scope
-        return torch.as_tensor(a, device="cuda")
+        return torch.as_tensor(a, device=device_to_torch(a.device))
     
     else:
         raise RuntimeError("Unsupported device")

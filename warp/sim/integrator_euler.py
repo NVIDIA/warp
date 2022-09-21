@@ -880,13 +880,14 @@ def eval_soft_contacts(
     contact_body_vel: wp.array(dtype=wp.vec3),
     contact_normal: wp.array(dtype=wp.vec3),
     contact_distance: float,
+    contact_max: int,
     # outputs
     particle_f: wp.array(dtype=wp.vec3),
     body_f: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
 
-    count = contact_count[0]
+    count = min(contact_max, contact_count[0])
     if (tid >= count):
         return
         
@@ -1584,7 +1585,8 @@ def compute_forces(model, state, particle_f, body_f):
                         model.soft_contact_body_pos,
                         model.soft_contact_body_vel,
                         model.soft_contact_normal,
-                        model.soft_contact_distance],
+                        model.soft_contact_distance,
+                        model.soft_contact_max],
                         # outputs
                     outputs=[
                         particle_f,

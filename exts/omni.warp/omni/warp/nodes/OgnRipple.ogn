@@ -3,6 +3,7 @@
         "version": 1,
         "description": "2D Wave equation solver",
         "language": "Python",
+        "cudaPointers": "cpu",        
         "inputs": {
             "resolution": {
                 "type": "float",
@@ -93,7 +94,8 @@
         "outputs": {
             "vertices": {
                 "type": "pointf[3][]",
-                "description": ""
+                "description": "",
+                "memoryType": "cuda"
             },
             "face_indices": {
                 "type": "int[]",
@@ -102,7 +104,7 @@
             "face_counts": {
                 "type": "int[]",
                 "description": ""
-            }
+            }            
         },
         "state": {
             "$comment": "The existence of this state section, even if it contains no attributes, means there is internal state that is entirely managed by the node"

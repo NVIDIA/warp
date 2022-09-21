@@ -26,7 +26,12 @@ int cuda_init();
 
 int init()
 {
-    return cuda_init();
+#if !WP_DISABLE_CUDA
+    // note: it's safe to proceed even if CUDA initialization failed
+    cuda_init();
+#endif
+
+    return 0;
 }
 
 void shutdown()
@@ -84,8 +89,8 @@ void array_sum_host(uint64_t a, uint64_t out, int len)
 }
 
 
-
 // impl. files
+#include "cuda_util.cpp"
 #include "bvh.cpp"
 #include "mesh.cpp"
 #include "hashgrid.cpp"
@@ -98,55 +103,73 @@ void array_sum_host(uint64_t a, uint64_t out, int len)
 // stubs for platforms where there is no CUDA
 #if WP_DISABLE_CUDA
 
-int cuda_init() { return false; }
+int cuda_init() { return -1; }
 
-void* alloc_device(size_t s)
+void* alloc_device(void* context, size_t s)
 {
     return NULL;
 }
 
-void free_device(void* ptr)
+void free_device(void* context, void* ptr)
 {
 }
 
 
-void memcpy_h2d(void* dest, void* src, size_t n)
+void memcpy_h2d(void* context, void* dest, void* src, size_t n)
 {
 }
 
-void memcpy_d2h(void* dest, void* src, size_t n)
+void memcpy_d2h(void* context, void* dest, void* src, size_t n)
 {
 }
 
-void memcpy_d2d(void* dest, void* src, size_t n)
+void memcpy_d2d(void* context, void* dest, void* src, size_t n)
 {
 }
 
-void memset_device(void* dest, int value, size_t n)
+void memcpy_peer(void* dest_context, void* dest, void* src_context, void* src, size_t n)
 {
 }
 
-void synchronize()
+void memset_device(void* context, void* dest, int value, size_t n)
 {
 }
 
-WP_API uint64_t cuda_check_device() { return 0;}
-WP_API void cuda_report_error(int code, const char* file, int line) {}
-WP_API void cuda_acquire_context() {}
-WP_API void cuda_restore_context() {}
-WP_API void* cuda_get_context() { return NULL;}
-WP_API void cuda_set_context(void* ctx) {}
-WP_API void* cuda_get_stream() { return NULL; }
-WP_API const char* cuda_get_device_name() { return "Not supported"; }
-WP_API int cuda_get_device_arch() { return 0; }
-WP_API void cuda_graph_begin_capture() {}
-WP_API void* cuda_graph_end_capture() { return NULL; }
-WP_API void cuda_graph_launch(void* graph) {}
-WP_API void cuda_graph_destroy(void* graph) {}
+WP_API int cuda_device_get_count() { return 0; }
+WP_API void* cuda_device_get_primary_context(int ordinal) { return NULL; }
+WP_API const char* cuda_device_get_name(int ordinal) { return NULL; }
+WP_API int cuda_device_get_arch(int ordinal) { return 0; }
+WP_API int cuda_device_is_uva(int ordinal) { return 0; }
+
+WP_API void* cuda_context_get_current() { return NULL; }
+WP_API void cuda_context_set_current(void* ctx) {}
+WP_API void cuda_context_push_current(void* context) {}
+WP_API void cuda_context_pop_current() {}
+WP_API void* cuda_context_create(int device_ordinal) { return NULL; }
+WP_API void cuda_context_destroy(void* context) {}
+WP_API void cuda_context_synchronize(void* context) {}
+WP_API uint64_t cuda_context_check(void* context) { return 0; }
+WP_API int cuda_context_get_device_ordinal(void* context) { return -1; }
+WP_API int cuda_context_is_primary(void* context) { return 0; }
+WP_API void* cuda_context_get_stream(void* context) { return NULL; }
+WP_API int cuda_context_can_access_peer(void* context, void* peer_context) { return 0; }
+WP_API int cuda_context_enable_peer_access(void* context, void* peer_context) { return 0; }
+
+WP_API void* cuda_stream_get_current() { return NULL; }
+
+WP_API void cuda_graph_begin_capture(void* context) {}
+WP_API void* cuda_graph_end_capture(void* context) { return NULL; }
+WP_API void cuda_graph_launch(void* context, void* graph) {}
+WP_API void cuda_graph_destroy(void* context, void* graph) {}
+
 WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, const char* output_file) { return 0; }
-WP_API void* cuda_load_module(const char* ptx) { return NULL; }
-WP_API void cuda_unload_module(void* module) {}
-WP_API void* cuda_get_kernel(void* module, const char* name) { return NULL; }
-WP_API size_t cuda_launch_kernel(void* kernel, size_t dim, void** args) { return 0;}
+
+WP_API void* cuda_load_module(void* context, const char* ptx) { return NULL; }
+WP_API void cuda_unload_module(void* context, void* module) {}
+WP_API void* cuda_get_kernel(void* context, void* module, const char* name) { return NULL; }
+WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args) { return 0;}
+
+WP_API void cuda_set_context_restore_policy(bool always_restore) {}
+WP_API int cuda_get_context_restore_policy() { return false; }
 
 #endif // WP_DISABLE_CUDA

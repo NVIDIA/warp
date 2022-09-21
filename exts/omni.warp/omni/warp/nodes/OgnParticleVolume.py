@@ -163,9 +163,7 @@ class OgnParticleVolume:
         state = db.internal_state
         mesh = db.inputs.shape
 
-        device = "cuda"
-
-        with wp.ScopedCudaGuard():
+        with wp.ScopedDevice("cuda:0"):
 
             if mesh.valid and (state.initialized == False or db.inputs.execIn):
 
@@ -184,8 +182,8 @@ class OgnParticleVolume:
                         mesh_tri_indices = triangulate(mesh_counts, mesh_indices)
                         
                         # transform to world space
-                        mesh_points_local = wp.array(mesh_points, dtype=wp.vec3, device=device)
-                        mesh_points_world = wp.empty(num_points, dtype=wp.vec3, device=device)
+                        mesh_points_local = wp.array(mesh_points, dtype=wp.vec3)
+                        mesh_points_world = wp.empty(num_points, dtype=wp.vec3)
 
                         wp.launch(
                             kernel=transform_points, 
@@ -193,14 +191,13 @@ class OgnParticleVolume:
                             inputs=[
                                 mesh_points_local,
                                 mesh_points_world, 
-                                np.array(mesh_xform).T], 
-                            device=device)
+                                np.array(mesh_xform).T])
 
                         # create Warp mesh
                         state.mesh = wp.Mesh(
                             points=mesh_points_world,
-                            velocities=wp.zeros(num_points, dtype=wp.vec3, device=device),
-                            indices=wp.array(mesh_tri_indices, dtype=int, device=device))
+                            velocities=wp.zeros(num_points, dtype=wp.vec3),
+                            indices=wp.array(mesh_tri_indices, dtype=int))
 
                     with wp.ScopedTimer("Sample Mesh", active=profile_enabled):
 
@@ -222,12 +219,12 @@ class OgnParticleVolume:
                             print(f"Bounds for Particle Volume prim are invalid")
                             return False
 
-                        if (dim_x*dim_y*dim_z > points_max):
-                            print(f"Trying to create particle volume with {dim_x*dim_y*dim_z} > {points_max} particles, increase spacing or geometry size")
-                            return False
+                        # if (dim_x*dim_y*dim_z > points_max):
+                        #     print(f"Trying to create particle volume with {dim_x*dim_y*dim_z} > {points_max} particles, increase spacing or geometry size")
+                        #     return False
 
-                        points = wp.zeros(points_max, dtype=wp.vec3, device=device)
-                        points_counter = wp.zeros(1, dtype=int, device=device)
+                        points = wp.zeros(points_max, dtype=wp.vec3)
+                        points_counter = wp.zeros(1, dtype=int)
                     
                         wp.launch(kernel=sample_mesh, 
                                 dim=dim_x*dim_y*dim_z, 
@@ -243,11 +240,12 @@ class OgnParticleVolume:
                                     db.inputs.sdf_max,
                                     points,
                                     points_counter,
-                                    points_max], 
-                                device="cuda")
+                                    points_max])
                         
                         num_points = min(int(points_counter.numpy()[0]), points_max)
                         
+                        print(f"Created volume with: {num_points} particles")
+
                         # bring back to host
                         points = points.numpy()[0:num_points]
                         velocities = np.tile(db.inputs.velocity, (len(points), 1))

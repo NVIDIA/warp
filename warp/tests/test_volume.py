@@ -264,7 +264,7 @@ for value_type, path in volume_paths.items():
         except RuntimeError as e:
             raise RuntimeError(f"Failed to load volume from \"{path}\" to {device} memory:\n{e}")
 
-        volumes[value_type][device] = volume
+        volumes[value_type][device.alias] = volume
 
         
 def register(parent):
@@ -281,7 +281,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_sample_local_f_linear_values, dim=1, inputs=[volumes["float"][device].id, uvws, values], device=device)
+                        wp.launch(test_volume_sample_local_f_linear_values, dim=1, inputs=[volumes["float"][device.alias].id, uvws, values], device=device)
                     tape.backward(values)
 
                     x, y, z = case
@@ -291,7 +291,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_sample_world_f_linear_values, dim=1, inputs=[volumes["float"][device].id, xyzs, values], device=device)
+                        wp.launch(test_volume_sample_world_f_linear_values, dim=1, inputs=[volumes["float"][device.alias].id, xyzs, values], device=device)
                     tape.backward(values)
 
                     x, y, z = case
@@ -310,7 +310,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_sample_local_v_linear_values, dim=1, inputs=[volumes["vec3f"][device].id, uvws, values], device=device)
+                        wp.launch(test_volume_sample_local_v_linear_values, dim=1, inputs=[volumes["vec3f"][device.alias].id, uvws, values], device=device)
                     tape.backward(values)
 
                     grad_expected = np.array([6.0, 15.0, 24.0])
@@ -319,7 +319,7 @@ def register(parent):
 
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_sample_world_v_linear_values, dim=1, inputs=[volumes["vec3f"][device].id, xyzs, values], device=device)
+                        wp.launch(test_volume_sample_world_v_linear_values, dim=1, inputs=[volumes["vec3f"][device.alias].id, xyzs, values], device=device)
                     tape.backward(values)
 
                     grad_expected = np.array([6.0, 15.0, 24.0]) / 0.25
@@ -336,7 +336,7 @@ def register(parent):
                     points = wp.array(case, dtype=wp.vec3, device=device, requires_grad=True)
                     tape = wp.Tape()
                     with tape:
-                        wp.launch(test_volume_index_to_world, dim=1, inputs=[volumes["torus"][device].id, points, values, grad_values], device=device)
+                        wp.launch(test_volume_index_to_world, dim=1, inputs=[volumes["torus"][device.alias].id, points, values, grad_values], device=device)
                     tape.backward(values)
                
                     grad_computed = tape.gradients[points].numpy()
@@ -346,7 +346,7 @@ def register(parent):
                     tape.reset()
 
                     with tape:
-                        wp.launch(test_volume_world_to_index, dim=1, inputs=[volumes["torus"][device].id, points, values, grad_values], device=device)
+                        wp.launch(test_volume_world_to_index, dim=1, inputs=[volumes["torus"][device.alias].id, points, values, grad_values], device=device)
                     tape.backward(values)
 
                     grad_computed = tape.gradients[points].numpy()
@@ -357,19 +357,19 @@ def register(parent):
         axis = np.linspace(-11, 11, 23)
         points_np = np.array([[x, y, z] for x in axis for y in axis for z in axis])
         points_jittered_np = points_np + rng.uniform(-0.5, 0.5, size=points_np.shape)
-        points[device] = wp.array(points_np, dtype=wp.vec3, device=device)
-        points_jittered[device] = wp.array(points_jittered_np, dtype=wp.vec3, device=device)
+        points[device.alias] = wp.array(points_np, dtype=wp.vec3, device=device)
+        points_jittered[device.alias] = wp.array(points_jittered_np, dtype=wp.vec3, device=device)
 
-        add_kernel_test(TestVolumes, test_volume_lookup_f, dim=len(points_np), inputs=[volumes["float"][device].id, points[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_closest_f, dim=len(points_np), inputs=[volumes["float"][device].id, points_jittered[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_linear_f, dim=len(points_np), inputs=[volumes["float"][device].id, points_jittered[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_lookup_f, dim=len(points_np), inputs=[volumes["float"][device.alias].id, points[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_closest_f, dim=len(points_np), inputs=[volumes["float"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_linear_f, dim=len(points_np), inputs=[volumes["float"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
 
-        add_kernel_test(TestVolumes, test_volume_lookup_v, dim=len(points_np), inputs=[volumes["vec3f"][device].id, points[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_closest_v, dim=len(points_np), inputs=[volumes["vec3f"][device].id, points_jittered[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_linear_v, dim=len(points_np), inputs=[volumes["vec3f"][device].id, points_jittered[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_lookup_v, dim=len(points_np), inputs=[volumes["vec3f"][device.alias].id, points[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_closest_v, dim=len(points_np), inputs=[volumes["vec3f"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_linear_v, dim=len(points_np), inputs=[volumes["vec3f"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
 
-        add_kernel_test(TestVolumes, test_volume_lookup_i, dim=len(points_np), inputs=[volumes["int32"][device].id, points[device]], devices=[device])
-        add_kernel_test(TestVolumes, test_volume_sample_i, dim=len(points_np), inputs=[volumes["int32"][device].id, points_jittered[device]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_lookup_i, dim=len(points_np), inputs=[volumes["int32"][device.alias].id, points[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_i, dim=len(points_np), inputs=[volumes["int32"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
 
     return TestVolumes
 
