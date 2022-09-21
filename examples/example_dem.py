@@ -178,17 +178,16 @@ class Example:
 
                 with wp.ScopedTimer("solve", active=False):
                     wp.capture_launch(self.graph)
-                    wp.synchronize()
 
             else:
-                for s in range(self.sim_substeps):
 
-                    with wp.ScopedTimer("grid build", active=False):
-                        self.grid.build(self.x, self.point_radius)
+                with wp.ScopedTimer("grid build", active=False):
+                    self.grid.build(self.x, self.point_radius)
 
-                    with wp.ScopedTimer("forces", active=False):
-                        wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu])
-                        wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass])
+                with wp.ScopedTimer("solve", active=False):
+                    for s in range(self.sim_substeps):
+                            wp.launch(kernel=apply_forces, dim=len(self.x), inputs=[self.grid.id, self.x, self.v, self.f, self.point_radius, self.k_contact, self.k_damp, self.k_friction, self.k_mu])
+                            wp.launch(kernel=integrate, dim=len(self.x), inputs=[self.x, self.v, self.f, (0.0, -9.8, 0.0), self.sim_dt, self.inv_mass])
                 
                 wp.synchronize()
 
