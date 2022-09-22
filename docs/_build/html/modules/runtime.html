@@ -35,6 +35,7 @@
         <script src="../_static/jquery.js"></script>
         <script src="../_static/underscore.js"></script>
         <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
@@ -123,7 +124,10 @@
 <li class="toctree-l2"><a class="reference internal" href="#meshes">Meshes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#volumes">Volumes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#hash-grids">Hash Grids</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#differentiability">Differentiability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#differentiability">Differentiability</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#jacobians">Jacobians</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#graphs">Graphs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#interopability">Interopability</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#numpy">NumPy</a></li>
@@ -913,7 +917,7 @@ and dtype parameter appropriately.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.HashGrid">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid" title="Permalink to this definition">¶</a></dt>
-<dd><p>Class representing a triangle mesh.</p>
+<dd><p>Class representing a hash grid object for accelerated point queries.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.HashGrid.id">
 <span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#warp.HashGrid.id" title="Permalink to this definition">¶</a></dt>
@@ -992,6 +996,10 @@ the radius used when performing queries.</p></li>
 <span class="nb">print</span><span class="p">(</span><span class="n">tape</span><span class="o">.</span><span class="n">gradients</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
 </pre></div>
 </div>
+<p>Note that gradients are accumulated on the participating buffers, so if you wish to re-use the same buffers for multiple backward passes you should first zero the gradients:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tape</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
+</pre></div>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Warp uses a source-code transformation approach to auto-differentiation. In this approach the backwards pass must keep a record of intermediate values computed during the foward pass. This imposes some restrictions on what kernels can do and still be differentiable:</p>
@@ -1000,11 +1008,51 @@ the radius used when performing queries.</p></li>
 <li><p>Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g.: via <code class="docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code>)</p></li>
 </ul>
 </div>
+<div class="section" id="jacobians">
+<h3>Jacobians<a class="headerlink" href="#jacobians" title="Permalink to this headline">¶</a></h3>
+<p>To compute the Jacobian matrix <span class="math notranslate nohighlight">\(J\in\mathbb{R}^{m\times n}\)</span> of a multi-valued function <span class="math notranslate nohighlight">\(f: \mathbb{R}^n \to \mathbb{R}^m\)</span>, we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product <span class="math notranslate nohighlight">\(J^\top \mathbf{e}\)</span>. The vector <span class="math notranslate nohighlight">\(\mathbf{e}\in\mathbb{R}^m\)</span> selects the indices in the output buffer to differentiate with respect to.
+In Warp, instead of passing a scalar loss buffer to the <code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code> method, we pass a dictionary <code class="docutils literal notranslate"><span class="pre">grads</span></code> mapping from the function output array to the selection vector <span class="math notranslate nohighlight">\(\mathbf{e}\)</span> having the same type:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># compute the Jacobian for a function of single output</span>
+<span class="n">jacobian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">ouput_dim</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">output_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">output_dim</span><span class="p">):</span>
+   <span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+   <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+      <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">launch_kernels_to_be_differentiated</span><span class="p">(</span><span class="n">input_buffer</span><span class="p">)</span>
+   <span class="c1"># select which row of the Jacobian we want to compute</span>
+   <span class="n">select_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">output_dim</span><span class="p">)</span>
+   <span class="n">select_index</span><span class="p">[</span><span class="n">output_index</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+   <span class="n">e</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">select_index</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+   <span class="c1"># pass input gradients to the output buffer to apply selection</span>
+   <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">output_buffer</span><span class="p">:</span> <span class="n">e</span><span class="p">})</span>
+   <span class="n">q_grad_i</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">gradients</span><span class="p">[</span><span class="n">input_buffer</span><span class="p">]</span>
+   <span class="n">jacobian</span><span class="p">[</span><span class="n">output_index</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">q_grad_i</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+   <span class="n">tape</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>When we run simulations independently in parallel, the Jacobian corresponding to the entire system dynamics is a block-diagonal matrix. In this case, we can compute the Jacobian in parallel for all environments by choosing a selection vector that has the output indices active for all environment copies. For example, to get the first rows of the Jacobians of all environments, <span class="math notranslate nohighlight">\(\mathbf{e}=[\begin{smallmatrix}1 &amp; 0 &amp; 0 &amp; \dots &amp; 1 &amp; 0 &amp; 0 &amp; \dots\end{smallmatrix}]^\top\)</span>, to compute the second rows, <span class="math notranslate nohighlight">\(\mathbf{e}=[\begin{smallmatrix}0 &amp; 1 &amp; 0 &amp; \dots &amp; 0 &amp; 1 &amp; 0 &amp; \dots\end{smallmatrix}]^\top\)</span>, etc.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># compute the Jacobian for a function over multiple environments in parallel</span>
+<span class="n">jacobians</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">num_envs</span><span class="p">,</span> <span class="n">ouput_dim</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">output_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">output_dim</span><span class="p">):</span>
+   <span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+   <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+      <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">launch_kernels_to_be_differentiated</span><span class="p">(</span><span class="n">input_buffer</span><span class="p">)</span>
+   <span class="c1"># select which row of the Jacobian we want to compute</span>
+   <span class="n">select_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">output_dim</span><span class="p">)</span>
+   <span class="n">select_index</span><span class="p">[</span><span class="n">output_index</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+   <span class="c1"># assemble selection vector for all environments (can be precomputed)</span>
+   <span class="n">e</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">select_index</span><span class="p">,</span> <span class="n">num_envs</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+   <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">output_buffer</span><span class="p">:</span> <span class="n">e</span><span class="p">})</span>
+   <span class="n">q_grad_i</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">gradients</span><span class="p">[</span><span class="n">input_buffer</span><span class="p">]</span>
+   <span class="n">jacobians</span><span class="p">[:,</span> <span class="n">output_index</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">q_grad_i</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">)</span>
+   <span class="n">tape</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
+</pre></div>
+</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Tape">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><a class="headerlink" href="#warp.Tape" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+</div>
 </div>
 <div class="section" id="graphs">
 <h2>Graphs<a class="headerlink" href="#graphs" title="Permalink to this headline">¶</a></h2>

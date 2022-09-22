@@ -499,13 +499,13 @@ Note that gradients are accumulated on the participating buffers, so if you wish
          
    * Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g.: via ``wp.atomic_add()``)
 
-Jacobian
-########
+Jacobians
+#########
 
 To compute the Jacobian matrix :math:`J\in\mathbb{R}^{m\times n}` of a multi-valued function :math:`f: \mathbb{R}^n \to \mathbb{R}^m`, we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product :math:`J^\top \mathbf{e}`. The vector :math:`\mathbf{e}\in\mathbb{R}^m` selects the indices in the output buffer to differentiate with respect to.
 In Warp, instead of passing a scalar loss buffer to the ``tape.backward()`` method, we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}` having the same type::
 
-   # compute the Jacobian for a function over multiple environments in parallel
+   # compute the Jacobian for a function of single output
    jacobian = np.empty((ouput_dim, input_dim), dtype=np.float32)
    for output_index in range(output_dim):
       tape = wp.Tape()
