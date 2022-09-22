@@ -977,7 +977,7 @@ class Volume:
 class HashGrid:
 
     def __init__(self, dim_x, dim_y, dim_z, device=None):
-        """ Class representing a triangle mesh.
+        """ Class representing a hash grid object for accelerated point queries.
 
         Attributes:
             id: Unique identifier for this mesh object, can be passed to kernels.

@@ -750,14 +750,20 @@ class ModelBuilder:
         Args:
             parent: The index of the parent body
             origin: The location of the joint in the parent's local frame connecting this body
-            axis: The joint axis
-            type: The type of joint, should be one of: JOINT_PRISMATIC, JOINT_REVOLUTE, JOINT_BALL, JOINT_FIXED, or JOINT_FREE
-            armature: Additional inertia around the joint axis
-            stiffness: Spring stiffness that attempts to return joint to zero position
-            damping: Spring damping that attempts to remove joint velocity
+            joint_xform: The transform of the body's joint in parent space
+            joint_xform_child: Transform body's joint in local space
+            joint_axis : Joint axis in local body space
+            joint_type : Type of the joint, e.g.: JOINT_PRISMATIC, JOINT_REVOLUTE, etc.
+            joint_target_ke: Stiffness of the joint PD controller
+            joint_target_kd: Damping of the joint PD controller
+            joint_limit_ke: Stiffness of the joint limits
+            joint_limit_kd: Damping of the joint limits
+            joint_limit_lower: Lower limit of the joint coordinate
+            joint_limit_upper: Upper limit of the joint coordinate
+            joint_armature: Artificial inertia added around the joint axis
             com: The center of mass of the body w.r.t its origin
             I_m: The 3x3 inertia tensor of the body (specified relative to the center of mass)
-            m: The mass of the body
+            m: Mass of the body
 
         Returns:
             The index of the body in the model
