@@ -507,10 +507,10 @@ In Warp, instead of passing a scalar loss buffer to the ``tape.backward()`` meth
 
    # compute the Jacobian for a function of single output
    jacobian = np.empty((ouput_dim, input_dim), dtype=np.float32)
+   tape = wp.Tape()
+   with tape:
+      output_buffer = launch_kernels_to_be_differentiated(input_buffer)
    for output_index in range(output_dim):
-      tape = wp.Tape()
-      with tape:
-         output_buffer = launch_kernels_to_be_differentiated(input_buffer)
       # select which row of the Jacobian we want to compute
       select_index = np.zeros(output_dim)
       select_index[output_index] = 1.0
@@ -525,15 +525,15 @@ When we run simulations independently in parallel, the Jacobian corresponding to
 
    # compute the Jacobian for a function over multiple environments in parallel
    jacobians = np.empty((num_envs, ouput_dim, input_dim), dtype=np.float32)
+   tape = wp.Tape()
+   with tape:
+      output_buffer = launch_kernels_to_be_differentiated(input_buffer)
    for output_index in range(output_dim):
-      tape = wp.Tape()
-      with tape:
-         output_buffer = launch_kernels_to_be_differentiated(input_buffer)
       # select which row of the Jacobian we want to compute
       select_index = np.zeros(output_dim)
       select_index[output_index] = 1.0
       # assemble selection vector for all environments (can be precomputed)
-      e = wp.array(np.repeat(select_index, num_envs), dtype=wp.float32)
+      e = wp.array(np.tile(select_index, num_envs), dtype=wp.float32)
       tape.backward(grads={output_buffer: e})
       q_grad_i = tape.gradients[input_buffer]
       jacobians[:, output_index, :] = q_grad_i.numpy().reshape(num_envs, input_dim)

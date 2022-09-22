@@ -148,15 +148,15 @@ class Robot:
     def compute_jacobian(self):
         # our function has 3 outputs (EE position), so we need a 3xN jacobian per environment
         jacobians = np.empty((self.num_envs, 3, self.dof), dtype=np.float32)
+        tape = wp.Tape()
+        with wp.ScopedTimer("Forward", active=self.profile):
+            with tape:
+                self.compute_ee_position()
         for output_index in range(3):
-            tape = wp.Tape()
-            with wp.ScopedTimer("Forward", active=self.profile):
-                with tape:
-                    self.compute_ee_position()
             # select which row of the Jacobian we want to compute
             select_index = np.zeros(3)
             select_index[output_index] = 1.0
-            e = wp.array(np.repeat(select_index, self.num_envs),
+            e = wp.array(np.tile(select_index, self.num_envs),
                          dtype=wp.vec3, device=self.device)
             with wp.ScopedTimer("Backward", active=self.profile):
                 tape.backward(grads={self.ee_pos: e})
@@ -276,5 +276,5 @@ if profile:
 
 else:
 
-    robot = Robot(render=True, num_envs=1)
+    robot = Robot(render=True, num_envs=10)
     robot.run()
