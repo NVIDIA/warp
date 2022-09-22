@@ -487,6 +487,9 @@ After the backward pass has completed the gradients with respect to the inputs a
    # gradient of loss with respect to input a
    print(tape.gradients[a])
 
+Note that gradients are accumulated on the participating buffers, so if you wish to re-use the same buffers for multiple backward passes you should first zero the gradients::
+
+   tape.zero()
 
 .. note:: 
 
@@ -496,6 +499,45 @@ After the backward pass has completed the gradients with respect to the inputs a
          
    * Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g.: via ``wp.atomic_add()``)
 
+Jacobians
+#########
+
+To compute the Jacobian matrix :math:`J\in\mathbb{R}^{m\times n}` of a multi-valued function :math:`f: \mathbb{R}^n \to \mathbb{R}^m`, we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product :math:`J^\top \mathbf{e}`. The vector :math:`\mathbf{e}\in\mathbb{R}^m` selects the indices in the output buffer to differentiate with respect to.
+In Warp, instead of passing a scalar loss buffer to the ``tape.backward()`` method, we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}` having the same type::
+
+   # compute the Jacobian for a function of single output
+   jacobian = np.empty((ouput_dim, input_dim), dtype=np.float32)
+   for output_index in range(output_dim):
+      tape = wp.Tape()
+      with tape:
+         output_buffer = launch_kernels_to_be_differentiated(input_buffer)
+      # select which row of the Jacobian we want to compute
+      select_index = np.zeros(output_dim)
+      select_index[output_index] = 1.0
+      e = wp.array(select_index, dtype=wp.float32)
+      # pass input gradients to the output buffer to apply selection
+      tape.backward(grads={output_buffer: e})
+      q_grad_i = tape.gradients[input_buffer]
+      jacobian[output_index, :] = q_grad_i.numpy()
+      tape.zero()
+
+When we run simulations independently in parallel, the Jacobian corresponding to the entire system dynamics is a block-diagonal matrix. In this case, we can compute the Jacobian in parallel for all environments by choosing a selection vector that has the output indices active for all environment copies. For example, to get the first rows of the Jacobians of all environments, :math:`\mathbf{e}=[\begin{smallmatrix}1 & 0 & 0 & \dots & 1 & 0 & 0 & \dots\end{smallmatrix}]^\top`, to compute the second rows, :math:`\mathbf{e}=[\begin{smallmatrix}0 & 1 & 0 & \dots & 0 & 1 & 0 & \dots\end{smallmatrix}]^\top`, etc.::
+
+   # compute the Jacobian for a function over multiple environments in parallel
+   jacobians = np.empty((num_envs, ouput_dim, input_dim), dtype=np.float32)
+   for output_index in range(output_dim):
+      tape = wp.Tape()
+      with tape:
+         output_buffer = launch_kernels_to_be_differentiated(input_buffer)
+      # select which row of the Jacobian we want to compute
+      select_index = np.zeros(output_dim)
+      select_index[output_index] = 1.0
+      # assemble selection vector for all environments (can be precomputed)
+      e = wp.array(np.repeat(select_index, num_envs), dtype=wp.float32)
+      tape.backward(grads={output_buffer: e})
+      q_grad_i = tape.gradients[input_buffer]
+      jacobians[:, output_index, :] = q_grad_i.numpy().reshape(num_envs, input_dim)
+      tape.zero()
 
 .. autoclass:: Tape
    :members:
