@@ -413,9 +413,7 @@ void bvh_destroy_host(BVH& bvh)
     delete[] bvh.node_lowers;
     delete[] bvh.node_uppers;
     delete[] bvh.node_parents;
-    delete[] bvh.lowers;
-    delete[] bvh.uppers;
-    delete[] bvh.bounds;
+	delete[] bvh.bounds;
 
     bvh.node_lowers = 0;
     bvh.node_uppers = 0;
@@ -432,8 +430,6 @@ void bvh_destroy_device(BVH& bvh)
     free_device(WP_CURRENT_CONTEXT, bvh.node_uppers); bvh.node_uppers = NULL;
     free_device(WP_CURRENT_CONTEXT, bvh.node_parents); bvh.node_parents = NULL;
     free_device(WP_CURRENT_CONTEXT, bvh.node_counts); bvh.node_counts = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.lowers); bvh.lowers = NULL;
-    free_device(WP_CURRENT_CONTEXT, bvh.uppers); bvh.uppers = NULL;
     free_device(WP_CURRENT_CONTEXT, bvh.bounds); bvh.bounds = NULL;
 }
 
@@ -449,11 +445,13 @@ BVH bvh_clone(void* context, const BVH& bvh_host)
     bvh_device.node_uppers = (BVHPackedNodeHalf*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
     bvh_device.node_parents = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
     bvh_device.node_counts = (int*)alloc_device(WP_CURRENT_CONTEXT, sizeof(int)*bvh_host.max_nodes);
+	bvh_device.bounds = (bounds3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(bounds3)*bvh_host.num_bounds);
 
     // copy host data to device
     memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_lowers, bvh_host.node_lowers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
     memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_uppers, bvh_host.node_uppers, sizeof(BVHPackedNodeHalf)*bvh_host.max_nodes);
     memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.node_parents, bvh_host.node_parents, sizeof(int)*bvh_host.max_nodes);
+	memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device.bounds, bvh_host.bounds, sizeof(bounds3)*bvh_host.num_bounds);
 
     return bvh_device;
 }
@@ -589,12 +587,12 @@ uint64_t bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_bo
 
     BVH bvh_host = bvh_create(bounds_host, num_bounds);
     bvh_host.context = context ? context : cuda_context_get_current();
-    bvh_host.lowers = lowers;
-    bvh_host.uppers = uppers;
+	bvh_host.bounds = bounds_host;
     bvh_host.num_bounds = num_bounds;        
-    bvh_host.bounds = (bounds3*)alloc_device(WP_CURRENT_CONTEXT, sizeof(bounds3)*num_bounds);
-    memcpy_h2d(WP_CURRENT_CONTEXT, bvh_host.bounds, bounds_host, sizeof(bounds3)*num_bounds);
     BVH bvh_device_clone = bvh_clone(WP_CURRENT_CONTEXT, bvh_host);
+
+	bvh_device_clone.lowers = lowers;		// managed by the user
+	bvh_device_clone.uppers = uppers;		// managed by the user
 
     BVH* bvh_device = (BVH*)alloc_device(WP_CURRENT_CONTEXT, sizeof(BVH));
     memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device, &bvh_device_clone, sizeof(BVH));
@@ -602,7 +600,6 @@ uint64_t bvh_create_device(void* context, vec3* lowers, vec3* uppers, int num_bo
     bvh_destroy_host(bvh_host);
     free_host(lowers_host);
     free_host(uppers_host);
-    free_host(bounds_host);
 
     uint64_t bvh_id = (uint64_t)&bvh_device;
     bvh_add_descriptor(bvh_id, bvh_device_clone);

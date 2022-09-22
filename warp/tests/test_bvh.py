@@ -21,10 +21,10 @@ def bvh_query_aabb(bvh_id: wp.uint64,
                 lower: wp.vec3,
                 upper: wp.vec3,
                 intersected_bounds: wp.array(dtype=int),
-                max_intersections):
+                max_intersections: int):
 
     query = wp.bvh_query_aabb(bvh_id, lower, upper)
-    nr = 0
+    nr = int(0)
     bounds_nr = int(0)
 
     while (nr < max_intersections and wp.bvh_query_next(query, bounds_nr)):
@@ -37,10 +37,10 @@ def bvh_query_ray(bvh_id: wp.uint64,
                 start: wp.vec3,
                 dir: wp.vec3,
                 intersected_bounds: wp.array(dtype=int),
-                max_intersections):
+                max_intersections: int):
 
     query = wp.bvh_query_ray(bvh_id, start, dir)
-    nr = 0
+    nr = int(0)
     bounds_nr = int(0)
 
     while (nr < max_intersections and wp.bvh_query_next(query, bounds_nr)):
