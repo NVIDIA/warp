@@ -23,6 +23,7 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.kit.test" = {}
 "omni.kit.menu.utils" = {}
 "omni.graph" = {}
+"omni.graph.nodes" = {}
 "omni.timeline" = {}
 "omni.usd" = {}
 "omni.kit.browser.sample" = {}
