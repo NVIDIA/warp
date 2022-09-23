@@ -901,7 +901,7 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 }
 
 // emulate atomic float max
-inline __device__ float atomic_max(float* address, float val)
+inline CUDA_CALLABLE float atomic_max(float* address, float val)
 {
 #if defined(WP_CPU)
     float old = *address;
@@ -924,8 +924,8 @@ inline __device__ float atomic_max(float* address, float val)
 #endif
 }
 
-// emulate atomic float min
-inline __device__ float atomic_min(float* address, float val)
+// emulate atomic float min/max with atomicCAS()
+inline CUDA_CALLABLE float atomic_min(float* address, float val)
 {
 #if defined(WP_CPU)
     float old = *address;
@@ -948,7 +948,7 @@ inline __device__ float atomic_min(float* address, float val)
 #endif
 }
 
-inline __device__ int atomic_max(int* address, int val)
+inline CUDA_CALLABLE int atomic_max(int* address, int val)
 {
 #if defined(WP_CPU)
     int old = *address;
@@ -960,8 +960,8 @@ inline __device__ int atomic_max(int* address, int val)
 #endif
 }
 
-// emulate atomic int min
-inline __device__ int atomic_min(int* address, int val)
+// atomic int min
+inline CUDA_CALLABLE int atomic_min(int* address, int val)
 {
 #if defined(WP_CPU)
     int old = *address;

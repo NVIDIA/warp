@@ -210,15 +210,6 @@ inline CUDA_CALLABLE spatial_vector atomic_add(spatial_vector* addr, const spati
     return spatial_vector(w, v);
 }
 
-// inline CUDA_CALLABLE spatial_vector atomic_sub(spatial_vector* addr, const spatial_vector& value) 
-// {   
-//     vec3 w = atomic_sub(&(addr->w), value.w);
-//     vec3 v = atomic_sub(&(addr->v), value.v);
-
-//     return spatial_vector(w, v);
-// }
-
-
 
 //---------------------------------------------------------------------------------
 // Represents a rigid body transformation

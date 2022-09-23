@@ -151,6 +151,29 @@ inline CUDA_CALLABLE mat44 atomic_add(mat44 * addr, mat44 value)
     return m;
 }
 
+inline CUDA_CALLABLE mat44 atomic_min(mat44 * addr, mat44 value) 
+{
+    mat44 m;
+    
+    for (int i=0; i < 4; ++i)
+        for (int j=0; j < 4; ++j)
+            m.data[i][j] = atomic_min(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+inline CUDA_CALLABLE mat44 atomic_max(mat44 * addr, mat44 value) 
+{
+    mat44 m;
+    
+    for (int i=0; i < 4; ++i)
+        for (int j=0; j < 4; ++j)
+            m.data[i][j] = atomic_max(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+
 
 inline CUDA_CALLABLE void adj_mat44(
     vec4 c0, vec4 c1, vec4 c2, vec4 c3,

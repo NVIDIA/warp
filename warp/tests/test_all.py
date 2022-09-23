@@ -36,6 +36,7 @@ import warp.tests.test_reload
 import warp.tests.test_struct
 import warp.tests.test_closest_point_edge_edge
 import warp.tests.test_multigpu
+import warp.tests.test_atomic
 
 
 def register_tests(parent):
@@ -68,6 +69,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_struct.register(parent))
     tests.append(warp.tests.test_closest_point_edge_edge.register(parent))
     tests.append(warp.tests.test_multigpu.register(parent))
+    tests.append(warp.tests.test_atomic.register(parent))
 
     return tests
 

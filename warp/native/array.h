@@ -314,6 +314,7 @@ template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int 
 template <typename T>
 CUDA_CALLABLE inline void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
 
+
 // for integral types (and doubles) we do not accumulate gradients
 CUDA_CALLABLE inline void adj_atomic_add(int8* buf, int8 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(uint8* buf, uint8 value) { }
