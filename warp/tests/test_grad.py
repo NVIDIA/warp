@@ -278,6 +278,94 @@ def test_preserve_outputs_grad(test, device):
     # ensure gradients are correct
     assert_np_equal(tape.gradients[x].numpy(), -2.0*val)
 
+def gradcheck(func, func_name, inputs, device, eps=1e-4, tol=1e-2):
+    """
+    Checks that the gradient of the Warp kernel is correct by comparing it to the
+    numerical gradient computed using finite differences.
+    """
+    
+    module = wp.get_module(func.__module__)
+    kernel = wp.Kernel(func=func, key=func_name, module=module)
+
+    def f(xs):
+        # call the kernel without taping for finite differences
+        wp_xs = [
+            wp.array(xs[i], ndim=1, dtype=inputs[i].dtype, device=device)
+            for i in range(len(inputs))
+        ]
+        output = wp.zeros(1, dtype=wp.float32, device=device)
+        wp.launch(kernel, dim=1, inputs=wp_xs, outputs=[output], device=device)
+        return output.numpy()[0]
+
+    # compute numerical gradient
+    numerical_grad = []
+    np_xs = []
+    for i in range(len(inputs)):
+        np_xs.append(inputs[i].numpy()[0].flatten().copy())
+        numerical_grad.append(np.zeros_like(np_xs[-1]))
+        inputs[i].requires_grad = True
+
+    for i in range(len(np_xs)):
+        for j in range(len(np_xs[i])):
+            np_xs[i][j] += eps
+            y1 = f(np_xs)
+            np_xs[i][j] -= 2*eps
+            y2 = f(np_xs)
+            np_xs[i][j] += eps
+            numerical_grad[i][j] = (y1 - y2) / (2*eps)
+
+    # compute analytical gradient
+    tape = wp.Tape()
+    output = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+    with tape:
+        wp.launch(kernel, dim=1, inputs=inputs, outputs=[output], device=device)
+
+    tape.backward(loss=output)
+
+    # compare gradients
+    for i in range(len(inputs)):
+        grad = tape.gradients[inputs[i]]
+        assert_np_equal(grad.numpy(), numerical_grad[i], tol=tol)
+
+    tape.zero()
+
+def test_vector_math_grad(test, device):
+    np.random.seed(123)
+    
+    # test unary operations
+    for dim, vec_type in [(2, wp.vec2), (3, wp.vec3), (4, wp.vec4), (4, wp.quat)]:
+        def check_length(vs: wp.array(dtype=vec_type), out: wp.array(dtype=float)):
+            out[0] = wp.length(vs[0])
+
+        def check_length_sq(vs: wp.array(dtype=vec_type), out: wp.array(dtype=float)):
+            out[0] = wp.length_sq(vs[0])
+
+        def check_normalize(vs: wp.array(dtype=vec_type), out: wp.array(dtype=float)):
+            out[0] = wp.length_sq(wp.normalize(vs[0]))  # compress to scalar output
+
+        # run the tests with 5 different random inputs
+        for _ in range(5):
+            x = wp.array(np.random.randn(1, dim).astype(np.float32), dtype=vec_type, device=device)
+            gradcheck(check_length, f"check_length_{vec_type.__name__}", [x], device)
+            gradcheck(check_length_sq, f"check_length_sq_{vec_type.__name__}", [x], device)
+            gradcheck(check_normalize, f"check_normalize_{vec_type.__name__}", [x], device)
+
+def test_matrix_math_grad(test, device):
+    np.random.seed(123)
+    
+    # test unary operations
+    for dim, mat_type in [(2, wp.mat22), (3, wp.mat33), (4, wp.mat44)]:
+        def check_determinant(vs: wp.array(dtype=mat_type), out: wp.array(dtype=float)):
+            out[0] = wp.determinant(vs[0])
+
+        def check_trace(vs: wp.array(dtype=mat_type), out: wp.array(dtype=float)):
+            out[0] = wp.trace(vs[0])
+
+        # run the tests with 5 different random inputs
+        for _ in range(5):
+            x = wp.array(np.random.randn(1, dim, dim).astype(np.float32), ndim=1, dtype=mat_type, device=device)
+            gradcheck(check_determinant, f"check_length_{mat_type.__name__}", [x], device)
+            gradcheck(check_trace, f"check_length_sq_{mat_type.__name__}", [x], device)
 
 def register(parent):
 
@@ -293,6 +381,8 @@ def register(parent):
     add_function_test(TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=wp.get_cuda_devices())
     add_function_test(TestGrad, "test_for_loop_nested_if_grad", test_for_loop_nested_if_grad, devices=devices)
     add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)
+    add_function_test(TestGrad, "test_vector_math_grad", test_vector_math_grad, devices=devices)
+    add_function_test(TestGrad, "test_matrix_math_grad", test_matrix_math_grad, devices=devices)
 
     return TestGrad
 
