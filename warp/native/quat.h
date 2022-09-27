@@ -117,6 +117,11 @@ inline CUDA_CALLABLE float length(const quat& q)
     return sqrt(dot(q, q));
 }
 
+inline CUDA_CALLABLE float length_sq(const quat& q)
+{
+    return dot(q, q);
+}
+
 inline CUDA_CALLABLE quat normalize(const quat& q)
 {
     float l = length(q);
@@ -292,6 +297,11 @@ inline CUDA_CALLABLE void adj_dot(const quat& a, const quat& b, quat& adj_a, qua
 inline CUDA_CALLABLE void adj_length(const quat& a, quat& adj_a, const float adj_ret)
 {
     adj_a += normalize(a)*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_length_sq(const quat& a, quat& adj_a, const float adj_ret)
+{
+    adj_a += 2.0f*a*adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_normalize(const quat& q, quat& adj_q, const quat& adj_ret)

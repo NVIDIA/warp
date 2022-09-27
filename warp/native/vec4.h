@@ -127,6 +127,11 @@ inline CUDA_CALLABLE float length(vec4 a)
     return sqrt(dot(a, a));
 }
 
+inline CUDA_CALLABLE float length_sq(vec4 a)
+{
+    return dot(a, a);
+}
+
 inline CUDA_CALLABLE vec4 normalize(vec4 a)
 {
     float l = length(a);
@@ -252,6 +257,19 @@ inline CUDA_CALLABLE vec4 atomic_add(vec4 * addr, vec4 value) {
 inline CUDA_CALLABLE void adj_length(vec4 a, vec4& adj_a, const float adj_ret)
 {
     adj_a += normalize(a)*adj_ret;
+
+#if FP_CHECK
+    if (!isfinite(adj_a))
+    {
+        printf("%s:%d - adj_length((%f %f %f %f), (%f %f %f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, a.z, a.w, adj_a.x, adj_a.y, adj_a.z, adj_a.w, adj_ret);
+        assert(0);
+    }
+#endif
+}
+
+inline CUDA_CALLABLE void adj_length_sq(vec4 a, vec4& adj_a, const float adj_ret)
+{
+    adj_a += 2.0f*a*adj_ret;
 
 #if FP_CHECK
     if (!isfinite(adj_a))

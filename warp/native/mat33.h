@@ -275,6 +275,11 @@ inline CUDA_CALLABLE float determinant(const mat33& m)
     return dot(vec3(m.data[0]), cross(vec3(m.data[1]), vec3(m.data[2])));
 }
 
+inline CUDA_CALLABLE float trace(const mat33& m)
+{
+    return m.data[0][0] + m.data[1][1] + m.data[2][2];
+}
+
 inline CUDA_CALLABLE mat33 inverse(const mat33& m)
 {
 	float det = determinant(m);
@@ -401,6 +406,13 @@ inline CUDA_CALLABLE void adj_determinant(const mat33& m, mat33& adj_m, float ad
     (vec3&)adj_m.data[0] += cross(m.get_row(1), m.get_row(2))*adj_ret;
     (vec3&)adj_m.data[1] += cross(m.get_row(2), m.get_row(0))*adj_ret;
     (vec3&)adj_m.data[2] += cross(m.get_row(0), m.get_row(1))*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_trace(const mat33& m, mat33& adj_m, float adj_ret)
+{
+    adj_m.data[0][0] += adj_ret;
+    adj_m.data[1][1] += adj_ret;
+    adj_m.data[2][2] += adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_outer(const vec3& a, const vec3& b, vec3& adj_a, vec3& adj_b, const mat33& adj_ret)

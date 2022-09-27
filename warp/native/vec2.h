@@ -318,6 +318,19 @@ inline CUDA_CALLABLE void adj_length(vec2 a, vec2& adj_a, const float adj_ret)
 #endif
 }
 
+inline CUDA_CALLABLE void adj_length_sq(vec2 a, vec2& adj_a, const float adj_ret)
+{
+    adj_a += 2.0f*a*adj_ret;
+
+#if FP_CHECK
+    if (!isfinite(adj_a))
+    {
+        printf("%s:%d - adj_length_sq((%f %f), (%f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, adj_a.x, adj_a.y, adj_ret);
+        assert(0);
+    }
+#endif
+}
+
 inline CUDA_CALLABLE void adj_normalize(vec2 a, vec2& adj_a, const vec2& adj_ret)
 {
     float d = length(a);

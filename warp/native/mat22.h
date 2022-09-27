@@ -216,6 +216,11 @@ inline CUDA_CALLABLE float determinant(const mat22& m)
     return m.data[0][0]*m.data[1][1] - m.data[1][0]*m.data[0][1];
 }
 
+inline CUDA_CALLABLE float trace(const mat22& m)
+{
+    return m.data[0][0] + m.data[1][1];
+}
+
 inline CUDA_CALLABLE mat22 inverse(const mat22& m)
 {
     float det = determinant(m);
@@ -335,6 +340,11 @@ inline CUDA_CALLABLE void adj_determinant(const mat22& m, mat22& adj_m, float ad
     adj_m.data[1][0] -= m.data[0][1]*adj_ret;
 }
 
+inline CUDA_CALLABLE void adj_trace(const mat22& m, mat22& adj_m, float adj_ret)
+{
+    adj_m.data[0][0] += adj_ret;
+    adj_m.data[1][1] += adj_ret;
+}
 
 inline CUDA_CALLABLE void adj_diag(const vec2& d, vec2& adj_d, const mat22& adj_ret) 
 {

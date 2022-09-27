@@ -455,22 +455,34 @@ inline CUDA_CALLABLE void adj_determinant(const mat44& m, mat44& adj_m, float ad
 
     // Multiply all 3x3 cofactors by adjoint & transpose
     adj_m.data[0][0] += float(z00*adj_ret);
-    adj_m.data[0][1] += float(z10*adj_ret);
-    adj_m.data[1][0] += float(z01*adj_ret);
-    adj_m.data[0][2] += float(z20*adj_ret);
-    adj_m.data[2][0] += float(z02*adj_ret);
-    adj_m.data[0][3] += float(z30*adj_ret);
-    adj_m.data[3][0] += float(z03*adj_ret);
+    adj_m.data[1][0] += float(z10*adj_ret);
+    adj_m.data[0][1] += float(z01*adj_ret);
+    adj_m.data[2][0] += float(z20*adj_ret);
+    adj_m.data[0][2] += float(z02*adj_ret);
+    adj_m.data[3][0] += float(z30*adj_ret);
+    adj_m.data[0][3] += float(z03*adj_ret);
     adj_m.data[1][1] += float(z11*adj_ret);
-    adj_m.data[1][2] += float(z21*adj_ret);
-    adj_m.data[2][1] += float(z12*adj_ret);
-    adj_m.data[1][3] += float(z31*adj_ret);
-    adj_m.data[3][1] += float(z13*adj_ret);
+    adj_m.data[2][1] += float(z21*adj_ret);
+    adj_m.data[1][2] += float(z12*adj_ret);
+    adj_m.data[3][1] += float(z31*adj_ret);
+    adj_m.data[1][3] += float(z13*adj_ret);
     adj_m.data[2][2] += float(z22*adj_ret);
-    adj_m.data[2][3] += float(z32*adj_ret);
-    adj_m.data[3][2] += float(z23*adj_ret);
+    adj_m.data[3][2] += float(z32*adj_ret);
+    adj_m.data[2][3] += float(z23*adj_ret);
     adj_m.data[3][3] += float(z33*adj_ret);
+}
 
+inline CUDA_CALLABLE float trace(const mat44& m)
+{
+    return m.data[0][0] + m.data[1][1] + m.data[2][2] + m.data[3][3];
+}
+
+inline CUDA_CALLABLE void adj_trace(const mat44& m, mat44& adj_m, float adj_ret)
+{
+    adj_m.data[0][0] += adj_ret;
+    adj_m.data[1][1] += adj_ret;
+    adj_m.data[2][2] += adj_ret;
+    adj_m.data[3][3] += adj_ret;
 }
 
 inline CUDA_CALLABLE mat44 inverse(const mat44& m)
