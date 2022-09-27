@@ -8,6 +8,7 @@
 import ctypes 
 import hashlib
 import inspect
+import itertools
 import struct
 import zlib
 import numpy as np
@@ -16,6 +17,7 @@ from typing import Any
 from typing import Tuple
 from typing import TypeVar
 from typing import Generic
+from typing import List
 
 
 class constant:
@@ -900,6 +902,9 @@ class Volume:
         from warp.context import runtime
         self.context = runtime
 
+        if data is None:
+            return
+
         if data.device is None:
             raise RuntimeError(f"Invalid device")
         self.device = data.device
@@ -959,7 +964,7 @@ class Volume:
             raise RuntimeError("Only NVDBs with exactly one grid are supported")
 
         grid_data_offset = 192 + struct.unpack("<I", data[152:156])[0]
-        if codec == 0: # no compession
+        if codec == 0: # no compression
             grid_data = data[grid_data_offset:]
         elif codec == 1: # zip compression
             grid_data = zlib.decompress(data[grid_data_offset + 8:])
@@ -973,6 +978,102 @@ class Volume:
         data_array = array(np.frombuffer(grid_data, dtype=np.byte), device=device)
         return cls(data_array)
 
+    @classmethod
+    def allocate(cls, min: List[int], max: List[int], voxel_size: float, bg_value=0.0, translation=vec3(0,0,0), points_in_world_space=False, device=None):
+        """ Allocate a new Volume based on the bounding box defined by min and max.
+
+        Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
+        If points_in_world_space is true, then min and max are first converted to index space with the given voxel size and
+        translation, and the volume is allocated with those.
+
+        The smallest unit of allocation is a dense tile of 8x8x8 voxels, the requested bounding box is rounded up to tiles, and
+        the resulting tiles will be available in the new volume.
+
+        Args:
+            min (array-like): Lower 3D-coordinates of the bounding box in index space or world space, inclusive
+            max (array-like): Upper 3D-coordinates of the bounding box in index space or world space, inclusive
+            voxel_size (float): Voxel size of the new volume
+            bg_value (float or :class:`warp.vec3`): Value of unallocated voxels of the volume, also defines the volume's type:
+                a :class:`warp.vec3` volume is created if this is :class:`warp.vec3`, otherwise a float volume is created
+            translation (:class:`warp.vec3`): translation between the index and world spaces
+            device (Devicelike): Device the array lives on
+        """
+        if points_in_world_space:
+            min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
+            max = np.around((np.array(max, dtype=np.float32) - translation) / voxel_size)
+
+        tile_min = np.array(min, dtype=int) // 8
+        tile_max = np.array(max, dtype=int) // 8
+        tiles = np.array([[i, j, k] for i in range(tile_min[0], tile_max[0] + 1)
+                                    for j in range(tile_min[1], tile_max[1] + 1)
+                                    for k in range(tile_min[2], tile_max[2] + 1)])
+        tile_points = array(tiles * 8, device=device)
+
+        return cls.allocate_by_tiles(tile_points, voxel_size, bg_value, translation, device)
+
+    @classmethod
+    def allocate_by_tiles(cls, tile_points: array, voxel_size: float, bg_value=0.0, translation=vec3(0,0,0), device=None):
+        """ Allocate a new Volume with active tiles for each point tile_points.
+
+        The smallest unit of allocation is a dense tile of 8x8x8 voxels.
+        This is the primary method for allocating sparse volumes. It uses an array of points indicating the tiles that must be allocated.
+
+        Example use cases:
+            * `tile_points` can mark tiles directly in index space as in the case this method is called by `allocate`.
+            * `tile_points` can be a list of points used in a simulation that needs to transfer data to a volume.
+
+        Args:
+            tile_points (:class:`warp.array`): Array of positions that define the tiles to be allocated.
+                The array can be a 2d, N-by-3 array of :class:`warp.int32` values, indicating index space positions,
+                or can be a 1D array of :class:`warp.vec3` values, indicating world space positions.
+                Repeated points per tile are allowed and will be efficiently deduplicated.
+            vertex positions of type :class:`warp.vec3`
+            voxel_size (float): Voxel size of the new volume
+            bg_value (float or :class:`warp.vec3`): Value of unallocated voxels of the volume, also defines the volume's type:
+                a :class:`warp.vec3` volume is created if this is :class:`warp.vec3`, otherwise a float volume is created
+            translation (:class:`warp.vec3`): translation between the index and world spaces
+            device (Devicelike): Device the array lives on
+        """
+        from warp.context import runtime
+        device = runtime.get_device(device)
+        
+        if voxel_size <= 0.0:
+            raise RuntimeError(f"Voxel size must be positive! Got {voxel_size}")
+        if not device.is_cuda:
+            raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
+        if not (isinstance(tile_points, array) and
+            (tile_points.dtype == int32 and tile_points.ndim  == 2) or
+            (tile_points.dtype == vec3 and tile_points.ndim  == 1)):
+            raise RuntimeError(f"Expected an warp array of vec3s or of n-by-3 integers as tile_points!")
+        if not tile_points.device.is_cuda:
+            tile_points = array(tile_points, dtype=tile_points.dtype, device=device)
+
+        volume = cls(data=None)
+        volume.device = device
+        in_world_space = (tile_points.dtype == vec3)
+        if isinstance(bg_value, vec3):
+            volume.id = volume.context.core.volume_v_from_tiles_device(
+                volume.device.context,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                voxel_size,
+                bg_value,
+                translation,
+                in_world_space)
+        else:
+            volume.id = volume.context.core.volume_f_from_tiles_device(
+                volume.device.context,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                voxel_size,
+                float(bg_value),
+                translation,
+                in_world_space)
+
+        if volume.id == 0:
+            raise RuntimeError("Failed to create volume")
+
+        return volume
 
 class HashGrid:
 

@@ -375,7 +375,7 @@ inline CUDA_CALLABLE float floordiv(float a, float b)
         assert(0);
     }
 #endif
-    return float(int(a/b));
+    return floorf(a/b);
 }
 
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }

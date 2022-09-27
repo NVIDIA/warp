@@ -474,11 +474,17 @@ add_builtin("volume_sample_f", input_types={"id": uint64, "uvw": vec3, "sampling
 add_builtin("volume_lookup_f", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
     doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
+add_builtin("volume_store_f", input_types={"id": uint64, "i": int, "j": int, "k": int, "value": float}, group="Volumes",
+    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""")
+
 add_builtin("volume_sample_v", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=vec3, group="Volumes",
     doc="""Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 
 add_builtin("volume_lookup_v", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=vec3, group="Volumes",
     doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
+add_builtin("volume_store_v", input_types={"id": uint64, "i": int, "j": int, "k": int, "value": vec3}, group="Volumes",
+    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""")
 
 add_builtin("volume_sample_i", input_types={"id": uint64, "uvw": vec3}, value_type=int, group="Volumes",
     doc="""Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. """)
