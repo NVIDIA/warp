@@ -267,6 +267,16 @@ template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, in
 template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_add(&index(buf, i, j, k), -value); }
 template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_add(&index(buf, i, j, k, l), -value); }
 
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, T value) { return atomic_min(&index(buf, i), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, T value) { return atomic_min(&index(buf, i, j), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_min(&index(buf, i, j, k), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_min(&index(buf, i, j, k, l), value); }
+
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, T value) { return atomic_max(&index(buf, i), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, T value) { return atomic_max(&index(buf, i, j), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_max(&index(buf, i, j, k), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_max(&index(buf, i, j, k, l), value); }
+
 
 template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i) { return index(buf, i); }
 template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i, int j) { return index(buf, i, j); }
@@ -303,6 +313,7 @@ template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int 
 // for float and vector types this is just an alias for an atomic add
 template <typename T>
 CUDA_CALLABLE inline void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
+
 
 // for integral types (and doubles) we do not accumulate gradients
 CUDA_CALLABLE inline void adj_atomic_add(int8* buf, int8 value) { }
@@ -410,5 +421,16 @@ template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& 
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
+
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+
 
 } // namespace wp
