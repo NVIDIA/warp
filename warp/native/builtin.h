@@ -908,7 +908,7 @@ inline CUDA_CALLABLE float atomic_max(float* address, float val)
     *address = max(old, val);
     return old;
 
-#elif defined(WP_CUDA)
+#elif defined(__CUDA_ARCH__)
 
     int *address_as_int = (int*)address;
     int old = *address_as_int, assumed;
@@ -932,7 +932,7 @@ inline CUDA_CALLABLE float atomic_min(float* address, float val)
     *address = min(old, val);
     return old;
 
-#elif defined(WP_CUDA)
+#elif defined(__CUDA_ARCH__)
 
     int *address_as_int = (int*)address;
     int old = *address_as_int, assumed;
@@ -955,7 +955,7 @@ inline CUDA_CALLABLE int atomic_max(int* address, int val)
     *address = max(old, val);
     return old;
 
-#elif defined(WP_CUDA)
+#elif defined(__CUDA_ARCH__)
     return atomicMax(address, val);
 #endif
 }
@@ -968,7 +968,7 @@ inline CUDA_CALLABLE int atomic_min(int* address, int val)
     *address = min(old, val);
     return old;
 
-#elif defined(WP_CUDA)
+#elif defined(__CUDA_ARCH__)
     return atomicMin(address, val);
 #endif
 
