@@ -16,6 +16,7 @@
 #    define pnanovdb_memcpy memcpy
 #endif
 #include "nanovdb/PNanoVDB.h"
+#include "nanovdb/PNanoVDBWrite.h"
 
 namespace wp
 {
@@ -288,6 +289,45 @@ CUDA_CALLABLE inline void adj_volume_lookup_v(
     uint64_t id, int32_t i, int32_t j, int32_t k, uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, const vec3& adj_ret)
 {
     // NOP
+}
+
+CUDA_CALLABLE inline void volume_store_f(uint64_t id, int32_t i, int32_t j, int32_t k, const float& value)
+{
+    if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_FLOAT) return;
+
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_root_handle_t root = volume::get_root(buf);
+
+    const pnanovdb_coord_t ijk{ i, j, k };
+    const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_FLOAT, buf, root, PNANOVDB_REF(ijk));
+    pnanovdb_write_float(buf, address, value);
+}
+
+CUDA_CALLABLE inline void adj_volume_store_f(
+    uint64_t id, int32_t i, int32_t j, int32_t k, const float& value,
+    uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, float& adj_value)
+{
+    adj_value += volume_lookup_f(adj_id, i, j, k);
+}
+
+CUDA_CALLABLE inline void volume_store_v(uint64_t id, int32_t i, int32_t j, int32_t k, const vec3& value)
+{
+    if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_VEC3F) return;
+
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_root_handle_t root = volume::get_root(buf);
+
+    const pnanovdb_coord_t ijk{ i, j, k };
+    const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, root, PNANOVDB_REF(ijk));
+    const pnanovdb_vec3_t v{ value.x, value.y, value.z };
+    pnanovdb_write_vec3(buf, address, &v);
+}
+
+CUDA_CALLABLE inline void adj_volume_store_v(
+    uint64_t id, int32_t i, int32_t j, int32_t k, const vec3& value,
+    uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, vec3& adj_value)
+{
+    adj_value = add(adj_value, volume_lookup_v(adj_id, i, j, k));
 }
 
 // Transform position from index space to world space

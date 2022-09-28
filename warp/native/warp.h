@@ -34,8 +34,8 @@ extern "C"
     WP_API void memset_host(void* dest, int value, size_t n);
     WP_API void memset_device(void* context, void* dest, int value, size_t n);
 
-    // create a user-accesible copy of the mesh, it is the 
-    // users reponsibility to keep-alive the points/tris data for the duration of the mesh lifetime
+    // create a user-accessible copy of the mesh, it is the 
+    // users responsibility to keep-alive the points/tris data for the duration of the mesh lifetime
 	WP_API uint64_t mesh_create_host(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
 	WP_API void mesh_destroy_host(uint64_t id);
     WP_API void mesh_refit_host(uint64_t id);
@@ -59,6 +59,8 @@ extern "C"
     WP_API void volume_destroy_host(uint64_t id);
 
     WP_API uint64_t volume_create_device(void* context, void* buf, uint64_t size);
+    WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, wp::vec3 translation, bool points_in_world_space);
+    WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, wp::vec3 bg_value, wp::vec3 translation, bool points_in_world_space);
     WP_API void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_destroy_device(uint64_t id);
 

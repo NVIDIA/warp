@@ -349,7 +349,7 @@ inline CUDA_CALLABLE void adj_cross(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, co
 }
 
 
-inline CUDA_CALLABLE vec3 atomic_add(vec3 * addr, vec3 value) {
+inline CUDA_CALLABLE vec3 atomic_add(vec3* addr, vec3 value) {
 
     float x = atomic_add(&(addr -> x), value.x);
     float y = atomic_add(&(addr -> y), value.y);
@@ -357,6 +357,25 @@ inline CUDA_CALLABLE vec3 atomic_add(vec3 * addr, vec3 value) {
 
     return vec3(x, y, z);
 }
+
+inline CUDA_CALLABLE vec3 atomic_min(vec3* addr, vec3 value) {
+
+    float x = atomic_min(&(addr -> x), value.x);
+    float y = atomic_min(&(addr -> y), value.y);
+    float z = atomic_min(&(addr -> z), value.z);
+
+    return vec3(x, y, z);
+}
+
+inline CUDA_CALLABLE vec3 atomic_max(vec3* addr, vec3 value) {
+
+    float x = atomic_max(&(addr -> x), value.x);
+    float y = atomic_max(&(addr -> y), value.y);
+    float z = atomic_max(&(addr -> z), value.z);
+
+    return vec3(x, y, z);
+}
+
 
 inline CUDA_CALLABLE void adj_length(vec3 a, vec3& adj_a, const float adj_ret)
 {

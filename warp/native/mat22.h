@@ -81,6 +81,30 @@ inline CUDA_CALLABLE mat22 atomic_add(mat22 * addr, mat22 value) {
     return m;
 }
 
+inline CUDA_CALLABLE mat22 atomic_min(mat22 * addr, mat22 value) 
+{
+    mat22 m;
+    
+    for (int i=0; i < 2; ++i)
+        for (int j=0; j < 2; ++j)
+            m.data[i][j] = atomic_min(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+inline CUDA_CALLABLE mat22 atomic_max(mat22 * addr, mat22 value) 
+{
+    mat22 m;
+    
+    for (int i=0; i < 2; ++i)
+        for (int j=0; j < 2; ++j)
+            m.data[i][j] = atomic_max(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+
+
 inline CUDA_CALLABLE void adj_mat22(float m00, float m01, float m10, float m11, float& adj_m00, float& adj_m01, float& adj_m10, float& adj_m11, const mat22& adj_ret)
 {
     adj_m00 += adj_ret.data[0][0];

@@ -474,11 +474,17 @@ add_builtin("volume_sample_f", input_types={"id": uint64, "uvw": vec3, "sampling
 add_builtin("volume_lookup_f", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
     doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
+add_builtin("volume_store_f", input_types={"id": uint64, "i": int, "j": int, "k": int, "value": float}, group="Volumes",
+    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""")
+
 add_builtin("volume_sample_v", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=vec3, group="Volumes",
     doc="""Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 
 add_builtin("volume_lookup_v", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=vec3, group="Volumes",
     doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
+add_builtin("volume_store_v", input_types={"id": uint64, "i": int, "j": int, "k": int, "value": vec3}, group="Volumes",
+    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""")
 
 add_builtin("volume_sample_i", input_types={"id": uint64, "uvw": vec3}, value_type=int, group="Volumes",
     doc="""Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. """)
@@ -702,6 +708,17 @@ add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "value":
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+
+add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+
+add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+
 
 # used to index into builtin types, i.e.: y = vec3[1]
 add_builtin("index", input_types={"a": vec2, "i": int}, value_type=float,  group="Utility")

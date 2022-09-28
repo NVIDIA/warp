@@ -110,6 +110,29 @@ inline CUDA_CALLABLE mat33 atomic_add(mat33 * addr, mat33 value)
     return m;
 }
 
+
+inline CUDA_CALLABLE mat33 atomic_min(mat33 * addr, mat33 value) 
+{
+    mat33 m;
+    
+    for (int i=0; i < 3; ++i)
+        for (int j=0; j < 3; ++j)
+            m.data[i][j] = atomic_min(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+inline CUDA_CALLABLE mat33 atomic_max(mat33 * addr, mat33 value) 
+{
+    mat33 m;
+    
+    for (int i=0; i < 3; ++i)
+        for (int j=0; j < 3; ++j)
+            m.data[i][j] = atomic_max(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
 inline CUDA_CALLABLE void adj_mat33(vec3 c0, vec3 c1, vec3 c2,
                       vec3& a0, vec3& a1, vec3& a2,
                       const mat33& adj_ret)

@@ -32,26 +32,18 @@ class Robot:
 
     frame_dt = 1.0/60.0
 
-    episode_duration = 20.0      # seconds
-    episode_frames = int(episode_duration/frame_dt)
-
-    sim_substeps = 10
-    sim_dt = frame_dt / sim_substeps
-    sim_steps = int(episode_duration / sim_dt)
-
-    sim_time = 0.0
     render_time = 0.0
 
+    # step size to use for the IK updates
     step_size = 0.1
 
-    def __init__(self, render=True, num_envs=1, profile=False, device=None):
+    def __init__(self, render=True, num_envs=1, device=None):
 
         builder = wp.sim.ModelBuilder()
 
         self.render = render
 
         self.num_envs = num_envs
-        self.profile = profile
         self.device = device
 
         articulation_builder = wp.sim.ModelBuilder()
@@ -80,15 +72,17 @@ class Robot:
 
         self.dof = len(articulation_builder.joint_q)
 
+        self.target_origin = []
         for i in range(num_envs):
             builder.add_rigid_articulation(
                 articulation_builder,
                 xform=wp.transform(np.array(
                     (i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5))
             )
-
+            self.target_origin.append((i * 2.0, 4.0, 0.0))
             # joint initial positions
             builder.joint_q[-3:] = np.random.uniform(-0.5, 0.5, size=3)
+        self.target_origin = np.array(self.target_origin)
 
         # finalize model
         self.model = builder.finalize(device)
@@ -149,17 +143,15 @@ class Robot:
         # our function has 3 outputs (EE position), so we need a 3xN jacobian per environment
         jacobians = np.empty((self.num_envs, 3, self.dof), dtype=np.float32)
         tape = wp.Tape()
-        with wp.ScopedTimer("Forward", active=self.profile):
-            with tape:
-                self.compute_ee_position()
+        with tape:
+            self.compute_ee_position()
         for output_index in range(3):
             # select which row of the Jacobian we want to compute
             select_index = np.zeros(3)
             select_index[output_index] = 1.0
             e = wp.array(np.tile(select_index, self.num_envs),
                          dtype=wp.vec3, device=self.device)
-            with wp.ScopedTimer("Backward", active=self.profile):
-                tape.backward(grads={self.ee_pos: e})
+            tape.backward(grads={self.ee_pos: e})
             q_grad_i = tape.gradients[self.model.joint_q]
             jacobians[:, output_index, :] = q_grad_i.numpy().reshape(
                 self.num_envs, self.dof)
@@ -185,10 +177,8 @@ class Robot:
 
     def run(self, render=True):
 
-        # ---------------
-        # run simulation
+        profiler = {}
 
-        self.sim_time = 0.0
         self.state = self.model.state(requires_grad=True)
 
         if render:
@@ -199,18 +189,15 @@ class Robot:
 
         for _ in range(5):
             # select new random target points
-            targets = []
-            for i in range(self.num_envs):
-                target_pos = np.array([i * 2.0, 4.0, 0.0])
-                target_pos[1] += np.random.uniform(-1.5, 1.5)
-                target_pos[2] += np.random.uniform(-1.5, 1.5)
-                targets.append(target_pos)
-            targets = np.array(targets)
+            targets = self.target_origin.copy()
+            targets[:,
+                    1:] += np.random.uniform(-0.5, 0.5, size=(self.num_envs, 2))
 
             for iter in range(50):
-                # compute jacobian
-                jacobians = self.compute_jacobian()
-                # jacobians = self.compute_fd_jacobian()
+                with wp.ScopedTimer("jacobian", print=False, active=True, dict=profiler):
+                    # compute jacobian
+                    jacobians = self.compute_jacobian()
+                    # jacobians = self.compute_fd_jacobian()
 
                 # compute error
                 ee_pos = self.compute_ee_position().numpy()
@@ -238,7 +225,13 @@ class Robot:
 
                     print("iter:", iter, "error:", error.mean())
 
-        return 0
+        avg_time = np.array(profiler["jacobian"]).mean()
+        avg_steps_second = 1000.0*float(self.num_envs)/avg_time
+
+        print(
+            f"envs: {self.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
+
+        return 1000.0*float(self.num_envs)/avg_time
 
 
 profile = False
@@ -249,7 +242,7 @@ if profile:
     env_times = []
     env_size = []
 
-    for i in range(15):
+    for i in range(12):
 
         robot = Robot(render=False, num_envs=env_count)
         steps_per_second = robot.run(render=False)

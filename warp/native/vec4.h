@@ -249,6 +249,27 @@ inline CUDA_CALLABLE vec4 atomic_add(vec4 * addr, vec4 value) {
     return vec4(x, y, z, w);
 }
 
+inline CUDA_CALLABLE vec4 atomic_min(vec4 * addr, vec4 value) {
+
+    float x = atomic_min(&(addr -> x), value.x);
+    float y = atomic_min(&(addr -> y), value.y);
+    float z = atomic_min(&(addr -> z), value.z);
+    float w = atomic_min(&(addr -> w), value.w);
+
+    return vec4(x, y, z, w);
+}
+
+inline CUDA_CALLABLE vec4 atomic_max(vec4 * addr, vec4 value) {
+
+    float x = atomic_max(&(addr -> x), value.x);
+    float y = atomic_max(&(addr -> y), value.y);
+    float z = atomic_max(&(addr -> z), value.z);
+    float w = atomic_max(&(addr -> w), value.w);
+
+    return vec4(x, y, z, w);
+}
+
+
 inline CUDA_CALLABLE void adj_length(vec4 a, vec4& adj_a, const float adj_ret)
 {
     adj_a += normalize(a)*adj_ret;
