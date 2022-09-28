@@ -9,7 +9,6 @@ import unittest
 from unittest import runner
 
 import warp as wp
-
 import warp.tests.test_codegen
 import warp.tests.test_mesh_query_aabb
 import warp.tests.test_mesh_query_point
@@ -37,6 +36,7 @@ import warp.tests.test_struct
 import warp.tests.test_closest_point_edge_edge
 import warp.tests.test_multigpu
 import warp.tests.test_atomic
+import warp.tests.test_model
 
 
 def register_tests(parent):
@@ -70,6 +70,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_closest_point_edge_edge.register(parent))
     tests.append(warp.tests.test_multigpu.register(parent))
     tests.append(warp.tests.test_atomic.register(parent))
+    tests.append(warp.tests.test_model.register(parent))
 
     return tests
 
