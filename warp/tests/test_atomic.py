@@ -42,10 +42,18 @@ def make_atomic_test(type):
         n = 1024
 
         rng = np.random.default_rng(42)
-        dim = type._shape_
-
-        base = rng.random(size=(1, *dim), dtype=float)
-        val = rng.random(size=(n, *dim), dtype=float)
+        
+        if type == wp.int32:
+            base = (rng.random(size=1, dtype=np.float32)*100.0).astype(np.int32)
+            val = (rng.random(size=n, dtype=np.float32)*100.0).astype(np.int32)
+        
+        elif type == wp.float32:
+            base = rng.random(size=1, dtype=np.float32)
+            val = rng.random(size=n, dtype=np.float32)
+        
+        else:
+            base = rng.random(size=(1, *type._shape_), dtype=float)
+            val = rng.random(size=(n, *type._shape_), dtype=float)
         
         add_array = wp.array(base, dtype=type, device=device)
         min_array = wp.array(base, dtype=type, device=device)
@@ -64,6 +72,8 @@ def make_atomic_test(type):
     return test_atomic
 
 # generate test functions for atomic types
+test_atomic_int = make_atomic_test(wp.int32)
+test_atomic_float = make_atomic_test(wp.float32)
 test_atomic_vec2 = make_atomic_test(wp.vec2)
 test_atomic_vec3 = make_atomic_test(wp.vec3)
 test_atomic_vec4 = make_atomic_test(wp.vec4)
@@ -78,6 +88,9 @@ def register(parent):
 
     class TestAtomic(parent):
         pass
+    
+    add_function_test(TestAtomic, "test_atomic_int", test_atomic_int, devices=devices)
+    add_function_test(TestAtomic, "test_atomic_float", test_atomic_float, devices=devices)
     add_function_test(TestAtomic, "test_atomic_vec2", test_atomic_vec2, devices=devices)
     add_function_test(TestAtomic, "test_atomic_vec3", test_atomic_vec3, devices=devices)
     add_function_test(TestAtomic, "test_atomic_vec4", test_atomic_vec4, devices=devices)
