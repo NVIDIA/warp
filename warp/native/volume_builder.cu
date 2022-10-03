@@ -88,7 +88,7 @@ struct ShiftRightIterator : public cub::TransformInputIterator<OutType, ShiftRig
 // --- Atomic instructions for NanoVDB construction ---
 template<typename MaskT>
 CUDA_CALLABLE_DEVICE void set_mask_atomic(MaskT& mask, uint32_t n) {
-    uint64_t* words = reinterpret_cast<uint64_t*>(&mask);
+    unsigned long long int* words = reinterpret_cast<unsigned long long int*>(&mask);
     atomicOr(words + (n / 64), 1ull << (n & 63));
 }
 
