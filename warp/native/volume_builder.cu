@@ -219,17 +219,17 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     const size_t total_bytes =
         sizeof(Grid) +
         sizeof(Tree) +
-        sizeof(Tree::RootType) +
-        sizeof(Tree::RootType::Tile) * upper_node_count +
-        sizeof(Tree::Node2) * upper_node_count +
-        sizeof(Tree::Node1) * lower_node_count +
-        sizeof(Tree::Node0) * leaf_count;
+        sizeof(typename Tree::RootType) +
+        sizeof(typename Tree::RootType::Tile) * upper_node_count +
+        sizeof(typename Tree::Node2) * upper_node_count +
+        sizeof(typename Tree::Node1) * lower_node_count +
+        sizeof(typename Tree::Node0) * leaf_count;
 
     const int64_t upper_mem_offset =
-        sizeof(nanovdb::GridData) + sizeof(Tree) + sizeof(Tree::RootType) + 
-        sizeof(Tree::RootType::Tile) * upper_node_count;
-    const int64_t lower_mem_offset = upper_mem_offset + sizeof(Tree::Node2) * upper_node_count;
-    const int64_t leaf_mem_offset = lower_mem_offset + sizeof(Tree::Node1) * lower_node_count;
+        sizeof(nanovdb::GridData) + sizeof(Tree) + sizeof(typename Tree::RootType) + 
+        sizeof(typename Tree::RootType::Tile) * upper_node_count;
+    const int64_t lower_mem_offset = upper_mem_offset + sizeof(typename Tree::Node2) * upper_node_count;
+    const int64_t leaf_mem_offset = lower_mem_offset + sizeof(typename Tree::Node1) * lower_node_count;
 
     typename Grid::DataType* grid;
     check_cuda(cudaMalloc(&grid, total_bytes));
@@ -246,9 +246,9 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
         // Setting up the tree and root node
         kernel<<<1, 1>>>(1, [=] __device__(size_t i) {
             tree->mNodeOffset[3] = sizeof(Tree);
-            tree->mNodeOffset[2] = tree->mNodeOffset[3] + sizeof(Tree::RootType) + sizeof(Tree::RootType::Tile) * upper_node_count;
-            tree->mNodeOffset[1] = tree->mNodeOffset[2] + sizeof(Tree::Node2) * upper_node_count;
-            tree->mNodeOffset[0] = tree->mNodeOffset[1] + sizeof(Tree::Node1) * lower_node_count;
+            tree->mNodeOffset[2] = tree->mNodeOffset[3] + sizeof(typename Tree::RootType) + sizeof(typename Tree::RootType::Tile) * upper_node_count;
+            tree->mNodeOffset[1] = tree->mNodeOffset[2] + sizeof(typename Tree::Node2) * upper_node_count;
+            tree->mNodeOffset[0] = tree->mNodeOffset[1] + sizeof(typename Tree::Node1) * lower_node_count;
             tree->mNodeCount[2] = tree->mTileCount[2] = upper_node_count;
             tree->mNodeCount[1] = tree->mTileCount[1] = lower_node_count;
             tree->mNodeCount[0] = tree->mTileCount[0] = leaf_count;
@@ -270,7 +270,7 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     {
         kernel<<<num_blocks, num_threads>>>(upper_node_count, [=] __device__(size_t i) {
             tiles[i].key = root->CoordToKey(tile_key32_to_coord(upper_keys[i]));
-            tiles[i].child = sizeof(Tree::RootType) + sizeof(Tree::RootType::Tile) * upper_node_count + sizeof(Tree::Node2) * i;
+            tiles[i].child = sizeof(typename Tree::RootType) + sizeof(typename Tree::RootType::Tile) * upper_node_count + sizeof(typename Tree::Node2) * i;
             tiles[i].state = 0;
             tiles[i].value = background_value;
 
