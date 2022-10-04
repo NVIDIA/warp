@@ -301,7 +301,7 @@ def gradcheck(func, func_name, inputs, device, eps=1e-4, tol=1e-2):
     numerical_grad = []
     np_xs = []
     for i in range(len(inputs)):
-        np_xs.append(inputs[i].numpy()[0].flatten().copy())
+        np_xs.append(inputs[i].numpy().flatten().copy())
         numerical_grad.append(np.zeros_like(np_xs[-1]))
         inputs[i].requires_grad = True
 
@@ -350,6 +350,23 @@ def test_vector_math_grad(test, device):
             gradcheck(check_length_sq, f"check_length_sq_{vec_type.__name__}", [x], device)
             gradcheck(check_normalize, f"check_normalize_{vec_type.__name__}", [x], device)
 
+
+@wp.func
+def my_rpy(roll: float, pitch: float, yaw: float) -> wp.quat:
+    cy = wp.cos(yaw * 0.5)
+    sy = wp.sin(yaw * 0.5)
+    cr = wp.cos(roll * 0.5)
+    sr = wp.sin(roll * 0.5)
+    cp = wp.cos(pitch * 0.5)
+    sp = wp.sin(pitch * 0.5)
+
+    w = (cy * cr * cp + sy * sr * sp)
+    x = (cy * sr * cp - sy * cr * sp)
+    y = (cy * cr * sp + sy * sr * cp)
+    z = (sy * cr * cp - cy * sr * sp)
+
+    return wp.quat(x, y, z, w)
+
 def test_matrix_math_grad(test, device):
     np.random.seed(123)
     
@@ -367,6 +384,60 @@ def test_matrix_math_grad(test, device):
             gradcheck(check_determinant, f"check_length_{mat_type.__name__}", [x], device)
             gradcheck(check_trace, f"check_length_sq_{mat_type.__name__}", [x], device)
 
+def test_3d_math_grad(test, device):
+    np.random.seed(123)
+    
+    # test binary operations
+    def check_cross(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+        out[0] = wp.length(wp.cross(vs[0], vs[1]))
+
+    def check_dot(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+        out[0] = wp.dot(vs[0], vs[1])
+
+    def check_mat33(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+        a = vs[0]
+        b = vs[1]
+        c = wp.cross(a, b)
+        m = wp.mat33(a[0], b[0], c[0], a[1], b[1], c[1], a[2], b[2], c[2])
+        out[0] = wp.determinant(m)
+
+    def check_trace_diagonal(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+        a = vs[0]
+        b = vs[1]
+        c = wp.cross(a, b)
+        m = wp.mat33(
+            1.0 / (a[0] + 10.0), 0.0, 0.0,
+            0.0, 1.0 / (b[1] + 10.0), 0.0,
+            0.0, 0.0, 1.0 / (c[2] + 10.0),
+        )
+        out[0] = wp.trace(m)
+
+    def check_rot_rpy(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+        v = vs[0]
+        q = wp.quat_rpy(v[0], v[1], v[2])
+        out[0] = wp.length(wp.quat_rotate(q, vs[1]))
+
+    def check_rot_axis_angle(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+        v = wp.normalize(vs[0])
+        q = wp.quat_from_axis_angle(v, 0.5)
+        out[0] = wp.length(wp.quat_rotate(q, vs[1]))
+
+    def check_rot_quat_inv(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+        v = vs[0]
+        q = wp.normalize(wp.quat(v[0], v[1], v[2], 1.0))
+        out[0] = wp.length(wp.quat_rotate_inv(q, vs[1]))
+
+    # run the tests with 5 different random inputs
+    for _ in range(5):
+        x = wp.array(np.random.randn(2, 3).astype(np.float32), dtype=wp.vec3, device=device)
+        gradcheck(check_cross, f"check_cross_3d", [x], device)
+        gradcheck(check_dot, f"check_dot_3d", [x], device)
+        gradcheck(check_mat33, f"check_mat33_3d", [x], device, eps=2e-2)
+        gradcheck(check_trace_diagonal, f"check_trace_diagonal_3d", [x], device)
+        gradcheck(check_rot_rpy, f"check_rot_rpy_3d", [x], device)
+        gradcheck(check_rot_axis_angle, f"check_rot_axis_angle_3d", [x], device)
+        gradcheck(check_rot_quat_inv, f"check_rot_quat_inv_3d", [x], device)
+
 def register(parent):
 
     devices = wp.get_devices()
@@ -383,6 +454,7 @@ def register(parent):
     add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)
     add_function_test(TestGrad, "test_vector_math_grad", test_vector_math_grad, devices=devices)
     add_function_test(TestGrad, "test_matrix_math_grad", test_matrix_math_grad, devices=devices)
+    add_function_test(TestGrad, "test_3d_math_grad", test_3d_math_grad, devices=devices)
 
     return TestGrad
 
