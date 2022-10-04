@@ -209,7 +209,25 @@ inline CUDA_CALLABLE void adj_mat44(float m00, float m01, float m02, float m03,
                       float& a30, float& a31, float& a32, float& a33,
                       const mat44& adj_ret)
 {
-    printf("todo\n");
+    a00 += adj_ret.data[0][0];
+    a01 += adj_ret.data[0][1];
+    a02 += adj_ret.data[0][2];
+    a03 += adj_ret.data[0][3];
+
+    a10 += adj_ret.data[1][0];
+    a11 += adj_ret.data[1][1];
+    a12 += adj_ret.data[1][2];
+    a13 += adj_ret.data[1][3];
+
+    a20 += adj_ret.data[2][0];
+    a21 += adj_ret.data[2][1];
+    a22 += adj_ret.data[2][2];
+    a23 += adj_ret.data[2][3];
+
+    a30 += adj_ret.data[3][0];
+    a31 += adj_ret.data[3][1];
+    a32 += adj_ret.data[3][2];
+    a33 += adj_ret.data[3][3];
 }
 
 inline CUDA_CALLABLE float index(const mat44& m, int row, int col)
@@ -618,11 +636,11 @@ inline CUDA_CALLABLE mat44 outer(const vec4& a, const vec4& b)
 
 inline CUDA_CALLABLE void adj_transform_point(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
 {
-    printf("todo\n");
+    printf("todo: adj_transform_point\n");
 }
 inline CUDA_CALLABLE void adj_transform_vector(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
 {
-    printf("todo\n");
+    printf("todo: adj_transform_vector\n");
 }
 
 

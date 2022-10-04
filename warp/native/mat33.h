@@ -129,7 +129,15 @@ inline CUDA_CALLABLE void adj_mat33(float m00, float m01, float m02,
                       float& a20, float& a21, float& a22,
                       const mat33& adj_ret)
 {
-    printf("todo\n");
+    a00 += adj_ret.data[0][0];
+    a01 += adj_ret.data[0][1];
+    a02 += adj_ret.data[0][2];
+    a10 += adj_ret.data[1][0];
+    a11 += adj_ret.data[1][1];
+    a12 += adj_ret.data[1][2];
+    a20 += adj_ret.data[2][0];
+    a21 += adj_ret.data[2][1];
+    a22 += adj_ret.data[2][2];
 }
 
 inline bool CUDA_CALLABLE isfinite(const mat33& m)
