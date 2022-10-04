@@ -12,6 +12,7 @@ import inspect
 import hashlib
 import ctypes
 import platform
+import ast
 
 from typing import Tuple
 from typing import List
@@ -494,6 +495,9 @@ class Module:
         self.constants = []
         self.structs = []
 
+        self.dependencies = set() # modules that this module depends on
+        self.dependents = set() # modules that depend on this module
+
         self.dll = None
         self.cuda_modules = {} # module lookup by CUDA context
 
@@ -511,9 +515,10 @@ class Module:
 
         self.kernels[kernel.key] = kernel
 
+        self._update_dependencies(kernel.adj)
+
         # for a reload of module on next launch
         self.unload()
-
 
     def register_function(self, func):
         
@@ -522,13 +527,45 @@ class Module:
         else:
             self.functions[func.key].add_overload(func)
 
+        self._update_dependencies(func.adj)
+
         # for a reload of module on next launch
         self.unload()
 
+    def _update_dependencies(self, adj):
+
+        # scan for function calls
+        for node in ast.walk(adj.tree):
+            if isinstance(node, ast.Call):
+                # try and look up path in function globals
+                path = adj.resolve_path(node.func)
+                f = eval(".".join(path), adj.func.__globals__)
+
+                # if this is a user-defined function, add a module dependency
+                if isinstance(f, warp.context.Function) and f.module is not None:
+                    self._add_dependency(f.module)
+
+        # scan for structs
+        for arg in adj.args:
+            if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
+                self._add_dependency(arg.type.module)
+
+    def _add_dependency(self, module):
+
+        if module is not self:
+            self.dependencies.add(module)
+            module.dependents.add(self)
 
 
     def hash_module(self):
-        
+
+        return self._hash_module_rec(set())
+
+    def _hash_module_rec(self, rec_mask):
+
+        # Hash this module, including all dependencies recursively.
+        # The rec_mask tracks modules already visited to avoid circular dependencies.
+
         h = hashlib.sha256()
 
         # struct source
@@ -558,6 +595,14 @@ class Module:
         # # compile-time constants (global)
         if warp.types.constant._hash:
             h.update(warp.constant._hash.digest())
+
+        # recurse on dependencies
+        rec_mask.add(self)
+        sorted_deps = sorted(self.dependencies, key=lambda m: m.name)
+        for dep in sorted_deps:
+            if dep not in rec_mask:
+                dep_hash = dep._hash_module_rec(rec_mask)
+                h.update(dep_hash)
 
         return h.digest()
 
@@ -717,6 +762,13 @@ class Module:
 
     def unload(self):
 
+        self._unload_rec(set())
+    
+    def _unload_rec(self, rec_mask):
+
+        # Unload this module and recursively unload all of its dependents.
+        # The rec_mask tracks modules already visited to avoid circular dependencies.
+
         if self.dll is not None:
             warp.build.unload_dll(self.dll)
             self.dll = None
@@ -729,6 +781,13 @@ class Module:
                 runtime.core.cuda_unload_module(context, module)
             runtime.core.cuda_context_set_current(saved_context)
             self.cuda_modules = {}
+        
+        # recurse on dependents
+        rec_mask.add(self)
+        for d in self.dependents:
+            if d not in rec_mask:
+                d._unload_rec(rec_mask)
+
 
 #-------------------------------------------
 # execution context
