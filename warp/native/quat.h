@@ -280,7 +280,174 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle
 
 inline CUDA_CALLABLE void adj_quat_rpy(float roll, float pitch, float yaw, float& adj_roll, float& adj_pitch, float& adj_yaw, const quat& adj_ret)
 {
-    // todo
+    // primal vars
+    const float32 var_0 = 0.5;
+    float32 var_1;
+    float32 var_2;
+    float32 var_3;
+    float32 var_4;
+    float32 var_5;
+    float32 var_6;
+    float32 var_7;
+    float32 var_8;
+    float32 var_9;
+    float32 var_10;
+    float32 var_11;
+    float32 var_12;
+    float32 var_13;
+    float32 var_14;
+    float32 var_15;
+    float32 var_16;
+    float32 var_17;
+    float32 var_18;
+    float32 var_19;
+    float32 var_20;
+    float32 var_21;
+    float32 var_22;
+    float32 var_23;
+    float32 var_24;
+    float32 var_25;
+    float32 var_26;
+    float32 var_27;
+    float32 var_28;
+    float32 var_29;
+    float32 var_30;
+    float32 var_31;
+    float32 var_32;
+    quat var_33;
+    //---------
+    // dual vars
+    float32 adj_0 = 0;
+    float32 adj_1 = 0;
+    float32 adj_2 = 0;
+    float32 adj_3 = 0;
+    float32 adj_4 = 0;
+    float32 adj_5 = 0;
+    float32 adj_6 = 0;
+    float32 adj_7 = 0;
+    float32 adj_8 = 0;
+    float32 adj_9 = 0;
+    float32 adj_10 = 0;
+    float32 adj_11 = 0;
+    float32 adj_12 = 0;
+    float32 adj_13 = 0;
+    float32 adj_14 = 0;
+    float32 adj_15 = 0;
+    float32 adj_16 = 0;
+    float32 adj_17 = 0;
+    float32 adj_18 = 0;
+    float32 adj_19 = 0;
+    float32 adj_20 = 0;
+    float32 adj_21 = 0;
+    float32 adj_22 = 0;
+    float32 adj_23 = 0;
+    float32 adj_24 = 0;
+    float32 adj_25 = 0;
+    float32 adj_26 = 0;
+    float32 adj_27 = 0;
+    float32 adj_28 = 0;
+    float32 adj_29 = 0;
+    float32 adj_30 = 0;
+    float32 adj_31 = 0;
+    float32 adj_32 = 0;
+    quat adj_33 = 0;
+    //---------
+    // forward
+    // cy = wp.cos(yaw * 0.5)
+    var_1 = wp::mul(yaw, var_0);
+    var_2 = wp::cos(var_1);
+    // sy = wp.sin(yaw * 0.5)
+    var_3 = wp::mul(yaw, var_0);
+    var_4 = wp::sin(var_3);
+    // cr = wp.cos(roll * 0.5)
+    var_5 = wp::mul(roll, var_0);
+    var_6 = wp::cos(var_5);
+    // sr = wp.sin(roll * 0.5)
+    var_7 = wp::mul(roll, var_0);
+    var_8 = wp::sin(var_7);
+    // cp = wp.cos(pitch * 0.5)
+    var_9 = wp::mul(pitch, var_0);
+    var_10 = wp::cos(var_9);
+    // sp = wp.sin(pitch * 0.5)
+    var_11 = wp::mul(pitch, var_0);
+    var_12 = wp::sin(var_11);
+    // w = (cy * cr * cp + sy * sr * sp)
+    var_13 = wp::mul(var_2, var_6);
+    var_14 = wp::mul(var_13, var_10);
+    var_15 = wp::mul(var_4, var_8);
+    var_16 = wp::mul(var_15, var_12);
+    var_17 = wp::add(var_14, var_16);
+    // x = (cy * sr * cp - sy * cr * sp)
+    var_18 = wp::mul(var_2, var_8);
+    var_19 = wp::mul(var_18, var_10);
+    var_20 = wp::mul(var_4, var_6);
+    var_21 = wp::mul(var_20, var_12);
+    var_22 = wp::sub(var_19, var_21);
+    // y = (cy * cr * sp + sy * sr * cp)
+    var_23 = wp::mul(var_2, var_6);
+    var_24 = wp::mul(var_23, var_12);
+    var_25 = wp::mul(var_4, var_8);
+    var_26 = wp::mul(var_25, var_10);
+    var_27 = wp::add(var_24, var_26);
+    // z = (sy * cr * cp - cy * sr * sp)
+    var_28 = wp::mul(var_4, var_6);
+    var_29 = wp::mul(var_28, var_10);
+    var_30 = wp::mul(var_2, var_8);
+    var_31 = wp::mul(var_30, var_12);
+    var_32 = wp::sub(var_29, var_31);
+    // return wp.quat(x, y, z, w)
+    var_33 = wp::quat(var_22, var_27, var_32, var_17);
+    goto label_adj_quat_rpy;
+    //---------
+    // reverse
+    label_adj_quat_rpy:;
+    adj_33 += adj_ret;
+    wp::adj_quat(var_22, var_27, var_32, var_17, adj_22, adj_27, adj_32, adj_17,
+                adj_33);
+    // adj: return wp.quat(x, y, z, w)
+    wp::adj_sub(var_29, var_31, adj_29, adj_31, adj_32);
+    wp::adj_mul(var_30, var_12, adj_30, adj_12, adj_31);
+    wp::adj_mul(var_2, var_8, adj_2, adj_8, adj_30);
+    wp::adj_mul(var_28, var_10, adj_28, adj_10, adj_29);
+    wp::adj_mul(var_4, var_6, adj_4, adj_6, adj_28);
+    // adj: z = (sy * cr * cp - cy * sr * sp)
+    wp::adj_add(var_24, var_26, adj_24, adj_26, adj_27);
+    wp::adj_mul(var_25, var_10, adj_25, adj_10, adj_26);
+    wp::adj_mul(var_4, var_8, adj_4, adj_8, adj_25);
+    wp::adj_mul(var_23, var_12, adj_23, adj_12, adj_24);
+    wp::adj_mul(var_2, var_6, adj_2, adj_6, adj_23);
+    // adj: y = (cy * cr * sp + sy * sr * cp)
+    wp::adj_sub(var_19, var_21, adj_19, adj_21, adj_22);
+    wp::adj_mul(var_20, var_12, adj_20, adj_12, adj_21);
+    wp::adj_mul(var_4, var_6, adj_4, adj_6, adj_20);
+    wp::adj_mul(var_18, var_10, adj_18, adj_10, adj_19);
+    wp::adj_mul(var_2, var_8, adj_2, adj_8, adj_18);
+    // adj: x = (cy * sr * cp - sy * cr * sp)
+    wp::adj_add(var_14, var_16, adj_14, adj_16, adj_17);
+    wp::adj_mul(var_15, var_12, adj_15, adj_12, adj_16);
+    wp::adj_mul(var_4, var_8, adj_4, adj_8, adj_15);
+    wp::adj_mul(var_13, var_10, adj_13, adj_10, adj_14);
+    wp::adj_mul(var_2, var_6, adj_2, adj_6, adj_13);
+    // adj: w = (cy * cr * cp + sy * sr * sp)
+    wp::adj_sin(var_11, adj_11, adj_12);
+    wp::adj_mul(pitch, var_0, adj_pitch, adj_0, adj_11);
+    // adj: sp = wp.sin(pitch * 0.5)
+    wp::adj_cos(var_9, adj_9, adj_10);
+    wp::adj_mul(pitch, var_0, adj_pitch, adj_0, adj_9);
+    // adj: cp = wp.cos(pitch * 0.5)
+    wp::adj_sin(var_7, adj_7, adj_8);
+    wp::adj_mul(roll, var_0, adj_roll, adj_0, adj_7);
+    // adj: sr = wp.sin(roll * 0.5)
+    wp::adj_cos(var_5, adj_5, adj_6);
+    wp::adj_mul(roll, var_0, adj_roll, adj_0, adj_5);
+    // adj: cr = wp.cos(roll * 0.5)
+    wp::adj_sin(var_3, adj_3, adj_4);
+    wp::adj_mul(yaw, var_0, adj_yaw, adj_0, adj_3);
+    // adj: sy = wp.sin(yaw * 0.5)
+    wp::adj_cos(var_1, adj_1, adj_2);
+    wp::adj_mul(yaw, var_0, adj_yaw, adj_0, adj_1);
+    // adj: cy = wp.cos(yaw * 0.5)
+    return;
 }
 
 inline CUDA_CALLABLE void adj_quat_identity(const quat& adj_ret)
