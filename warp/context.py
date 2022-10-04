@@ -539,11 +539,15 @@ class Module:
             if isinstance(node, ast.Call):
                 # try and look up path in function globals
                 path = adj.resolve_path(node.func)
-                f = eval(".".join(path), adj.func.__globals__)
+                try:
+                    f = eval(".".join(path), adj.func.__globals__)
 
-                # if this is a user-defined function, add a module dependency
-                if isinstance(f, warp.context.Function) and f.module is not None:
-                    self._add_dependency(f.module)
+                    # if this is a user-defined function, add a module dependency
+                    if isinstance(f, warp.context.Function) and f.module is not None:
+                        self._add_dependency(f.module)
+                except:
+                    # lookups might fail for builtins, but that's ok
+                    pass
 
         # scan for structs
         for arg in adj.args:
