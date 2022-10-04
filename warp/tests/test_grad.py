@@ -350,23 +350,6 @@ def test_vector_math_grad(test, device):
             gradcheck(check_length_sq, f"check_length_sq_{vec_type.__name__}", [x], device)
             gradcheck(check_normalize, f"check_normalize_{vec_type.__name__}", [x], device)
 
-
-@wp.func
-def my_rpy(roll: float, pitch: float, yaw: float) -> wp.quat:
-    cy = wp.cos(yaw * 0.5)
-    sy = wp.sin(yaw * 0.5)
-    cr = wp.cos(roll * 0.5)
-    sr = wp.sin(roll * 0.5)
-    cp = wp.cos(pitch * 0.5)
-    sp = wp.sin(pitch * 0.5)
-
-    w = (cy * cr * cp + sy * sr * sp)
-    x = (cy * sr * cp - sy * cr * sp)
-    y = (cy * cr * sp + sy * sr * cp)
-    z = (sy * cr * cp - cy * sr * sp)
-
-    return wp.quat(x, y, z, w)
-
 def test_matrix_math_grad(test, device):
     np.random.seed(123)
     
