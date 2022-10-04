@@ -37,7 +37,7 @@ struct VolumeDesc
     void* context;
 };
 
-// Host-side volume desciptors. Maps each CPU/GPU volume buffer address (id) to a CPU desc
+// Host-side volume descriptors. Maps each CPU/GPU volume buffer address (id) to a CPU desc
 std::map<uint64_t, VolumeDesc> g_volume_descriptors;
 
 bool volume_get_descriptor(uint64_t id, VolumeDesc& volumeDesc)
@@ -127,34 +127,6 @@ uint64_t volume_create_device(void* context, void* buf, uint64_t size)
     return id;
 }
 
-uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, vec3 translation, bool points_in_world_space)
-{
-    nanovdb::FloatGrid* grid;
-    size_t gridSize;
-    BuildGridParams<float> params;
-    params.voxel_size = voxel_size;
-    params.background_value = bg_value;
-    params.translation = nanovdb::Vec3f{translation.x, translation.y, translation.z};
-
-    build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
-
-    return volume_create_device(context, grid, gridSize);
-}
-
-uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, vec3 bg_value, vec3 translation, bool points_in_world_space)
-{
-    nanovdb::Vec3fGrid* grid;
-    size_t gridSize;
-    BuildGridParams<nanovdb::Vec3f> params;
-    params.voxel_size = voxel_size;
-    params.background_value = nanovdb::Vec3f{bg_value.x, bg_value.y, bg_value.z};
-    params.translation = nanovdb::Vec3f{translation.x, translation.y, translation.z};
-
-    build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
-
-    return volume_create_device(context, grid, gridSize);
-}
-
 static void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 {
     *buf = 0;
@@ -194,3 +166,45 @@ void volume_destroy_device(uint64_t id)
         volume_rem_descriptor(id);
     }
 }
+
+
+#if !WP_DISABLE_CUDA
+uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, vec3 translation, bool points_in_world_space)
+{
+    nanovdb::FloatGrid* grid;
+    size_t gridSize;
+    BuildGridParams<float> params;
+    params.voxel_size = voxel_size;
+    params.background_value = bg_value;
+    params.translation = nanovdb::Vec3f{translation.x, translation.y, translation.z};
+
+    build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
+
+    return volume_create_device(context, grid, gridSize);
+}
+
+uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, vec3 bg_value, vec3 translation, bool points_in_world_space)
+{
+    nanovdb::Vec3fGrid* grid;
+    size_t gridSize;
+    BuildGridParams<nanovdb::Vec3f> params;
+    params.voxel_size = voxel_size;
+    params.background_value = nanovdb::Vec3f{bg_value.x, bg_value.y, bg_value.z};
+    params.translation = nanovdb::Vec3f{translation.x, translation.y, translation.z};
+
+    build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
+
+    return volume_create_device(context, grid, gridSize);
+}
+#else
+// stubs for non-CUDA platforms
+uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, vec3 translation, bool points_in_world_space)
+{
+    return 0;
+}
+
+uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, vec3 bg_value, vec3 translation, bool points_in_world_space)
+{
+    return 0;
+}
+#endif
