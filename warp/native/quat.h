@@ -510,7 +510,6 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
 
 inline CUDA_CALLABLE void adj_rotate_rodriguez(const vec3& r, const vec3& x, vec3& adj_r, vec3& adj_x, const vec3& adj_ret)
 {
-    // todo: add adj_x
     float angle = length(r);
     float angle_squared = angle * angle;
 
@@ -528,6 +527,8 @@ inline CUDA_CALLABLE void adj_rotate_rodriguez(const vec3& r, const vec3& x, vec
         mat33 B = mul(add(outer(r,r), mul(sub(inverse_rotation_matrix, diag(vec3(1.f))), skew(r))), inv_angle_squared);
         adj_r += mul(transpose(mul(A, B)), adj_ret);
     }
+    
+    // todo: add adj_x
 }
 
 inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t, quat& adj_q0, quat& adj_q1, float& adj_t, const quat& adj_ret)
@@ -539,105 +540,12 @@ inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t
     axis = 0.5 * angle * axis;
     adj_t += dot(mul(quat_slerp(q0, q1, t), quat(axis.x, axis.y, axis.z, 0.f)), adj_ret);
 
-    // adj_q0
-    float dp = dot(q0, q1);
-    float flip = 1.f;
-
-    if (dp < 0.f)
-    {
-        // shortest path
-        flip = -1.f;
-    }
-    else if (dp == 0.0)
-    {
-        // gradient blows up if q0 == q1
-        return;
-    }
-
-    // NB: gradients are with respect to trigonometric slerp formulation.
-    // we have to worry about handling the shorter interpolation path, and theta == 0.0
-    // but gradients are easier to calculate.
-    float theta = acos(flip*dp);
-    float s = sqrt(1.f - dp*dp);
-    float c = flip*dp;
-    float inv_s = 1.f / s;
-    float inv_s_squared = inv_s * inv_s;
-    float A = -(1.f - t) * cos(theta*(1.f-t));
-    float B = -t * cos(theta*t);
-    float C = sin(theta*(1.f - t)) * inv_s * c;
-    float D = sin(theta*t) * inv_s * c;
-    float E = sin(theta*(1.f - t)) * inv_s;
-    float F = sin(theta*t) * inv_s;
-
-    float qx_coeff = (flip*A*q0.x + B*q1.x + flip*C*q0.x + D*q1.x);
-    float qx_q0x = qx_coeff * q1.x * inv_s_squared + E;
-    float qx_q0y = qx_coeff * q1.y * inv_s_squared;
-    float qx_q0z = qx_coeff * q1.z * inv_s_squared;
-    float qx_q0w = qx_coeff * q1.w * inv_s_squared;
-
-    float qy_coeff = (flip*A*q0.y + B*q1.y + flip*C*q0.y + D*q1.y);
-    float qy_q0x = qy_coeff * q1.x * inv_s_squared;
-    float qy_q0y = qy_coeff * q1.y * inv_s_squared + E;
-    float qy_q0z = qy_coeff * q1.z * inv_s_squared;
-    float qy_q0w = qy_coeff * q1.w * inv_s_squared;
-
-    float qz_coeff = (flip*A*q0.z + B*q1.z + flip*C*q0.z + D*q1.z);
-    float qz_q0x = qz_coeff * q1.x * inv_s_squared;
-    float qz_q0y = qz_coeff * q1.y * inv_s_squared;
-    float qz_q0z = qz_coeff * q1.z * inv_s_squared + E;
-    float qz_q0w = qz_coeff * q1.w * inv_s_squared;
-
-    float qw_coeff = (flip*A*q0.w + B*q1.w + flip*C*q0.w + D*q1.w);
-    float qw_q0x = qw_coeff * q1.x * inv_s_squared;
-    float qw_q0y = qw_coeff * q1.y * inv_s_squared;
-    float qw_q0z = qw_coeff * q1.z * inv_s_squared;
-    float qw_q0w = qw_coeff * q1.w * inv_s_squared + E;
-
-    quat q_q0x = quat(qx_q0x, qy_q0x, qz_q0x, qw_q0x);
-    quat q_q0y = quat(qx_q0y, qy_q0y, qz_q0y, qw_q0y);
-    quat q_q0z = quat(qx_q0z, qy_q0z, qz_q0z, qw_q0z);
-    quat q_q0w = quat(qx_q0w, qy_q0w, qz_q0w, qw_q0w);
-
-    adj_q0.x += dot(q_q0x, adj_ret);
-    adj_q0.y += dot(q_q0y, adj_ret);
-    adj_q0.z += dot(q_q0z, adj_ret);
-    adj_q0.w += dot(q_q0w, adj_ret);
-
-    // adj_q1
-    float qx_q1x = qx_coeff * flip*q0.x * inv_s_squared + F;
-    float qx_q1y = qx_coeff * flip*q0.y * inv_s_squared;
-    float qx_q1z = qx_coeff * flip*q0.z * inv_s_squared;
-    float qx_q1w = qx_coeff * flip*q0.w * inv_s_squared;
-
-    float qy_q1x = qy_coeff * q0.x * inv_s_squared;
-    float qy_q1y = qy_coeff * q0.y * inv_s_squared + F;
-    float qy_q1z = qy_coeff * q0.z * inv_s_squared;
-    float qy_q1w = qy_coeff * q0.w * inv_s_squared;
-
-    float qz_q1x = qz_coeff * q0.x * inv_s_squared;
-    float qz_q1y = qz_coeff * q0.y * inv_s_squared;
-    float qz_q1z = qz_coeff * q0.z * inv_s_squared + F;
-    float qz_q1w = qz_coeff * q0.w * inv_s_squared;
-
-    float qw_q1x = qw_coeff * q0.x * inv_s_squared;
-    float qw_q1y = qw_coeff * q0.y * inv_s_squared;
-    float qw_q1z = qw_coeff * q0.z * inv_s_squared;
-    float qw_q1w = qw_coeff * q0.w * inv_s_squared + F;
-
-    quat q_q1x = quat(qx_q1x, qy_q1x, qz_q1x, qw_q1x);
-    quat q_q1y = quat(qx_q1y, qy_q1y, qz_q1y, qw_q1y);
-    quat q_q1z = quat(qx_q1z, qy_q1z, qz_q1z, qw_q1z);
-    quat q_q1w = quat(qx_q1w, qy_q1w, qz_q1w, qw_q1w);
-
-    adj_q1.x += dot(q_q1x, adj_ret);
-    adj_q1.y += dot(q_q1y, adj_ret);
-    adj_q1.z += dot(q_q1z, adj_ret);
-    adj_q1.w += dot(q_q1w, adj_ret);
+    // todo: adj_q0, adj_q1
 }
 
 inline CUDA_CALLABLE void adj_quat_smoothstep(const quat& q0, const quat& q1, float t, const quat& adj_q0, const quat& adj_q1, float& adj_t, const quat& adj_ret)
 {
-    // assume q0 and q1 are constant
+    // adj_t
     vec3 axis;
     float angle;
     quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
@@ -645,6 +553,8 @@ inline CUDA_CALLABLE void adj_quat_smoothstep(const quat& q0, const quat& q1, fl
     float smoothstep_gradient = 6.f * t * (1.f - t);
     axis = 0.5 * angle * smoothstep_gradient * axis;
     adj_t += dot(mul(quat_slerp(q0, q1, smoothstep), quat(axis.x, axis.z, axis.z, 0.f)), adj_ret);
+
+    // todo: adj_q0, adj_q1
 }
 
 inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)

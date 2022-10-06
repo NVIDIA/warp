@@ -6,6 +6,8 @@ from warp.tests.test_base import *
 
 wp.init()
 
+############################################################
+
 @wp.kernel
 def rodriguez_kernel(rotators: wp.array(dtype=wp.vec3), u: wp.vec3, loss: wp.array(dtype=float), coord_idx: int):
     tid = wp.tid()
@@ -77,6 +79,8 @@ def test_rotate_rodriguez_grad(test, device):
     test.assertTrue((np.abs(gradients_y - gradients_y_auto) < eps).all())
     test.assertTrue((np.abs(gradients_z - gradients_z_auto) < eps).all())
 
+############################################################
+
 @wp.kernel
 def slerp_kernel(
     q0: wp.array(dtype=wp.quat),
@@ -109,7 +113,7 @@ def slerp_kernel_forward(
     wp.atomic_add(loss, 0, q[index])
 
 @wp.kernel
-def slerp_grad_basic(
+def slerp_trig_grad(
     q0: wp.array(dtype=wp.quat),
     q1: wp.array(dtype=wp.quat),
     t: wp.array(dtype=float),
@@ -126,26 +130,35 @@ def slerp_grad_basic(
     else:
         q[tid] = wp.quat(0.0, 0.0, 0.0, 0.0)
 
+@wp.kernel
+def quat_sampler(
+    kernel_seed: int,
+    quats: wp.array(dtype=wp.quat)):
+
+    tid = wp.tid()
+
+    state = wp.rand_init(kernel_seed, tid)
+
+    angle = wp.randf(state, 0.0, 2.0 * 3.1415926535)
+    dir = wp.sample_unit_sphere_surface(state) * wp.sin(angle*0.5)
+
+    q = wp.quat(dir[0], dir[1], dir[2], wp.cos(angle*0.5))
+    qn = wp.normalize(q)
+
+    quats[tid] = qn
+
 def test_slerp_grad(test, device):
     np.random.seed(42)
-    N = 1
-    # q0 = np.random.randn(N, 4)
-    # q0_norms = np.linalg.norm(q0, axis=1)
-    # q0 = q0 / q0_norms[:, np.newaxis]
-    # print(q0)
-    # q1 = np.random.randn(N, 4)
-    # q1_norms = np.linalg.norm(q1, axis=1)
-    # q1 = q1 / q1_norms[:, np.newaxis]
-    # t = np.random.uniform(0.0, 1.0, N)
+    seed = 42
+    N = 100
 
-    # q0 = np.array([0.0, -np.sqrt(2)/2, 0.0, np.sqrt(2)/2])
-    # q1 = np.array([0.0, -1.0, 0.0, 0.0])
-    q0 = np.array([-np.sqrt(2)/2, 0.0, 0.0, np.sqrt(2)/2])
-    q1 = np.array([0.0, -np.sqrt(2)/2, 0.0, np.sqrt(2)/2])
-    t = np.array([0.5])
+    q0 = wp.zeros(N, dtype=wp.quat, device=device, requires_grad=True)
+    q1 = wp.zeros(N, dtype=wp.quat, device=device, requires_grad=True)
 
-    q0 = wp.array(q0, dtype=wp.quat, device=device, requires_grad=True)
-    q1 = wp.array(q1, dtype=wp.quat, device=device, requires_grad=True)
+    wp.launch(kernel=quat_sampler, dim=N, inputs=[seed, q0], device=device)
+    wp.launch(kernel=quat_sampler, dim=N, inputs=[seed, q1], device=device)
+
+    t = np.random.uniform(0.0, 1.0, N)
     t = wp.array(t, dtype=float, device=device, requires_grad=True)
 
     def compute_gradients(kernel, wrt, index):
@@ -173,31 +186,21 @@ def test_slerp_grad(test, device):
     # gather gradients from autodiff
     gradients_w_auto = compute_gradients(slerp_kernel_forward, t, 3)
 
-    # analytic gradient
-    q_basic_grad = wp.zeros(N, dtype=wp.quat, device=device)
+    # trigonometric analytic gradient (for comparison)
+    trig_grad = wp.zeros(N, dtype=wp.quat, device=device)
     wp.launch(
-        kernel=slerp_grad_basic,
+        kernel=slerp_trig_grad,
         dim=N,
-        inputs=[q0, q1, t, q_basic_grad],
+        inputs=[q0, q1, t, trig_grad],
         device=device)
+    # print(trig_grad.numpy()[0][3])
 
-    # print(gradients_w)
-    # print(gradients_w_auto)
-    # print(q_basic_grad.numpy())
+    test.assertTrue((np.abs(gradients_w - gradients_w_auto) < 1e4).all())
 
-    # wrt q0
-
-    # gather gradients from builtin adjoints
-    gradients_w = compute_gradients(slerp_kernel, q0, 1)
-
-    # gather gradients from autodiff
-    gradients_w_auto = compute_gradients(slerp_kernel_forward, q0, 1)
-
-    print(gradients_w)
-    print(gradients_w_auto)
-
-def test_quat_smoothstep_grad(test, device):
+def test_slerp_smoothstep_grad(test, device):
     pass
+
+############################################################
 
 @wp.kernel
 def quat_to_axis_angle_kernel(
@@ -297,13 +300,13 @@ def register(parent):
     class TestQuat(parent):
         pass
 
-    # add_function_test(TestQuat, "test_mesh_query_ray_edge", test_rotate_rodriguez_grad, devices=devices)
+    # add_function_test(TestQuat, "test_rotate_rodriguez_grad", test_rotate_rodriguez_grad, devices=devices)
     add_function_test(TestQuat, "test_slerp_grad", test_slerp_grad, devices=devices)
-    add_function_test(TestQuat, "test_quat_smoothstep_grad", test_quat_smoothstep_grad, devices=devices)
+    # add_function_test(TestQuat, "test_slerp_smoothstep_grad", test_slerp_smoothstep_grad, devices=devices)
     # add_function_test(TestQuat, "test_quat_to_axis_angle_grad", test_quat_to_axis_angle_grad, devices=devices)
-    add_function_test(TestQuat, "test_quat_from_matrix_grad", test_quat_from_matrix_grad, devices=devices)
-    add_function_test(TestQuat, "test_quat_rpy_grad", test_quat_rpy_grad, devices=devices)
-    add_function_test(TestQuat, "test_normalize_grad", test_normalize_grad, devices=devices)
+    # add_function_test(TestQuat, "test_quat_from_matrix_grad", test_quat_from_matrix_grad, devices=devices)
+    # add_function_test(TestQuat, "test_quat_rpy_grad", test_quat_rpy_grad, devices=devices)
+    # add_function_test(TestQuat, "test_normalize_grad", test_normalize_grad, devices=devices)
 
     return TestQuat
 
