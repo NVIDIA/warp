@@ -496,7 +496,6 @@ class Module:
         self.structs = []
 
         self.dependencies = set() # modules that this module depends on
-        self.dependents = set() # modules that depend on this module
 
         self.dll = None
         self.cuda_modules = {} # module lookup by CUDA context
@@ -532,33 +531,31 @@ class Module:
         # for a reload of module on next launch
         self.unload()
 
+
     def _update_dependencies(self, adj):
 
         # scan for function calls
         for node in ast.walk(adj.tree):
             if isinstance(node, ast.Call):
-                # try and look up path in function globals
-                path = adj.resolve_path(node.func)
                 try:
-                    f = eval(".".join(path), adj.func.__globals__)
+                    # try and look up path in function globals
+                    path = adj.resolve_path(node.func)
+                    func = eval(".".join(path), adj.func.__globals__)
 
                     # if this is a user-defined function, add a module dependency
-                    if isinstance(f, warp.context.Function) and f.module is not None:
-                        self._add_dependency(f.module)
+                    if isinstance(func, warp.context.Function) and func.module is not None:
+                        self.dependencies.add(func.module)
+
                 except:
-                    # lookups might fail for builtins, but that's ok
+                    # Lookups might fail for builtins, but that's ok.
+                    # Lookups might also fail for functions in this module that haven't been imported yet,
+                    # and that's also ok (not an external dependency).
                     pass
 
         # scan for structs
         for arg in adj.args:
             if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
-                self._add_dependency(arg.type.module)
-
-    def _add_dependency(self, module):
-
-        if module is not self:
-            self.dependencies.add(module)
-            module.dependents.add(self)
+                self.dependencies.add(arg.type.module)
 
 
     def hash_module(self):
