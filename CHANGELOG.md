@@ -2,8 +2,8 @@
 
 ## [0.4.4] - 2022-10-04
 
-- Fix kernel caching issue with related to constants
-- Fix rebuilding and reloading modules if dependencies were modified
+- Fix kernel caching issue related to constants
+- Enable module dependency tracking to reload modules if dependencies were modified
 
 ## [0.4.3] - 2022-09-20
 
