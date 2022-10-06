@@ -30,7 +30,25 @@ class constant:
     def __init__(self, x):
 
         self.val = x
-        constant._hash.update(bytes(str(x), 'utf-8'))
+
+        # hash the constant value
+        if isinstance(x, int):
+            constant._hash.update(struct.pack("<q", x))
+        elif isinstance(x, float):
+            constant._hash.update(struct.pack("<d", x))
+        elif isinstance(x, bool):
+            constant._hash.update(struct.pack("?", x))
+        elif isinstance(x, float16):
+            # float16 is a special case
+            p = ctypes.pointer(ctypes.c_float(x.value))
+            constant._hash.update(p.contents)
+        elif isinstance(x, tuple(scalar_types)):
+            p = ctypes.pointer(x._type_(x.value))
+            constant._hash.update(p.contents)
+        elif isinstance(x, tuple(vector_types)):
+            constant._hash.update(bytes(x))
+        else:
+            raise RuntimeError(f"Invalid constant type: {type(x)}")
 
     def __eq__(self, other):
         return self.val == other
