@@ -251,41 +251,26 @@ class KernelHooks:
         self.backward = backward
 
 
-# caches source and compiled entry points for a kernel (will be populated after module loads)
+# kernel source and id for compiled entry points (will be populated after module loads)
 class Kernel:
-    
+
+    # unique id per kernel, used to quickly look up hooks in module
+    _next_id = 0
+
     def __init__(self, func, key, module):
 
         self.func = func
         self.module = module
         self.key = key
 
-        # lookup table for entry points per device context
-        self.hooks = {}
+        self.id = Kernel._next_id
+        Kernel._next_id += 1
 
         self.adj = warp.codegen.Adjoint(func)
 
         if (module):
             module.register_kernel(self)
 
-    # lookup and cache entry points based on name, called after compilation / module load
-    def hook(self, device):
-
-        hooks = self.hooks.get(device.context)
-        if hooks is not None:
-            return hooks
-        
-        if device.is_cpu:
-            forward = eval("self.module.dll." + self.key + "_cpu_forward")
-            backward = eval("self.module.dll." + self.key + "_cpu_backward")
-        else:
-            cu_module = self.module.cuda_modules[device.context]
-            forward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_forward").encode('utf-8'))
-            backward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_backward").encode('utf-8'))
-
-        hooks = KernelHooks(forward, backward)
-        self.hooks[device.context] = hooks
-        return hooks
 
 
 #----------------------
@@ -374,8 +359,38 @@ def get_module(name):
         # if so, we assume the file has changed and we recreate the module to
         # clear out old kernels / functions
         if user_modules[name].loader is not parent.__loader__:           
-            user_modules[name].unload()
-            user_modules[name] = warp.context.Module(name, parent.__loader__)
+
+            old_module = user_modules[name]
+
+            # Unload the old module and recursively unload all of its dependents.
+            # This ensures that dependent modules will be re-hashed and reloaded on next launch.
+            # The rec_mask tracks modules already visited to avoid circular dependencies.
+            def _unload_rec(module, rec_mask):
+                module.unload()
+                rec_mask.add(module)
+                for d in module._dependents:
+                    if d not in rec_mask:
+                        _unload_rec(d, rec_mask)
+
+            _unload_rec(old_module, set())
+
+            new_module = warp.context.Module(name, parent.__loader__)
+
+            for dependency in old_module._dependencies:
+                # the new module adopts the dependencies
+                new_module._dependencies.add(dependency)
+                # update dependency dependents
+                dependency._dependents.remove(old_module)
+                dependency._dependents.add(new_module)
+
+            for dependent in old_module._dependents:
+                # the new module adopts the dependents
+                new_module._dependents.add(dependent)
+                # update dependent dependencies
+                dependent._dependencies.remove(old_module)
+                dependent._dependencies.add(new_module)
+
+            user_modules[name] = new_module
 
         return user_modules[name]
 
@@ -505,7 +520,10 @@ class Module:
                         "enable_backward": True,
                         "mode": warp.config.mode}
 
-        self._dependencies = set() # modules that this module depends on
+        self._kernel_hooks = {} # kernel hook lookup per device context
+
+        self._dependencies = set() # modules whose content we depend on
+        self._dependents = set() # modules that depend on our content
 
         self._content_hash = None
         self._content_changed = True
@@ -560,7 +578,7 @@ class Module:
 
                     # if this is a user-defined function, add a module dependency
                     if isinstance(func, warp.context.Function) and func.module is not None:
-                        self._dependencies.add(func.module)
+                        self._add_dependency(func.module)
 
                 except:
                     # Lookups may fail for builtins, but that's ok.
@@ -571,7 +589,13 @@ class Module:
         # scan for structs
         for arg in adj.args:
             if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
-                self._dependencies.add(arg.type.module)
+                self._add_dependency(arg.type.module)
+
+    def _add_dependency(self, dep):
+
+        if dep is not self:
+            self._dependencies.add(dep)
+            dep._dependents.add(self)
 
 
     def hash_module(self):
@@ -803,6 +827,30 @@ class Module:
                 runtime.core.cuda_unload_module(context, module)
             runtime.core.cuda_context_set_current(saved_context)
             self.cuda_modules = {}
+
+        # clear kernel hooks
+        self._kernel_hooks = {}
+
+
+    def get_kernel_hooks(self, kernel, device):
+
+        hook_dict = self._kernel_hooks.get(device.context, {})
+
+        hooks = hook_dict.get(kernel.id)
+        if hooks is not None:
+            return hooks
+        
+        if device.is_cpu:
+            forward = eval("self.dll." + kernel.key + "_cpu_forward")
+            backward = eval("self.dll." + kernel.key + "_cpu_backward")
+        else:
+            cu_module = self.cuda_modules[device.context]
+            forward = runtime.core.cuda_get_kernel(device.context, cu_module, (kernel.key + "_cuda_kernel_forward").encode('utf-8'))
+            backward = runtime.core.cuda_get_kernel(device.context, cu_module, (kernel.key + "_cuda_kernel_backward").encode('utf-8'))
+
+        hooks = KernelHooks(forward, backward)
+        hook_dict[kernel.id] = hooks
+        return hooks
 
 
 #-------------------------------------------
@@ -1596,7 +1644,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         pack_args(adj_args, params)
 
         # late bind
-        hooks = kernel.hook(device)
+        hooks = kernel.module.get_kernel_hooks(kernel, device)
 
         # run kernel
         if device.is_cpu:

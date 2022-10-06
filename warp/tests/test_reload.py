@@ -19,7 +19,11 @@ import os
 
 # dummy module used for testing reload
 import warp.tests.test_square as test_square
-    
+
+# dummy modules used for testing reload with dependencies
+import warp.tests.test_dependent as test_dependent
+import warp.tests.test_dependency as test_dependency
+import warp.tests.test_dependency_dependency as test_dependency_dependency
 
 wp.init()
 
@@ -125,6 +129,61 @@ def test_reload(test, device):
     test_square.run(expect=16.0, device=device)   # 4*4 = 16
 
 
+template_dep = """import warp as wp
+import warp.tests.test_dependency_dependency as depdep
+
+wp.init()
+
+@wp.func
+def magic():
+    return {} * depdep.more_magic()
+"""
+
+template_depdep = """import warp as wp
+
+wp.init()
+
+@wp.func
+def more_magic():
+    return {}
+"""
+
+def test_reload_dependency(test, device):
+
+    dep_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_dependency.py"))
+    depdep_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_dependency_dependency.py"))
+
+    # rewrite both dependency modules and reload them
+    with open(dep_path, "w") as f:
+        f.writelines(template_dep.format(1.0))
+    importlib.reload(test_dependency)
+
+    with open(depdep_path, "w") as f:
+        f.writelines(template_depdep.format(1.0))
+    importlib.reload(test_dependency_dependency)
+
+    test_dependent.run(expect=1.0, device=device)  # 1 * 1 = 1
+
+
+    # rewrite and reload the first dependency module
+    with open(dep_path, "w") as f:
+        f.writelines(template_dep.format(2.0))
+    importlib.reload(test_dependency)
+
+    test_dependent.run(expect=2.0, device=device)  # 2 * 1 = 1
+
+
+    # rewrite and reload the second dependency module
+    with open(depdep_path, "w") as f:
+        f.writelines(template_depdep.format(2.0))
+    importlib.reload(test_dependency_dependency)
+
+    test_dependent.run(expect=4.0, device=device)  # 2 * 2 = 4
+
+
+    # ensure any kernel error output makes it out
+    wp.synchronize_device(device)
+
 
 def register(parent):
 
@@ -135,6 +194,7 @@ def register(parent):
     
     add_function_test(TestReload, "test_redefine", test_redefine, devices=devices)
     add_function_test(TestReload, "test_reload", test_reload, devices=devices)
+    add_function_test(TestReload, "test_reload_dependency", test_reload_dependency, devices=devices)
     
     return TestReload
 
