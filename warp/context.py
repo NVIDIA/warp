@@ -538,7 +538,8 @@ class Module:
 
         # Since module hashing is recursive, we improve performance by caching the hash of the
         # module contents (kernel source, function source, and struct source).
-        # After the module import finishes, the content hash doesn't change.
+        # After all kernels, functions, and structs are added to the module (usually at import time),
+        # the content hash doesn't change.
         # -> See ``Module._hash_module_rec()``
 
         self._content_hash = None
@@ -632,29 +633,30 @@ class Module:
         if self._content_changed:
 
             # recompute content hash
-            self._content_hash = hashlib.sha256()
+            ch = hashlib.sha256()
 
             # struct source
             for struct in self.structs:
                 s = inspect.getsource(struct.cls)
-                self._content_hash.update(bytes(s, 'utf-8'))
+                ch.update(bytes(s, 'utf-8'))
 
             # functions source
             for func in self.functions.values():
                 s = func.adj.source
-                self._content_hash.update(bytes(s, 'utf-8'))
+                ch.update(bytes(s, 'utf-8'))
                 
             # kernel source
             for kernel in self.kernels.values():
                 s = kernel.adj.source
-                self._content_hash.update(bytes(s, 'utf-8'))
+                ch.update(bytes(s, 'utf-8'))
             
+            self._content_hash = ch.digest()
             self._content_changed = False
 
         h = hashlib.sha256()
 
         # content hash
-        h.update(self._content_hash.digest())
+        h.update(self._content_hash)
 
         # configuration parameters
         for k in sorted(self.options.keys()):
