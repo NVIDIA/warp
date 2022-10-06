@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.4.4] - 2022-10-04
+
+- Fix kernel caching issue with related to constants
+
 ## [0.4.3] - 2022-09-20
 
 - Update all samples to use GPU interop path by default
