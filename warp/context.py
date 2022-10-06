@@ -766,13 +766,6 @@ class Module:
 
     def unload(self):
 
-        self._unload_rec(set())
-    
-    def _unload_rec(self, rec_mask):
-
-        # Unload this module and recursively unload all of its dependents.
-        # The rec_mask tracks modules already visited to avoid circular dependencies.
-
         if self.dll is not None:
             warp.build.unload_dll(self.dll)
             self.dll = None
@@ -785,12 +778,6 @@ class Module:
                 runtime.core.cuda_unload_module(context, module)
             runtime.core.cuda_context_set_current(saved_context)
             self.cuda_modules = {}
-        
-        # recurse on dependents
-        rec_mask.add(self)
-        for d in self.dependents:
-            if d not in rec_mask:
-                d._unload_rec(rec_mask)
 
 
 #-------------------------------------------
