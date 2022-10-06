@@ -495,8 +495,6 @@ class Module:
         self.constants = []
         self.structs = []
 
-        self.dependencies = set() # modules that this module depends on
-
         self.dll = None
         self.cuda_modules = {} # module lookup by CUDA context
 
@@ -507,8 +505,21 @@ class Module:
                         "enable_backward": True,
                         "mode": warp.config.mode}
 
+        self._dependencies = set() # modules that this module depends on
+
+        self._content_hash = None
+        self._content_changed = True
+
+
     def register_struct(self, struct):
+
         self.structs.append(struct)
+
+        # for a reload of module on next launch
+        self.unload()
+
+        # invalidate content hash
+        self._content_changed = True
 
     def register_kernel(self, kernel):
 
@@ -518,6 +529,9 @@ class Module:
 
         # for a reload of module on next launch
         self.unload()
+
+        # invalidate content hash
+        self._content_changed = True
 
     def register_function(self, func):
         
@@ -531,6 +545,8 @@ class Module:
         # for a reload of module on next launch
         self.unload()
 
+        # invalidate content hash
+        self._content_changed = True
 
     def _update_dependencies(self, adj):
 
@@ -544,18 +560,18 @@ class Module:
 
                     # if this is a user-defined function, add a module dependency
                     if isinstance(func, warp.context.Function) and func.module is not None:
-                        self.dependencies.add(func.module)
+                        self._dependencies.add(func.module)
 
                 except:
-                    # Lookups might fail for builtins, but that's ok.
-                    # Lookups might also fail for functions in this module that haven't been imported yet,
-                    # and that's also ok (not an external dependency).
+                    # Lookups may fail for builtins, but that's ok.
+                    # Lookups may also fail for functions in this module that haven't been imported yet,
+                    # and that's ok too (not an external dependency).
                     pass
 
         # scan for structs
         for arg in adj.args:
             if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
-                self.dependencies.add(arg.type.module)
+                self._dependencies.add(arg.type.module)
 
 
     def hash_module(self):
@@ -567,24 +583,35 @@ class Module:
         # Hash this module, including all dependencies recursively.
         # The rec_mask tracks modules already visited to avoid circular dependencies.
 
+        # check if we need to update the content hash
+        if self._content_changed:
+
+            # recompute content hash
+            self._content_hash = hashlib.sha256()
+
+            # struct source
+            for struct in self.structs:
+                s = inspect.getsource(struct.cls)
+                self._content_hash.update(bytes(s, 'utf-8'))
+
+            # functions source
+            for func in self.functions.values():
+                s = func.adj.source
+                self._content_hash.update(bytes(s, 'utf-8'))
+                
+            # kernel source
+            for kernel in self.kernels.values():
+                s = kernel.adj.source
+                self._content_hash.update(bytes(s, 'utf-8'))
+            
+            self._content_changed = False
+
         h = hashlib.sha256()
 
-        # struct source
-        for struct in self.structs:
-            s = inspect.getsource(struct.cls)
-            h.update(bytes(s, 'utf-8'))
+        # content hash
+        h.update(self._content_hash.digest())
 
-        # functions source
-        for func in self.functions.values():
-            s = func.adj.source
-            h.update(bytes(s, 'utf-8'))
-            
-        # kernel source
-        for kernel in self.kernels.values():
-            s = kernel.adj.source
-            h.update(bytes(s, 'utf-8'))
-
-         # configuration parameters
+        # configuration parameters
         for k in sorted(self.options.keys()):
             s = f"{k}={self.options[k]}"
             h.update(bytes(s, 'utf-8'))
@@ -593,19 +620,20 @@ class Module:
         if warp.config.verify_fp:
             h.update(bytes("verify_fp", 'utf-8'))
        
-        # # compile-time constants (global)
+        # compile-time constants (global)
         if warp.types.constant._hash:
             h.update(warp.constant._hash.digest())
 
         # recurse on dependencies
         rec_mask.add(self)
-        sorted_deps = sorted(self.dependencies, key=lambda m: m.name)
+        sorted_deps = sorted(self._dependencies, key=lambda m: m.name)
         for dep in sorted_deps:
             if dep not in rec_mask:
                 dep_hash = dep._hash_module_rec(rec_mask)
                 h.update(dep_hash)
 
         return h.digest()
+
 
     def load(self, device):
 
