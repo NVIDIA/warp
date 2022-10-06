@@ -520,13 +520,34 @@ class Module:
                         "enable_backward": True,
                         "mode": warp.config.mode}
 
-        self._kernel_hooks = {} # kernel hook lookup per device context
+        # Module dependencies are determined by scanning each function
+        # and kernel for references to external functions and structs.
+        #
+        # When a dependency is modified, all of the dependents will be reloaded
+        # on the next launch.  To achieve this, a module's hash recursively includes
+        # all of its dependencies.
+        # -> See ``Module.hash_module()``
+        #
+        # The dependency mechanism works for both static and dynamic (runtime) modifications.
+        # When a module is reloaded at runtime, it recursively unloads all of its
+        # dependents, so that they will be re-hashed and reloaded on the next launch.
+        # -> See ``get_module()``
 
         self._dependencies = set() # modules whose content we depend on
         self._dependents = set() # modules that depend on our content
 
+        # Since module hashing is recursive, we improve performance by caching the hash of the
+        # module contents (kernel source, function source, and struct source).
+        # After the module import finishes, the content hash doesn't change.
+        # -> See ``Module._hash_module_rec()``
+
         self._content_hash = None
         self._content_changed = True
+
+        # kernel hook lookup per device
+        # hooks are stored with the module so they can be easily cleared when the module is reloaded.
+        # -> See ``Module.get_kernel_hooks()``
+        self._kernel_hooks = {}
 
 
     def register_struct(self, struct):
