@@ -1012,9 +1012,9 @@ template <typename T>
 void adj_mul(float s, const T& x, float& adj_s, T& adj_x, const T& adj_ret) { adj_mul(x, s, adj_x, adj_s, adj_ret); }
 
 
-// dot for scalar types just to make some templated compile for scalar/vector
+// dot for scalar types just to make some templates compile for scalar/vector
 inline CUDA_CALLABLE float dot(float a, float b) { return mul(a, b); }
-inline CUDA_CALLABLE void dot(float a, float b, float& adj_a, float& adj_b, float adj_ret) { return adj_mul(a, b, adj_a, adj_b, adj_ret); }
+inline CUDA_CALLABLE void adj_dot(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_mul(a, b, adj_a, adj_b, adj_ret); }
 
 
 template <typename T>
