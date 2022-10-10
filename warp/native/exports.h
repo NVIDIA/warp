@@ -164,9 +164,7 @@ WP_API void builtin_expect_eq_quat_quat(quat arg1, quat arg2) { wp::expect_eq(ar
 WP_API void builtin_expect_eq_transform_transform(transform arg1, transform arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_spatial_vector_spatial_vector(spatial_vector arg1, spatial_vector arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_spatial_matrix_spatial_matrix(spatial_matrix arg1, spatial_matrix arg2) { wp::expect_eq(arg1, arg2); }
-WP_API void builtin_lerp_float16_float16_float32(float16 a, float16 b, float32 t, float16* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_float32_float32_float32(float32 a, float32 b, float32 t, float32* ret) { *ret = wp::lerp(a, b, t); }
-WP_API void builtin_lerp_float64_float64_float32(float64 a, float64 b, float32 t, float64* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_vec2_vec2_float32(vec2 a, vec2 b, float32 t, vec2* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_vec3_vec3_float32(vec3 a, vec3 b, float32 t, vec3* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_vec4_vec4_float32(vec4 a, vec4 b, float32 t, vec4* ret) { *ret = wp::lerp(a, b, t); }

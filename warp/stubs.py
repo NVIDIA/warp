@@ -1456,21 +1456,7 @@ def expect_eq(arg1: spatial_matrix, arg2: spatial_matrix):
    ...
 
 @overload
-def lerp(a: float16, b: float16, t: float32) -> float16:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
 def lerp(a: float32, b: float32, t: float32) -> float32:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: float64, b: float64, t: float32) -> float64:
    """
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """

@@ -1023,13 +1023,6 @@ CUDA_CALLABLE inline T lerp(const T& a, const T& b, float t)
     return a*(1.0-t) + b*t;
 }
 
-template <>
-CUDA_CALLABLE inline float16 lerp(const float16& a, const float16& b, float t)
-{
-    return float(a)*(1.0-t) + float(b)*t;
-}
-
-
 template <typename T>
 CUDA_CALLABLE inline void adj_lerp(const T& a, const T& b, float t, T& adj_a, T& adj_b, float& adj_t, const T& adj_ret)
 {

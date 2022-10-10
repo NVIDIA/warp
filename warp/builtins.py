@@ -756,7 +756,8 @@ add_builtin("index", input_types={"a": mat44, "i": int, "j": int}, value_type=fl
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 
-    if type_is_int(t) == False:
+for t in compute_types + vector_types:
+    if not type_is_int(t):
         add_builtin("lerp", input_types={"a": t, "b": t, "t": float}, value_type=t, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
 
 # fuzzy compare for float values
