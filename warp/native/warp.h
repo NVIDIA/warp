@@ -59,8 +59,8 @@ extern "C"
     WP_API void volume_destroy_host(uint64_t id);
 
     WP_API uint64_t volume_create_device(void* context, void* buf, uint64_t size);
-    WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, wp::vec3 translation, bool points_in_world_space);
-    WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, wp::vec3 bg_value, wp::vec3 translation, bool points_in_world_space);
+    WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space);
+    WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space);
     WP_API void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_destroy_device(uint64_t id);
 

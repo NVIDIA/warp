@@ -169,28 +169,28 @@ void volume_destroy_device(uint64_t id)
 
 
 #if !WP_DISABLE_CUDA
-uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, vec3 translation, bool points_in_world_space)
+uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space)
 {
     nanovdb::FloatGrid* grid;
     size_t gridSize;
     BuildGridParams<float> params;
     params.voxel_size = voxel_size;
     params.background_value = bg_value;
-    params.translation = nanovdb::Vec3f{translation.x, translation.y, translation.z};
+    params.translation = nanovdb::Vec3f{tx, ty, tz};
 
     build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
 
     return volume_create_device(context, grid, gridSize);
 }
 
-uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, vec3 bg_value, vec3 translation, bool points_in_world_space)
+uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space)
 {
     nanovdb::Vec3fGrid* grid;
     size_t gridSize;
     BuildGridParams<nanovdb::Vec3f> params;
     params.voxel_size = voxel_size;
-    params.background_value = nanovdb::Vec3f{bg_value.x, bg_value.y, bg_value.z};
-    params.translation = nanovdb::Vec3f{translation.x, translation.y, translation.z};
+    params.background_value = nanovdb::Vec3f{bg_value_x, bg_value_y, bg_value_z};
+    params.translation = nanovdb::Vec3f{tx, ty, tz};
 
     build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
 
@@ -198,12 +198,12 @@ uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points,
 }
 #else
 // stubs for non-CUDA platforms
-uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, vec3 translation, bool points_in_world_space)
+uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space)
 {
     return 0;
 }
 
-uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, vec3 bg_value, vec3 translation, bool points_in_world_space)
+uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space)
 {
     return 0;
 }
