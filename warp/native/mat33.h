@@ -286,6 +286,15 @@ inline CUDA_CALLABLE mat33 element_mul(const mat33& a, const mat33& b)
   return t;
 }
 
+inline CUDA_CALLABLE float tensordot(const mat33& a, const mat33& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return
+          a.data[0][0] * b.data[0][0] + a.data[0][1] * b.data[0][1] + a.data[0][2] * b.data[0][2]
+        + a.data[1][0] * b.data[1][0] + a.data[1][1] * b.data[1][1] + a.data[1][2] * b.data[1][2]
+        + a.data[2][0] * b.data[2][0] + a.data[2][1] * b.data[2][1] + a.data[2][2] * b.data[2][2];
+}
+
 inline CUDA_CALLABLE mat33 transpose(const mat33& a)
 {
     mat33 t;

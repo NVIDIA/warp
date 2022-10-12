@@ -134,6 +134,12 @@ inline CUDA_CALLABLE float dot(vec3 a, vec3 b)
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
+inline CUDA_CALLABLE float tensordot(vec3 a, vec3 b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return dot(a, b);
+}
+
 inline CUDA_CALLABLE vec3 cross(vec3 a, vec3 b)
 {
     vec3 c;

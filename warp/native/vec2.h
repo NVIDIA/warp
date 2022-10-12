@@ -115,6 +115,12 @@ inline CUDA_CALLABLE float dot(vec2 a, vec2 b)
     return a.x*b.x + a.y*b.y;
 }
 
+inline CUDA_CALLABLE float tensordot(vec2 a, vec2 b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return dot(a, b);
+}
+
 inline CUDA_CALLABLE vec2 min(vec2 a, vec2 b)
 {
     return vec2(min(a.x, b.x), min(a.y, b.y));

@@ -112,6 +112,12 @@ inline CUDA_CALLABLE float dot(const quat& a, const quat& b)
     return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
 }
 
+inline CUDA_CALLABLE float tensordot(const quat& a, const quat& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return dot(a, b);
+}
+
 inline CUDA_CALLABLE float length(const quat& q)
 {
     return sqrt(dot(q, q));
