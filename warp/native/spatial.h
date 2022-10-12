@@ -664,10 +664,7 @@ inline CUDA_CALLABLE spatial_matrix mul(const spatial_matrix& a, float b)
     {
         for (int j=0; j < 6; ++j)
         {
-            for (int k=0; k < 6; ++k)
-            {
-                out.data[i][j] += a.data[i][k]*b;
-            }
+            out.data[i][j] += a.data[i][j]*b;
         }
     }
     return out;
