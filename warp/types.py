@@ -997,7 +997,7 @@ class Volume:
         return cls(data_array)
 
     @classmethod
-    def allocate(cls, min: List[int], max: List[int], voxel_size: float, bg_value=0.0, translation=vec3(0,0,0), points_in_world_space=False, device=None):
+    def allocate(cls, min: List[int], max: List[int], voxel_size: float, bg_value=0.0, translation=(0.0,0.0,0.0), points_in_world_space=False, device=None):
         """ Allocate a new Volume based on the bounding box defined by min and max.
 
         Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
@@ -1011,26 +1011,27 @@ class Volume:
             min (array-like): Lower 3D-coordinates of the bounding box in index space or world space, inclusive
             max (array-like): Upper 3D-coordinates of the bounding box in index space or world space, inclusive
             voxel_size (float): Voxel size of the new volume
-            bg_value (float or :class:`warp.vec3`): Value of unallocated voxels of the volume, also defines the volume's type:
-                a :class:`warp.vec3` volume is created if this is :class:`warp.vec3`, otherwise a float volume is created
-            translation (:class:`warp.vec3`): translation between the index and world spaces
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type:
+                a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            translation (array-like): translation between the index and world spaces
             device (Devicelike): Device the array lives on
         """
         if points_in_world_space:
             min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
             max = np.around((np.array(max, dtype=np.float32) - translation) / voxel_size)
 
-        tile_min = np.array(min, dtype=int) // 8
-        tile_max = np.array(max, dtype=int) // 8
+        tile_min = np.array(min, dtype=np.int32) // 8
+        tile_max = np.array(max, dtype=np.int32) // 8
         tiles = np.array([[i, j, k] for i in range(tile_min[0], tile_max[0] + 1)
                                     for j in range(tile_min[1], tile_max[1] + 1)
-                                    for k in range(tile_min[2], tile_max[2] + 1)])
+                                    for k in range(tile_min[2], tile_max[2] + 1)],
+                         dtype=np.int32)
         tile_points = array(tiles * 8, device=device)
 
         return cls.allocate_by_tiles(tile_points, voxel_size, bg_value, translation, device)
 
     @classmethod
-    def allocate_by_tiles(cls, tile_points: array, voxel_size: float, bg_value=0.0, translation=vec3(0,0,0), device=None):
+    def allocate_by_tiles(cls, tile_points: array, voxel_size: float, bg_value=0.0, translation=(0.0,0.0,0.0), device=None):
         """ Allocate a new Volume with active tiles for each point tile_points.
 
         The smallest unit of allocation is a dense tile of 8x8x8 voxels.
@@ -1047,9 +1048,9 @@ class Volume:
                 Repeated points per tile are allowed and will be efficiently deduplicated.
             vertex positions of type :class:`warp.vec3`
             voxel_size (float): Voxel size of the new volume
-            bg_value (float or :class:`warp.vec3`): Value of unallocated voxels of the volume, also defines the volume's type:
-                a :class:`warp.vec3` volume is created if this is :class:`warp.vec3`, otherwise a float volume is created
-            translation (:class:`warp.vec3`): translation between the index and world spaces
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type:
+                a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            translation (array-like): translation between the index and world spaces
             device (Devicelike): Device the array lives on
         """
         from warp.context import runtime
@@ -1062,21 +1063,25 @@ class Volume:
         if not (isinstance(tile_points, array) and
             (tile_points.dtype == int32 and tile_points.ndim  == 2) or
             (tile_points.dtype == vec3 and tile_points.ndim  == 1)):
-            raise RuntimeError(f"Expected an warp array of vec3s or of n-by-3 integers as tile_points!")
+            raise RuntimeError(f"Expected an warp array of vec3s or of n-by-3 int32s as tile_points!")
         if not tile_points.device.is_cuda:
             tile_points = array(tile_points, dtype=tile_points.dtype, device=device)
 
         volume = cls(data=None)
         volume.device = device
         in_world_space = (tile_points.dtype == vec3)
-        if isinstance(bg_value, vec3):
+        if hasattr(bg_value, "__len__"):
             volume.id = volume.context.core.volume_v_from_tiles_device(
                 volume.device.context,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
                 voxel_size,
-                bg_value,
-                translation,
+                bg_value[0],
+                bg_value[1],
+                bg_value[2],
+                translation[0],
+                translation[1],
+                translation[2],
                 in_world_space)
         else:
             volume.id = volume.context.core.volume_f_from_tiles_device(
@@ -1085,7 +1090,9 @@ class Volume:
                 tile_points.shape[0],
                 voxel_size,
                 float(bg_value),
-                translation,
+                translation[0],
+                translation[1],
+                translation[2],
                 in_world_space)
 
         if volume.id == 0:
