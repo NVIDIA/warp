@@ -48,8 +48,6 @@ def adam_step_kernel_float(
     vhat = v[i] / (1.0 - wp.pow(beta2, (t + 1.0)))
     params[i] = params[i] - lr * mhat / (wp.sqrt(vhat) + eps)
 
-# Designed to mimic 
-# https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
 class Adam:
     """An implementation of the Adam Optimizer
        It is designed to mimic Pytorch's version.
