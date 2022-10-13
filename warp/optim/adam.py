@@ -49,6 +49,8 @@ class Adam:
        https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
     """
     def __init__(self, params=None, lr=0.001, betas=(0.9, 0.999), eps=1e-08):
+        self.m = None #first moment
+        self.v = None #second moment
         self.set_params(params)
         self.lr = lr
         self.beta1 = betas[0]
@@ -59,8 +61,11 @@ class Adam:
     def set_params(self, params):
         self.params = params
         if(params != None):
-            self.m = wp.zeros_like(self.params) #first moment
-            self.v = wp.zeros_like(self.params) #second moment
+            # Make sure both moments match the parameters shape and type.
+            if(self.m == None or self.m.shape != self.params.shape or self.m.dtype != self.params.dtype):
+                self.m = wp.zeros_like(self.params) 
+            if(self.v == None or self.v.shape != self.params.shape or self.v.dtype != self.params.dtype):
+                self.v = wp.zeros_like(self.params)
 
     def reset_internal_state(self):
         self.m.zero_()
