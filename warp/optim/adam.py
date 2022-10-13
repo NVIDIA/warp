@@ -45,7 +45,7 @@ def adam_step_kernel_float(
 # https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
 class Adam:
     """An implementation of the Adam Optimizer
-       The design is made to mimic Pytorch's version, with slight differences.
+       It is designed to mimic Pytorch's version.
        https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
     """
     def __init__(self, params=None, lr=0.001, betas=(0.9, 0.999), eps=1e-08):
@@ -83,6 +83,7 @@ class Adam:
         assert(params.dtype == g.dtype)
         assert(params.dtype == m.dtype)
         assert(params.dtype == v.dtype)
+        assert(params.shape == g.shape)
         kernel_inputs = [g, m, v, lr, beta1, beta2, t, eps, params]
         if(params.dtype == wp.types.float32):
             wp.launch(

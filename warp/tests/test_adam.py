@@ -26,7 +26,7 @@ def objective(params:wp.array(dtype=float), score:wp.array(dtype=float)):
     wp.atomic_add(score, 0, U)
 
 # This test inspired by https://machinelearningmastery.com/adam-optimization-from-scratch/
-def test_adam_solve(test, device):
+def test_adam_solve_float(test, device):
     wp.set_device(device)
     params_start = np.array([0.1, 0.2], dtype=float)
     score = wp.zeros(1, dtype=float, requires_grad=True)
@@ -89,7 +89,7 @@ def register(parent):
     class TestArray(parent):
         pass
 
-    add_function_test(TestArray, "test_adam_solve", test_adam_solve, devices=devices)
+    add_function_test(TestArray, "test_adam_solve_float", test_adam_solve_float, devices=devices)
     add_function_test(TestArray, "test_adam_solve_vec3", test_adam_solve_vec3, devices=devices)
 
     return TestArray
