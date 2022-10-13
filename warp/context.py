@@ -251,7 +251,7 @@ class KernelHooks:
         self.backward = backward
 
 
-# kernel source and entry points (will be populated after module loads)
+# caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
 
     def __init__(self, func, key, module):
@@ -265,6 +265,7 @@ class Kernel:
         if (module):
             module.register_kernel(self)
 
+    # lookup and cache entry points based on name, called after compilation / module load
     def get_hooks(self, device):
 
         # get dictionary of hooks for the given device
