@@ -251,7 +251,7 @@ class KernelHooks:
         self.backward = backward
 
 
-# kernel source and id for compiled entry points (will be populated after module loads)
+# kernel source and entry points (will be populated after module loads)
 class Kernel:
 
     def __init__(self, func, key, module):
@@ -267,9 +267,11 @@ class Kernel:
 
     def get_hooks(self, device):
 
-        hook_dict = self.module.kernel_hooks.get(device.context, {})
+        # get dictionary of hooks for the given device
+        device_hooks = self.module.kernel_hooks.get(device.context, {})
 
-        hooks = hook_dict.get(self)
+        # look up this kernel
+        hooks = device_hooks.get(self)
         if hooks is not None:
             return hooks
         
@@ -282,7 +284,7 @@ class Kernel:
             backward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_backward").encode('utf-8'))
 
         hooks = KernelHooks(forward, backward)
-        hook_dict[self] = hooks
+        device_hooks[self] = hooks
         return hooks
 
 
