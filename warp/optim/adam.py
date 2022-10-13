@@ -76,13 +76,7 @@ class Adam:
         self.m.zero_()
         self.v.zero_()
         self.t = 0
-    
-    def solve(self, grad_func, niters=100):
-        self.reset_internal_state()
-        for _ in range(niters):
-            self.step(grad_func())
 
-    # Iter should start from 0
     def step(self, grad):
         assert(self.params != None)
         Adam.step_detail(grad, self.m, self.v, self.lr, self.beta1, self.beta2, self.t, self.eps, self.params)

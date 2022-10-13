@@ -42,7 +42,11 @@ def test_adam_solve_float(test, device):
         tape.backward(score)
         return tape.gradients[params]
 
-    opt.solve(gradient_func)
+    niters = 100
+
+    opt.reset_internal_state()
+    for _ in range(niters):
+        opt.step(gradient_func())
 
     result = params.numpy()
     # optimum is at the origin, so the result should be close to it in all N dimensions.
@@ -73,7 +77,10 @@ def test_adam_solve_vec3(test, device):
         tape.backward(score)
         return tape.gradients[params]
 
-    opt.solve(gradient_func)
+    niters = 100
+    opt.reset_internal_state()
+    for _ in range(niters):
+        opt.step(gradient_func())
 
     result = params.numpy()
     tol = 1e-5
