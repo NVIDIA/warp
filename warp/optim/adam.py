@@ -44,6 +44,10 @@ def adam_step_kernel_float(
 # Designed to mimic 
 # https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
 class Adam:
+    """An implementation of the Adam Optimizer
+       The design is made to mimic Pytorch's version, with slight differences.
+       https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
+    """
     def __init__(self, params=None, lr=0.001, betas=(0.9, 0.999), eps=1e-08):
         self.set_params(params)
         self.lr = lr
