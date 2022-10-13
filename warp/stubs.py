@@ -1533,6 +1533,13 @@ def lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
    ...
 
 @overload
+def smoothstep(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
+   """
+   Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping
+   """
+   ...
+
+@overload
 def expect_near(arg1: float32, arg2: float32, tolerance: float32):
    """
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude

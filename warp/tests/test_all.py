@@ -40,6 +40,7 @@ import warp.tests.test_atomic
 import warp.tests.test_adam
 import warp.tests.test_transient_module
 import warp.tests.test_lerp
+import warp.tests.test_smoothstep
 
 
 def register_tests(parent):
@@ -76,6 +77,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_adam.register(parent))
     tests.append(warp.tests.test_transient_module.register(parent))
     tests.append(warp.tests.test_lerp.register(parent))
+    tests.append(warp.tests.test_smoothstep.register(parent))
 
     return tests
 

@@ -1032,6 +1032,32 @@ CUDA_CALLABLE inline void adj_lerp(const T& a, const T& b, float t, T& adj_a, T&
     adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
 }
 
+CUDA_CALLABLE inline float smoothstep(float a, float b, float t)
+{
+    // remap t from the range [a, b] to [0, 1]
+    t = clamp((t - a) / (b - a), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
+
+CUDA_CALLABLE inline void adj_smoothstep(float a, float b, float t, float& adj_a, float& adj_b, float& adj_t, float adj_ret)
+{
+    float ab = a - b;
+    float at = a - t;
+    float bt = b - t;
+    float tb = t - b;
+
+    if (bt / ab >= 0 || at / ab <= 0)
+    {
+        return;
+    }
+
+    float ab3 = ab * ab * ab;
+    float ab4 = ab3 * ab;
+    adj_a += adj_ret * ((6 * at * bt * bt) / ab4);
+    adj_b += adj_ret * ((6 * at * at * tb) / ab4);
+    adj_t += adj_ret * ((6 * at * bt     ) / ab3);
+}
+
 inline CUDA_CALLABLE void print(const str s)
 {
     printf("%s\n", s);
