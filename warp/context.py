@@ -12,6 +12,7 @@ import inspect
 import hashlib
 import ctypes
 import platform
+import ast
 
 from typing import Tuple
 from typing import List
@@ -252,15 +253,12 @@ class KernelHooks:
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
-    
+
     def __init__(self, func, key, module):
 
         self.func = func
         self.module = module
         self.key = key
-
-        # lookup table for entry points per device context
-        self.hooks = {}
 
         self.adj = warp.codegen.Adjoint(func)
 
@@ -268,9 +266,13 @@ class Kernel:
             module.register_kernel(self)
 
     # lookup and cache entry points based on name, called after compilation / module load
-    def hook(self, device):
+    def get_hooks(self, device):
 
-        hooks = self.hooks.get(device.context)
+        # get dictionary of hooks for the given device
+        device_hooks = self.module.kernel_hooks.get(device.context, {})
+
+        # look up this kernel
+        hooks = device_hooks.get(self)
         if hooks is not None:
             return hooks
         
@@ -283,7 +285,7 @@ class Kernel:
             backward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_backward").encode('utf-8'))
 
         hooks = KernelHooks(forward, backward)
-        self.hooks[device.context] = hooks
+        device_hooks[self] = hooks
         return hooks
 
 
@@ -375,8 +377,38 @@ def get_module(name):
         # if so, we assume the file has changed and we recreate the module to
         # clear out old kernels / functions
         if user_modules[name].loader is not parent_loader:
-            user_modules[name].unload()
-            user_modules[name] = warp.context.Module(name, parent_loader)
+
+            old_module = user_modules[name]
+
+            # Unload the old module and recursively unload all of its dependents.
+            # This ensures that dependent modules will be re-hashed and reloaded on next launch.
+            # The rec_mask tracks modules already visited to avoid circular references.
+            def unload_recursive(module, rec_mask):
+                module.unload()
+                rec_mask.add(module)
+                for d in module.dependents:
+                    if d not in rec_mask:
+                        unload_recursive(d, rec_mask)
+
+            unload_recursive(old_module, set())
+
+            new_module = warp.context.Module(name, parent_loader)
+
+            for reference in old_module.references:
+                # the new module adopts the reference
+                new_module.references.add(reference)
+                # update the reference's dependent
+                reference.dependents.remove(old_module)
+                reference.dependents.add(new_module)
+
+            for dependent in old_module.dependents:
+                # the new module adopts the dependent
+                new_module.dependents.add(dependent)
+                # update dependent's reference
+                dependent.references.remove(old_module)
+                dependent.references.add(new_module)
+
+            user_modules[name] = new_module
 
         return user_modules[name]
 
@@ -506,16 +538,52 @@ class Module:
                         "enable_backward": True,
                         "mode": warp.config.mode}
 
+        # kernel hook lookup per device
+        # hooks are stored with the module so they can be easily cleared when the module is reloaded.
+        # -> See ``Kernel.get_hooks()``
+        self.kernel_hooks = {}
+
+        # Module dependencies are determined by scanning each function
+        # and kernel for references to external functions and structs.
+        #
+        # When a referenced module is modified, all of its dependents need to be reloaded
+        # on the next launch.  To detect this, a module's hash recursively includes
+        # all of its references.
+        # -> See ``Module.hash_module()``
+        #
+        # The dependency mechanism works for both static and dynamic (runtime) modifications.
+        # When a module is reloaded at runtime, we recursively unload all of its
+        # dependents, so that they will be re-hashed and reloaded on the next launch.
+        # -> See ``get_module()``
+
+        self.references = set() # modules whose content we depend on
+        self.dependents = set() # modules that depend on our content
+
+        # Since module hashing is recursive, we improve performance by caching the hash of the
+        # module contents (kernel source, function source, and struct source).
+        # After all kernels, functions, and structs are added to the module (usually at import time),
+        # the content hash doesn't change.
+        # -> See ``Module.hash_module_recursive()``
+
+        self.content_hash = None
+
+
     def register_struct(self, struct):
+
         self.structs.append(struct)
+
+        # for a reload of module on next launch
+        self.unload()
+
 
     def register_kernel(self, kernel):
 
         self.kernels[kernel.key] = kernel
 
+        self.find_references(kernel.adj)
+
         # for a reload of module on next launch
         self.unload()
-
 
     def register_function(self, func):
         
@@ -524,44 +592,107 @@ class Module:
         else:
             self.functions[func.key].add_overload(func)
 
+        self.find_references(func.adj)
+
         # for a reload of module on next launch
         self.unload()
 
+    # collect all referenced functions / structs 
+    # given the AST of a function or kernel
+    def find_references(self, adj):
+
+        def add_ref(ref):
+
+            if ref is not self:
+                self.references.add(ref)
+                ref.dependents.add(self)
+
+        # scan for function calls
+        for node in ast.walk(adj.tree):
+            if isinstance(node, ast.Call):
+                try:
+                    # try and look up path in function globals
+                    path = adj.resolve_path(node.func)
+                    func = eval(".".join(path), adj.func.__globals__)
+
+                    # if this is a user-defined function, add a module reference
+                    if isinstance(func, warp.context.Function) and func.module is not None:
+                        add_ref(func.module)
+
+                except:
+                    # Lookups may fail for builtins, but that's ok.
+                    # Lookups may also fail for functions in this module that haven't been imported yet,
+                    # and that's ok too (not an external reference).
+                    pass
+
+        # scan for structs
+        for arg in adj.args:
+            if isinstance(arg.type, warp.codegen.Struct) and arg.type.module is not None:
+                add_ref(arg.type.module)
 
 
     def hash_module(self):
+
+        def hash_recursive(module, visited):
+
+            # Hash this module, including all referenced modules recursively.
+            # The visited set tracks modules already visited to avoid circular references.
+
+            # check if we need to update the content hash
+            if not module.content_hash:
+
+                # recompute content hash
+                ch = hashlib.sha256()
+
+                # struct source
+                for struct in module.structs:
+                    s = inspect.getsource(struct.cls)
+                    ch.update(bytes(s, 'utf-8'))
+
+                # functions source
+                for func in module.functions.values():
+                    s = func.adj.source
+                    ch.update(bytes(s, 'utf-8'))
+                    
+                # kernel source
+                for kernel in module.kernels.values():
+                    s = kernel.adj.source
+                    ch.update(bytes(s, 'utf-8'))
+                
+                module.content_hash = ch.digest()
+
+            h = hashlib.sha256()
+
+            # content hash
+            h.update(module.content_hash)
+
+            # configuration parameters
+            for k in sorted(module.options.keys()):
+                s = f"{k}={module.options[k]}"
+                h.update(bytes(s, 'utf-8'))
+
+            # ensure to trigger recompilation if verify_fp flag is changed
+            if warp.config.verify_fp:
+                h.update(bytes("verify_fp", 'utf-8'))
         
-        h = hashlib.sha256()
+            # compile-time constants (global)
+            if warp.types.constant._hash:
+                h.update(warp.constant._hash.digest())
 
-        # struct source
-        for struct in self.structs:
-            s = inspect.getsource(struct.cls)
-            h.update(bytes(s, 'utf-8'))
+            # recurse on references
+            visited.add(module)
 
-        # functions source
-        for func in self.functions.values():
-            s = func.adj.source
-            h.update(bytes(s, 'utf-8'))
-            
-        # kernel source
-        for kernel in self.kernels.values():
-            s = kernel.adj.source
-            h.update(bytes(s, 'utf-8'))
+            sorted_deps = sorted(module.references, key=lambda m: m.name)
+            for dep in sorted_deps:
+                if dep not in visited:
+                    dep_hash = hash_recursive(dep, visited)
+                    h.update(dep_hash)
 
-         # configuration parameters
-        for k in sorted(self.options.keys()):
-            s = f"{k}={self.options[k]}"
-            h.update(bytes(s, 'utf-8'))
+            return h.digest()
 
-        # ensure to trigger recompilation if verify_fp flag is changed
-        if warp.config.verify_fp:
-            h.update(bytes("verify_fp", 'utf-8'))
-       
-        # # compile-time constants (global)
-        if warp.types.constant._hash:
-            h.update(warp.constant._hash.digest())
 
-        return h.digest()
+        return hash_recursive(self, visited=set())
+
 
     def load(self, device):
 
@@ -731,6 +862,13 @@ class Module:
                 runtime.core.cuda_unload_module(context, module)
             runtime.core.cuda_context_set_current(saved_context)
             self.cuda_modules = {}
+
+        # clear kernel hooks
+        self.kernel_hooks = {}
+
+        # clear content hash
+        self.content_hash = None
+
 
 #-------------------------------------------
 # execution context
@@ -1523,7 +1661,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         pack_args(adj_args, params)
 
         # late bind
-        hooks = kernel.hook(device)
+        hooks = kernel.get_hooks(device)
 
         # run kernel
         if device.is_cpu:
