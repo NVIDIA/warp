@@ -364,24 +364,26 @@ user_modules = {}
 
 def get_module(name):
 
-    import sys
-    parent = sys.modules[name]
+    # some modules might be manually imported using `importlib` without being
+    # registered into `sys.modules`
+    parent = sys.modules.get(name, None)
+    parent_loader = None if parent is None else parent.__loader__
 
     if name in user_modules:
 
         # check if the Warp module was created using a different loader object 
         # if so, we assume the file has changed and we recreate the module to
         # clear out old kernels / functions
-        if user_modules[name].loader is not parent.__loader__:           
+        if user_modules[name].loader is not parent_loader:
             user_modules[name].unload()
-            user_modules[name] = warp.context.Module(name, parent.__loader__)
+            user_modules[name] = warp.context.Module(name, parent_loader)
 
         return user_modules[name]
 
     else:
         
         # else Warp module didn't exist yet, so create a new one
-        user_modules[name] = warp.context.Module(name, parent.__loader__)
+        user_modules[name] = warp.context.Module(name, parent_loader)
         return user_modules[name]
 
 
