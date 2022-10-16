@@ -382,15 +382,15 @@ def get_module(name):
 
             # Unload the old module and recursively unload all of its dependents.
             # This ensures that dependent modules will be re-hashed and reloaded on next launch.
-            # The rec_mask tracks modules already visited to avoid circular references.
-            def unload_recursive(module, rec_mask):
+            # The visited set tracks modules already visited to avoid circular references.
+            def unload_recursive(module, visited):
                 module.unload()
-                rec_mask.add(module)
+                visited.add(module)
                 for d in module.dependents:
-                    if d not in rec_mask:
-                        unload_recursive(d, rec_mask)
+                    if d not in visited:
+                        unload_recursive(d, visited)
 
-            unload_recursive(old_module, set())
+            unload_recursive(old_module, visited=set())
 
             new_module = warp.context.Module(name, parent_loader)
 
