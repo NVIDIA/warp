@@ -955,9 +955,9 @@ class Runtime:
 
         self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64]
         self.core.volume_create_device.restype = ctypes.c_uint64
-        self.core.volume_f_from_tiles_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_float, ctypes.c_float, ctypes.Array, ctypes.c_bool]
+        self.core.volume_f_from_tiles_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_bool]
         self.core.volume_f_from_tiles_device.restype = ctypes.c_uint64
-        self.core.volume_v_from_tiles_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_float, ctypes.Array, ctypes.Array, ctypes.c_bool]
+        self.core.volume_v_from_tiles_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_bool]
         self.core.volume_v_from_tiles_device.restype = ctypes.c_uint64
         self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]

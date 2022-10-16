@@ -6,8 +6,6 @@
 #include <cub/cub.cuh>
 #include <cub/util_allocator.cuh>
 
-#include <string>
-
 // Explanation of key types
 // ------------------------
 //
@@ -25,8 +23,7 @@
 //
 // upper_key (36 bits) == lower_key >> 15 == full_key >> 27 == tile key
 
-__device__ __forceinline__
-inline uint64_t coord_to_full_key(const nanovdb::Coord& ijk) 
+CUDA_CALLABLE inline uint64_t coord_to_full_key(const nanovdb::Coord& ijk) 
 {
     using Tree = nanovdb::FloatTree; // any type is fine at this point
     assert((abs(ijk[0]) >> 24) == 0);
@@ -62,7 +59,7 @@ void generate_keys(size_t num_points, const nanovdb::Vec3f* points, uint64_t* al
 }
 
 // Convert a 36 bit tile key to the ijk origin of the addressed tile
-__host__ __device__ __forceinline__ nanovdb::Coord tile_key32_to_coord(uint64_t tile_key36) {
+CUDA_CALLABLE inline nanovdb::Coord tile_key32_to_coord(uint64_t tile_key36) {
     auto extend_sign = [](uint32_t i) -> int32_t { return i | ((i>>11 & 1) * 0xFFFFF800);};
     constexpr uint32_t MASK_12BITS = (1u << 12) - 1u;
     const int32_t i = extend_sign(uint32_t(tile_key36 >> 24) & MASK_12BITS);
@@ -75,7 +72,7 @@ __host__ __device__ __forceinline__ nanovdb::Coord tile_key32_to_coord(uint64_t 
 // --- CUB helpers ---
 template<uint8_t bits, typename InType, typename OutType>
 struct ShiftRight {
-    __host__ __device__ __forceinline__ OutType operator()(const InType& v) const {
+    CUDA_CALLABLE inline OutType operator()(const InType& v) const {
         return static_cast<OutType>(v >> bits);
     }
 };
@@ -83,20 +80,20 @@ struct ShiftRight {
 template<uint8_t bits, typename InType = uint64_t, typename OutType = uint64_t>
 struct ShiftRightIterator : public cub::TransformInputIterator<OutType, ShiftRight<bits, InType, OutType>, InType*> {
     using BASE = cub::TransformInputIterator<OutType, ShiftRight<bits, InType, OutType>, InType*>;
-    __host__ __device__ __forceinline__ ShiftRightIterator(uint64_t* input_itr)
+    CUDA_CALLABLE inline ShiftRightIterator(uint64_t* input_itr)
         : BASE(input_itr, ShiftRight<bits, InType, OutType>()) {}
 };
 
 
 // --- Atomic instructions for NanoVDB construction ---
 template<typename MaskT>
-__device__ void set_mask_atomic(MaskT& mask, uint32_t n) {
-    uint64_t* words = reinterpret_cast<uint64_t*>(&mask);
+CUDA_CALLABLE_DEVICE void set_mask_atomic(MaskT& mask, uint32_t n) {
+    unsigned long long int* words = reinterpret_cast<unsigned long long int*>(&mask);
     atomicOr(words + (n / 64), 1ull << (n & 63));
 }
 
 template<typename Vec3T>
-__device__ void expand_cwise_atomic(nanovdb::BBox<Vec3T>& bbox, const Vec3T& v) {
+CUDA_CALLABLE_DEVICE void expand_cwise_atomic(nanovdb::BBox<Vec3T>& bbox, const Vec3T& v) {
     atomicMin(&bbox.mCoord[0][0], v[0]);
     atomicMin(&bbox.mCoord[0][1], v[1]);
     atomicMin(&bbox.mCoord[0][2], v[2]);
@@ -222,17 +219,17 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     const size_t total_bytes =
         sizeof(Grid) +
         sizeof(Tree) +
-        sizeof(Tree::RootType) +
-        sizeof(Tree::RootType::Tile) * upper_node_count +
-        sizeof(Tree::Node2) * upper_node_count +
-        sizeof(Tree::Node1) * lower_node_count +
-        sizeof(Tree::Node0) * leaf_count;
+        sizeof(typename Tree::RootType) +
+        sizeof(typename Tree::RootType::Tile) * upper_node_count +
+        sizeof(typename Tree::Node2) * upper_node_count +
+        sizeof(typename Tree::Node1) * lower_node_count +
+        sizeof(typename Tree::Node0) * leaf_count;
 
     const int64_t upper_mem_offset =
-        sizeof(nanovdb::GridData) + sizeof(Tree) + sizeof(Tree::RootType) + 
-        sizeof(Tree::RootType::Tile) * upper_node_count;
-    const int64_t lower_mem_offset = upper_mem_offset + sizeof(Tree::Node2) * upper_node_count;
-    const int64_t leaf_mem_offset = lower_mem_offset + sizeof(Tree::Node1) * lower_node_count;
+        sizeof(nanovdb::GridData) + sizeof(Tree) + sizeof(typename Tree::RootType) + 
+        sizeof(typename Tree::RootType::Tile) * upper_node_count;
+    const int64_t lower_mem_offset = upper_mem_offset + sizeof(typename Tree::Node2) * upper_node_count;
+    const int64_t leaf_mem_offset = lower_mem_offset + sizeof(typename Tree::Node1) * lower_node_count;
 
     typename Grid::DataType* grid;
     check_cuda(cudaMalloc(&grid, total_bytes));
@@ -249,9 +246,9 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
         // Setting up the tree and root node
         kernel<<<1, 1>>>(1, [=] __device__(size_t i) {
             tree->mNodeOffset[3] = sizeof(Tree);
-            tree->mNodeOffset[2] = tree->mNodeOffset[3] + sizeof(Tree::RootType) + sizeof(Tree::RootType::Tile) * upper_node_count;
-            tree->mNodeOffset[1] = tree->mNodeOffset[2] + sizeof(Tree::Node2) * upper_node_count;
-            tree->mNodeOffset[0] = tree->mNodeOffset[1] + sizeof(Tree::Node1) * lower_node_count;
+            tree->mNodeOffset[2] = tree->mNodeOffset[3] + sizeof(typename Tree::RootType) + sizeof(typename Tree::RootType::Tile) * upper_node_count;
+            tree->mNodeOffset[1] = tree->mNodeOffset[2] + sizeof(typename Tree::Node2) * upper_node_count;
+            tree->mNodeOffset[0] = tree->mNodeOffset[1] + sizeof(typename Tree::Node1) * lower_node_count;
             tree->mNodeCount[2] = tree->mTileCount[2] = upper_node_count;
             tree->mNodeCount[1] = tree->mTileCount[1] = lower_node_count;
             tree->mNodeCount[0] = tree->mTileCount[0] = leaf_count;
@@ -273,7 +270,7 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     {
         kernel<<<num_blocks, num_threads>>>(upper_node_count, [=] __device__(size_t i) {
             tiles[i].key = root->CoordToKey(tile_key32_to_coord(upper_keys[i]));
-            tiles[i].child = sizeof(Tree::RootType) + sizeof(Tree::RootType::Tile) * upper_node_count + sizeof(Tree::Node2) * i;
+            tiles[i].child = sizeof(typename Tree::RootType) + sizeof(typename Tree::RootType::Tile) * upper_node_count + sizeof(typename Tree::Node2) * i;
             tiles[i].state = 0;
             tiles[i].value = background_value;
 
@@ -412,8 +409,7 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
         });
     }
 
-    const std::string truncated_name = params.name.substr(0, nanovdb::GridData::MaxNameSize - 1);
-    check_cuda(cudaMemcpy(grid->mGridName, truncated_name.c_str(), truncated_name.length(), cudaMemcpyHostToDevice));
+    check_cuda(cudaMemcpy(grid->mGridName, params.name, 256, cudaMemcpyHostToDevice));
 
     allocator.DeviceFree(lower_keys);
     allocator.DeviceFree(upper_keys);

@@ -1,14 +1,13 @@
 #pragma once
 
 #include <nanovdb/NanoVDB.h>
-#include <string>
 
 template<typename BuildT>
 struct BuildGridParams {
     double voxel_size = 1.0;
     BuildT background_value{0};
     nanovdb::Vec3d translation{0.0, 0.0, 0.0};
-    std::string name = "";
+    char name[256] = "";
 };
 
 template <typename BuildT>

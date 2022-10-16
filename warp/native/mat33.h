@@ -152,7 +152,15 @@ inline CUDA_CALLABLE void adj_mat33(float m00, float m01, float m02,
                       float& a20, float& a21, float& a22,
                       const mat33& adj_ret)
 {
-    printf("todo\n");
+    a00 += adj_ret.data[0][0];
+    a01 += adj_ret.data[0][1];
+    a02 += adj_ret.data[0][2];
+    a10 += adj_ret.data[1][0];
+    a11 += adj_ret.data[1][1];
+    a12 += adj_ret.data[1][2];
+    a20 += adj_ret.data[2][0];
+    a21 += adj_ret.data[2][1];
+    a22 += adj_ret.data[2][2];
 }
 
 inline bool CUDA_CALLABLE isfinite(const mat33& m)
@@ -298,6 +306,11 @@ inline CUDA_CALLABLE float determinant(const mat33& m)
     return dot(vec3(m.data[0]), cross(vec3(m.data[1]), vec3(m.data[2])));
 }
 
+inline CUDA_CALLABLE float trace(const mat33& m)
+{
+    return m.data[0][0] + m.data[1][1] + m.data[2][2];
+}
+
 inline CUDA_CALLABLE mat33 inverse(const mat33& m)
 {
 	float det = determinant(m);
@@ -424,6 +437,13 @@ inline CUDA_CALLABLE void adj_determinant(const mat33& m, mat33& adj_m, float ad
     (vec3&)adj_m.data[0] += cross(m.get_row(1), m.get_row(2))*adj_ret;
     (vec3&)adj_m.data[1] += cross(m.get_row(2), m.get_row(0))*adj_ret;
     (vec3&)adj_m.data[2] += cross(m.get_row(0), m.get_row(1))*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_trace(const mat33& m, mat33& adj_m, float adj_ret)
+{
+    adj_m.data[0][0] += adj_ret;
+    adj_m.data[1][1] += adj_ret;
+    adj_m.data[2][2] += adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_outer(const vec3& a, const vec3& b, vec3& adj_a, vec3& adj_b, const mat33& adj_ret)
