@@ -38,6 +38,7 @@ import warp.tests.test_closest_point_edge_edge
 import warp.tests.test_multigpu
 import warp.tests.test_atomic
 import warp.tests.test_adam
+import warp.tests.test_transient_module
 
 
 def register_tests(parent):
@@ -72,6 +73,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_multigpu.register(parent))
     tests.append(warp.tests.test_atomic.register(parent))
     tests.append(warp.tests.test_adam.register(parent))
+    tests.append(warp.tests.test_transient_module.register(parent))
 
     return tests
 
