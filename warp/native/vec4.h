@@ -95,6 +95,12 @@ inline CUDA_CALLABLE float dot(vec4 a, vec4 b)
     return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
 }
 
+inline CUDA_CALLABLE float tensordot(vec4 a, vec4 b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return dot(a, b);
+}
+
 inline CUDA_CALLABLE float index(const vec4 & a, int idx)
 {
 #if FP_CHECK

@@ -355,6 +355,16 @@ inline CUDA_CALLABLE mat44 mul(const mat44& a, const mat44& b)
     return t;
 }
 
+inline CUDA_CALLABLE float tensordot(const mat44& a, const mat44& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return
+          a.data[0][0] * b.data[0][0] + a.data[0][1] * b.data[0][1] + a.data[0][2] * b.data[0][2] + a.data[0][3] * b.data[0][3]
+        + a.data[1][0] * b.data[1][0] + a.data[1][1] * b.data[1][1] + a.data[1][2] * b.data[1][2] + a.data[1][3] * b.data[1][3]
+        + a.data[2][0] * b.data[2][0] + a.data[2][1] * b.data[2][1] + a.data[2][2] * b.data[2][2] + a.data[2][3] * b.data[2][3]
+        + a.data[3][0] * b.data[3][0] + a.data[3][1] * b.data[3][1] + a.data[3][2] * b.data[3][2] + a.data[3][3] * b.data[3][3];
+}
+
 inline CUDA_CALLABLE mat44 transpose(const mat44& a)
 {
     mat44 t;

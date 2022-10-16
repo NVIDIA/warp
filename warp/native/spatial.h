@@ -104,6 +104,12 @@ CUDA_CALLABLE inline vec3 spatial_bottom(const spatial_vector& a)
     return a.v;
 }
 
+inline CUDA_CALLABLE float tensordot(const spatial_vector& a, const spatial_vector& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return tensordot(a.v, b.v) + tensordot(a.w, b.w);
+}
+
 inline CUDA_CALLABLE float index(const spatial_vector& v, int i)
 {
 #if FP_CHECK
@@ -333,6 +339,12 @@ CUDA_CALLABLE inline transform mul(const transform& a, float s)
 CUDA_CALLABLE inline transform mul(const transform& a, const transform& b)
 {
     return transform_multiply(a, b);
+}
+
+inline CUDA_CALLABLE float tensordot(const transform& a, const transform& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return tensordot(a.p, b.p) + tensordot(a.q, b.q);
 }
 
 inline CUDA_CALLABLE float index(const transform& t, int i)
@@ -652,10 +664,7 @@ inline CUDA_CALLABLE spatial_matrix mul(const spatial_matrix& a, float b)
     {
         for (int j=0; j < 6; ++j)
         {
-            for (int k=0; k < 6; ++k)
-            {
-                out.data[i][j] += a.data[i][k]*b;
-            }
+            out.data[i][j] += a.data[i][j]*b;
         }
     }
     return out;
@@ -688,6 +697,18 @@ inline CUDA_CALLABLE spatial_matrix mul(const spatial_matrix& a, const spatial_m
         }
     }
     return out;
+}
+
+inline CUDA_CALLABLE float tensordot(const spatial_matrix& a, const spatial_matrix& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return
+          a.data[0][0] * b.data[0][0] + a.data[0][1] * b.data[0][1] + a.data[0][2] * b.data[0][2] + a.data[0][3] * b.data[0][3] + a.data[0][4] * b.data[0][4] + a.data[0][5] * b.data[0][5]
+        + a.data[1][0] * b.data[1][0] + a.data[1][1] * b.data[1][1] + a.data[1][2] * b.data[1][2] + a.data[1][3] * b.data[1][3] + a.data[1][4] * b.data[1][4] + a.data[1][5] * b.data[1][5]
+        + a.data[2][0] * b.data[2][0] + a.data[2][1] * b.data[2][1] + a.data[2][2] * b.data[2][2] + a.data[2][3] * b.data[2][3] + a.data[2][4] * b.data[2][4] + a.data[2][5] * b.data[2][5]
+        + a.data[3][0] * b.data[3][0] + a.data[3][1] * b.data[3][1] + a.data[3][2] * b.data[3][2] + a.data[3][3] * b.data[3][3] + a.data[3][4] * b.data[3][4] + a.data[3][5] * b.data[3][5]
+        + a.data[4][0] * b.data[4][0] + a.data[4][1] * b.data[4][1] + a.data[4][2] * b.data[4][2] + a.data[4][3] * b.data[4][3] + a.data[4][4] * b.data[4][4] + a.data[4][5] * b.data[4][5]
+        + a.data[5][0] * b.data[5][0] + a.data[5][1] * b.data[5][1] + a.data[5][2] * b.data[5][2] + a.data[5][3] * b.data[5][3] + a.data[5][4] * b.data[5][4] + a.data[5][5] * b.data[5][5];
 }
 
 inline CUDA_CALLABLE spatial_matrix transpose(const spatial_matrix& a)

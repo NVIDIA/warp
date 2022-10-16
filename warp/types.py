@@ -225,7 +225,8 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
-               
+
+compute_types = [int32, float32]
 scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64]
 vector_types = [vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix]
 

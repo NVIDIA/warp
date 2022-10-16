@@ -220,6 +220,14 @@ inline CUDA_CALLABLE mat22 mul(const mat22& a, const mat22& b)
     return t;
 }
 
+inline CUDA_CALLABLE float tensordot(const mat22& a, const mat22& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return
+          a.data[0][0] * b.data[0][0] + a.data[0][1] * b.data[0][1]
+        + a.data[1][0] * b.data[1][0] + a.data[1][1] * b.data[1][1];
+}
+
 inline CUDA_CALLABLE mat22 transpose(const mat22& a)
 {
     mat22 t;

@@ -1012,9 +1012,10 @@ template <typename T>
 void adj_mul(float s, const T& x, float& adj_s, T& adj_x, const T& adj_ret) { adj_mul(x, s, adj_x, adj_s, adj_ret); }
 
 
-// dot for scalar types just to make some templated compile for scalar/vector
+// dot for scalar types just to make some templates compile for scalar/vector
 inline CUDA_CALLABLE float dot(float a, float b) { return mul(a, b); }
-inline CUDA_CALLABLE void dot(float a, float b, float& adj_a, float& adj_b, float adj_ret) { return adj_mul(a, b, adj_a, adj_b, adj_ret); }
+inline CUDA_CALLABLE void adj_dot(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_mul(a, b, adj_a, adj_b, adj_ret); }
+inline CUDA_CALLABLE float tensordot(float a, float b) { return mul(a, b); }
 
 
 template <typename T>
@@ -1023,19 +1024,38 @@ CUDA_CALLABLE inline T lerp(const T& a, const T& b, float t)
     return a*(1.0-t) + b*t;
 }
 
-template <>
-CUDA_CALLABLE inline float16 lerp(const float16& a, const float16& b, float t)
-{
-    return float(a)*(1.0-t) + float(b)*t;
-}
-
-
 template <typename T>
 CUDA_CALLABLE inline void adj_lerp(const T& a, const T& b, float t, T& adj_a, T& adj_b, float& adj_t, const T& adj_ret)
 {
     adj_a += adj_ret*(1.0-t);
     adj_b += adj_ret*t;
-    adj_t += dot(b, adj_ret) - dot(a, adj_ret);
+    adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
+}
+
+CUDA_CALLABLE inline float smoothstep(float a, float b, float t)
+{
+    // remap t from the range [a, b] to [0, 1]
+    t = clamp((t - a) / (b - a), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
+
+CUDA_CALLABLE inline void adj_smoothstep(float a, float b, float t, float& adj_a, float& adj_b, float& adj_t, float adj_ret)
+{
+    float ab = a - b;
+    float at = a - t;
+    float bt = b - t;
+    float tb = t - b;
+
+    if (bt / ab >= 0 || at / ab <= 0)
+    {
+        return;
+    }
+
+    float ab3 = ab * ab * ab;
+    float ab4 = ab3 * ab;
+    adj_a += adj_ret * ((6 * at * bt * bt) / ab4);
+    adj_b += adj_ret * ((6 * at * at * tb) / ab4);
+    adj_t += adj_ret * ((6 * at * bt     ) / ab3);
 }
 
 inline CUDA_CALLABLE void print(const str s)
