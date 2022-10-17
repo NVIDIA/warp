@@ -992,6 +992,7 @@ inline bool CUDA_CALLABLE isfinite(float x)
 #include "intersect.h"
 #include "intersect_adj.h"
 #include "mesh.h"
+#include "bvh.h" 
 #include "svd.h"
 #include "hashgrid.h"
 #include "rand.h"

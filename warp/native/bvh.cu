@@ -111,7 +111,32 @@ void bvh_refit_device(BVH& bvh, const bounds3* b)
     wp_launch_device(WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.max_nodes, (bvh.max_nodes, bvh.node_parents, bvh.node_counts, bvh.node_lowers, bvh.node_uppers, b));
 }
 
+__global__ void set_bounds_from_lowers_and_uppers(int n, bounds3* b, const vec3* lowers, const vec3* uppers)
+{
+    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
+
+    if (tid < n)
+    {
+        b[tid] = bounds3(lowers[tid], uppers[tid]);
+    }
+}
+
 } // namespace wp
+
+// refit to data stored in the bvh
+
+void bvh_refit_device(uint64_t id)
+{
+    wp::BVH bvh;
+    if (bvh_get_descriptor(id, bvh))
+    {
+        ContextGuard guard(bvh.context);
+        wp_launch_device(WP_CURRENT_CONTEXT, wp::set_bounds_from_lowers_and_uppers, bvh.num_bounds, (bvh.num_bounds, bvh.bounds, bvh.lowers, bvh.uppers));
+
+        bvh_refit_device(bvh, bvh.bounds);
+    }
+
+}
 
 
 

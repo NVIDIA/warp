@@ -88,6 +88,9 @@ WP_API void builtin_spatial_cross_spatial_vector_spatial_vector(spatial_vector a
 WP_API void builtin_spatial_cross_dual_spatial_vector_spatial_vector(spatial_vector a, spatial_vector b, spatial_vector* ret) { *ret = wp::spatial_cross_dual(a, b); }
 WP_API void builtin_spatial_top_spatial_vector(spatial_vector a, vec3* ret) { *ret = wp::spatial_top(a); }
 WP_API void builtin_spatial_bottom_spatial_vector(spatial_vector a, vec3* ret) { *ret = wp::spatial_bottom(a); }
+WP_API void builtin_bvh_query_aabb_uint64_vec3_vec3(uint64 id, vec3 lower, vec3 upper, bvh_query_t* ret) { *ret = wp::bvh_query_aabb(id, lower, upper); }
+WP_API void builtin_bvh_query_ray_uint64_vec3_vec3(uint64 id, vec3 start, vec3 dir, bvh_query_t* ret) { *ret = wp::bvh_query_ray(id, start, dir); }
+WP_API void builtin_bvh_query_next_bvh_query_t_int32(bvh_query_t query, int32 index, bool* ret) { *ret = wp::bvh_query_next(query, index); }
 WP_API void builtin_mesh_query_point_uint64_vec3_float32_float32_int32_float32_float32(uint64 id, vec3 point, float32 max_dist, float32 inside, int32 face, float32 bary_u, float32 bary_v, bool* ret) { *ret = wp::mesh_query_point(id, point, max_dist, inside, face, bary_u, bary_v); }
 WP_API void builtin_mesh_query_ray_uint64_vec3_vec3_float32_float32_float32_float32_float32_vec3_int32(uint64 id, vec3 start, vec3 dir, float32 max_t, float32 t, float32 bary_u, float32 bary_v, float32 sign, vec3 normal, int32 face, bool* ret) { *ret = wp::mesh_query_ray(id, start, dir, max_t, t, bary_u, bary_v, sign, normal, face); }
 WP_API void builtin_mesh_query_aabb_uint64_vec3_vec3(uint64 id, vec3 lower, vec3 upper, mesh_query_aabb_t* ret) { *ret = wp::mesh_query_aabb(id, lower, upper); }
