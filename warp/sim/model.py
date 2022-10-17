@@ -99,7 +99,7 @@ class Mesh:
                 qcom = q - com
                 rcom = r - com
 
-                Dm = np.matrix((pcom, qcom, rcom)).T
+                Dm = np.array((pcom, qcom, rcom)).T
                 volume = np.linalg.det(Dm) / 6.0
 
                 # quadrature points lie on the line between the
@@ -1103,10 +1103,10 @@ class ModelBuilder:
         e1 = wp.normalize(qp)
         e2 = wp.normalize(wp.cross(n, e1))
 
-        R = np.matrix((e1, e2))
-        M = np.matrix((qp, rp))
+        R = np.array((e1, e2))
+        M = np.array((qp, rp))
 
-        D = R * M.T
+        D = R @ M.T
 
         area = np.linalg.det(D) / 2.0
 
@@ -1234,7 +1234,7 @@ class ModelBuilder:
         rp = r - p
         sp = s - p
 
-        Dm = np.matrix((qp, rp, sp)).T
+        Dm = np.array((qp, rp, sp)).T
         volume = np.linalg.det(Dm) / 6.0
 
         if (volume <= 0.0):
