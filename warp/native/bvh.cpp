@@ -543,7 +543,7 @@ void bvh_rem_descriptor(uint64_t id)
 uint64_t bvh_create_host(vec3* lowers, vec3* uppers, int num_bounds)
 {
     BVH* bvh = new BVH();
-    memset(bvh, 0, sizeof(bvh));
+    memset(bvh, 0, sizeof(BVH));
 
     bvh->context = NULL;
 
