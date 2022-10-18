@@ -205,12 +205,43 @@ def test_lower_bound(test, device):
     test.assertTrue((np.array([0, 0, 3, 4, 5, 5]) == indices.numpy()).all())
 
 
+@wp.kernel
+def test_shape_kernel(arr: wp.array(dtype=float)):
+    
+    tid = wp.tid()
+    
+    s = arr.shape
+
+    x = arr.shape[0]
+    y = arr.shape[1]
+
+
+    wp.expect_eq(x, 1)
+
+
+
+
+
+
+def test_shape(test, device):
+    
+    arr = wp.array(np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0], dtype=float), dtype=float, device=device)
+    values = wp.array(np.array([-0.1, 0.0, 2.5, 4.0, 5.0, 5.5], dtype=float), dtype=float, device=device)
+    indices = wp.zeros(6, dtype=int, device=device)
+
+    wp.launch(kernel=lower_bound_kernel, dim=6, inputs=[values, arr, indices], device=device)
+
+    test.assertTrue((np.array([0, 0, 3, 4, 5, 5]) == indices.numpy()).all())
+
+
 def register(parent):
 
     devices = wp.get_devices()
 
     class TestArray(parent):
         pass
+
+    add_function_test(TestArray, "test_shape", test_shape, devices=devices)
 
     add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
     add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)

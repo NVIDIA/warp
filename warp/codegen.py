@@ -84,6 +84,7 @@ class StructInstance:
 
 
 class Struct:
+    
     def __init__(self, cls, key, module):
         self.cls = cls
         self.module = module
@@ -91,10 +92,6 @@ class Struct:
 
         self.vars = {}
         for label, type in self.cls.__annotations__.items():
-            if type == float:
-                type = float32
-            elif type == int:
-                type = int32
             self.vars[label] = Var(label, type)
 
         fields = []
@@ -154,20 +151,16 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            #return str(self.type.dtype.__name__) + "*"
             return f"array_t<{str(self.type.dtype.__name__)}>"
         if (isinstance(self.type, Struct)):
             return make_full_qualified_name(self.type.cls)
         else:
             return str(self.type.__name__)
 
-
-
-#------------------------------------------------------------------------
-# Source code transformer, this class takes a Python function and
-# computes its adjoint using single-pass translation of the function's AST
-
 class Block:
+    
+    # Represents a basic block of instructions, e.g.: list
+    # of straight line instructions inside a for-loop or conditional 
 
     def __init__(self):
         
@@ -180,9 +173,10 @@ class Block:
         self.vars = []
        
 
-
 class Adjoint:
 
+    # Source code transformer, this class takes a Python function and
+    # generates forward and backward SSA forms of the function instructions
 
     def __init__(adj, func):
 

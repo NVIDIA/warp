@@ -305,6 +305,14 @@ class launch_bounds_t(ctypes.Structure):
             self.shape[i] = 1
 
 
+class shape_t(ctypes.Structure): 
+
+    _fields_ = [("dims", ctypes.c_int32*ARRAY_MAX_DIMS)]
+    
+    def __init__(self):
+        pass
+
+
 class array_t(ctypes.Structure): 
 
     _fields_ = [("data", ctypes.c_uint64),
@@ -317,6 +325,7 @@ class array_t(ctypes.Structure):
         self.shape = (0,)*ARRAY_MAX_DIMS
         self.strides = (0,)*ARRAY_MAX_DIMS
         self.ndim = 0       
+
         
 
 def type_ctype(dtype):
@@ -427,7 +436,18 @@ def strides_from_shape(shape:Tuple, dtype):
 
 T = TypeVar('T')
 
+class dummy:
+    type = shape_t
+
+    def __init__(self):
+        pass
+
+
 class array (Generic[T]):
+
+
+#    vars = { "shape": (.)} }
+
 
     def __init__(self, data=None, dtype: T=None, shape=None, strides = None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
         """ Constructs a new Warp array object from existing data.
