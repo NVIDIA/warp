@@ -1187,6 +1187,7 @@ class Runtime:
 
         self.device_map = {} # device lookup by alias
         self.context_map = {} # device lookup by context
+        self.graph_capture_map = {} # indicates whether graph capture is active for a given device
 
         # register CPU device
         cpu_name = platform.processor()
@@ -1195,6 +1196,7 @@ class Runtime:
         self.cpu_device = Device(self, None, "cpu", cpu_name)
         self.device_map["cpu"] = self.cpu_device
         self.context_map[None] = self.cpu_device
+        self.graph_capture_map[None] = False
 
         # register CUDA devices
         cuda_device_count = self.core.cuda_device_get_count()
@@ -1303,6 +1305,8 @@ class Runtime:
             self.device_map[alias] = device
             self.context_map[context] = device
             self.cuda_devices.append(device)
+
+            self.graph_capture_map[context] = False
 
             return device
 
@@ -1477,6 +1481,9 @@ def zeros(shape: Tuple=None, dtype=float, device: Devicelike=None, requires_grad
     device = get_device(device)
 
     if num_bytes > 0:
+
+        if runtime.graph_capture_map[device.context]:
+            raise RuntimeError("Cannot allocate memory while graph capture is active")
 
         ptr = device.allocator.alloc(num_bytes)
         if ptr is None:
@@ -1737,6 +1744,8 @@ def synchronize_device(device:Devicelike=None):
     device = runtime.get_device(device)
     if not device.is_cuda:
         return
+    if runtime.graph_capture_map[device.context]:
+        raise RuntimeError("Cannot synchronize device while graph capture is active")
 
     runtime.core.cuda_context_synchronize(device.context)
 
@@ -1808,6 +1817,8 @@ def capture_begin(device:Devicelike=None):
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
     force_load(device)
+    
+    runtime.graph_capture_map[device.context] = True
 
     runtime.core.cuda_graph_begin_capture(device.context)
 
@@ -1824,6 +1835,8 @@ def capture_end(device:Devicelike=None) -> Graph:
         raise RuntimeError("Must be a CUDA device")
 
     graph = runtime.core.cuda_graph_end_capture(device.context)
+
+    runtime.graph_capture_map[device.context] = False
     
     if graph == None:
         raise RuntimeError("Error occurred during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")

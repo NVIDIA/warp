@@ -480,6 +480,8 @@ class array (Generic[T]):
             device = runtime.get_device(device)
 
         if data is not None:
+            if runtime.graph_capture_map[device.context]:
+                raise RuntimeError("Cannot allocate memory while graph capture is active")
 
             if ptr is not None:
                 # data or ptr, not both
@@ -651,6 +653,9 @@ class array (Generic[T]):
 
             # TODO: ill-timed gc could trigger superfluous context switches here
             #       Delegate to a separate thread? (e.g., device_free_async)
+            from warp.context import runtime
+            if runtime.graph_capture_map[self.device.context]:
+                raise RuntimeError("Cannot free memory while graph capture is active")
 
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
