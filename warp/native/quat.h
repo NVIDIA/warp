@@ -314,28 +314,55 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle
 inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, float& angle, quat& adj_q, const vec3& adj_axis, const float& adj_angle)
 {   
     float l = length(vec3(q.x, q.y, q.z));
-    assert(l > 0.f);
-    float l_sq = l*l;
-    float l_inv = 1.f / l;
-    float l_inv_sq = l_inv * l_inv;
-    float l_inv_cu = l_inv_sq * l_inv;
-    
-    float ax_qx = l_inv * (1.f - q.x*q.x*l_inv_sq);
-    float ax_qy = -q.x*q.y * (l_inv_cu);
-    float ax_qz = -q.x*q.z * (l_inv_cu);
-    float ay_qx = -q.y*q.x * (l_inv_cu);
-    float ay_qy = l_inv * (1.f - q.y*q.y*l_inv_sq);
-    float ay_qz = -q.y*q.z * (l_inv_cu);
-    float az_qx = -q.z*q.x * (l_inv_cu);
-    float az_qy = -q.z*q.y * (l_inv_cu);
-    float az_qz = l_inv * (1.f - q.z*q.z*l_inv_sq);
+
+    float ax_qx = 0.f;
+    float ax_qy = 0.f;
+    float ax_qz = 0.f;
+    float ay_qx = 0.f;
+    float ay_qy = 0.f;
+    float ay_qz = 0.f;
+    float az_qx = 0.f;
+    float az_qy = 0.f;
+    float az_qz = 0.f;
+
+    float t_qx = 0.f;
+    float t_qy = 0.f;
+    float t_qz = 0.f;
+    float t_qw = 0.f;
 
     float flip = q.w < 0.f ? -1.0 : 1.0;
-    float C = flip * 2.f / (l_sq + q.w*q.w);
-    float t_qx = C * l_inv * q.x * q.w;
-    float t_qy = C * l_inv * q.y * q.w;
-    float t_qz = C * l_inv * q.z * q.w;
-    float t_qw = -C * l;
+
+    if (l > 0.f)
+    {
+        float l_sq = l*l;
+        float l_inv = 1.f / l;
+        float l_inv_sq = l_inv * l_inv;
+        float l_inv_cu = l_inv_sq * l_inv;
+        
+        float C = flip * l_inv_cu;
+        ax_qx = C * (q.y*q.y + q.z*q.z);
+        ax_qy = -C * q.x*q.y;
+        ax_qz = -C * q.x*q.z;
+        ay_qx = -C * q.y*q.x;
+        ay_qy = C * (q.x*q.x + q.z*q.z);
+        ay_qz = -C * q.y*q.z;
+        az_qx = -C * q.z*q.x;
+        az_qy = -C * q.z*q.y;
+        az_qz = C * (q.x*q.x + q.y*q.y);
+
+        float D = 2.f * flip / (l_sq + q.w*q.w);
+        t_qx = D * l_inv * q.x * q.w;
+        t_qy = D * l_inv * q.y * q.w;
+        t_qz = D * l_inv * q.z * q.w;
+        t_qw = -D * l;
+    }
+    else
+    {
+        // if this blows up we have a null quaternion
+        float t_qx = 2.f / (sqrt(3.f) * abs(q.w));
+        float t_qy = 2.f / (sqrt(3.f) * abs(q.w));
+        float t_qz = 2.f / (sqrt(3.f) * abs(q.w));
+    }
 
     adj_q.x += ax_qx * adj_axis.x + ay_qx * adj_axis.y + az_qx * adj_axis.z + t_qx * adj_angle;
     adj_q.y += ax_qy * adj_axis.x + ay_qy * adj_axis.y + az_qy * adj_axis.z + t_qy * adj_angle;

@@ -242,38 +242,56 @@ def quat_to_axis_angle_kernel_forward(
 def test_quat_to_axis_angle_grad(test, device):
     
     np.random.seed(42)
-    num_quats = 100
-    quats = np.random.randn(num_quats, 4)
-    quats = wp.array(quats, dtype=wp.quat, device=device, requires_grad=True)
+    seed = 42
+    N = 5
+    
+    quats = wp.zeros(N, dtype=wp.quat, device=device, requires_grad=True)
+    
+    edge_cases = np.array([(1.0, 0.0, 0.0, 0.0), (0.0, 1.0 / np.sqrt(3), 1.0 / np.sqrt(3), 1.0 / np.sqrt(3))])
+    edge_cases = wp.array(edge_cases, dtype=wp.quat, device=device, requires_grad=True)
 
-    def compute_gradients(kernel, index):
+    wp.launch(kernel=quat_sampler, dim=N, inputs=[seed, quats], device=device)
+
+    def compute_gradients(arr, kernel, index):
         loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
         tape = wp.Tape()
         with tape:
             wp.launch(
                 kernel=kernel,
-                dim=num_quats,
-                inputs=[quats, loss, index],
+                dim=N,
+                inputs=[arr, loss, index],
                 device=device)
 
             tape.backward(loss)
 
-        gradients = tape.gradients[quats].numpy()
+        gradients = tape.gradients[arr].numpy()
         tape.zero()
 
         return gradients
 
     # gather gradients from builtin adjoints
-    gradients_x = compute_gradients(quat_to_axis_angle_kernel, 0)
-    gradients_y = compute_gradients(quat_to_axis_angle_kernel, 1)
-    gradients_z = compute_gradients(quat_to_axis_angle_kernel, 2)
-    gradients_w = compute_gradients(quat_to_axis_angle_kernel, 3)
+    gradients_x = compute_gradients(quats, quat_to_axis_angle_kernel, 0)
+    gradients_y = compute_gradients(quats, quat_to_axis_angle_kernel, 1)
+    gradients_z = compute_gradients(quats, quat_to_axis_angle_kernel, 2)
+    gradients_w = compute_gradients(quats, quat_to_axis_angle_kernel, 3)
 
     # gather gradients from autodiff
-    gradients_x_auto = compute_gradients(quat_to_axis_angle_kernel_forward, 0)
-    gradients_y_auto = compute_gradients(quat_to_axis_angle_kernel_forward, 1)
-    gradients_z_auto = compute_gradients(quat_to_axis_angle_kernel_forward, 2)
-    gradients_w_auto = compute_gradients(quat_to_axis_angle_kernel_forward, 3)
+    gradients_x_auto = compute_gradients(quats, quat_to_axis_angle_kernel_forward, 0)
+    gradients_y_auto = compute_gradients(quats, quat_to_axis_angle_kernel_forward, 1)
+    gradients_z_auto = compute_gradients(quats, quat_to_axis_angle_kernel_forward, 2)
+    gradients_w_auto = compute_gradients(quats, quat_to_axis_angle_kernel_forward, 3)
+
+    # edge cases: gather gradients from builtin adjoints
+    edge_gradients_x = compute_gradients(edge_cases, quat_to_axis_angle_kernel, 0)
+    edge_gradients_y = compute_gradients(edge_cases, quat_to_axis_angle_kernel, 1)
+    edge_gradients_z = compute_gradients(edge_cases, quat_to_axis_angle_kernel, 2)
+    edge_gradients_w = compute_gradients(edge_cases, quat_to_axis_angle_kernel, 3)
+
+    # edge cases: gather gradients from autodiff
+    edge_gradients_x_auto = compute_gradients(edge_cases, quat_to_axis_angle_kernel_forward, 0)
+    edge_gradients_y_auto = compute_gradients(edge_cases, quat_to_axis_angle_kernel_forward, 1)
+    edge_gradients_z_auto = compute_gradients(edge_cases, quat_to_axis_angle_kernel_forward, 2)
+    edge_gradients_w_auto = compute_gradients(edge_cases, quat_to_axis_angle_kernel_forward, 3)
 
     # compare
     eps = 1.0e6
@@ -282,6 +300,11 @@ def test_quat_to_axis_angle_grad(test, device):
     test.assertTrue((np.abs(gradients_y - gradients_y_auto) < eps).all())
     test.assertTrue((np.abs(gradients_z - gradients_z_auto) < eps).all())
     test.assertTrue((np.abs(gradients_w - gradients_w_auto) < eps).all())
+
+    test.assertTrue((np.abs(edge_gradients_x - edge_gradients_x_auto) < eps).all())
+    test.assertTrue((np.abs(edge_gradients_y - edge_gradients_y_auto) < eps).all())
+    test.assertTrue((np.abs(edge_gradients_z - edge_gradients_z_auto) < eps).all())
+    test.assertTrue((np.abs(edge_gradients_w - edge_gradients_w_auto) < eps).all())
 
 
 def test_quat_from_matrix_grad(test, device):
@@ -301,9 +324,9 @@ def register(parent):
         pass
 
     # add_function_test(TestQuat, "test_rotate_rodriguez_grad", test_rotate_rodriguez_grad, devices=devices)
-    add_function_test(TestQuat, "test_slerp_grad", test_slerp_grad, devices=devices)
+    # add_function_test(TestQuat, "test_slerp_grad", test_slerp_grad, devices=devices)
     # add_function_test(TestQuat, "test_slerp_smoothstep_grad", test_slerp_smoothstep_grad, devices=devices)
-    # add_function_test(TestQuat, "test_quat_to_axis_angle_grad", test_quat_to_axis_angle_grad, devices=devices)
+    add_function_test(TestQuat, "test_quat_to_axis_angle_grad", test_quat_to_axis_angle_grad, devices=devices)
     # add_function_test(TestQuat, "test_quat_from_matrix_grad", test_quat_from_matrix_grad, devices=devices)
     # add_function_test(TestQuat, "test_quat_rpy_grad", test_quat_rpy_grad, devices=devices)
     # add_function_test(TestQuat, "test_normalize_grad", test_normalize_grad, devices=devices)
