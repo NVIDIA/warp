@@ -206,32 +206,57 @@ def test_lower_bound(test, device):
 
 
 @wp.kernel
-def test_shape_kernel(arr: wp.array(dtype=float)):
+def f1(arr: wp.array(dtype=float)):
     
-    tid = wp.tid()
-    
-    s = arr.shape
-
-    x = arr.shape[0]
-    y = arr.shape[1]
+    wp.expect_eq(arr.shape[0], 10)
 
 
-    wp.expect_eq(x, 1)
+@wp.kernel
+def f2(arr: wp.array2d(dtype=float)):
 
+    wp.expect_eq(arr.shape[0], 10)
+    wp.expect_eq(arr.shape[1], 20)
 
+    slice = arr[0]
+    wp.expect_eq(slice.shape[0], 20)
 
+@wp.kernel
+def f3(arr: wp.array3d(dtype=float)):
 
+    wp.expect_eq(arr.shape[0], 10)
+    wp.expect_eq(arr.shape[1], 20)
+    wp.expect_eq(arr.shape[2], 30)
+
+    slice = arr[0,0]
+    wp.expect_eq(slice.shape[0], 30)
+
+@wp.kernel
+def f4(arr: wp.array4d(dtype=float)):
+
+    wp.expect_eq(arr.shape[0], 10)
+    wp.expect_eq(arr.shape[1], 20)
+    wp.expect_eq(arr.shape[2], 30)
+    wp.expect_eq(arr.shape[3], 40)
+
+    slice = arr[0,0,0]
+    wp.expect_eq(slice.shape[0], 40)
 
 
 def test_shape(test, device):
     
-    arr = wp.array(np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0], dtype=float), dtype=float, device=device)
-    values = wp.array(np.array([-0.1, 0.0, 2.5, 4.0, 5.0, 5.5], dtype=float), dtype=float, device=device)
-    indices = wp.zeros(6, dtype=int, device=device)
+    with CheckOutput(test):
+        a1 = wp.zeros(dtype=float, shape=10)
+        wp.launch(f1, dim=1, inputs=[a1])
 
-    wp.launch(kernel=lower_bound_kernel, dim=6, inputs=[values, arr, indices], device=device)
+        a2 = wp.zeros(dtype=float, shape=(10, 20))
+        wp.launch(f2, dim=1, inputs=[a2])
 
-    test.assertTrue((np.array([0, 0, 3, 4, 5, 5]) == indices.numpy()).all())
+        a3 = wp.zeros(dtype=float, shape=(10, 20, 30))
+        wp.launch(f3, dim=1, inputs=[a3])
+
+        a4 = wp.zeros(dtype=float, shape=(10, 20, 30, 40))
+        wp.launch(f4, dim=1, inputs=[a4])
+
 
 
 def register(parent):

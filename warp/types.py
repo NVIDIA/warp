@@ -436,17 +436,8 @@ def strides_from_shape(shape:Tuple, dtype):
 
 T = TypeVar('T')
 
-class dummy:
-    type = shape_t
-
-    def __init__(self):
-        pass
-
 
 class array (Generic[T]):
-
-
-#    vars = { "shape": (.)} }
 
 
     def __init__(self, data=None, dtype: T=None, shape=None, strides = None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
@@ -663,6 +654,10 @@ class array (Generic[T]):
         # controls if gradients will be computed in by wp.Tape
         # this will trigger allocation of a gradient array if it doesn't exist already
         self.requires_grad = requires_grad
+
+        # register member attributes available during code-gen (e.g.: d = array.shape[0])
+        from warp.codegen import Var
+        self.vars = { "shape": Var("shape", shape_t) }
 
 
     def __del__(self):

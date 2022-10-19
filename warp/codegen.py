@@ -834,8 +834,13 @@ class Adjoint:
             if key in adj.symbols:
                 return adj.symbols[key]
             elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
-                # access struct attribute
-                out = Var(key, adj.symbols[node.value.id].type.vars[node.attr].type)
+                
+                struct = adj.symbols[node.value.id]
+                attr = struct.label + "." + node.attr
+
+                # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+                out = Var(attr, struct.type.vars[node.attr].type)
+                
                 adj.symbols[key] = out
                 return adj.symbols[key]
             else:

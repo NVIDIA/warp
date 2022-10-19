@@ -98,6 +98,12 @@ struct shape_t
         assert(i < ARRAY_MAX_DIMS);
         return dims[i];
     }
+
+    CUDA_CALLABLE inline int& operator[](int i)
+    {
+        assert(i < ARRAY_MAX_DIMS);
+        return dims[i];
+    }    
 };
 
 CUDA_CALLABLE inline int index(const shape_t& s, int i)
