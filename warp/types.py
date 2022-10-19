@@ -470,12 +470,15 @@ class array (Generic[T]):
         self.owner = False
         self.grad = None
 
+        # convert shape to Tuple
         if shape == None:
             shape = (length,)   
         elif isinstance(shape, int):
             shape = (shape,)
-        elif isinstance(shape, Tuple):
-            self.shape = shape
+        elif isinstance(shape, List):
+            shape = tuple(shape)
+
+        self.shape = shape
 
         if len(shape) > ARRAY_MAX_DIMS:
             raise RuntimeError(f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims.")
@@ -552,9 +555,9 @@ class array (Generic[T]):
             if device.is_cpu and copy == False:
 
                 # ref numpy memory directly
+                self.shape=shape
                 self.ptr = ptr
                 self.dtype=dtype
-                self.shape=shape
                 self.strides = strides
                 self.capacity=arr.size*type_size_in_bytes(dtype)
                 self.device = device
