@@ -836,10 +836,15 @@ class Adjoint:
             elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
                 
                 struct = adj.symbols[node.value.id]
-                attr = struct.label + "." + node.attr
+                
+                try:
+                    attr_name = struct.label + "." + node.attr
+                    attr_type = struct.type.vars[node.attr].type
+                except:
+                    raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({struct.type})")
 
                 # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-                out = Var(attr, struct.type.vars[node.attr].type)
+                out = Var(attr_name, attr_type)
                 
                 adj.symbols[key] = out
                 return adj.symbols[key]
@@ -1218,6 +1223,12 @@ class Adjoint:
                 # update symbol map (assumes lhs is a Name node)
                 adj.symbols[name] = out
                 return out
+
+            elif (isinstance(node.targets[0], ast.Attribute)):
+                raise RuntimeError("Error, assignment to member variables is not currently support (structs are immutable)")
+
+            else:
+                raise RuntimeError("Error, unsupported assignment statement.")
 
         elif (isinstance(node, ast.Return)):
             cond = adj.cond
