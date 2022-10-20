@@ -84,6 +84,7 @@ class StructInstance:
 
 
 class Struct:
+    
     def __init__(self, cls, key, module):
         self.cls = cls
         self.module = module
@@ -91,10 +92,6 @@ class Struct:
 
         self.vars = {}
         for label, type in self.cls.__annotations__.items():
-            if type == float:
-                type = float32
-            elif type == int:
-                type = int32
             self.vars[label] = Var(label, type)
 
         fields = []
@@ -154,20 +151,16 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            #return str(self.type.dtype.__name__) + "*"
             return f"array_t<{str(self.type.dtype.__name__)}>"
         if (isinstance(self.type, Struct)):
             return make_full_qualified_name(self.type.cls)
         else:
             return str(self.type.__name__)
 
-
-
-#------------------------------------------------------------------------
-# Source code transformer, this class takes a Python function and
-# computes its adjoint using single-pass translation of the function's AST
-
 class Block:
+    
+    # Represents a basic block of instructions, e.g.: list
+    # of straight line instructions inside a for-loop or conditional 
 
     def __init__(self):
         
@@ -180,9 +173,10 @@ class Block:
         self.vars = []
        
 
-
 class Adjoint:
 
+    # Source code transformer, this class takes a Python function and
+    # generates forward and backward SSA forms of the function instructions
 
     def __init__(adj, func):
 
@@ -840,8 +834,18 @@ class Adjoint:
             if key in adj.symbols:
                 return adj.symbols[key]
             elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
-                # access struct attribute
-                out = Var(key, adj.symbols[node.value.id].type.vars[node.attr].type)
+                
+                struct = adj.symbols[node.value.id]
+                
+                try:
+                    attr_name = struct.label + "." + node.attr
+                    attr_type = struct.type.vars[node.attr].type
+                except:
+                    raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({struct.type})")
+
+                # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+                out = Var(attr_name, attr_type)
+                
                 adj.symbols[key] = out
                 return adj.symbols[key]
             else:
@@ -1219,6 +1223,12 @@ class Adjoint:
                 # update symbol map (assumes lhs is a Name node)
                 adj.symbols[name] = out
                 return out
+
+            elif (isinstance(node.targets[0], ast.Attribute)):
+                raise RuntimeError("Error, assignment to member variables is not currently support (structs are immutable)")
+
+            else:
+                raise RuntimeError("Error, unsupported assignment statement.")
 
         elif (isinstance(node, ast.Return)):
             cond = adj.cond

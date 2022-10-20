@@ -88,6 +88,32 @@ namespace wp
 
 const int ARRAY_MAX_DIMS = 4;    // must match constant in types.py
 
+
+struct shape_t
+{
+    int dims[ARRAY_MAX_DIMS];
+
+    CUDA_CALLABLE inline int operator[](int i) const
+    {
+        assert(i < ARRAY_MAX_DIMS);
+        return dims[i];
+    }
+
+    CUDA_CALLABLE inline int& operator[](int i)
+    {
+        assert(i < ARRAY_MAX_DIMS);
+        return dims[i];
+    }    
+};
+
+CUDA_CALLABLE inline int index(const shape_t& s, int i)
+{
+    return s.dims[i];
+}
+
+CUDA_CALLABLE inline void adj_index(const shape_t& s, int i, const shape_t& adj_s, int adj_i, int adj_ret) {}
+
+
 template <typename T>
 struct array_t
 {
@@ -95,12 +121,14 @@ struct array_t
     array_t(int) {} // for backward a = 0 initialization syntax
 
     T* data;
-    int shape[ARRAY_MAX_DIMS];
+    shape_t shape;
     int strides[ARRAY_MAX_DIMS];
     int ndim;
 
     CUDA_CALLABLE inline operator T*() const { return data; }
 };
+
+
 
 // return stride (in bytes) of the given index
 template <typename T>

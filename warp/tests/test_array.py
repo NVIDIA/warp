@@ -205,12 +205,68 @@ def test_lower_bound(test, device):
     test.assertTrue((np.array([0, 0, 3, 4, 5, 5]) == indices.numpy()).all())
 
 
+@wp.kernel
+def f1(arr: wp.array(dtype=float)):
+    
+    wp.expect_eq(arr.shape[0], 10)
+
+
+@wp.kernel
+def f2(arr: wp.array2d(dtype=float)):
+
+    wp.expect_eq(arr.shape[0], 10)
+    wp.expect_eq(arr.shape[1], 20)
+
+    slice = arr[0]
+    wp.expect_eq(slice.shape[0], 20)
+
+@wp.kernel
+def f3(arr: wp.array3d(dtype=float)):
+
+    wp.expect_eq(arr.shape[0], 10)
+    wp.expect_eq(arr.shape[1], 20)
+    wp.expect_eq(arr.shape[2], 30)
+
+    slice = arr[0,0]
+    wp.expect_eq(slice.shape[0], 30)
+
+@wp.kernel
+def f4(arr: wp.array4d(dtype=float)):
+
+    wp.expect_eq(arr.shape[0], 10)
+    wp.expect_eq(arr.shape[1], 20)
+    wp.expect_eq(arr.shape[2], 30)
+    wp.expect_eq(arr.shape[3], 40)
+
+    slice = arr[0,0,0]
+    wp.expect_eq(slice.shape[0], 40)
+
+
+def test_shape(test, device):
+    
+    with CheckOutput(test):
+        a1 = wp.zeros(dtype=float, shape=10)
+        wp.launch(f1, dim=1, inputs=[a1])
+
+        a2 = wp.zeros(dtype=float, shape=(10, 20))
+        wp.launch(f2, dim=1, inputs=[a2])
+
+        a3 = wp.zeros(dtype=float, shape=(10, 20, 30))
+        wp.launch(f3, dim=1, inputs=[a3])
+
+        a4 = wp.zeros(dtype=float, shape=(10, 20, 30, 40))
+        wp.launch(f4, dim=1, inputs=[a4])
+
+
+
 def register(parent):
 
     devices = wp.get_devices()
 
     class TestArray(parent):
         pass
+
+    add_function_test(TestArray, "test_shape", test_shape, devices=devices)
 
     add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
     add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)
