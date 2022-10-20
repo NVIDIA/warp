@@ -14,84 +14,119 @@ from warp.tests.test_base import *
 np.random.seed(42)
 
 wp.init()
-wp.config.mode = "debug"
-wp.config.verify_cuda = True
 
 @wp.kernel
 def bvh_query_aabb(bvh_id: wp.uint64,
                 lower: wp.vec3,
                 upper: wp.vec3,
-                intersected_bounds: wp.array(dtype=int),
-                max_intersections: int):
+                bounds_intersected: wp.array(dtype=int)):
 
     query = wp.bvh_query_aabb(bvh_id, lower, upper)
-    nr = int(0)
     bounds_nr = int(0)
 
-    while (nr < max_intersections and wp.bvh_query_next(query, bounds_nr)):
-        intersected_bounds[nr] = bounds_nr
-        nr = nr + 1
+    while (wp.bvh_query_next(query, bounds_nr)):
+        bounds_intersected[bounds_nr] = 1
 
 
 @wp.kernel
 def bvh_query_ray(bvh_id: wp.uint64,
                 start: wp.vec3,
                 dir: wp.vec3,
-                intersected_bounds: wp.array(dtype=int),
-                max_intersections: int):
+                bounds_intersected: wp.array(dtype=int)):
 
     query = wp.bvh_query_ray(bvh_id, start, dir)
-    nr = int(0)
     bounds_nr = int(0)
 
-    while (nr < max_intersections and wp.bvh_query_next(query, bounds_nr)):
-        intersected_bounds[nr] = bounds_nr
-        nr = nr + 1
+    while (wp.bvh_query_next(query, bounds_nr)):
+        bounds_intersected[bounds_nr] = 1
 
         
+def aabb_overlap(a_lower, a_upper, b_lower, b_upper):
+    
+    if a_lower[0] > b_upper[0] or \
+       a_lower[1] > b_upper[1] or \
+       a_lower[2] > b_upper[2] or \
+       a_upper[0] < b_lower[0] or \
+       a_upper[1] < b_lower[1] or \
+       a_upper[2] < b_lower[2]:
+        return 0
+    else:
+        return 1
+      
+        
+def intersect_ray_aabb(start, dir, lower, upper):
+    
+    l1 = (lower[0] - start[0]) * dir[0]
+    l2 = (upper[0] - start[0]) * dir[0]
+    lmin = min(l1,l2)
+    lmax = max(l1,l2)
 
+    l1 = (lower[1] - start[1]) * dir[1]
+    l2 = (upper[1] - start[1]) * dir[1]
+    lmin = max(min(l1,l2), lmin)
+    lmax = min(max(l1,l2), lmax)
+
+    l1 = (lower[2] - start[2]) * dir[2]
+    l2 = (upper[2] - start[2]) * dir[2]
+    lmin = max(min(l1,l2), lmin)
+    lmax = min(max(l1,l2), lmax)
+
+    if lmax >= 0.0 and lmax >= lmin:
+        return 1
+    else:
+        return 0
+      
+        
 def test_bvh_query_aabb(test, device):
     
     num_bounds = 100
-    lowers = np.random.rand(num_bounds, 3) * 10.0
-    uppers = lowers + np.random.rand(num_bounds, 3)
+    lowers = np.random.rand(num_bounds, 3) * 5.0
+    uppers = lowers + np.random.rand(num_bounds, 3) * 5.0
             
     bvh = wp.Bvh(lowers=wp.array(lowers, dtype=wp.vec3, device=device),
                  uppers=wp.array(uppers, dtype=wp.vec3, device=device))
 
-    max_intersections = 100
-    intersected_bounds = wp.array([-1] * max_intersections, dtype=int, device=device)
+    bounds_intersected = wp.zeros(shape=(num_bounds), dtype=int, device=device)
     
-    query_lower = wp.vec3(*(np.random.rand(3)*0.5))
-    query_upper = wp.add(query_lower, wp.vec3(*(np.random.rand(3)*0.5)))
+    query_lower = wp.vec3(2.0, 2.0, 2.0)
+    query_upper = wp.vec3(8.0, 8.0, 8.0)
     
     wp.launch(kernel=bvh_query_aabb, dim=1, 
-              inputs=[bvh.id, query_lower, query_upper, intersected_bounds, max_intersections], device=device)
-
-    #print("aabb overlaps", intersected_bounds.numpy())
-
+              inputs=[bvh.id, query_lower, query_upper, bounds_intersected], device=device)
+    
+    device_intersected = bounds_intersected.numpy()
+    
+    for i in range(num_bounds):
+        lower = lowers[i]
+        upper = uppers[i]
+        host_intersected = aabb_overlap(lower, upper, query_lower, query_upper);
+        test.assertEqual(host_intersected, device_intersected[i])
     
 
 def test_bvh_query_ray(test, device):
     
     num_bounds = 100
-    lowers = np.random.rand(num_bounds, 3) * 10.0
-    uppers = lowers + np.random.rand(num_bounds, 3)
+    lowers = np.random.rand(num_bounds, 3) * 5.0
+    uppers = lowers + np.random.rand(num_bounds, 3) * 5.0
             
     bvh = wp.Bvh(lowers=wp.array(lowers, dtype=wp.vec3, device=device),
                  uppers=wp.array(uppers, dtype=wp.vec3, device=device))
 
-    max_intersections = 100
-    intersected_bounds = wp.array([-1] * max_intersections, dtype=int, device=device)
+    bounds_intersected = wp.zeros(shape=(num_bounds), dtype=int, device=device)
     
     query_start = wp.vec3(0.0, 0.0, 0.0)
-    query_dir = wp.normalize(wp.vec3(*np.random.rand(3)))
+    query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
     
     wp.launch(kernel=bvh_query_ray, dim=1, 
-              inputs=[bvh.id, query_start, query_dir, intersected_bounds, max_intersections], device=device)
+              inputs=[bvh.id, query_start, query_dir, bounds_intersected], device=device)
     
-    #print("ray overlaps", intersected_bounds.numpy())
+    device_intersected = bounds_intersected.numpy()
     
+    for i in range(num_bounds):
+        lower = lowers[i]
+        upper = uppers[i]
+        host_intersected = intersect_ray_aabb(query_start, query_dir, lower, upper);
+        test.assertEqual(host_intersected, device_intersected[i])    
 
 
 def register(parent):

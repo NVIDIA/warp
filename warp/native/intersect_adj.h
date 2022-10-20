@@ -116,9 +116,9 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     float32 adj_8 = 0;
     vec3 adj_9 = 0;
     float32 adj_10 = 0;
-    bool adj_11 = 0;
-    bool adj_12 = 0;
-    bool adj_13 = 0;
+    //bool adj_11 = 0;
+    //bool adj_12 = 0;
+    //bool adj_13 = 0;
     vec3 adj_14 = 0;
     bool adj_15 = 0;
     float32 adj_16 = 0;

@@ -305,6 +305,14 @@ class launch_bounds_t(ctypes.Structure):
             self.shape[i] = 1
 
 
+class shape_t(ctypes.Structure): 
+
+    _fields_ = [("dims", ctypes.c_int32*ARRAY_MAX_DIMS)]
+    
+    def __init__(self):
+        pass
+
+
 class array_t(ctypes.Structure): 
 
     _fields_ = [("data", ctypes.c_uint64),
@@ -317,6 +325,7 @@ class array_t(ctypes.Structure):
         self.shape = (0,)*ARRAY_MAX_DIMS
         self.strides = (0,)*ARRAY_MAX_DIMS
         self.ndim = 0       
+
         
 
 def type_ctype(dtype):
@@ -427,7 +436,9 @@ def strides_from_shape(shape:Tuple, dtype):
 
 T = TypeVar('T')
 
+
 class array (Generic[T]):
+
 
     def __init__(self, data=None, dtype: T=None, shape=None, strides = None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
         """ Constructs a new Warp array object from existing data.
@@ -459,12 +470,15 @@ class array (Generic[T]):
         self.owner = False
         self.grad = None
 
+        # convert shape to Tuple
         if shape == None:
             shape = (length,)   
         elif isinstance(shape, int):
             shape = (shape,)
-        elif isinstance(shape, Tuple):
-            self.shape = shape
+        elif isinstance(shape, List):
+            shape = tuple(shape)
+
+        self.shape = shape
 
         if len(shape) > ARRAY_MAX_DIMS:
             raise RuntimeError(f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims.")
@@ -546,9 +560,9 @@ class array (Generic[T]):
             if device.is_cpu and copy == False:
 
                 # ref numpy memory directly
+                self.shape=shape
                 self.ptr = ptr
                 self.dtype=dtype
-                self.shape=shape
                 self.strides = strides
                 self.capacity=arr.size*type_size_in_bytes(dtype)
                 self.device = device
@@ -648,6 +662,10 @@ class array (Generic[T]):
         # controls if gradients will be computed in by wp.Tape
         # this will trigger allocation of a gradient array if it doesn't exist already
         self.requires_grad = requires_grad
+
+        # register member attributes available during code-gen (e.g.: d = array.shape[0])
+        from warp.codegen import Var
+        self.vars = { "shape": Var("shape", shape_t) }
 
 
     def __del__(self):
