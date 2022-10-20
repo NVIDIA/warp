@@ -82,7 +82,6 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 	int min_face;
 	float min_v;
 	float min_w;
-	float min_inside = 1.0f;
 
 #if BVH_DEBUG
 	int tests = 0;
