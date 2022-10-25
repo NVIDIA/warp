@@ -723,29 +723,27 @@ class Module:
 
         with warp.utils.ScopedTimer(f"Module {self.name} load on device '{device}'"):
 
-            module_name = "wp_" + self.name
-
             build_path = warp.build.kernel_bin_dir
             gen_path = warp.build.kernel_gen_dir
-
-            cpu_hash_path = os.path.join(build_path, module_name + ".cpu.hash")
-            cuda_hash_path = os.path.join(build_path, module_name + ".cuda.hash")
-
-            module_path = os.path.join(build_path, module_name)
-
-            ptx_arch = min(device.arch, warp.config.ptx_target_arch)
-
-            ptx_path = module_path + f"_sm{ptx_arch}.ptx"
-
-            if (os.name == 'nt'):
-                dll_path = module_path + ".dll"
-            else:
-                dll_path = module_path + ".so"
 
             if not os.path.exists(build_path):
                 os.makedirs(build_path)
             if not os.path.exists(gen_path):
                 os.makedirs(gen_path)
+
+            module_name = "wp_" + self.name
+            module_path = os.path.join(build_path, module_name)
+
+            if os.name == 'nt':
+                dll_path = module_path + ".dll"
+            else:
+                dll_path = module_path + ".so"
+
+            ptx_arch = min(device.arch, warp.config.ptx_target_arch)
+            ptx_path = module_path + f".sm{ptx_arch}.ptx"
+
+            cpu_hash_path = module_path + ".cpu.hash"
+            ptx_hash_path = module_path + f".sm{ptx_arch}.hash"
 
             # test cache
             module_hash = self.hash_module()
@@ -764,9 +762,9 @@ class Module:
                             return True
 
             # check GPU cache
-            elif build_cuda and warp.config.cache_kernels and os.path.exists(cuda_hash_path):
+            elif build_cuda and warp.config.cache_kernels and os.path.exists(ptx_hash_path):
 
-                f = open(cuda_hash_path, 'rb')
+                f = open(ptx_hash_path, 'rb')
                 cache_hash = f.read()
                 f.close()
 
@@ -830,7 +828,7 @@ class Module:
                         warp.build.build_cuda(cu_path, ptx_arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
                     # update cuda hash
-                    f = open(cuda_hash_path, 'wb')
+                    f = open(ptx_hash_path, 'wb')
                     f.write(module_hash)
                     f.close()
 
@@ -1679,8 +1677,15 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         if device.is_cpu:
 
             if adjoint:
+                if hooks.backward is None:
+                    raise RuntimeError(f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'")
+
                 hooks.backward(*params)
+
             else:
+                if hooks.forward is None:
+                    raise RuntimeError(f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'")
+
                 hooks.forward(*params)
 
         else:
@@ -1689,8 +1694,15 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if adjoint:
+                if hooks.backward is None:
+                    raise RuntimeError(f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'")
+
                 runtime.core.cuda_launch_kernel(device.context, hooks.backward, bounds.size, kernel_params)
+
             else:
+                if hooks.forward is None:
+                    raise RuntimeError(f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'")
+
                 runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
 
             try:
