@@ -488,17 +488,14 @@ class array (Generic[T]):
             dtype = int32
         elif (dtype == float):
             dtype = float32
-        
-        self.runtime = None
 
         if data is not None or ptr is not None:
             from .context import runtime
-            self.runtime = runtime
-            device = self.runtime.get_device(device)
+            device = runtime.get_device(device)
 
         if data is not None:
-            if self.runtime.graph_capture_map[device.context]:
-                raise RuntimeError("Cannot allocate memory while graph capture is active")
+            if device.is_capturing:
+                raise RuntimeError(f"Cannot allocate memory on device {device} while graph capture is active")
 
             if ptr is not None:
                 # data or ptr, not both
@@ -674,8 +671,8 @@ class array (Generic[T]):
 
             # TODO: ill-timed gc could trigger superfluous context switches here
             #       Delegate to a separate thread? (e.g., device_free_async)
-            if self.runtime is not None and self.runtime.graph_capture_map[self.device.context]:
-                raise RuntimeError("Cannot free memory while graph capture is active")
+            if self.device.is_capturing:
+                raise RuntimeError(f"Cannot free memory on device {self.device} while graph capture is active")
 
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
