@@ -120,7 +120,7 @@ class Tape:
                     if arr.grad:
                         grad = self.gradients[arr] = arr.grad
                     else:
-                        grad = None
+                        grad = wp.zeros_like(arr)
                     setattr(adj, name, grad)
                 else:
                     setattr(adj, name, a.__dict__[name])
