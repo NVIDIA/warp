@@ -964,7 +964,7 @@ class Mesh:
                 get_data(velocities), 
                 get_data(indices), 
                 int(len(points)), 
-                int(len(indices)/3))
+                int(indices.size/3))
         else:
             self.id = runtime.core.mesh_create_device(
                 self.device.context,
@@ -972,7 +972,7 @@ class Mesh:
                 get_data(velocities), 
                 get_data(indices), 
                 int(len(points)), 
-                int(len(indices)/3))
+                int(indices.size/3))
 
 
     def __del__(self):
