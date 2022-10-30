@@ -326,6 +326,41 @@ def length(x: vec4) -> float:
    ...
 
 @overload
+def length(x: quat) -> float:
+   """
+   Compute the length of a quaternion.
+   """
+   ...
+
+@overload
+def length_sq(x: vec2) -> float:
+   """
+   Compute the squared length of a 2d vector.
+   """
+   ...
+
+@overload
+def length_sq(x: vec3) -> float:
+   """
+   Compute the squared length of a 3d vector.
+   """
+   ...
+
+@overload
+def length_sq(x: vec4) -> float:
+   """
+   Compute the squared length of a 4d vector.
+   """
+   ...
+
+@overload
+def length_sq(x: quat) -> float:
+   """
+   Compute the squared length of a quaternion.
+   """
+   ...
+
+@overload
 def normalize(x: vec2) -> vec2:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
@@ -350,34 +385,6 @@ def normalize(x: vec4) -> vec4:
 def normalize(x: quat) -> quat:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
-   """
-   ...
-
-@overload
-def length_sq(x: vec2) -> float:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq (x: vec3) -> float:
-   """
-   Compute the squared length of a 3d vector.
-   """
-   ...
-
-@overload
-def length_sq (x: vec4) -> float:
-   """
-   Compute the squared length of a 4d vector.
-   """
-   ...
-
-@overload
-def length_sq (x: quat) -> float:
-   """
-   Compute the squared length of a quaternion.
    """
    ...
 
@@ -731,12 +738,11 @@ def mlp(weights: array[float32], bias: array[float32], activation: Callable, ind
    """
    ...
 
-
 @overload
 def bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t:
    """
    Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
-      inside a volume. Returns an object that is used to track state during bvh traversal.
+      inside a bvh. Returns an object that is used to track state during bvh traversal.
     
       :param id: The bvh identifier
       :param lower: The lower bound of the bounding box in bvh space
@@ -747,20 +753,20 @@ def bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t:
 @overload
 def bvh_query_ray(id: uint64, start: vec3, dir: vec3) -> bvh_query_t:
    """
-   Construct an ray query against a bvh object. This query can be used to iterate over all bounds
+   Construct a ray query against a bvh object. This query can be used to iterate over all bounds
       that intersect the ray. Returns an object that is used to track state during bvh traversal.
     
       :param id: The bvh identifier
       :param start: The start of the ray in bvh space
-      :param dir: The direction of the ray bvh space
+      :param dir: The direction of the ray in bvh space
    """
    ...
 
 @overload
 def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
    """
-   Move to the next bound intersected by the ray. The index of the current bound is stored in ``index``, returns ``False``
-      if there are no more overlapping bounds.
+   Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
+      if there are no more overlapping bound.
    """
    ...
 
@@ -919,6 +925,13 @@ def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
    ...
 
 @overload
+def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
+   """
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+   """
+   ...
+
+@overload
 def volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int32) -> vec3:
    """
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
@@ -929,6 +942,13 @@ def volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int32) -> vec3:
 def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3:
    """
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+   """
+   ...
+
+@overload
+def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3):
+   """
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
    """
    ...
 
@@ -1272,6 +1292,62 @@ def atomic_sub(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
    ...
 
 @overload
+def atomic_min(a: array[Any], i: int32, value: Any):
+   """
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
+def atomic_min(a: array[Any], i: int32, j: int32, value: Any):
+   """
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
+def atomic_min(a: array[Any], i: int32, j: int32, k: int32, value: Any):
+   """
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
+def atomic_min(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+   """
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
+def atomic_max(a: array[Any], i: int32, value: Any):
+   """
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
+def atomic_max(a: array[Any], i: int32, j: int32, value: Any):
+   """
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
+def atomic_max(a: array[Any], i: int32, j: int32, k: int32, value: Any):
+   """
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
+def atomic_max(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+   """
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
 def index(a: vec2, i: int32) -> float:
    """
 
@@ -1336,6 +1412,34 @@ def index(a: mat44, i: int32) -> vec4:
 
 @overload
 def index(a: mat44, i: int32, j: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: spatial_matrix, i: int32, j: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: spatial_vector, i: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(a: transform, i: int32) -> float:
+   """
+
+   """
+   ...
+
+@overload
+def index(s: shape_t, i: int32) -> int:
    """
 
    """
@@ -1566,7 +1670,7 @@ def lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
    ...
 
 @overload
-def smoothstep(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
+def smoothstep(a: float32, b: float32, t: float32) -> float:
    """
    Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping
    """
