@@ -939,17 +939,35 @@ class Adjoint:
         elif (isinstance(node, ast.For)):
 
             def is_num(a):
-                return isinstance(a, ast.Num) or (
-                    isinstance(a, ast.UnaryOp) and
-                    isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num))
+
+                # simple constant
+                if isinstance(a, ast.Num):
+                    return True
+                # expression of form -constant
+                elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
+                     return True
+                else:
+                    # try and resolve the expression to an object
+                    # e.g.: wp.constant in the globals scope
+                    obj, path = adj.resolve_path(a)
+                    if isinstance(obj, warp.constant):
+                        return True
+
 
             def eval_num(a):
                 if isinstance(a, ast.Num):
                     return a.n
-                if (isinstance(a, ast.UnaryOp) and
-                    isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num)):
+                elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
                     return -a.operand.n
+                else:
+                    # try and resolve the expression to an object
+                    # e.g.: wp.constant in the globals scope
+                    obj, path = adj.resolve_path(a)
+                    if isinstance(obj, warp.constant):
+                        return obj.val
+
                 return None
+
 
             # try and unroll simple range() statements that use constant args
             unrolled = False
@@ -1054,21 +1072,19 @@ class Adjoint:
 
             name = None
             
-            # resolve path (e.g.: module.submodule.attr) expression to a list of module names
-            path = adj.resolve_path(node.func)
-            
             try:
-                # try and look up path in function globals
-                func = eval(".".join(path), adj.func.__globals__)
+                # try and lookup function in globals by
+                # resolving path (e.g.: module.submodule.attr) 
+                func, path = adj.resolve_path(node.func)
 
-                if isinstance(func, warp.context.Function) == False:
+                if isinstance(f, warp.context.Function) == False:
                     raise RuntimeError()
                     
             except Exception as e:
 
-                # try and lookup in builtins, this allows users to avoid 
+                # try and lookup function in builtins, this allows users to avoid 
                 # using "wp." prefix, and also handles type constructors
-                # e.g.: wp.vec3 which aren't explicitly a function object
+                # e.g.: wp.vec3 which aren't explicitly function objects
                 attr = path[-1]
                 if attr in warp.context.builtin_functions:
                     func = warp.context.builtin_functions[attr]
@@ -1292,7 +1308,12 @@ class Adjoint:
             modules.append(node.id)
 
         # reverse list since ast presents it backward order
-        return [*reversed(modules)]
+        path = [*reversed(modules)]
+
+        # try and evaluate object path
+        func = eval(".".join(path), adj.func.__globals__)
+
+        return func, path
 
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):

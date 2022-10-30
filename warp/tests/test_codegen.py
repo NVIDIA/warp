@@ -189,6 +189,39 @@ def test_while(n: int):
     wp.expect_eq(i, n)
 
 
+lower = wp.constant(-3)
+upper = wp.constant(3)
+step = wp.constant(2)
+
+# test unrolling of loops with constant size params
+# we can't easily test if unrolling has occurred
+# so just verify correctness at this stage
+@wp.kernel
+def test_range_constant():
+
+    s = 0
+    for i in range(upper):
+        s += i
+    
+    # sum [0, 3)
+    wp.expect_eq(s, 3)
+
+    s = 0
+    for i in range(lower, upper):
+        s += i
+
+    # sum [-3, 3)
+    wp.expect_eq(s, -3)
+
+    s = 0
+    for i in range(lower, upper, step):
+        s += i
+    
+    # sum [-3, 3)
+    wp.expect_eq(s, -3)
+
+
+
 def register(parent):
 
     class TestCodeGen(parent):
@@ -212,6 +245,7 @@ def register(parent):
     add_kernel_test(TestCodeGen, name="test_range_static_sum", kernel=test_range_static_sum, dim=1, expect=[10, 10, 10], devices=devices)
     add_kernel_test(TestCodeGen, name="test_range_dynamic_sum", kernel=test_range_dynamic_sum, dim=1, inputs=[0, 10, 2], expect=[10, 10, 10, 10], devices=devices)
     add_kernel_test(TestCodeGen, name="test_range_dynamic_sum_zero", kernel=test_range_dynamic_sum, dim=1, inputs=[0, 0, 1], expect=[0, 0, 0, 0], devices=devices)
+    add_kernel_test(TestCodeGen, name="test_range_constant", kernel=test_range_constant, dim=1, devices=devices)
 
     add_kernel_test(TestCodeGen, name="test_range_dynamic_nested", kernel=test_range_dynamic_nested, dim=1, inputs=[4], devices=devices)
 
@@ -223,6 +257,6 @@ def register(parent):
 
 if __name__ == '__main__':
     c = register(unittest.TestCase)
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, failfast=True)
 
 
