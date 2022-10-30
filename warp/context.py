@@ -392,23 +392,12 @@ def get_module(name):
 
             unload_recursive(old_module, visited=set())
 
-            new_module = warp.context.Module(name, parent_loader)
-
-            for reference in old_module.references:
-                # the new module adopts the reference
-                new_module.references.add(reference)
-                # update the reference's dependent
-                reference.dependents.remove(old_module)
-                reference.dependents.add(new_module)
-
-            for dependent in old_module.dependents:
-                # the new module adopts the dependent
-                new_module.dependents.add(dependent)
-                # update dependent's reference
-                dependent.references.remove(old_module)
-                dependent.references.add(new_module)
-
-            user_modules[name] = new_module
+            # clear out old kernels, funcs, struct definitions
+            old_module.kernels = {}
+            old_module.functions = {}
+            old_module.constants = []
+            old_module.structs = []
+            old_module.loader = parent_loader
 
         return user_modules[name]
 
