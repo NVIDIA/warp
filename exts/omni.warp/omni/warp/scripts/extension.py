@@ -77,7 +77,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "cloth_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_CLOTH),
-            display_name="Warp->Cloth Scene",
+            display_name="Warp->Cloth Simulation",
             description="",
             tag=actions_tag
         )
@@ -86,7 +86,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "deformer_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_DEFORM),
-            display_name="Warp->Deformer Scene",
+            display_name="Warp->Simple Deformer",
             description="",
             tag=actions_tag
         )
@@ -95,7 +95,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "particles_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_PARTICLES),
-            display_name="Warp->Particles Scene",
+            display_name="Warp->Particle Simulation",
             description="",
             tag=actions_tag
         )        
@@ -104,7 +104,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "wave_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_WAVE),
-            display_name="Warp->Wave Scene",
+            display_name="Warp->Wave Pool",
             description="",
             tag=actions_tag
         )
@@ -113,7 +113,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "marching_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_MARCHING),
-            display_name="Warp->Marching Scene",
+            display_name="Warp->Marching Cubes",
             description="",
             tag=actions_tag
         )
@@ -134,7 +134,16 @@ class OmniWarpExtension(omni.ext.IExt):
             display_name="Warp->Documentation",
             description="",
             tag=actions_tag
-        )       
+        )
+
+        action_registry.register_action(
+            self._ext_name,
+            "browse_scenes",
+            lambda: self._on_browse_scenes_click(),
+            display_name="Warp->Browse Scenes",
+            description="",
+            tag=actions_tag
+        )
 
     def _deregister_actions(self):
         action_registry = omni.kit.actions.core.get_action_registry()

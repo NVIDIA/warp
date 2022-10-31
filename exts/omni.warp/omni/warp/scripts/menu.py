@@ -19,19 +19,19 @@ class WarpMenu:
         )
         scene_menu_list.append(MenuItemDescription())  # line break
         scene_menu_list.append(
-            MenuItemDescription(name="Cloth Scene", onclick_action=("omni.warp", "cloth_scene"))
+            MenuItemDescription(name="Cloth Simulation", onclick_action=("omni.warp", "cloth_scene"))
         )
         scene_menu_list.append(
-            MenuItemDescription(name="Particles Scene", onclick_action=("omni.warp", "particles_scene"))
+            MenuItemDescription(name="Particle Simulation", onclick_action=("omni.warp", "particles_scene"))
         )
         scene_menu_list.append(
-            MenuItemDescription(name="Wave Scene", onclick_action=("omni.warp", "wave_scene"))
+            MenuItemDescription(name="Wave Pool", onclick_action=("omni.warp", "wave_scene"))
         )
         scene_menu_list.append(
-            MenuItemDescription(name="Marching Scene", onclick_action=("omni.warp", "marching_scene"))
+            MenuItemDescription(name="Marching Cubes", onclick_action=("omni.warp", "marching_scene"))
         )
         scene_menu_list.append(
-            MenuItemDescription(name="Deformer Scene", onclick_action=("omni.warp", "deformer_scene"))
+            MenuItemDescription(name="Simple Deformer", onclick_action=("omni.warp", "deformer_scene"))
         )
 
         # help menu
