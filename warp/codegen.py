@@ -84,6 +84,7 @@ class StructInstance:
 
 
 class Struct:
+    
     def __init__(self, cls, key, module):
         self.cls = cls
         self.module = module
@@ -91,10 +92,6 @@ class Struct:
 
         self.vars = {}
         for label, type in self.cls.__annotations__.items():
-            if type == float:
-                type = float32
-            elif type == int:
-                type = int32
             self.vars[label] = Var(label, type)
 
         fields = []
@@ -154,20 +151,16 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            #return str(self.type.dtype.__name__) + "*"
             return f"array_t<{str(self.type.dtype.__name__)}>"
         if (isinstance(self.type, Struct)):
             return make_full_qualified_name(self.type.cls)
         else:
             return str(self.type.__name__)
 
-
-
-#------------------------------------------------------------------------
-# Source code transformer, this class takes a Python function and
-# computes its adjoint using single-pass translation of the function's AST
-
 class Block:
+    
+    # Represents a basic block of instructions, e.g.: list
+    # of straight line instructions inside a for-loop or conditional 
 
     def __init__(self):
         
@@ -180,9 +173,10 @@ class Block:
         self.vars = []
        
 
-
 class Adjoint:
 
+    # Source code transformer, this class takes a Python function and
+    # generates forward and backward SSA forms of the function instructions
 
     def __init__(adj, func):
 
@@ -204,7 +198,9 @@ class Adjoint:
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
 
         # build AST
-        adj.tree = ast.parse(adj.source)                
+        adj.tree = ast.parse(adj.source)
+
+        adj.fun_name = adj.tree.body[0].name
 
         # parse argument types
         adj.arg_types = typing.get_type_hints(func)
@@ -246,7 +242,17 @@ class Adjoint:
             adj.symbols[a.label] = a
 
         # recursively evaluate function body
-        adj.eval(adj.tree.body[0])
+        try:
+            adj.eval(adj.tree.body[0])
+        except Exception as e:
+            try:
+                lineno = adj.lineno+adj.fun_lineno
+                line = adj.source.splitlines()[adj.lineno]
+                msg = f"Error while parsing function \"{adj.fun_name}\" at {adj.filename}:{lineno}:\n{line}\n"
+                ex, data, traceback = sys.exc_info()
+                e = ex("".join([msg] + list(data.args))).with_traceback(traceback)
+            finally:
+                raise e
 
         for a in adj.args:
             if isinstance(a.type, Struct):
@@ -424,16 +430,20 @@ class Adjoint:
 
         if resolved_func == None:
             
-            arg_types = ""
+            arg_types = []
 
             for x in inputs:
                 if isinstance(x, Var):
-                    arg_types += str(x.type) + ", "
+                    # shorten Warp primitive type names
+                    if x.type.__module__ == "warp.types":
+                        arg_types.append(x.type.__name__)
+                    else:
+                        arg_types.append(x.type.__module__ + "." + x.type.__name__)
                 
                 if isinstance(x, warp.context.Function):
-                    arg_types += "function" + ", "
+                    arg_types.append("function")
 
-            raise Exception(f"Couldn't find function overload for '{func.key}' that matched inputs with types: {arg_types}")
+            raise Exception(f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_types)}]")
 
         else:
             func = resolved_func
@@ -671,228 +681,350 @@ class Adjoint:
 
     def eval(adj, node):
 
-        try:
-            if hasattr(node, "lineno"):
-                adj.set_lineno(node.lineno-1)                
+        if hasattr(node, "lineno"):
+            adj.set_lineno(node.lineno-1)
 
-            # top level entry point for a function
-            if (isinstance(node, ast.FunctionDef)):
+        # top level entry point for a function
+        if (isinstance(node, ast.FunctionDef)):
 
+            out = None
+            for f in node.body:
+                out = adj.eval(f)
+
+            if 'return' in adj.symbols and adj.symbols['return'] is not None:
+                out = adj.symbols['return']
+            else:
                 out = None
-                for f in node.body:
-                    out = adj.eval(f)
-
-                if 'return' in adj.symbols and adj.symbols['return'] is not None:
-                    out = adj.symbols['return']
-                else:
-                    out = None
-                    
-                return out
-
-            # if statement
-            elif (isinstance(node, ast.If)):         
-
-                if len(node.body) == 0:
-                    return None
-
-                # eval condition
-                cond = adj.eval(node.test)
-
-                # save symbol map
-                symbols_prev = adj.symbols.copy()
-
-                # eval body
-                adj.begin_if(cond)
-
-                for stmt in node.body:
-                    adj.eval(stmt)
-
-                adj.end_if(cond)
-
-                # detect existing symbols with conflicting definitions (variables assigned inside the branch)
-                # and resolve with a phi (select) function
-                for items in symbols_prev.items():
-
-                    sym = items[0]
-                    var1 = items[1]
-                    var2 = adj.symbols[sym]
-
-                    if var1 != var2:
-                        # insert a phi function that selects var1, var2 based on cond
-                        out = adj.add_call(warp.context.builtin_functions["select"], [cond, var1, var2])
-                        adj.symbols[sym] = out
-
-
-                symbols_prev = adj.symbols.copy()
-
-                # evaluate 'else' statement as if (!cond)
-                if (len(node.orelse) > 0):
-
-                    adj.begin_else(cond)
                 
-                    for stmt in node.orelse:
-                        adj.eval(stmt)
-                    
-                    adj.end_else(cond)
+            return out
 
-                # detect existing symbols with conflicting definitions (variables assigned inside the else)
-                # and resolve with a phi (select) function
-                for items in symbols_prev.items():
+        # if statement
+        elif (isinstance(node, ast.If)):
 
-                    sym = items[0]
-                    var1 = items[1]
-                    var2 = adj.symbols[sym]
-
-                    if var1 != var2:
-                        # insert a phi function that selects var1, var2 based on cond
-                        # note the reversed order of vars since we want to use !cond as our select
-                        out = adj.add_call(warp.context.builtin_functions["select"], [cond, var2, var1])
-                        adj.symbols[sym] = out
-
-
+            if len(node.body) == 0:
                 return None
 
-            elif (isinstance(node, ast.Compare)):
-                # node.left, node.ops (list of ops), node.comparators (things to compare to)
-                # e.g. (left ops[0] node.comparators[0]) ops[1] node.comparators[1]
+            # eval condition
+            cond = adj.eval(node.test)
 
-                left = adj.eval(node.left)
-                comps = [adj.eval(comp) for comp in node.comparators]
-                op_strings = [builtin_operators[type(op)] for op in node.ops]
+            # save symbol map
+            symbols_prev = adj.symbols.copy()
 
-                out = adj.add_comp(op_strings, left, comps)
+            # eval body
+            adj.begin_if(cond)
 
-                return out
+            for stmt in node.body:
+                adj.eval(stmt)
 
-            elif (isinstance(node, ast.BoolOp)):
-                # op, expr list values
+            adj.end_if(cond)
 
-                op = node.op
-                if isinstance(op, ast.And):
-                    func = "&&"
-                elif isinstance(op, ast.Or):
-                    func = "||"
-                else:
-                    raise KeyError("Op {} is not supported".format(op))
+            # detect existing symbols with conflicting definitions (variables assigned inside the branch)
+            # and resolve with a phi (select) function
+            for items in symbols_prev.items():
 
-                out = adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
-                return out
+                sym = items[0]
+                var1 = items[1]
+                var2 = adj.symbols[sym]
 
-            elif (isinstance(node, ast.Name)):
-                # lookup symbol, if it has already been assigned to a variable then return the existing mapping
-                if node.id in adj.symbols:
-                    return adj.symbols[node.id]
+                if var1 != var2:
+                    # insert a phi function that selects var1, var2 based on cond
+                    out = adj.add_call(warp.context.builtin_functions["select"], [cond, var1, var2])
+                    adj.symbols[sym] = out
 
-                # try and resolve the name using the functions globals context (used to lookup constants + functions)
-                elif node.id in adj.func.__globals__:
-                    obj = adj.func.__globals__[node.id]
-                    
-                    if isinstance(obj, warp.constant):
-                        # evaluate constant
-                        out = adj.add_constant(obj.val)
-                        adj.symbols[node.id] = out
-                        return out
 
-                    elif isinstance(obj, warp.context.Function):
-                        # pass back ref. to function (will be converted to name during function call)
-                        return obj
+            symbols_prev = adj.symbols.copy()
 
-                    else:
-                        raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
-                   
-                else:
-                    raise KeyError("Referencing undefined symbol: " + str(node.id))
+            # evaluate 'else' statement as if (!cond)
+            if (len(node.orelse) > 0):
 
-            elif (isinstance(node, ast.Attribute)):
-                def attribute_to_str(node):
-                    if isinstance(node, ast.Name):
-                        return node.id
-                    elif isinstance(node, ast.Attribute):
-                        return attribute_to_str(node.value) + "." + node.attr
-                    else:
-                        raise RuntimeError(f"Failed to parse attribute")
+                adj.begin_else(cond)
+            
+                for stmt in node.orelse:
+                    adj.eval(stmt)
+                
+                adj.end_else(cond)
 
-                def attribute_to_val(node, context):
-                    if isinstance(node, ast.Name):
-                        return context[node.id]
-                    elif isinstance(node, ast.Attribute):
-                        return getattr(attribute_to_val(node.value, context), node.attr)
-                    else:
-                        raise RuntimeError(f"Failed to parse attribute")
+            # detect existing symbols with conflicting definitions (variables assigned inside the else)
+            # and resolve with a phi (select) function
+            for items in symbols_prev.items():
 
-                key = attribute_to_str(node)
+                sym = items[0]
+                var1 = items[1]
+                var2 = adj.symbols[sym]
 
-                if key in adj.symbols:
-                    return adj.symbols[key]
-                elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
-                    # access struct attribute
-                    out = Var(key, adj.symbols[node.value.id].type.vars[node.attr].type)
-                    adj.symbols[key] = out
-                    return adj.symbols[key]
-                else:
+                if var1 != var2:
+                    # insert a phi function that selects var1, var2 based on cond
+                    # note the reversed order of vars since we want to use !cond as our select
+                    out = adj.add_call(warp.context.builtin_functions["select"], [cond, var2, var1])
+                    adj.symbols[sym] = out
 
-                    # try and resolve to either a wp.constant
-                    # or a wp.func object
-                    obj = attribute_to_val(node, adj.func.__globals__)
-                    
-                    if isinstance(obj, warp.constant):
-                        out = adj.add_constant(obj.val)
-                        adj.symbols[key] = out          # if referencing a constant
-                    else:
-                        raise TypeError(f"'{key}' is not a local variable, warp function, or warp constant")
 
+            return None
+
+        elif (isinstance(node, ast.Compare)):
+            # node.left, node.ops (list of ops), node.comparators (things to compare to)
+            # e.g. (left ops[0] node.comparators[0]) ops[1] node.comparators[1]
+
+            left = adj.eval(node.left)
+            comps = [adj.eval(comp) for comp in node.comparators]
+            op_strings = [builtin_operators[type(op)] for op in node.ops]
+
+            out = adj.add_comp(op_strings, left, comps)
+
+            return out
+
+        elif (isinstance(node, ast.BoolOp)):
+            # op, expr list values
+
+            op = node.op
+            if isinstance(op, ast.And):
+                func = "&&"
+            elif isinstance(op, ast.Or):
+                func = "||"
+            else:
+                raise KeyError("Op {} is not supported".format(op))
+
+            out = adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
+            return out
+
+        elif (isinstance(node, ast.Name)):
+            # lookup symbol, if it has already been assigned to a variable then return the existing mapping
+            if node.id in adj.symbols:
+                return adj.symbols[node.id]
+
+            # try and resolve the name using the functions globals context (used to lookup constants + functions)
+            elif node.id in adj.func.__globals__:
+                obj = adj.func.__globals__[node.id]
+                
+                if isinstance(obj, warp.constant):
+                    # evaluate constant
+                    out = adj.add_constant(obj.val)
+                    adj.symbols[node.id] = out
                     return out
 
-            elif (isinstance(node, ast.Str)):
+                elif isinstance(obj, warp.context.Function):
+                    # pass back ref. to function (will be converted to name during function call)
+                    return obj
 
-                # string constant
-                return adj.add_constant(node.s)
-
-            elif (isinstance(node, ast.Num)):
-
-                # lookup constant, if it has already been assigned then return existing var
-                key = (node.n, type(node.n))
-
-                if (key in adj.symbols):
-                    return adj.symbols[key]
                 else:
-                    out = adj.add_constant(node.n)
-                    adj.symbols[key] = out
-                    return out
+                    raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
+                
+            else:
+                raise KeyError("Referencing undefined symbol: " + str(node.id))
 
+        elif (isinstance(node, ast.Attribute)):
+            def attribute_to_str(node):
+                if isinstance(node, ast.Name):
+                    return node.id
+                elif isinstance(node, ast.Attribute):
+                    return attribute_to_str(node.value) + "." + node.attr
+                else:
+                    raise RuntimeError(f"Failed to parse attribute")
 
-            elif (isinstance(node, ast.BinOp)):
-                # evaluate binary operator arguments
-                left = adj.eval(node.left)
-                right = adj.eval(node.right)
+            def attribute_to_val(node, context):
+                if isinstance(node, ast.Name):
+                    return context[node.id]
+                elif isinstance(node, ast.Attribute):
+                    return getattr(attribute_to_val(node.value, context), node.attr)
+                else:
+                    raise RuntimeError(f"Failed to parse attribute")
 
-                name = builtin_operators[type(node.op)]
-                func = warp.context.builtin_functions[name]
+            key = attribute_to_str(node)
 
-                out = adj.add_call(func, [left, right])
+            if key in adj.symbols:
+                return adj.symbols[key]
+            elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
+                
+                struct = adj.symbols[node.value.id]
+                
+                try:
+                    attr_name = struct.label + "." + node.attr
+                    attr_type = struct.type.vars[node.attr].type
+                except:
+                    raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({struct.type})")
+
+                # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+                out = Var(attr_name, attr_type)
+                
+                adj.symbols[key] = out
+                return adj.symbols[key]
+            else:
+
+                # try and resolve to either a wp.constant
+                # or a wp.func object
+                obj = attribute_to_val(node, adj.func.__globals__)
+                
+                if isinstance(obj, warp.constant):
+                    out = adj.add_constant(obj.val)
+                    adj.symbols[key] = out          # if referencing a constant
+                else:
+                    raise TypeError(f"'{key}' is not a local variable, warp function, or warp constant")
+
                 return out
 
-            elif (isinstance(node, ast.UnaryOp)):
-                # evaluate unary op arguments
-                arg = adj.eval(node.operand)
+        elif (isinstance(node, ast.Str)):
 
-                name = builtin_operators[type(node.op)]
-                func = warp.context.builtin_functions[name]
+            # string constant
+            return adj.add_constant(node.s)
 
-                out = adj.add_call(func, [arg])
+        elif (isinstance(node, ast.Num)):
+
+            # lookup constant, if it has already been assigned then return existing var
+            key = (node.n, type(node.n))
+
+            if (key in adj.symbols):
+                return adj.symbols[key]
+            else:
+                out = adj.add_constant(node.n)
+                adj.symbols[key] = out
                 return out
 
-            elif (isinstance(node, ast.While)):
 
-                adj.begin_while(node.test)
+        elif (isinstance(node, ast.BinOp)):
+            # evaluate binary operator arguments
+            left = adj.eval(node.left)
+            right = adj.eval(node.right)
 
+            name = builtin_operators[type(node.op)]
+            func = warp.context.builtin_functions[name]
+
+            out = adj.add_call(func, [left, right])
+            return out
+
+        elif (isinstance(node, ast.UnaryOp)):
+            # evaluate unary op arguments
+            arg = adj.eval(node.operand)
+
+            name = builtin_operators[type(node.op)]
+            func = warp.context.builtin_functions[name]
+
+            out = adj.add_call(func, [arg])
+            return out
+
+        elif (isinstance(node, ast.While)):
+
+            adj.begin_while(node.test)
+
+            symbols_prev = adj.symbols.copy()
+
+            # eval body
+            for s in node.body:
+                adj.eval(s)
+
+            # detect symbols with conflicting definitions (assigned inside the for loop)
+            for items in symbols_prev.items():
+
+                sym = items[0]
+                var1 = items[1]
+                var2 = adj.symbols[sym]
+
+                if var1 != var2:
+
+                    if (warp.config.verbose):
+                        print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
+
+                    if (var1.constant is not None):
+                        raise Exception("Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
+                    
+                    # overwrite the old variable value (violates SSA)
+                    adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
+
+                    # reset the symbol to point to the original variable
+                    adj.symbols[sym] = var1
+
+            
+            adj.end_while()
+
+
+        elif (isinstance(node, ast.For)):
+
+            def is_num(a):
+                return isinstance(a, ast.Num) or (
+                    isinstance(a, ast.UnaryOp) and
+                    isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num))
+
+            def eval_num(a):
+                if isinstance(a, ast.Num):
+                    return a.n
+                if (isinstance(a, ast.UnaryOp) and
+                    isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num)):
+                    return -a.operand.n
+                return None
+
+            # try and unroll simple range() statements that use constant args
+            unrolled = False
+
+            if isinstance(node.iter, ast.Call) and node.iter.func.id == "range":
+                
+                is_constant = True
+                for a in node.iter.args:
+
+                    # if all range() arguments are numeric constants we will unroll
+                    # note that this only handles trivial constants, it will not unroll
+                    # constant compile-time expressions e.g.: range(0, 3*2)
+                    if not is_num(a):
+                        is_constant = False
+                        break
+
+                if (is_constant):
+
+                    # range(end)
+                    if len(node.iter.args) == 1:
+                        start = 0
+                        end = eval_num(node.iter.args[0])
+                        step = 1
+
+                    # range(start, end)
+                    elif len(node.iter.args) == 2:
+                        start = eval_num(node.iter.args[0])
+                        end = eval_num(node.iter.args[1])
+                        step = 1
+
+                    # range(start, end, step)
+                    elif len(node.iter.args) == 3:
+                        start = eval_num(node.iter.args[0])
+                        end = eval_num(node.iter.args[1])
+                        step = eval_num(node.iter.args[2])
+
+                    # test if we're above max unroll count
+                    max_iters = abs(end-start)//abs(step)
+                    max_unroll = adj.builder.options["max_unroll"]
+
+                    if max_iters > max_unroll:
+
+                        if (warp.config.verbose):
+                            print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
+                    else:
+
+                        # unroll
+                        for i in range(start, end, step):
+
+                            var_iter = adj.add_constant(i)
+                            adj.symbols[node.target.id] = var_iter
+
+                            # eval body
+                            for s in node.body:
+                                adj.eval(s)
+
+                        unrolled = True
+            
+            
+            # couldn't unroll so generate a dynamic loop
+            if not unrolled:
+
+                # evaluate the Iterable
+                iter = adj.eval(node.iter)
+
+                adj.symbols[node.target.id] = adj.begin_for(iter)
+
+                # for loops should be side-effect free, here we store a copy
                 symbols_prev = adj.symbols.copy()
 
                 # eval body
                 for s in node.body:
                     adj.eval(s)
 
-                                # detect symbols with conflicting definitions (assigned inside the for loop)
+                # detect symbols with conflicting definitions (assigned inside the for loop)
                 for items in symbols_prev.items():
 
                     sym = items[0]
@@ -913,350 +1045,237 @@ class Adjoint:
                         # reset the symbol to point to the original variable
                         adj.symbols[sym] = var1
 
-                
-                adj.end_while()
+                adj.end_for(iter)
 
+        elif (isinstance(node, ast.Expr)):
+            return adj.eval(node.value)
 
-            elif (isinstance(node, ast.For)):
+        elif (isinstance(node, ast.Call)):
 
-                def is_num(a):
-                    return isinstance(a, ast.Num) or (
-                        isinstance(a, ast.UnaryOp) and
-                        isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num))
+            name = None
+            
+            # resolve path (e.g.: module.submodule.attr) expression to a list of module names
+            path = adj.resolve_path(node.func)
+            
+            try:
+                # try and look up path in function globals
+                func = eval(".".join(path), adj.func.__globals__)
 
-                def eval_num(a):
-                    if isinstance(a, ast.Num):
-                        return a.n
-                    if (isinstance(a, ast.UnaryOp) and
-                        isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num)):
-                        return -a.operand.n
-                    return None
-
-                # try and unroll simple range() statements that use constant args
-                unrolled = False
-
-                if isinstance(node.iter, ast.Call) and node.iter.func.id == "range":
+                if isinstance(func, warp.context.Function) == False:
+                    raise RuntimeError()
                     
-                    is_constant = True
-                    for a in node.iter.args:
+            except Exception as e:
 
-                        # if all range() arguments are numeric constants we will unroll
-                        # note that this only handles trivial constants, it will not unroll
-                        # constant compile-time expressions e.g.: range(0, 3*2)
-                        if not is_num(a):
-                            is_constant = False
-                            break
+                # try and lookup in builtins, this allows users to avoid 
+                # using "wp." prefix, and also handles type constructors
+                # e.g.: wp.vec3 which aren't explicitly a function object
+                attr = path[-1]
+                if attr in warp.context.builtin_functions:
+                    func = warp.context.builtin_functions[attr]
+                else:
+                    raise RuntimeError(f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel.")
 
-                    if (is_constant):
+            args = []
 
-                        # range(end)
-                        if len(node.iter.args) == 1:
-                            start = 0
-                            end = eval_num(node.iter.args[0])
-                            step = 1
+            # eval all arguments
+            for arg in node.args:
+                var = adj.eval(arg)
+                args.append(var)
 
-                        # range(start, end)
-                        elif len(node.iter.args) == 2:
-                            start = eval_num(node.iter.args[0])
-                            end = eval_num(node.iter.args[1])
-                            step = 1
+            # get expected return count, e.g.: for multi-assignment
+            min_outputs = None
+            if hasattr(node, "expects"):
+                min_outputs = node.expects
 
-                        # range(start, end, step)
-                        elif len(node.iter.args) == 3:
-                            start = eval_num(node.iter.args[0])
-                            end = eval_num(node.iter.args[1])
-                            step = eval_num(node.iter.args[2])
+            # add var with value type from the function
+            out = adj.add_call(func, args, min_outputs)
+            return out
 
-                        # test if we're above max unroll count
-                        max_iters = abs(end-start)//abs(step)
-                        max_unroll = adj.builder.options["max_unroll"]
+        elif (isinstance(node, ast.Index)):
+            # the ast.Index node appears in 3.7 versions
+            # when performing array slices, e.g.: x = arr[i]
+            # but in version 3.8 and higher it does not appear
+            return adj.eval(node.value)
 
-                        if max_iters > max_unroll:
+        elif (isinstance(node, ast.Subscript)):
 
-                            if (warp.config.verbose):
-                                print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
-                        else:
+            target = adj.eval(node.value)
 
-                            # unroll
-                            for i in range(start, end, step):
+            indices = []
 
-                                var_iter = adj.add_constant(i)
-                                adj.symbols[node.target.id] = var_iter
-
-                                # eval body
-                                for s in node.body:
-                                    adj.eval(s)
-
-                            unrolled = True
-              
-                
-                # couldn't unroll so generate a dynamic loop
-                if not unrolled:
-
-                    # evaluate the Iterable
-                    iter = adj.eval(node.iter)
-
-                    adj.symbols[node.target.id] = adj.begin_for(iter)
-
-                    # for loops should be side-effect free, here we store a copy
-                    symbols_prev = adj.symbols.copy()
-
-                    # eval body
-                    for s in node.body:
-                        adj.eval(s)
-
-                    # detect symbols with conflicting definitions (assigned inside the for loop)
-                    for items in symbols_prev.items():
-
-                        sym = items[0]
-                        var1 = items[1]
-                        var2 = adj.symbols[sym]
-
-                        if var1 != var2:
-
-                            if (warp.config.verbose):
-                                print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
-
-                            if (var1.constant is not None):
-                                raise Exception("Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
-                            
-                            # overwrite the old variable value (violates SSA)
-                            adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
-
-                            # reset the symbol to point to the original variable
-                            adj.symbols[sym] = var1
-
-                    adj.end_for(iter)
-
-            elif (isinstance(node, ast.Expr)):
-                return adj.eval(node.value)
-
-            elif (isinstance(node, ast.Call)):
-
-                name = None
-                
-                # resolve path (e.g.: module.submodule.attr) expression to a list of module names
-                path = adj.resolve_path(node.func)
-                
-                try:
-                    # try and look up path in function globals
-                    func = eval(".".join(path), adj.func.__globals__)
-
-                    if isinstance(func, warp.context.Function) == False:
-                        raise RuntimeError()
-                        
-                except Exception as e:
-
-                    # try and lookup in builtins, this allows users to avoid 
-                    # using "wp." prefix, and also handles type constructors
-                    # e.g.: wp.vec3 which aren't explicitly a function object
-                    attr = path[-1]
-                    if attr in warp.context.builtin_functions:
-                        func = warp.context.builtin_functions[attr]
-                    else:
-                        raise RuntimeError(f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel.")
-
-                args = []
-
-                # eval all arguments
-                for arg in node.args:
+            if isinstance(node.slice, ast.Tuple):
+                # handles the x[i,j] case (Python 3.8.x upward)
+                for arg in node.slice.elts:
                     var = adj.eval(arg)
-                    args.append(var)
+                    indices.append(var)
 
-                # get expected return count, e.g.: for multi-assignment
-                min_outputs = None
-                if hasattr(node, "expects"):
-                    min_outputs = node.expects
+            elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
+                # handles the x[i,j] case (Python 3.7.x)
+                for arg in node.slice.value.elts:
+                    var = adj.eval(arg)
+                    indices.append(var)
+            else:
+                # simple expression, e.g.: x[i]
+                var = adj.eval(node.slice)
+                indices.append(var)
 
-                # add var with value type from the function
-                out = adj.add_call(func, args, min_outputs)
+            if isinstance(target.type, array):
+                
+                if len(indices) == target.type.ndim:
+                    # handles array loads (where each dimension has an index specified)
+                    out = adj.add_call(warp.context.builtin_functions["load"], [target, *indices])
+                else:
+                    # handles array views (fewer indices than dimensions)
+                    out = adj.add_call(warp.context.builtin_functions["view"], [target, *indices])
+
+            else:
+                # handles non-array type indexing, e.g: vec3, mat33, etc
+                out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
+
+            return out
+
+        elif (isinstance(node, ast.Assign)):
+
+            # handle the case where we are assigning multiple output variables
+            if (isinstance(node.targets[0], ast.Tuple)):
+
+                # record the expected number of outputs on the node
+                # we do this so we can decide which function to
+                # call based on the number of expected outputs
+                if isinstance(node.value, ast.Call):
+                    node.value.expects = len(node.targets[0].elts)
+
+                # evaluate values
+                out = adj.eval(node.value)
+
+                names = []
+                for v in node.targets[0].elts:
+                    if (isinstance(v, ast.Name)):
+                        names.append(v.id)
+                    else:
+                        raise RuntimeError("Multiple return functions can only assign to simple variables, e.g.: x, y = func()")
+
+                if len(names) != len(out):
+                    raise RuntimeError("Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {}, got {})".format(len(out), len(names)))
+                
+                for name, rhs in zip(names, out):
+                    if (name in adj.symbols):
+                        if not types_equal(rhs.type, adj.symbols[name].type):
+                            raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
+
+                    adj.symbols[name] = rhs
+
                 return out
 
-            elif (isinstance(node, ast.Index)):
-                # the ast.Index node appears in 3.7 versions 
-                # when performing array slices, e.g.: x = arr[i]
-                # but in version 3.8 and higher it does not appear
-                return adj.eval(node.value)
+            # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
+            elif (isinstance(node.targets[0], ast.Subscript)):
+                
+                target = adj.eval(node.targets[0].value)
+                value = adj.eval(node.value)
 
-            elif (isinstance(node, ast.Subscript)):
-
-                target = adj.eval(node.value)
-
+                slice = node.targets[0].slice
                 indices = []
 
-                if isinstance(node.slice, ast.Tuple):
-                    # handles the x[i,j] case (Python 3.8.x upward)
-                    for arg in node.slice.elts:
+                if isinstance(slice, ast.Tuple):
+                    # handles the x[i, j] case (Python 3.8.x upward)
+                    for arg in slice.elts:
                         var = adj.eval(arg)
                         indices.append(var)
 
-                elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-                    # handles the x[i,j] case (Python 3.7.x)
-                    for arg in node.slice.value.elts:
+                elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
+                    # handles the x[i, j] case (Python 3.7.x)
+                    for arg in slice.value.elts:
                         var = adj.eval(arg)
                         indices.append(var)
                 else:
                     # simple expression, e.g.: x[i]
-                    var = adj.eval(node.slice)
+                    var = adj.eval(slice)
                     indices.append(var)
 
-                if isinstance(target.type, array):
-                    
-                    if len(indices) == target.type.ndim:
-                        # handles array loads (where each dimension has an index specified)
-                        out = adj.add_call(warp.context.builtin_functions["load"], [target, *indices])
-                    else:
-                        # handles array views (fewer indices than dimensions)
-                        out = adj.add_call(warp.context.builtin_functions["view"], [target, *indices])
-
+                if (isinstance(target.type, array)):
+                    adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
                 else:
-                    # handles non-array type indexing, e.g: vec3, mat33, etc
-                    out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
+                    raise RuntimeError("Can only subscript assign array types")
 
-                return out
-
-            elif (isinstance(node, ast.Assign)):
-
-                # handle the case where we are assigning multiple output variables
-                if (isinstance(node.targets[0], ast.Tuple)):
-
-                    # record the expected number of outputs on the node
-                    # we do this so we can decide which function to 
-                    # call based on the number of expected outputs
-                    if isinstance(node.value, ast.Call):
-                        node.value.expects = len(node.targets[0].elts)
-
-                    # evaluate values
-                    out = adj.eval(node.value)
-
-                    names = []
-                    for v in node.targets[0].elts:
-                        if (isinstance(v, ast.Name)):
-                            names.append(v.id)
-                        else:
-                            raise RuntimeError("Multiple return functions can only assign to simple variables, e.g.: x, y = func()")
-
-                    if len(names) != len(out):
-                        raise RuntimeError("Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {}, got {})".format(len(out), len(names)))
-                    
-                    for name, rhs in zip(names, out):
-                        if (name in adj.symbols):
-                            if not types_equal(rhs.type, adj.symbols[name].type):
-                                raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
-
-                        adj.symbols[name] = rhs
-
-                    return out
-
-                # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
-                elif (isinstance(node.targets[0], ast.Subscript)):
-                    
-                    target = adj.eval(node.targets[0].value)
-                    value = adj.eval(node.value)
-
-                    slice = node.targets[0].slice
-                    indices = []
-
-                    if isinstance(slice, ast.Tuple):
-                        # handles the x[i, j] case (Python 3.8.x upward)
-                        for arg in slice.elts:
-                            var = adj.eval(arg)
-                            indices.append(var)
-
-                    elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
-                        # handles the x[i, j] case (Python 3.7.x)
-                        for arg in slice.value.elts:
-                            var = adj.eval(arg)
-                            indices.append(var)
-                    else:
-                        # simple expression, e.g.: x[i]
-                        var = adj.eval(slice)
-                        indices.append(var)                    
-
-                    if (isinstance(target.type, array)):
-                        adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
-                    else:
-                        raise RuntimeError("Can only subscript assign array types")
-
-                    return None
-
-                elif (isinstance(node.targets[0], ast.Name)):
-
-                    # symbol name
-                    name = node.targets[0].id 
-
-                    # evaluate rhs
-                    rhs = adj.eval(node.value)
-
-                    # check type matches if symbol already defined
-                    if (name in adj.symbols):
-                    
-                        if (rhs.type != adj.symbols[name].type):
-                            raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
-
-                    # handle simple assignment case (a = b), where we generate a value copy rather than reference
-                    if isinstance(node.value, ast.Name):
-                        out = adj.add_var(rhs.type)
-                        adj.add_call(warp.context.builtin_functions["copy"], [out, rhs])
-                    else:
-                        out = rhs
-
-                    # update symbol map (assumes lhs is a Name node)
-                    adj.symbols[name] = out
-                    return out
-
-            elif (isinstance(node, ast.Return)):
-                cond = adj.cond  
-
-                out = adj.eval(node.value)
-                adj.symbols['return'] = out
-
-                if out is not None:        # set return type of function
-                    return_var = out
-                    if adj.return_var is not None and adj.return_var.ctype() != return_var.ctype():
-                        raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {return_var.ctype()}")
-                    adj.return_var = return_var
-
-                adj.add_return(out)
-
-                return out
-
-            elif (isinstance(node, ast.AugAssign)):
-                
-                # convert inplace operations (+=, -=, etc) to ssa form, e.g.: c = a + b
-                left = adj.eval(node.target)
-                right = adj.eval(node.value)
-
-                # lookup 
-                name = builtin_operators[type(node.op)]
-                func = warp.context.builtin_functions[name]
-
-                out = adj.add_call(func, [left, right])
-
-                # update symbol map
-                adj.symbols[node.target.id] = out
-
-            elif (isinstance(node, ast.NameConstant)):
-                if node.value == True:
-                    out = adj.add_constant(True)
-                elif node.value == False:
-                    out = adj.add_constant(False)
-                elif node.value == None:
-                    raise TypeError("None type unsupported")
-
-                return out
-
-            elif node is None:
                 return None
+
+            elif (isinstance(node.targets[0], ast.Name)):
+
+                # symbol name
+                name = node.targets[0].id
+
+                # evaluate rhs
+                rhs = adj.eval(node.value)
+
+                # check type matches if symbol already defined
+                if (name in adj.symbols):
+                
+                    if (rhs.type != adj.symbols[name].type):
+                        raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
+
+                # handle simple assignment case (a = b), where we generate a value copy rather than reference
+                if isinstance(node.value, ast.Name):
+                    out = adj.add_var(rhs.type)
+                    adj.add_call(warp.context.builtin_functions["copy"], [out, rhs])
+                else:
+                    out = rhs
+
+                # update symbol map (assumes lhs is a Name node)
+                adj.symbols[name] = out
+                return out
+
+            elif (isinstance(node.targets[0], ast.Attribute)):
+                raise RuntimeError("Error, assignment to member variables is not currently support (structs are immutable)")
+
             else:
-                raise Exception("Error, ast node of type {} not supported".format(type(node)))
+                raise RuntimeError("Error, unsupported assignment statement.")
 
-        except Exception as e:
+        elif (isinstance(node, ast.Return)):
+            cond = adj.cond
 
-            # print error / line number
-            lines = adj.source.splitlines()
-            print("Error: {} while transforming node {} in func: {} at line: {} col: {}: \n    {}".format(e, type(node), adj.func.__name__, node.lineno, node.col_offset, lines[max(node.lineno-1, 0)]))
-            raise
+            out = adj.eval(node.value)
+            adj.symbols['return'] = out
+
+            if out is not None:        # set return type of function
+                return_var = out
+                if adj.return_var is not None and adj.return_var.ctype() != return_var.ctype():
+                    raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {return_var.ctype()}")
+                adj.return_var = return_var
+
+            adj.add_return(out)
+
+            return out
+
+        elif (isinstance(node, ast.AugAssign)):
+            
+            # convert inplace operations (+=, -=, etc) to ssa form, e.g.: c = a + b
+            left = adj.eval(node.target)
+            right = adj.eval(node.value)
+
+            # lookup
+            name = builtin_operators[type(node.op)]
+            func = warp.context.builtin_functions[name]
+
+            out = adj.add_call(func, [left, right])
+
+            # update symbol map
+            adj.symbols[node.target.id] = out
+
+        elif (isinstance(node, ast.NameConstant)):
+            if node.value == True:
+                out = adj.add_constant(True)
+            elif node.value == False:
+                out = adj.add_constant(False)
+            elif node.value == None:
+                raise TypeError("None type unsupported")
+
+            return out
+
+        elif node is None:
+            return None
+        else:
+            raise Exception("Error, ast node of type {} not supported".format(type(node)))
+
 
 
     # helper to evaluate expressions of the form

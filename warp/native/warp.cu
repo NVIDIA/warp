@@ -20,7 +20,6 @@ struct DeviceInfo
 
     CUdevice device = -1;
     int ordinal = -1;
-    CUcontext primary_context = NULL;
     char name[kNameLen] = "";
     int arch = 0;
     int is_uva = 0;
@@ -71,7 +70,6 @@ int cuda_init()
                 // query device info
                 g_devices[i].device = device;
                 g_devices[i].ordinal = i;
-                check_cu(cuDevicePrimaryCtxRetain_f(&g_devices[i].primary_context, device));
                 check_cu(cuDeviceGetName_f(g_devices[i].name, DeviceInfo::kNameLen, device));
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_uva, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device));
                 int major = 0;
@@ -249,13 +247,20 @@ int cuda_device_get_count()
     return count;
 }
 
-void* cuda_device_get_primary_context(int ordinal)
+void* cuda_device_primary_context_retain(int ordinal)
 {
     CUcontext context = NULL;
     CUdevice device;
     if (check_cu(cuDeviceGet_f(&device, ordinal)))
         check_cu(cuDevicePrimaryCtxRetain_f(&context, device));
     return context;
+}
+
+void cuda_device_primary_context_release(int ordinal)
+{
+    CUdevice device;
+    if (check_cu(cuDeviceGet_f(&device, ordinal)))
+        check_cu(cuDevicePrimaryCtxRelease_f(device));
 }
 
 const char* cuda_device_get_name(int ordinal)
@@ -375,10 +380,15 @@ int cuda_context_get_device_ordinal(void* context)
 
 int cuda_context_is_primary(void* context)
 {
-    CUcontext ctx = static_cast<CUcontext>(context);
-    ContextInfo* info = get_context_info(ctx);
-    if (info && info->device_info)
-        return int(ctx == info->device_info->primary_context);
+    int ordinal = cuda_context_get_device_ordinal(context);
+    if (ordinal != -1)
+    {
+        // there is no CUDA API to check if a context is primary, but we can temporarily
+        // acquire the device's primary context to check the pointer
+        void* device_primary_context = cuda_device_primary_context_retain(ordinal);
+        cuda_device_primary_context_release(ordinal);
+        return int(context == device_primary_context);
+    }
     return 0;
 }
 
@@ -711,6 +721,7 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
 #include "sort.cu"
 #include "hashgrid.cu"
 #include "marching.cu"
+#include "volume_builder.cu"
 
 //#include "spline.inl"
 //#include "volume.inl"

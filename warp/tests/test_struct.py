@@ -127,6 +127,14 @@ def test_step_grad(test, device):
     assert_np_equal(state_in.v.grad.numpy(), dl_dv, tol=1e-6)
     assert_np_equal(model.m.grad.numpy(), dl_dm, tol=1e-6)
 
+    tape.zero()
+    
+    assert state_out.x.grad.numpy().sum() == 0.0
+    assert state_in.x.grad.numpy().sum() == 0.0
+    assert state_out.v.grad.numpy().sum() == 0.0
+    assert state_in.v.grad.numpy().sum() == 0.0
+    assert model.m.grad.numpy().sum() == 0.0
+
 
 def register(parent):
     devices = wp.get_devices()

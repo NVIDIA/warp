@@ -7,6 +7,7 @@
  */
 
 #include "volume.h"
+#include "volume_builder.h"
 #include "warp.h"
 #include "cuda_util.h"
 
@@ -23,7 +24,7 @@ struct VolumeDesc
     void* buffer; 
     uint64_t size_in_bytes;
 
-    // offset to the voxel values of the first leaf node realtive to buffer
+    // offset to the voxel values of the first leaf node relative to buffer
     uint64_t first_voxel_data_offs;
 
     // copy of the grids's metadata to keep on the host for device volumes
@@ -36,7 +37,7 @@ struct VolumeDesc
     void* context;
 };
 
-// Host-side volume desciptors. Maps each CPU/GPU volume buffer address (id) to a CPU desc
+// Host-side volume descriptors. Maps each CPU/GPU volume buffer address (id) to a CPU desc
 std::map<uint64_t, VolumeDesc> g_volume_descriptors;
 
 bool volume_get_descriptor(uint64_t id, VolumeDesc& volumeDesc)
@@ -126,7 +127,6 @@ uint64_t volume_create_device(void* context, void* buf, uint64_t size)
     return id;
 }
 
-
 static void volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size)
 {
     *buf = 0;
@@ -166,3 +166,45 @@ void volume_destroy_device(uint64_t id)
         volume_rem_descriptor(id);
     }
 }
+
+
+#if !WP_DISABLE_CUDA
+uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space)
+{
+    nanovdb::FloatGrid* grid;
+    size_t gridSize;
+    BuildGridParams<float> params;
+    params.voxel_size = voxel_size;
+    params.background_value = bg_value;
+    params.translation = nanovdb::Vec3f{tx, ty, tz};
+
+    build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
+
+    return volume_create_device(context, grid, gridSize);
+}
+
+uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space)
+{
+    nanovdb::Vec3fGrid* grid;
+    size_t gridSize;
+    BuildGridParams<nanovdb::Vec3f> params;
+    params.voxel_size = voxel_size;
+    params.background_value = nanovdb::Vec3f{bg_value_x, bg_value_y, bg_value_z};
+    params.translation = nanovdb::Vec3f{tx, ty, tz};
+
+    build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
+
+    return volume_create_device(context, grid, gridSize);
+}
+#else
+// stubs for non-CUDA platforms
+uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space)
+{
+    return 0;
+}
+
+uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space)
+{
+    return 0;
+}
+#endif

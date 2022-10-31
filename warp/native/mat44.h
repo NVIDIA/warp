@@ -151,6 +151,29 @@ inline CUDA_CALLABLE mat44 atomic_add(mat44 * addr, mat44 value)
     return m;
 }
 
+inline CUDA_CALLABLE mat44 atomic_min(mat44 * addr, mat44 value) 
+{
+    mat44 m;
+    
+    for (int i=0; i < 4; ++i)
+        for (int j=0; j < 4; ++j)
+            m.data[i][j] = atomic_min(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+inline CUDA_CALLABLE mat44 atomic_max(mat44 * addr, mat44 value) 
+{
+    mat44 m;
+    
+    for (int i=0; i < 4; ++i)
+        for (int j=0; j < 4; ++j)
+            m.data[i][j] = atomic_max(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+
 
 inline CUDA_CALLABLE void adj_mat44(
     vec4 c0, vec4 c1, vec4 c2, vec4 c3,
@@ -209,7 +232,25 @@ inline CUDA_CALLABLE void adj_mat44(float m00, float m01, float m02, float m03,
                       float& a30, float& a31, float& a32, float& a33,
                       const mat44& adj_ret)
 {
-    printf("todo\n");
+    a00 += adj_ret.data[0][0];
+    a01 += adj_ret.data[0][1];
+    a02 += adj_ret.data[0][2];
+    a03 += adj_ret.data[0][3];
+
+    a10 += adj_ret.data[1][0];
+    a11 += adj_ret.data[1][1];
+    a12 += adj_ret.data[1][2];
+    a13 += adj_ret.data[1][3];
+
+    a20 += adj_ret.data[2][0];
+    a21 += adj_ret.data[2][1];
+    a22 += adj_ret.data[2][2];
+    a23 += adj_ret.data[2][3];
+
+    a30 += adj_ret.data[3][0];
+    a31 += adj_ret.data[3][1];
+    a32 += adj_ret.data[3][2];
+    a33 += adj_ret.data[3][3];
 }
 
 inline CUDA_CALLABLE float index(const mat44& m, int row, int col)
@@ -312,6 +353,16 @@ inline CUDA_CALLABLE mat44 mul(const mat44& a, const mat44& b)
     }
 
     return t;
+}
+
+inline CUDA_CALLABLE float tensordot(const mat44& a, const mat44& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return
+          a.data[0][0] * b.data[0][0] + a.data[0][1] * b.data[0][1] + a.data[0][2] * b.data[0][2] + a.data[0][3] * b.data[0][3]
+        + a.data[1][0] * b.data[1][0] + a.data[1][1] * b.data[1][1] + a.data[1][2] * b.data[1][2] + a.data[1][3] * b.data[1][3]
+        + a.data[2][0] * b.data[2][0] + a.data[2][1] * b.data[2][1] + a.data[2][2] * b.data[2][2] + a.data[2][3] * b.data[2][3]
+        + a.data[3][0] * b.data[3][0] + a.data[3][1] * b.data[3][1] + a.data[3][2] * b.data[3][2] + a.data[3][3] * b.data[3][3];
 }
 
 inline CUDA_CALLABLE mat44 transpose(const mat44& a)
@@ -455,22 +506,34 @@ inline CUDA_CALLABLE void adj_determinant(const mat44& m, mat44& adj_m, float ad
 
     // Multiply all 3x3 cofactors by adjoint & transpose
     adj_m.data[0][0] += float(z00*adj_ret);
-    adj_m.data[0][1] += float(z10*adj_ret);
-    adj_m.data[1][0] += float(z01*adj_ret);
-    adj_m.data[0][2] += float(z20*adj_ret);
-    adj_m.data[2][0] += float(z02*adj_ret);
-    adj_m.data[0][3] += float(z30*adj_ret);
-    adj_m.data[3][0] += float(z03*adj_ret);
+    adj_m.data[1][0] += float(z10*adj_ret);
+    adj_m.data[0][1] += float(z01*adj_ret);
+    adj_m.data[2][0] += float(z20*adj_ret);
+    adj_m.data[0][2] += float(z02*adj_ret);
+    adj_m.data[3][0] += float(z30*adj_ret);
+    adj_m.data[0][3] += float(z03*adj_ret);
     adj_m.data[1][1] += float(z11*adj_ret);
-    adj_m.data[1][2] += float(z21*adj_ret);
-    adj_m.data[2][1] += float(z12*adj_ret);
-    adj_m.data[1][3] += float(z31*adj_ret);
-    adj_m.data[3][1] += float(z13*adj_ret);
+    adj_m.data[2][1] += float(z21*adj_ret);
+    adj_m.data[1][2] += float(z12*adj_ret);
+    adj_m.data[3][1] += float(z31*adj_ret);
+    adj_m.data[1][3] += float(z13*adj_ret);
     adj_m.data[2][2] += float(z22*adj_ret);
-    adj_m.data[2][3] += float(z32*adj_ret);
-    adj_m.data[3][2] += float(z23*adj_ret);
+    adj_m.data[3][2] += float(z32*adj_ret);
+    adj_m.data[2][3] += float(z23*adj_ret);
     adj_m.data[3][3] += float(z33*adj_ret);
+}
 
+inline CUDA_CALLABLE float trace(const mat44& m)
+{
+    return m.data[0][0] + m.data[1][1] + m.data[2][2] + m.data[3][3];
+}
+
+inline CUDA_CALLABLE void adj_trace(const mat44& m, mat44& adj_m, float adj_ret)
+{
+    adj_m.data[0][0] += adj_ret;
+    adj_m.data[1][1] += adj_ret;
+    adj_m.data[2][2] += adj_ret;
+    adj_m.data[3][3] += adj_ret;
 }
 
 inline CUDA_CALLABLE mat44 inverse(const mat44& m)
@@ -606,11 +669,11 @@ inline CUDA_CALLABLE mat44 outer(const vec4& a, const vec4& b)
 
 inline CUDA_CALLABLE void adj_transform_point(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
 {
-    printf("todo\n");
+    printf("todo: adj_transform_point\n");
 }
 inline CUDA_CALLABLE void adj_transform_vector(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
 {
-    printf("todo\n");
+    printf("todo: adj_transform_vector\n");
 }
 
 

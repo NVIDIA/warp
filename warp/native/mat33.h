@@ -110,6 +110,29 @@ inline CUDA_CALLABLE mat33 atomic_add(mat33 * addr, mat33 value)
     return m;
 }
 
+
+inline CUDA_CALLABLE mat33 atomic_min(mat33 * addr, mat33 value) 
+{
+    mat33 m;
+    
+    for (int i=0; i < 3; ++i)
+        for (int j=0; j < 3; ++j)
+            m.data[i][j] = atomic_min(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+inline CUDA_CALLABLE mat33 atomic_max(mat33 * addr, mat33 value) 
+{
+    mat33 m;
+    
+    for (int i=0; i < 3; ++i)
+        for (int j=0; j < 3; ++j)
+            m.data[i][j] = atomic_max(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
 inline CUDA_CALLABLE void adj_mat33(vec3 c0, vec3 c1, vec3 c2,
                       vec3& a0, vec3& a1, vec3& a2,
                       const mat33& adj_ret)
@@ -129,7 +152,15 @@ inline CUDA_CALLABLE void adj_mat33(float m00, float m01, float m02,
                       float& a20, float& a21, float& a22,
                       const mat33& adj_ret)
 {
-    printf("todo\n");
+    a00 += adj_ret.data[0][0];
+    a01 += adj_ret.data[0][1];
+    a02 += adj_ret.data[0][2];
+    a10 += adj_ret.data[1][0];
+    a11 += adj_ret.data[1][1];
+    a12 += adj_ret.data[1][2];
+    a20 += adj_ret.data[2][0];
+    a21 += adj_ret.data[2][1];
+    a22 += adj_ret.data[2][2];
 }
 
 inline bool CUDA_CALLABLE isfinite(const mat33& m)
@@ -255,6 +286,15 @@ inline CUDA_CALLABLE mat33 element_mul(const mat33& a, const mat33& b)
   return t;
 }
 
+inline CUDA_CALLABLE float tensordot(const mat33& a, const mat33& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return
+          a.data[0][0] * b.data[0][0] + a.data[0][1] * b.data[0][1] + a.data[0][2] * b.data[0][2]
+        + a.data[1][0] * b.data[1][0] + a.data[1][1] * b.data[1][1] + a.data[1][2] * b.data[1][2]
+        + a.data[2][0] * b.data[2][0] + a.data[2][1] * b.data[2][1] + a.data[2][2] * b.data[2][2];
+}
+
 inline CUDA_CALLABLE mat33 transpose(const mat33& a)
 {
     mat33 t;
@@ -273,6 +313,11 @@ inline CUDA_CALLABLE mat33 transpose(const mat33& a)
 inline CUDA_CALLABLE float determinant(const mat33& m)
 {
     return dot(vec3(m.data[0]), cross(vec3(m.data[1]), vec3(m.data[2])));
+}
+
+inline CUDA_CALLABLE float trace(const mat33& m)
+{
+    return m.data[0][0] + m.data[1][1] + m.data[2][2];
 }
 
 inline CUDA_CALLABLE mat33 inverse(const mat33& m)
@@ -401,6 +446,13 @@ inline CUDA_CALLABLE void adj_determinant(const mat33& m, mat33& adj_m, float ad
     (vec3&)adj_m.data[0] += cross(m.get_row(1), m.get_row(2))*adj_ret;
     (vec3&)adj_m.data[1] += cross(m.get_row(2), m.get_row(0))*adj_ret;
     (vec3&)adj_m.data[2] += cross(m.get_row(0), m.get_row(1))*adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_trace(const mat33& m, mat33& adj_m, float adj_ret)
+{
+    adj_m.data[0][0] += adj_ret;
+    adj_m.data[1][1] += adj_ret;
+    adj_m.data[2][2] += adj_ret;
 }
 
 inline CUDA_CALLABLE void adj_outer(const vec3& a, const vec3& b, vec3& adj_a, vec3& adj_b, const mat33& adj_ret)

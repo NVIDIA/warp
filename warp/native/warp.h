@@ -34,8 +34,16 @@ extern "C"
     WP_API void memset_host(void* dest, int value, size_t n);
     WP_API void memset_device(void* context, void* dest, int value, size_t n);
 
-    // create a user-accesible copy of the mesh, it is the 
-    // users reponsibility to keep-alive the points/tris data for the duration of the mesh lifetime
+	WP_API uint64_t bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_bounds);
+	WP_API void bvh_destroy_host(uint64_t id);
+    WP_API void bvh_refit_host(uint64_t id);
+
+	WP_API uint64_t bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_bounds);
+	WP_API void bvh_destroy_device(uint64_t id);
+    WP_API void bvh_refit_device(uint64_t id);
+
+    // create a user-accessible copy of the mesh, it is the 
+    // users responsibility to keep-alive the points/tris data for the duration of the mesh lifetime
 	WP_API uint64_t mesh_create_host(wp::vec3* points, wp::vec3* velocities, int* tris, int num_points, int num_tris);
 	WP_API void mesh_destroy_host(uint64_t id);
     WP_API void mesh_refit_host(uint64_t id);
@@ -59,6 +67,8 @@ extern "C"
     WP_API void volume_destroy_host(uint64_t id);
 
     WP_API uint64_t volume_create_device(void* context, void* buf, uint64_t size);
+    WP_API uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space);
+    WP_API uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value_x, float bg_value_y, float bg_value_z, float tx, float ty, float tz, bool points_in_world_space);
     WP_API void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_destroy_device(uint64_t id);
 
@@ -73,7 +83,8 @@ extern "C"
     WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
 
     WP_API int cuda_device_get_count();
-    WP_API void* cuda_device_get_primary_context(int ordinal);
+    WP_API void* cuda_device_primary_context_retain(int ordinal);
+    WP_API void cuda_device_primary_context_release(int ordinal);
     WP_API const char* cuda_device_get_name(int ordinal);
     WP_API int cuda_device_get_arch(int ordinal);
     WP_API int cuda_device_is_uva(int ordinal);

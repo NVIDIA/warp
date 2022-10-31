@@ -145,6 +145,14 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#simulation">Simulation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#devices">Devices</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#default-device">Default Device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scoped-devices">Scoped Devices</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#current-cuda-device">Current CUDA Device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#device-synchronization">Device Synchronization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#custom-cuda-contexts-advanced">Custom CUDA Contexts (Advanced)</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
@@ -230,10 +238,10 @@
 <p>Users can query the supported compute devices using the <code class="docutils literal notranslate"><span class="pre">wp.get_devices()</span></code> method:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_devices</span><span class="p">())</span>
 
-<span class="o">&gt;&gt;</span> <span class="p">[</span><span class="s1">&#39;cpu&#39;</span><span class="p">,</span> <span class="s1">&#39;cuda&#39;</span><span class="p">]</span>
+<span class="o">&gt;&gt;</span> <span class="p">[</span><span class="s1">&#39;cpu&#39;</span><span class="p">,</span> <span class="s1">&#39;cuda:0&#39;</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>These device strings can then be used to allocate memory and launch kernels as described below.</p>
+<p>These device strings can then be used to allocate memory and launch kernels as described below.  More information about working with devices is available in <a class="reference internal" href="#devices"><span class="std std-ref">Devices</span></a>.</p>
 </div>
 <div class="section" id="kernels">
 <h2>Kernels<a class="headerlink" href="#kernels" title="Permalink to this headline">¶</a></h2>
@@ -286,12 +294,12 @@
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>kernel</strong> – The name of a Warp kernel function, decorated with the <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> decorator</p></li>
-<li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><em>Tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>]</em>) – The number of threads to launch the kernel, can be an integer, or a Tuple of ints with max of 4 dimensions</p></li>
-<li><p><strong>inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The input parameters to the kernel</p></li>
-<li><p><strong>outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The output parameters (optional)</p></li>
-<li><p><strong>adj_inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The adjoint inputs (optional)</p></li>
-<li><p><strong>adj_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.10)"><em>List</em></a>) – The adjoint outputs (optional)</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – The device to launch on</p></li>
+<li><p><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em>]</em>) – The number of threads to launch the kernel, can be an integer, or a Tuple of ints with max of 4 dimensions</p></li>
+<li><p><strong>inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a>) – The input parameters to the kernel</p></li>
+<li><p><strong>outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a>) – The output parameters (optional)</p></li>
+<li><p><strong>adj_inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a>) – The adjoint inputs (optional)</p></li>
+<li><p><strong>adj_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><em>List</em></a>) – The adjoint outputs (optional)</p></li>
+<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – The device to launch on</p></li>
 <li><p><strong>adjoint</strong> – Whether to run forward or backward pass (typically use False)</p></li>
 </ul>
 </dd>
@@ -378,10 +386,10 @@ the function also declares the expected array dimension. Currently only single-i
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><em>Tuple</em></a><em>]</em>) – Array dimensions</p></li>
+<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em>]</em>) – Array dimensions</p></li>
 <li><p><strong>dtype</strong> – Type of each element, e.g.: warp.vec3, warp.mat33, etc</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – Device that array will live on</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
+<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – Device that array will live on</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -419,9 +427,9 @@ the function also declares the expected array dimension. Currently only single-i
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>n</strong> – Number of elements</p></li>
 <li><p><strong>dtype</strong> – Type of each element, e.g.: <cite>warp.vec3</cite>, <cite>warp.mat33</cite>, etc</p></li>
-<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – Device that array will live on</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
-<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.10)"><em>Tuple</em></a><em>]</em>) – </p></li>
+<li><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – Device that array will live on</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
+<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.11)"><em>Tuple</em></a><em>]</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -441,7 +449,7 @@ the function also declares the expected array dimension. Currently only single-i
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>src</strong> (<a class="reference internal" href="#warp.array" title="warp.types.array"><em>warp.types.array</em></a>) – The template array to use for length, data type, and device</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -467,17 +475,17 @@ and dtype parameter appropriately.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> (<em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.10)"><em>list</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.10)"><em>tuple</em></a><em>, </em><em>ndarray</em><em>]</em>) – </p></li>
-<li><p><strong>dtype</strong> (<em>Union</em>) – One of the built-in types, e.g.: <a class="reference internal" href="functions.html#id39" title="warp.mat33"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.mat33</span></code></a>, if dtype is None and data an ndarray then it will be inferred from the array data type</p></li>
+<li><p><strong>data</strong> (<em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><em>tuple</em></a><em>, </em><em>ndarray</em><em>]</em>) – </p></li>
+<li><p><strong>dtype</strong> (<em>Union</em>) – One of the built-in types, e.g.: <a class="reference internal" href="functions.html#id45" title="warp.mat33"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.mat33</span></code></a>, if dtype is None and data an ndarray then it will be inferred from the array data type</p></li>
 <li><p><strong>shape</strong> (<em>Tuple</em>) – Dimensions of the array</p></li>
 <li><p><strong>strides</strong> (<em>Tuple</em>) – Number of bytes in each dimension between successive elements of the array</p></li>
-<li><p><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of elements (rows) of the data type (deprecated, users should use <cite>shape</cite> argument)</p></li>
+<li><p><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Number of elements (rows) of the data type (deprecated, users should use <cite>shape</cite> argument)</p></li>
 <li><p><strong>ptr</strong> (<a class="reference internal" href="functions.html#warp.uint64" title="warp.uint64"><em>uint64</em></a>) – Address of an external memory address to alias (data should be None)</p></li>
-<li><p><strong>capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Maximum size in bytes of the ptr allocation (data should be None)</p></li>
+<li><p><strong>capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Maximum size in bytes of the ptr allocation (data should be None)</p></li>
 <li><p><strong>device</strong> (<em>Devicelike</em>) – Device the array lives on</p></li>
-<li><p><strong>copy</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether the incoming data will be copied or aliased, this is only possible when the incoming <cite>data</cite> already lives on the device specified and types match</p></li>
-<li><p><strong>owner</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Should the array object try to deallocate memory when it is deleted</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.10)"><em>bool</em></a>) – Whether or not gradients will be tracked for this array, see <a class="reference internal" href="#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a> for details</p></li>
+<li><p><strong>copy</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether the incoming data will be copied or aliased, this is only possible when the incoming <cite>data</cite> already lives on the device specified and types match</p></li>
+<li><p><strong>owner</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Should the array object try to deallocate memory when it is deleted</p></li>
+<li><p><strong>requires_grad</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether or not gradients will be tracked for this array, see <a class="reference internal" href="#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a> for details</p></li>
 </ul>
 </dd>
 </dl>
@@ -782,9 +790,9 @@ and dtype parameter appropriately.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex positions of type <a class="reference internal" href="functions.html#id32" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a></p></li>
+<li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex positions of type <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a></p></li>
 <li><p><strong>indices</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of triangle indices of type <a class="reference internal" href="functions.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>, should be length 3*number of triangles</p></li>
-<li><p><strong>velocities</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex velocities of type <a class="reference internal" href="functions.html#id32" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> (optional)</p></li>
+<li><p><strong>velocities</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of vertex velocities of type <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> (optional)</p></li>
 </ul>
 </dd>
 </dl>
@@ -847,7 +855,7 @@ and dtype parameter appropriately.</p>
 <dd><p>Enum value to specify nearest-neighbor interpolation during sampling</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)">int</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -858,7 +866,7 @@ and dtype parameter appropriately.</p>
 <dd><p>Enum value to specify trilinear interpolation during sampling</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)">int</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)">int</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -868,6 +876,73 @@ and dtype parameter appropriately.</p>
 <dd class="field-odd"><p><strong>data</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of bytes representing the volume in NanoVDB format</p>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Volume.allocate">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points_in_world_space</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume.allocate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate a new Volume based on the bounding box defined by min and max.</p>
+<p>Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
+If points_in_world_space is true, then min and max are first converted to index space with the given voxel size and
+translation, and the volume is allocated with those.</p>
+<p>The smallest unit of allocation is a dense tile of 8x8x8 voxels, the requested bounding box is rounded up to tiles, and
+the resulting tiles will be available in the new volume.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>min</strong> (<em>array-like</em>) – Lower 3D-coordinates of the bounding box in index space or world space, inclusive</p></li>
+<li><p><strong>max</strong> (<em>array-like</em>) – Upper 3D-coordinates of the bounding box in index space or world space, inclusive</p></li>
+<li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – Voxel size of the new volume</p></li>
+<li><p><strong>bg_value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em> or </em><em>array-like</em>) – Value of unallocated voxels of the volume, also defines the volume’s type:
+a <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> volume is created if this is <cite>array-like</cite>, otherwise a float volume is created</p></li>
+<li><p><strong>translation</strong> (<em>array-like</em>) – translation between the index and world spaces</p></li>
+<li><p><strong>device</strong> (<em>Devicelike</em>) – Device the array lives on</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Volume.allocate_by_tiles">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate_by_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.Volume.allocate_by_tiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate a new Volume with active tiles for each point tile_points.</p>
+<p>The smallest unit of allocation is a dense tile of 8x8x8 voxels.
+This is the primary method for allocating sparse volumes. It uses an array of points indicating the tiles that must be allocated.</p>
+<dl class="simple">
+<dt>Example use cases:</dt><dd><ul class="simple">
+<li><p><cite>tile_points</cite> can mark tiles directly in index space as in the case this method is called by <cite>allocate</cite>.</p></li>
+<li><p><cite>tile_points</cite> can be a list of points used in a simulation that needs to transfer data to a volume.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tile_points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of positions that define the tiles to be allocated.
+The array can be a 2d, N-by-3 array of <a class="reference internal" href="functions.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> values, indicating index space positions,
+or can be a 1D array of <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> values, indicating world space positions.
+Repeated points per tile are allowed and will be efficiently deduplicated.</p></li>
+<li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+<p>:param vertex positions of type <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>:
+:param voxel_size: Voxel size of the new volume
+:type voxel_size: float
+:param bg_value: Value of unallocated voxels of the volume, also defines the volume’s type:</p>
+<blockquote>
+<div><p>a <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> volume is created if this is <cite>array-like</cite>, otherwise a float volume is created</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>translation</strong> (<em>array-like</em>) – translation between the index and world spaces</p></li>
+<li><p><strong>device</strong> (<em>Devicelike</em>) – Device the array lives on</p></li>
+<li><p><strong>tile_points</strong> (<em>warp.types.Volume.array</em>) – </p></li>
+<li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <div class="admonition seealso">
@@ -933,9 +1008,9 @@ and dtype parameter appropriately.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dim_x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of cells in x-axis</p></li>
-<li><p><strong>dim_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of cells in y-axis</p></li>
-<li><p><strong>dim_z</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a>) – Number of cells in z-axis</p></li>
+<li><p><strong>dim_x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Number of cells in x-axis</p></li>
+<li><p><strong>dim_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Number of cells in y-axis</p></li>
+<li><p><strong>dim_z</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a>) – Number of cells in z-axis</p></li>
 </ul>
 </dd>
 </dl>
@@ -960,8 +1035,8 @@ of points changes.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of points of type <a class="reference internal" href="functions.html#id32" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a></p></li>
-<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><em>float</em></a>) – The cell size to use for bucketing points, cells are cubes with edges of this width.
+<li><p><strong>points</strong> (<a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of points of type <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a></p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – The cell size to use for bucketing points, cells are cubes with edges of this width.
 For best performance the radius used to construct the grid should match closely to
 the radius used when performing queries.</p></li>
 </ul>
@@ -1014,10 +1089,10 @@ the radius used when performing queries.</p></li>
 In Warp, instead of passing a scalar loss buffer to the <code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code> method, we pass a dictionary <code class="docutils literal notranslate"><span class="pre">grads</span></code> mapping from the function output array to the selection vector <span class="math notranslate nohighlight">\(\mathbf{e}\)</span> having the same type:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># compute the Jacobian for a function of single output</span>
 <span class="n">jacobian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">ouput_dim</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+   <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">launch_kernels_to_be_differentiated</span><span class="p">(</span><span class="n">input_buffer</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">output_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">output_dim</span><span class="p">):</span>
-   <span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
-   <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
-      <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">launch_kernels_to_be_differentiated</span><span class="p">(</span><span class="n">input_buffer</span><span class="p">)</span>
    <span class="c1"># select which row of the Jacobian we want to compute</span>
    <span class="n">select_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">output_dim</span><span class="p">)</span>
    <span class="n">select_index</span><span class="p">[</span><span class="n">output_index</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
@@ -1032,15 +1107,15 @@ In Warp, instead of passing a scalar loss buffer to the <code class="docutils li
 <p>When we run simulations independently in parallel, the Jacobian corresponding to the entire system dynamics is a block-diagonal matrix. In this case, we can compute the Jacobian in parallel for all environments by choosing a selection vector that has the output indices active for all environment copies. For example, to get the first rows of the Jacobians of all environments, <span class="math notranslate nohighlight">\(\mathbf{e}=[\begin{smallmatrix}1 &amp; 0 &amp; 0 &amp; \dots &amp; 1 &amp; 0 &amp; 0 &amp; \dots\end{smallmatrix}]^\top\)</span>, to compute the second rows, <span class="math notranslate nohighlight">\(\mathbf{e}=[\begin{smallmatrix}0 &amp; 1 &amp; 0 &amp; \dots &amp; 0 &amp; 1 &amp; 0 &amp; \dots\end{smallmatrix}]^\top\)</span>, etc.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># compute the Jacobian for a function over multiple environments in parallel</span>
 <span class="n">jacobians</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">num_envs</span><span class="p">,</span> <span class="n">ouput_dim</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
+   <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">launch_kernels_to_be_differentiated</span><span class="p">(</span><span class="n">input_buffer</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">output_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">output_dim</span><span class="p">):</span>
-   <span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
-   <span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
-      <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">launch_kernels_to_be_differentiated</span><span class="p">(</span><span class="n">input_buffer</span><span class="p">)</span>
    <span class="c1"># select which row of the Jacobian we want to compute</span>
    <span class="n">select_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">output_dim</span><span class="p">)</span>
    <span class="n">select_index</span><span class="p">[</span><span class="n">output_index</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
    <span class="c1"># assemble selection vector for all environments (can be precomputed)</span>
-   <span class="n">e</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">select_index</span><span class="p">,</span> <span class="n">num_envs</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+   <span class="n">e</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">select_index</span><span class="p">,</span> <span class="n">num_envs</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
    <span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">output_buffer</span><span class="p">:</span> <span class="n">e</span><span class="p">})</span>
    <span class="n">q_grad_i</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">gradients</span><span class="p">[</span><span class="n">input_buffer</span><span class="p">]</span>
    <span class="n">jacobians</span><span class="p">[:,</span> <span class="n">output_index</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">q_grad_i</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">num_envs</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">)</span>
@@ -1082,7 +1157,7 @@ In Warp, instead of passing a scalar loss buffer to the <code class="docutils li
 This can be used to record large numbers of kernels and replay them with low-overhead.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – </p>
+<dd class="field-odd"><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1096,7 +1171,7 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <dd class="field-odd"><p>A handle to a CUDA graph object that can be launched with <a class="reference internal" href="#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_launch()</span></code></a></p>
 </dd>
 <dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.10)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.10)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.10)"><em>str</em></a><em>]</em><em>]</em>) – </p>
+<dd class="field-even"><p><strong>device</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><em>Optional</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><em>Union</em></a><em>[</em><em>warp.context.Device</em><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – </p>
 </dd>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>warp.context.Graph</p>
@@ -1217,6 +1292,148 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <h2>Simulation<a class="headerlink" href="#simulation" title="Permalink to this headline">¶</a></h2>
 <p>Warp includes a simulation package available as <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code>. This module includes implementations of many common physical simulation models, such as particles, rigid bodies, finite-elements (FEM).</p>
 <p>This module is under development and subject to change, please see the test and example scenes for usage.</p>
+</div>
+<div class="section" id="devices">
+<span id="id2"></span><h2>Devices<a class="headerlink" href="#devices" title="Permalink to this headline">¶</a></h2>
+<p>Warp assigns unique string aliases to all supported compute devices in the system.  There is currently a single CPU device exposed as <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>.  Each CUDA-capable GPU gets an alias of the form <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code>, where <code class="docutils literal notranslate"><span class="pre">i</span></code> is the CUDA device ordinal.  This convention should be familiar to users of other popular frameworks like PyTorch.</p>
+<p>It is possible to explicitly target a specific device with each Warp API call using the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">b</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A Warp CUDA device (<code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code>) corresponds to the primary CUDA context of device <code class="docutils literal notranslate"><span class="pre">i</span></code>.  This is compatible with frameworks like PyTorch and other software that uses the CUDA Runtime API.  It makes interoperability easy, because GPU resources like memory can be shared with Warp.</p>
+</div>
+<div class="section" id="default-device">
+<h3>Default Device<a class="headerlink" href="#default-device" title="Permalink to this headline">¶</a></h3>
+<p>To simplify writing code, Warp has the concept of <strong>default device</strong>.  When the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument is omitted from a Warp API call, the default device will be used.</p>
+<p>During Warp initialization, the default device is set to be <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code> if CUDA is available.  Otherwise, the default device is <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>.</p>
+<p>The function <code class="docutils literal notranslate"><span class="pre">wp.set_device()</span></code> can be used to change the default device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">b</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For CUDA devices, <code class="docutils literal notranslate"><span class="pre">wp.set_device()</span></code> does two things: it sets the Warp default device and it makes the device’s CUDA context current.  This helps to minimize the number of CUDA context switches in blocks of code targeting a single device.</p>
+</div>
+<p>For PyTorch users, this function is similar to <code class="docutils literal notranslate"><span class="pre">torch.cuda.set_device()</span></code>.  It is still possible to specify a different device in individual API calls, like in this snippet:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set default device</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="c1"># use default device</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+<span class="c1"># use explicit devices</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+<span class="c1"># use default device</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="scoped-devices">
+<h3>Scoped Devices<a class="headerlink" href="#scoped-devices" title="Permalink to this headline">¶</a></h3>
+<p>Another way to manage the default device is using <code class="docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code> objects.  They can be arbitrarily nested and restore the previous default device on exit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
+   <span class="c1"># alloc and launch on &quot;cpu&quot;</span>
+   <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+   <span class="c1"># alloc on &quot;cuda:0&quot;</span>
+   <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+   <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">):</span>
+      <span class="c1"># alloc and launch on &quot;cuda:1&quot;</span>
+      <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+      <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+
+   <span class="c1"># launch on &quot;cuda:0&quot;</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">b</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For CUDA devices, <code class="docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code> makes the device’s CUDA context current and restores the previous CUDA context on exit.  This is handy when running Warp scripts as part of a bigger pipeline, because it avoids any side effects of changing the CUDA context in the enclosed code.</p>
+</div>
+</div>
+<div class="section" id="current-cuda-device">
+<h3>Current CUDA Device<a class="headerlink" href="#current-cuda-device" title="Permalink to this headline">¶</a></h3>
+<p>Warp uses the device alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> to target the current CUDA device.  This allows external code to manage the CUDA device on which to execute Warp scripts.  It is analogous to the PyTorch <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> device, which should be familiar to Torch users and simplify interoperation.</p>
+<p>In this snippet, we use PyTorch to manage the current CUDA device and invoke a Warp kernel on that device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">example_function</span><span class="p">():</span>
+   <span class="c1"># create a Torch tensor on the current CUDA device</span>
+   <span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+   <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+   <span class="c1"># launch a Warp kernel on the current CUDA device</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+<span class="c1"># use Torch to set the current CUDA device and run example_function() on that device</span>
+<span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">example_function</span><span class="p">()</span>
+
+<span class="c1"># use Torch to change the current CUDA device and re-run example_function() on that device</span>
+<span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">example_function</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Using the device alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> can be problematic if the code runs in an environment where another part of the code can unpredictably change the CUDA context.  Using an explicit CUDA device like <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code> is recommended to avoid such issues.</p>
+</div>
+</div>
+<div class="section" id="device-synchronization">
+<h3>Device Synchronization<a class="headerlink" href="#device-synchronization" title="Permalink to this headline">¶</a></h3>
+<p>CUDA kernel launches and memory operations can execute asynchronously.  This allows for overlapping compute and memory operations on different devices.  Warp allows synchronizing the host with outstanding asynchronous operations on a specific device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code> function offers more fine-grained synchronization than <code class="docutils literal notranslate"><span class="pre">wp.synchronize()</span></code>, as the latter waits for <em>all</em> devices to complete their work.</p>
+</div>
+<div class="section" id="custom-cuda-contexts-advanced">
+<h3>Custom CUDA Contexts (Advanced)<a class="headerlink" href="#custom-cuda-contexts-advanced" title="Permalink to this headline">¶</a></h3>
+<p>Warp is designed to work with arbitrary CUDA contexts so it can easily integrate into different workflows.</p>
+<p>Applications built on the CUDA Runtime API target the <em>primary context</em> of each device.  The Runtime API hides CUDA context management under the hood.  In Warp, device <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code> represents the primary context of device <code class="docutils literal notranslate"><span class="pre">i</span></code>, which aligns with the CUDA Runtime API.</p>
+<p>Applications built on the CUDA Driver API work with CUDA contexts directly and can create custom CUDA contexts on any device.  Custom CUDA contexts can be created with specific affinity or interop features that benefit the application.  Warp can work with these CUDA contexts as well.</p>
+<p>The special device alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> can be used to target the current CUDA context, whether this is a primary or custom context.</p>
+<p>In addition, Warp allows registering new device aliases for custom CUDA contexts, so that they can be explicitly targeted by name.  If the <code class="docutils literal notranslate"><span class="pre">CUcontext</span></code> pointer is available, it can be used to create a new device alias like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">map_cuda_device</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">(</span><span class="n">context_ptr</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Alternatively, if the custom CUDA context was made current by the application, the pointer can be omitted:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">map_cuda_device</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In either case, mapping the custom CUDA context allows us to target the context directly using the assigned alias:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">):</span>
+   <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+   <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
 </div>
 </div>
 

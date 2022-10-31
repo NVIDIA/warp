@@ -210,7 +210,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fo
 
     native_dir = os.path.join(warp_home, "native")
 
-    gencode_opts = "-gencode=arch=compute_52,code=compute_52 -gencode=arch=compute_70,code=compute_70"
+    gencode_opts = "-gencode=arch=compute_52,code=compute_52 -gencode=arch=compute_70,code=compute_70 --extended-lambda"
 
     if os.name == 'nt':
 

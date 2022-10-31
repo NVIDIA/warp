@@ -81,6 +81,30 @@ inline CUDA_CALLABLE mat22 atomic_add(mat22 * addr, mat22 value) {
     return m;
 }
 
+inline CUDA_CALLABLE mat22 atomic_min(mat22 * addr, mat22 value) 
+{
+    mat22 m;
+    
+    for (int i=0; i < 2; ++i)
+        for (int j=0; j < 2; ++j)
+            m.data[i][j] = atomic_min(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+inline CUDA_CALLABLE mat22 atomic_max(mat22 * addr, mat22 value) 
+{
+    mat22 m;
+    
+    for (int i=0; i < 2; ++i)
+        for (int j=0; j < 2; ++j)
+            m.data[i][j] = atomic_max(&addr->data[i][j], value.data[i][j]);
+
+    return m;
+}
+
+
+
 inline CUDA_CALLABLE void adj_mat22(float m00, float m01, float m10, float m11, float& adj_m00, float& adj_m01, float& adj_m10, float& adj_m11, const mat22& adj_ret)
 {
     adj_m00 += adj_ret.data[0][0];
@@ -196,6 +220,14 @@ inline CUDA_CALLABLE mat22 mul(const mat22& a, const mat22& b)
     return t;
 }
 
+inline CUDA_CALLABLE float tensordot(const mat22& a, const mat22& b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return
+          a.data[0][0] * b.data[0][0] + a.data[0][1] * b.data[0][1]
+        + a.data[1][0] * b.data[1][0] + a.data[1][1] * b.data[1][1];
+}
+
 inline CUDA_CALLABLE mat22 transpose(const mat22& a)
 {
     mat22 t;
@@ -214,6 +246,11 @@ inline CUDA_CALLABLE mat22 transpose(const mat22& a)
 inline CUDA_CALLABLE float determinant(const mat22& m)
 {
     return m.data[0][0]*m.data[1][1] - m.data[1][0]*m.data[0][1];
+}
+
+inline CUDA_CALLABLE float trace(const mat22& m)
+{
+    return m.data[0][0] + m.data[1][1];
 }
 
 inline CUDA_CALLABLE mat22 inverse(const mat22& m)
@@ -335,6 +372,11 @@ inline CUDA_CALLABLE void adj_determinant(const mat22& m, mat22& adj_m, float ad
     adj_m.data[1][0] -= m.data[0][1]*adj_ret;
 }
 
+inline CUDA_CALLABLE void adj_trace(const mat22& m, mat22& adj_m, float adj_ret)
+{
+    adj_m.data[0][0] += adj_ret;
+    adj_m.data[1][1] += adj_ret;
+}
 
 inline CUDA_CALLABLE void adj_diag(const vec2& d, vec2& adj_d, const mat22& adj_ret) 
 {

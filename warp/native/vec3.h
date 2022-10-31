@@ -134,6 +134,12 @@ inline CUDA_CALLABLE float dot(vec3 a, vec3 b)
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
+inline CUDA_CALLABLE float tensordot(vec3 a, vec3 b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return dot(a, b);
+}
+
 inline CUDA_CALLABLE vec3 cross(vec3 a, vec3 b)
 {
     vec3 c;
@@ -349,7 +355,7 @@ inline CUDA_CALLABLE void adj_cross(vec3 a, vec3 b, vec3& adj_a, vec3& adj_b, co
 }
 
 
-inline CUDA_CALLABLE vec3 atomic_add(vec3 * addr, vec3 value) {
+inline CUDA_CALLABLE vec3 atomic_add(vec3* addr, vec3 value) {
 
     float x = atomic_add(&(addr -> x), value.x);
     float y = atomic_add(&(addr -> y), value.y);
@@ -357,6 +363,25 @@ inline CUDA_CALLABLE vec3 atomic_add(vec3 * addr, vec3 value) {
 
     return vec3(x, y, z);
 }
+
+inline CUDA_CALLABLE vec3 atomic_min(vec3* addr, vec3 value) {
+
+    float x = atomic_min(&(addr -> x), value.x);
+    float y = atomic_min(&(addr -> y), value.y);
+    float z = atomic_min(&(addr -> z), value.z);
+
+    return vec3(x, y, z);
+}
+
+inline CUDA_CALLABLE vec3 atomic_max(vec3* addr, vec3 value) {
+
+    float x = atomic_max(&(addr -> x), value.x);
+    float y = atomic_max(&(addr -> y), value.y);
+    float z = atomic_max(&(addr -> z), value.z);
+
+    return vec3(x, y, z);
+}
+
 
 inline CUDA_CALLABLE void adj_length(vec3 a, vec3& adj_a, const float adj_ret)
 {
@@ -366,6 +391,19 @@ inline CUDA_CALLABLE void adj_length(vec3 a, vec3& adj_a, const float adj_ret)
     if (!isfinite(adj_a))
     {
         printf("%s:%d - adj_length((%f %f %f), (%f %f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, a.z, adj_a.x, adj_a.y, adj_a.z, adj_ret);
+        assert(0);
+    }
+#endif
+}
+
+inline CUDA_CALLABLE void adj_length_sq(vec3 a, vec3& adj_a, const float adj_ret)
+{
+    adj_a += 2.0f*a*adj_ret;
+
+#if FP_CHECK
+    if (!isfinite(adj_a))
+    {
+        printf("%s:%d - adj_length_sq((%f %f %f), (%f %f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, a.z, adj_a.x, adj_a.y, adj_a.z, adj_ret);
         assert(0);
     }
 #endif

@@ -221,6 +221,40 @@ def test_volume_world_to_index(volume: wp.uint64,
     grad_values[tid] = wp.volume_world_to_index_dir(volume, ones)
 
 
+# Volume write tests
+@wp.kernel
+def test_volume_store_f(volume: wp.uint64,
+                        points: wp.array(dtype=wp.vec3),
+                        values: wp.array(dtype=wp.float32)):
+
+    tid = wp.tid()
+
+    p = points[tid]
+    i = int(p[0])
+    j = int(p[1])
+    k = int(p[2])
+
+    # NB: Writing outside the allocated domain overwrites the background value of the Volume
+    if abs(i) <= 11 and abs(j) <= 11 and abs(k) <= 11:
+        wp.volume_store_f(volume, i, j, k, float(i + 100*j + 10000*k))
+    values[tid] = wp.volume_lookup_f(volume, i, j, k)
+
+@wp.kernel
+def test_volume_store_v(volume: wp.uint64,
+                        points: wp.array(dtype=wp.vec3),
+                        values: wp.array(dtype=wp.vec3)):
+
+    tid = wp.tid()
+
+    p = points[tid]
+    i = int(p[0])
+    j = int(p[1])
+    k = int(p[2])
+
+    # NB: Writing outside the allocated domain overwrites the background value of the Volume
+    if abs(i) <= 11 and abs(j) <= 11 and abs(k) <= 11:
+        wp.volume_store_v(volume, i, j, k, p)
+    values[tid] = wp.volume_lookup_v(volume, i, j, k)
 
 
 devices = wp.get_devices()
@@ -249,7 +283,8 @@ volume_paths = {
     "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
     "int32": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int32_grid.nvdb")),
     "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb")),
-    "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb"))
+    "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb")),
+    "float_write": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
 }
 
 volumes = {}
@@ -268,6 +303,8 @@ for value_type, path in volume_paths.items():
 
         
 def register(parent):
+    axis = np.linspace(-1, 1, 3)
+    point_grid = np.array([[x, y, z] for x in axis for y in axis for z in axis], dtype=np.float32)
 
     class TestVolumes(parent):
         def test_volume_sample_linear_f_gradient(self):
@@ -353,26 +390,70 @@ def register(parent):
                     grad_expected = grad_values.numpy()
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
+        def test_volume_store(self):
+
+            values_ref = np.array([x + 100*y + 10000*z for x,y,z in point_grid])
+            for device in devices:
+                points = wp.array(point_grid, dtype=wp.vec3, device=device)
+                values = wp.empty(len(point_grid), dtype=wp.float32, device=device)
+                wp.launch(test_volume_store_f, dim=len(point_grid), inputs=[volumes["float_write"][device.alias].id, points, values], device=device)
+
+                values_res = values.numpy()
+                np.testing.assert_equal(values_res, values_ref)
+
+        def test_volume_allocation_f(self):
+
+            bg_value = -123.0
+            points_np = np.append(point_grid, [[8096, 8096, 8096]], axis=0)
+            values_ref = np.append(np.array([x + 100*y + 10000*z for x,y,z in point_grid]), bg_value)
+            for device in devices:
+                if device.is_cpu: continue
+
+                volume = wp.Volume.allocate(min=[-11,-11,-11], max=[11, 11, 11], voxel_size=0.1, bg_value=bg_value, device=device)
+                points = wp.array(points_np, dtype=wp.vec3, device=device)
+                values = wp.empty(len(points_np), dtype=wp.float32, device=device)
+                wp.launch(test_volume_store_f, dim=len(points_np), inputs=[volume.id, points, values], device=device)
+
+                values_res = values.numpy()
+                np.testing.assert_equal(values_res, values_ref)
+
+        def test_volume_allocation_v(self):
+
+            bg_value = (-1, 2.0, -3)
+            points_np = np.append(point_grid, [[8096, 8096, 8096]], axis=0)
+            values_ref = np.append(point_grid, [bg_value], axis=0)
+            for device in devices:
+                if device.is_cpu: continue
+
+                volume = wp.Volume.allocate(min=[-11,-11,-11], max=[11, 11, 11], voxel_size=0.1, bg_value=bg_value, device=device)
+                points = wp.array(points_np, dtype=wp.vec3, device=device)
+                values = wp.empty(len(points_np), dtype=wp.vec3, device=device)
+                wp.launch(test_volume_store_v, dim=len(points_np), inputs=[volume.id, points, values], device=device)
+
+                values_res = values.numpy()
+                np.testing.assert_equal(values_res, values_ref)
+
+
+
     for device in devices:
-        axis = np.linspace(-11, 11, 23)
-        points_np = np.array([[x, y, z] for x in axis for y in axis for z in axis])
-        points_jittered_np = points_np + rng.uniform(-0.5, 0.5, size=points_np.shape)
-        points[device.alias] = wp.array(points_np, dtype=wp.vec3, device=device)
+        points_jittered_np = point_grid + rng.uniform(-0.5, 0.5, size=point_grid.shape)
+        points[device.alias] = wp.array(point_grid, dtype=wp.vec3, device=device)
         points_jittered[device.alias] = wp.array(points_jittered_np, dtype=wp.vec3, device=device)
 
-        add_kernel_test(TestVolumes, test_volume_lookup_f, dim=len(points_np), inputs=[volumes["float"][device.alias].id, points[device.alias]], devices=[device.alias])
-        add_kernel_test(TestVolumes, test_volume_sample_closest_f, dim=len(points_np), inputs=[volumes["float"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
-        add_kernel_test(TestVolumes, test_volume_sample_linear_f, dim=len(points_np), inputs=[volumes["float"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_lookup_f, dim=len(point_grid), inputs=[volumes["float"][device.alias].id, points[device.alias]], devices=[device])
+        add_kernel_test(TestVolumes, test_volume_sample_closest_f, dim=len(point_grid), inputs=[volumes["float"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_linear_f, dim=len(point_grid), inputs=[volumes["float"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
 
-        add_kernel_test(TestVolumes, test_volume_lookup_v, dim=len(points_np), inputs=[volumes["vec3f"][device.alias].id, points[device.alias]], devices=[device.alias])
-        add_kernel_test(TestVolumes, test_volume_sample_closest_v, dim=len(points_np), inputs=[volumes["vec3f"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
-        add_kernel_test(TestVolumes, test_volume_sample_linear_v, dim=len(points_np), inputs=[volumes["vec3f"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_lookup_v, dim=len(point_grid), inputs=[volumes["vec3f"][device.alias].id, points[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_closest_v, dim=len(point_grid), inputs=[volumes["vec3f"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_linear_v, dim=len(point_grid), inputs=[volumes["vec3f"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
 
-        add_kernel_test(TestVolumes, test_volume_lookup_i, dim=len(points_np), inputs=[volumes["int32"][device.alias].id, points[device.alias]], devices=[device.alias])
-        add_kernel_test(TestVolumes, test_volume_sample_i, dim=len(points_np), inputs=[volumes["int32"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_lookup_i, dim=len(point_grid), inputs=[volumes["int32"][device.alias].id, points[device.alias]], devices=[device.alias])
+        add_kernel_test(TestVolumes, test_volume_sample_i, dim=len(point_grid), inputs=[volumes["int32"][device.alias].id, points_jittered[device.alias]], devices=[device.alias])
 
     return TestVolumes
 
 if __name__ == '__main__':
+    wp.force_load()
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

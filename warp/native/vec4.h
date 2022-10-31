@@ -95,6 +95,12 @@ inline CUDA_CALLABLE float dot(vec4 a, vec4 b)
     return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
 }
 
+inline CUDA_CALLABLE float tensordot(vec4 a, vec4 b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return dot(a, b);
+}
+
 inline CUDA_CALLABLE float index(const vec4 & a, int idx)
 {
 #if FP_CHECK
@@ -125,6 +131,11 @@ inline CUDA_CALLABLE void adj_index(const vec4 & a, int idx, vec4 & adj_a, int &
 inline CUDA_CALLABLE float length(vec4 a)
 {
     return sqrt(dot(a, a));
+}
+
+inline CUDA_CALLABLE float length_sq(vec4 a)
+{
+    return dot(a, a);
 }
 
 inline CUDA_CALLABLE vec4 normalize(vec4 a)
@@ -249,9 +260,43 @@ inline CUDA_CALLABLE vec4 atomic_add(vec4 * addr, vec4 value) {
     return vec4(x, y, z, w);
 }
 
+inline CUDA_CALLABLE vec4 atomic_min(vec4 * addr, vec4 value) {
+
+    float x = atomic_min(&(addr -> x), value.x);
+    float y = atomic_min(&(addr -> y), value.y);
+    float z = atomic_min(&(addr -> z), value.z);
+    float w = atomic_min(&(addr -> w), value.w);
+
+    return vec4(x, y, z, w);
+}
+
+inline CUDA_CALLABLE vec4 atomic_max(vec4 * addr, vec4 value) {
+
+    float x = atomic_max(&(addr -> x), value.x);
+    float y = atomic_max(&(addr -> y), value.y);
+    float z = atomic_max(&(addr -> z), value.z);
+    float w = atomic_max(&(addr -> w), value.w);
+
+    return vec4(x, y, z, w);
+}
+
+
 inline CUDA_CALLABLE void adj_length(vec4 a, vec4& adj_a, const float adj_ret)
 {
     adj_a += normalize(a)*adj_ret;
+
+#if FP_CHECK
+    if (!isfinite(adj_a))
+    {
+        printf("%s:%d - adj_length((%f %f %f %f), (%f %f %f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, a.z, a.w, adj_a.x, adj_a.y, adj_a.z, adj_a.w, adj_ret);
+        assert(0);
+    }
+#endif
+}
+
+inline CUDA_CALLABLE void adj_length_sq(vec4 a, vec4& adj_a, const float adj_ret)
+{
+    adj_a += 2.0f*a*adj_ret;
 
 #if FP_CHECK
     if (!isfinite(adj_a))
