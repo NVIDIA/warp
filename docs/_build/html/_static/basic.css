@@ -222,7 +222,7 @@ table.modindextable td {
 /* -- general body styles --------------------------------------------------- */
 
 div.body {
-    min-width: 360px;
+    min-width: 450px;
     max-width: 800px;
 }
 
@@ -236,6 +236,7 @@ div.body p, div.body dd, div.body li, div.body blockquote {
 a.headerlink {
     visibility: hidden;
 }
+
 a.brackets:before,
 span.brackets > a:before{
     content: "[";
@@ -245,7 +246,6 @@ a.brackets:after,
 span.brackets > a:after {
     content: "]";
 }
-
 
 h1:hover > a.headerlink,
 h2:hover > a.headerlink,
@@ -334,11 +334,13 @@ aside.sidebar {
 p.sidebar-title {
     font-weight: bold;
 }
+
 div.admonition, div.topic, blockquote {
     clear: left;
 }
 
 /* -- topics ---------------------------------------------------------------- */
+
 div.topic {
     border: 1px solid #ccc;
     padding: 7px;
@@ -424,6 +426,10 @@ table.docutils td, table.docutils th {
     border-left: 0;
     border-right: 0;
     border-bottom: 1px solid #aaa;
+}
+
+table.footnote td, table.footnote th {
+    border: 0 !important;
 }
 
 th {
@@ -609,7 +615,6 @@ ul.simple p {
     margin-bottom: 0;
 }
 
-/* Docutils 0.17 and older (footnotes & citations) */
 dl.footnote > dt,
 dl.citation > dt {
     float: left;
@@ -626,33 +631,6 @@ dl.citation > dd:after {
     content: "";
     clear: both;
 }
-
-/* Docutils 0.18+ (footnotes & citations) */
-aside.footnote > span,
-div.citation > span {
-    float: left;
-}
-aside.footnote > span:last-of-type,
-div.citation > span:last-of-type {
-  padding-right: 0.5em;
-}
-aside.footnote > p {
-  margin-left: 2em;
-}
-div.citation > p {
-  margin-left: 4em;
-}
-aside.footnote > p:last-of-type,
-div.citation > p:last-of-type {
-    margin-bottom: 0em;
-}
-aside.footnote > p:last-of-type:after,
-div.citation > p:last-of-type:after {
-    content: "";
-    clear: both;
-}
-
-/* Footnotes & citations ends */
 
 dl.field-list {
     display: grid;
