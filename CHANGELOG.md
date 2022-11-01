@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.5.1] - 2022-11-01
+
+- Fix for unit tests in Kit
+
 ## [0.5.0] - 2022-10-31
 
 - Add smoothed particle hydrodynamics (SPH) example, see `example_sph.py`
