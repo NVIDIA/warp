@@ -1120,10 +1120,10 @@ class Volume:
             min (array-like): Lower 3D-coordinates of the bounding box in index space or world space, inclusive
             max (array-like): Upper 3D-coordinates of the bounding box in index space or world space, inclusive
             voxel_size (float): Voxel size of the new volume
-            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type:
-                a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
             translation (array-like): translation between the index and world spaces
             device (Devicelike): Device the array lives on
+        
         """
         if points_in_world_space:
             min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
@@ -1155,12 +1155,11 @@ class Volume:
                 The array can be a 2d, N-by-3 array of :class:`warp.int32` values, indicating index space positions,
                 or can be a 1D array of :class:`warp.vec3` values, indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
-            vertex positions of type :class:`warp.vec3`
             voxel_size (float): Voxel size of the new volume
-            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type:
-                a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
             translation (array-like): translation between the index and world spaces
             device (Devicelike): Device the array lives on
+        
         """
         from warp.context import runtime
         device = runtime.get_device(device)
@@ -1239,10 +1238,6 @@ class HashGrid:
 
         This method rebuilds the underlying datastructure and should be called any time the set
         of points changes.
-
-        Attributes:
-            id: Unique identifier for this mesh object, can be passed to kernels.
-            device: Device this object lives on, all buffers must live on the same device.
 
         Args:
             points (:class:`warp.array`): Array of points of type :class:`warp.vec3`

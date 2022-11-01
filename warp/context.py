@@ -2081,7 +2081,7 @@ def export_stubs(file):
     print("from warp.types import array, array2d, array3d, array4d, constant", file=file)
     print("from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64", file=file)
     print("from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix", file=file)
-    print("from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t", file=file)
+    print("from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t, shape_t", file=file)
 
 
     #print("from warp.types import *", file=file)

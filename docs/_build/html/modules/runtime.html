@@ -72,7 +72,7 @@
             
             
               <div class="version">
-                0.4.3
+                0.5.1
               </div>
             
           
@@ -891,8 +891,7 @@ the resulting tiles will be available in the new volume.</p>
 <li><p><strong>min</strong> (<em>array-like</em>) – Lower 3D-coordinates of the bounding box in index space or world space, inclusive</p></li>
 <li><p><strong>max</strong> (<em>array-like</em>) – Upper 3D-coordinates of the bounding box in index space or world space, inclusive</p></li>
 <li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – Voxel size of the new volume</p></li>
-<li><p><strong>bg_value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em> or </em><em>array-like</em>) – Value of unallocated voxels of the volume, also defines the volume’s type:
-a <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> volume is created if this is <cite>array-like</cite>, otherwise a float volume is created</p></li>
+<li><p><strong>bg_value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em> or </em><em>array-like</em>) – Value of unallocated voxels of the volume, also defines the volume’s type, a <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> volume is created if this is <cite>array-like</cite>, otherwise a float volume is created</p></li>
 <li><p><strong>translation</strong> (<em>array-like</em>) – translation between the index and world spaces</p></li>
 <li><p><strong>device</strong> (<em>Devicelike</em>) – Device the array lives on</p></li>
 </ul>
@@ -920,24 +919,10 @@ This is the primary method for allocating sparse volumes. It uses an array of po
 The array can be a 2d, N-by-3 array of <a class="reference internal" href="functions.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> values, indicating index space positions,
 or can be a 1D array of <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> values, indicating world space positions.
 Repeated points per tile are allowed and will be efficiently deduplicated.</p></li>
-<li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
-</ul>
-</dd>
-</dl>
-<p>:param vertex positions of type <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>:
-:param voxel_size: Voxel size of the new volume
-:type voxel_size: float
-:param bg_value: Value of unallocated voxels of the volume, also defines the volume’s type:</p>
-<blockquote>
-<div><p>a <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> volume is created if this is <cite>array-like</cite>, otherwise a float volume is created</p>
-</div></blockquote>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
+<li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – Voxel size of the new volume</p></li>
+<li><p><strong>bg_value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a><em> or </em><em>array-like</em>) – Value of unallocated voxels of the volume, also defines the volume’s type, a <a class="reference internal" href="functions.html#id38" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a> volume is created if this is <cite>array-like</cite>, otherwise a float volume is created</p></li>
 <li><p><strong>translation</strong> (<em>array-like</em>) – translation between the index and world spaces</p></li>
 <li><p><strong>device</strong> (<em>Devicelike</em>) – Device the array lives on</p></li>
-<li><p><strong>tile_points</strong> (<em>warp.types.Volume.array</em>) – </p></li>
-<li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><em>float</em></a>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -989,6 +974,10 @@ Repeated points per tile are allowed and will be efficiently deduplicated.</p></
    <span class="n">output</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The HashGrid query will give back all points in <em>cells</em> that fall inside the query radius. When there are hash conflicts it means that some points outside of query radius will be returned, and users should check the distance themselves inside their kernels. The reason the query doesn’t do the check itself for each returned point is because it’s common for kernels to compute the distance themselves, so it would redundant to check/compute the distance twice.</p>
+</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.HashGrid">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.HashGrid" title="Permalink to this definition">¶</a></dt>
@@ -1020,18 +1009,6 @@ Repeated points per tile are allowed and will be efficiently deduplicated.</p></
 <dd><p>Updates the hash grid data structure.</p>
 <p>This method rebuilds the underlying datastructure and should be called any time the set
 of points changes.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="id0">
-<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
-<dd><p>Unique identifier for this mesh object, can be passed to kernels.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="id1">
-<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#id1" title="Permalink to this definition">¶</a></dt>
-<dd><p>Device this object lives on, all buffers must live on the same device.</p>
-</dd></dl>
-
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -1294,7 +1271,7 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <p>This module is under development and subject to change, please see the test and example scenes for usage.</p>
 </div>
 <div class="section" id="devices">
-<span id="id2"></span><h2>Devices<a class="headerlink" href="#devices" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h2>Devices<a class="headerlink" href="#devices" title="Permalink to this headline">¶</a></h2>
 <p>Warp assigns unique string aliases to all supported compute devices in the system.  There is currently a single CPU device exposed as <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>.  Each CUDA-capable GPU gets an alias of the form <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code>, where <code class="docutils literal notranslate"><span class="pre">i</span></code> is the CUDA device ordinal.  This convention should be familiar to users of other popular frameworks like PyTorch.</p>
 <p>It is possible to explicitly target a specific device with each Warp API call using the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
