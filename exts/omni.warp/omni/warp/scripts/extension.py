@@ -13,8 +13,8 @@ import warp as wp
 import os
 import imp
 import webbrowser
+import importlib
 import omni.ext
-import omni.usd
 import omni.kit.actions.core
 import omni.timeline
 
@@ -32,18 +32,17 @@ class OmniWarpExtension(omni.ext.IExt):
         wp.init()
 
         self._is_live = True
-        self._ext_name = "omni.warp"
+        self._ext_name = omni.ext.get_extension_name(ext_id)
     
         self._register_actions()
         self._menu = WarpMenu()
 
         try:
-            import omni.kit.browser.sample
-            omni.kit.browser.sample.register_sample_folder(
+            importlib.import_module("omni.kit.browser.sample").register_sample_folder(
                 SCENES_PATH,
                 "Warp"
             )
-        except Exception as e:
+        except ImportError as e:
             print(e)
 
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
@@ -57,11 +56,10 @@ class OmniWarpExtension(omni.ext.IExt):
         self._deregister_actions()
 
         try:
-            import omni.kit.browser.sample
-            omni.kit.browser.sample.unregister_sample_folder(
+            importlib.import_module("omni.kit.browser.sample").unregister_sample_folder(
                 SCENES_PATH
             )
-        except Exception as e:
+        except ImportError as e:
             print(e)
 
         self._update_event_stream = None
