@@ -155,7 +155,11 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
         s = capture.end()
 
         # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)
-        self.assertEqual(s, "")
+        # we allow strings starting of the form "Module xxx load on device xxx"
+        # for lazy loaded modules
+        if s != "" and s.startswith("Module") == False:
+            self.fail(f"Kernel produced unexpected output: `{s}`")
+
 
         # check output values
         if expect:

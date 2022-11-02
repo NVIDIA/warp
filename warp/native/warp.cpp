@@ -136,7 +136,8 @@ void memset_device(void* context, void* dest, int value, size_t n)
 }
 
 WP_API int cuda_device_get_count() { return 0; }
-WP_API void* cuda_device_get_primary_context(int ordinal) { return NULL; }
+WP_API void* cuda_device_primary_context_retain(int ordinal) { return NULL; }
+WP_API void cuda_device_primary_context_release(int ordinal) {}
 WP_API const char* cuda_device_get_name(int ordinal) { return NULL; }
 WP_API int cuda_device_get_arch(int ordinal) { return 0; }
 WP_API int cuda_device_is_uva(int ordinal) { return 0; }

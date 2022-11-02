@@ -457,6 +457,7 @@ Where ``p`` is an array of ``warp.vec3`` point positions, and ``r`` is the radiu
 
       output[tid] = sum
 
+.. note:: The HashGrid query will give back all points in *cells* that fall inside the query radius. When there are hash conflicts it means that some points outside of query radius will be returned, and users should check the distance themselves inside their kernels. The reason the query doesn't do the check itself for each returned point is because it's common for kernels to compute the distance themselves, so it would redundant to check/compute the distance twice.
 
 
 .. autoclass:: HashGrid

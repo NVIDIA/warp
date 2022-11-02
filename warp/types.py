@@ -490,10 +490,12 @@ class array (Generic[T]):
             dtype = float32
 
         if data is not None or ptr is not None:
-            from warp.context import runtime
+            from .context import runtime
             device = runtime.get_device(device)
 
         if data is not None:
+            if device.is_capturing:
+                raise RuntimeError(f"Cannot allocate memory on device {device} while graph capture is active")
 
             if ptr is not None:
                 # data or ptr, not both
@@ -669,6 +671,8 @@ class array (Generic[T]):
 
             # TODO: ill-timed gc could trigger superfluous context switches here
             #       Delegate to a separate thread? (e.g., device_free_async)
+            if self.device.is_capturing:
+                raise RuntimeError(f"Cannot free memory on device {self.device} while graph capture is active")
 
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
@@ -964,7 +968,7 @@ class Mesh:
                 get_data(velocities), 
                 get_data(indices), 
                 int(len(points)), 
-                int(len(indices)/3))
+                int(indices.size/3))
         else:
             self.id = runtime.core.mesh_create_device(
                 self.device.context,
@@ -972,7 +976,7 @@ class Mesh:
                 get_data(velocities), 
                 get_data(indices), 
                 int(len(points)), 
-                int(len(indices)/3))
+                int(indices.size/3))
 
 
     def __del__(self):
@@ -1116,10 +1120,10 @@ class Volume:
             min (array-like): Lower 3D-coordinates of the bounding box in index space or world space, inclusive
             max (array-like): Upper 3D-coordinates of the bounding box in index space or world space, inclusive
             voxel_size (float): Voxel size of the new volume
-            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type:
-                a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
             translation (array-like): translation between the index and world spaces
             device (Devicelike): Device the array lives on
+        
         """
         if points_in_world_space:
             min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
@@ -1151,12 +1155,11 @@ class Volume:
                 The array can be a 2d, N-by-3 array of :class:`warp.int32` values, indicating index space positions,
                 or can be a 1D array of :class:`warp.vec3` values, indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
-            vertex positions of type :class:`warp.vec3`
             voxel_size (float): Voxel size of the new volume
-            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type:
-                a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
             translation (array-like): translation between the index and world spaces
             device (Devicelike): Device the array lives on
+        
         """
         from warp.context import runtime
         device = runtime.get_device(device)
@@ -1235,10 +1238,6 @@ class HashGrid:
 
         This method rebuilds the underlying datastructure and should be called any time the set
         of points changes.
-
-        Attributes:
-            id: Unique identifier for this mesh object, can be passed to kernels.
-            device: Device this object lives on, all buffers must live on the same device.
 
         Args:
             points (:class:`warp.array`): Array of points of type :class:`warp.vec3`

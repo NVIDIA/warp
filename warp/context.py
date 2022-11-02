@@ -392,23 +392,12 @@ def get_module(name):
 
             unload_recursive(old_module, visited=set())
 
-            new_module = warp.context.Module(name, parent_loader)
-
-            for reference in old_module.references:
-                # the new module adopts the reference
-                new_module.references.add(reference)
-                # update the reference's dependent
-                reference.dependents.remove(old_module)
-                reference.dependents.add(new_module)
-
-            for dependent in old_module.dependents:
-                # the new module adopts the dependent
-                new_module.dependents.add(dependent)
-                # update dependent's reference
-                dependent.references.remove(old_module)
-                dependent.references.add(new_module)
-
-            user_modules[name] = new_module
+            # clear out old kernels, funcs, struct definitions
+            old_module.kernels = {}
+            old_module.functions = {}
+            old_module.constants = []
+            old_module.structs = []
+            old_module.loader = parent_loader
 
         return user_modules[name]
 
@@ -723,29 +712,27 @@ class Module:
 
         with warp.utils.ScopedTimer(f"Module {self.name} load on device '{device}'"):
 
-            module_name = "wp_" + self.name
-
             build_path = warp.build.kernel_bin_dir
             gen_path = warp.build.kernel_gen_dir
-
-            cpu_hash_path = os.path.join(build_path, module_name + ".cpu.hash")
-            cuda_hash_path = os.path.join(build_path, module_name + ".cuda.hash")
-
-            module_path = os.path.join(build_path, module_name)
-
-            ptx_arch = min(device.arch, warp.config.ptx_target_arch)
-
-            ptx_path = module_path + f"_sm{ptx_arch}.ptx"
-
-            if (os.name == 'nt'):
-                dll_path = module_path + ".dll"
-            else:
-                dll_path = module_path + ".so"
 
             if not os.path.exists(build_path):
                 os.makedirs(build_path)
             if not os.path.exists(gen_path):
                 os.makedirs(gen_path)
+
+            module_name = "wp_" + self.name
+            module_path = os.path.join(build_path, module_name)
+
+            if os.name == 'nt':
+                dll_path = module_path + ".dll"
+            else:
+                dll_path = module_path + ".so"
+
+            ptx_arch = min(device.arch, warp.config.ptx_target_arch)
+            ptx_path = module_path + f".sm{ptx_arch}.ptx"
+
+            cpu_hash_path = module_path + ".cpu.hash"
+            ptx_hash_path = module_path + f".sm{ptx_arch}.hash"
 
             # test cache
             module_hash = self.hash_module()
@@ -764,9 +751,9 @@ class Module:
                             return True
 
             # check GPU cache
-            elif build_cuda and warp.config.cache_kernels and os.path.exists(cuda_hash_path):
+            elif build_cuda and warp.config.cache_kernels and os.path.exists(ptx_hash_path):
 
-                f = open(cuda_hash_path, 'rb')
+                f = open(ptx_hash_path, 'rb')
                 cache_hash = f.read()
                 f.close()
 
@@ -830,7 +817,7 @@ class Module:
                         warp.build.build_cuda(cu_path, ptx_arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
                     # update cuda hash
-                    f = open(cuda_hash_path, 'wb')
+                    f = open(ptx_hash_path, 'wb')
                     f.write(module_hash)
                     f.close()
 
@@ -899,53 +886,88 @@ class Allocator:
 
 class ContextGuard:
     def __init__(self, device):
-        self.core = device.runtime.core
-        self.context = device.context
+        self.device = device
     
     def __enter__(self):
-        if self.context:
-            self.core.cuda_context_push_current(self.context)
+        if self.device.is_cuda:
+            runtime.core.cuda_context_push_current(self.device.context)
         elif is_cuda_available():
-            self.saved_context = self.core.cuda_context_get_current()
+            self.saved_context = runtime.core.cuda_context_get_current()
     
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.context:
-            self.core.cuda_context_pop_current()
+        if self.device.is_cuda:
+            runtime.core.cuda_context_pop_current()
         elif is_cuda_available():
-            self.core.cuda_context_set_current(self.saved_context)
+            runtime.core.cuda_context_set_current(self.saved_context)
 
 
 class Device:
 
-    def __init__(self, runtime, context, alias, name=None, arch=0, ordinal=-1, is_primary=False, is_uva=False):
+    def __init__(self, runtime, alias, ordinal=-1, is_primary=False, context=None):
         self.runtime = runtime
-        self.context = context
         self.alias = alias
-        self.arch = arch
-        if name is not None:
-            self.name = name
-        else:
-            self.name = alias
         self.ordinal = ordinal
         self.is_primary = is_primary
-        self.is_uva = is_uva
+
+        # context can be None to avoid creating primary contexts until the device is used
+        self._context = context
+
+        # if the device context is not primary, it cannot be None
+        if ordinal != -1 and not is_primary:
+            assert(context is not None)
+
+        # indicates whether CUDA graph capture is active for this device
+        self.is_capturing = False
 
         self.allocator = Allocator(self)
         self.context_guard = ContextGuard(self)
 
-        # TODO: add more device-specific dispatch functions
-        if self.is_cpu:
+        if self.ordinal == -1:
+
+            # CPU device
+            self.name = platform.processor() or "CPU"
+            self.arch = 0
+            self.is_uva = False
+            
+            # TODO: add more device-specific dispatch functions
             self.memset = runtime.core.memset_host
-        else:
+
+        elif ordinal >= 0 and ordinal < runtime.core.cuda_device_get_count():
+
+            # CUDA device
+            self.name = runtime.core.cuda_device_get_name(ordinal).decode()
+            self.arch = runtime.core.cuda_device_get_arch(ordinal)
+            self.is_uva = runtime.core.cuda_device_is_uva(ordinal)
+
+            # TODO: add more device-specific dispatch functions
             self.memset = lambda ptr, value, size: runtime.core.memset_device(self.context, ptr, value, size)
+
+        else:
+            raise RuntimeError(f"Invalid device ordinal ({ordinal})'")
 
     @property
     def is_cpu(self):
-        return self.context is None
+        return self.ordinal < 0
     
     @property
     def is_cuda(self):
-        return self.context is not None
+        return self.ordinal >= 0
+
+    @property
+    def context(self):
+        if self._context is not None:
+            return self._context
+        elif self.is_primary:
+            # acquire primary context on demand
+            self._context = self.runtime.core.cuda_device_primary_context_retain(self.ordinal)
+            if self._context is None:
+                raise RuntimeError(f"Failed to acquire primary context for device {self}")
+            self.runtime.context_map[self._context] = self
+        return self._context
+
+    @property
+    def has_context(self):
+        return self._context is not None
 
     @property
     def stream(self):
@@ -975,7 +997,7 @@ class Device:
     def make_current(self):
         if self.context is not None:
             self.runtime.core.cuda_context_set_current(self.context)
-    
+
     def can_access(self, other):
         other = self.runtime.get_device(other)
         if self.context == other.context:
@@ -1116,8 +1138,8 @@ class Runtime:
 
         self.core.cuda_device_get_count.argtypes = None
         self.core.cuda_device_get_count.restype = ctypes.c_int
-        self.core.cuda_device_get_primary_context.argtypes = [ctypes.c_int]
-        self.core.cuda_device_get_primary_context.restype = ctypes.c_void_p
+        self.core.cuda_device_primary_context_retain.argtypes = [ctypes.c_int]
+        self.core.cuda_device_primary_context_retain.restype = ctypes.c_void_p
         self.core.cuda_device_get_name.argtypes = [ctypes.c_int]
         self.core.cuda_device_get_name.restype = ctypes.c_char_p
         self.core.cuda_device_get_arch.argtypes = [ctypes.c_int]
@@ -1187,34 +1209,39 @@ class Runtime:
 
         self.device_map = {} # device lookup by alias
         self.context_map = {} # device lookup by context
+        self.graph_capture_map = {} # indicates whether graph capture is active for a given device
 
         # register CPU device
         cpu_name = platform.processor()
         if not cpu_name:
             cpu_name = "CPU"
-        self.cpu_device = Device(self, None, "cpu", cpu_name)
+        self.cpu_device = Device(self, "cpu")
         self.device_map["cpu"] = self.cpu_device
         self.context_map[None] = self.cpu_device
+        self.graph_capture_map[None] = False
 
         # register CUDA devices
         cuda_device_count = self.core.cuda_device_get_count()
         self.cuda_devices = []
+        self.cuda_primary_devices = []
         for i in range(cuda_device_count):
             alias = f"cuda:{i}"
-            context = self.core.cuda_device_get_primary_context(i)
-            self.map_cuda_device(alias, context)
+            device = Device(self, alias, ordinal=i, is_primary=True)
+            self.cuda_devices.append(device)
+            self.cuda_primary_devices.append(device)
+            self.device_map[alias] = device
 
         # set default device
         if cuda_device_count > 0:
             if self.core.cuda_context_get_current() is not None:
-                self.set_device("cuda")
+                self.set_default_device("cuda")
             else:
-                self.set_device("cuda:0")
+                self.set_default_device("cuda:0")
             # save the initial CUDA device for backward compatibility with ScopedCudaGuard
-            self.initial_cuda_device = self.get_current_cuda_device()
+            self.initial_cuda_device = self.default_device
         else:
             # CUDA not available
-            self.set_device("cpu")
+            self.set_default_device("cpu")
             self.initial_cuda_device = None
 
         # initialize kernel cache        
@@ -1248,24 +1275,43 @@ class Runtime:
             raise RuntimeError(f"Unable to resolve device from argument of type {type(ident)}")
 
 
-    def set_device(self, ident:Devicelike):
+    def set_default_device(self, ident:Devicelike):
 
-        device = self.get_device(ident)
-        self.default_device = device
-        device.make_current()
+        self.default_device = self.get_device(ident)
 
 
     def get_current_cuda_device(self):
 
         current_context = self.core.cuda_context_get_current()
         if current_context is not None:
-            if current_context in self.context_map:
-                return self.context_map[current_context]
+            current_device = self.context_map.get(current_context)
+            if current_device is not None:
+                # this is a known device
+                return current_device
+            elif self.core.cuda_context_is_primary(current_context):
+                # this is a primary context that we haven't used yet
+                ordinal = self.core.cuda_context_get_device_ordinal(current_context)
+                device = self.cuda_devices[ordinal]
+                self.context_map[current_context] = device
+                return device
             else:
-                # this is a previously unseen context, register it as a device
+                # this is an unseen non-primary context, register it as a new device with a unique alias
                 alias = f"cuda!{current_context:x}"
                 return self.map_cuda_device(alias, current_context)
-        raise RuntimeError("No current CUDA context")
+        elif self.default_device.is_cuda:
+            return self.default_device
+        elif self.cuda_devices:
+            return self.cuda_devices[0]
+        else:
+            raise RuntimeError("CUDA is not available")
+
+
+    def rename_device(self, device, alias):
+
+        del self.device_map[device.alias]
+        device.alias = alias
+        self.device_map[alias] = device
+        return device
 
 
     def map_cuda_device(self, alias, context=None) -> Device:
@@ -1275,6 +1321,7 @@ class Runtime:
             if context is None:
                 raise RuntimeError(f"Unable to determine CUDA context for device alias '{alias}'")
 
+        # check if this alias already exists
         if alias in self.device_map:
             device = self.device_map[alias]
             if context == device.context:
@@ -1283,28 +1330,31 @@ class Runtime:
             else:
                 raise RuntimeError(f"Device alias '{alias}' already exists")
 
+        # check if this context already has an associated Warp device
         if context in self.context_map:
-            # we already know this context, so just change the device alias
+            # rename the device
             device = self.context_map[context]
-            del self.device_map[device.alias]
-            device.alias = alias
-            self.device_map[alias] = device
-            return device
+            return self.rename_device(device, alias)
         else:
-            # this is a previously unseen context, so create a corresponding device
+            # it's an unmapped context
+
+            # get the device ordinal
             ordinal = self.core.cuda_context_get_device_ordinal(context)
-            is_primary = bool(self.core.cuda_context_is_primary(context))
-            name = self.core.cuda_device_get_name(ordinal).decode()
-            arch = self.core.cuda_device_get_arch(ordinal)
-            is_uva = self.core.cuda_device_is_uva(ordinal)
 
-            device = Device(self, context, alias, name=name, arch=arch, ordinal=ordinal, is_primary=is_primary, is_uva=is_uva)
+            # check if this is a primary context (we could get here if it's a device that hasn't been used yet)
+            if self.core.cuda_context_is_primary(context):
+                # rename the device
+                device = self.cuda_primary_devices[ordinal]
+                return self.rename_device(device, alias)
+            else:
+                # create a new Warp device for this context
+                device = Device(self, alias, ordinal=ordinal, is_primary=False, context=context)
 
-            self.device_map[alias] = device
-            self.context_map[context] = device
-            self.cuda_devices.append(device)
+                self.device_map[alias] = device
+                self.context_map[context] = device
+                self.cuda_devices.append(device)
 
-            return device
+                return device
 
 
     def unmap_cuda_device(self, alias):
@@ -1420,17 +1470,19 @@ def set_device(ident:Devicelike):
 
     assert_initialized()
 
-    runtime.set_device(ident)
+    device = runtime.get_device(ident)
+    runtime.set_default_device(device)
+    device.make_current()
 
 def map_cuda_device(alias:str, context:ctypes.c_void_p=None) -> Device:
-    """Maps a device alias to a CUDA context.
+    """Assign a device alias to a CUDA context.
 
     This function can be used to create a wp.Device for an external CUDA context.
     If a wp.Device already exists for the given context, it's alias will change to the given value.
 
     Args:
         alias: A unique string to identify the device.
-        context: A CUDA context pointer (CUcontext).  If None, the current CUDA context will be used.
+        context: A CUDA context pointer (CUcontext).  If None, the currently bound CUDA context will be used.
     
     Returns:
         The associated wp.Device.
@@ -1477,6 +1529,9 @@ def zeros(shape: Tuple=None, dtype=float, device: Devicelike=None, requires_grad
     device = get_device(device)
 
     if num_bytes > 0:
+
+        if device.is_capturing:
+            raise RuntimeError(f"Cannot allocate memory while graph capture is active on device {device}.")
 
         ptr = device.allocator.alloc(num_bytes)
         if ptr is None:
@@ -1679,8 +1734,15 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         if device.is_cpu:
 
             if adjoint:
+                if hooks.backward is None:
+                    raise RuntimeError(f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'")
+
                 hooks.backward(*params)
+
             else:
+                if hooks.forward is None:
+                    raise RuntimeError(f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'")
+
                 hooks.forward(*params)
 
         else:
@@ -1689,8 +1751,15 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if adjoint:
+                if hooks.backward is None:
+                    raise RuntimeError(f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'")
+
                 runtime.core.cuda_launch_kernel(device.context, hooks.backward, bounds.size, kernel_params)
+
             else:
+                if hooks.forward is None:
+                    raise RuntimeError(f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'")
+
                 runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
 
             try:
@@ -1718,7 +1787,14 @@ def synchronize():
 
         # TODO: only synchronize devices that have outstanding work
         for device in runtime.cuda_devices:
-            runtime.core.cuda_context_synchronize(device.context)
+
+            # avoid creating primary context if the device has not been used yet
+            if device.has_context:
+
+                if device.is_capturing:
+                    raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
+
+                runtime.core.cuda_context_synchronize(device.context)
         
         # restore the original context to avoid side effects
         runtime.core.cuda_context_set_current(saved_context)
@@ -1735,10 +1811,11 @@ def synchronize_device(device:Devicelike=None):
     """
 
     device = runtime.get_device(device)
-    if not device.is_cuda:
-        return
+    if device.is_cuda:
+        if device.is_capturing:
+            raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
-    runtime.core.cuda_context_synchronize(device.context)
+        runtime.core.cuda_context_synchronize(device.context)
 
 
 def force_load(device:Union[Device, str]=None):
@@ -1808,6 +1885,8 @@ def capture_begin(device:Devicelike=None):
     # ensure that all modules are loaded, this is necessary
     # since cuLoadModule() is not permitted during capture
     force_load(device)
+    
+    device.is_capturing = True
 
     runtime.core.cuda_graph_begin_capture(device.context)
 
@@ -1824,6 +1903,8 @@ def capture_end(device:Devicelike=None) -> Graph:
         raise RuntimeError("Must be a CUDA device")
 
     graph = runtime.core.cuda_graph_end_capture(device.context)
+
+    device.is_capturing = False
     
     if graph == None:
         raise RuntimeError("Error occurred during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event.")
@@ -2000,7 +2081,7 @@ def export_stubs(file):
     print("from warp.types import array, array2d, array3d, array4d, constant", file=file)
     print("from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64", file=file)
     print("from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix", file=file)
-    print("from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t", file=file)
+    print("from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t, shape_t", file=file)
 
 
     #print("from warp.types import *", file=file)

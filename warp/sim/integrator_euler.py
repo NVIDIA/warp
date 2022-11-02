@@ -1671,7 +1671,7 @@ class SemiImplicitIntegrator:
         >>>
         >>> # simulation loop
         >>> for i in range(100):
-        >>>     state = integrator.forward(model, state, dt)
+        >>>     state = integrator.simulate(model, state_in, state_out, dt)
 
     """
 

@@ -1,6 +1,37 @@
 # CHANGELOG
 
-## [0.4.3] - 2022-09-20
+## [0.5.1] - 2022-11-01
+
+- Fix for unit tests in Kit
+
+## [0.5.0] - 2022-10-31
+
+- Add smoothed particle hydrodynamics (SPH) example, see `example_sph.py`
+- Add support for accessing `array.shape` inside kernels, e.g.: `width = arr.shape[0]`
+- Add dependency tracking to hot-reload modules if dependencies were modified
+- Add lazy acquisition of CUDA kernel contexts (save ~300Mb of GPU memory in MGPU environments)
+- Add BVH object, see `wp.Bvh` and `bvh_query_ray()`, `bvh_query_aabb()` functions
+- Add component index operations for `spatial_vector`, `spatial_matrix` types
+- Add `wp.lerp()` and `wp.smoothstep()` builtins
+- Add `wp.optim` module with implementation of the Adam optimizer for float and vector types
+- Add support for transient Python modules (fix for Houdini integration)
+- Add `wp.length_sq()`, `wp.trace()` for vector / matrix types respectively
+- Add missing adjoints for `wp.quat_rpy()`, `wp.determinant()`
+- Add `wp.atomic_min()`, `wp.atomic_max()` operators
+- Add vectorized version of `warp.sim.model.add_cloth_mesh()` 
+- Add NVDB volume allocation API, see `wp.Volume.allocate()`, and `wp.Volume.allocate_by_tiles()`
+- Add NVDB volume write methods, see `wp.volume_store_i()`, `wp.volume_store_f()`, `wp.volume_store_v()`
+- Add MGPU documentation
+- Add example showing how to compute Jacobian of multiple environements in parallel, see `example_jacobian_ik.py`
+- Add `wp.Tape.zero()` support for `wp.struct` types
+- Make SampleBrowser an optional dependency for Kit extension
+- Make `wp.Mesh` object accept both 1d and 2d arrays of face vertex indices
+- Fix for reloading of class member kernel / function definitions using `importlib.reload()`
+- Fix for hashing of `wp.constants()` not invalidating kernels
+- Fix for reload when multiple `.ptx` versions are present
+- Improved error reporting during code-gen
+ 
+ ## [0.4.3] - 2022-09-20
 
 - Update all samples to use GPU interop path by default
 - Fix for arrays > 2GB in length
