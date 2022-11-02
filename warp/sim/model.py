@@ -524,9 +524,10 @@ class ModelBuilder:
 
     Example:
 
-        >>> import wp as wp
+        >>> import warp as wp
+        >>> import warp.sim
         >>>
-        >>> builder = wp.ModelBuilder()
+        >>> builder = wp.sim.ModelBuilder()
         >>>
         >>> # anchor point (zero mass)
         >>> builder.add_particle((0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
@@ -537,7 +538,15 @@ class ModelBuilder:
         >>>     builder.add_spring(i-1, i, 1.e+3, 0.0, 0)
         >>>
         >>> # create model
-        >>> model = builder.finalize()
+        >>> model = builder.finalize("cuda")
+        >>> 
+        >>> state = model.state()
+        >>> integrator = wp.sim.SemiImplicitIntegrator()
+        >>>
+        >>> for i in range(100):
+        >>>
+        >>>    state.clear_forces()
+        >>>    integrator.simulate(model, state, state, dt=1.0/60.0)
 
     Note:
         It is strongly recommended to use the ModelBuilder to construct a simulation rather
