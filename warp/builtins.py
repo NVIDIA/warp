@@ -786,7 +786,7 @@ for t in compute_types + vector_types:
     if not type_is_int(t):
         add_builtin("lerp", input_types={"a": t, "b": t, "t": float}, value_type=t, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
 
-add_builtin("smoothstep", input_types={"a": float, "b": float, "t": float}, value_type=float, doc="Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping", group="Utility")
+add_builtin("smoothstep", input_types={"edge0": float, "edge1": float, "x": float}, value_type=float, doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping", group="Utility")
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
