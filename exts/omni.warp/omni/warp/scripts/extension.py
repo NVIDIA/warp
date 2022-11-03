@@ -5,6 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from contextlib import suppress
 from .menu import WarpMenu
 from .common import log_info
 from .common import log_error
@@ -25,6 +26,15 @@ WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/pr
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
 class OmniWarpExtension(omni.ext.IExt):
+
+    def __init__(self):
+        with suppress(ImportError):
+            import omni.kit.app
+            app = omni.kit.app.get_app()
+            manager = app.get_extension_manager()
+            if manager.is_extension_enabled("omni.graph.ui"):
+                import omni.graph.ui
+                omni.graph.ui.ComputeNodeWidget.get_instance().add_template_path(__file__)
 
     def on_startup(self, ext_id):
         log_info("OmniWarpExtension startup")
