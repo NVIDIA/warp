@@ -9,6 +9,7 @@
 #pragma once
 
 #include "mat33.h"
+#define EPSILON 0.000001
 
 namespace wp
 {
@@ -358,10 +359,13 @@ inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, floa
     }
     else
     {
-        // if this blows up we have a null quaternion
-        float t_qx = 2.f / (sqrt(3.f) * abs(q.w));
-        float t_qy = 2.f / (sqrt(3.f) * abs(q.w));
-        float t_qz = 2.f / (sqrt(3.f) * abs(q.w));
+        if (abs(q.w) > EPSILON)
+        {
+            float t_qx = 2.f / (sqrt(3.f) * abs(q.w));
+            float t_qy = 2.f / (sqrt(3.f) * abs(q.w));
+            float t_qz = 2.f / (sqrt(3.f) * abs(q.w));
+        }
+        // o/w we have a null quaternion which cannot backpropagate 
     }
 
     adj_q.x += ax_qx * adj_axis.x + ay_qx * adj_axis.y + az_qx * adj_axis.z + t_qx * adj_angle;
