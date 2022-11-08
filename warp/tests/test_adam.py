@@ -32,7 +32,7 @@ def test_adam_solve_float(test, device):
     score = wp.zeros(1, dtype=float, requires_grad=True)
     params = wp.array(params_start, dtype=float, requires_grad=True)
     tape = wp.Tape()
-    opt = warp.optim.Adam(params, lr=0.02, betas=(0.8, 0.999))
+    opt = warp.optim.Adam([params], lr=0.02, betas=(0.8, 0.999))
 
     def gradient_func():
         tape.reset()
@@ -40,7 +40,7 @@ def test_adam_solve_float(test, device):
         with tape:
             wp.launch(kernel=objective, dim=len(params), inputs=[params, score])
         tape.backward(score)
-        return tape.gradients[params]
+        return [tape.gradients[params]]
 
     niters = 100
 
@@ -67,7 +67,7 @@ def test_adam_solve_vec3(test, device):
     score = wp.zeros(1, dtype=float, requires_grad=True)
     params = wp.array(params_start, dtype=wp.vec3, requires_grad=True)
     tape = wp.Tape()
-    opt = warp.optim.Adam(params, lr=0.02, betas=(0.8, 0.999))
+    opt = warp.optim.Adam([params], lr=0.02, betas=(0.8, 0.999))
 
     def gradient_func():
         tape.reset()
@@ -75,7 +75,7 @@ def test_adam_solve_vec3(test, device):
         with tape:
             wp.launch(kernel=objective_vec3, dim=len(params), inputs=[params, score])
         tape.backward(score)
-        return tape.gradients[params]
+        return [tape.gradients[params]]
 
     niters = 100
     opt.reset_internal_state()
