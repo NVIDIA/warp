@@ -8,7 +8,6 @@
 import math
 import os
 import sys
-import inspect
 import hashlib
 import ctypes
 import platform
@@ -20,6 +19,7 @@ from typing import Dict
 from typing import Any
 from typing import Callable
 from typing import Union
+from typing import Mapping
 
 import warp
 import warp.utils
@@ -622,6 +622,14 @@ class Module:
 
     def hash_module(self):
 
+        def get_annotations(obj: Any) -> Mapping[str, Any]:
+            """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
+            # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
+            if isinstance(obj, type):
+                return obj.__dict__.get("__annotations__", {})
+
+            return getattr(obj, "__annotations__", {})
+
         def hash_recursive(module, visited):
 
             # Hash this module, including all referenced modules recursively.
@@ -635,7 +643,11 @@ class Module:
 
                 # struct source
                 for struct in module.structs:
-                    s = inspect.getsource(struct.cls)
+                    s = ",".join(
+                        "{}: {}".format(name, type_hint)
+                        for name, type_hint
+                        in get_annotations(struct.cls).items()
+                    )
                     ch.update(bytes(s, 'utf-8'))
 
                 # functions source
