@@ -58,69 +58,98 @@ class constant:
 
 #----------------------
 # built-in types
+def ndarray(length, shape, type):
+        
+    class ndarray_t(ctypes.Array):
+
+        _length_ = length
+        _shape_ = shape
+        _type_ = type
+        
+        def __add__(self, y):
+            from warp import add
+            return add(self, y)
+
+        def __radd__(self, y):
+            from warp import add
+            return add(self, y)
+
+        def __sub__(self, y):
+            from warp import sub
+            return sub(self, y)
+
+        def __rsub__(self, y):
+            from warp import sub
+            return sub(self, y)
+
+        def __mul__(self, y):
+            from warp import mul
+            return mul(self, y)
+
+        def __rmul__(self, y):
+            from warp import mul
+            return mul(self, y)
+
+        def __div__(self, y):
+            from warp import div
+            return div(self, y)
+
+        def __rdiv__(self, y):
+            from warp import div
+            return div(self, y)
+
+        def __neg__(self, y):
+            from warp import neg
+            return neg(self, y)
+
+        def __getitem__(self, key):
+            from warp import index
+            if isinstance(key, Tuple):
+                return super().__getitem__(key[1]*self._shape_[0] + key[1])
+            else:
+
+                # used to terminate iterations
+                if key >= self._length_:
+                    raise IndexError()
+                else:
+                    return super().__getitem__(key)
+
+    return ndarray_t
 
 
-class vec2(ctypes.Array):
-    
-    _length_ = 2
-    _shape_ = (2,)
-    _type_ = ctypes.c_float    
-    
-class vec3(ctypes.Array):
-    
-    _length_ = 3
-    _shape_ = (3,)
-    _type_ = ctypes.c_float
-    
-class vec4(ctypes.Array):
-    
-    _length_ = 4
-    _shape_ = (4,)
-    _type_ = ctypes.c_float
 
-class quat(ctypes.Array):
+class vec2(ndarray(length=2, shape=(2,), type=ctypes.c_float)):
+    pass
     
-    _length_ = 4
-    _shape_ = (4,)
-    _type_ = ctypes.c_float
-    
-class mat22(ctypes.Array):
-    
-    _length_ = 4
-    _shape_ = (2,2)
-    _type_ = ctypes.c_float
-    
-class mat33(ctypes.Array):
-    
-    _length_ = 9
-    _shape_ = (3,3)
-    _type_ = ctypes.c_float
+class vec3(ndarray(length=3, shape=(3,), type=ctypes.c_float)):
+    pass
 
-class mat44(ctypes.Array):
-    
-    _length_ = 16
-    _shape_ = (4,4)
-    _type_ = ctypes.c_float
+class vec4(ndarray(length=4, shape=(4,), type=ctypes.c_float)):
+    pass
 
-class spatial_vector(ctypes.Array):
+class quat(ndarray(length=4, shape=(4,), type=ctypes.c_float)):
+    pass
     
-    _length_ = 6
-    _shape_ = (6,)
-    _type_ = ctypes.c_float
-
-class spatial_matrix(ctypes.Array):
+class mat22(ndarray(length=4, shape=(2,2), type=ctypes.c_float)):
+    pass
     
-    _length_ = 36
-    _shape_ = (6,6)
-    _type_ = ctypes.c_float
+class mat33(ndarray(length=9, shape=(3,3), type=ctypes.c_float)):
+    pass
 
-class transform(ctypes.Array):
+class mat44(ndarray(length=16, shape=(4,4), type=ctypes.c_float)):
+    pass
+
+class spatial_vector(ndarray(length=6, shape=(6,), type=ctypes.c_float)):
+    pass
+
+class spatial_matrix(ndarray(length=36, shape=(6,6), type=ctypes.c_float)):
+    pass
+
+class transform(ndarray(length=7, shape=(7,), type=ctypes.c_float)):
     
-    _length_ = 7
-    _shape_ = (7,)
-    _type_ = ctypes.c_float
-
     def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
+        super().__init__()
+
         self[0:3] = vec3(*p)
         self[3:7] = quat(*q)
 
