@@ -42,9 +42,14 @@ CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int
     y += origin;
     z += origin;
 
-    assert(x >= 0);
-    assert(y >= 0);
-    assert(z >= 0);
+    assert(0 < x);
+    assert(0 < y);
+    assert(0 < z);
+
+    // clamp in case any particles fall outside the guard region (-10^20 cell index)
+    x = max(0, x);
+    y = max(0, y);
+    z = max(0, z);
 
     // compute physical cell (assume pow2 grid dims)
     // int cx = x & (grid.dim_x-1);

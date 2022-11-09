@@ -226,7 +226,7 @@ class UsdRenderer:
         _usd_set_xform(ref, pos, rot, scale, self.time)
 
 
-    def render_mesh(self, name: str, points, indices, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0), update_topology=False):
+    def render_mesh(self, name: str, points, indices, colors=None, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0), update_topology=False):
         
         from pxr import UsdGeom
 
@@ -235,6 +235,7 @@ class UsdRenderer:
         if not mesh:
             
             mesh = UsdGeom.Mesh.Define(self.stage, mesh_path)
+            UsdGeom.Primvar(mesh.GetDisplayColorAttr()).SetInterpolation("vertex")
             _usd_add_xform(mesh)
 
             # force topology update on first frame
@@ -245,6 +246,9 @@ class UsdRenderer:
         if update_topology:
             mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
             mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
+
+        if colors:
+            mesh.GetDisplayColorAttr().Set(colors, self.time)
 
         _usd_set_xform(mesh, pos, rot, scale, self.time)
 

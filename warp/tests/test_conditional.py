@@ -128,7 +128,6 @@ def register(parent):
     add_kernel_test(TestConditional, kernel=test_boolean_or, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_boolean_compound, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_boolean_literal, dim=1, devices=devices)
-    add_kernel_test(TestConditional, kernel=test_boolean_and, dim=1, devices=devices)
 
     return TestConditional
 

@@ -115,6 +115,12 @@ inline CUDA_CALLABLE float dot(vec2 a, vec2 b)
     return a.x*b.x + a.y*b.y;
 }
 
+inline CUDA_CALLABLE float tensordot(vec2 a, vec2 b)
+{
+    // corresponds to `np.tensordot()` with all axes being contracted
+    return dot(a, b);
+}
+
 inline CUDA_CALLABLE vec2 min(vec2 a, vec2 b)
 {
     return vec2(min(a.x, b.x), min(a.y, b.y));
@@ -305,6 +311,24 @@ inline CUDA_CALLABLE vec2 atomic_add(vec2 * addr, vec2 value) {
     return vec2(x, y);
 }
 
+inline CUDA_CALLABLE vec2 atomic_min(vec2* addr, vec2 value) {
+
+    float x = atomic_min(&(addr -> x), value.x);
+    float y = atomic_min(&(addr -> y), value.y);
+
+    return vec2(x, y);
+}
+
+inline CUDA_CALLABLE vec2 atomic_max(vec2* addr, vec2 value) {
+
+    float x = atomic_max(&(addr -> x), value.x);
+    float y = atomic_max(&(addr -> y), value.y);
+
+    return vec2(x, y);
+}
+
+
+
 inline CUDA_CALLABLE void adj_length(vec2 a, vec2& adj_a, const float adj_ret)
 {
     adj_a += normalize(a)*adj_ret;
@@ -313,6 +337,19 @@ inline CUDA_CALLABLE void adj_length(vec2 a, vec2& adj_a, const float adj_ret)
     if (!isfinite(adj_a))
     {
         printf("%s:%d - adj_length((%f %f), (%f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, adj_a.x, adj_a.y, adj_ret);
+        assert(0);
+    }
+#endif
+}
+
+inline CUDA_CALLABLE void adj_length_sq(vec2 a, vec2& adj_a, const float adj_ret)
+{
+    adj_a += 2.0f*a*adj_ret;
+
+#if FP_CHECK
+    if (!isfinite(adj_a))
+    {
+        printf("%s:%d - adj_length_sq((%f %f), (%f %f), (%f))\n", __FILE__, __LINE__, a.x, a.y, adj_a.x, adj_a.y, adj_ret);
         assert(0);
     }
 #endif

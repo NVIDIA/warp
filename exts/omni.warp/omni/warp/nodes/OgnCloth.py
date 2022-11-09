@@ -17,6 +17,7 @@ import warp as wp
 import warp.sim
 
 import omni.timeline
+import omni.warp
 
 from pxr import Usd, UsdGeom, Gf, Sdf
 
@@ -225,6 +226,9 @@ class OgnCloth:
                     # finalize sim model
                     model = builder.finalize()
                     
+                    # can only have one contact per-particle, since only one shape
+                    model.allocate_soft_contacts(model.particle_count)
+
                     # create integrator
                     context.integrator = wp.sim.SemiImplicitIntegrator()
 
@@ -233,7 +237,6 @@ class OgnCloth:
                     context.state_0 = model.state()
                     context.state_1 = model.state()
 
-                    context.positions_host = wp.zeros(model.particle_count, dtype=wp.vec3, device="cpu")
                     context.positions_device = wp.zeros(model.particle_count, dtype=wp.vec3)
 
                     context.collider_xform = read_transform_bundle(db.inputs.collider)
@@ -378,24 +381,13 @@ class OgnCloth:
                                       context.positions_device, 
                                       np.array(cloth_xform_inv).T])
 
-                with wp.ScopedTimer("Synchronize", active=False):
-
-                    # back to host for OG outputs
-                    wp.copy(context.positions_host, context.positions_device)
-                    wp.synchronize()
-
                 with wp.ScopedTimer("Write", active=False):
 
-                    db.outputs.positions_size = len(context.positions_host)
-                    db.outputs.positions[:] = context.positions_host.numpy()
+                    db.outputs.positions_size = len(context.positions_device)
 
-            else:
-                
-                with wp.ScopedTimer("Write", active=False):
-                    
-                    # timeline not playing and sim. not yet initialized, just pass through outputs
-                    if context.model is None and db.inputs.cloth.valid:
-                        db.outputs.positions = read_points_bundle(db.inputs.cloth)
+                    # copy points 
+                    points_out = omni.warp.from_omni_graph(db.outputs.positions, dtype=wp.vec3)
+                    wp.copy(points_out, context.positions_device)
 
 
         return True

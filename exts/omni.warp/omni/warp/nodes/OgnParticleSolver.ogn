@@ -99,6 +99,16 @@
                     1.0,
                     0.0
                 ]
+            },
+            "device": {
+                "type": "int",
+                "description": "CUDA device to run simulation on",
+                "default": 0                
+            },
+            "asynchronous": {
+                "type": "bool",
+                "description": "",
+                "default": false
             }
         },
         "outputs": {

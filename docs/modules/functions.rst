@@ -266,6 +266,31 @@ Vector Math
    Compute the length of a 4d vector.
 
 
+.. function:: length(x: quat) -> float
+
+   Compute the length of a quaternion.
+
+
+.. function:: length_sq(x: vec2) -> float
+
+   Compute the squared length of a 2d vector.
+
+
+.. function:: length_sq(x: vec3) -> float
+
+   Compute the squared length of a 3d vector.
+
+
+.. function:: length_sq(x: vec4) -> float
+
+   Compute the squared length of a 4d vector.
+
+
+.. function:: length_sq(x: quat) -> float
+
+   Compute the squared length of a quaternion.
+
+
 .. function:: normalize(x: vec2) -> vec2
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
@@ -334,6 +359,21 @@ Vector Math
 .. function:: determinant(m: mat44) -> float
 
    Return the determinant of the matrix m
+
+
+.. function:: trace(m: mat22) -> float
+
+   Return the trace of the matrix m
+
+
+.. function:: trace(m: mat33) -> float
+
+   Return the trace of the matrix m
+
+
+.. function:: trace(m: mat44) -> float
+
+   Return the trace of the matrix m
 
 
 .. function:: diag(d: vec2) -> mat22
@@ -744,6 +784,46 @@ Utility
    Atomically subtract ``value`` onto the array at location given by indices.
 
 
+.. function:: atomic_min(a: array[Any], i: int32, value: Any)
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: array[Any], i: int32, j: int32, value: Any)
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_min(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: array[Any], i: int32, value: Any)
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: array[Any], i: int32, j: int32, value: Any)
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
+.. function:: atomic_max(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+
+
 .. function:: index(a: vec2, i: int32) -> float
 
 
@@ -772,6 +852,18 @@ Utility
 
 
 .. function:: index(a: mat44, i: int32, j: int32) -> float
+
+
+.. function:: index(a: spatial_matrix, i: int32, j: int32) -> float
+
+
+.. function:: index(a: spatial_vector, i: int32) -> float
+
+
+.. function:: index(a: transform, i: int32) -> float
+
+
+.. function:: index(s: shape_t, i: int32) -> int
 
 
 .. function:: expect_eq(arg1: int8, arg2: int8) -> None
@@ -879,17 +971,7 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: lerp(a: float16, b: float16, t: float32) -> float16
-
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-
-
 .. function:: lerp(a: float32, b: float32, t: float32) -> float32
-
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-
-
-.. function:: lerp(a: float64, b: float64, t: float32) -> float64
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
@@ -944,6 +1026,11 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
+.. function:: smoothstep(edge0: float32, edge1: float32, x: float32) -> float
+
+   Smoothly interpolate two values edge0 and edge1 with a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
+
+
 .. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
@@ -958,6 +1045,32 @@ Utility
 
 Geometry
 ---------------
+.. function:: bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t
+
+   Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
+   inside a bvh. Returns an object that is used to track state during bvh traversal.
+    
+   :param id: The bvh identifier
+   :param lower: The lower bound of the bounding box in bvh space
+   :param upper: The upper bound of the bounding box in bvh space
+
+
+.. function:: bvh_query_ray(id: uint64, start: vec3, dir: vec3) -> bvh_query_t
+
+   Construct a ray query against a bvh object. This query can be used to iterate over all bounds
+   that intersect the ray. Returns an object that is used to track state during bvh traversal.
+    
+   :param id: The bvh identifier
+   :param start: The start of the ray in bvh space
+   :param dir: The direction of the ray in bvh space
+
+
+.. function:: bvh_query_next(query: bvh_query_t, index: int32) -> bool
+
+   Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
+   if there are no more overlapping bound.
+
+
 .. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
 
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
@@ -1082,6 +1195,11 @@ Volumes
    Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
+.. function:: volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32) -> None
+
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+
+
 .. function:: volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int32) -> vec3
 
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
@@ -1090,6 +1208,11 @@ Volumes
 .. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3
 
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3) -> None
+
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
 .. function:: volume_sample_i(id: uint64, uvw: vec3) -> int
@@ -1163,6 +1286,56 @@ Random
    Sample a normal distribution
 
 
+.. function:: sample_cdf(state: uint32, cdf: array[float32]) -> int
+
+   Inverse transform sample a cumulative distribution function
+
+
+.. function:: sample_triangle(state: uint32) -> vec2
+
+   Uniformly sample a triangle. Returns sample barycentric coordinates
+
+
+.. function:: sample_unit_ring(state: uint32) -> vec2
+
+   Uniformly sample a ring in the xy plane
+
+
+.. function:: sample_unit_disk(state: uint32) -> vec2
+
+   Uniformly sample a disk in the xy plane
+
+
+.. function:: sample_unit_sphere_surface(state: uint32) -> vec3
+
+   Uniformly sample a unit sphere surface
+
+
+.. function:: sample_unit_sphere(state: uint32) -> vec3
+
+   Uniformly sample a unit sphere
+
+
+.. function:: sample_unit_hemisphere_surface(state: uint32) -> vec3
+
+   Uniformly sample a unit hemisphere surface
+
+
+.. function:: sample_unit_hemisphere(state: uint32) -> vec3
+
+   Uniformly sample a unit hemisphere
+
+
+.. function:: sample_unit_square(state: uint32) -> vec2
+
+   Uniformly sample a unit square
+
+
+.. function:: sample_unit_cube(state: uint32) -> vec3
+
+   Uniformly sample a unit cube
+
+
 .. function:: noise(state: uint32, x: float32) -> float
 
    Non-periodic Perlin-style noise in 1d.
@@ -1216,6 +1389,20 @@ Random
 .. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
 
    Divergence-free vector field based on the curl of three Perlin noise functions.
+
+
+
+
+Other
+---------------
+.. function:: lower_bound(arr: array[int32], value: int32) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[float32], value: float32) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
 
 
 

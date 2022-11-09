@@ -8,6 +8,7 @@
 import ctypes 
 import hashlib
 import inspect
+import itertools
 import struct
 import zlib
 import numpy as np
@@ -16,7 +17,9 @@ from typing import Any
 from typing import Tuple
 from typing import TypeVar
 from typing import Generic
+from typing import List
 
+import warp
 
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels
@@ -28,7 +31,25 @@ class constant:
     def __init__(self, x):
 
         self.val = x
-        constant._hash.update(bytes(str(x), 'utf-8'))
+
+        # hash the constant value
+        if isinstance(x, int):
+            constant._hash.update(struct.pack("<q", x))
+        elif isinstance(x, float):
+            constant._hash.update(struct.pack("<d", x))
+        elif isinstance(x, bool):
+            constant._hash.update(struct.pack("?", x))
+        elif isinstance(x, float16):
+            # float16 is a special case
+            p = ctypes.pointer(ctypes.c_float(x.value))
+            constant._hash.update(p.contents)
+        elif isinstance(x, tuple(scalar_types)):
+            p = ctypes.pointer(x._type_(x.value))
+            constant._hash.update(p.contents)
+        elif isinstance(x, tuple(vector_types)):
+            constant._hash.update(bytes(x))
+        else:
+            raise RuntimeError(f"Invalid constant type: {type(x)}")
 
     def __eq__(self, other):
         return self.val == other
@@ -38,69 +59,154 @@ class constant:
 
 #----------------------
 # built-in types
+def vector(length, type):
+        
+    class vector_t(ctypes.Array):
+
+        _length_ = length
+        _shape_ = (length, )
+        _type_ = type
+        
+        def __add__(self, y):
+            return warp.add(self, y)
+
+        def __radd__(self, y):
+            return warp.add(self, y)
+
+        def __sub__(self, y):
+            return warp.sub(self, y)
+
+        def __rsub__(self, x):
+            return warp.sub(x, self)
+
+        def __mul__(self, y):
+            return warp.mul(self, y)
+
+        def __rmul__(self, x):
+            return warp.mul(x, self)
+
+        def __div__(self, y):
+            return warp.div(self, y)
+
+        def __rdiv__(self, x):
+            return warp.div(x, self)
+
+        def __neg__(self, y):
+            return warp.neg(self, y)
+
+        def __str__(self):
+            return f"[{', '.join(map(str, self))}]"
+
+        def __getitem__(self, key):
+            # used to terminate iterations
+            if key >= self._length_:
+                raise IndexError()
+            else:
+                return super().__getitem__(key)
+
+    return vector_t
 
 
-class vec2(ctypes.Array):
-    
-    _length_ = 2
-    _shape_ = (2,)
-    _type_ = ctypes.c_float    
-    
-class vec3(ctypes.Array):
-    
-    _length_ = 3
-    _shape_ = (3,)
-    _type_ = ctypes.c_float
-    
-class vec4(ctypes.Array):
-    
-    _length_ = 4
-    _shape_ = (4,)
-    _type_ = ctypes.c_float
+def matrix(shape, type):
+        
+    assert(len(shape) == 2)
 
-class quat(ctypes.Array):
-    
-    _length_ = 4
-    _shape_ = (4,)
-    _type_ = ctypes.c_float
-    
-class mat22(ctypes.Array):
-    
-    _length_ = 4
-    _shape_ = (2,2)
-    _type_ = ctypes.c_float
-    
-class mat33(ctypes.Array):
-    
-    _length_ = 9
-    _shape_ = (3,3)
-    _type_ = ctypes.c_float
+    class matrix_t(ctypes.Array):
 
-class mat44(ctypes.Array):
-    
-    _length_ = 16
-    _shape_ = (4,4)
-    _type_ = ctypes.c_float
+        _length_ = shape[0]*shape[1]
+        _shape_ = shape
+        _type_ = type        
+        
+        def __add__(self, y):
+            return warp.add(self, y)
 
-class spatial_vector(ctypes.Array):
-    
-    _length_ = 6
-    _shape_ = (6,)
-    _type_ = ctypes.c_float
+        def __radd__(self, y):
+            return warp.add(self, y)
 
-class spatial_matrix(ctypes.Array):
-    
-    _length_ = 36
-    _shape_ = (6,6)
-    _type_ = ctypes.c_float
+        def __sub__(self, y):
+            return warp.sub(self, y)
 
-class transform(ctypes.Array):
-    
-    _length_ = 7
-    _shape_ = (7,)
-    _type_ = ctypes.c_float
+        def __rsub__(self, x):
+            return warp.sub(x, self)
 
+        def __mul__(self, y):
+            return warp.mul(self, y)
+
+        def __rmul__(self, x):            
+            return warp.mul(x, self)
+
+        def __div__(self, y):
+            return warp.div(self, y)
+
+        def __rdiv__(self, x):
+            return warp.div(x, self)
+
+        def __neg__(self, y):
+            return warp.neg(self, y)
+
+        def _row(self, r):
+            row_start = r*self._shape_[1]
+            row_end = row_start + self._shape_[1]
+            row_type = vector(self._shape_[1], self._type_)
+            row_val = row_type(*super().__getitem__(slice(row_start,row_end)))
+
+            return row_val
+
+        def __str__(self):
+            row_str = []
+            for r in range(self._shape_[0]):      
+                row_val = self._row(r)
+                row_str.append(f"[{', '.join(map(str, row_val))}]")
+            
+            return "[" + ",\n ".join(row_str) + "]"
+
+        def __getitem__(self, key):
+            if isinstance(key, Tuple):
+                # element indexing m[i,j]
+                return super().__getitem__(key[1]*self._shape_[0] + key[1])
+            else:
+                # used to terminate iterations
+                if key >= self._length_[0]:
+                    raise IndexError()
+                else:
+                    return self._row(key)
+
+    return matrix_t
+
+
+
+class vec2(vector(length=2, type=ctypes.c_float)):
+    pass
+    
+class vec3(vector(length=3, type=ctypes.c_float)):
+    pass
+
+class vec4(vector(length=4, type=ctypes.c_float)):
+    pass
+
+class quat(vector(length=4, type=ctypes.c_float)):
+    pass
+    
+class mat22(matrix(shape=(2,2), type=ctypes.c_float)):
+    pass
+    
+class mat33(matrix(shape=(3,3), type=ctypes.c_float)):
+    pass
+
+class mat44(matrix(shape=(4,4), type=ctypes.c_float)):
+    pass
+
+class spatial_vector(vector(length=6, type=ctypes.c_float)):
+    pass
+
+class spatial_matrix(matrix(shape=(6,6), type=ctypes.c_float)):
+    pass
+
+class transform(vector(length=7, type=ctypes.c_float)):
+    
     def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
+        super().__init__()
+
         self[0:3] = vec3(*p)
         self[3:7] = quat(*q)
 
@@ -205,7 +311,8 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
-               
+
+compute_types = [int32, float32]
 scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64]
 vector_types = [vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix]
 
@@ -229,6 +336,12 @@ np_dtype_to_warp_type = {
 
 # represent a Python range iterator
 class range_t:
+
+    def __init__(self):
+        pass
+
+# definition just for kernel type (cannot be a parameter), see bvh.h
+class bvh_query_t:
 
     def __init__(self):
         pass
@@ -278,6 +391,14 @@ class launch_bounds_t(ctypes.Structure):
             self.shape[i] = 1
 
 
+class shape_t(ctypes.Structure): 
+
+    _fields_ = [("dims", ctypes.c_int32*ARRAY_MAX_DIMS)]
+    
+    def __init__(self):
+        pass
+
+
 class array_t(ctypes.Structure): 
 
     _fields_ = [("data", ctypes.c_uint64),
@@ -290,6 +411,7 @@ class array_t(ctypes.Structure):
         self.shape = (0,)*ARRAY_MAX_DIMS
         self.strides = (0,)*ARRAY_MAX_DIMS
         self.ndim = 0       
+
         
 
 def type_ctype(dtype):
@@ -400,7 +522,9 @@ def strides_from_shape(shape:Tuple, dtype):
 
 T = TypeVar('T')
 
+
 class array (Generic[T]):
+
 
     def __init__(self, data=None, dtype: T=None, shape=None, strides = None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
         """ Constructs a new Warp array object from existing data.
@@ -432,12 +556,15 @@ class array (Generic[T]):
         self.owner = False
         self.grad = None
 
+        # convert shape to Tuple
         if shape == None:
             shape = (length,)   
         elif isinstance(shape, int):
             shape = (shape,)
-        elif isinstance(shape, Tuple):
-            self.shape = shape
+        elif isinstance(shape, List):
+            shape = tuple(shape)
+
+        self.shape = shape
 
         if len(shape) > ARRAY_MAX_DIMS:
             raise RuntimeError(f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims.")
@@ -449,10 +576,12 @@ class array (Generic[T]):
             dtype = float32
 
         if data is not None or ptr is not None:
-            from warp.context import runtime
+            from .context import runtime
             device = runtime.get_device(device)
 
         if data is not None:
+            if device.is_capturing:
+                raise RuntimeError(f"Cannot allocate memory on device {device} while graph capture is active")
 
             if ptr is not None:
                 # data or ptr, not both
@@ -514,9 +643,9 @@ class array (Generic[T]):
             if device.is_cpu and copy == False:
 
                 # ref numpy memory directly
+                self.shape=shape
                 self.ptr = ptr
                 self.dtype=dtype
-                self.shape=shape
                 self.strides = strides
                 self.capacity=arr.size*type_size_in_bytes(dtype)
                 self.device = device
@@ -617,6 +746,10 @@ class array (Generic[T]):
         # this will trigger allocation of a gradient array if it doesn't exist already
         self.requires_grad = requires_grad
 
+        # register member attributes available during code-gen (e.g.: d = array.shape[0])
+        from warp.codegen import Var
+        self.vars = { "shape": Var("shape", shape_t) }
+
 
     def __del__(self):
         
@@ -624,6 +757,8 @@ class array (Generic[T]):
 
             # TODO: ill-timed gc could trigger superfluous context switches here
             #       Delegate to a separate thread? (e.g., device_free_async)
+            if self.device.is_capturing:
+                raise RuntimeError(f"Cannot free memory on device {self.device} while graph capture is active")
 
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
@@ -792,6 +927,86 @@ def array4d(*args, **kwargs):
     return array(*args, **kwargs)
 
 
+class Bvh:
+
+    def __init__(self, lowers, uppers):
+        """ Class representing a bounding volume hierarchy.
+
+        Attributes:
+            id: Unique identifier for this bvh object, can be passed to kernels.
+            device: Device this object lives on, all buffers must live on the same device.
+
+        Args:
+            lowers (:class:`warp.array`): Array of lower bounds :class:`warp.vec3`
+            uppers (:class:`warp.array`): Array of upper bounds :class:`warp.vec3`
+        """
+
+        if (len(lowers) != len(uppers)):
+            raise RuntimeError("Bvh the same number of lower and upper bounds must be provided")
+
+        if (lowers.device != uppers.device):
+            raise RuntimeError("Bvh lower and upper bounds must live on the same device")
+
+        if (lowers.dtype != vec3 or not lowers.is_contiguous):
+            raise RuntimeError("Bvh lowers should be a contiguous array of type wp.vec3")
+
+        if (uppers.dtype != vec3 or not uppers.is_contiguous):
+            raise RuntimeError("Bvh uppers should be a contiguous array of type wp.vec3")
+
+
+        self.device = lowers.device
+        self.lowers = lowers
+        self.upupers = uppers
+
+        def get_data(array):
+            if (array):
+                return ctypes.c_void_p(array.ptr)
+            else:
+                return ctypes.c_void_p(0)
+
+        from warp.context import runtime
+
+        if self.device.is_cpu:
+            self.id = runtime.core.bvh_create_host(
+                get_data(lowers), 
+                get_data(uppers), 
+                int(len(lowers)))
+        else:
+            self.id = runtime.core.bvh_create_device(
+                self.device.context,
+                get_data(lowers), 
+                get_data(uppers), 
+                int(len(lowers)))
+
+
+    def __del__(self):
+
+        try:
+                
+            from warp.context import runtime
+
+            if self.device.is_cpu:
+                runtime.core.bvh_destroy_host(self.id)
+            else:
+                # use CUDA context guard to avoid side effects during garbage collection
+                with self.device.context_guard:
+                    runtime.core.bvh_destroy_device(self.id)
+        
+        except:
+            pass
+
+    def refit(self):
+        """ Refit the Bvh. This should be called after users modify the `lowers` and `uppers` arrays."""
+                
+        from warp.context import runtime
+
+        if self.device.is_cpu:
+            runtime.core.bvh_refit_host(self.id)
+        else:
+            runtime.core.bvh_refit_device(self.id)
+            runtime.verify_cuda_device(self.device)
+
+
 class Mesh:
 
     def __init__(self, points, indices, velocities=None):
@@ -839,7 +1054,7 @@ class Mesh:
                 get_data(velocities), 
                 get_data(indices), 
                 int(len(points)), 
-                int(len(indices)/3))
+                int(indices.size/3))
         else:
             self.id = runtime.core.mesh_create_device(
                 self.device.context,
@@ -847,7 +1062,7 @@ class Mesh:
                 get_data(velocities), 
                 get_data(indices), 
                 int(len(points)), 
-                int(len(indices)/3))
+                int(indices.size/3))
 
 
     def __del__(self):
@@ -899,6 +1114,9 @@ class Volume:
 
         from warp.context import runtime
         self.context = runtime
+
+        if data is None:
+            return
 
         if data.device is None:
             raise RuntimeError(f"Invalid device")
@@ -959,7 +1177,7 @@ class Volume:
             raise RuntimeError("Only NVDBs with exactly one grid are supported")
 
         grid_data_offset = 192 + struct.unpack("<I", data[152:156])[0]
-        if codec == 0: # no compession
+        if codec == 0: # no compression
             grid_data = data[grid_data_offset:]
         elif codec == 1: # zip compression
             grid_data = zlib.decompress(data[grid_data_offset + 8:])
@@ -973,11 +1191,113 @@ class Volume:
         data_array = array(np.frombuffer(grid_data, dtype=np.byte), device=device)
         return cls(data_array)
 
+    @classmethod
+    def allocate(cls, min: List[int], max: List[int], voxel_size: float, bg_value=0.0, translation=(0.0,0.0,0.0), points_in_world_space=False, device=None):
+        """ Allocate a new Volume based on the bounding box defined by min and max.
+
+        Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
+        If points_in_world_space is true, then min and max are first converted to index space with the given voxel size and
+        translation, and the volume is allocated with those.
+
+        The smallest unit of allocation is a dense tile of 8x8x8 voxels, the requested bounding box is rounded up to tiles, and
+        the resulting tiles will be available in the new volume.
+
+        Args:
+            min (array-like): Lower 3D-coordinates of the bounding box in index space or world space, inclusive
+            max (array-like): Upper 3D-coordinates of the bounding box in index space or world space, inclusive
+            voxel_size (float): Voxel size of the new volume
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            translation (array-like): translation between the index and world spaces
+            device (Devicelike): Device the array lives on
+        
+        """
+        if points_in_world_space:
+            min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
+            max = np.around((np.array(max, dtype=np.float32) - translation) / voxel_size)
+
+        tile_min = np.array(min, dtype=np.int32) // 8
+        tile_max = np.array(max, dtype=np.int32) // 8
+        tiles = np.array([[i, j, k] for i in range(tile_min[0], tile_max[0] + 1)
+                                    for j in range(tile_min[1], tile_max[1] + 1)
+                                    for k in range(tile_min[2], tile_max[2] + 1)],
+                         dtype=np.int32)
+        tile_points = array(tiles * 8, device=device)
+
+        return cls.allocate_by_tiles(tile_points, voxel_size, bg_value, translation, device)
+
+    @classmethod
+    def allocate_by_tiles(cls, tile_points: array, voxel_size: float, bg_value=0.0, translation=(0.0,0.0,0.0), device=None):
+        """ Allocate a new Volume with active tiles for each point tile_points.
+
+        The smallest unit of allocation is a dense tile of 8x8x8 voxels.
+        This is the primary method for allocating sparse volumes. It uses an array of points indicating the tiles that must be allocated.
+
+        Example use cases:
+            * `tile_points` can mark tiles directly in index space as in the case this method is called by `allocate`.
+            * `tile_points` can be a list of points used in a simulation that needs to transfer data to a volume.
+
+        Args:
+            tile_points (:class:`warp.array`): Array of positions that define the tiles to be allocated.
+                The array can be a 2d, N-by-3 array of :class:`warp.int32` values, indicating index space positions,
+                or can be a 1D array of :class:`warp.vec3` values, indicating world space positions.
+                Repeated points per tile are allowed and will be efficiently deduplicated.
+            voxel_size (float): Voxel size of the new volume
+            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type, a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
+            translation (array-like): translation between the index and world spaces
+            device (Devicelike): Device the array lives on
+        
+        """
+        from warp.context import runtime
+        device = runtime.get_device(device)
+        
+        if voxel_size <= 0.0:
+            raise RuntimeError(f"Voxel size must be positive! Got {voxel_size}")
+        if not device.is_cuda:
+            raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
+        if not (isinstance(tile_points, array) and
+            (tile_points.dtype == int32 and tile_points.ndim  == 2) or
+            (tile_points.dtype == vec3 and tile_points.ndim  == 1)):
+            raise RuntimeError(f"Expected an warp array of vec3s or of n-by-3 int32s as tile_points!")
+        if not tile_points.device.is_cuda:
+            tile_points = array(tile_points, dtype=tile_points.dtype, device=device)
+
+        volume = cls(data=None)
+        volume.device = device
+        in_world_space = (tile_points.dtype == vec3)
+        if hasattr(bg_value, "__len__"):
+            volume.id = volume.context.core.volume_v_from_tiles_device(
+                volume.device.context,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                voxel_size,
+                bg_value[0],
+                bg_value[1],
+                bg_value[2],
+                translation[0],
+                translation[1],
+                translation[2],
+                in_world_space)
+        else:
+            volume.id = volume.context.core.volume_f_from_tiles_device(
+                volume.device.context,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                voxel_size,
+                float(bg_value),
+                translation[0],
+                translation[1],
+                translation[2],
+                in_world_space)
+
+        if volume.id == 0:
+            raise RuntimeError("Failed to create volume")
+
+        return volume
 
 class HashGrid:
 
     def __init__(self, dim_x, dim_y, dim_z, device=None):
-        """ Class representing a triangle mesh.
+        """ Class representing a hash grid object for accelerated point queries.
 
         Attributes:
             id: Unique identifier for this mesh object, can be passed to kernels.
@@ -1004,10 +1324,6 @@ class HashGrid:
 
         This method rebuilds the underlying datastructure and should be called any time the set
         of points changes.
-
-        Attributes:
-            id: Unique identifier for this mesh object, can be passed to kernels.
-            device: Device this object lives on, all buffers must live on the same device.
 
         Args:
             points (:class:`warp.array`): Array of points of type :class:`warp.vec3`

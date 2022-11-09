@@ -8,6 +8,7 @@ NVIDIA Warp Documentation
    modules/introduction
    modules/runtime
    modules/functions
+   modules/sim
 
 
 Indices and tables

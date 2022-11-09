@@ -375,7 +375,7 @@ inline CUDA_CALLABLE float floordiv(float a, float b)
         assert(0);
     }
 #endif
-    return float(int(a/b));
+    return floorf(a/b);
 }
 
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
@@ -900,7 +900,76 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 
 }
 
+// emulate atomic float max
+inline CUDA_CALLABLE float atomic_max(float* address, float val)
+{
+#if defined(__CUDA_ARCH__)
+    int *address_as_int = (int*)address;
+    int old = *address_as_int, assumed;
+    
+	while (val > __int_as_float(old))
+	{
+        assumed = old;
+        old = atomicCAS(address_as_int, assumed,
+                        __float_as_int(val));
+    }
 
+    return __int_as_float(old);
+
+#else
+    float old = *address;
+    *address = max(old, val);
+    return old;
+#endif
+}
+
+// emulate atomic float min/max with atomicCAS()
+inline CUDA_CALLABLE float atomic_min(float* address, float val)
+{
+#if defined(__CUDA_ARCH__)
+    int *address_as_int = (int*)address;
+    int old = *address_as_int, assumed;
+
+    while (val < __int_as_float(old)) 
+	{
+        assumed = old;
+        old = atomicCAS(address_as_int, assumed,
+                        __float_as_int(val));
+    }
+
+    return __int_as_float(old);
+
+#else
+    float old = *address;
+    *address = min(old, val);
+    return old;
+#endif
+}
+
+inline CUDA_CALLABLE int atomic_max(int* address, int val)
+{
+#if defined(__CUDA_ARCH__)
+    return atomicMax(address, val);
+
+#else
+    int old = *address;
+    *address = max(old, val);
+    return old;
+#endif
+}
+
+// atomic int min
+inline CUDA_CALLABLE int atomic_min(int* address, int val)
+{
+#if defined(__CUDA_ARCH__)
+    return atomicMin(address, val);
+
+#else
+    int old = *address;
+    *address = min(old, val);
+    return old;
+#endif
+}
 
 inline bool CUDA_CALLABLE isfinite(float x)
 {
@@ -920,6 +989,7 @@ inline bool CUDA_CALLABLE isfinite(float x)
 #include "intersect.h"
 #include "intersect_adj.h"
 #include "mesh.h"
+#include "bvh.h" 
 #include "svd.h"
 #include "hashgrid.h"
 #include "rand.h"
@@ -940,9 +1010,10 @@ template <typename T>
 void adj_mul(float s, const T& x, float& adj_s, T& adj_x, const T& adj_ret) { adj_mul(x, s, adj_x, adj_s, adj_ret); }
 
 
-// dot for scalar types just to make some templated compile for scalar/vector
+// dot for scalar types just to make some templates compile for scalar/vector
 inline CUDA_CALLABLE float dot(float a, float b) { return mul(a, b); }
-inline CUDA_CALLABLE void dot(float a, float b, float& adj_a, float& adj_b, float adj_ret) { return adj_mul(a, b, adj_a, adj_b, adj_ret); }
+inline CUDA_CALLABLE void adj_dot(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_mul(a, b, adj_a, adj_b, adj_ret); }
+inline CUDA_CALLABLE float tensordot(float a, float b) { return mul(a, b); }
 
 
 template <typename T>
@@ -951,19 +1022,38 @@ CUDA_CALLABLE inline T lerp(const T& a, const T& b, float t)
     return a*(1.0-t) + b*t;
 }
 
-template <>
-CUDA_CALLABLE inline float16 lerp(const float16& a, const float16& b, float t)
-{
-    return float(a)*(1.0-t) + float(b)*t;
-}
-
-
 template <typename T>
 CUDA_CALLABLE inline void adj_lerp(const T& a, const T& b, float t, T& adj_a, T& adj_b, float& adj_t, const T& adj_ret)
 {
     adj_a += adj_ret*(1.0-t);
     adj_b += adj_ret*t;
-    adj_t += dot(b, adj_ret) - dot(a, adj_ret);
+    adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
+}
+
+CUDA_CALLABLE inline float smoothstep(float edge0, float edge1, float x)
+{
+    // remap x from the range [edge0, edge1] to [0, 1]
+    x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+    return x * x * (3.0 - 2.0 * x);
+}
+
+CUDA_CALLABLE inline void adj_smoothstep(float edge0, float edge1, float x, float& adj_edge0, float& adj_edge1, float& adj_x, float adj_ret)
+{
+    float ab = edge0 - edge1;
+    float ax = edge0 - x;
+    float bx = edge1 - x;
+    float xb = x - edge1;
+
+    if (bx / ab >= 0 || ax / ab <= 0)
+    {
+        return;
+    }
+
+    float ab3 = ab * ab * ab;
+    float ab4 = ab3 * ab;
+    adj_edge0 += adj_ret * ((6 * ax * bx * bx) / ab4);
+    adj_edge1 += adj_ret * ((6 * ax * ax * xb) / ab4);
+    adj_x     += adj_ret * ((6 * ax * bx     ) / ab3);
 }
 
 inline CUDA_CALLABLE void print(const str s)
@@ -1093,9 +1183,24 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
            m.data[5][0], m.data[5][1], m.data[5][2],  m.data[5][3], m.data[5][4], m.data[5][5]);
 }
 
+inline CUDA_CALLABLE void print(shape_t s)
+{
+    // todo: only print valid dims, currently shape has a fixed size
+    // but we don't know how many dims are valid (e.g.: 1d, 2d, etc)
+    // should probably store ndim with shape
+    printf("(%d, %d, %d, %d)\n", s.dims[0], s.dims[1], s.dims[2], s.dims[3]);
+}
+
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float f, float& adj_f) { printf("%g adj: %g\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(short f, short& adj_f) { printf("%hd adj: %hd\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(long f, long& adj_f) { printf("%ld adj: %ld\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(long long f, long long& adj_f) { printf("%lld adj: %lld\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(unsigned f, unsigned& adj_f) { printf("%u adj: %u\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(unsigned short f, unsigned short& adj_f) { printf("%hu adj: %hu\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(unsigned long f, unsigned long& adj_f) { printf("%lu adj: %lu\n", f, adj_f); }
+inline CUDA_CALLABLE void adj_print(unsigned long long f, unsigned long long& adj_f) { printf("%llu adj: %llu\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(half h, half& adj_h) { printf("%g adj: %g\n", half_to_float(h), half_to_float(adj_h)); }
 inline CUDA_CALLABLE void adj_print(vec2 v, vec2& adj_v) { printf("%g %g adj: %g %g \n", v.x, v.y, adj_v.x, adj_v.y); }
 inline CUDA_CALLABLE void adj_print(vec3 v, vec3& adj_v) { printf("%g %g %g adj: %g %g %g \n", v.x, v.y, v.z, adj_v.x, adj_v.y, adj_v.z); }
@@ -1108,6 +1213,7 @@ inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
 inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
+inline CUDA_CALLABLE void adj_print(shape_t s, shape_t& shape_t) {}
 
 // printf defined globally in crt.h
 inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}

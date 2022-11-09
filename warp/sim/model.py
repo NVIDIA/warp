@@ -22,6 +22,7 @@ Vec4 = List[float]
 Quat = List[float]
 Mat33 = List[float]
 Transform = Tuple[Vec3, Quat]
+from typing import Optional
 
 
 # shape geometry types
@@ -41,6 +42,57 @@ JOINT_FIXED = wp.constant(3)
 JOINT_FREE = wp.constant(4)
 JOINT_COMPOUND = wp.constant(5)
 JOINT_UNIVERSAL = wp.constant(6)
+
+# Calculates the mass and inertia of a body given mesh data.
+@wp.kernel
+def compute_mass_inertia(
+    #inputs
+    com: wp.vec3,
+    alpha: float,
+    weight: float,
+    indices: wp.array(dtype=int, ndim=1),
+    vertices: wp.array(dtype=wp.vec3, ndim=1),
+    quads: wp.array(dtype=wp.vec3, ndim=2),
+    #outputs
+    mass: wp.array(dtype=float, ndim=1),
+    inertia: wp.array(dtype=wp.mat33, ndim=1)):
+
+    i = wp.tid()
+
+    p = vertices[indices[i * 3 + 0]]
+    q = vertices[indices[i * 3 + 1]]
+    r = vertices[indices[i * 3 + 2]]
+
+    mid = (com + p + q + r) / 4.
+
+    pcom = p - com
+    qcom = q - com
+    rcom = r - com
+
+    Dm = wp.mat33(pcom[0], qcom[0], rcom[0],
+                  pcom[1], qcom[1], rcom[1],
+                  pcom[2], qcom[2], rcom[2])
+
+    volume = wp.determinant(Dm) / 6.0
+
+    # quadrature points lie on the line between the
+    # centroid and each vertex of the tetrahedron
+    quads[i, 0] = alpha * (p - mid) + mid
+    quads[i, 1] = alpha * (q - mid) + mid
+    quads[i, 2] = alpha * (r - mid) + mid
+    quads[i, 3] = alpha * (com - mid) + mid
+    
+    for j in range(4):
+        # displacement of quadrature point from COM
+        d = quads[i,j] - com
+
+        # accumulate mass
+        wp.atomic_add(mass, 0, weight * volume)
+
+        # accumulate inertia
+        identity = wp.mat33(1., 0., 0., 0., 1., 0., 0., 0., 1.)
+        I = weight * volume * (wp.dot(d, d) * identity - wp.outer(d, d))
+        wp.atomic_add(inertia, 0, I)
 
 class Mesh:
     """Describes a triangle collision mesh for simulation
@@ -70,9 +122,9 @@ class Mesh:
         self.indices = indices
 
         if compute_inertia:
-
             # compute com and inertia (using density=1.0)
             com = np.mean(vertices, 0)
+            com_warp = wp.vec3(com[0], com[1], com[2])
 
             num_tris = int(len(indices) / 3)
 
@@ -83,35 +135,31 @@ class Mesh:
             weight = 0.25
             alpha = math.sqrt(5.0) / 5.0
 
-            I = np.zeros((3, 3))
-            mass = 0.0
+            # Allocating for mass and inertia.
+            I_warp = wp.zeros(1, dtype=wp.mat33)
+            mass_warp = wp.zeros(1, dtype=float)
 
-            for i in range(num_tris):
+            # Quadrature points
+            quads_warp = wp.zeros(shape=(num_tris, 4), dtype=wp.vec3)
 
-                p = np.array(vertices[indices[i * 3 + 0]])
-                q = np.array(vertices[indices[i * 3 + 1]])
-                r = np.array(vertices[indices[i * 3 + 2]])
+            # Launch warp kernel for calculating mass and inertia of body given mesh data.
+            wp.launch(kernel=compute_mass_inertia,
+                      dim=num_tris,
+                      inputs=[
+                          com_warp,
+                          alpha,
+                          weight,
+                          wp.array(indices, dtype=int),
+                          wp.array(vertices, dtype=wp.vec3),
+                          quads_warp
+                          ],
+                      outputs=[
+                          mass_warp,
+                          I_warp])
 
-                mid = (com + p + q + r) / 4.0
-
-                pcom = p - com
-                qcom = q - com
-                rcom = r - com
-
-                Dm = np.matrix((pcom, qcom, rcom)).T
-                volume = np.linalg.det(Dm) / 6.0
-
-                # quadrature points lie on the line between the
-                # centroid and each vertex of the tetrahedron
-                quads = (mid + (p - mid) * alpha, mid + (q - mid) * alpha, mid + (r - mid) * alpha, mid + (com - mid) * alpha)
-
-                for j in range(4):
-
-                    # displacement of quadrature point from COM
-                    d = quads[j] - com
-
-                    I += weight * volume * (wp.dot(d,d) * np.eye(3, 3) - np.outer(d, d))
-                    mass += weight * volume
+            # Extract mass and inertia and save to class attributes.
+            mass = mass_warp.numpy()[0]
+            I = I_warp.numpy()[0]
 
             self.I = I
             self.mass = mass
@@ -380,6 +428,18 @@ class Model:
         
         return s
 
+    def allocate_soft_contacts(self, count):
+        
+        self.soft_contact_max = count
+        self.soft_contact_count = wp.zeros(1, dtype=wp.int32)
+        self.soft_contact_particle = wp.zeros(self.soft_contact_max, dtype=int)
+        self.soft_contact_body = wp.zeros(self.soft_contact_max, dtype=int)
+        self.soft_contact_body_pos = wp.zeros(self.soft_contact_max, dtype=wp.vec3)
+        self.soft_contact_body_vel = wp.zeros(self.soft_contact_max, dtype=wp.vec3)
+        self.soft_contact_normal = wp.zeros(self.soft_contact_max, dtype=wp.vec3)
+
+
+
     def flatten(self):
         """Returns a list of Tensors stored by the model
 
@@ -511,9 +571,10 @@ class ModelBuilder:
 
     Example:
 
-        >>> import wp as wp
+        >>> import warp as wp
+        >>> import warp.sim
         >>>
-        >>> builder = wp.ModelBuilder()
+        >>> builder = wp.sim.ModelBuilder()
         >>>
         >>> # anchor point (zero mass)
         >>> builder.add_particle((0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
@@ -524,7 +585,15 @@ class ModelBuilder:
         >>>     builder.add_spring(i-1, i, 1.e+3, 0.0, 0)
         >>>
         >>> # create model
-        >>> model = builder.finalize()
+        >>> model = builder.finalize("cuda")
+        >>> 
+        >>> state = model.state()
+        >>> integrator = wp.sim.SemiImplicitIntegrator()
+        >>>
+        >>> for i in range(100):
+        >>>
+        >>>    state.clear_forces()
+        >>>    integrator.simulate(model, state, state, dt=1.0/60.0)
 
     Note:
         It is strongly recommended to use the ModelBuilder to construct a simulation rather
@@ -738,14 +807,20 @@ class ModelBuilder:
         Args:
             parent: The index of the parent body
             origin: The location of the joint in the parent's local frame connecting this body
-            axis: The joint axis
-            type: The type of joint, should be one of: JOINT_PRISMATIC, JOINT_REVOLUTE, JOINT_BALL, JOINT_FIXED, or JOINT_FREE
-            armature: Additional inertia around the joint axis
-            stiffness: Spring stiffness that attempts to return joint to zero position
-            damping: Spring damping that attempts to remove joint velocity
+            joint_xform: The transform of the body's joint in parent space
+            joint_xform_child: Transform body's joint in local space
+            joint_axis : Joint axis in local body space
+            joint_type : Type of the joint, e.g.: JOINT_PRISMATIC, JOINT_REVOLUTE, etc.
+            joint_target_ke: Stiffness of the joint PD controller
+            joint_target_kd: Damping of the joint PD controller
+            joint_limit_ke: Stiffness of the joint limits
+            joint_limit_kd: Damping of the joint limits
+            joint_limit_lower: Lower limit of the joint coordinate
+            joint_limit_upper: Upper limit of the joint coordinate
+            joint_armature: Artificial inertia added around the joint axis
             com: The center of mass of the body w.r.t its origin
             I_m: The 3x3 inertia tensor of the body (specified relative to the center of mass)
-            m: The mass of the body
+            m: Mass of the body
 
         Returns:
             The index of the body in the model
@@ -1084,10 +1159,10 @@ class ModelBuilder:
         e1 = wp.normalize(qp)
         e2 = wp.normalize(wp.cross(n, e1))
 
-        R = np.matrix((e1, e2))
-        M = np.matrix((qp, rp))
+        R = np.array((e1, e2))
+        M = np.array((qp, rp))
 
-        D = R * M.T
+        D = R @ M.T
 
         area = np.linalg.det(D) / 2.0
 
@@ -1104,6 +1179,84 @@ class ModelBuilder:
             self.tri_activations.append(0.0)
             self.tri_materials.append((tri_ke, tri_ka, tri_kd, tri_drag, tri_lift))
             return area
+
+
+    def add_triangles(self, i:List[int], j:List[int], k:List[int], tri_ke : Optional[List[float]] = None, tri_ka : Optional[List[float]] = None, tri_kd :Optional[List[float]] = None, tri_drag :Optional[List[float]] = None, tri_lift :Optional[List[float]] = None) -> List[float]:
+
+        """Adds trianglular FEM elements between groups of three particles in the system. 
+
+        Triangles are modeled as viscoelastic elements with elastic stiffness and damping
+        Parameters specfied on the model. See model.tri_ke, model.tri_kd.
+
+        Args:
+            i: The indices of the first particle
+            j: The indices of the second particle
+            k: The indices of the third particle
+
+        Return:
+            The areas of the triangles
+
+        Note:
+            A triangle is created with a rest-length based on the distance
+            between the particles in their initial configuration.
+
+        """      
+        # compute basis for 2D rest pose
+        p = np.array(self.particle_q)[i]
+        q = np.array(self.particle_q)[j]
+        r = np.array(self.particle_q)[k]
+
+        qp = q - p
+        rp = r - p
+
+        def normalized(a):
+            l = np.linalg.norm(a,axis=-1,keepdims=True)
+            l[l==0] = 1.0
+            return a / l
+
+        n = normalized(np.cross(qp,rp))
+        e1 = normalized(qp)
+        e2 = normalized(np.cross(n,e1))
+
+        R = np.concatenate((e1[...,None],e2[...,None]),axis=-1)
+        M = np.concatenate((qp[...,None],rp[...,None]),axis=-1)
+
+        D = np.matmul(R.transpose(0,2,1),M)
+        
+        areas = np.linalg.det(D) / 2.0
+        areas[areas < 0.0] = 0.0
+        valid_inds = (areas>0.0).nonzero()[0]
+        if len(valid_inds) < len(areas):
+            print("inverted or degenerate triangle elements")
+        
+        D[areas == 0.0] = np.eye(2)[None,...]
+        inv_D = np.linalg.inv(D)
+
+        inds = np.concatenate( (i[valid_inds,None],j[valid_inds,None],k[valid_inds,None]), axis=-1 )
+
+        self.tri_indices.extend(inds.tolist())
+        self.tri_poses.extend(inv_D[valid_inds].tolist())
+        self.tri_activations.extend([0.0] * len(valid_inds))
+
+        def init_if_none( arr, defaultValue ):
+            if arr is None:
+                return [defaultValue] * len(areas)
+            return arr
+        
+        tri_ke = init_if_none( tri_ke, self.default_tri_ke )
+        tri_ka = init_if_none( tri_ka, self.default_tri_ka )
+        tri_kd = init_if_none( tri_kd, self.default_tri_kd )
+        tri_drag = init_if_none( tri_drag, self.default_tri_drag )
+        tri_lift = init_if_none( tri_lift, self.default_tri_lift )
+
+        self.tri_materials.extend( zip(
+            np.array(tri_ke)[valid_inds],
+            np.array(tri_ka)[valid_inds],
+            np.array(tri_kd)[valid_inds],
+            np.array(tri_drag)[valid_inds],
+            np.array(tri_lift)[valid_inds]
+        ) )
+        return areas.tolist()
 
     def add_tetrahedron(self, i: int, j: int, k: int, l: int, k_mu: float=1.e+3, k_lambda: float=1.e+3, k_damp: float=0.0) -> float:
         """Adds a tetrahedral FEM element between four particles in the system. 
@@ -1137,7 +1290,7 @@ class ModelBuilder:
         rp = r - p
         sp = s - p
 
-        Dm = np.matrix((qp, rp, sp)).T
+        Dm = np.array((qp, rp, sp)).T
         volume = np.linalg.det(Dm) / 6.0
 
         if (volume <= 0.0):
@@ -1195,6 +1348,68 @@ class ModelBuilder:
         self.edge_indices.append((i, j, k, l))
         self.edge_rest_angle.append(rest)
         self.edge_bending_properties.append((edge_ke, edge_kd))
+
+    def add_edges(self, i, j, k, l, rest: Optional[List[float]] = None, edge_ke: Optional[List[float]] = None, edge_kd: Optional[List[float]] = None):
+        """Adds bending edge elements between groups of four particles in the system. 
+
+        Bending elements are designed to be between two connected triangles. Then
+        bending energy is based of [Bridson et al. 2002]. Bending stiffness is controlled
+        by the `model.tri_kb` parameter.
+
+        Args:
+            i: The indices of the first particle
+            j: The indices of the second particle
+            k: The indices of the third particle
+            l: The indices of the fourth particle
+            rest: The rest angles across the edges in radians, if not specified they will be computed
+
+        Note:
+            The edge lies between the particles indexed by 'k' and 'l' parameters with the opposing
+            vertices indexed by 'i' and 'j'. This defines two connected triangles with counter clockwise
+            winding: (i, k, l), (j, l, k).
+
+        """
+        if rest is None:
+            
+            # compute rest angle
+            x1 = np.array(self.particle_q)[i]
+            x2 = np.array(self.particle_q)[j]
+            x3 = np.array(self.particle_q)[k]
+            x4 = np.array(self.particle_q)[l]
+
+            def normalized(a):
+                l = np.linalg.norm(a,axis=-1,keepdims=True)
+                l[l==0] = 1.0
+                return a / l
+
+            n1 = normalized(np.cross(x3 - x1, x4 - x1))
+            n2 = normalized(np.cross(x4 - x2, x3 - x2))
+            e = normalized(x4 - x3)
+
+            def dot(a,b):
+                return (a * b).sum(axis=-1)
+
+            d = np.clip(dot(n2, n1), -1.0, 1.0)
+
+            angle = np.arccos(d)
+            sign = np.sign(dot(np.cross(n2, n1), e))
+
+            rest = angle * sign
+
+        inds = np.concatenate( (i[:,None],j[:,None],k[:,None],l[:,None]), axis=-1 )
+
+        self.edge_indices.extend(inds.tolist())
+        self.edge_rest_angle.extend(rest.tolist())
+        
+        def init_if_none( arr, defaultValue ):
+            if arr is None:
+                return [defaultValue] * len(i)
+            return arr
+        
+        edge_ke = init_if_none( edge_ke, self.default_edge_ke )
+        edge_kd = init_if_none( edge_kd, self.default_edge_kd )
+
+        self.edge_bending_properties.extend(zip(edge_ke, edge_kd))
 
     def add_cloth_grid(self,
                        pos: Vec3,
@@ -1334,54 +1549,47 @@ class ModelBuilder:
 
             The mesh should be two manifold.
         """
-
         num_tris = int(len(indices) / 3)
 
         start_vertex = len(self.particle_q)
         start_tri = len(self.tri_indices)
 
         # particles
-        for i, v in enumerate(vertices):
+        for v in vertices:
 
             p = np.array(wp.quat_rotate(rot, v * scale)) + pos
 
             self.add_particle(p, vel, 0.0)
 
         # triangles
+        inds = start_vertex + np.array(indices)
+        inds = inds.reshape(-1,3)
+        areas = self.add_triangles(
+            inds[:,0],inds[:,1],inds[:,2],
+            [tri_ke] * num_tris,
+            [tri_ka] * num_tris,
+            [tri_kd] * num_tris,
+            [tri_drag] * num_tris,
+            [tri_lift] * num_tris
+        )
+        
         for t in range(num_tris):
+            area = areas[t]
 
-            i = start_vertex + indices[t * 3 + 0]
-            j = start_vertex + indices[t * 3 + 1]
-            k = start_vertex + indices[t * 3 + 2]
+            self.particle_mass[inds[t,0]] += density * area / 3.0
+            self.particle_mass[inds[t,1]] += density * area / 3.0
+            self.particle_mass[inds[t,2]] += density * area / 3.0
 
-            if (face_callback):
-                face_callback(i, j, k)
-
-            area = self.add_triangle(i, j, k, tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
-
-            # add area fraction to particles
-            if (area > 0.0):
-
-                self.particle_mass[i] += density * area / 3.0
-                self.particle_mass[j] += density * area / 3.0
-                self.particle_mass[k] += density * area / 3.0
-
-        end_vertex = len(self.particle_q)
         end_tri = len(self.tri_indices)
 
         adj = wp.utils.MeshAdjacency(self.tri_indices[start_tri:end_tri], end_tri - start_tri)
 
-        # bend constraints
-        for k, e in adj.edges.items():
-
-            # skip open edges
-            if (e.f0 == -1 or e.f1 == -1):
-                continue
-
-            if (edge_callback):
-                edge_callback(e.f0, e.f1)
-
-            self.add_edge(e.o0, e.o1, e.v0, e.v1, edge_ke=edge_ke, edge_kd=edge_kd)
+        edgeinds = np.array([[e.o0,e.o1,e.v0,e.v1] for k,e in adj.edges.items()])
+        self.add_edges(
+            edgeinds[:,0], edgeinds[:,1], edgeinds[:,2], edgeinds[:,0],
+            edge_ke=[edge_ke] * len(edgeinds),
+            edge_kd=[edge_kd] * len(edgeinds)
+        )
 
     def add_particle_grid(self,
                       pos: Vec3,
@@ -1898,14 +2106,7 @@ class ModelBuilder:
             m.articulation_start = wp.array(self.articulation_start, dtype=int)
 
             # contacts
-            m.soft_contact_max = 64*1024
-
-            m.soft_contact_count = wp.zeros(1, dtype=wp.int32)
-            m.soft_contact_particle = wp.zeros(m.soft_contact_max, dtype=int)
-            m.soft_contact_body = wp.zeros(m.soft_contact_max, dtype=int)
-            m.soft_contact_body_pos = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
-            m.soft_contact_body_vel = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
-            m.soft_contact_normal = wp.zeros(m.soft_contact_max, dtype=wp.vec3)
+            m.allocate_soft_contacts(64*1024)
 
             # counts
             m.particle_count = len(self.particle_q)
@@ -1937,5 +2138,6 @@ class ModelBuilder:
             m.enable_tri_collisions = False
 
             return m
+
 
 

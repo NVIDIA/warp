@@ -102,6 +102,16 @@ add_builtin("length", input_types={"x": vec3}, value_type=float, group="Vector M
     doc="Compute the length of a 3d vector.")
 add_builtin("length", input_types={"x": vec4}, value_type=float, group="Vector Math",
     doc="Compute the length of a 4d vector.")
+add_builtin("length", input_types={"x": quat}, value_type=float, group="Vector Math",
+    doc="Compute the length of a quaternion.")
+add_builtin("length_sq", input_types={"x": vec2}, value_type=float, group="Vector Math",
+    doc="Compute the squared length of a 2d vector.")
+add_builtin("length_sq", input_types={"x": vec3}, value_type=float, group="Vector Math",
+    doc="Compute the squared length of a 3d vector.")
+add_builtin("length_sq", input_types={"x": vec4}, value_type=float, group="Vector Math",
+    doc="Compute the squared length of a 4d vector.")
+add_builtin("length_sq", input_types={"x": quat}, value_type=float, group="Vector Math",
+    doc="Compute the squared length of a quaternion.")
 add_builtin("normalize", input_types={"x": vec2}, value_type=vec2, group="Vector Math",
     doc="Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.")
 add_builtin("normalize", input_types={"x": vec3}, value_type=vec3, group="Vector Math",
@@ -133,6 +143,13 @@ add_builtin("determinant", input_types={"m": mat33}, value_type=float, group="Ve
     doc="Return the determinant of the matrix m")
 add_builtin("determinant", input_types={"m": mat44}, value_type=float, group="Vector Math",
     doc="Return the determinant of the matrix m")
+
+add_builtin("trace", input_types={"m": mat22}, value_type=float, group="Vector Math",
+    doc="Return the trace of the matrix m")
+add_builtin("trace", input_types={"m": mat33}, value_type=float, group="Vector Math",
+    doc="Return the trace of the matrix m")
+add_builtin("trace", input_types={"m": mat44}, value_type=float, group="Vector Math",
+    doc="Return the trace of the matrix m")
 
 add_builtin("diag", input_types={"d": vec2}, value_type=mat22, group="Vector Math",
     doc="Returns a matrix with the components of the vector d on the diagonal")
@@ -378,6 +395,26 @@ add_builtin("mlp", input_types={"weights": array(dtype=float, ndim=2), "bias": a
 #---------------------------------
 # Geometry
 
+add_builtin("bvh_query_aabb", input_types={"id": uint64, "lower": vec3, "upper": vec3}, value_type=bvh_query_t, group="Geometry",
+    doc="""Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
+   inside a bvh. Returns an object that is used to track state during bvh traversal.
+    
+   :param id: The bvh identifier
+   :param lower: The lower bound of the bounding box in bvh space
+   :param upper: The upper bound of the bounding box in bvh space""")
+
+add_builtin("bvh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3}, value_type=bvh_query_t, group="Geometry",
+    doc="""Construct a ray query against a bvh object. This query can be used to iterate over all bounds
+   that intersect the ray. Returns an object that is used to track state during bvh traversal.
+    
+   :param id: The bvh identifier
+   :param start: The start of the ray in bvh space
+   :param dir: The direction of the ray in bvh space""")
+
+add_builtin("bvh_query_next", input_types={"query": bvh_query_t, "index": int}, value_type=bool, group="Geometry",
+    doc="""Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
+   if there are no more overlapping bound.""")
+
 add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_dist": float, "inside": float, "face": int, "bary_u": float, "bary_v": float}, value_type=bool, group="Geometry",
     doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -482,11 +519,17 @@ add_builtin("volume_sample_f", input_types={"id": uint64, "uvw": vec3, "sampling
 add_builtin("volume_lookup_f", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=float, group="Volumes",
     doc="""Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
 
+add_builtin("volume_store_f", input_types={"id": uint64, "i": int, "j": int, "k": int, "value": float}, group="Volumes",
+    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""")
+
 add_builtin("volume_sample_v", input_types={"id": uint64, "uvw": vec3, "sampling_mode": int}, value_type=vec3, group="Volumes",
     doc="""Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``""")
 
 add_builtin("volume_lookup_v", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=vec3, group="Volumes",
     doc="""Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
+add_builtin("volume_store_v", input_types={"id": uint64, "i": int, "j": int, "k": int, "value": vec3}, group="Volumes",
+    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""")
 
 add_builtin("volume_sample_i", input_types={"id": uint64, "uvw": vec3}, value_type=int, group="Volumes",
     doc="""Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. """)
@@ -711,27 +754,47 @@ add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
+add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+
+add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_type, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+
+
 # used to index into builtin types, i.e.: y = vec3[1]
-add_builtin("index", input_types={"a": vec2, "i": int}, value_type=float,  group="Utility")
-add_builtin("index", input_types={"a": vec3, "i": int}, value_type=float,  group="Utility")
-add_builtin("index", input_types={"a": vec4, "i": int}, value_type=float,  group="Utility")
-add_builtin("index", input_types={"a": quat, "i": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": vec2, "i": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": vec3, "i": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": vec4, "i": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": quat, "i": int}, value_type=float, group="Utility")
 
-add_builtin("index", input_types={"a": mat22, "i": int}, value_type=vec2,  group="Utility")
-add_builtin("index", input_types={"a": mat22, "i": int, "j": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": mat22, "i": int}, value_type=vec2, group="Utility")
+add_builtin("index", input_types={"a": mat22, "i": int, "j": int}, value_type=float, group="Utility")
 
-add_builtin("index", input_types={"a": mat33, "i": int}, value_type=vec3,  group="Utility")
-add_builtin("index", input_types={"a": mat33, "i": int, "j": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": mat33, "i": int}, value_type=vec3, group="Utility")
+add_builtin("index", input_types={"a": mat33, "i": int, "j": int}, value_type=float, group="Utility")
 
-add_builtin("index", input_types={"a": mat44, "i": int}, value_type=vec4,  group="Utility")
-add_builtin("index", input_types={"a": mat44, "i": int, "j": int}, value_type=float,  group="Utility")
+add_builtin("index", input_types={"a": mat44, "i": int}, value_type=vec4, group="Utility")
+add_builtin("index", input_types={"a": mat44, "i": int, "j": int}, value_type=float, group="Utility")
 
+add_builtin("index", input_types={"a": spatial_matrix, "i": int, "j": int}, value_type=float, group="Utility")
+
+add_builtin("index", input_types={"a": spatial_vector, "i": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": transform, "i": int}, value_type=float, group="Utility")
+
+add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, group="Utility")
 
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 
-    if type_is_int(t) == False:
+for t in compute_types + vector_types:
+    if not type_is_int(t):
         add_builtin("lerp", input_types={"a": t, "b": t, "t": float}, value_type=t, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
+
+add_builtin("smoothstep", input_types={"edge0": float, "edge1": float, "x": float}, value_type=float, doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping", group="Utility")
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")

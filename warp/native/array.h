@@ -88,6 +88,32 @@ namespace wp
 
 const int ARRAY_MAX_DIMS = 4;    // must match constant in types.py
 
+
+struct shape_t
+{
+    int dims[ARRAY_MAX_DIMS];
+
+    CUDA_CALLABLE inline int operator[](int i) const
+    {
+        assert(i < ARRAY_MAX_DIMS);
+        return dims[i];
+    }
+
+    CUDA_CALLABLE inline int& operator[](int i)
+    {
+        assert(i < ARRAY_MAX_DIMS);
+        return dims[i];
+    }    
+};
+
+CUDA_CALLABLE inline int index(const shape_t& s, int i)
+{
+    return s.dims[i];
+}
+
+CUDA_CALLABLE inline void adj_index(const shape_t& s, int i, const shape_t& adj_s, int adj_i, int adj_ret) {}
+
+
 template <typename T>
 struct array_t
 {
@@ -95,22 +121,24 @@ struct array_t
     array_t(int) {} // for backward a = 0 initialization syntax
 
     T* data;
-    int shape[ARRAY_MAX_DIMS];
+    shape_t shape;
     int strides[ARRAY_MAX_DIMS];
     int ndim;
 
     CUDA_CALLABLE inline operator T*() const { return data; }
 };
 
+
+
 // return stride (in bytes) of the given index
 template <typename T>
-CUDA_CALLABLE inline int stride(const array_t<T>& a, int dim)
+CUDA_CALLABLE inline size_t stride(const array_t<T>& a, int dim)
 {
-    return a.strides[dim];
+    return size_t(a.strides[dim]);
 }
 
 template <typename T>
-CUDA_CALLABLE inline T* data_at_byte_offset(const array_t<T>& a, int byte_offset)
+CUDA_CALLABLE inline T* data_at_byte_offset(const array_t<T>& a, size_t byte_offset)
 {
     return reinterpret_cast<T*>(reinterpret_cast<char*>(a.data) + byte_offset);
 }
@@ -121,7 +149,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
     assert(arr.ndim == 1);
     assert(i >= 0 && i < arr.shape[0]);
     
-    const int byte_offset = i*stride(arr, 0);
+    const size_t byte_offset = i*stride(arr, 0);
 
     T& result = *data_at_byte_offset(arr, byte_offset);
     FP_VERIFY_FWD_1(result)
@@ -136,7 +164,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
     assert(i >= 0 && i < arr.shape[0]);
     assert(j >= 0 && j < arr.shape[1]);
 
-    const int byte_offset = i*stride(arr,0) + j*stride(arr,1);
+    const size_t byte_offset = i*stride(arr,0) + j*stride(arr,1);
 
     T& result = *data_at_byte_offset(arr, byte_offset);
     FP_VERIFY_FWD_2(result)
@@ -152,7 +180,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
     assert(j >= 0 && j < arr.shape[1]);
     assert(k >= 0 && k < arr.shape[2]);
 
-    const int byte_offset = i*stride(arr,0) + 
+    const size_t byte_offset = i*stride(arr,0) + 
                             j*stride(arr,1) +
                             k*stride(arr,2);
        
@@ -171,7 +199,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
     assert(k >= 0 && k < arr.shape[2]);
     assert(l >= 0 && l < arr.shape[3]);
 
-    const int byte_offset = i*stride(arr,0) + 
+    const size_t byte_offset = i*stride(arr,0) + 
                             j*stride(arr,1) + 
                             k*stride(arr,2) + 
                             l*stride(arr,3);
@@ -267,6 +295,16 @@ template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, in
 template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_add(&index(buf, i, j, k), -value); }
 template<typename T> inline CUDA_CALLABLE T atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_add(&index(buf, i, j, k, l), -value); }
 
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, T value) { return atomic_min(&index(buf, i), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, T value) { return atomic_min(&index(buf, i, j), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_min(&index(buf, i, j, k), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_min(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_min(&index(buf, i, j, k, l), value); }
+
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, T value) { return atomic_max(&index(buf, i), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, T value) { return atomic_max(&index(buf, i, j), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, int k, T value) { return atomic_max(&index(buf, i, j, k), value); }
+template<typename T> inline CUDA_CALLABLE T atomic_max(const array_t<T>& buf, int i, int j, int k, int l, T value) { return atomic_max(&index(buf, i, j, k, l), value); }
+
 
 template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i) { return index(buf, i); }
 template<typename T> inline CUDA_CALLABLE T load(const array_t<T>& buf, int i, int j) { return index(buf, i, j); }
@@ -303,6 +341,7 @@ template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int 
 // for float and vector types this is just an alias for an atomic add
 template <typename T>
 CUDA_CALLABLE inline void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
+
 
 // for integral types (and doubles) we do not accumulate gradients
 CUDA_CALLABLE inline void adj_atomic_add(int8* buf, int8 value) { }
@@ -410,5 +449,16 @@ template<typename T> inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& 
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
+
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_min(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+template<typename T> inline CUDA_CALLABLE void adj_atomic_max(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+
 
 } // namespace wp
