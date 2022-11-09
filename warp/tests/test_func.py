@@ -88,10 +88,11 @@ def test_func_export(test, device):
     v4 = wp.normalize(v4)*2.0
     assert_np_equal(np.array([*v4]), np.array([0.18257418274879456, 0.3651483654975891, 0.547722578048706, 0.7302967309951782])*2.0, tol=1.e-3)
 
-    # m22 = wp.mat22(1.0, 2.0, 3.0, 4.0)
-    # m22 = m22 + m22
-    # print(m22)
-    # print(m22[1,1])
+    m22 = wp.mat22(1.0, 2.0, 3.0, 4.0)
+    m22 = m22 + m22
+    
+    test.assertEqual(m22[1,1], 8.0)
+    test.assertEqual(str(m22), "[[2.0, 4.0],\n [6.0, 8.0]]")
 
     t = wp.transform_identity()
     assert_np_equal(np.array([*t]), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
