@@ -203,7 +203,7 @@ WP_API void builtin_lerp_quat_quat_float32(quat a, quat b, float32 t, quat* ret)
 WP_API void builtin_lerp_transform_transform_float32(transform a, transform b, float32 t, transform* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_spatial_vector_spatial_vector_float32(spatial_vector a, spatial_vector b, float32 t, spatial_vector* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_spatial_matrix_spatial_matrix_float32(spatial_matrix a, spatial_matrix b, float32 t, spatial_matrix* ret) { *ret = wp::lerp(a, b, t); }
-WP_API void builtin_smoothstep_float32_float32_float32(float32 a, float32 b, float32 t, float* ret) { *ret = wp::smoothstep(a, b, t); }
+WP_API void builtin_smoothstep_float32_float32_float32(float32 edge0, float32 edge1, float32 x, float* ret) { *ret = wp::smoothstep(edge0, edge1, x); }
 WP_API void builtin_expect_near_float32_float32_float32(float32 arg1, float32 arg2, float32 tolerance) { wp::expect_near(arg1, arg2, tolerance); }
 WP_API void builtin_expect_near_vec3_vec3_float32(vec3 arg1, vec3 arg2, float32 tolerance) { wp::expect_near(arg1, arg2, tolerance); }
 WP_API void builtin_add_int32_int32(int32 x, int32 y, int* ret) { *ret = wp::add(x, y); }
