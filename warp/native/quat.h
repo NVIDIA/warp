@@ -564,28 +564,296 @@ inline CUDA_CALLABLE void adj_rotate_rodriguez(const vec3& r, const vec3& x, vec
 
 inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t, quat& adj_q0, quat& adj_q1, float& adj_t, const quat& adj_ret)
 {
-    // adj_t
     vec3 axis;
     float angle;
-    quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
-    axis = 0.5 * angle * axis;
-    adj_t += dot(mul(quat_slerp(q0, q1, t), quat(axis.x, axis.y, axis.z, 0.f)), adj_ret);
+    quat q0_inv = quat_inverse(q0);
+    quat q_inc = mul(q0_inv, q1);
+    quat_to_axis_angle(q_inc, axis, angle);
+    angle = angle * 0.5;
+    
+    // adj_t
+    adj_t += dot(mul(quat_slerp(q0, q1, t), quat(angle*axis.x, angle*axis.y, angle*axis.z, 0.f)), adj_ret);
 
-    // todo: adj_q0, adj_q1
+    // adj_q0
+    quat q_inc_x_q0;
+    quat q_inc_y_q0;
+    quat q_inc_z_q0;
+    quat q_inc_w_q0;
+    
+    quat q_inc_x_q1;
+    quat q_inc_y_q1;
+    quat q_inc_z_q1;
+    quat q_inc_w_q1;
+
+    adj_mul(q0_inv, q1, q_inc_x_q0, q_inc_x_q1, quat(1.f, 0.f, 0.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_y_q0, q_inc_y_q1, quat(0.f, 1.f, 0.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_z_q0, q_inc_z_q1, quat(0.f, 0.f, 1.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_w_q0, q_inc_w_q1, quat(0.f, 0.f, 0.f, 1.f));
+
+    quat q_inc_q0_x = quat(-q_inc_x_q0.x, -q_inc_y_q0.x, -q_inc_z_q0.x, -q_inc_w_q0.x);
+    quat q_inc_q0_y = quat(-q_inc_x_q0.y, -q_inc_y_q0.y, -q_inc_z_q0.y, -q_inc_w_q0.y);
+    quat q_inc_q0_z = quat(-q_inc_x_q0.z, -q_inc_y_q0.z, -q_inc_z_q0.z, -q_inc_w_q0.z);
+    quat q_inc_q0_w = quat(q_inc_x_q0.w, q_inc_y_q0.w, q_inc_z_q0.w, q_inc_w_q0.w);
+
+    quat a_x_q_inc;
+    quat a_y_q_inc;
+    quat a_z_q_inc;
+    quat t_q_inc;
+
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_x_q_inc, vec3(1.f, 0.f, 0.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_y_q_inc, vec3(0.f, 1.f, 0.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_z_q_inc, vec3(0.f, 0.f, 1.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, t_q_inc, vec3(0.f, 0.f, 0.f), 1.f);
+
+    float a_x_q0_x = dot(a_x_q_inc, q_inc_q0_x);
+    float a_x_q0_y = dot(a_x_q_inc, q_inc_q0_y);
+    float a_x_q0_z = dot(a_x_q_inc, q_inc_q0_z);
+    float a_x_q0_w = dot(a_x_q_inc, q_inc_q0_w);
+    float a_y_q0_x = dot(a_y_q_inc, q_inc_q0_x);
+    float a_y_q0_y = dot(a_y_q_inc, q_inc_q0_y);
+    float a_y_q0_z = dot(a_y_q_inc, q_inc_q0_z);
+    float a_y_q0_w = dot(a_y_q_inc, q_inc_q0_w);
+    float a_z_q0_x = dot(a_z_q_inc, q_inc_q0_x);
+    float a_z_q0_y = dot(a_z_q_inc, q_inc_q0_y);
+    float a_z_q0_z = dot(a_z_q_inc, q_inc_q0_z);
+    float a_z_q0_w = dot(a_z_q_inc, q_inc_q0_w);
+    float t_q0_x = dot(t_q_inc, q_inc_q0_x);
+    float t_q0_y = dot(t_q_inc, q_inc_q0_y);
+    float t_q0_z = dot(t_q_inc, q_inc_q0_z);
+    float t_q0_w = dot(t_q_inc, q_inc_q0_w);
+
+    float cs = cos(angle*t);
+    float sn = sin(angle*t);
+
+    quat q_s_q0_x = mul(quat(1.f, 0.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * t * axis.x * t_q0_x * cs + a_x_q0_x * sn,
+        0.5 * t * axis.y * t_q0_x * cs + a_y_q0_x * sn,
+        0.5 * t * axis.z * t_q0_x * cs + a_z_q0_x * sn,
+        -0.5 * t * t_q0_x * sn));
+
+    quat q_s_q0_y = mul(quat(0.f, 1.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * t * axis.x * t_q0_y * cs + a_x_q0_y * sn,
+        0.5 * t * axis.y * t_q0_y * cs + a_y_q0_y * sn,
+        0.5 * t * axis.z * t_q0_y * cs + a_z_q0_y * sn,
+        -0.5 * t * t_q0_y * sn));
+
+    quat q_s_q0_z = mul(quat(0.f, 0.f, 1.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * t * axis.x * t_q0_z * cs + a_x_q0_z * sn,
+        0.5 * t * axis.y * t_q0_z * cs + a_y_q0_z * sn,
+        0.5 * t * axis.z * t_q0_z * cs + a_z_q0_z * sn,
+        -0.5 * t * t_q0_z * sn));
+
+    quat q_s_q0_w = mul(quat(0.f, 0.f, 0.f, 1.f), q_inc) + mul(q0, quat(
+        0.5 * t * axis.x * t_q0_w * cs + a_x_q0_w * sn,
+        0.5 * t * axis.y * t_q0_w * cs + a_y_q0_w * sn,
+        0.5 * t * axis.z * t_q0_w * cs + a_z_q0_w * sn,
+        -0.5 * t * t_q0_w * sn));
+
+    adj_q0.x += dot(q_s_q0_x, adj_ret);
+    adj_q0.y += dot(q_s_q0_y, adj_ret);
+    adj_q0.z += dot(q_s_q0_z, adj_ret);
+    adj_q0.w += dot(q_s_q0_w, adj_ret);
+
+    // adj_q1
+    quat q_inc_q1_x = quat(q_inc_x_q1.x, q_inc_y_q1.x, q_inc_z_q1.x, q_inc_w_q1.x);
+    quat q_inc_q1_y = quat(q_inc_x_q1.y, q_inc_y_q1.y, q_inc_z_q1.y, q_inc_w_q1.y);
+    quat q_inc_q1_z = quat(q_inc_x_q1.z, q_inc_y_q1.z, q_inc_z_q1.z, q_inc_w_q1.z);
+    quat q_inc_q1_w = quat(q_inc_x_q1.w, q_inc_y_q1.w, q_inc_z_q1.w, q_inc_w_q1.w);
+
+    float a_x_q1_x = dot(a_x_q_inc, q_inc_q1_x);
+    float a_x_q1_y = dot(a_x_q_inc, q_inc_q1_y);
+    float a_x_q1_z = dot(a_x_q_inc, q_inc_q1_z);
+    float a_x_q1_w = dot(a_x_q_inc, q_inc_q1_w);
+    float a_y_q1_x = dot(a_y_q_inc, q_inc_q1_x);
+    float a_y_q1_y = dot(a_y_q_inc, q_inc_q1_y);
+    float a_y_q1_z = dot(a_y_q_inc, q_inc_q1_z);
+    float a_y_q1_w = dot(a_y_q_inc, q_inc_q1_w);
+    float a_z_q1_x = dot(a_z_q_inc, q_inc_q1_x);
+    float a_z_q1_y = dot(a_z_q_inc, q_inc_q1_y);
+    float a_z_q1_z = dot(a_z_q_inc, q_inc_q1_z);
+    float a_z_q1_w = dot(a_z_q_inc, q_inc_q1_w);
+    float t_q1_x = dot(t_q_inc, q_inc_q1_x);
+    float t_q1_y = dot(t_q_inc, q_inc_q1_y);
+    float t_q1_z = dot(t_q_inc, q_inc_q1_z);
+    float t_q1_w = dot(t_q_inc, q_inc_q1_w);
+
+    quat q_s_q1_x = mul(q0, quat(
+        0.5 * t * axis.x * t_q1_x * cs + a_x_q1_x * sn,
+        0.5 * t * axis.y * t_q1_x * cs + a_y_q1_x * sn,
+        0.5 * t * axis.z * t_q1_x * cs + a_z_q1_x * sn,
+        -0.5 * t * t_q1_x * sn));
+
+    quat q_s_q1_y = mul(q0, quat(
+        0.5 * t * axis.x * t_q1_y * cs + a_x_q1_y * sn,
+        0.5 * t * axis.y * t_q1_y * cs + a_y_q1_y * sn,
+        0.5 * t * axis.z * t_q1_y * cs + a_z_q1_y * sn,
+        -0.5 * t * t_q1_y * sn));
+
+    quat q_s_q1_z = mul(q0, quat(
+        0.5 * t * axis.x * t_q1_z * cs + a_x_q1_z * sn,
+        0.5 * t * axis.y * t_q1_z * cs + a_y_q1_z * sn,
+        0.5 * t * axis.z * t_q1_z * cs + a_z_q1_z * sn,
+        -0.5 * t * t_q1_z * sn));
+
+    quat q_s_q1_w = mul(q0, quat(
+        0.5 * t * axis.x * t_q1_w * cs + a_x_q1_w * sn,
+        0.5 * t * axis.y * t_q1_w * cs + a_y_q1_w * sn,
+        0.5 * t * axis.z * t_q1_w * cs + a_z_q1_w * sn,
+        -0.5 * t * t_q1_w * sn));
+
+    adj_q1.x += dot(q_s_q1_x, adj_ret);
+    adj_q1.y += dot(q_s_q1_y, adj_ret);
+    adj_q1.z += dot(q_s_q1_z, adj_ret);
+    adj_q1.w += dot(q_s_q1_w, adj_ret);    
+
 }
 
-inline CUDA_CALLABLE void adj_quat_smoothstep(const quat& q0, const quat& q1, float t, const quat& adj_q0, const quat& adj_q1, float& adj_t, const quat& adj_ret)
+inline CUDA_CALLABLE void adj_quat_smoothstep(const quat& q0, const quat& q1, float t, quat& adj_q0, quat& adj_q1, float& adj_t, const quat& adj_ret)
 {
     // adj_t
     vec3 axis;
     float angle;
-    quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
+    quat q0_inv = quat_inverse(q0);
+    quat q_inc = mul(q0_inv, q1);
+    quat_to_axis_angle(q_inc, axis, angle);
     float smoothstep = t * (3.f * t - 2.f * t * t);
     float smoothstep_gradient = 6.f * t * (1.f - t);
-    axis = 0.5 * angle * smoothstep_gradient * axis;
-    adj_t += dot(mul(quat_slerp(q0, q1, smoothstep), quat(axis.x, axis.z, axis.z, 0.f)), adj_ret);
+    angle = angle * 0.5;
+    
+    // adj_t
+    adj_t += dot(mul(quat_slerp(q0, q1, smoothstep), quat(smoothstep_gradient*angle*axis.x, smoothstep_gradient*angle*axis.y, smoothstep_gradient*angle*axis.z, 0.f)), adj_ret);
 
-    // todo: adj_q0, adj_q1
+    // adj_q0
+    quat q_inc_x_q0;
+    quat q_inc_y_q0;
+    quat q_inc_z_q0;
+    quat q_inc_w_q0;
+    
+    quat q_inc_x_q1;
+    quat q_inc_y_q1;
+    quat q_inc_z_q1;
+    quat q_inc_w_q1;
+
+    adj_mul(q0_inv, q1, q_inc_x_q0, q_inc_x_q1, quat(1.f, 0.f, 0.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_y_q0, q_inc_y_q1, quat(0.f, 1.f, 0.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_z_q0, q_inc_z_q1, quat(0.f, 0.f, 1.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_w_q0, q_inc_w_q1, quat(0.f, 0.f, 0.f, 1.f));
+
+    quat q_inc_q0_x = quat(-q_inc_x_q0.x, -q_inc_y_q0.x, -q_inc_z_q0.x, -q_inc_w_q0.x);
+    quat q_inc_q0_y = quat(-q_inc_x_q0.y, -q_inc_y_q0.y, -q_inc_z_q0.y, -q_inc_w_q0.y);
+    quat q_inc_q0_z = quat(-q_inc_x_q0.z, -q_inc_y_q0.z, -q_inc_z_q0.z, -q_inc_w_q0.z);
+    quat q_inc_q0_w = quat(q_inc_x_q0.w, q_inc_y_q0.w, q_inc_z_q0.w, q_inc_w_q0.w);
+
+    quat a_x_q_inc;
+    quat a_y_q_inc;
+    quat a_z_q_inc;
+    quat t_q_inc;
+
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_x_q_inc, vec3(1.f, 0.f, 0.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_y_q_inc, vec3(0.f, 1.f, 0.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_z_q_inc, vec3(0.f, 0.f, 1.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, t_q_inc, vec3(0.f, 0.f, 0.f), 1.f);
+
+    float a_x_q0_x = dot(a_x_q_inc, q_inc_q0_x);
+    float a_x_q0_y = dot(a_x_q_inc, q_inc_q0_y);
+    float a_x_q0_z = dot(a_x_q_inc, q_inc_q0_z);
+    float a_x_q0_w = dot(a_x_q_inc, q_inc_q0_w);
+    float a_y_q0_x = dot(a_y_q_inc, q_inc_q0_x);
+    float a_y_q0_y = dot(a_y_q_inc, q_inc_q0_y);
+    float a_y_q0_z = dot(a_y_q_inc, q_inc_q0_z);
+    float a_y_q0_w = dot(a_y_q_inc, q_inc_q0_w);
+    float a_z_q0_x = dot(a_z_q_inc, q_inc_q0_x);
+    float a_z_q0_y = dot(a_z_q_inc, q_inc_q0_y);
+    float a_z_q0_z = dot(a_z_q_inc, q_inc_q0_z);
+    float a_z_q0_w = dot(a_z_q_inc, q_inc_q0_w);
+    float t_q0_x = dot(t_q_inc, q_inc_q0_x);
+    float t_q0_y = dot(t_q_inc, q_inc_q0_y);
+    float t_q0_z = dot(t_q_inc, q_inc_q0_z);
+    float t_q0_w = dot(t_q_inc, q_inc_q0_w);
+
+    float cs = cos(angle*smoothstep);
+    float sn = sin(angle*smoothstep);
+
+    quat q_s_q0_x = mul(quat(1.f, 0.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * smoothstep * axis.x * t_q0_x * cs + a_x_q0_x * sn,
+        0.5 * smoothstep * axis.y * t_q0_x * cs + a_y_q0_x * sn,
+        0.5 * smoothstep * axis.z * t_q0_x * cs + a_z_q0_x * sn,
+        -0.5 * smoothstep * t_q0_x * sn));
+
+    quat q_s_q0_y = mul(quat(0.f, 1.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * smoothstep * axis.x * t_q0_y * cs + a_x_q0_y * sn,
+        0.5 * smoothstep * axis.y * t_q0_y * cs + a_y_q0_y * sn,
+        0.5 * smoothstep * axis.z * t_q0_y * cs + a_z_q0_y * sn,
+        -0.5 * smoothstep * t_q0_y * sn));
+
+    quat q_s_q0_z = mul(quat(0.f, 0.f, 1.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * smoothstep * axis.x * t_q0_z * cs + a_x_q0_z * sn,
+        0.5 * smoothstep * axis.y * t_q0_z * cs + a_y_q0_z * sn,
+        0.5 * smoothstep * axis.z * t_q0_z * cs + a_z_q0_z * sn,
+        -0.5 * smoothstep * t_q0_z * sn));
+
+    quat q_s_q0_w = mul(quat(0.f, 0.f, 0.f, 1.f), q_inc) + mul(q0, quat(
+        0.5 * smoothstep * axis.x * t_q0_w * cs + a_x_q0_w * sn,
+        0.5 * smoothstep * axis.y * t_q0_w * cs + a_y_q0_w * sn,
+        0.5 * smoothstep * axis.z * t_q0_w * cs + a_z_q0_w * sn,
+        -0.5 * smoothstep * t_q0_w * sn));
+
+    adj_q0.x += dot(q_s_q0_x, adj_ret);
+    adj_q0.y += dot(q_s_q0_y, adj_ret);
+    adj_q0.z += dot(q_s_q0_z, adj_ret);
+    adj_q0.w += dot(q_s_q0_w, adj_ret);
+
+    // adj_q1
+    quat q_inc_q1_x = quat(q_inc_x_q1.x, q_inc_y_q1.x, q_inc_z_q1.x, q_inc_w_q1.x);
+    quat q_inc_q1_y = quat(q_inc_x_q1.y, q_inc_y_q1.y, q_inc_z_q1.y, q_inc_w_q1.y);
+    quat q_inc_q1_z = quat(q_inc_x_q1.z, q_inc_y_q1.z, q_inc_z_q1.z, q_inc_w_q1.z);
+    quat q_inc_q1_w = quat(q_inc_x_q1.w, q_inc_y_q1.w, q_inc_z_q1.w, q_inc_w_q1.w);
+
+    float a_x_q1_x = dot(a_x_q_inc, q_inc_q1_x);
+    float a_x_q1_y = dot(a_x_q_inc, q_inc_q1_y);
+    float a_x_q1_z = dot(a_x_q_inc, q_inc_q1_z);
+    float a_x_q1_w = dot(a_x_q_inc, q_inc_q1_w);
+    float a_y_q1_x = dot(a_y_q_inc, q_inc_q1_x);
+    float a_y_q1_y = dot(a_y_q_inc, q_inc_q1_y);
+    float a_y_q1_z = dot(a_y_q_inc, q_inc_q1_z);
+    float a_y_q1_w = dot(a_y_q_inc, q_inc_q1_w);
+    float a_z_q1_x = dot(a_z_q_inc, q_inc_q1_x);
+    float a_z_q1_y = dot(a_z_q_inc, q_inc_q1_y);
+    float a_z_q1_z = dot(a_z_q_inc, q_inc_q1_z);
+    float a_z_q1_w = dot(a_z_q_inc, q_inc_q1_w);
+    float t_q1_x = dot(t_q_inc, q_inc_q1_x);
+    float t_q1_y = dot(t_q_inc, q_inc_q1_y);
+    float t_q1_z = dot(t_q_inc, q_inc_q1_z);
+    float t_q1_w = dot(t_q_inc, q_inc_q1_w);
+
+    quat q_s_q1_x = mul(q0, quat(
+        0.5 * smoothstep * axis.x * t_q1_x * cs + a_x_q1_x * sn,
+        0.5 * smoothstep * axis.y * t_q1_x * cs + a_y_q1_x * sn,
+        0.5 * smoothstep * axis.z * t_q1_x * cs + a_z_q1_x * sn,
+        -0.5 * smoothstep * t_q1_x * sn));
+
+    quat q_s_q1_y = mul(q0, quat(
+        0.5 * smoothstep * axis.x * t_q1_y * cs + a_x_q1_y * sn,
+        0.5 * smoothstep * axis.y * t_q1_y * cs + a_y_q1_y * sn,
+        0.5 * smoothstep * axis.z * t_q1_y * cs + a_z_q1_y * sn,
+        -0.5 * smoothstep * t_q1_y * sn));
+
+    quat q_s_q1_z = mul(q0, quat(
+        0.5 * smoothstep * axis.x * t_q1_z * cs + a_x_q1_z * sn,
+        0.5 * smoothstep * axis.y * t_q1_z * cs + a_y_q1_z * sn,
+        0.5 * smoothstep * axis.z * t_q1_z * cs + a_z_q1_z * sn,
+        -0.5 * smoothstep * t_q1_z * sn));
+
+    quat q_s_q1_w = mul(q0, quat(
+        0.5 * smoothstep * axis.x * t_q1_w * cs + a_x_q1_w * sn,
+        0.5 * smoothstep * axis.y * t_q1_w * cs + a_y_q1_w * sn,
+        0.5 * smoothstep * axis.z * t_q1_w * cs + a_z_q1_w * sn,
+        -0.5 * smoothstep * t_q1_w * sn));
+
+    adj_q1.x += dot(q_s_q1_x, adj_ret);
+    adj_q1.y += dot(q_s_q1_y, adj_ret);
+    adj_q1.z += dot(q_s_q1_z, adj_ret);
+    adj_q1.w += dot(q_s_q1_w, adj_ret);    
 }
 
 inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)
