@@ -9,7 +9,6 @@ from functools import partial
 from typing import (
     Optional,
     Sequence,
-    Tuple,
 )
 
 import omni.graph.core as og
@@ -20,6 +19,7 @@ from omni.kit.property.usd.custom_layout_helper import (
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
+from omni.warp.scripts.kernelnode import SUPPORTED_ATTR_TYPES
 from omni.warp.scripts.props.codefile import get_code_file_prop_builder
 from omni.warp.scripts.props.codestr import get_code_str_prop_builder
 from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
@@ -96,7 +96,10 @@ class CustomLayout:
                 CustomLayoutProperty(
                     None,
                     display_name=None,
-                    build_fn=get_edit_attrs_prop_builder(self),
+                    build_fn=get_edit_attrs_prop_builder(
+                        self,
+                        SUPPORTED_ATTR_TYPES,
+                    ),
                 )
 
             with CustomLayoutGroup("Inputs"):

@@ -11,6 +11,7 @@ from functools import partial
 from typing import (
     Any,
     Callable,
+    Sequence,
 )
 
 import omni.graph.core as og
@@ -19,30 +20,6 @@ import omni.ui as ui
 from omni.warp.scripts.widgets.attributeeditor import AttributeEditor
 
 _BUTTON_WIDTH = 100
-
-_SUPPORTED_TYPES = (
-    "bool", "bool[]",
-    "color3f", "color3f[]",
-    "color4f", "color4f[]",
-    "double", "double[]",
-    "float", "float[]",
-    "float2", "float2[]",
-    "float3", "float3[]",
-    "float4", "float4[]",
-    "int", "int[]",
-    "int64", "int64[]",
-    "matrix2d", "matrix2d[]",
-    "matrix3d", "matrix3d[]",
-    "matrix4d", "matrix4d[]",
-    "normal3f", "normal3f[]",
-    "point3f", "point3f[]",
-    "quatf", "quatf[]",
-    "timecode", "timecode[]",
-    "token", "token[]",
-    "uint", "uint[]",
-    "uint64", "uint64[]",
-    "vector3f", "vector3f[]",
-)
 
 class _State:
     """State object shared across the various handlers."""
@@ -78,11 +55,14 @@ def _get_attribute_removal_handler(state: _State) -> Callable:
 
     return fn
 
-def _get_add_btn_clicked_handler(state: _State) -> Callable:
+def _get_add_btn_clicked_handler(
+    state: _State,
+    supported_types: Sequence[str],
+) -> Callable:
 
     def fn():
         dialog = AttributeEditor(
-            _SUPPORTED_TYPES,
+            supported_types,
             _get_attribute_creation_handler(state),
         )
 
@@ -121,7 +101,10 @@ def _get_remove_btn_clicked_handler(state: _State) -> Callable:
 
     return fn
 
-def get_edit_attrs_prop_builder(layout: Any) -> Callable:
+def get_edit_attrs_prop_builder(
+    layout: Any,
+    supported_types: Sequence[str],
+) -> Callable:
     """Builds the function used to create the property."""
 
     def fn(*args):
@@ -131,7 +114,7 @@ def get_edit_attrs_prop_builder(layout: Any) -> Callable:
             ui.Button(
                 "Add +",
                 width=_BUTTON_WIDTH,
-                clicked_fn=_get_add_btn_clicked_handler(state),
+                clicked_fn=_get_add_btn_clicked_handler(state, supported_types),
                 tooltip="Opens an UI to add a new attribute",
             )
 

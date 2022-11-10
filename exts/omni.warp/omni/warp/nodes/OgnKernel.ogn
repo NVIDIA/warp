@@ -51,7 +51,7 @@
                 "type": "string",
                 "description": "String defining the kernel function to launch.",
                 "uiName": "Code String",
-                "default": "import warp as wp\n\n@wp.kernel\ndef compute():\n    tid = wp.tid()\n"
+                "default": "import warp as wp\n\n@wp.kernel\ndef compute(inputs: Inputs, outputs: Outputs):\n    tid = wp.tid()\n"
             },
             "codeFile": {
                 "type": "token",

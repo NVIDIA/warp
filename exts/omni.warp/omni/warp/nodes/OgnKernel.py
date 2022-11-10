@@ -1,14 +1,12 @@
 """Warp kernel exposed as an Omni Graph node."""
 
-from collections import namedtuple
-import enum
 import importlib.util
-import inspect
 import os
 import tempfile
 from typing import (
     Any,
-    Callable,
+    Mapping,
+    Sequence,
     Tuple,
 )
 
@@ -18,210 +16,114 @@ import omni.graph.core as og
 import omni.timeline
 
 from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
+from omni.warp.scripts.kernelnode import ATTR_TO_WARP_TYPE
 
 wp.init()
+
+ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
+ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
+
+CODE_HEADER_TEMPLATE = """import warp as wp
+
+@wp.struct
+class Inputs:
+{inputs}
+    pass
+
+@wp.struct
+class Outputs:
+{outputs}
+    pass
+"""
 
 #   Internal State
 # ------------------------------------------------------------------------------
 
-class Access(enum.IntFlag):
-    """Access flags."""
+def get_annotations(obj: Any) -> Mapping[str, Any]:
+    """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
+    # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
+    if isinstance(obj, type):
+        return obj.__dict__.get("__annotations__", None)
 
-    INVALID = 1 << 0
-    READ    = 1 << 1
-    WRITE   = 1 << 2
+    return getattr(obj, "__annotations__", None)
 
-_DataFlow = namedtuple(
-    "DataFlow",
-    (
-        "name",
-        "param_type",
-        "param_access",
-    ),
-)
+def generate_code_header(attrs: Sequence[og.Attribute]) -> str:
+    """Generates the code header based on the node's attributes."""
+    # Convert all the inputs/outputs attributes into warp members.
+    params = {}
+    for attr in attrs:
+        attr_type = attr.get_type_name()
+        warp_type = ATTR_TO_WARP_TYPE.get(attr_type)
 
-class DataFlow(_DataFlow):
-    """Describes how a single piece of data is moved across node and kernel.
-
-    This data flow class is the layer that takes care of passing data from the
-    node's input attributes onto the kernel's parameters and then back onto
-    the output attributes, while taking care of casting data when necessary.
-
-    Kernel parameter don't need to have are expected to have corresponding
-    input and/or output attributes defined on the node. The attributes found for
-    a given parameter determine the type of read/write access associated with
-    that parameter.
-
-    As a result, there are 3 types of valid data flows:
-
-    - read-only: data is read from an input node attribute and is passed to
-      the kernel.
-    - read and write: data is read from an input node attribute, it is passed to
-      the kernel, and is then written back onto an output node attribute.
-    - write-only: a piece of data is initialized according to the type of
-      the parameter, it is passed to the kernel, and is then written onto
-      an output node attribute.
-    """
-
-    __slots__ = ()
-
-    def read_input_value(self, db: OgnKernelDatabase) -> Any:
-        """Reads the value to pass onto the kernel."""
-        assert self.param_access != Access.INVALID
-
-        if Access.READ in self.param_access:
-            # We have an input attribute, so just return its value after
-            # casting it to the corresponding warp type if it is an array.
-            value = getattr(db.inputs, self.name)
-
-            if isinstance(self.param_type, wp.array):
-                return type(self.param_type)(
-                    value,
-                    shape=value.shape,
-                    dtype=self.param_type.dtype,
-                    device=db.inputs.device,
-                    requires_grad=self.param_type.requires_grad,
-                    copy=Access.WRITE in self.param_access,
-                )
-
-            return value
-
-        # If we only have an output attribute at hand, we need to declare
-        # a new variable of the same type that the kernel can write to.
-        if isinstance(self.param_type, wp.array):
-            # In the case of an array, we also need to allocate it with the
-            # expected size. An acceptable default is to match the kernel's
-            # dimension but, in the case that's not good enough, then the user
-            # really should create an explicit input attribute for it and
-            # initialize it with an array of the expected size.
-            return wp.zeros(
-                shape=db.inputs.dim,
-                dtype=self.param_type.dtype,
-                device=db.inputs.device,
-                requires_grad=self.param_type.requires_grad,
+        if warp_type is None:
+            raise RuntimeError(
+                "Unsupported node attribute type '{}'.".format(attr_type)
             )
 
-        return self.param_type(0)
+        params.setdefault(attr.get_port_type(), []).append(
+            (
+                attr.get_name().split(":")[-1],
+                warp_type,
+            ),
+        )
 
-    def write_output_value(self, db: OgnKernelDatabase, value: Any) -> None:
-        """Writes the value onto the corresponding output attribute, if any."""
-        assert self.param_access != Access.INVALID
+    # Generate the lines of code declaring the members for each port type.
+    members = {
+        port_type: "\n".join("    {}: {}".format(*x) for x in items)
+        for port_type, items in params.items()
+    }
 
-        if not Access.WRITE in self.param_access:
-            return
+    # Return the template code populated with the members.
+    return CODE_HEADER_TEMPLATE.format(
+        inputs=members.get(ATTR_PORT_TYPE_INPUT, ""),
+        outputs=members.get(ATTR_PORT_TYPE_OUTPUT, ""),
+    )
 
-        if isinstance(self.param_type, wp.array):
-            setattr(db.outputs, self.name, value.numpy())
-            return
-
-        setattr(db.outputs, self.name, value)
-
-def load_module(file_path: str, name: str) -> Any:
-    """Loads a Python module from its file path."""
-    spec = importlib.util.spec_from_file_location(name, file_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-def get_kernel_fn(db: OgnKernelDatabase) -> Callable:
-    """Retrieves the kernel function object with its decorator."""
-    # Ensure that we create a distinct Python module for each node.
-    module_name = "warp-kernelnode-{}".format(db.node.node_id())
-
-    # Create the module.
+def get_user_code(db: OgnKernelDatabase) -> str:
+    """Retrieves the code provided by the user."""
     code_provider = db.inputs.codeProvider
+
     if code_provider == "embedded":
-        # It's possible to use the `exec()` built-in function to create and
-        # populate a Python module with the source code defined in a string,
-        # however warp requires access to the source code of the kernel's
-        # function, which is only available when the original source file
-        # pointed by the function attribute `__code__.co_filename` can
-        # be opened to read the lines corresponding to that function.
-        # As such, we must write the source code into a temporary file
-        # on disk before importing it as a module and having the function
-        # turned into a kernel by warp's mechanism.
+        return db.inputs.codeStr
 
-        code_str = db.inputs.codeStr
+    if code_provider == "file":
+        with open(db.inputs.codeFile, "r") as f:
+            return f.read()
 
-        # Create a temporary file.
-        file, file_path = tempfile.mkstemp(suffix=".py")
+    assert False, "Unexpected code provider '{}'.".format(code_provider)
 
-        try:
-            # Save the embedded code into the temporary file.
-            with os.fdopen(file, "w") as f:
-                f.write(code_str)
+def load_code_as_module(code: str, name: str) -> Any:
+    """Loads a Python module from the given source code."""
+    # It's possible to use the `exec()` built-in function to create and
+    # populate a Python module with the source code defined in a string,
+    # however warp requires access to the source code of the kernel's
+    # function, which is only available when the original source file
+    # pointed by the function attribute `__code__.co_filename` can
+    # be opened to read the lines corresponding to that function.
+    # As such, we must write the source code into a temporary file
+    # on disk before importing it as a module and having the function
+    # turned into a kernel by warp's mechanism.
 
-            # Import the temporary file as a Python module.
-            module = load_module(file_path, module_name)
-        finally:
-            # The resulting Python module is stored into memory as a bytcode
-            # object and the kernel function has already been parsed by warp
-            # as long as it was correctly decorated, so it's now safe to
-            # clean-up the temporary file.
-            os.remove(file_path)
-    elif code_provider == "file":
-        code_file = db.inputs.codeFile
-        module = load_module(code_file, module_name)
-    else:
-        assert False, "Unexpected code provider '{}'.".format(code_provider)
+    # Create a temporary file.
+    file, file_path = tempfile.mkstemp(suffix=".py")
 
-    if not hasattr(module, "compute"):
-        raise RuntimeError(
-            "The code must define a kernel function named `compute`."
-        )
+    try:
+        # Save the embedded code into the temporary file.
+        with os.fdopen(file, "w") as f:
+            f.write(code)
 
-    return module.compute
+        # Import the temporary file as a Python module.
+        spec = importlib.util.spec_from_file_location(name, file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        # The resulting Python module is stored into memory as a bytcode
+        # object and the kernel function has already been parsed by warp
+        # as long as it was correctly decorated, so it's now safe to
+        # clean-up the temporary file.
+        os.remove(file_path)
 
-def get_param_access(
-    node: og.Node,
-    name: str,
-) -> Access:
-    """Retrieves the read/write access flag for the given parameter name."""
-    has_in_attr = node.get_attribute_exists("inputs:{}".format(name))
-    has_out_attr = node.get_attribute_exists("outputs:{}".format(name))
-
-    if not has_in_attr and not has_out_attr:
-        return Access.INVALID
-
-    if not has_out_attr:
-        return Access.READ
-
-    if not has_in_attr:
-        return Access.WRITE
-
-    return Access.READ | Access.WRITE
-
-def gather_data_flows(
-    node: og.Node,
-    kernel_fn: Callable,
-) -> Tuple[DataFlow, ...]:
-    """Gathers the objects required to move the data across node and kernel."""
-    # Retrieve the parameters defined on the kernel with their corresponding
-    # type annotations.
-    params = inspect.signature(kernel_fn.func).parameters
-
-    # Initialize the data flow objects.
-    flows = tuple(
-        DataFlow(
-            name=name,
-            param_type=param.annotation,
-            param_access=get_param_access(node, name),
-        )
-        for name, param in params.items()
-    )
-
-    # Check that no attributes are missing.
-    missing_attrs = tuple(
-        x.name for x in flows if x.param_access == Access.INVALID
-    )
-    if missing_attrs:
-        raise RuntimeError(
-            "The following attributes need to be defined onto the node "
-            "to map with the kernel's function parameters: {}."
-            .format(", ".join(missing_attrs))
-        )
-
-    return flows
+    return module
 
 class InternalState:
     """Internal state for the node."""
@@ -232,12 +134,8 @@ class InternalState:
         self._code_file = None
         self._code_file_timestamp = None
 
-        self._initialized = False
-
-        self.kernel_fn = None
-        self.data_flows = None
-
-        # self.reset()
+        self.kernel_module = None
+        self.kernel_annotations = None
 
     def _is_outdated(
         self,
@@ -256,7 +154,10 @@ class InternalState:
                 self._code_file != db.inputs.codeFile
                 or (
                     check_file_modified_time
-                    and self._code_file_timestamp != os.path.getmtime(self._code_file)
+                    and (
+                        self._code_file_timestamp
+                        != os.path.getmtime(self._code_file)
+                    )
                 )
             )
 
@@ -270,44 +171,177 @@ class InternalState:
         check_file_modified_time: bool = False,
     ) -> None:
         """Initialize the internal state if needed."""
-        if (
-            self._initialized
-            and not self._is_outdated(db, check_file_modified_time)
-        ):
+        # Check if this internal state is outdated. If not, we can reuse it.
+        if not self._is_outdated(db, check_file_modified_time):
             return
 
+        # Cache the node attribute values relevant to this internal state.
+        # They're the ones used to check whether this state is outdated or not.
         self._code_provider = db.inputs.codeProvider
         self._code_str = db.inputs.codeStr
         self._code_file = db.inputs.codeFile
 
-        self.kernel_fn = get_kernel_fn(db)
-        self.data_flows = gather_data_flows(db.node, self.kernel_fn)
+        # Retrieve the dynamic user attributes defined on the node.
+        attrs = tuple(x for x in db.node.get_attributes() if x.is_dynamic())
 
-        self._initialized = True
+        # Retrieve the kernel code to evaluate.
+        code_header = generate_code_header(attrs)
+        user_code = get_user_code(db)
+        code = "{}\n{}".format(code_header, user_code)
+
+        # Create a Python module made of the kernel code.
+        # We try to keep its name unique to ensure that it's not clashing with
+        # other kernel modules from the same session.
+        module_name = "warp-kernelnode-{}".format(db.node.node_id())
+        kernel_module = load_code_as_module(code, module_name)
+
+        # Validate the module's contents.
+        if not hasattr(kernel_module, "compute"):
+            raise RuntimeError(
+                "The code must define a kernel function named 'compute'."
+            )
+        if not isinstance(kernel_module.compute, wp.context.Kernel):
+            raise RuntimeError(
+                "The 'compute' function must be decorated with '@wp.kernel'."
+            )
+
+        # Retrieves the type annotations for warp's kernel in/out structures.
+        kernel_annotations = {
+            ATTR_PORT_TYPE_INPUT: get_annotations(kernel_module.Inputs.cls),
+            ATTR_PORT_TYPE_OUTPUT: get_annotations(kernel_module.Outputs.cls),
+        }
+
+        # Assert that our code is doing the right thing—each annotation found
+        # must map onto a corresponding node attribute.
+        assert all(
+            (
+                sorted(annotations.keys())
+                == sorted(
+                    x.get_name().split(":")[-1] for x in attrs
+                    if x.get_port_type() == port_type
+                )
+            )
+            for port_type, annotations in kernel_annotations.items()
+        )
+
+        # Ensure that all output parameters are arrays. Writing to non-array
+        # types is not supported as per CUDA's design.
+        invalid_attrs = tuple(
+            k
+            for k, v in kernel_annotations[ATTR_PORT_TYPE_OUTPUT].items()
+            if not isinstance(v, wp.array)
+        )
+        if invalid_attrs:
+            raise RuntimeError(
+                "Output attributes are required to be arrays but "
+                "the following attributes are not: {}."
+                .format(", ".join(invalid_attrs))
+            )
+
+        # Store the public members.
+        self.kernel_module = kernel_module
+        self.kernel_annotations = kernel_annotations
+
+#   Compute
+# ------------------------------------------------------------------------------
+
+def get_kernel_args(
+    db: OgnKernelDatabase,
+    module: Any,
+    annotations: Mapping[og.AttributePortType, Sequence[Tuple[str, Any]]],
+) -> Tuple[Any, Any]:
+    """Retrieves the in/out argument values to pass to the kernel."""
+    device = db.inputs.device
+
+    # Initialize the kernel's input data.
+    inputs = module.Inputs()
+    for name, warp_annotation in annotations[ATTR_PORT_TYPE_INPUT].items():
+        # Return the attribute value after casting it to the corresponding
+        # warp type if is is an array.
+        value = getattr(db.inputs, name)
+        if isinstance(warp_annotation, wp.array):
+            value = wp.array(
+                value,
+                dtype=warp_annotation.dtype,
+                device=device,
+                requires_grad=warp_annotation.requires_grad,
+            )
+
+        # Store the result in the inputs struct.
+        setattr(inputs, name, value)
+
+    # Initialize the kernel's output data.
+    outputs = module.Outputs()
+    for name, warp_annotation in annotations[ATTR_PORT_TYPE_OUTPUT].items():
+        assert isinstance(warp_annotation, wp.array)
+
+        # Allocate a new array that the kernel can write to.
+        if annotations[ATTR_PORT_TYPE_INPUT].get(name) == warp_annotation:
+            # If there's an existing input with the same name and type,
+            # we allocate a new array matching the input attribute value's
+            # description.
+            value = wp.zeros_like(getattr(inputs, name), device=device)
+        else:
+            # Fallback to allocate an array matching the kernel's dimension.
+            value = wp.zeros(
+                shape=db.inputs.dim,
+                dtype=warp_annotation.dtype,
+                device=device,
+                requires_grad=warp_annotation.requires_grad,
+            )
+
+        # Store the result in the outputs struct.
+        setattr(outputs, name, value)
+
+    return (inputs, outputs)
+
+def write_output_attrs(
+    db: OgnKernelDatabase,
+    annotations: Mapping[og.AttributePortType, Sequence[Tuple[str, Any]]],
+    outputs: Any,
+) -> None:
+    """Writes the output values to the node's attributes."""
+    for name in annotations[ATTR_PORT_TYPE_OUTPUT].keys():
+        value = getattr(outputs, name)
+        setattr(db.outputs, name, value)
 
 #   Compute
 # ------------------------------------------------------------------------------
 
 def compute(db: OgnKernelDatabase) -> None:
-    """Runs the provided kernel."""
+    """Evaluates the kernel."""
+    # Ensure that our internal state is correctly initialized.
     timeline =  omni.timeline.get_timeline_interface()
     db.internal_state.initialize(
         db,
         check_file_modified_time=timeline.is_stopped(),
     )
 
-    values = [x.read_input_value(db) for x in db.internal_state.data_flows]
+    # Exit early if there are no outputs.
+    if not db.internal_state.kernel_annotations[ATTR_PORT_TYPE_OUTPUT]:
+        return
+
+    # Retrieve the inputs and outputs argument values to pass to the kernel.
+    inputs, outputs = get_kernel_args(
+        db,
+        db.internal_state.kernel_module,
+        db.internal_state.kernel_annotations,
+    )
+
+    # Launch the kernel.
     with wp.ScopedDevice(db.inputs.device):
         for _ in range(db.inputs.iterations):
             wp.launch(
-                kernel=db.internal_state.kernel_fn,
+                db.internal_state.kernel_module.compute,
                 dim=db.inputs.dim,
-                inputs=values,
+                inputs=[inputs],
+                outputs=[outputs],
             )
 
-    for data_flow, value in zip(db.internal_state.data_flows, values):
-        data_flow.write_output_value(db, value)
+    # Write the output values to the node's attributes.
+    write_output_attrs(db, db.internal_state.kernel_annotations, outputs)
 
+    # Fire the execution for the downstream nodes.
     db.outputs.execOut = og.ExecutionAttributeState.ENABLED
 
 #   Node Entry Point
