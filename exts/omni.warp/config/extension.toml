@@ -20,14 +20,14 @@ include = ["*.ogn", "*.py"]
 exclude = ["Ogn*Database.py", "*/ogn*"]
 
 [dependencies]
-"omni.kit.test" = {}
+"omni.usd" = {}
 "omni.kit.menu.utils" = {}
+"omni.timeline" = {}
+"omni.kit.actions.core" = {}
+"omni.kit.browser.sample" = {optional = true}
 "omni.graph" = {}
 "omni.graph.nodes" = {}
-"omni.timeline" = {}
-"omni.usd" = {}
-#"omni.kit.browser.sample" = {optional = true}
-"omni.kit.browser.sample" = {}
+"omni.kit.test" = {}
 
 # Main python module this extension provides, it will be publicly available as "import omni.warp".
 [[python.module]]

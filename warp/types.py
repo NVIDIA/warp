@@ -19,6 +19,7 @@ from typing import TypeVar
 from typing import Generic
 from typing import List
 
+import warp
 
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels
@@ -58,69 +59,154 @@ class constant:
 
 #----------------------
 # built-in types
+def vector(length, type):
+        
+    class vector_t(ctypes.Array):
+
+        _length_ = length
+        _shape_ = (length, )
+        _type_ = type
+        
+        def __add__(self, y):
+            return warp.add(self, y)
+
+        def __radd__(self, y):
+            return warp.add(self, y)
+
+        def __sub__(self, y):
+            return warp.sub(self, y)
+
+        def __rsub__(self, x):
+            return warp.sub(x, self)
+
+        def __mul__(self, y):
+            return warp.mul(self, y)
+
+        def __rmul__(self, x):
+            return warp.mul(x, self)
+
+        def __div__(self, y):
+            return warp.div(self, y)
+
+        def __rdiv__(self, x):
+            return warp.div(x, self)
+
+        def __neg__(self, y):
+            return warp.neg(self, y)
+
+        def __str__(self):
+            return f"[{', '.join(map(str, self))}]"
+
+        def __getitem__(self, key):
+            # used to terminate iterations
+            if key >= self._length_:
+                raise IndexError()
+            else:
+                return super().__getitem__(key)
+
+    return vector_t
 
 
-class vec2(ctypes.Array):
-    
-    _length_ = 2
-    _shape_ = (2,)
-    _type_ = ctypes.c_float    
-    
-class vec3(ctypes.Array):
-    
-    _length_ = 3
-    _shape_ = (3,)
-    _type_ = ctypes.c_float
-    
-class vec4(ctypes.Array):
-    
-    _length_ = 4
-    _shape_ = (4,)
-    _type_ = ctypes.c_float
+def matrix(shape, type):
+        
+    assert(len(shape) == 2)
 
-class quat(ctypes.Array):
-    
-    _length_ = 4
-    _shape_ = (4,)
-    _type_ = ctypes.c_float
-    
-class mat22(ctypes.Array):
-    
-    _length_ = 4
-    _shape_ = (2,2)
-    _type_ = ctypes.c_float
-    
-class mat33(ctypes.Array):
-    
-    _length_ = 9
-    _shape_ = (3,3)
-    _type_ = ctypes.c_float
+    class matrix_t(ctypes.Array):
 
-class mat44(ctypes.Array):
-    
-    _length_ = 16
-    _shape_ = (4,4)
-    _type_ = ctypes.c_float
+        _length_ = shape[0]*shape[1]
+        _shape_ = shape
+        _type_ = type        
+        
+        def __add__(self, y):
+            return warp.add(self, y)
 
-class spatial_vector(ctypes.Array):
-    
-    _length_ = 6
-    _shape_ = (6,)
-    _type_ = ctypes.c_float
+        def __radd__(self, y):
+            return warp.add(self, y)
 
-class spatial_matrix(ctypes.Array):
-    
-    _length_ = 36
-    _shape_ = (6,6)
-    _type_ = ctypes.c_float
+        def __sub__(self, y):
+            return warp.sub(self, y)
 
-class transform(ctypes.Array):
-    
-    _length_ = 7
-    _shape_ = (7,)
-    _type_ = ctypes.c_float
+        def __rsub__(self, x):
+            return warp.sub(x, self)
 
+        def __mul__(self, y):
+            return warp.mul(self, y)
+
+        def __rmul__(self, x):            
+            return warp.mul(x, self)
+
+        def __div__(self, y):
+            return warp.div(self, y)
+
+        def __rdiv__(self, x):
+            return warp.div(x, self)
+
+        def __neg__(self, y):
+            return warp.neg(self, y)
+
+        def _row(self, r):
+            row_start = r*self._shape_[1]
+            row_end = row_start + self._shape_[1]
+            row_type = vector(self._shape_[1], self._type_)
+            row_val = row_type(*super().__getitem__(slice(row_start,row_end)))
+
+            return row_val
+
+        def __str__(self):
+            row_str = []
+            for r in range(self._shape_[0]):      
+                row_val = self._row(r)
+                row_str.append(f"[{', '.join(map(str, row_val))}]")
+            
+            return "[" + ",\n ".join(row_str) + "]"
+
+        def __getitem__(self, key):
+            if isinstance(key, Tuple):
+                # element indexing m[i,j]
+                return super().__getitem__(key[1]*self._shape_[0] + key[1])
+            else:
+                # used to terminate iterations
+                if key >= self._length_[0]:
+                    raise IndexError()
+                else:
+                    return self._row(key)
+
+    return matrix_t
+
+
+
+class vec2(vector(length=2, type=ctypes.c_float)):
+    pass
+    
+class vec3(vector(length=3, type=ctypes.c_float)):
+    pass
+
+class vec4(vector(length=4, type=ctypes.c_float)):
+    pass
+
+class quat(vector(length=4, type=ctypes.c_float)):
+    pass
+    
+class mat22(matrix(shape=(2,2), type=ctypes.c_float)):
+    pass
+    
+class mat33(matrix(shape=(3,3), type=ctypes.c_float)):
+    pass
+
+class mat44(matrix(shape=(4,4), type=ctypes.c_float)):
+    pass
+
+class spatial_vector(vector(length=6, type=ctypes.c_float)):
+    pass
+
+class spatial_matrix(matrix(shape=(6,6), type=ctypes.c_float)):
+    pass
+
+class transform(vector(length=7, type=ctypes.c_float)):
+    
     def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
+        super().__init__()
+
         self[0:3] = vec3(*p)
         self[3:7] = quat(*q)
 

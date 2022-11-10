@@ -1026,9 +1026,9 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: smoothstep(a: float32, b: float32, t: float32) -> float
+.. function:: smoothstep(edge0: float32, edge1: float32, x: float32) -> float
 
-   Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping
+   Smoothly interpolate two values edge0 and edge1 with a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
 
 
 .. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None

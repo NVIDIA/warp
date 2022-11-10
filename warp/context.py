@@ -124,22 +124,31 @@ class Function:
                         # try to convert to a value type (vec3, mat33, etc)
                         if issubclass(arg_type, ctypes.Array):
 
-                            # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
-                            a = np.array(a)
-
-                            # flatten to 1D array
-                            v = a.flatten()
-                            if (len(v) != arg_type._length_):
-                                raise RuntimeError(f"Error calling function '{f.key}', parameter for argument '{arg_name}' has length {len(v)}, but expected {arg_type._length_}. Could not convert parameter to {arg_type}.")
-
                             # wrap the arg_type (which is an ctypes.Array) in a structure
                             # to ensure parameter is passed to the .dll by value rather than reference
                             class ValueArg(ctypes.Structure):
                                 _fields_ = [ ('value', arg_type)]
 
                             x = ValueArg()
-                            for i in range(arg_type._length_):
-                                x.value[i] = v[i]
+
+                            # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
+                            if isinstance(a, ctypes.Array) == False:
+                                a = np.array(a)
+
+                                # flatten to 1D array
+                                v = a.flatten()
+                                if (len(v) != arg_type._length_):
+                                    raise RuntimeError(f"Error calling function '{f.key}', parameter for argument '{arg_name}' has length {len(v)}, but expected {arg_type._length_}. Could not convert parameter to {arg_type}.")
+
+                                for i in range(arg_type._length_):
+                                    x.value[i] = v[i]
+
+                            else:
+                                # already a built-in type, check it matches
+                                if type(a) != arg_type:
+                                    raise RuntimeError(f"Error calling function '{f.key}', parameter for argument '{arg_name}' has type '{type(a)}' but expected '{arg_type}'")
+
+                                x.value = a
 
                             params.append(x)
 
