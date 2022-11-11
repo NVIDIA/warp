@@ -952,6 +952,8 @@ class Adjoint:
                     obj, path = adj.resolve_path(a)
                     if isinstance(obj, warp.constant):
                         return True
+                    else:
+                        return False
 
 
             def eval_num(a):
@@ -965,8 +967,8 @@ class Adjoint:
                     obj, path = adj.resolve_path(a)
                     if isinstance(obj, warp.constant):
                         return obj.val
-
-                return None
+                    else:
+                        return False
 
 
             # try and unroll simple range() statements that use constant args
@@ -1072,15 +1074,14 @@ class Adjoint:
 
             name = None
             
-            try:
-                # try and lookup function in globals by
-                # resolving path (e.g.: module.submodule.attr) 
-                func, path = adj.resolve_path(node.func)
+            # try and lookup function in globals by
+            # resolving path (e.g.: module.submodule.attr) 
+            func, path = adj.resolve_path(node.func)
 
-                if isinstance(f, warp.context.Function) == False:
-                    raise RuntimeError()
-                    
-            except Exception as e:
+            if isinstance(func, warp.context.Function) == False:
+
+                if len(path) == 0:
+                    raise RuntimeError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
 
                 # try and lookup function in builtins, this allows users to avoid 
                 # using "wp." prefix, and also handles type constructors
@@ -1310,10 +1311,16 @@ class Adjoint:
         # reverse list since ast presents it backward order
         path = [*reversed(modules)]
 
-        # try and evaluate object path
-        func = eval(".".join(path), adj.func.__globals__)
+        if len(path) == 0:
+            return None, path
 
-        return func, path
+        # try and evaluate object path
+        try:
+            func = eval(".".join(path), adj.func.__globals__)
+            return func, path
+        except Exception as e:
+            return None, path
+        
 
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):
