@@ -1,5 +1,6 @@
 """Warp kernel exposed as an Omni Graph node."""
 
+import ctypes
 import importlib.util
 import os
 import tempfile
@@ -8,8 +9,10 @@ from typing import (
     Mapping,
     Sequence,
     Tuple,
+    Union,
 )
 
+import numpy as np
 import warp as wp
 
 import omni.graph.core as og
@@ -43,9 +46,9 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
     """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
     # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
     if isinstance(obj, type):
-        return obj.__dict__.get("__annotations__", None)
+        return obj.__dict__.get("__annotations__", {})
 
-    return getattr(obj, "__annotations__", None)
+    return getattr(obj, "__annotations__", {})
 
 def generate_code_header(attrs: Sequence[og.Attribute]) -> str:
     """Generates the code header based on the node's attributes."""
@@ -245,6 +248,28 @@ class InternalState:
 #   Compute
 # ------------------------------------------------------------------------------
 
+def cast_array_to_warp_type(
+    value: Union[np.array, og.DataWrapper],
+    warp_annotation: Any,
+    device: str,
+) -> wp.array:
+    """Casts an attribute array to its corresponding warp type."""
+    if device == "cpu":
+        return wp.array(
+            value,
+            dtype=warp_annotation.dtype,
+            device=device,
+            owner=False,
+        )
+
+    if device == "cuda":
+        return omni.warp.from_omni_graph(
+            value,
+            dtype=warp_annotation.dtype,
+        )
+
+    assert False, "Unexpected device '{}'.".format(device)
+
 def get_kernel_args(
     db: OgnKernelDatabase,
     module: Any,
@@ -256,16 +281,11 @@ def get_kernel_args(
     # Initialize the kernel's input data.
     inputs = module.Inputs()
     for name, warp_annotation in annotations[ATTR_PORT_TYPE_INPUT].items():
-        # Return the attribute value after casting it to the corresponding
+        # Retrieve the input attribute value and cast it to the corresponding
         # warp type if is is an array.
         value = getattr(db.inputs, name)
         if isinstance(warp_annotation, wp.array):
-            value = wp.array(
-                value,
-                dtype=warp_annotation.dtype,
-                device=device,
-                requires_grad=warp_annotation.requires_grad,
-            )
+            value = cast_array_to_warp_type(value, warp_annotation, device)
 
         # Store the result in the inputs struct.
         setattr(inputs, name, value)
@@ -275,20 +295,22 @@ def get_kernel_args(
     for name, warp_annotation in annotations[ATTR_PORT_TYPE_OUTPUT].items():
         assert isinstance(warp_annotation, wp.array)
 
-        # Allocate a new array that the kernel can write to.
+        # Retrieve the size of the array to allocate.
         if annotations[ATTR_PORT_TYPE_INPUT].get(name) == warp_annotation:
             # If there's an existing input with the same name and type,
-            # we allocate a new array matching the input attribute value's
-            # description.
-            value = wp.zeros_like(getattr(inputs, name), device=device)
+            # we allocate a new array matching the input's length.
+            size = len(getattr(inputs, name))
         else:
             # Fallback to allocate an array matching the kernel's dimension.
-            value = wp.zeros(
-                shape=db.inputs.dim,
-                dtype=warp_annotation.dtype,
-                device=device,
-                requires_grad=warp_annotation.requires_grad,
-            )
+            size = db.inputs.dim
+
+        # Allocate the array.
+        setattr(db.outputs, "{}_size".format(name), size)
+
+        # Retrieve the output attribute value and cast it to the corresponding
+        # warp type.
+        value = getattr(db.outputs, name)
+        value = cast_array_to_warp_type(value, warp_annotation, device)
 
         # Store the result in the outputs struct.
         setattr(outputs, name, value)
@@ -301,7 +323,13 @@ def write_output_attrs(
     outputs: Any,
 ) -> None:
     """Writes the output values to the node's attributes."""
-    for name in annotations[ATTR_PORT_TYPE_OUTPUT].keys():
+    if db.inputs.device == "cuda":
+        # CUDA attribute arrays are directly being written to by Warp.
+        return
+
+    for name, warp_annotation in annotations[ATTR_PORT_TYPE_OUTPUT].items():
+        assert isinstance(warp_annotation, wp.array)
+
         value = getattr(outputs, name)
         setattr(db.outputs, name, value)
 
@@ -310,6 +338,20 @@ def write_output_attrs(
 
 def compute(db: OgnKernelDatabase) -> None:
     """Evaluates the kernel."""
+    device = db.inputs.device
+
+    if device == "cpu":
+        on_gpu = False
+    elif device == "cuda":
+        on_gpu = True
+    else:
+        assert False, "Unexpected device '{}'.".format(device)
+
+    db.set_dynamic_attribute_memory_location(
+        on_gpu=on_gpu,
+        gpu_ptr_kind=og.PtrToPtrKind.CPU,
+    )
+
     # Ensure that our internal state is correctly initialized.
     timeline =  omni.timeline.get_timeline_interface()
     db.internal_state.initialize(
@@ -329,7 +371,7 @@ def compute(db: OgnKernelDatabase) -> None:
     )
 
     # Launch the kernel.
-    with wp.ScopedDevice(db.inputs.device):
+    with wp.ScopedDevice(device):
         for _ in range(db.inputs.iterations):
             wp.launch(
                 db.internal_state.kernel_module.compute,
