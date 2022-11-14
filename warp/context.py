@@ -1722,6 +1722,13 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
 
                     params.append(x)
 
+                elif isinstance(a, arg_type):
+                    try:
+                        # try to pack as a scalar type
+                        params.append(arg_type._type_(a.value))
+                    except:
+                        raise RuntimeError(f"Error launching kernel, unable to pack kernel parameter type {type(a)} for param {arg_name}, expected {arg_type}")
+
                 else:
                     try:
                         # try to pack as a scalar type
