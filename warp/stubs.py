@@ -1348,104 +1348,6 @@ def atomic_max(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
    ...
 
 @overload
-def index(a: vec2, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: vec3, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: vec4, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: quat, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat22, i: int32) -> vec2:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat22, i: int32, j: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat33, i: int32) -> vec3:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat33, i: int32, j: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat44, i: int32) -> vec4:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat44, i: int32, j: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: spatial_matrix, i: int32, j: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: spatial_vector, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: transform, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(s: shape_t, i: int32) -> int:
-   """
-
-   """
-   ...
-
-@overload
 def expect_eq(arg1: int8, arg2: int8):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -1670,9 +1572,9 @@ def lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
    ...
 
 @overload
-def smoothstep(a: float32, b: float32, t: float32) -> float:
+def smoothstep(edge0: float32, edge1: float32, x: float32) -> float:
    """
-   Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping
+   Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
    """
    ...
 
