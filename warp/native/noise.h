@@ -37,16 +37,12 @@ inline CUDA_CALLABLE float smoothstep_gradient(float t)
 
 inline CUDA_CALLABLE float interpolate(float a0, float a1, float t)
 {
-    return (a1 - a0) * smootherstep(t) + a0;
-    // return (a1 - a0) * smoothstep(t) + a0;
-    // return (a1 - a0) * t + a0;
+    return (a1 - a0) * t + a0;
 }
 
 inline CUDA_CALLABLE float interpolate_gradient(float a0, float a1, float t, float d_a0, float d_a1, float d_t)
 {
-    return (d_a1 - d_a0) * smootherstep(t) + (a1 - a0) * smootherstep_gradient(t) * d_t + d_a0;
-    // return (d_a1 - d_a0) * smoothstep(t) + (a1 - a0) * smoothstep_gradient(t) * d_t + d_a0;
-    // return (d_a1 - d_a0) * t + (a1 - a0) * d_t + d_a0;
+    return (d_a1 - d_a0) * t + (a1 - a0) * d_t + d_a0;
 }
 
 inline CUDA_CALLABLE float random_gradient_1d(uint32 state, int ix)
