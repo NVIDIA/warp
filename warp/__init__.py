@@ -23,12 +23,15 @@ from warp.context import set_module_options, get_module_options, get_module
 from warp.context import capture_begin, capture_end, capture_launch
 from warp.context import print_builtins, export_builtins, export_stubs
 from warp.context import Kernel, Function
+from warp.context import Stream, get_stream, set_stream, synchronize_stream
+from warp.context import Event, record_event, wait_event, wait_stream
 
 from warp.tape import Tape
-from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice
+from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice, ScopedStream
 from warp.utils import transform_expand
 
 from warp.torch import from_torch, to_torch
 from warp.torch import device_from_torch, device_to_torch
+from warp.torch import stream_from_torch, stream_to_torch
 
 from . import builtins, render

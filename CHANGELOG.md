@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.5.2] - 2022-11-04
+
+- Add support for CUDA streams, see `wp.Stream`, `wp.get_stream()`, `wp.set_stream()`, `wp.synchronize_stream()`, `wp.ScopedStream`
+- Add support for PyTorch stream interop, see `wp.stream_from_torch()`, `wp.stream_to_torch()`
+- Add support for CUDA events, see `wp.Event`, `wp.record_event()`, `wp.wait_event()`, `wp.wait_stream()`, `wp.Stream.record_event()`, `wp.Stream.wait_event()`, `wp.Stream.wait_stream()`
+
 ## [0.5.1] - 2022-11-01
 
 - Fix for unit tests in Kit

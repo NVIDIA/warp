@@ -190,15 +190,12 @@ void memcpy_d2d(void* context, void* dest, void* src, size_t n)
     check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice, get_current_stream()));
 }
 
-void memcpy_peer(void* dest_context, void* dest, void* src_context, void* src, size_t n)
+void memcpy_peer(void* context, void* dest, void* src, size_t n)
 {
-    ContextGuard guard(dest_context);
+    ContextGuard guard(context);
 
-    check_cu(cuMemcpyPeerAsync_f(
-        reinterpret_cast<CUdeviceptr>(dest), static_cast<CUcontext>(dest_context),
-        reinterpret_cast<CUdeviceptr>(src), static_cast<CUcontext>(src_context),
-        n, get_current_stream()
-    ));
+    // NB: assumes devices involved support UVA
+    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDefault, get_current_stream()));
 }
 
 __global__ void memset_kernel(int* dest, int value, int n)
@@ -397,15 +394,18 @@ void* cuda_context_get_stream(void* context)
     ContextInfo* info = get_context_info(static_cast<CUcontext>(context));
     if (info)
     {
-        // create stream on demand
-        if (!info->stream)
-        {
-            ContextGuard guard(context, true);
-            check_cu(cuStreamCreate_f(&info->stream, CU_STREAM_DEFAULT));
-        }
         return info->stream;
     }
     return NULL;
+}
+
+void cuda_context_set_stream(void* context, void* stream)
+{
+    ContextInfo* info = get_context_info(static_cast<CUcontext>(context));
+    if (info)
+    {
+        info->stream = static_cast<CUstream>(stream);
+    }
 }
 
 int cuda_context_enable_peer_access(void* context, void* peer_context)
@@ -497,9 +497,85 @@ int cuda_context_can_access_peer(void* context, void* peer_context)
     }
 }
 
+void* cuda_stream_create(void* context)
+{
+    CUcontext ctx = context ? static_cast<CUcontext>(context) : get_current_context();
+    if (!ctx)
+        return NULL;
+
+    ContextGuard guard(context, true);
+
+    CUstream stream;
+    if (check_cu(cuStreamCreate_f(&stream, CU_STREAM_DEFAULT)))
+        return stream;
+    else
+        return NULL;
+}
+
+void cuda_stream_destroy(void* context, void* stream)
+{
+    if (!stream)
+        return;
+
+    CUcontext ctx = context ? static_cast<CUcontext>(context) : get_current_context();
+    if (!ctx)
+        return;
+
+    ContextGuard guard(context, true);
+
+    check_cu(cuStreamDestroy_f(static_cast<CUstream>(stream)));
+}
+
+void cuda_stream_synchronize(void* context, void* stream)
+{
+    ContextGuard guard(context);
+
+    check_cu(cuStreamSynchronize_f(static_cast<CUstream>(stream)));
+}
+
 void* cuda_stream_get_current()
 {
     return get_current_stream();
+}
+
+void cuda_stream_wait_event(void* context, void* stream, void* event)
+{
+    ContextGuard guard(context);
+
+    check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
+}
+
+void cuda_stream_wait_stream(void* context, void* stream, void* other_stream, void* event)
+{
+    ContextGuard guard(context);
+
+    check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(other_stream)));
+    check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
+}
+
+void* cuda_event_create(void* context, unsigned flags)
+{
+    ContextGuard guard(context);
+
+    CUevent event;
+    if (check_cu(cuEventCreate_f(&event, flags)))
+        return event;
+    else
+        return NULL;
+}
+
+void cuda_event_destroy(void* context, void* event)
+{
+    ContextGuard guard(context, true);
+
+    check_cu(cuEventDestroy_f(static_cast<CUevent>(event)));
+}
+
+void cuda_event_record(void* context, void* event, void* stream)
+{
+    ContextGuard guard(context);
+
+    check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(stream)));
 }
 
 void cuda_graph_begin_capture(void* context)
@@ -711,8 +787,9 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
         args,
         0);
 
-    return res;
+    check_cu(res);
 
+    return res;
 }
 
 // impl. files
