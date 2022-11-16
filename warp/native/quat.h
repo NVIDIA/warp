@@ -744,11 +744,6 @@ inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& 
 
 inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, const quat& adj_ret)
 {
-    quat q = quat_from_matrix(m);
-    quat adj_q;
-
-    adj_normalize(q, adj_q, adj_ret);
-
     const float tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
     float x, y, z, w, h = 0.0f;
 
@@ -766,7 +761,14 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
     float dw_dm20 = 0.f, dw_dm21 = 0.f, dw_dm22 = 0.f;
 
     if (tr >= 0.0f) {
-        h = 0.5f / sqrt(tr + 1.0f);
+        h = sqrt(tr + 1.0f);
+        w = 0.5 * h;
+        h = 0.5f / h;
+
+        x = (m.data[2][1] - m.data[1][2]) * h;
+        y = (m.data[0][2] - m.data[2][0]) * h;
+        z = (m.data[1][0] - m.data[0][1]) * h;
+
         dw_dm00 = 0.5f * h;
         dw_dm11 = 0.5f * h;
         dw_dm22 = 0.5f * h;
@@ -795,7 +797,14 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
         }
         
         if (max_diag == 0) {
-            h = 0.5f / sqrt((m.data[0][0] - (m.data[1][1] + m.data[2][2])) + 1.0f);
+            h = sqrt((m.data[0][0] - (m.data[1][1] + m.data[2][2])) + 1.0f);
+            x = 0.5f * h;
+            h = 0.5f / h;
+
+            y = (m.data[0][1] + m.data[1][0]) * h;
+            z = (m.data[2][0] + m.data[0][2]) * h;
+            w = (m.data[2][1] - m.data[1][2]) * h;
+
             dx_dm00 = 0.5f * h;
             dx_dm11 = -0.5f * h;
             dx_dm22 = -0.5f * h;
@@ -815,7 +824,14 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
             dw_dm11 = 2.f * h*h*h * (m.data[2][1] - m.data[1][2]);
             dw_dm22 = 2.f * h*h*h * (m.data[2][1] - m.data[1][2]);
         } else if (max_diag == 1) {
-            h = 0.5f / sqrt((m.data[1][1] - (m.data[2][2] + m.data[0][0])) + 1.0f);
+            h = sqrt((m.data[1][1] - (m.data[2][2] + m.data[0][0])) + 1.0f);
+            y = 0.5f * h;
+            h = 0.5f / h;
+
+            z = (m.data[1][2] + m.data[2][1]) * h;
+            x = (m.data[0][1] + m.data[1][0]) * h;
+            w = (m.data[0][2] - m.data[2][0]) * h;
+
             dy_dm00 = -0.5f * h;
             dy_dm11 = 0.5f * h;
             dy_dm22 = -0.5f * h;
@@ -835,7 +851,14 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
             dw_dm11 = 2.f * h*h*h * (m.data[2][0] - m.data[0][2]);
             dw_dm22 = 2.f * h*h*h * (m.data[0][2] - m.data[2][0]);
         } if (max_diag == 2) {
-            h = 0.5f / sqrt((m.data[2][2] - (m.data[0][0] + m.data[1][1])) + 1.0f);
+            h = sqrt((m.data[2][2] - (m.data[0][0] + m.data[1][1])) + 1.0f);
+            z = 0.5f * h;
+            h = 0.5f / h;
+
+            x = (m.data[2][0] + m.data[0][2]) * h;
+            y = (m.data[1][2] + m.data[2][1]) * h;
+            w = (m.data[1][0] - m.data[0][1]) * h;
+
             dz_dm00 = -0.5f * h;
             dz_dm11 = -0.5f * h;
             dz_dm22 = 0.5f * h;
@@ -866,6 +889,9 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
     quat dq_dm20 = quat(dx_dm20, dy_dm20, dz_dm20, dw_dm20);
     quat dq_dm21 = quat(dx_dm21, dy_dm21, dz_dm21, dw_dm21);
     quat dq_dm22 = quat(dx_dm22, dy_dm22, dz_dm22, dw_dm22);
+
+    quat adj_q;
+    adj_normalize(quat(x, y, z, w), adj_q, adj_ret);
 
     adj_m.data[0][0] += dot(dq_dm00, adj_q);
     adj_m.data[0][1] += dot(dq_dm01, adj_q);
