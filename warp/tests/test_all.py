@@ -41,6 +41,7 @@ import warp.tests.test_transient_module
 import warp.tests.test_lerp
 import warp.tests.test_smoothstep
 import warp.tests.test_model
+import warp.tests.test_fast_math
 
 
 def register_tests(parent):
@@ -79,6 +80,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_lerp.register(parent))
     tests.append(warp.tests.test_smoothstep.register(parent))
     tests.append(warp.tests.test_model.register(parent))
+    tests.append(warp.tests.test_fast_math.register(parent))
 
     return tests
 

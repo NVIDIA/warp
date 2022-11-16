@@ -114,7 +114,7 @@ extern "C"
     WP_API void cuda_graph_launch(void* context, void* graph);
     WP_API void cuda_graph_destroy(void* context, void* graph);
 
-    WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, const char* output_file);
+    WP_API size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_file);
 
     WP_API void* cuda_load_module(void* context, const char* ptx);
     WP_API void cuda_unload_module(void* context, void* module);
