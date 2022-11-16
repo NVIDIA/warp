@@ -127,7 +127,7 @@ void memcpy_d2d(void* context, void* dest, void* src, size_t n)
 {
 }
 
-void memcpy_peer(void* dest_context, void* dest, void* src_context, void* src, size_t n)
+void memcpy_peer(void* context, void* dest, void* src, size_t n)
 {
 }
 
@@ -153,10 +153,20 @@ WP_API uint64_t cuda_context_check(void* context) { return 0; }
 WP_API int cuda_context_get_device_ordinal(void* context) { return -1; }
 WP_API int cuda_context_is_primary(void* context) { return 0; }
 WP_API void* cuda_context_get_stream(void* context) { return NULL; }
+WP_API void cuda_context_set_stream(void* context, void* stream) {}
 WP_API int cuda_context_can_access_peer(void* context, void* peer_context) { return 0; }
 WP_API int cuda_context_enable_peer_access(void* context, void* peer_context) { return 0; }
 
+WP_API void* cuda_stream_create(void* context) { return NULL; }
+WP_API void cuda_stream_destroy(void* context, void* stream) {}
 WP_API void* cuda_stream_get_current() { return NULL; }
+WP_API void cuda_stream_synchronize(void* context, void* stream) {}
+WP_API void cuda_stream_wait_event(void* context, void* stream, void* event) {}
+WP_API void cuda_stream_wait_stream(void* context, void* stream, void* other_stream, void* event) {}
+
+WP_API void* cuda_event_create(void* context, unsigned flags) { return NULL; }
+WP_API void cuda_event_destroy(void* context, void* event) {}
+WP_API void cuda_event_record(void* context, void* event, void* stream) {}
 
 WP_API void cuda_graph_begin_capture(void* context) {}
 WP_API void* cuda_graph_end_capture(void* context) { return NULL; }
