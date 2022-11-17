@@ -363,11 +363,11 @@ def test_stream_scope_graph_mgpu(test, device):
 
         wp.launch(inc, dim=N, inputs=[a0])
 
-        # copy values from stream1
-        wp.copy(b0, a1)
-
         # wait for stream1 to finish
         wp.wait_stream(stream1)
+
+        # copy values from stream1
+        wp.copy(b0, a1)
 
         # compute sum
         wp.launch(sum, dim=N, inputs=[a0, b0, c0])
