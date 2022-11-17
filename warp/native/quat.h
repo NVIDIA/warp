@@ -9,7 +9,6 @@
 #pragma once
 
 #include "mat33.h"
-#define EPSILON 0.000001
 
 namespace wp
 {
@@ -360,7 +359,7 @@ inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, floa
     }
     else
     {
-        if (abs(q.w) > EPSILON)
+        if (abs(q.w) > kEps)
         {
             float t_qx = 2.f / (sqrt(3.f) * abs(q.w));
             float t_qy = 2.f / (sqrt(3.f) * abs(q.w));
