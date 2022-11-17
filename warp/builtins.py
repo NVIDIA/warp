@@ -171,15 +171,12 @@ add_builtin("cw_div", input_types={"x": vec3, "y": vec3}, value_type=vec3, group
 add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec4, group="Vector Math",
     doc="Component wise division of two 4d vectors.")
 
-# type construtors for compute types (int, float)
-for t in scalar_types:
-    add_builtin("int", input_types={"x": t}, value_type=int, doc="Construct an 32-bit signed integer variable, larger precision types will be truncated.", hidden=True, group="Scalar Math", export=False)
-    add_builtin("float", input_types={"x": t}, value_type=float, doc="Construct a 32-bit floating point variable, larger precision types will be truncated.", hidden=True, group="Scalar Math", export=False)
+# type construtors between all storage / compute types 
+scalar_types_all = [*scalar_types, int, float]
+for t in scalar_types_all:
+    for u in scalar_types_all:
+        add_builtin(t.__name__, input_types={"u": u}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
 
-# type construtors for storage types 
-for t in scalar_types:
-    add_builtin(t.__name__, input_types={"x": int}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
-    add_builtin(t.__name__, input_types={"x": float}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
 
 add_builtin("vec2", input_types={}, value_type=vec2, doc="Construct a zero-initialized 2d vector.", group="Vector Math", export=False)
 add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="Construct a 2d vector with compontents x, y.", group="Vector Math", export=False)
