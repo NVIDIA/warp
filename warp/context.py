@@ -609,9 +609,8 @@ class Module:
         for node in ast.walk(adj.tree):
             if isinstance(node, ast.Call):
                 try:
-                    # try and look up path in function globals
-                    path = adj.resolve_path(node.func)
-                    func = eval(".".join(path), adj.func.__globals__)
+                    # try to resolve the function
+                    func, _ = adj.resolve_path(node.func)
 
                     # if this is a user-defined function, add a module reference
                     if isinstance(func, warp.context.Function) and func.module is not None:
