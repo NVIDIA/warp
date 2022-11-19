@@ -11,6 +11,7 @@
 #include "builtin.h"
 #include "bvh.h"
 #include "intersect.h"
+#include "array.h"
 
 #define BVH_DEBUG 0
 
@@ -19,10 +20,10 @@ namespace wp
 
 struct Mesh
 {
-    vec3* points;
-	vec3* velocities;
+    array_t<vec3> points;
+	array_t<vec3> velocities;
 
-    int* indices;
+    array_t<int> indices;
 
 	bounds3* bounds;
 
@@ -32,6 +33,14 @@ struct Mesh
     BVH bvh;
 
 	void* context;
+
+    inline CUDA_CALLABLE Mesh(int id = 0) {
+		// for backward a = 0 initialization syntax
+		bounds = nullptr;
+		num_points = 0;
+		num_tris = 0;
+		context = nullptr;
+	}    
 };
 
 CUDA_CALLABLE inline Mesh mesh_get(uint64_t id)
@@ -39,17 +48,9 @@ CUDA_CALLABLE inline Mesh mesh_get(uint64_t id)
     return *(Mesh*)(id);
 }
 
-
-CUDA_CALLABLE inline int mesh_get_num_points(uint64_t id)
+CUDA_CALLABLE inline void adj_mesh_get(uint64_t id, uint64_t& adj_id, const Mesh& adj_ret)
 {
-	Mesh mesh = mesh_get(id);
-	return mesh.num_points;
-}
-
-CUDA_CALLABLE inline int mesh_get_num_faces(uint64_t id)
-{
-	Mesh mesh = mesh_get(id);
-	return mesh.num_tris;
+	// no-op
 }
 
 
