@@ -837,21 +837,6 @@ class Adjoint:
 
             if key in adj.symbols:
                 return adj.symbols[key]
-            elif isinstance(node.value, ast.Attribute):
-                # resolve nested attribute
-                val = adj.eval(node.value)
-                
-                try:
-                    attr_name = val.label + "." + node.attr
-                    attr_type = val.type.vars[node.attr].type
-                except:
-                    raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
-
-                # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-                out = Var(attr_name, attr_type)
-                
-                adj.symbols[key] = out
-                return adj.symbols[key]
             elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
                 
                 struct = adj.symbols[node.value.id]
@@ -876,10 +861,25 @@ class Adjoint:
                 if isinstance(obj, warp.constant):
                     out = adj.add_constant(obj.val)
                     adj.symbols[key] = out          # if referencing a constant
-                else:
-                    raise TypeError(f"'{key}' is not a local variable, warp function, or warp constant")
+                    return out
+                elif isinstance(node.value, ast.Attribute):
+                    # resolve nested attribute
+                    val = adj.eval(node.value)
+                    
+                    try:
+                        attr_name = val.label + "." + node.attr
+                        attr_type = val.type.vars[node.attr].type
+                    except:
+                        raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
 
-                return out
+                    # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+                    out = Var(attr_name, attr_type)
+                    
+                    adj.symbols[key] = out
+                    return adj.symbols[key]
+                else:
+                    raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
+
 
         elif (isinstance(node, ast.Str)):
 
