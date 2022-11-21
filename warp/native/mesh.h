@@ -54,6 +54,11 @@ CUDA_CALLABLE inline void adj_mesh_get(uint64_t id, uint64_t& adj_id, const Mesh
 }
 
 
+CUDA_CALLABLE inline Mesh& operator += (Mesh& a, const Mesh& b) {
+	// dummy operator needed for adj_select involving meshes
+	return a;
+}
+
 CUDA_CALLABLE inline float distance_to_aabb_sq(const vec3& p, const vec3& lower, const vec3& upper)
 {
 	vec3 cp = closest_point_to_aabb(p, lower, upper);
