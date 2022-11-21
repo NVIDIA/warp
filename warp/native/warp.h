@@ -82,6 +82,12 @@ extern "C"
     WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
 
+    WP_API int cuda_driver_version();   // CUDA driver version
+    WP_API int cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
+
+    WP_API int nvrtc_supported_arch_count();
+    WP_API void nvrtc_supported_archs(int* archs);
+
     WP_API int cuda_device_get_count();
     WP_API void* cuda_device_primary_context_retain(int ordinal);
     WP_API void cuda_device_primary_context_release(int ordinal);

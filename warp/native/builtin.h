@@ -17,7 +17,7 @@
 #if _WIN32
 #define WP_API __declspec(dllexport)
 #else
-#define WP_API
+#define WP_API __attribute__ ((visibility ("default")))
 #endif
 
 #ifdef _WIN32

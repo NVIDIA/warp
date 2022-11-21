@@ -29,9 +29,9 @@
 </dependency>   
 
   <dependency name="cuda" linkPath="../_build/target-deps/cuda">
-    <package name="cuda" version="11.3.0_465.89-46d75baa-windows-x86_64" platforms="windows-x86_64"/>
-    <package name="cuda" version="11.3.0_465.19.01-46d75baa-linux-x86_64" platforms="linux-x86_64"/>  
-    <package name="cuda" version="11.3.0_465.19.01-de8c77bf-linux-aarch64" platforms="linux-aarch64"/>
+    <package name="cuda" version="11.5.2_496.13-46d75baa-windows-x86_64" platforms="windows-x86_64"/>
+    <package name="cuda" version="11.5.2_495.29-46d75baa-linux-x86_64" platforms="linux-x86_64"/>
+    <package name="cuda" version="11.5.2_495.29-46d75baa-linux-aarch64" platforms="linux-aarch64"/>
   </dependency>
 
 </project>
