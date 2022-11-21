@@ -771,13 +771,6 @@ def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
    ...
 
 @overload
-def get_mesh(id: uint64) -> Mesh:
-   """
-   Retrieve the mesh associated with the given identifier.
-   """
-   ...
-
-@overload
 def mesh_query_point(id: uint64, point: vec3, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool:
    """
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
