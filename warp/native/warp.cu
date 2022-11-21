@@ -10,9 +10,62 @@
 #include "cuda_util.h"
 
 #include <nvrtc.h>
+#include <nvPTXCompiler.h>
 
 #include <map>
 #include <vector>
+
+#define check_nvrtc(code) (check_nvrtc_result(code, __FILE__, __LINE__))
+#define check_nvptx(code) (check_nvptx_result(code, __FILE__, __LINE__))
+
+bool check_nvrtc_result(nvrtcResult result, const char* file, int line)
+{
+    if (result == NVRTC_SUCCESS)
+        return true;
+
+    const char* error_string = nvrtcGetErrorString(result);
+    fprintf(stderr, "Warp NVRTC compilation error %u: %s (%s:%d)\n", unsigned(result), error_string, file, line);
+    return false;
+}
+
+bool check_nvptx_result(nvPTXCompileResult result, const char* file, int line)
+{
+    if (result == NVPTXCOMPILE_SUCCESS)
+        return true;
+
+    const char* error_string;
+    switch (result)
+    {
+    case NVPTXCOMPILE_ERROR_INVALID_COMPILER_HANDLE:
+        error_string = "Invalid compiler handle";
+        break;
+    case NVPTXCOMPILE_ERROR_INVALID_INPUT:
+        error_string = "Invalid input";
+        break;
+    case NVPTXCOMPILE_ERROR_COMPILATION_FAILURE:
+        error_string = "Compilation failure";
+        break;
+    case NVPTXCOMPILE_ERROR_INTERNAL:
+        error_string = "Internal error";
+        break;
+    case NVPTXCOMPILE_ERROR_OUT_OF_MEMORY:
+        error_string = "Out of memory";
+        break;
+    case NVPTXCOMPILE_ERROR_COMPILER_INVOCATION_INCOMPLETE:
+        error_string = "Incomplete compiler invocation";
+        break;
+    case NVPTXCOMPILE_ERROR_UNSUPPORTED_PTX_VERSION:
+        error_string = "Unsupported PTX version";
+        break;
+    default:
+        error_string = "Unknown error";
+        break;
+    }
+
+    fprintf(stderr, "Warp PTX compilation error %u: %s (%s:%d)\n", unsigned(result), error_string, file, line);
+    return false;
+}
+
 
 struct DeviceInfo
 {
@@ -236,6 +289,37 @@ void array_sum_device(uint64_t a, uint64_t out, int len)
     
 }
 
+
+int cuda_driver_version()
+{
+    int version;
+    if (check_cu(cuDriverGetVersion_f(&version)))
+        return version;
+    else
+        return 0;
+}
+
+int cuda_toolkit_version()
+{
+    return CUDA_VERSION;
+}
+
+int nvrtc_supported_arch_count()
+{
+    int count;
+    if (check_nvrtc(nvrtcGetNumSupportedArchs(&count)))
+        return count;
+    else
+        return 0;
+}
+
+void nvrtc_supported_archs(int* archs)
+{
+    if (archs)
+    {
+        check_nvrtc(nvrtcGetSupportedArchs(archs));
+    }
+}
 
 int cuda_device_get_count()
 {
@@ -628,27 +712,17 @@ void cuda_graph_destroy(void* context, void* graph_exec)
     check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
 }
 
-size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, const char* output_file)
+size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, const char* output_path)
 {
-    nvrtcResult res;
-
-    nvrtcProgram prog;
-    res = nvrtcCreateProgram(
-        &prog,          // prog
-        cuda_src,      // buffer
-        NULL,          // name
-        0,             // numHeaders
-        NULL,          // headers
-        NULL);         // includeNames
-
-    if (res != NVRTC_SUCCESS)
-        return res;
+    // use file extension to determine whether to output PTX or CUBIN
+    const char* output_ext = strrchr(output_path, '.');
+    bool use_ptx = output_ext && strcmp(output_ext + 1, "ptx") == 0;
 
     // check include dir path len (path + option)
     const int max_path = 4096 + 16;
     if (strlen(include_dir) > max_path)
     {
-        printf("Include path too long\n");
+        fprintf(stderr, "Warp error: Include path too long\n");
         return size_t(-1);
     }
 
@@ -656,9 +730,13 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     strcpy(include_opt, "--include-path=");
     strcat(include_opt, include_dir);
 
-    const int max_arch = 256;
+    const int max_arch = 128;
     char arch_opt[max_arch];
-    sprintf(arch_opt, "--gpu-architecture=compute_%d", arch);
+
+    if (use_ptx)
+        snprintf(arch_opt, max_arch, "--gpu-architecture=compute_%d", arch);
+    else
+        snprintf(arch_opt, max_arch, "--gpu-architecture=sm_%d", arch);
 
     const char *opts[] = 
     {
@@ -673,40 +751,91 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
         include_opt
     };
 
+    nvrtcProgram prog;
+    nvrtcResult res;
+
+    res = nvrtcCreateProgram(
+        &prog,         // prog
+        cuda_src,      // buffer
+        NULL,          // name
+        0,             // numHeaders
+        NULL,          // headers
+        NULL);         // includeNames
+
+    if (!check_nvrtc(res))
+        return size_t(res);
+
     res = nvrtcCompileProgram(prog, 9, opts);
 
-    if (res == NVRTC_SUCCESS)
-    {
-        // save ptx
-        size_t ptx_size;
-        nvrtcGetPTXSize(prog, &ptx_size);
-
-        char* ptx = (char*)malloc(ptx_size);
-        nvrtcGetPTX(prog, ptx);
-
-        // write to file
-        FILE* file = fopen(output_file, "w");
-        fwrite(ptx, 1, ptx_size, file);
-        fclose(file);
-
-        free(ptx);
-    }
-
-    if (res != NVRTC_SUCCESS || verbose)
+    if (!check_nvrtc(res) || verbose)
     {
         // get program log
         size_t log_size;
-        nvrtcGetProgramLogSize(prog, &log_size);
+        if (check_nvrtc(nvrtcGetProgramLogSize(prog, &log_size)))
+        {
+            std::vector<char> log(log_size);
+            if (check_nvrtc(nvrtcGetProgramLog(prog, log.data())))
+            {
+                // todo: figure out better way to return this to python
+                if (res != NVRTC_SUCCESS)
+                    fprintf(stderr, "%s", log.data());
+                else
+                    fprintf(stdout, "%s", log.data());
+            }
+        }
 
-        char* log = (char*)malloc(log_size);
-        nvrtcGetProgramLog(prog, log);
-
-        // todo: figure out better way to return this to python
-        printf("%s", log);
-        free(log);
+        if (res != NVRTC_SUCCESS)
+        {
+            nvrtcDestroyProgram(&prog);
+            return size_t(res);
+        }
     }
 
-    nvrtcDestroyProgram(&prog);
+    nvrtcResult (*get_output_size)(nvrtcProgram, size_t*);
+    nvrtcResult (*get_output_data)(nvrtcProgram, char*);
+    const char* output_mode;
+    if (use_ptx)
+    {
+        get_output_size = nvrtcGetPTXSize;
+        get_output_data = nvrtcGetPTX;
+        output_mode = "wt";
+    }
+    else
+    {
+        get_output_size = nvrtcGetCUBINSize;
+        get_output_data = nvrtcGetCUBIN;
+        output_mode = "wb";
+    }
+
+    // save output
+    size_t output_size;
+    res = get_output_size(prog, &output_size);
+    if (check_nvrtc(res))
+    {
+        std::vector<char> output(output_size);
+        res = get_output_data(prog, output.data());
+        if (check_nvrtc(res))
+        {
+            FILE* file = fopen(output_path, output_mode);
+            if (file)
+            {
+                if (fwrite(output.data(), 1, output_size, file) != output_size)
+                {
+                    fprintf(stderr, "Warp error: Failed to write output file '%s'\n", output_path);
+                    res = nvrtcResult(-1);
+                }
+                fclose(file);
+            }
+            else
+            {
+                fprintf(stderr, "Warp error: Failed to open output file '%s'\n", output_path);
+                res = nvrtcResult(-1);
+            }
+        }
+    }
+
+    check_nvrtc(nvrtcDestroyProgram(&prog));
+
     return res;
 }
 
@@ -714,42 +843,115 @@ void* cuda_load_module(void* context, const char* path)
 {
     ContextGuard guard(context);
 
+    // use file extension to determine whether to load PTX or CUBIN
+    const char* input_ext = strrchr(path, '.');
+    bool load_ptx = input_ext && strcmp(input_ext + 1, "ptx") == 0;
+
+    std::vector<char> input;
+
     FILE* file = fopen(path, "rb");
-    fseek(file, 0, SEEK_END);
-    size_t length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char* buf = (char*)malloc(length);
-    size_t result = fread(buf, 1, length, file);
-    fclose(file);
-
-    if (result != length)
+    if (file)
     {
-        printf("Warp: Failed to load PTX from disk, unexpected number of bytes\n");
+        fseek(file, 0, SEEK_END);
+        size_t length = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        input.resize(length);
+        if (fread(input.data(), 1, length, file) != length)
+        {
+            fprintf(stderr, "Warp error: Failed to read input file '%s'\n", path);
+            fclose(file);
+            return NULL;
+        }
+        fclose(file);
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Failed to open input file '%s'\n", path);
         return NULL;
     }
 
-    CUjit_option options[2];
-    void *optionVals[2];
-    char error_log[8192];
-    unsigned int logSize = 8192;
-    // Setup linker options
-    // Pass a buffer for error message
-    options[0] = CU_JIT_ERROR_LOG_BUFFER;
-    optionVals[0] = (void *) error_log;
-    // Pass the size of the error buffer
-    options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
-    optionVals[1] = (void *) (long) logSize;
-
+    int driver_cuda_version = 0;
     CUmodule module = NULL;
-    if (!check_cu(cuModuleLoadDataEx_f(&module, buf, 2, options, optionVals)))
-    {
-        printf("Warp: Loading PTX module failed\n");
-        // print error log
-        fprintf(stderr, "PTX linker error:\n%s\n", error_log);
-    }
 
-    free(buf);
+    if (load_ptx)
+    {
+        if (check_cu(cuDriverGetVersion_f(&driver_cuda_version)) && driver_cuda_version >= CUDA_VERSION)
+        {
+            // let the driver compile the PTX
+
+            CUjit_option options[2];
+            void *option_vals[2];
+            char error_log[8192] = "";
+            unsigned int log_size = 8192;
+            // Set up loader options
+            // Pass a buffer for error message
+            options[0] = CU_JIT_ERROR_LOG_BUFFER;
+            option_vals[0] = (void*)error_log;
+            // Pass the size of the error buffer
+            options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
+            option_vals[1] = (void*)(size_t)log_size;
+
+            if (!check_cu(cuModuleLoadDataEx_f(&module, input.data(), 2, options, option_vals)))
+            {
+                fprintf(stderr, "Warp error: Loading PTX module failed\n");
+                // print error log if not empty
+                if (*error_log)
+                    fprintf(stderr, "PTX loader error:\n%s\n", error_log);
+                return NULL;
+            }
+        }
+        else
+        {
+            // manually compile the PTX and load as CUBIN
+
+            ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
+            if (!context_info || !context_info->device_info)
+            {
+                fprintf(stderr, "Warp error: Failed to determine target architecture\n");
+                return NULL;
+            }
+
+            int arch = context_info->device_info->arch;
+
+            char arch_opt[128];
+            sprintf(arch_opt, "--gpu-name=sm_%d", arch);
+
+            const char* compiler_options[] = { arch_opt };
+
+            nvPTXCompilerHandle compiler = NULL;
+            if (!check_nvptx(nvPTXCompilerCreate(&compiler, input.size(), input.data())))
+                return NULL;
+
+            if (!check_nvptx(nvPTXCompilerCompile(compiler, sizeof(compiler_options) / sizeof(*compiler_options), compiler_options)))
+                return NULL;
+
+            size_t cubin_size = 0;
+            if (!check_nvptx(nvPTXCompilerGetCompiledProgramSize(compiler, &cubin_size)))
+                return NULL;
+
+            std::vector<char> cubin(cubin_size);
+            if (!check_nvptx(nvPTXCompilerGetCompiledProgram(compiler, cubin.data())))
+                return NULL;
+
+            check_nvptx(nvPTXCompilerDestroy(&compiler));
+
+            if (!check_cu(cuModuleLoadDataEx_f(&module, cubin.data(), 0, NULL, NULL)))
+            {
+                fprintf(stderr, "Warp CUDA error: Loading module failed\n");
+                return NULL;
+            }
+        }
+    }
+    else
+    {
+        // load CUBIN
+        if (!check_cu(cuModuleLoadDataEx_f(&module, input.data(), 0, NULL, NULL)))
+        {
+            fprintf(stderr, "Warp CUDA error: Loading module failed\n");
+            return NULL;
+        }
+    }
 
     return module;
 }

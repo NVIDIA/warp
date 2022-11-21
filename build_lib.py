@@ -93,7 +93,7 @@ try:
 except Exception as e:
 
     # output build error
-    print(e)
+    print(f"Warp build error: {e}")
 
     # report error
     sys.exit(1)

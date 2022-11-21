@@ -534,6 +534,7 @@ class Module:
 
         self.options = {"max_unroll": 16,
                         "enable_backward": True,
+                        "cuda_output": None,         # supported values: "ptx", "cubin", or None (automatic)
                         "mode": warp.config.mode}
 
         # kernel hook lookup per device
@@ -704,8 +705,6 @@ class Module:
                 return False
             if not warp.is_cpu_available():
                 raise RuntimeError("Failed to build CPU module because no CPU buildchain was found")
-            build_cpu = True
-            build_cuda = False
         else:
             # check if already loaded
             if device.context in self.cuda_modules:
@@ -715,8 +714,6 @@ class Module:
                 return False
             if not warp.is_cuda_available():
                 raise RuntimeError("Failed to build CUDA module because CUDA is not available")
-            build_cpu = False
-            build_cuda = True
 
         with warp.utils.ScopedTimer(f"Module {self.name} load on device '{device}'"):
 
@@ -730,55 +727,31 @@ class Module:
 
             module_name = "wp_" + self.name
             module_path = os.path.join(build_path, module_name)
-
-            if os.name == 'nt':
-                dll_path = module_path + ".dll"
-            else:
-                dll_path = module_path + ".so"
-
-            ptx_arch = min(device.arch, warp.config.ptx_target_arch)
-            ptx_path = module_path + f".sm{ptx_arch}.ptx"
-
-            cpu_hash_path = module_path + ".cpu.hash"
-            ptx_hash_path = module_path + f".sm{ptx_arch}.hash"
-
-            # test cache
             module_hash = self.hash_module()
 
-            # check CPU cache
-            if build_cpu and warp.config.cache_kernels and os.path.exists(cpu_hash_path):
+            builder = ModuleBuilder(self, self.options)
 
-                f = open(cpu_hash_path, 'rb')
-                cache_hash = f.read()
-                f.close()
+            if device.is_cpu:
 
-                if cache_hash == module_hash:
-                    if os.path.isfile(dll_path):
+                if os.name == 'nt':
+                    dll_path = module_path + ".dll"
+                else:
+                    dll_path = module_path + ".so"
+
+                cpu_hash_path = module_path + ".cpu.hash"
+
+                # check cache
+                if warp.config.cache_kernels and os.path.isfile(cpu_hash_path) and os.path.isfile(dll_path):
+
+                    with open(cpu_hash_path, 'rb') as f:
+                        cache_hash = f.read()
+
+                    if cache_hash == module_hash:
                         self.dll = warp.build.load_dll(dll_path)
                         if self.dll is not None:
                             return True
 
-            # check GPU cache
-            elif build_cuda and warp.config.cache_kernels and os.path.exists(ptx_hash_path):
-
-                f = open(ptx_hash_path, 'rb')
-                cache_hash = f.read()
-                f.close()
-
-                if cache_hash == module_hash:
-                    if os.path.isfile(ptx_path):
-                        cuda_module = warp.build.load_cuda(ptx_path, device)
-                        if cuda_module is not None:
-                            self.cuda_modules[device.context] = cuda_module
-                            return True
-
-
-            if warp.config.verbose:
-                print(f"Warp: Rebuilding kernels for module {self.name} on device {device.alias}")
-
-            builder = ModuleBuilder(self, self.options)
-            
-            if build_cpu:
+                # build
                 try:
                     cpp_path = os.path.join(gen_path, module_name + ".cpp")
 
@@ -793,22 +766,57 @@ class Module:
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
                         warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
-                    # update cpu hash
-                    f = open(cpu_hash_path, 'wb')
-                    f.write(module_hash)
-                    f.close()
-
                     # load the DLL
                     self.dll = warp.build.load_dll(dll_path)
                     if self.dll is None:
                         raise Exception("Failed to load CPU module")
 
+                    # update cpu hash
+                    with open(cpu_hash_path, 'wb') as f:
+                        f.write(module_hash)
+
                 except Exception as e:
                     self.cpu_build_failed = True
-                    # print(e)
                     raise(e)
 
-            elif build_cuda:
+            elif device.is_cuda:
+
+                # determine whether to use PTX or CUBIN
+                if device.is_cubin_supported:
+                    # get user preference specified either per module or globally
+                    preferred_cuda_output = self.options.get("cuda_output") or warp.config.cuda_output
+                    if preferred_cuda_output is not None:
+                        use_ptx = preferred_cuda_output == "ptx"
+                    else:
+                        # determine automatically: older drivers may not be able to handle PTX generated using newer
+                        # CUDA Toolkits, in which case we fall back on generating CUBIN modules
+                        use_ptx = runtime.driver_version >= runtime.toolkit_version
+                else:
+                    # CUBIN not an option, must use PTX (e.g. CUDA Toolkit too old)
+                    use_ptx = True
+
+                if use_ptx:
+                    output_arch = min(device.arch, warp.config.ptx_target_arch)
+                    output_path = module_path + f".sm{output_arch}.ptx"
+                else:
+                    output_arch = device.arch
+                    output_path = module_path + f".sm{output_arch}.cubin"
+
+                cuda_hash_path = module_path + f".sm{output_arch}.hash"
+
+                # check cache
+                if warp.config.cache_kernels and os.path.isfile(cuda_hash_path) and os.path.isfile(output_path):
+
+                    with open(cuda_hash_path, 'rb') as f:
+                        cache_hash = f.read()
+
+                    if cache_hash == module_hash:
+                        cuda_module = warp.build.load_cuda(output_path, device)
+                        if cuda_module is not None:
+                            self.cuda_modules[device.context] = cuda_module
+                            return True
+
+                # build
                 try:
                     cu_path = os.path.join(gen_path, module_name + ".cu")
 
@@ -819,26 +827,23 @@ class Module:
                     cu_file.write(cu_source)
                     cu_file.close()
 
-                    # generate PTX
-                    ptx_arch = min(device.arch, warp.config.ptx_target_arch)
+                    # generate PTX or CUBIN
                     with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, ptx_arch, ptx_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_cuda(cu_path, output_arch, output_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
 
-                    # update cuda hash
-                    f = open(ptx_hash_path, 'wb')
-                    f.write(module_hash)
-                    f.close()
-
-                    # load the PTX
-                    cuda_module = warp.build.load_cuda(ptx_path, device)
+                    # load the module
+                    cuda_module = warp.build.load_cuda(output_path, device)
                     if cuda_module is not None:
                         self.cuda_modules[device.context] = cuda_module
                     else:
                         raise Exception("Failed to load CUDA module")
 
+                    # update cuda hash
+                    with open(cuda_hash_path, 'wb') as f:
+                        f.write(module_hash)
+
                 except Exception as e:
                     self.cuda_build_failed = True
-                    # print(e)
                     raise(e)
 
             return True
@@ -1024,6 +1029,7 @@ class Device:
             self.name = platform.processor() or "CPU"
             self.arch = 0
             self.is_uva = False
+            self.is_cubin_supported = False
 
             # TODO: add more device-specific dispatch functions
             self.memset = runtime.core.memset_host
@@ -1034,6 +1040,8 @@ class Device:
             self.name = runtime.core.cuda_device_get_name(ordinal).decode()
             self.arch = runtime.core.cuda_device_get_arch(ordinal)
             self.is_uva = runtime.core.cuda_device_is_uva(ordinal)
+            # check whether our NVRTC can generate CUBINs for this architecture
+            self.is_cubin_supported = self.arch in runtime.nvrtc_supported_archs
 
             # initialize streams unless context acquisition is postponed
             if self._context is not None:
@@ -1260,6 +1268,16 @@ class Runtime:
         self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
 
+        self.core.cuda_driver_version.argtypes = None
+        self.core.cuda_driver_version.restype = ctypes.c_int
+        self.core.cuda_toolkit_version.argtypes = None
+        self.core.cuda_toolkit_version.restype = ctypes.c_int
+
+        self.core.nvrtc_supported_arch_count.argtypes = None
+        self.core.nvrtc_supported_arch_count.restype = ctypes.c_int
+        self.core.nvrtc_supported_archs.argtypes = [ctypes.POINTER(ctypes.c_int)]
+        self.core.nvrtc_supported_archs.restype = None
+
         self.core.cuda_device_get_count.argtypes = None
         self.core.cuda_device_get_count.restype = ctypes.c_int
         self.core.cuda_device_primary_context_retain.argtypes = [ctypes.c_int]
@@ -1361,8 +1379,23 @@ class Runtime:
         self.context_map[None] = self.cpu_device
         self.graph_capture_map[None] = False
 
-        # register CUDA devices
         cuda_device_count = self.core.cuda_device_get_count()
+
+        if cuda_device_count > 0:
+            # get CUDA Toolkit and driver versions
+            self.toolkit_version = self.core.cuda_toolkit_version()
+            self.driver_version = self.core.cuda_driver_version()
+ 
+            # get all architectures supported by NVRTC
+            num_archs = self.core.nvrtc_supported_arch_count()
+            if num_archs > 0:
+                archs = (ctypes.c_int * num_archs)()
+                self.core.nvrtc_supported_archs(archs)
+                self.nvrtc_supported_archs = list(archs)
+            else:
+                self.nvrtc_supported_archs = []
+
+        # register CUDA devices
         self.cuda_devices = []
         self.cuda_primary_devices = []
         for i in range(cuda_device_count):
@@ -1389,12 +1422,17 @@ class Runtime:
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
 
         # print device and version information
-        print("Warp initialized:")
-        print(f"   Version: {warp.config.version}")
+        print(f"Warp {warp.config.version} initialized:")
+        if cuda_device_count > 0:
+            toolkit_version = (self.toolkit_version // 1000, (self.toolkit_version % 1000) // 10)
+            driver_version = (self.driver_version // 1000, (self.driver_version % 1000) // 10)
+            print(f"   CUDA Toolkit: {toolkit_version[0]}.{toolkit_version[1]}, Driver: {driver_version[0]}.{driver_version[1]}")
+        else:
+            print(f"   CUDA not available")
         print("   Devices:")
         print(f"     \"{self.cpu_device.alias}\"    | {self.cpu_device.name}")
         for cuda_device in self.cuda_devices:
-            print(f"     \"{cuda_device.alias}\" | {cuda_device.name}")
+            print(f"     \"{cuda_device.alias}\" | {cuda_device.name} (sm_{cuda_device.arch})")
         print(f"   Kernel cache: {warp.config.kernel_cache_dir}")
 
         # global tape
