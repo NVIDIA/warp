@@ -83,6 +83,13 @@ struct half
 
     CUDA_CALLABLE inline bool operator==(const half& h) const { return u == h.u; }
 
+    CUDA_CALLABLE inline half operator+=(const half& h)
+    {
+        half sum = half(float32(*this) + float32(h));
+        this->u = sum.u;
+        return *this;
+    }
+
     CUDA_CALLABLE inline operator float32() const { return float32(half_to_float(*this)); }
     CUDA_CALLABLE inline operator float64() const { return float64(half_to_float(*this)); }
     CUDA_CALLABLE inline operator int8() const { return int8(half_to_float(*this)); }
