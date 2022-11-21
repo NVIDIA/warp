@@ -827,9 +827,14 @@ class Adjoint:
 
             def attribute_to_val(node, context):
                 if isinstance(node, ast.Name):
-                    return context[node.id]
+                    if node.id in context:
+                        return context[node.id]
+                    return None
                 elif isinstance(node, ast.Attribute):
-                    return getattr(attribute_to_val(node.value, context), node.attr)
+                    val = attribute_to_val(node.value, context)
+                    if val is None:
+                        return None
+                    return getattr(val, node.attr)
                 else:
                     raise RuntimeError(f"Failed to parse attribute")
 
