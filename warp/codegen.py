@@ -854,9 +854,8 @@ class Adjoint:
 
                 # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
                 out = Var(attr_name, attr_type)
-                
-                adj.symbols[key] = out
-                return adj.symbols[key]
+
+                return out
             else:
 
                 # try and resolve to either a wp.constant
@@ -880,8 +879,7 @@ class Adjoint:
                     # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
                     out = Var(attr_name, attr_type)
                     
-                    adj.symbols[key] = out
-                    return adj.symbols[key]
+                    return out
                 else:
                     raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
 
