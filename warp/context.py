@@ -2365,9 +2365,10 @@ def export_stubs(file):
     print("from typing import overload", file=file)
 
     # prepend __init__.py
-    header_file = open(os.path.join(os.path.dirname(file.name), "__init__.py"))
-    header = header_file.read()
-    header_file.close()
+    with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:
+        # strip comment lines
+        lines = [line for line in header_file if not line.startswith("#")]
+        header = ''.join(lines)
 
     print(header, file=file)
     print("\n", file=file)
