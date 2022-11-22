@@ -19,6 +19,7 @@ parser.add_argument('--cuda_path', type=str, help='Path to CUDA SDK')
 parser.add_argument('--mode', type=str, default="release", help="Build configuration, either 'release' or 'debug'")
 parser.add_argument('--verbose', type=bool, default=True, help="Verbose building output, default True")
 parser.add_argument('--verify_fp', type=bool, default=False, help="Verify kernel inputs and outputs are finite after each launch, default False")
+parser.add_argument('--fast_math', type=bool, default=False, help="Enable fast math on library, default False")
 args = parser.parse_args()
 
 # set build output path off this file
@@ -29,6 +30,7 @@ print(args)
 warp.config.verbose = args.verbose
 warp.config.mode = args.mode
 warp.config.verify_fp = args.verify_fp
+warp.config.fast_math = args.fast_math
 
 # setup CUDA paths
 if sys.platform == 'darwin':
@@ -78,6 +80,7 @@ try:
                         dll_path=dll_path,
                         config=warp.config.mode,
                         verify_fp=warp.config.verify_fp,
+                        fast_math=args.fast_math,
                         force=True)
 
     else:
@@ -88,6 +91,7 @@ try:
                         dll_path=dll_path,
                         config=warp.config.mode,
                         verify_fp=warp.config.verify_fp,
+                        fast_math=args.fast_math,
                         force=True)
                     
 except Exception as e:

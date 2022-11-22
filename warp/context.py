@@ -534,6 +534,7 @@ class Module:
 
         self.options = {"max_unroll": 16,
                         "enable_backward": True,
+                        "fast_math": False,
                         "cuda_output": None,         # supported values: "ptx", "cubin", or None (automatic)
                         "mode": warp.config.mode}
 
@@ -764,7 +765,7 @@ class Module:
 
                     # build DLL
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
                     # load the DLL
                     self.dll = warp.build.load_dll(dll_path)
@@ -829,7 +830,7 @@ class Module:
 
                     # generate PTX or CUBIN
                     with warp.utils.ScopedTimer("Compile CUDA", active=warp.config.verbose):
-                        warp.build.build_cuda(cu_path, output_arch, output_path, config=self.options["mode"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_cuda(cu_path, output_arch, output_path, config=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
                     # load the module
                     cuda_module = warp.build.load_cuda(output_path, device)
@@ -1344,7 +1345,7 @@ class Runtime:
         self.core.cuda_graph_destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         self.core.cuda_graph_destroy.restype = None
 
-        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
+        self.core.cuda_compile_program.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_bool, ctypes.c_bool, ctypes.c_char_p]
         self.core.cuda_compile_program.restype = ctypes.c_size_t
 
         self.core.cuda_load_module.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
@@ -1950,7 +1951,8 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                     try:
                         # try to pack as a scalar type
                         params.append(arg_type._type_(a))
-                    except:
+                    except Exception as e: 
+                        print(e)
                         raise RuntimeError(f"Error launching kernel, unable to pack kernel parameter type {type(a)} for param {arg_name}, expected {arg_type}")
 
 
@@ -2111,6 +2113,8 @@ def set_module_options(options: Dict[str, Any]):
     m = inspect.getmodule(inspect.stack()[1][0])
 
     get_module(m.__name__).options.update(options)
+    get_module(m.__name__).unload()
+
 
 def get_module_options() -> Dict[str, Any]:
     """Returns a list of options for the current module.
@@ -2360,13 +2364,13 @@ def export_stubs(file):
     print("from typing import Callable", file=file)
     print("from typing import overload", file=file)
 
-    print("from warp.types import array, array2d, array3d, array4d, constant", file=file)
-    print("from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64", file=file)
-    print("from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix", file=file)
-    print("from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t, shape_t", file=file)
+    # prepend __init__.py
+    with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:
+        # strip comment lines
+        lines = [line for line in header_file if not line.startswith("#")]
+        header = ''.join(lines)
 
-
-    #print("from warp.types import *", file=file)
+    print(header, file=file)
     print("\n", file=file)
 
     for k, g in builtin_functions.items():

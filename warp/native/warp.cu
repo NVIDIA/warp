@@ -712,7 +712,7 @@ void cuda_graph_destroy(void* context, void* graph_exec)
     check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
 }
 
-size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, const char* output_path)
+size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_path)
 {
     // use file extension to determine whether to output PTX or CUBIN
     const char* output_ext = strrchr(output_path, '.');
@@ -738,18 +738,31 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     else
         snprintf(arch_opt, max_arch, "--gpu-architecture=sm_%d", arch);
 
-    const char *opts[] = 
+    std::vector<const char*> opts;
+    opts.push_back(arch_opt);
+    opts.push_back(include_opt);    
+    opts.push_back("--device-as-default-execution-space");
+    opts.push_back("--std=c++11");
+    opts.push_back("--define-macro=WP_CUDA");
+    opts.push_back("--define-macro=WP_NO_CRT");
+    
+    if (debug)
     {
-        "--device-as-default-execution-space",
-        arch_opt,
-        "--use_fast_math",
-        "--std=c++11",
-        "--define-macro=WP_CUDA",
-        (verify_fp ? "--define-macro=WP_VERIFY_FP" : "--undefine-macro=WP_VERIFY_FP"),
-        "--define-macro=WP_NO_CRT",
-        (debug ? "--define-macro=DEBUG" : "--define-macro=NDEBUG"),
-        include_opt
-    };
+        opts.push_back("--define-macro=DEBUG");
+        opts.push_back("--generate-line-info");
+        opts.push_back("--device-debug");
+    }
+    else
+        opts.push_back("--define-macro=NDEBUG");
+
+    if (verify_fp)
+        opts.push_back("--define-macro=WP_VERIFY_FP");
+    else
+        opts.push_back("--undefine-macro=WP_VERIFY_FP");
+    
+    if (fast_math)
+        opts.push_back("--use_fast_math");
+
 
     nvrtcProgram prog;
     nvrtcResult res;
@@ -765,7 +778,7 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     if (!check_nvrtc(res))
         return size_t(res);
 
-    res = nvrtcCompileProgram(prog, 9, opts);
+    res = nvrtcCompileProgram(prog, int(opts.size()), opts.data());
 
     if (!check_nvrtc(res) || verbose)
     {
