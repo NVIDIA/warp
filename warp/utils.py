@@ -606,6 +606,8 @@ class ScopedTimer:
                 self.cp = cProfile.Profile()
                 self.cp.clear()
                 self.cp.enable()
+        
+        return self
 
 
     def __exit__(self, exc_type, exc_value, traceback):
