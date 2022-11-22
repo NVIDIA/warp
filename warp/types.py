@@ -657,17 +657,15 @@ class array (Generic[T]):
 
             else:
 
-                from warp.context import empty, copy
-
                 # otherwise, we must transfer to device memory
                 # create a host wrapper around the numpy array
                 # and a new destination array to copy it to
                 src = array(dtype=dtype, shape=shape, strides=strides, capacity=arr.size*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
-                dest = empty(shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned)
+                dest = warp.empty(shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned)
                 dest.owner = False
                 
-                # data copy
-                copy(dest, src)
+                # copy data using the CUDA default stream for synchronous behaviour with other streams
+                warp.copy(dest, src, stream=device.null_stream)
 
                 # object copy to self and transfer data ownership, would probably be cleaner to have _empty, _zero, etc as class methods
                 from copy import copy as shallowcopy
