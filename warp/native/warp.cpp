@@ -105,6 +105,18 @@ void array_sum_host(uint64_t a, uint64_t out, int len)
 
 int cuda_init() { return -1; }
 
+void* alloc_pinned(size_t s)
+{
+    // CUDA is not available, fall back on system allocator
+    return alloc_host(s);
+}
+
+void free_pinned(void* ptr)
+{
+    // CUDA is not available, fall back on system allocator
+    free_host(ptr);
+}
+
 void* alloc_device(void* context, size_t s)
 {
     return NULL;

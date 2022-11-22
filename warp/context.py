@@ -882,20 +882,25 @@ class Allocator:
 
         self.device = device
 
-        if self.device.is_cpu:
-            self._alloc_func = self.device.runtime.core.alloc_host
-            self._free_func = self.device.runtime.core.free_host
-        else:
-            self._alloc_func = lambda size: self.device.runtime.core.alloc_device(self.device.context, size)
-            self._free_func = lambda ptr: self.device.runtime.core.free_device(self.device.context, ptr)
-
-    def alloc(self, size_in_bytes):
+    def alloc(self, size_in_bytes, pinned=False):
         
-        return self._alloc_func(size_in_bytes)
+        if self.device.is_cuda:
+            return runtime.core.alloc_device(self.device.context, size_in_bytes)
+        elif self.device.is_cpu:
+            if pinned:
+                return runtime.core.alloc_pinned(size_in_bytes)
+            else:
+                return runtime.core.alloc_host(size_in_bytes)
 
-    def free(self, ptr, size_in_bytes):
+    def free(self, ptr, size_in_bytes, pinned=False):
 
-        self._free_func(ptr)
+        if self.device.is_cuda:
+            return runtime.core.free_device(self.device.context, ptr)
+        elif self.device.is_cpu:
+            if pinned:
+                return runtime.core.free_pinned(ptr)
+            else:
+                return runtime.core.free_host(ptr)
 
 
 class ContextGuard:
@@ -1195,11 +1200,15 @@ class Runtime:
         # setup c-types for warp.dll
         self.core.alloc_host.argtypes = [ctypes.c_size_t]
         self.core.alloc_host.restype = ctypes.c_void_p
+        self.core.alloc_pinned.argtypes = [ctypes.c_size_t]
+        self.core.alloc_pinned.restype = ctypes.c_void_p
         self.core.alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         self.core.alloc_device.restype = ctypes.c_void_p
 
         self.core.free_host.argtypes = [ctypes.c_void_p]
         self.core.free_host.restype = None
+        self.core.free_pinned.argtypes = [ctypes.c_void_p]
+        self.core.free_pinned.restype = None
         self.core.free_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         self.core.free_device.restype = None
 
@@ -1730,7 +1739,7 @@ def wait_stream(stream:Stream, event:Event=None):
     get_stream().wait_stream(stream, event=event)
 
 
-def zeros(shape: Tuple=None, dtype=float, device: Devicelike=None, requires_grad: bool=False, **kwargs)-> warp.array:
+def zeros(shape: Tuple=None, dtype=float, device:Devicelike=None, requires_grad:bool=False, pinned:bool=False, **kwargs)-> warp.array:
     """Return a zero-initialized array
 
     Args:
@@ -1738,6 +1747,7 @@ def zeros(shape: Tuple=None, dtype=float, device: Devicelike=None, requires_grad
         dtype: Type of each element, e.g.: warp.vec3, warp.mat33, etc
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
 
     Returns:
         A warp.array object representing the allocation                
@@ -1763,7 +1773,7 @@ def zeros(shape: Tuple=None, dtype=float, device: Devicelike=None, requires_grad
         if device.is_capturing:
             raise RuntimeError(f"Cannot allocate memory while graph capture is active on device {device}.")
 
-        ptr = device.allocator.alloc(num_bytes)
+        ptr = device.allocator.alloc(num_bytes, pinned=pinned)
         if ptr is None:
             raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
 
@@ -1775,37 +1785,53 @@ def zeros(shape: Tuple=None, dtype=float, device: Devicelike=None, requires_grad
         ptr = None
 
     # construct array
-    return warp.types.array(dtype=dtype, shape=shape, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad)
+    return warp.types.array(dtype=dtype, shape=shape, capacity=num_bytes, ptr=ptr, device=device, owner=True, requires_grad=requires_grad, pinned=pinned)
 
-def zeros_like(src: warp.array) -> warp.array:
+def zeros_like(src: warp.array, requires_grad:bool=None, pinned:bool=None) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
 
     Args:
         src: The template array to use for length, data type, and device
+        requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = zeros(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
+    if requires_grad is None:
+        requires_grad = src.requires_grad
+    
+    if pinned is None:
+        pinned = src.pinned
+
+    arr = zeros(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad, pinned=pinned)
     return arr
 
-def clone(src: warp.array) -> warp.array:
+def clone(src: warp.array, requires_grad:bool=None, pinned:bool=None) -> warp.array:
     """Clone an existing array, allocates a copy of the src memory
 
     Args:
         src: The source array to copy
+        requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    dest = empty(shape = src.shape, dtype=src.dtype, device=src.device, requires_grad=src.requires_grad)
+    if requires_grad is None:
+        requires_grad = src.requires_grad
+    
+    if pinned is None:
+        pinned = src.pinned
+
+    dest = empty(shape = src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad, pinned=pinned)
     copy(dest, src)
 
     return dest
 
-def empty(shape: Tuple=None, dtype=float, device:Devicelike=None, requires_grad:bool=False, **kwargs) -> warp.array:
+def empty(shape: Tuple=None, dtype=float, device:Devicelike=None, requires_grad:bool=False, pinned:bool=False, **kwargs) -> warp.array:
     """Returns an uninitialized array
 
     Args:
@@ -1813,25 +1839,34 @@ def empty(shape: Tuple=None, dtype=float, device:Devicelike=None, requires_grad:
         dtype: Type of each element, e.g.: `warp.vec3`, `warp.mat33`, etc
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
 
     Returns:
         A warp.array object representing the allocation
     """
 
     # todo: implement uninitialized allocation
-    return zeros(shape, dtype, device, requires_grad=requires_grad, **kwargs)  
+    return zeros(shape, dtype, device, requires_grad=requires_grad, pinned=pinned, **kwargs)
 
-def empty_like(src: warp.array, requires_grad:bool=False) -> warp.array:
+def empty_like(src: warp.array, requires_grad:bool=None, pinned:bool=None) -> warp.array:
     """Return an uninitialized array with the same type and dimension of another array
 
     Args:
         src: The template array to use for length, data type, and device
         requires_grad: Whether the array will be tracked for back propagation
+        pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
 
     Returns:
         A warp.array object representing the allocation
     """
-    arr = empty(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad)
+
+    if requires_grad is None:
+        requires_grad = src.requires_grad
+    
+    if pinned is None:
+        pinned = src.pinned
+
+    arr = empty(shape=src.shape, dtype=src.dtype, device=src.device, requires_grad=requires_grad, pinned=pinned)
     return arr
 
 
