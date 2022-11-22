@@ -525,8 +525,7 @@ T = TypeVar('T')
 
 class array (Generic[T]):
 
-
-    def __init__(self, data=None, dtype: T=None, shape=None, strides = None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False):
+    def __init__(self, data=None, dtype: T=None, shape=None, strides=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False, pinned=False):
         """ Constructs a new Warp array object from existing data.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
@@ -550,6 +549,7 @@ class array (Generic[T]):
             copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified and types match
             owner (bool): Should the array object try to deallocate memory when it is deleted
             requires_grad (bool): Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
+            pinned (bool): Whether to allocate pinned host memory, which allows asynchronous host-device transfers (only applicable with device="cpu")
 
         """
 
@@ -650,6 +650,7 @@ class array (Generic[T]):
                 self.capacity=arr.size*type_size_in_bytes(dtype)
                 self.device = device
                 self.owner = False
+                self.pinned = False
 
                 # keep a ref to source array to keep allocation alive
                 self.ref = arr
@@ -662,7 +663,7 @@ class array (Generic[T]):
                 # create a host wrapper around the numpy array
                 # and a new destination array to copy it to
                 src = array(dtype=dtype, shape=shape, strides=strides, capacity=arr.size*type_size_in_bytes(dtype), ptr=ptr, device='cpu', copy=False, owner=False)
-                dest = empty(shape, dtype=dtype, device=device, requires_grad=requires_grad)
+                dest = empty(shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned)
                 dest.owner = False
                 
                 # data copy
@@ -684,6 +685,10 @@ class array (Generic[T]):
             self.ptr = ptr
             self.device = device
             self.owner = owner
+            if device is not None and device.is_cpu:
+                self.pinned = pinned
+            else:
+                self.pinned = False
 
             self.__name__ = "array<" + type.__name__ + ">"
 
@@ -762,7 +767,7 @@ class array (Generic[T]):
 
             # use CUDA context guard to avoid side effects during garbage collection
             with self.device.context_guard:
-                self.device.allocator.free(self.ptr, self.capacity)
+                self.device.allocator.free(self.ptr, self.capacity, self.pinned)
                 
 
     def __len__(self):

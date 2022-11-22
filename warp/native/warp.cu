@@ -194,17 +194,17 @@ static ContextInfo* get_context_info(CUcontext ctx)
 }
 
 
-// void* alloc_host(size_t s)
-// {
-//     void* ptr;
-//     check_cuda(cudaMallocHost(&ptr, s));
-//     return ptr;
-// }
+void* alloc_pinned(size_t s)
+{
+    void* ptr;
+    check_cuda(cudaMallocHost(&ptr, s));
+    return ptr;
+}
 
-// void free_host(void* ptr)
-// {
-//     cudaFreeHost(ptr);
-// }
+void free_pinned(void* ptr)
+{
+    cudaFreeHost(ptr);
+}
 
 void* alloc_device(void* context, size_t s)
 {

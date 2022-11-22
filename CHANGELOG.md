@@ -9,6 +9,7 @@
 - Bump minimum CUDA Toolkit requirement to 11.5 for building Warp
 - Add support for generating CUBIN instead of PTX on systems with older drivers
 - Add user preference for CUDA kernel output ("ptx" or "cubin", see `wp.config.cuda_output` and `wp.set_module_options({"cuda_output": ...}))`
+- Add support for allocating host arrays in pinned memory for asynchronous data transfers
 
 ## [0.5.1] - 2022-11-01
 

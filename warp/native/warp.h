@@ -18,9 +18,11 @@ extern "C"
     //WP_API void shutdown();
 
     WP_API void* alloc_host(size_t s);
+    WP_API void* alloc_pinned(size_t s);
     WP_API void* alloc_device(void* context, size_t s);
 
     WP_API void free_host(void* ptr);
+    WP_API void free_pinned(void* ptr);
     WP_API void free_device(void* context, void* ptr);
 
     // all memcpys are performed asynchronously
