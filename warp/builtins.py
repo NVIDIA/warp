@@ -259,13 +259,13 @@ add_builtin("transform_point", input_types={"t": transform, "p": vec3}, value_ty
 add_builtin("transform_point", input_types={"m": mat44, "p": vec3}, value_type=vec3, group="Vector Math",
     doc="""Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the tranformation matrix before calling this method.""")
+   then users should transpose the tranformation matrix before calling this method.""", missing_grad=True)
 add_builtin("transform_vector", input_types={"t": transform, "v": vec3}, value_type=vec3, group="Transformations",
     doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
 add_builtin("transform_vector", input_types={"m": mat44, "v": vec3}, value_type=vec3, group="Vector Math",
     doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the tranformation matrix before calling this method.""")
+   then users should transpose the tranformation matrix before calling this method.""", missing_grad=True)
 add_builtin("transform_inverse", input_types={"t": transform}, value_type=transform, group="Transformations",
     doc="Compute the inverse of the transform.")
 #---------------------------------
@@ -601,11 +601,11 @@ add_builtin("pnoise", input_types={"state": uint32, "xyzt": vec4, "px": int, "py
     doc="Periodic Perlin-style noise in 4d.")
 
 add_builtin("curlnoise", input_types={"state": uint32, "xy": vec2}, value_type=vec2, group="Random",
-    doc="Divergence-free vector field based on the gradient of a Perlin noise function.")
+    doc="Divergence-free vector field based on the gradient of a Perlin noise function.", missing_grad=True)
 add_builtin("curlnoise", input_types={"state": uint32, "xyz": vec3}, value_type=vec3, group="Random",
-    doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
+    doc="Divergence-free vector field based on the curl of three Perlin noise functions.", missing_grad=True)
 add_builtin("curlnoise", input_types={"state": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
-    doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
+    doc="Divergence-free vector field based on the curl of three Perlin noise functions.", missing_grad=True)
 
 # note printf calls directly to global CRT printf (no wp:: namespace prefix)
 add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility",

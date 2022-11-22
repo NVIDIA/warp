@@ -44,7 +44,8 @@ class Function:
                  doc="",
                  group="",
                  hidden=False,
-                 skip_replay=False):
+                 skip_replay=False,
+                 missing_grad=False):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -58,6 +59,7 @@ class Function:
         self.variadic = variadic        # function can take arbitrary number of inputs, e.g.: printf()
         self.hidden = hidden            # function will not be listed in docs
         self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
+        self.missing_grad = missing_grad # whether or not builtin is missing a corresponding adjoint
 
         # embedded linked list of all overloads
         # the module's function dictionary holds 
@@ -332,7 +334,7 @@ def struct(c):
 builtin_functions = {}
 
 
-def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, export=True, group="Other", hidden=False, skip_replay=False):
+def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
 
     # wrap simple single-type functions with a value_func()
     if value_func == None:
@@ -349,7 +351,8 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     doc=doc,
                     group=group,
                     hidden=hidden,
-                    skip_replay=skip_replay)
+                    skip_replay=skip_replay,
+                    missing_grad=missing_grad)
 
     if key in builtin_functions:
         builtin_functions[key].add_overload(func)
@@ -2256,7 +2259,10 @@ def print_function(f, file):
     print("", file=file)
     
     if (f.doc != ""):
-        print(f"   {f.doc}", file=file)
+        if not f.missing_grad:
+            print(f"   {f.doc}", file=file)
+        else:
+            print(f"   {f.doc} [1]_", file=file)
         print("", file=file)
 
     print(file=file)
@@ -2309,6 +2315,10 @@ def print_builtins(file):
 
         for f in g:
             print_function(f, file=file)
+
+    # footnotes
+    print(".. rubric:: Footnotes", file=file)
+    print(".. [1] Note: function gradients not implemented for backpropagation.", file=file)
 
 
 def export_stubs(file):

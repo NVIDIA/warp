@@ -158,6 +158,11 @@ CUDA_CALLABLE inline void adj_spatial_vector(const vec3& w, const vec3& v, vec3&
     adj_v += adj_ret.v;
 }
 
+CUDA_CALLABLE inline void adj_spatial_vector(float a, float& adj_a, const spatial_vector& adj_ret)
+{
+    adj_a += spatial_dot(adj_a, spatial_vector(1.0));
+}
+
 CUDA_CALLABLE inline void adj_add(const spatial_vector& a, const spatial_vector& b, spatial_vector& adj_a, spatial_vector& adj_b, const spatial_vector& adj_ret)
 {
     adj_add(a.w, b.w, adj_a.w, adj_b.w, adj_ret.w);
@@ -735,6 +740,60 @@ inline CUDA_CALLABLE spatial_matrix outer(const spatial_vector& a, const spatial
 
 CUDA_CALLABLE void print(transform t);
 CUDA_CALLABLE void print(spatial_matrix m);
+
+
+CUDA_CALLABLE inline void adj_spatial_matrix(
+    float a00, float a01, float a02, float a03, float a04, float a05,
+    float a10, float a11, float a12, float a13, float a14, float a15,
+    float a20, float a21, float a22, float a23, float a24, float a25,
+    float a30, float a31, float a32, float a33, float a34, float a35,
+    float a40, float a41, float a42, float a43, float a44, float a45,
+    float a50, float a51, float a52, float a53, float a54, float a55,
+    float adj_a00, float adj_a01, float adj_a02, float adj_a03, float adj_a04, float adj_a05,
+    float adj_a10, float adj_a11, float adj_a12, float adj_a13, float adj_a14, float adj_a15,
+    float adj_a20, float adj_a21, float adj_a22, float adj_a23, float adj_a24, float adj_a25,
+    float adj_a30, float adj_a31, float adj_a32, float adj_a33, float adj_a34, float adj_a35,
+    float adj_a40, float adj_a41, float adj_a42, float adj_a43, float adj_a44, float adj_a45,
+    float adj_a50, float adj_a51, float adj_a52, float adj_a53, float adj_a54, float adj_a55,
+    const spatial_matrix& adj_ret)
+{
+    adj_a00 += adj_ret.data[0][0];
+    adj_a01 += adj_ret.data[0][1];
+    adj_a02 += adj_ret.data[0][2];
+    adj_a03 += adj_ret.data[0][3];
+    adj_a04 += adj_ret.data[0][4];
+    adj_a05 += adj_ret.data[0][5];
+    adj_a10 += adj_ret.data[1][0];
+    adj_a11 += adj_ret.data[1][1];
+    adj_a12 += adj_ret.data[1][2];
+    adj_a13 += adj_ret.data[1][3];
+    adj_a14 += adj_ret.data[1][4];
+    adj_a15 += adj_ret.data[1][5];
+    adj_a20 += adj_ret.data[2][0];
+    adj_a21 += adj_ret.data[2][1];
+    adj_a22 += adj_ret.data[2][2];
+    adj_a23 += adj_ret.data[2][3];
+    adj_a24 += adj_ret.data[2][4];
+    adj_a25 += adj_ret.data[2][5];
+    adj_a30 += adj_ret.data[3][0];
+    adj_a31 += adj_ret.data[3][1];
+    adj_a32 += adj_ret.data[3][2];
+    adj_a33 += adj_ret.data[3][3];
+    adj_a34 += adj_ret.data[3][4];
+    adj_a35 += adj_ret.data[3][5];
+    adj_a40 += adj_ret.data[4][0];
+    adj_a41 += adj_ret.data[4][1];
+    adj_a42 += adj_ret.data[4][2];
+    adj_a43 += adj_ret.data[4][3];
+    adj_a44 += adj_ret.data[4][4];
+    adj_a45 += adj_ret.data[4][5];
+    adj_a50 += adj_ret.data[5][0];
+    adj_a51 += adj_ret.data[5][1];
+    adj_a52 += adj_ret.data[5][2];
+    adj_a53 += adj_ret.data[5][3];
+    adj_a54 += adj_ret.data[5][4];
+    adj_a55 += adj_ret.data[5][5];
+}
 
 inline CUDA_CALLABLE spatial_matrix spatial_adjoint(const mat33& R, const mat33& S)
 {    
