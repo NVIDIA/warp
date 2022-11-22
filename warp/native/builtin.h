@@ -14,10 +14,14 @@
 
 #include "crt.h"
 
-#if _WIN32
-#define WP_API __declspec(dllexport)
+#if !defined(__CUDA_ARCH__)
+    #if defined(_WIN32)
+        #define WP_API __declspec(dllexport)
+    #else
+        #define WP_API __attribute__ ((visibility ("default")))
+    #endif
 #else
-#define WP_API __attribute__ ((visibility ("default")))
+    #define WP_API
 #endif
 
 #ifdef _WIN32
