@@ -8,7 +8,6 @@ from warp.tests.test_base import *
 
 
 wp.init()
-wp.config.verbose = True
 
 @wp.kernel
 def test_pow(x: float, e: float, result: float):
@@ -28,7 +27,7 @@ def test_fast_math(test, device):
 
     # on CUDA with --fast-math enabled taking the pow()
     # of a negative number will result in a NaN
-    if str(device).startswith("cuda"):
+    if wp.get_device(device).is_cuda:
         wp.set_module_options({"fast_math": True})
         
         with test.assertRaises(Exception):

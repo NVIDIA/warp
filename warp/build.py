@@ -352,7 +352,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
             cpp_flags += ' -DWP_VERIFY_FP'
 
         if fast_math:
-            cpp_flags += ' --ffast-math'
+            cpp_flags += ' -ffast-math'
 
         with ScopedTimer("build", active=warp.config.verbose):
             build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
