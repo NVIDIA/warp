@@ -67,10 +67,13 @@ class CheckOutput:
 
         s = self.capture.end()
         if (s != ""):
-            print(s)
+            print(s.rstrip())
             
-        # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)
-        self.test.assertEqual(s, "")
+        # fail if test produces unexpected output (e.g.: from wp.expect_eq() builtins)
+        # we allow strings starting of the form "Module xxx load on device xxx"
+        # for lazy loaded modules
+        if s != "" and not s.startswith("Module"):
+            self.test.fail(f"Unexpected output:\n'{s.rstrip()}'")
 
 
 def assert_array_equal(result, expect):
@@ -103,7 +106,8 @@ def create_test_func(func, device, **kwargs):
 
     # pass args to func
     def test_func(self):
-        func(self, device, **kwargs)
+        with CheckOutput(self):
+            func(self, device, **kwargs)
 
     return test_func
 
@@ -146,20 +150,8 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
         # force load so that we don't generate any log output during launch
         kernel.module.load(device)
 
-        capture = StdOutCapture()
-        capture.begin()
-
         with CheckOutput(self):
             wp.launch(kernel, dim=dim, inputs=args, device=device)
-        
-        s = capture.end()
-
-        # fail if kernel produces any stdout (e.g.: from wp.expect_eq() builtins)
-        # we allow strings starting of the form "Module xxx load on device xxx"
-        # for lazy loaded modules
-        if s != "" and s.startswith("Module") == False:
-            self.fail(f"Kernel produced unexpected output: `{s}`")
-
 
         # check output values
         if expect:

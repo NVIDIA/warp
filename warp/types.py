@@ -835,40 +835,32 @@ class array (Generic[T]):
 
     # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):
-        from warp.context import copy
 
         if isinstance(src, array):
-            copy(self, src)
+            warp.copy(self, src)
         else:
-            copy(self, array(src, dtype=self.dtype, copy=False, device="cpu"))
+            warp.copy(self, array(src, dtype=self.dtype, copy=False, device="cpu"))
 
 
     # convert array to ndarray (alias memory through array interface)
     def numpy(self):
-        return np.array(self.to("cpu"), copy=False)
+
+        # use the CUDA default stream for synchronous behaviour with other streams
+        with warp.ScopedStream(self.device.null_stream):
+            return np.array(self.to("cpu"), copy=False)
         
 
     # convert data from one device to another, nop if already on device
     def to(self, device):
-
-        from warp.context import get_device
-
-        device = get_device(device)
-
-        if (self.device == device):
+        
+        device = warp.get_device(device)
+        if self.device == device:
             return self
         else:
-            from warp.context import empty, copy, synchronize_device
-
-            dest = empty(shape=self.shape, dtype=self.dtype, device=device)
-            copy(dest, self)
-
-            if device.is_cuda:
-                synchronize_device(device)
-            elif self.device.is_cuda:
-                synchronize_device(self.device)
-
+            dest = warp.empty(shape=self.shape, dtype=self.dtype, device=device)
+            warp.copy(dest, self)
             return dest
+
 
     # def flatten(self):
 

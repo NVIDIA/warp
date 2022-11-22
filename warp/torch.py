@@ -7,6 +7,8 @@
 
 import warp
 import numpy
+import ctypes
+from typing import Union
 
 
 # return the warp device corresponding to a torch device
@@ -93,4 +95,41 @@ def to_torch(a):
         raise RuntimeError("Unsupported device")
 
 
+def stream_from_torch(stream_or_device=None):
 
+    import torch
+
+    if isinstance(stream_or_device, torch.cuda.Stream):
+        stream = stream_or_device
+    else:
+        # assume arg is a torch device
+        stream = torch.cuda.current_stream(stream_or_device)
+
+    device = device_from_torch(stream.device)
+
+    warp_stream = warp.Stream(device, cuda_stream=stream.cuda_stream)
+
+    # save a reference to the source stream, otherwise it may be destroyed
+    warp_stream._torch_stream = stream
+
+    return warp_stream
+
+
+def stream_to_torch(stream_or_device=None):
+
+    import torch
+
+    if isinstance(stream_or_device, warp.Stream):
+        stream = stream_or_device
+    else:
+        # assume arg is a warp device
+        stream = warp.get_device(stream_or_device).stream
+
+    device = device_to_torch(stream.device)
+
+    torch_stream = torch.cuda.ExternalStream(stream.cuda_stream, device=device)
+
+    # save a reference to the source stream, otherwise it may be destroyed
+    torch_stream._warp_stream = stream
+
+    return torch_stream

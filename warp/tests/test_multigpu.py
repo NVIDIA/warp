@@ -121,110 +121,32 @@ def test_multigpu_pingpong(test, device):
     
     assert len(wp.get_cuda_devices()) > 1, "At least two CUDA devices are required"
 
-    n = 32
+    n = 1024 * 1024
     
     a0 = wp.zeros(n, dtype=float, device="cuda:0")
     a1 = wp.zeros(n, dtype=float, device="cuda:1")
+
+    stream0 = wp.get_stream("cuda:0")
+    stream1 = wp.get_stream("cuda:1")
 
     iters = 10
 
     for i in range(iters):
 
         wp.launch(inc, dim=a0.size, inputs=[a0], device=a0.device)
-        wp.synchronize_device(a0.device)
-        wp.copy(a1, a0)
+        wp.copy(a1, a0, stream=stream0)
+
+        stream1.wait_stream(stream0)
 
         wp.launch(inc, dim=a1.size, inputs=[a1], device=a1.device)
-        wp.synchronize_device(a1.device)
-        wp.copy(a0, a1)
+        wp.copy(a0, a1, stream=stream1)
 
-    wp.synchronize()
+        stream0.wait_stream(stream1)
 
     expected = np.full(n, iters * 2, dtype=np.float32)
 
     assert_np_equal(a0.numpy(), expected)
     assert_np_equal(a1.numpy(), expected)
-
-
-def test_multigpu_from_torch(test, device):
-
-    import torch
-
-    n = 32
-
-    t0 = torch.arange(0, n, 1, dtype=torch.int32, device="cuda:0")
-    t1 = torch.arange(0, n*2, 2, dtype=torch.int32, device="cuda:1")
-
-    a0 = wp.from_torch(t0, dtype=wp.int32)
-    a1 = wp.from_torch(t1, dtype=wp.int32)
-
-    wp.synchronize()
-
-    assert a0.device == "cuda:0"
-    assert a1.device == "cuda:1"
-
-    expected0 = np.arange(0, n, 1)
-    expected1 = np.arange(0, n*2, 2)
-
-    assert_np_equal(a0.numpy(), expected0)
-    assert_np_equal(a1.numpy(), expected1)
-
-
-def test_multigpu_to_torch(test, device):
-
-    n = 32
-
-    with wp.ScopedDevice("cuda:0"):
-        a0 = wp.empty(n, dtype=wp.int32)
-        wp.launch(arange, dim=a0.size, inputs=[0, 1, a0])
-
-    with wp.ScopedDevice("cuda:1"):
-        a1 = wp.empty(n, dtype=wp.int32)
-        wp.launch(arange, dim=a1.size, inputs=[0, 2, a1])
-
-    wp.synchronize()
-
-    t0 = wp.to_torch(a0)
-    t1 = wp.to_torch(a1)
-
-    assert str(t0.device) == "cuda:0"
-    assert str(t1.device) == "cuda:1"
-
-    expected0 = np.arange(0, n, 1, dtype=np.int32)
-    expected1 = np.arange(0, n*2, 2, dtype=np.int32)
-
-    assert_np_equal(t0.cpu().numpy(), expected0)
-    assert_np_equal(t1.cpu().numpy(), expected1)
-
-
-def test_multigpu_torch_interop(test, device):
-
-    import torch
-    
-    n = 32
-
-    with torch.cuda.device(0):
-        t0 = torch.arange(n, dtype=torch.float32, device="cuda")
-        torch.cuda.synchronize()
-        a0 = wp.from_torch(t0)
-        wp.launch(inc, dim=a0.size, inputs=[a0], device="cuda")
-
-    with torch.cuda.device(1):
-        t1 = torch.arange(n, dtype=torch.float32, device="cuda")
-        torch.cuda.synchronize()
-        a1 = wp.from_torch(t1)
-        wp.launch(inc, dim=a1.size, inputs=[a1], device="cuda")
-
-    wp.synchronize()
-
-    assert a0.device == "cuda:0"
-    assert a1.device == "cuda:1"
-
-    expected = np.arange(n, dtype=int) + 1
-
-    # ensure the torch tensors were modified by warp
-    assert_np_equal(t0.cpu().numpy(), expected)
-    assert_np_equal(t1.cpu().numpy(), expected)
 
 
 def register(parent):
@@ -238,14 +160,6 @@ def register(parent):
         add_function_test(TestMultigpu, "test_multigpu_scoped_device", test_multigpu_scoped_device)
         add_function_test(TestMultigpu, "test_multigpu_nesting", test_multigpu_nesting)
         add_function_test(TestMultigpu, "test_multigpu_pingpong", test_multigpu_pingpong)
-
-        try:
-            import torch
-            add_function_test(TestMultigpu, "test_multigpu_from_torch", test_multigpu_from_torch)
-            add_function_test(TestMultigpu, "test_multigpu_to_torch", test_multigpu_to_torch)
-            add_function_test(TestMultigpu, "test_multigpu_torch_interop", test_multigpu_torch_interop)
-        except:
-            pass
     
     return TestMultigpu
 

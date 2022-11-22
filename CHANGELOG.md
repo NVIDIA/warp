@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [0.5.2] - 2022-11-04
+
+- Add support for CUDA streams, see `wp.Stream`, `wp.get_stream()`, `wp.set_stream()`, `wp.synchronize_stream()`, `wp.ScopedStream`
+- Add support for PyTorch stream interop, see `wp.stream_from_torch()`, `wp.stream_to_torch()`
+- Add support for CUDA events, see `wp.Event`, `wp.record_event()`, `wp.wait_event()`, `wp.wait_stream()`, `wp.Stream.record_event()`, `wp.Stream.wait_event()`, `wp.Stream.wait_stream()`
+- Fix various deployment issues by statically linking with all CUDA libs
+- Bump minimum CUDA Toolkit requirement to 11.5 for building Warp
+- Add support for generating CUBIN instead of PTX on systems with older drivers
+- Add user preference for CUDA kernel output ("ptx" or "cubin", see `wp.config.cuda_output` and `wp.set_module_options({"cuda_output": ...}))`
+
 ## [0.5.1] - 2022-11-01
 
 - Fix for unit tests in Kit

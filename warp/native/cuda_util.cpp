@@ -18,16 +18,18 @@
 #include <dlfcn.h>
 #endif
 
-// the minimum required CUDA Toolkit version, which also determines the version of
-// driver API entry points acquired at runtime
-#define WP_CUDA_VERSION 11030
+// the minimum CUDA version required from the driver
+#define WP_CUDA_DRIVER_VERSION 11030
+
+// the minimum CUDA Toolkit version required to build Warp
+#define WP_CUDA_TOOLKIT_VERSION 11050
 
 #define WP_CUDA_VERSION_MAJOR(version) (version / 1000)
 #define WP_CUDA_VERSION_MINOR(version) ((version % 1000) / 10)
 
 // check if the CUDA Toolkit is too old
-#if CUDA_VERSION < WP_CUDA_VERSION
-#error Warp requires CUDA Toolkit version 11.3 or higher
+#if CUDA_VERSION < WP_CUDA_TOOLKIT_VERSION
+#error Building Warp requires CUDA Toolkit version 11.5 or higher
 #endif
 
 // function pointers to driver API entry points
@@ -56,6 +58,10 @@ static PFN_cuCtxEnablePeerAccess_v4000 pfn_cuCtxEnablePeerAccess;
 static PFN_cuStreamCreate_v2000 pfn_cuStreamCreate;
 static PFN_cuStreamDestroy_v4000 pfn_cuStreamDestroy;
 static PFN_cuStreamSynchronize_v2000 pfn_cuStreamSynchronize;
+static PFN_cuStreamWaitEvent_v3020 pfn_cuStreamWaitEvent;
+static PFN_cuEventCreate_v2000 pfn_cuEventCreate;
+static PFN_cuEventDestroy_v4000 pfn_cuEventDestroy;
+static PFN_cuEventRecord_v2000 pfn_cuEventRecord;
 static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
 static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
@@ -69,7 +75,7 @@ static bool get_driver_entry_point(const char* name, void** pfn)
     if (!pfn_cuGetProcAddress || !name || !pfn)
         return false;
 
-    CUresult r = pfn_cuGetProcAddress(name, pfn, WP_CUDA_VERSION, CU_GET_PROC_ADDRESS_DEFAULT);
+    CUresult r = pfn_cuGetProcAddress(name, pfn, WP_CUDA_DRIVER_VERSION, CU_GET_PROC_ADDRESS_DEFAULT);
     if (r != CUDA_SUCCESS)
     {
         fprintf(stderr, "Warp CUDA error: Failed to get driver entry point '%s' (CUDA error %u)\n", name, unsigned(r));
@@ -103,24 +109,16 @@ bool init_cuda_driver()
         return false;
     }
 
-    // check the CUDA driver version and issue a warning if it's too low
+    // check the CUDA driver version and report an error if it's too low
     int driver_version = 0;
     if (get_driver_entry_point("cuDriverGetVersion", &(void*&)pfn_cuDriverGetVersion) && check_cu(pfn_cuDriverGetVersion(&driver_version)))
     {
-        if (driver_version < CUDA_VERSION)
+        if (driver_version < WP_CUDA_DRIVER_VERSION)
         {
-            if (CUDA_VERSION > WP_CUDA_VERSION)
-            {
-                fprintf(stderr, "Warp CUDA warning: Warp was built with CUDA Toolkit %d.%d, but the driver only supports CUDA %d.%d\n",
-                    WP_CUDA_VERSION_MAJOR(CUDA_VERSION), WP_CUDA_VERSION_MINOR(CUDA_VERSION),
-                    WP_CUDA_VERSION_MAJOR(driver_version), WP_CUDA_VERSION_MINOR(driver_version));
-            }
-            else
-            {
-                fprintf(stderr, "Warp CUDA warning: Warp requires CUDA %d.%d, but the driver only supports CUDA %d.%d\n",
-                    WP_CUDA_VERSION_MAJOR(WP_CUDA_VERSION), WP_CUDA_VERSION_MINOR(WP_CUDA_VERSION),
-                    WP_CUDA_VERSION_MAJOR(driver_version), WP_CUDA_VERSION_MINOR(driver_version));
-            }
+            fprintf(stderr, "Warp CUDA error: Warp requires CUDA driver %d.%d or higher, but the current driver only supports CUDA %d.%d\n",
+                WP_CUDA_VERSION_MAJOR(WP_CUDA_DRIVER_VERSION), WP_CUDA_VERSION_MINOR(WP_CUDA_DRIVER_VERSION),
+                WP_CUDA_VERSION_MAJOR(driver_version), WP_CUDA_VERSION_MINOR(driver_version));
+            return false;
         }
     }
     else
@@ -151,6 +149,10 @@ bool init_cuda_driver()
     get_driver_entry_point("cuStreamCreate", &(void*&)pfn_cuStreamCreate);
     get_driver_entry_point("cuStreamDestroy", &(void*&)pfn_cuStreamDestroy);
     get_driver_entry_point("cuStreamSynchronize", &(void*&)pfn_cuStreamSynchronize);
+    get_driver_entry_point("cuStreamWaitEvent", &(void*&)pfn_cuStreamWaitEvent);
+    get_driver_entry_point("cuEventCreate", &(void*&)pfn_cuEventCreate);
+    get_driver_entry_point("cuEventDestroy", &(void*&)pfn_cuEventDestroy);
+    get_driver_entry_point("cuEventRecord", &(void*&)pfn_cuEventRecord);
     get_driver_entry_point("cuModuleLoadDataEx", &(void*&)pfn_cuModuleLoadDataEx);
     get_driver_entry_point("cuModuleUnload", &(void*&)pfn_cuModuleUnload);
     get_driver_entry_point("cuModuleGetFunction", &(void*&)pfn_cuModuleGetFunction);
@@ -319,6 +321,26 @@ CUresult cuStreamDestroy_f(CUstream stream)
 CUresult cuStreamSynchronize_f(CUstream stream)
 {
     return pfn_cuStreamSynchronize ? pfn_cuStreamSynchronize(stream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuStreamWaitEvent_f(CUstream stream, CUevent event, unsigned int flags)
+{
+    return pfn_cuStreamWaitEvent ? pfn_cuStreamWaitEvent(stream, event, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuEventCreate_f(CUevent* event, unsigned int flags)
+{
+    return pfn_cuEventCreate ? pfn_cuEventCreate(event, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuEventDestroy_f(CUevent event)
+{
+    return pfn_cuEventDestroy ? pfn_cuEventDestroy(event) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuEventRecord_f(CUevent event, CUstream stream)
+{
+    return pfn_cuEventRecord ? pfn_cuEventRecord(event, stream) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuModuleLoadDataEx_f(CUmodule *module, const void *image, unsigned int numOptions, CUjit_option *options, void **optionValues)
