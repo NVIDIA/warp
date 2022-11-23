@@ -515,10 +515,18 @@ def types_equal(a, b):
         return a == b
 
 def strides_from_shape(shape:Tuple, dtype):
-    lower_dims = np.array(shape+(1,))[1:]
-    # use 'C' (row-major) ordering by default
-    reverse_dim_prod = np.cumprod(lower_dims[::-1])[::-1]
-    return tuple(reverse_dim_prod * type_size_in_bytes(dtype))
+
+    ndims = len(shape)
+    strides = [None] * ndims
+
+    i = ndims - 1
+    strides[i] = type_size_in_bytes(dtype)
+
+    while i > 0:
+        strides[i - 1] = strides[i] * shape[i]
+        i -= 1
+
+    return tuple(strides)
 
 T = TypeVar('T')
 
