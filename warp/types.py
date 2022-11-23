@@ -562,7 +562,6 @@ class array (Generic[T]):
         """
 
         self.owner = False
-        self.grad = None
 
         # convert shape to Tuple
         if shape == None:
@@ -753,6 +752,8 @@ class array (Generic[T]):
                     "version": 2
                 }
 
+        self.grad = None
+
         # controls if gradients will be computed in by wp.Tape
         # this will trigger allocation of a gradient array if it doesn't exist already
         self.requires_grad = requires_grad
@@ -805,17 +806,24 @@ class array (Generic[T]):
 
         return a        
 
-    def __setattr__(self, __name: str, __value: Any) -> None:
+    @property
+    def requires_grad(self):
 
-        if __name == "requires_grad" and __value == True and self.grad == None:
+        return self._requires_grad
+
+    @requires_grad.setter
+    def requires_grad(self, value:bool):
+        
+        if value and self.grad is None:
             self._alloc_grad()
+        elif not value:
+            self.grad = None
 
-        return super().__setattr__(__name, __value)
+        self._requires_grad = value
 
     def _alloc_grad(self):
 
-        from warp.context import zeros
-        self.grad = zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+        self.grad = warp.zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
 
 
     def zero_(self):
