@@ -27,6 +27,7 @@ from typing import List
 from typing import Dict
 from typing import Any
 from typing import Callable
+from typing import Mapping
 
 from warp.types import *
 import warp.config
@@ -53,6 +54,15 @@ builtin_operators[ast.GtE] = ">="
 builtin_operators[ast.LtE] = "<="
 builtin_operators[ast.Eq] = "=="
 builtin_operators[ast.NotEq] = "!="
+
+def get_annotations(obj: Any) -> Mapping[str, Any]:
+    """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
+    # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
+    if isinstance(obj, type):
+        return obj.__dict__.get("__annotations__", {})
+
+    return getattr(obj, "__annotations__", {})
+
 
 class StructInstance:
     def __init__(self, struct: Struct):
@@ -91,7 +101,8 @@ class Struct:
         self.key = key
 
         self.vars = {}
-        for label, type in self.cls.__annotations__.items():
+        annotations = get_annotations(self.cls)
+        for label, type in annotations.items():
             self.vars[label] = Var(label, type)
 
         fields = []
