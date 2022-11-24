@@ -132,6 +132,7 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self):
+        self._attrs = None
         self._code_provider = None
         self._code_str = None
         self._code_file = None
@@ -146,14 +147,17 @@ class InternalState:
         check_file_modified_time: bool,
     ) -> bool:
         """Checks if the internal state is outdated."""
+        if self._attrs != db.node.get_attributes():
+            return True
+
         if self._code_provider != db.inputs.codeProvider:
             return True
 
         if self._code_provider == "embedded":
-            return self._code_str != db.inputs.codeStr
-
-        if self._code_provider == "file":
-            return (
+            if self._code_str != db.inputs.codeStr:
+                return True
+        elif self._code_provider == "file":
+            if (
                 self._code_file != db.inputs.codeFile
                 or (
                     check_file_modified_time
@@ -162,11 +166,14 @@ class InternalState:
                         != os.path.getmtime(self._code_file)
                     )
                 )
+            ):
+                return True
+        else:
+            assert False, (
+                "Unexpected code provider '{}'.".format(self._code_provider),
             )
 
-        assert False, (
-            "Unexpected code provider '{}'.".format(self._code_provider),
-        )
+        return False
 
     def initialize(
         self,
@@ -180,12 +187,13 @@ class InternalState:
 
         # Cache the node attribute values relevant to this internal state.
         # They're the ones used to check whether this state is outdated or not.
+        self._attrs = db.node.get_attributes()
         self._code_provider = db.inputs.codeProvider
         self._code_str = db.inputs.codeStr
         self._code_file = db.inputs.codeFile
 
         # Retrieve the dynamic user attributes defined on the node.
-        attrs = tuple(x for x in db.node.get_attributes() if x.is_dynamic())
+        attrs = tuple(x for x in self._attrs if x.is_dynamic())
 
         # Retrieve the kernel code to evaluate.
         code_header = generate_code_header(attrs)
