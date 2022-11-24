@@ -533,6 +533,10 @@ T = TypeVar('T')
 
 class array (Generic[T]):
 
+    # member attributes available during code-gen (e.g.: d = array.shape[0])
+    # (initialized when needed)
+    _vars = None
+
     def __init__(self, data=None, dtype: T=None, shape=None, strides=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False, pinned=False):
         """ Constructs a new Warp array object from existing data.
 
@@ -758,10 +762,6 @@ class array (Generic[T]):
         # this will trigger allocation of a gradient array if it doesn't exist already
         self.requires_grad = requires_grad
 
-        # register member attributes available during code-gen (e.g.: d = array.shape[0])
-        from warp.codegen import Var
-        self.vars = { "shape": Var("shape", shape_t) }
-
 
     def __del__(self):
         
@@ -824,6 +824,15 @@ class array (Generic[T]):
     def _alloc_grad(self):
 
         self.grad = warp.zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+
+    @property
+    def vars(self):
+        # member attributes available during code-gen (e.g.: d = array.shape[0])
+        # Note: we use a shared dict for all array instances
+        if array._vars is None:
+            from warp.codegen import Var
+            array._vars = { "shape": Var("shape", shape_t) }
+        return array._vars
 
 
     def zero_(self):
