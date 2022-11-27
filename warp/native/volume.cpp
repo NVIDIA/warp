@@ -150,6 +150,48 @@ void volume_get_buffer_info_device(uint64_t id, void** buf, uint64_t* size)
     volume_get_buffer_info(id, buf, size);
 }
 
+void volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz)
+{
+    *dx = *dx = *dz = 0.0f;
+
+    VolumeDesc volume;
+    if (volume_get_descriptor(id, volume))
+    {
+        *dx = (float)volume.grid_data.voxel_size[0];
+        *dy = (float)volume.grid_data.voxel_size[1];
+        *dz = (float)volume.grid_data.voxel_size[2];
+    }
+}
+
+void volume_get_tiles_host(uint64_t id, void** buf, uint64_t* size)
+{
+    static constexpr uint32_t MASK = (1u << 3u) - 1u; // mask for bit operations
+
+    *buf = 0;
+    *size = 0;
+
+    VolumeDesc volume;
+    if (volume_get_descriptor(id, volume))
+    {
+        const uint32_t leaf_count = volume.tree_data.node_count_leaf;
+        *size = leaf_count * sizeof(pnanovdb_coord_t);
+
+        pnanovdb_coord_t *leaf_coords = (pnanovdb_coord_t*)alloc_host(*size);
+        *buf = leaf_coords;
+
+        const uint64_t first_leaf = (uint64_t)volume.buffer + sizeof(pnanovdb_grid_t) + volume.tree_data.node_offset_leaf;
+        const uint32_t leaf_stride = PNANOVDB_GRID_TYPE_GET(volume.grid_data.grid_type, leaf_size);
+
+        for (uint32_t i = 0; i < leaf_count; ++i)
+        {
+            leaf_coords[i] = ((pnanovdb_leaf_t*)(first_leaf + leaf_stride * i))->bbox_min;
+            leaf_coords[i].x &= ~MASK;
+            leaf_coords[i].y &= ~MASK;
+            leaf_coords[i].z &= ~MASK;
+        }
+    }
+}
+
 void volume_destroy_host(uint64_t id)
 {
     free_host((void*)id);
@@ -196,6 +238,43 @@ uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points,
 
     return volume_create_device(context, grid, gridSize);
 }
+
+uint64_t volume_i_from_tiles_device(void* context, void* points, int num_points, float voxel_size, int bg_value, float tx, float ty, float tz, bool points_in_world_space)
+{
+    nanovdb::Int32Grid* grid;
+    size_t gridSize;
+    BuildGridParams<int32_t> params;
+    params.voxel_size = voxel_size;
+    params.background_value = (int32_t)(bg_value);
+    params.translation = nanovdb::Vec3f{tx, ty, tz};
+
+    build_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
+
+    return volume_create_device(context, grid, gridSize);
+}
+
+void launch_get_leaf_coords(void* context, const uint32_t leaf_count, pnanovdb_coord_t *leaf_coords, const uint64_t first_leaf, const uint32_t leaf_stride);
+
+void volume_get_tiles_device(uint64_t id, void** buf, uint64_t* size)
+{
+    *buf = 0;
+    *size = 0;
+
+    VolumeDesc volume;
+    if (volume_get_descriptor(id, volume))
+    {
+        const uint32_t leaf_count = volume.tree_data.node_count_leaf;
+        *size = leaf_count * sizeof(pnanovdb_coord_t);
+
+        pnanovdb_coord_t *leaf_coords = (pnanovdb_coord_t*)alloc_device(volume.context, *size);
+        *buf = leaf_coords;
+
+        const uint64_t first_leaf = (uint64_t)volume.buffer + sizeof(pnanovdb_grid_t) + volume.tree_data.node_offset_leaf;
+        const uint32_t leaf_stride = PNANOVDB_GRID_TYPE_GET(volume.grid_data.grid_type, leaf_size);
+
+        launch_get_leaf_coords(volume.context, leaf_count, leaf_coords, first_leaf, leaf_stride);
+    }
+}
 #else
 // stubs for non-CUDA platforms
 uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space)
@@ -207,4 +286,7 @@ uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points,
 {
     return 0;
 }
+
+void volume_get_tiles_device(uint64_t id, void** buf, uint64_t* size) {}
+
 #endif

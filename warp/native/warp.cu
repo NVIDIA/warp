@@ -1013,6 +1013,7 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
 #include "sort.cu"
 #include "hashgrid.cu"
 #include "marching.cu"
+#include "volume.cu"
 #include "volume_builder.cu"
 
 //#include "spline.inl"
