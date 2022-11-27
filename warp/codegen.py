@@ -62,10 +62,14 @@ class StructInstance:
     def __setattr__(self, name, value):
         assert name in self._struct_.vars, "invalid struct member variable {}".format(name)
         if isinstance(self._struct_.vars[name].type, array):
-            # wp.array
-            assert isinstance(value, array)
-            assert value.dtype == self._struct_.vars[name].type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(name, self._struct_.vars[name].type.dtype, value.dtype)
-            setattr(self._c_struct_, name, value.__ctype__())
+            if value is None:
+                # create array with null pointer
+                setattr(self._c_struct_, name, array_t())
+            else:                    
+                # wp.array
+                assert isinstance(value, array)
+                assert value.dtype == self._struct_.vars[name].type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(name, self._struct_.vars[name].type.dtype, value.dtype)
+                setattr(self._c_struct_, name, value.__ctype__())
         elif issubclass(self._struct_.vars[name].type, ctypes.Array):
             # array type e.g. vec3
             setattr(self._c_struct_, name, self._struct_.vars[name].type(*value))
@@ -328,7 +332,7 @@ class Adjoint:
         if skip_replay == False:
 
             if (replay):
-                # if custom replay specified the output it
+                # if custom replay specified then output it
                 adj.blocks[-1].body_replay.append(adj.prefix + replay)
             else:
                 # by default just replay the original statement
@@ -823,9 +827,14 @@ class Adjoint:
 
             def attribute_to_val(node, context):
                 if isinstance(node, ast.Name):
-                    return context[node.id]
+                    if node.id in context:
+                        return context[node.id]
+                    return None
                 elif isinstance(node, ast.Attribute):
-                    return getattr(attribute_to_val(node.value, context), node.attr)
+                    val = attribute_to_val(node.value, context)
+                    if val is None:
+                        return None
+                    return getattr(val, node.attr)
                 else:
                     raise RuntimeError(f"Failed to parse attribute")
 
@@ -845,9 +854,8 @@ class Adjoint:
 
                 # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
                 out = Var(attr_name, attr_type)
-                
-                adj.symbols[key] = out
-                return adj.symbols[key]
+
+                return out
             else:
 
                 # try and resolve to either a wp.constant
@@ -857,10 +865,24 @@ class Adjoint:
                 if isinstance(obj, warp.constant):
                     out = adj.add_constant(obj.val)
                     adj.symbols[key] = out          # if referencing a constant
-                else:
-                    raise TypeError(f"'{key}' is not a local variable, warp function, or warp constant")
+                    return out
+                elif isinstance(node.value, ast.Attribute):
+                    # resolve nested attribute
+                    val = adj.eval(node.value)
+                    
+                    try:
+                        attr_name = val.label + "." + node.attr
+                        attr_type = val.type.vars[node.attr].type
+                    except:
+                        raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
 
-                return out
+                    # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+                    out = Var(attr_name, attr_type)
+                    
+                    return out
+                else:
+                    raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
+
 
         elif (isinstance(node, ast.Str)):
 

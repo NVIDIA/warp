@@ -99,7 +99,7 @@ def vector(length, type):
 
         def __getitem__(self, key):
             # used to terminate iterations
-            if key >= self._length_:
+            if isinstance(key, int) and key >= self._length_:
                 raise IndexError()
             else:
                 return super().__getitem__(key)
@@ -1028,8 +1028,14 @@ class Bvh:
 
 
 class Mesh:
+    from warp.codegen import Var
+    vars = {
+        "points": Var("points", array(dtype=vec3)),
+        "velocities": Var("velocities", array(dtype=vec3)),
+        "indices": Var("indices", array(dtype=int32, ndim=2))
+    }
 
-    def __init__(self, points, indices, velocities=None):
+    def __init__(self, points=None, indices=None, velocities=None):
         """ Class representing a triangle mesh.
 
         Attributes:

@@ -999,14 +999,6 @@ inline bool CUDA_CALLABLE isfinite(float x)
 #include "spatial.h"
 #include "intersect.h"
 #include "intersect_adj.h"
-#include "mesh.h"
-#include "bvh.h" 
-#include "svd.h"
-#include "hashgrid.h"
-#include "rand.h"
-#include "noise.h"
-#include "volume.h"
-#include "range.h"
 
 //--------------
 namespace wp
@@ -1194,14 +1186,6 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
            m.data[5][0], m.data[5][1], m.data[5][2],  m.data[5][3], m.data[5][4], m.data[5][5]);
 }
 
-inline CUDA_CALLABLE void print(shape_t s)
-{
-    // todo: only print valid dims, currently shape has a fixed size
-    // but we don't know how many dims are valid (e.g.: 1d, 2d, etc)
-    // should probably store ndim with shape
-    printf("(%d, %d, %d, %d)\n", s.dims[0], s.dims[1], s.dims[2], s.dims[3]);
-}
-
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float f, float& adj_f) { printf("%g adj: %g\n", f, adj_f); }
@@ -1224,7 +1208,7 @@ inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
 inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
-inline CUDA_CALLABLE void adj_print(shape_t s, shape_t& shape_t) {}
+
 
 // printf defined globally in crt.h
 inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
@@ -1281,4 +1265,12 @@ inline CUDA_CALLABLE void adj_expect_near(const T& actual, const T& expected, co
 
 // include array.h so we have the print, isfinite functions for the inner array types defined
 #include "array.h"
+#include "mesh.h"
+#include "bvh.h" 
+#include "svd.h"
+#include "hashgrid.h"
+#include "volume.h"
+#include "range.h"
+#include "rand.h"
+#include "noise.h"
 #include "matnn.h"

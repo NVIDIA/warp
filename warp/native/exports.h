@@ -110,6 +110,7 @@ WP_API void builtin_hash_grid_query_next_hash_grid_query_t_int32(hash_grid_query
 WP_API void builtin_hash_grid_point_id_uint64_int32(uint64 id, int32 index, int* ret) { *ret = wp::hash_grid_point_id(id, index); }
 WP_API void builtin_intersect_tri_tri_vec3_vec3_vec3_vec3_vec3_vec3(vec3 v0, vec3 v1, vec3 v2, vec3 u0, vec3 u1, vec3 u2, int* ret) { *ret = wp::intersect_tri_tri(v0, v1, v2, u0, u1, u2); }
 WP_API void builtin_mesh_eval_face_normal_uint64_int32(uint64 id, int32 face, vec3* ret) { *ret = wp::mesh_eval_face_normal(id, face); }
+WP_API void builtin_mesh_get(uint64_t id, Mesh* ret) { *ret = wp::mesh_get(id); }
 WP_API void builtin_mesh_get_point_uint64_int32(uint64 id, int32 index, vec3* ret) { *ret = wp::mesh_get_point(id, index); }
 WP_API void builtin_mesh_get_velocity_uint64_int32(uint64 id, int32 index, vec3* ret) { *ret = wp::mesh_get_velocity(id, index); }
 WP_API void builtin_mesh_get_index_uint64_int32(uint64 id, int32 index, int* ret) { *ret = wp::mesh_get_index(id, index); }
