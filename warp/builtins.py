@@ -598,11 +598,11 @@ add_builtin("pnoise", input_types={"state": uint32, "xyzt": vec4, "px": int, "py
     doc="Periodic Perlin-style noise in 4d.")
 
 add_builtin("curlnoise", input_types={"state": uint32, "xy": vec2}, value_type=vec2, group="Random",
-    doc="Divergence-free vector field based on the gradient of a Perlin noise function.")
+    doc="Divergence-free vector field based on the gradient of a Perlin noise function.", missing_grad=True)
 add_builtin("curlnoise", input_types={"state": uint32, "xyz": vec3}, value_type=vec3, group="Random",
-    doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
+    doc="Divergence-free vector field based on the curl of three Perlin noise functions.", missing_grad=True)
 add_builtin("curlnoise", input_types={"state": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
-    doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
+    doc="Divergence-free vector field based on the curl of three Perlin noise functions.", missing_grad=True)
 
 # note printf calls directly to global CRT printf (no wp:: namespace prefix)
 add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility",
