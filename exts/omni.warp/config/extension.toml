@@ -44,6 +44,8 @@ public = true
 pyCoverageOmit = [
     "warp/stubs.py",
     "warp/sim/render.py",
+    "warp/sim/integrator_euler.py",
     "warp/sim/optimizer.py",
     "warp/render.py"
 ]
+pyCoverageThreshold = 40
