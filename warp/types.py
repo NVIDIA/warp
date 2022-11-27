@@ -1186,6 +1186,29 @@ class Volume:
             self.context.core.volume_get_buffer_info_device(self.id, ctypes.byref(buf), ctypes.byref(size))
         return array(ptr=buf.value, dtype=uint8, length=size.value, device=self.device, owner=False)
 
+    def get_tiles(self):
+
+        if self.id == 0:
+            raise RuntimeError("Invalid Volume")
+
+        buf = ctypes.c_void_p(0)
+        size = ctypes.c_uint64(0)
+        if self.device.is_cpu:
+            self.context.core.volume_get_tiles_host(self.id, ctypes.byref(buf), ctypes.byref(size))
+        else:
+            self.context.core.volume_get_tiles_device(self.id, ctypes.byref(buf), ctypes.byref(size))
+        num_tiles = size.value // (3 * 4)
+        return array(ptr=buf.value, dtype=int32, shape=(num_tiles, 3), length=size.value, device=self.device, owner=True)
+
+    def get_voxel_size(self):
+
+        if self.id == 0:
+            raise RuntimeError("Invalid Volume")
+
+        dx, dy, dz = ctypes.c_float(0), ctypes.c_float(0), ctypes.c_float(0)
+        self.context.core.volume_get_voxel_size(self.id, ctypes.byref(dx), ctypes.byref(dy), ctypes.byref(dz))
+        return (dx.value, dy.value, dz.value)
+
     @classmethod
     def load_from_nvdb(cls, file_or_buffer, device=None):
 
@@ -1299,6 +1322,17 @@ class Volume:
                 bg_value[0],
                 bg_value[1],
                 bg_value[2],
+                translation[0],
+                translation[1],
+                translation[2],
+                in_world_space)
+        elif type(bg_value) == int:
+            volume.id = volume.context.core.volume_i_from_tiles_device(
+                volume.device.context,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                voxel_size,
+                bg_value,
                 translation[0],
                 translation[1],
                 translation[2],

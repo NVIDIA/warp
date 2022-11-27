@@ -1270,6 +1270,7 @@ class Runtime:
         self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
         self.core.volume_create_host.restype = ctypes.c_uint64
         self.core.volume_get_buffer_info_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+        self.core.volume_get_tiles_host.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_host.argtypes = [ctypes.c_uint64]
 
         self.core.volume_create_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64]
@@ -1278,8 +1279,13 @@ class Runtime:
         self.core.volume_f_from_tiles_device.restype = ctypes.c_uint64
         self.core.volume_v_from_tiles_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_bool]
         self.core.volume_v_from_tiles_device.restype = ctypes.c_uint64
+        self.core.volume_i_from_tiles_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_float, ctypes.c_int, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_bool]
+        self.core.volume_i_from_tiles_device.restype = ctypes.c_uint64
         self.core.volume_get_buffer_info_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
+        self.core.volume_get_tiles_device.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint64)]
         self.core.volume_destroy_device.argtypes = [ctypes.c_uint64]
+
+        self.core.volume_get_voxel_size.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float)]
 
         self.core.cuda_driver_version.argtypes = None
         self.core.cuda_driver_version.restype = ctypes.c_int
