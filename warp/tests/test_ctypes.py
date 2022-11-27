@@ -578,6 +578,7 @@ def register(parent):
     add_function_test(TestCTypes, "test_mat33", test_mat33, devices=devices)
     add_function_test(TestCTypes, "test_mat44", test_mat44, devices=devices)
     add_kernel_test(TestCTypes, name="test_scalar_arg_types", kernel=test_scalar_arg_types, dim=1, inputs=[-64, 255, -64, 255, -64, 255, -64, 255, 3.14159, 3.14159], devices=devices)
+    add_kernel_test(TestCTypes, name="test_scalar_arg_types_explicit", kernel=test_scalar_arg_types, dim=1, inputs=[wp.int8(-64), wp.uint8(255), wp.int16(-64), wp.uint16(255), wp.int32(-64), wp.uint32(255), wp.int64(-64), wp.uint64(255), wp.float32(3.14159), wp.float64(3.14159)], devices=devices)
     add_kernel_test(TestCTypes, name="test_vector_arg_types", kernel=test_vector_arg_types, dim=1, inputs=inputs, devices=devices)
     add_kernel_test(TestCTypes, name="test_type_convesrions", kernel=test_type_conversions, dim=1, devices=devices)
 

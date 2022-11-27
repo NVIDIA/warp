@@ -136,6 +136,15 @@ def test_step_grad(test, device):
     assert model.m.grad.numpy().sum() == 0.0
 
 
+@wp.struct
+class Empty:
+    pass
+
+@wp.kernel
+def test_empty(input: Empty):
+    tid = wp.tid()
+
+
 def register(parent):
     devices = wp.get_devices()
     class TestStruct(parent):
@@ -143,6 +152,7 @@ def register(parent):
 
     add_function_test(TestStruct, "test_step", test_step, devices=devices)
     add_function_test(TestStruct, "test_step_grad", test_step_grad, devices=devices)
+    add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
 
     return TestStruct
 

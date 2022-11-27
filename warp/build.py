@@ -389,11 +389,14 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
 
     
 def load_dll(dll_path):    
-    if (sys.version_info[0] > 3 or
-        sys.version_info[0] == 3 and sys.version_info[1] >= 8):
-        dll = ctypes.CDLL(dll_path, winmode=0)
-    else:
-        dll = ctypes.CDLL(dll_path)
+    try:
+        if (sys.version_info[0] > 3 or
+            sys.version_info[0] == 3 and sys.version_info[1] >= 8):
+                dll = ctypes.CDLL(dll_path, winmode=0)
+        else:
+            dll = ctypes.CDLL(dll_path)
+    except OSError:
+        raise RuntimeError("Failed to load the shared library '{}'".format(dll_path))
     return dll
 
 def unload_dll(dll):
