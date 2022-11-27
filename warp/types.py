@@ -515,15 +515,27 @@ def types_equal(a, b):
         return a == b
 
 def strides_from_shape(shape:Tuple, dtype):
-    lower_dims = np.array(shape+(1,))[1:]
-    # use 'C' (row-major) ordering by default
-    reverse_dim_prod = np.cumprod(lower_dims[::-1])[::-1]
-    return tuple(reverse_dim_prod * type_size_in_bytes(dtype))
+
+    ndims = len(shape)
+    strides = [None] * ndims
+
+    i = ndims - 1
+    strides[i] = type_size_in_bytes(dtype)
+
+    while i > 0:
+        strides[i - 1] = strides[i] * shape[i]
+        i -= 1
+
+    return tuple(strides)
 
 T = TypeVar('T')
 
 
 class array (Generic[T]):
+
+    # member attributes available during code-gen (e.g.: d = array.shape[0])
+    # (initialized when needed)
+    _vars = None
 
     def __init__(self, data=None, dtype: T=None, shape=None, strides=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False, pinned=False):
         """ Constructs a new Warp array object from existing data.
@@ -554,7 +566,6 @@ class array (Generic[T]):
         """
 
         self.owner = False
-        self.grad = None
 
         # convert shape to Tuple
         if shape == None:
@@ -745,13 +756,11 @@ class array (Generic[T]):
                     "version": 2
                 }
 
+        self.grad = None
+
         # controls if gradients will be computed in by wp.Tape
         # this will trigger allocation of a gradient array if it doesn't exist already
         self.requires_grad = requires_grad
-
-        # register member attributes available during code-gen (e.g.: d = array.shape[0])
-        from warp.codegen import Var
-        self.vars = { "shape": Var("shape", shape_t) }
 
 
     def __del__(self):
@@ -797,17 +806,33 @@ class array (Generic[T]):
 
         return a        
 
-    def __setattr__(self, __name: str, __value: Any) -> None:
+    @property
+    def requires_grad(self):
 
-        if __name == "requires_grad" and __value == True and self.grad == None:
+        return self._requires_grad
+
+    @requires_grad.setter
+    def requires_grad(self, value:bool):
+        
+        if value and self.grad is None:
             self._alloc_grad()
+        elif not value:
+            self.grad = None
 
-        return super().__setattr__(__name, __value)
+        self._requires_grad = value
 
     def _alloc_grad(self):
 
-        from warp.context import zeros
-        self.grad = zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+        self.grad = warp.zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+
+    @property
+    def vars(self):
+        # member attributes available during code-gen (e.g.: d = array.shape[0])
+        # Note: we use a shared dict for all array instances
+        if array._vars is None:
+            from warp.codegen import Var
+            array._vars = { "shape": Var("shape", shape_t) }
+        return array._vars
 
 
     def zero_(self):
