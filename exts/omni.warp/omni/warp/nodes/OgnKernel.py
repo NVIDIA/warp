@@ -380,13 +380,12 @@ def compute(db: OgnKernelDatabase) -> None:
 
     # Launch the kernel.
     with wp.ScopedDevice(device):
-        for _ in range(db.inputs.iterations):
-            wp.launch(
-                db.internal_state.kernel_module.compute,
-                dim=db.inputs.dim,
-                inputs=[inputs],
-                outputs=[outputs],
-            )
+        wp.launch(
+            db.internal_state.kernel_module.compute,
+            dim=db.inputs.dim,
+            inputs=[inputs],
+            outputs=[outputs],
+        )
 
     # Write the output values to the node's attributes.
     write_output_attrs(db, db.internal_state.kernel_annotations, outputs)

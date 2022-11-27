@@ -19,18 +19,12 @@
                         "cuda"
                     ]
                 },
-                "default": "cpu"
+                "default": "cuda"
             },
             "dim": {
                 "type": "int",
                 "description": "Number of threads to launch for the kernel.",
                 "uiName": "Dimension",
-                "default": 1
-            },
-            "iterations": {
-                "type": "int",
-                "description": "Number of iterations to evaluate the kernel for.",
-                "uiName": "Iterations",
                 "default": 1
             },
             "codeProvider": {
