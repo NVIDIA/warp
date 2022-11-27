@@ -117,13 +117,6 @@ class CustomLayout:
                         display_name=prop.metadata["customData"]["uiName"],
                     )
 
-                prop = find_prop(props, "inputs:iterations")
-                if prop is not None:
-                    CustomLayoutProperty(
-                        prop.prop_name,
-                        display_name=prop.metadata["customData"]["uiName"],
-                    )
-
                 prop = find_prop(props, "inputs:codeProvider")
                 if prop is not None:
                     CustomLayoutProperty(
