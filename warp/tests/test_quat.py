@@ -268,7 +268,7 @@ def test_quat_to_axis_angle_grad(test, device):
     wp.launch(kernel=quat_sampler, dim=num_rand, inputs=[seed, quats], device=device)
     
     edge_cases = np.array([(1.0, 0.0, 0.0, 0.0), (0.0, 1.0 / np.sqrt(3), 1.0 / np.sqrt(3), 1.0 / np.sqrt(3)), (0.0, 0.0, 0.0, 0.0)])
-    num_edge = edge_cases.size
+    num_edge = len(edge_cases)
     edge_cases = wp.array(edge_cases, dtype=wp.quat, device=device, requires_grad=True)
 
     def compute_gradients(arr, kernel, dim, index):
