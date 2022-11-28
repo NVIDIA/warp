@@ -4,6 +4,7 @@
         "description": "Runs a single warp Kernel.",
         "language": "Python",
         "uiName": "Warp Kernel",
+        "exclude": ["usd"],
         "inputs": {
             "execIn": {
                 "type": "execution",
