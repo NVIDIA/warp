@@ -4,6 +4,7 @@
         "description": "Runs a single warp Kernel.",
         "language": "Python",
         "uiName": "Warp Kernel",
+        "exclude": ["usd"],
         "inputs": {
             "execIn": {
                 "type": "execution",
@@ -13,12 +14,6 @@
                 "type": "token",
                 "description": "Device to launch on.",
                 "uiName": "Device",
-                "metadata": {
-                    "allowedTokens": [
-                        "cpu",
-                        "cuda"
-                    ]
-                },
                 "default": "cuda"
             },
             "dim": {

@@ -1,6 +1,6 @@
 """Warp kernel exposed as an Omni Graph node."""
 
-import ctypes
+import hashlib
 import importlib.util
 import os
 import tempfile
@@ -203,7 +203,8 @@ class InternalState:
         # Create a Python module made of the kernel code.
         # We try to keep its name unique to ensure that it's not clashing with
         # other kernel modules from the same session.
-        module_name = "warp-kernelnode-{}".format(db.node.node_id())
+        uid = hashlib.blake2b(bytes(code, encoding="utf-8"), digest_size=8)
+        module_name = "warp-kernelnode-{}".format(uid)
         kernel_module = load_code_as_module(code, module_name)
 
         # Validate the module's contents.
@@ -402,6 +403,22 @@ class OgnKernel:
     @staticmethod
     def internal_state() -> InternalState:
         return InternalState()
+
+    @staticmethod
+    def initialize(graph_context, node):
+        # Populate the devices tokens.
+        attr = og.Controller.attribute("inputs:device", node)
+        if attr.get_metadata("allowedTokens") is None:
+            devices = tuple(x.alias for x in wp.get_devices())
+
+            if devices[0] == "cpu":
+                # After populating the allowed tokens, calling
+                # `og.Attribute.set()` or `og.Attribute.set_default()` to select
+                # CUDA by default doesn't seem to do anything, so we workaround
+                # this by placing the CPU token at the end.
+                devices = devices[1:] + ("cpu",)
+
+            attr.set_metadata("allowedTokens", ",".join(devices))
 
     @staticmethod
     def compute(db) -> None:
