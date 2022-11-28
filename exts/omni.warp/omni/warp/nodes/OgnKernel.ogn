@@ -14,12 +14,6 @@
                 "type": "token",
                 "description": "Device to launch on.",
                 "uiName": "Device",
-                "metadata": {
-                    "allowedTokens": [
-                        "cpu",
-                        "cuda"
-                    ]
-                },
                 "default": "cuda"
             },
             "dim": {

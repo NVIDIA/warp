@@ -405,5 +405,21 @@ class OgnKernel:
         return InternalState()
 
     @staticmethod
+    def initialize(graph_context, node):
+        # Populate the devices tokens.
+        attr = og.Controller.attribute("inputs:device", node)
+        if attr.get_metadata("allowedTokens") is None:
+            devices = tuple(x.alias for x in wp.get_devices())
+
+            if devices[0] == "cpu":
+                # After populating the allowed tokens, calling
+                # `og.Attribute.set()` or `og.Attribute.set_default()` to select
+                # CUDA by default doesn't seem to do anything, so we workaround
+                # this by placing the CPU token at the end.
+                devices = devices[1:] + ("cpu",)
+
+            attr.set_metadata("allowedTokens", ",".join(devices))
+
+    @staticmethod
     def compute(db) -> None:
         compute(db)
