@@ -674,12 +674,6 @@ This setting will check the CUDA context after every operation to ensure that it
 
 .. note:: Verifying CUDA state at each launch requires synchronizing CPU and GPU which has a significant overhead. Users should ensure this setting is only used during debugging.
 
-Simulation
-----------
-
-Warp includes a simulation package available as ``warp.sim``. This module includes implementations of many common physical simulation models, such as particles, rigid bodies, finite-elements (FEM).
-
-This module is under development and subject to change, please see the test and example scenes for usage.
 
 .. _devices:
 

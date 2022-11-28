@@ -72,7 +72,7 @@
             
             
               <div class="version">
-                0.6.0
+                0.5.1
               </div>
             
           
@@ -144,7 +144,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#cuda-verification">CUDA Verification</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#simulation">Simulation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#devices">Devices</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#default-device">Default Device</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#scoped-devices">Scoped Devices</a></li>
@@ -1277,11 +1276,6 @@ This can be used to record large numbers of kernels and replay them with low-ove
 <p>Verifying CUDA state at each launch requires synchronizing CPU and GPU which has a significant overhead. Users should ensure this setting is only used during debugging.</p>
 </div>
 </div>
-</div>
-<div class="section" id="simulation">
-<h2>Simulation<a class="headerlink" href="#simulation" title="Permalink to this headline">¶</a></h2>
-<p>Warp includes a simulation package available as <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code>. This module includes implementations of many common physical simulation models, such as particles, rigid bodies, finite-elements (FEM).</p>
-<p>This module is under development and subject to change, please see the test and example scenes for usage.</p>
 </div>
 <div class="section" id="devices">
 <span id="id1"></span><h2>Devices<a class="headerlink" href="#devices" title="Permalink to this headline">¶</a></h2>
