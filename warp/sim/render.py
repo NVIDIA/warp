@@ -10,24 +10,25 @@ import math
 import warp as wp
 import warp.sim
 
+import numpy as np
+
 class SimRenderer(warp.render.UsdRenderer):
     
-    def __init__(self, model: warp.sim.Model, path):
+    def __init__(self, model: warp.sim.Model, path, scaling=1.0):
 
         from pxr import UsdGeom
 
         # create USD stage
-        super().__init__(path)
+        super().__init__(path, scaling=scaling)
 
         self.model = model
-
-        # add ground plane
-        if (self.model.ground):
-            self.render_ground(size=20.0)
+        self.body_names = []
 
         # create rigid body root node
         for b in range(model.body_count):
-            xform = UsdGeom.Xform.Define(self.stage, self.root.GetPath().AppendChild("body_" + str(b)))
+            body_name = f"body_{b}_{self.model.body_name[b].replace(' ', '_')}"
+            self.body_names.append(body_name)
+            xform = UsdGeom.Xform.Define(self.stage, self.root.GetPath().AppendChild(body_name))
             wp.render._usd_add_xform(xform)
 
         # create rigid shape children
@@ -42,7 +43,7 @@ class SimRenderer(warp.render.UsdRenderer):
             
                 parent_path = self.root.GetPath()
                 if shape_body[s] >= 0:
-                    parent_path = parent_path.AppendChild("body_" + str(shape_body[s].item()))
+                    parent_path = parent_path.AppendChild(self.body_names[shape_body[s].item()])
 
                 geo_type = shape_geo_type[s]
                 geo_scale = shape_geo_scale[s]
@@ -52,22 +53,28 @@ class SimRenderer(warp.render.UsdRenderer):
                 X_bs = warp.transform_expand(shape_transform[s])
 
                 if (geo_type == warp.sim.GEO_PLANE):
+                    if (s == model.shape_count-1 and not model.ground):
+                        continue  # hide ground plane
 
                     # plane mesh
-                    size = 1000.0
+                    width = (geo_scale[0] if geo_scale[0] > 0.0 else 100.0)
+                    length = (geo_scale[1] if geo_scale[1] > 0.0 else 100.0)
 
                     mesh = UsdGeom.Mesh.Define(self.stage, parent_path.AppendChild("plane_" + str(s)))
                     mesh.CreateDoubleSidedAttr().Set(True)
 
-                    points = ((-size, 0.0, -size), (size, 0.0, -size), (size, 0.0, size), (-size, 0.0, size))
+                    points = ((-width, 0.0, -length), (width, 0.0, -length), (width, 0.0, length), (-width, 0.0, length))
                     normals = ((0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0))
                     counts = (4, )
                     indices = [0, 1, 2, 3]
 
-                    mesh.GetPointsAttr().Set(points)
+                    mesh.GetPointsAttr().Set(np.array(points))
                     mesh.GetNormalsAttr().Set(normals)
                     mesh.GetFaceVertexCountsAttr().Set(counts)
                     mesh.GetFaceVertexIndicesAttr().Set(indices)
+
+                    wp.render._usd_add_xform(mesh)
+                    wp.render._usd_set_xform(mesh, X_bs.p, X_bs.q, (1.0, 1.0, 1.0), 0.0)
 
                 elif (geo_type == warp.sim.GEO_SPHERE):
 
@@ -99,8 +106,8 @@ class SimRenderer(warp.render.UsdRenderer):
                 elif (geo_type == warp.sim.GEO_MESH):
 
                     mesh = UsdGeom.Mesh.Define(self.stage, parent_path.AppendChild("mesh_" + str(s)))
-                    mesh.GetPointsAttr().Set(geo_src.vertices)
-                    mesh.GetFaceVertexIndicesAttr().Set(geo_src.indices)
+                    mesh.GetPointsAttr().Set(np.array(geo_src.vertices))
+                    mesh.GetFaceVertexIndicesAttr().Set(np.array(geo_src.indices))
                     mesh.GetFaceVertexCountsAttr().Set([3] * int(len(geo_src.indices) / 3))
 
                     wp.render._usd_add_xform(mesh)
@@ -120,7 +127,7 @@ class SimRenderer(warp.render.UsdRenderer):
             particle_q = state.particle_q.numpy()
 
             # render particles
-            self.render_points("particles", particle_q, radius=0.1)
+            self.render_points("particles", particle_q, radius=self.model.soft_contact_distance)
 
             # render tris
             if (self.model.tri_count):
@@ -177,8 +184,8 @@ class SimRenderer(warp.render.UsdRenderer):
                 body_q = state.body_q.numpy()
 
                 for b in range(self.model.body_count):
-
-                    node = UsdGeom.Xform(self.stage.GetPrimAtPath(self.root.GetPath().AppendChild("body_" + str(b))))
+                    node_name = self.body_names[b]
+                    node = UsdGeom.Xform(self.stage.GetPrimAtPath(self.root.GetPath().AppendChild(node_name)))
 
                     # unpack rigid transform
                     X_sb = warp.transform_expand(body_q[b])
