@@ -421,9 +421,9 @@ class OgnKernel:
     def initialize(graph_context, node):
         # Populate the devices tokens.
         attr = og.Controller.attribute("inputs:device", node)
-        if attr.get_metadata("allowedTokens") is None:
+        if attr.get_metadata(og.MetadataKeys.ALLOWED_TOKENS) is None:
             attr.set_metadata(
-                "allowedTokens",
+                og.MetadataKeys.ALLOWED_TOKENS,
                 ",".join(x.alias for x in wp.get_devices()),
             )
 
