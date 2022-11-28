@@ -7,22 +7,7 @@
 
 import warp as wp
 
-
-# decompose a quaternion into a sequence of 3 rotations around x,y',z' respectively, i.e.: q = q_z''q_y'q_x
-@wp.func
-def quat_decompose(q: wp.quat):
-
-    R = wp.mat33(
-            wp.quat_rotate(q, wp.vec3(1.0, 0.0, 0.0)),
-            wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0)),
-            wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0)))
-
-    # https://www.sedris.org/wg8home/Documents/WG80485.pdf
-    phi = wp.atan2(R[1, 2], R[2, 2])
-    theta = wp.asin(-R[0, 2])
-    psi = wp.atan2(R[0, 1], R[0, 0])
-
-    return -wp.vec3(phi, theta, psi)
+from .utils import quat_decompose
 
 @wp.kernel
 def eval_articulation_fk(
