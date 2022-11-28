@@ -204,7 +204,7 @@ class InternalState:
         # We try to keep its name unique to ensure that it's not clashing with
         # other kernel modules from the same session.
         uid = hashlib.blake2b(bytes(code, encoding="utf-8"), digest_size=8)
-        module_name = "warp-kernelnode-{}".format(uid)
+        module_name = "warp-kernelnode-{}".format(uid.hexdigest())
         kernel_module = load_code_as_module(code, module_name)
 
         # Validate the module's contents.
