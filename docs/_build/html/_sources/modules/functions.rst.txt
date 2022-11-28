@@ -537,6 +537,11 @@ Quaternion Math
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
+.. function:: quat_to_axis_angle(q: quat, axis: vec3, angle: float32) -> None
+
+   Extract the rotation axis and angle radians a quaternion represents.
+
+
 .. function:: quat_from_matrix(m: mat33) -> quat
 
    Construct a quaternion from a 3x3 matrix.
@@ -560,6 +565,16 @@ Quaternion Math
 .. function:: quat_rotate_inv(q: quat, p: vec3) -> vec3
 
    Rotate a vector the inverse of a quaternion.
+
+
+.. function:: rotate_rodriguez(r: vec3, x: vec3) -> vec3
+
+   Rotate the vector x by the rotator r encoding rotation axis and angle radians.
+
+
+.. function:: quat_slerp(q0: quat, q1: quat, t: float32) -> quat
+
+   Linearly interpolate between two quaternions.
 
 
 .. function:: quat_to_matrix(q: quat) -> mat33
@@ -824,48 +839,6 @@ Utility
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: index(a: vec2, i: int32) -> float
-
-
-.. function:: index(a: vec3, i: int32) -> float
-
-
-.. function:: index(a: vec4, i: int32) -> float
-
-
-.. function:: index(a: quat, i: int32) -> float
-
-
-.. function:: index(a: mat22, i: int32) -> vec2
-
-
-.. function:: index(a: mat22, i: int32, j: int32) -> float
-
-
-.. function:: index(a: mat33, i: int32) -> vec3
-
-
-.. function:: index(a: mat33, i: int32, j: int32) -> float
-
-
-.. function:: index(a: mat44, i: int32) -> vec4
-
-
-.. function:: index(a: mat44, i: int32, j: int32) -> float
-
-
-.. function:: index(a: spatial_matrix, i: int32, j: int32) -> float
-
-
-.. function:: index(a: spatial_vector, i: int32) -> float
-
-
-.. function:: index(a: transform, i: int32) -> float
-
-
-.. function:: index(s: shape_t, i: int32) -> int
-
-
 .. function:: expect_eq(arg1: int8, arg2: int8) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -1026,9 +999,9 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: smoothstep(a: float32, b: float32, t: float32) -> float
+.. function:: smoothstep(edge0: float32, edge1: float32, x: float32) -> float
 
-   Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping
+   Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
 
 
 .. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None
@@ -1149,6 +1122,11 @@ Geometry
    Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.
 
 
+.. function:: mesh_get(id: uint64) -> Mesh
+
+   Retrieves the mesh given its index.
+
+
 .. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3
 
    Evaluates the face normal the mesh given a face index.
@@ -1223,6 +1201,11 @@ Volumes
 .. function:: volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int
 
    Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32) -> None
+
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
 .. function:: volume_index_to_world(id: uint64, uvw: vec3) -> vec3
@@ -1378,17 +1361,17 @@ Random
 
 .. function:: curlnoise(state: uint32, xy: vec2) -> vec2
 
-   Divergence-free vector field based on the gradient of a Perlin noise function.
+   Divergence-free vector field based on the gradient of a Perlin noise function. [1]_
 
 
 .. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
 
-   Divergence-free vector field based on the curl of three Perlin noise functions.
+   Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
 
 .. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
 
-   Divergence-free vector field based on the curl of three Perlin noise functions.
+   Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
 
 
@@ -1607,3 +1590,5 @@ Operators
 .. function:: unot(b: bool) -> bool
 
 
+.. rubric:: Footnotes
+.. [1] Note: function gradients not implemented for backpropagation.

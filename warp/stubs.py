@@ -591,6 +591,13 @@ def quat_from_axis_angle(axis: vec3, angle: float32) -> quat:
    ...
 
 @overload
+def quat_to_axis_angle(q: quat, axis: vec3, angle: float32):
+   """
+   Extract the rotation axis and angle radians a quaternion represents.
+   """
+   ...
+
+@overload
 def quat_from_matrix(m: mat33) -> quat:
    """
    Construct a quaternion from a 3x3 matrix.
@@ -622,6 +629,20 @@ def quat_rotate(q: quat, p: vec3) -> vec3:
 def quat_rotate_inv(q: quat, p: vec3) -> vec3:
    """
    Rotate a vector the inverse of a quaternion.
+   """
+   ...
+
+@overload
+def rotate_rodriguez(r: vec3, x: vec3) -> vec3:
+   """
+   Rotate the vector x by the rotator r encoding rotation axis and angle radians.
+   """
+   ...
+
+@overload
+def quat_slerp(q0: quat, q1: quat, t: float32) -> quat:
+   """
+   Linearly interpolate between two quaternions.
    """
    ...
 
@@ -895,6 +916,13 @@ def intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3
    ...
 
 @overload
+def mesh_get(id: uint64) -> Mesh:
+   """
+   Retrieves the mesh given its index.
+   """
+   ...
+
+@overload
 def mesh_eval_face_normal(id: uint64, face: int32) -> vec3:
    """
    Evaluates the face normal the mesh given a face index.
@@ -989,6 +1017,13 @@ def volume_sample_i(id: uint64, uvw: vec3) -> int:
 def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
    """
    Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+   """
+   ...
+
+@overload
+def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
+   """
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
    """
    ...
 
