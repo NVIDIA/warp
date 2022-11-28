@@ -1,6 +1,7 @@
 """Warp kernel exposed as an Omni Graph node."""
 
 import ctypes
+import hashlib
 import importlib.util
 import os
 import tempfile
@@ -203,7 +204,8 @@ class InternalState:
         # Create a Python module made of the kernel code.
         # We try to keep its name unique to ensure that it's not clashing with
         # other kernel modules from the same session.
-        module_name = "warp-kernelnode-{}".format(db.node.node_id())
+        uid = hashlib.blake2b(bytes(code, encoding="utf-8"), digest_size=8)
+        module_name = "warp-kernelnode-{}".format(uid)
         kernel_module = load_code_as_module(code, module_name)
 
         # Validate the module's contents.
