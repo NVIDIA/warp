@@ -97,7 +97,6 @@ class UsdRenderer:
             print("Failed to create stage in renderer. Please construct with stage path or stage object.")
         self.upaxis = upaxis
         self.fps = float(fps)
-        self.scaling = scaling
         self.time = 0.0
 
         self.draw_points = True
@@ -105,6 +104,11 @@ class UsdRenderer:
         self.draw_triangles = False
 
         self.root = UsdGeom.Xform.Define(stage, '/root')
+        
+        # apply scaling
+        self.root.ClearXformOpOrder()
+        s = self.root.AddScaleOp()
+        s.Set(Gf.Vec3d(float(scaling), float(scaling), float(scaling)), 0.0)
 
         self.stage.SetDefaultPrim(self.root.GetPrim())
         self.stage.SetStartTimeCode(0.0)
@@ -133,21 +137,6 @@ class UsdRenderer:
         UsdGeom.Xform(light_1.GetPrim()).AddRotateYOp().Set(value=(-70.0))
         UsdGeom.Xform(light_1.GetPrim()).AddRotateXOp().Set(value=(-45.0))
 
-    def scale(self, x):
-        if isinstance(x, float):
-            return x*self.scaling
-        if isinstance(x, tuple):
-            return tuple([v*self.scaling for v in x])
-        if isinstance(x, list):
-            return [v*self.scaling for v in x]
-        import numpy as np
-        if isinstance(x, np.ndarray):
-            return x*self.scaling
-        from pxr import Gf
-        if isinstance(x, Gf.Vec3f):
-            return Gf.Vec3f(x[0]*self.scaling, x[1]*self.scaling, x[2]*self.scaling)
-        raise NotImplementedError("Cannot scale type {}".format(type(x)))
-
     def begin_frame(self, time):
         self.stage.SetEndTimeCode(time * self.fps)
         self.time = time * self.fps
@@ -161,8 +150,6 @@ class UsdRenderer:
 
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
         mesh.CreateDoubleSidedAttr().Set(True)
-
-        size *= self.scaling
 
         if self.upaxis == "x":
             points = ((0.0, -size, -size), (0.0, size, -size), (0.0, size, size), (0.0, -size, size))
@@ -198,7 +185,7 @@ class UsdRenderer:
             sphere = UsdGeom.Sphere.Define(self.stage, sphere_path)
             _usd_add_xform(sphere)
         
-        sphere.GetRadiusAttr().Set(self.scale(radius), self.time)
+        sphere.GetRadiusAttr().Set(radius, self.time)
 
         # mat = Gf.Matrix4d()
         # mat.SetIdentity()
@@ -206,7 +193,7 @@ class UsdRenderer:
 
         # op = sphere.MakeMatrixXform()
         # op.Set(mat, self.time)
-        _usd_set_xform(sphere, self.scale(pos), rot, (1.0, 1.0, 1.0), self.time)
+        _usd_set_xform(sphere, pos, rot, (1.0, 1.0, 1.0), self.time)
 
 
     def render_box(self, name: str, pos: tuple, rot: tuple, extents: tuple):
@@ -227,7 +214,7 @@ class UsdRenderer:
             _usd_add_xform(box)
 
         # update transform        
-        _usd_set_xform(box, self.scale(pos), rot, self.scale(extents), self.time)
+        _usd_set_xform(box, pos, rot, extents, self.time)
     
 
     def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple):
@@ -243,7 +230,7 @@ class UsdRenderer:
             _usd_add_xform(ref)
 
         # update transform
-        _usd_set_xform(ref, self.scale(pos), rot, self.scale(scale), self.time)
+        _usd_set_xform(ref, pos, rot, scale, self.time)
 
 
     def render_mesh(self, name: str, points, indices, colors=None, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0), update_topology=False):
@@ -261,7 +248,7 @@ class UsdRenderer:
             # force topology update on first frame
             update_topology = True
 
-        mesh.GetPointsAttr().Set(self.scale(points), self.time)
+        mesh.GetPointsAttr().Set(points, self.time)
 
         if update_topology:
             mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
@@ -270,7 +257,7 @@ class UsdRenderer:
         if colors:
             mesh.GetDisplayColorAttr().Set(colors, self.time)
 
-        _usd_set_xform(mesh, self.scale(pos), rot, scale, self.time)
+        _usd_set_xform(mesh, pos, rot, scale, self.time)
 
 
     def render_line_list(self, name, vertices, indices, color, radius):
@@ -306,8 +293,8 @@ class UsdRenderer:
 
         for i in range(num_lines):
 
-            pos0 = self.scale(vertices[indices[i*2+0]])
-            pos1 = self.scale(vertices[indices[i*2+1]])
+            pos0 = vertices[indices[i*2+0]]
+            pos1 = vertices[indices[i*2+1]]
 
             (pos, rot, scale) = _compute_segment_xform(Gf.Vec3f(float(pos0[0]), float(pos0[1]), float(pos0[2])), Gf.Vec3f(float(pos1[0]), float(pos1[1]), float(pos1[2])))
 
@@ -348,8 +335,8 @@ class UsdRenderer:
 
         for i in range(num_lines):
 
-            pos0 = self.scale(vertices[i])
-            pos1 = self.scale(vertices[i+1])
+            pos0 = vertices[i]
+            pos1 = vertices[i+1]
 
             (pos, rot, scale) = _compute_segment_xform(Gf.Vec3f(float(pos0[0]), float(pos0[1]), float(pos0[2])), 
                                                        Gf.Vec3f(float(pos1[0]), float(pos1[1]), float(pos1[2])))
@@ -377,7 +364,7 @@ class UsdRenderer:
 
             instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
             instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
-            instancer_sphere.GetRadiusAttr().Set(self.scale(radius))
+            instancer_sphere.GetRadiusAttr().Set(radius)
 
             instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
             instancer.CreateProtoIndicesAttr().Set([0] * len(points))
@@ -386,7 +373,7 @@ class UsdRenderer:
             quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
             instancer.GetOrientationsAttr().Set(quats, self.time)
 
-        instancer.GetPositionsAttr().Set(self.scale(points), self.time)
+        instancer.GetPositionsAttr().Set(points, self.time)
     
 
     def save(self):
