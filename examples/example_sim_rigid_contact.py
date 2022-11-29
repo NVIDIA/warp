@@ -94,9 +94,6 @@ class Example:
         self.integrator = wp.sim.SemiImplicitIntegrator()
         self.state = self.model.state()
 
-        # one time collide for ground contact
-        self.model.collide(self.state)
-
         self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
     def update(self):

@@ -55,8 +55,6 @@ class Example:
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.model.collide(self.state_0)
-
         self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
     def update(self):
