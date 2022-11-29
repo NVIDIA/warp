@@ -31,7 +31,7 @@ class Robot:
     episode_duration = 5.0      # seconds
     episode_frames = int(episode_duration/frame_dt)
 
-    sim_substeps = 20
+    sim_substeps = 5
     sim_dt = frame_dt / sim_substeps
     sim_steps = int(episode_duration / sim_dt)
    
@@ -50,7 +50,7 @@ class Robot:
 
         wp.sim.parse_urdf(os.path.join(os.path.dirname(__file__), "assets/quadruped.urdf"), 
             articulation_builder,
-            xform=wp.transform(np.array((0.0, 0.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)),
+            xform=wp.transform_identity(),
             floating=True,
             density=1000,
             armature=0.01,
@@ -88,15 +88,18 @@ class Robot:
         self.model.joint_attach_ke = 16000.0
         self.model.joint_attach_kd = 200.0
 
-        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.XPBDIntegrator()
 
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_quadruped.usd"))
+            self.renderer = wp.sim.render.SimRenderer(
+                self.model,
+                os.path.join(os.path.dirname(__file__), "outputs/example_sim_quadruped.usd"),
+                scaling=100.0)
 
 
-    def run(self, render=True):
+    def run(self):
 
         #---------------
         # run simulation
@@ -119,6 +122,7 @@ class Robot:
         # simulate
         for i in range(0, self.sim_substeps):
             self.state.clear_forces()
+            wp.sim.collide(self.model, self.state)
             self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
             self.sim_time += self.sim_dt
                 
