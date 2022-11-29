@@ -387,6 +387,15 @@ def compute(db: OgnKernelDatabase) -> None:
         device,
     )
 
+    # Ensure that all array input attributes are not NULL.
+    for attr_name in db.internal_state.kernel_annotations[ATTR_PORT_TYPE_INPUT]:
+        value = getattr(inputs, attr_name)
+        if not isinstance(value, wp.array):
+            continue
+
+        if not value.ptr:
+            return
+
     # Launch the kernel.
     with wp.ScopedDevice(device):
         wp.launch(
