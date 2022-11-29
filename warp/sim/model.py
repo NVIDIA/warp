@@ -508,6 +508,7 @@ class Model:
                 if shape_a < shape_b and (shape_a, shape_b) not in filters:
                     contact_pairs.append((shape_a, shape_b))
             if group != -1 and -1 in self.shape_collision_group_map:
+                # shapes with collision group -1 collide with all other shapes
                 for shape_a, shape_b in itertools.product(shapes, self.shape_collision_group_map[-1]):
                     if shape_a < shape_b and (shape_a, shape_b) not in filters:
                         contact_pairs.append((shape_a, shape_b))
@@ -518,7 +519,7 @@ class Model:
         ground_id = self.shape_count-1
         for i in range(ground_id):
             if self.shape_ground_collision[i]:
-                ground_contact_pairs.append((i,ground_id))
+                ground_contact_pairs.append((i, ground_id))
         self.shape_ground_contact_pairs = wp.array(np.array(ground_contact_pairs), dtype=wp.int32, device=self.device)
         self.shape_ground_contact_pair_count = len(ground_contact_pairs)
 
@@ -1350,6 +1351,7 @@ class ModelBuilder:
         self.shape_body.append(body)
         shape = len(self.shape_geo_type)
         if body in self.body_shapes:
+            # no contacts between shapes of the same body
             for same_body_shape in self.body_shapes[body]:
                 self.shape_collision_filter_pairs.add((same_body_shape, shape))
             self.body_shapes[body].append(shape)
@@ -1377,6 +1379,8 @@ class ModelBuilder:
             if parent_body > -1:
                 for parent_shape in self.body_shapes[parent_body]:
                     self.shape_collision_filter_pairs.add((parent_shape, shape))
+        if body == -1:
+            has_ground_collision = False
         self.shape_ground_collision.append(has_ground_collision)
 
         (m, I) = self._compute_shape_mass(type, scale, src, density)
@@ -2559,11 +2563,8 @@ class ModelBuilder:
             m.geo_sdfs = self.geo_sdfs
 
             # enable ground plane
-            m._ground = True
-            # XXX unused variable
-            m.ground_plane = wp.array([*self.upvector, 0.0], dtype=wp.float32, requires_grad=requires_grad)
-            # m.gravity = np.array(self.upvector) * self.gravity
-            m.gravity = wp.array([*(np.array(self.upvector) * self.gravity)], dtype=wp.float32, requires_grad=requires_grad)
+            m.ground_plane = wp.array(self._ground_params["plane"], dtype=wp.float32, requires_grad=requires_grad)
+            m.gravity = np.array(self.upvector) * self.gravity
 
             m.enable_tri_collisions = False
 

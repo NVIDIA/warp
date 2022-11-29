@@ -28,7 +28,7 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
                         v: wp.array(dtype=wp.vec3),
                         f: wp.array(dtype=wp.vec3),
                         w: wp.array(dtype=float),
-                        gravity: wp.array(dtype=float),
+                        gravity: wp.vec3,
                         dt: float,
                         x_new: wp.array(dtype=wp.vec3),
                         v_new: wp.array(dtype=wp.vec3)):
@@ -41,9 +41,8 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 
     inv_mass = w[tid]
 
-    g = wp.vec3(gravity[0], gravity[1], gravity[2])
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
-    v1 = v0 + (f0 * inv_mass + g * wp.step(0.0 - inv_mass)) *dt
+    v1 = v0 + (f0 * inv_mass + gravity * wp.step(0.0 - inv_mass)) *dt
     x1 = x0 + v1 * dt
 
     x_new[tid] = x1
@@ -60,7 +59,7 @@ def integrate_bodies(body_q: wp.array(dtype=wp.transform),
                      I: wp.array(dtype=wp.mat33),
                      inv_m: wp.array(dtype=float),
                      inv_I: wp.array(dtype=wp.mat33),
-                     gravity: wp.array(dtype=float),
+                     gravity: wp.vec3,
                      angular_damping: float,
                      dt: float,
                      # outputs
@@ -96,8 +95,7 @@ def integrate_bodies(body_q: wp.array(dtype=wp.transform),
     x_com = x0 + wp.quat_rotate(r0, body_com[tid])
  
     # linear part
-    g = wp.vec3(gravity[0], gravity[1], gravity[2])
-    v1 = v0 + (f0 * inv_mass + g * wp.nonzero(inv_mass)) * dt
+    v1 = v0 + (f0 * inv_mass + gravity * wp.nonzero(inv_mass)) * dt
     x1 = x_com + v1 * dt
  
     # angular part (compute in body frame)
