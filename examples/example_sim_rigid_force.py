@@ -33,14 +33,12 @@ class Example:
         self.sim_height = 8
 
         self.sim_fps = 60.0
-        self.sim_substeps = 64
+        self.sim_substeps = 10
         self.sim_duration = 5.0
         self.sim_frames = int(self.sim_duration*self.sim_fps)
         self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
         self.sim_time = 0.0
         self.sim_render = True
-        self.sim_iterations = 1
-        self.sim_relaxation = 1.0
 
         builder = wp.sim.ModelBuilder()
 
@@ -50,12 +48,12 @@ class Example:
         self.model = builder.finalize()
         self.model.ground = True
 
-        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.XPBDIntegrator()
 
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=40.0)
 
     def update(self):
 

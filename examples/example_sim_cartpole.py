@@ -32,7 +32,7 @@ class Robot:
     episode_duration = 20.0      # seconds
     episode_frames = int(episode_duration/frame_dt)
 
-    sim_substeps = 10
+    sim_substeps = 5
     sim_dt = frame_dt / sim_substeps
     sim_steps = int(episode_duration / sim_dt)
    
@@ -68,7 +68,7 @@ class Robot:
         for i in range(num_envs):
             builder.add_rigid_articulation(
                 articulation_builder,
-                xform=wp.transform(np.array((i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5))
+                xform=wp.transform(np.array((i * 2.0, 4.0, 0.0)), wp.quat_identity())
             )
 
             # joint initial positions
@@ -78,20 +78,20 @@ class Robot:
 
         # finalize model
         self.model = builder.finalize(device)
-        self.model.ground = True
+        self.model.ground = False
 
-        self.model.joint_attach_ke = 1600.0
-        self.model.joint_attach_kd = 20.0
-
-        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.XPBDIntegrator()
 
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_cartpole.usd"))
+            self.renderer = wp.sim.render.SimRenderer(
+                self.model,
+                os.path.join(os.path.dirname(__file__), "outputs/example_sim_cartpole.usd"),
+                scaling=30.0)
 
 
-    def run(self, render=True):
+    def run(self):
 
         #---------------
         # run simulation

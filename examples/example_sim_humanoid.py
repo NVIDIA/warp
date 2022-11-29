@@ -33,7 +33,7 @@ class Robot:
     episode_duration = 5.0      # seconds
     episode_frames = int(episode_duration/frame_dt)
 
-    sim_substeps = 16
+    sim_substeps = 8
     sim_dt = frame_dt / sim_substeps
     sim_steps = int(episode_duration / sim_dt)
    
@@ -46,8 +46,9 @@ class Robot:
         articulation_builder = wp.sim.ModelBuilder()
 
         self.render = render
-
         self.num_envs = num_envs
+        
+        self.sim_use_graph = wp.get_device(device).is_cuda
 
         wp.sim.parse_mjcf(os.path.join(os.path.dirname(__file__), "assets/nv_humanoid.xml"), articulation_builder,
             stiffness=0.0,
@@ -59,7 +60,8 @@ class Robot:
             contact_kf=1.e+2,
             contact_mu=0.5,
             limit_ke=1.e+2,
-            limit_kd=1.e+1)
+            limit_kd=1.e+1,
+            enable_self_collisions=True)
 
         for i in range(num_envs):
             builder.add_rigid_articulation(articulation_builder)
@@ -78,19 +80,19 @@ class Robot:
         # finalize model
         self.model = builder.finalize(device)
         self.model.ground = True
-        self.model.joint_attach_ke *= 8.0
-        self.model.joint_attach_kd *= 2.0
 
-
-        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.XPBDIntegrator()
 
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_humanoid.usd"))
+            self.renderer = wp.sim.render.SimRenderer(
+                self.model,
+                os.path.join(os.path.dirname(__file__), "outputs/example_sim_humanoid.usd"),
+                scaling=80.0)
 
  
-    def run(self, render=True):
+    def run(self):
 
         #---------------
         # run simulation
@@ -107,16 +109,18 @@ class Robot:
 
         profiler = {}
 
-        # create update graph
-        wp.capture_begin()
+        if self.sim_use_graph:
+            # create update graph
+            wp.capture_begin()
 
-        # simulate
-        for i in range(0, self.sim_substeps):
-            self.state.clear_forces()
-            self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
-            self.sim_time += self.sim_dt
-                
-        graph = wp.capture_end()
+            # simulate
+            for i in range(0, self.sim_substeps):
+                self.state.clear_forces()
+                wp.sim.collide(self.model, self.state)
+                self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+                self.sim_time += self.sim_dt
+                    
+            graph = wp.capture_end()
 
 
         # simulate 
@@ -136,42 +140,46 @@ class Robot:
                 self.renderer.save()
 
 
-            for f in range(0, self.episode_frames):
-                
-                for i in range(0, self.sim_substeps):
-                    self.state.clear_forces()
-                    
-                    random_actions = False
-                    
-                    if (random_actions):
-                        scale = np.array([200.0,
-                                        200.0,
-                                        200.0,
-                                        200.0,
-                                        200.0,
-                                        600.0,
-                                        400.0,
-                                        100.0,
-                                        100.0,
-                                        200.0,
-                                        200.0,
-                                        600.0,
-                                        400.0,
-                                        100.0,
-                                        100.0,
-                                        100.0,
-                                        100.0,
-                                        200.0,
-                                        100.0,
-                                        100.0,
-                                        200.0])
+            for f in range(self.episode_frames):
+                if self.sim_use_graph:
+                    wp.capture_launch(graph)
+                    self.sim_time += self.sim_dt * self.sim_substeps
+                else:
+                    for i in range(self.sim_substeps):
+                        self.state.clear_forces()
+                        wp.sim.collide(self.model, self.state)
+                        
+                        random_actions = False
+                        
+                        if (random_actions):
+                            scale = np.array([200.0,
+                                            200.0,
+                                            200.0,
+                                            200.0,
+                                            200.0,
+                                            600.0,
+                                            400.0,
+                                            100.0,
+                                            100.0,
+                                            200.0,
+                                            200.0,
+                                            600.0,
+                                            400.0,
+                                            100.0,
+                                            100.0,
+                                            100.0,
+                                            100.0,
+                                            200.0,
+                                            100.0,
+                                            100.0,
+                                            200.0])
 
-                        act = np.zeros(len(self.model.joint_qd))
-                        act[6:] = np.clip((np.random.rand(len(self.model.joint_qd)-6)*2.0 - 1.0)*1000.0, a_min=-1.0, a_max=1.0)*scale*0.35
-                        self.model.joint_act.assign(act)
+                            act = np.zeros(len(self.model.joint_qd))
+                            act[6:] = np.clip((np.random.rand(len(self.model.joint_qd)-6)*2.0 - 1.0)*1000.0, a_min=-1.0, a_max=1.0)*scale*0.35
+                            self.model.joint_act.assign(act)
 
-                    self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
-                    self.sim_time += self.sim_dt
+                        self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
+                        self.sim_time += self.sim_dt
 
 
                 if (self.render):

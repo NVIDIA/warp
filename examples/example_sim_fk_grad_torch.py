@@ -149,7 +149,10 @@ class Robot:
 
         #-----------------------
         # set up Usd renderer
-        self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_fk_grad.usd"))
+        self.renderer = wp.sim.render.SimRenderer(
+            self.model,
+            os.path.join(os.path.dirname(__file__), "outputs/example_sim_fk_grad.usd"),
+            scaling=50.0)
 
 
     def run(self, render=True):

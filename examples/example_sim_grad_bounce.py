@@ -80,7 +80,10 @@ class Bounce:
         wp.sim.collide(self.model, self.states[0])
 
         if (self.render):
-            self.stage = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_bounce.usd"))
+            self.stage = wp.sim.render.SimRenderer(
+                self.model,
+                os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_bounce.usd"),
+                scaling=40.0)
 
 
     @wp.kernel

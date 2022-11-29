@@ -69,7 +69,7 @@ class Example:
         self.integrator = wp.sim.SemiImplicitIntegrator()
         self.state = self.model.state()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):

@@ -19,12 +19,17 @@ import math
 import numpy as np
 
 import warp as wp
+
+# wp.config.verify_cuda = True
+# wp.config.verify_fp = True
 import warp.sim
 import warp.sim.render
 
 from pxr import Usd, UsdGeom
 
 wp.init()
+
+# wp.set_device('cpu')
 
 
 class Example:
@@ -45,14 +50,14 @@ class Example:
         builder = wp.sim.ModelBuilder()
 
         builder.add_cloth_grid(
-            pos=(0.0, 4.0, 0.0), 
-            rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5), 
-            vel=(0.0, 0.0, 0.0), 
-            dim_x=self.sim_width, 
-            dim_y=self.sim_height, 
-            cell_x=0.1, 
-            cell_y=0.1, 
-            mass=0.1, 
+            pos=(0.0, 4.0, 0.0),
+            rot=wp.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi*0.5),
+            vel=(0.0, 0.0, 0.0),
+            dim_x=self.sim_width,
+            dim_y=self.sim_height,
+            cell_x=0.1,
+            cell_y=0.1,
+            mass=0.1,
             fix_left=True,
             tri_ke=1.e+3,
             tri_ka=1.e+3,
@@ -85,7 +90,7 @@ class Example:
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=40.0)
 
         if (self.sim_use_graph):
 

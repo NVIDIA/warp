@@ -96,10 +96,13 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_ant.usd"))
+            self.renderer = wp.sim.render.SimRenderer(
+                self.model,
+                os.path.join(os.path.dirname(__file__), "outputs/example_sim_ant.usd"),
+                scaling=100.0)
 
 
-    def run(self, render=True):
+    def run(self):
 
         #---------------
         # run simulation
@@ -122,6 +125,7 @@ class Robot:
         # simulate
         for i in range(0, self.sim_substeps):
             self.state.clear_forces()
+            wp.sim.collide(self.model, self.state)
             self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt)
             self.sim_time += self.sim_dt
                 
