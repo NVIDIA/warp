@@ -11,7 +11,6 @@
 - Add support for generating CUBIN kernels instead of PTX on systems with older drivers
 - Add user preference options for CUDA kernel output ("ptx" or "cubin", e.g.: `wp.config.cuda_output = "ptx"` or per-module `wp.set_module_options({"cuda_output": "ptx"})`)
 - Add kernel node for OmniGraph
-- Add point-to-volume node for OmniGraph
 - Add `wp.quat_slerp()`, `wp.quat_to_axis_angle()`, `wp.rotate_rodriquez()` and adjoints for all remaining quaternion operations
 - Add support for unrolling for-loops when range is a `wp.constant`
 - Add support for arithmetic operators on built-in vector / matrix types outside of `wp.kernel`
