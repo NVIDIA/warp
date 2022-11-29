@@ -94,21 +94,7 @@ def parse_mjcf(
                 body_ori_euler[np.nonzero(body_ori_euler)[0].item()] / 180 * np.pi
             )
             body_ori = wp.utils.quat_from_axis_angle(body_axis, body_angle)
-            for val in [
-                "body_ori_euler",
-                body_ori_euler,
-                "body_angle",
-                body_angle,
-                "body_axis",
-                body_axis,
-                "body_ori",
-                body_ori,
-                "body_pos",
-                body_pos,
-            ]:
-                print(val)
         else:
-            print("body_ori_euler", body_ori_euler)
             body_ori = wp.quat_identity()
 
         # -----------------
@@ -317,7 +303,7 @@ def parse_mjcf(
                 )
 
             else:
-                print("Type: " + geom_type + " unsupported")
+                print("MJCF parsing issue: geom type", geom_type, "is unsupported")
 
         # -----------------
         # recurse
