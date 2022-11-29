@@ -14,7 +14,7 @@
                 "type": "token",
                 "description": "Device to launch on.",
                 "uiName": "Device",
-                "default": "cuda"
+                "default": "cuda:0"
             },
             "dim": {
                 "type": "int",

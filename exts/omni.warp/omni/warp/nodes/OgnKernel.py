@@ -260,10 +260,10 @@ class InternalState:
 def cast_array_to_warp_type(
     value: Union[np.array, og.DataWrapper],
     warp_annotation: Any,
-    device: str,
+    device: wp.context.Device,
 ) -> wp.array:
     """Casts an attribute array to its corresponding warp type."""
-    if device == "cpu":
+    if device.is_cpu:
         return wp.array(
             value,
             dtype=warp_annotation.dtype,
@@ -271,22 +271,21 @@ def cast_array_to_warp_type(
             owner=False,
         )
 
-    if device == "cuda":
+    elif device.is_cuda:
         return omni.warp.from_omni_graph(
             value,
             dtype=warp_annotation.dtype,
         )
 
-    assert False, "Unexpected device '{}'.".format(device)
+    assert False, "Unexpected device '{}'.".format(device.alias)
 
 def get_kernel_args(
     db: OgnKernelDatabase,
     module: Any,
     annotations: Mapping[og.AttributePortType, Sequence[Tuple[str, Any]]],
+    device: wp.context.Device,
 ) -> Tuple[Any, Any]:
     """Retrieves the in/out argument values to pass to the kernel."""
-    device = db.inputs.device
-
     # Initialize the kernel's input data.
     inputs = module.Inputs()
     for name, warp_annotation in annotations[ATTR_PORT_TYPE_INPUT].items():
@@ -330,9 +329,10 @@ def write_output_attrs(
     db: OgnKernelDatabase,
     annotations: Mapping[og.AttributePortType, Sequence[Tuple[str, Any]]],
     outputs: Any,
+    device: wp.context.Device,
 ) -> None:
     """Writes the output values to the node's attributes."""
-    if db.inputs.device == "cuda":
+    if device.is_cuda:
         # CUDA attribute arrays are directly being written to by Warp.
         return
 
@@ -347,14 +347,21 @@ def write_output_attrs(
 
 def compute(db: OgnKernelDatabase) -> None:
     """Evaluates the kernel."""
-    device = db.inputs.device
+    try:
+        device = wp.get_device(db.inputs.device)
+    except Exception:
+        # Fallback to a default device.
+        # This can happen due to a scene being authored on a device
+        # (e.g.: `cuda:1`) that is not available to another user opening
+        # that same scene.
+        device = wp.get_device("cuda:0")
 
-    if device == "cpu":
+    if device.is_cpu:
         on_gpu = False
-    elif device == "cuda":
+    elif device.is_cuda:
         on_gpu = True
     else:
-        assert False, "Unexpected device '{}'.".format(device)
+        assert False, "Unexpected device '{}'.".format(device.alias)
 
     db.set_dynamic_attribute_memory_location(
         on_gpu=on_gpu,
@@ -377,7 +384,17 @@ def compute(db: OgnKernelDatabase) -> None:
         db,
         db.internal_state.kernel_module,
         db.internal_state.kernel_annotations,
+        device,
     )
+
+    # Ensure that all array input attributes are not NULL.
+    for attr_name in db.internal_state.kernel_annotations[ATTR_PORT_TYPE_INPUT]:
+        value = getattr(inputs, attr_name)
+        if not isinstance(value, wp.array):
+            continue
+
+        if not value.ptr:
+            return
 
     # Launch the kernel.
     with wp.ScopedDevice(device):
@@ -389,7 +406,12 @@ def compute(db: OgnKernelDatabase) -> None:
         )
 
     # Write the output values to the node's attributes.
-    write_output_attrs(db, db.internal_state.kernel_annotations, outputs)
+    write_output_attrs(
+        db,
+        db.internal_state.kernel_annotations,
+        outputs,
+        device,
+    )
 
     # Fire the execution for the downstream nodes.
     db.outputs.execOut = og.ExecutionAttributeState.ENABLED
@@ -408,17 +430,11 @@ class OgnKernel:
     def initialize(graph_context, node):
         # Populate the devices tokens.
         attr = og.Controller.attribute("inputs:device", node)
-        if attr.get_metadata("allowedTokens") is None:
-            devices = tuple(x.alias for x in wp.get_devices())
-
-            if devices[0] == "cpu":
-                # After populating the allowed tokens, calling
-                # `og.Attribute.set()` or `og.Attribute.set_default()` to select
-                # CUDA by default doesn't seem to do anything, so we workaround
-                # this by placing the CPU token at the end.
-                devices = devices[1:] + ("cpu",)
-
-            attr.set_metadata("allowedTokens", ",".join(devices))
+        if attr.get_metadata(og.MetadataKeys.ALLOWED_TOKENS) is None:
+            attr.set_metadata(
+                og.MetadataKeys.ALLOWED_TOKENS,
+                ",".join(x.alias for x in wp.get_devices()),
+            )
 
     @staticmethod
     def compute(db) -> None:
