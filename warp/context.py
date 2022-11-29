@@ -1896,7 +1896,8 @@ def from_numpy(arr, dtype, device:Devicelike=None, requires_grad=False):
     return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
-def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:Devicelike=None, stream:Stream=None, adjoint=False):
+
+def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:List=[], adj_outputs:List=[], device:Devicelike=None, stream:Stream=None, adjoint=False, record_tape=True):
     """Launch a Warp kernel on the target device
 
     Kernel launches are asynchronous with respect to the calling Python thread. 
@@ -2072,7 +2073,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                     raise e
 
     # record on tape if one is active
-    if (runtime.tape):
+    if (runtime.tape and record_tape):
         runtime.tape.record(kernel, dim, inputs, outputs, device)
 
 
