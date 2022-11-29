@@ -428,12 +428,14 @@ class OgnKernel:
 
     @staticmethod
     def initialize(graph_context, node):
+        
         # Populate the devices tokens.
         attr = og.Controller.attribute("inputs:device", node)
         if attr.get_metadata(og.MetadataKeys.ALLOWED_TOKENS) is None:
             attr.set_metadata(
                 og.MetadataKeys.ALLOWED_TOKENS,
-                ",".join(x.alias for x in wp.get_devices()),
+                #",".join(x.alias for x in wp.get_devices()),
+                ",".join(["cpu", "cuda:0"])
             )
 
     @staticmethod
