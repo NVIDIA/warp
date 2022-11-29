@@ -396,6 +396,19 @@ template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int 
 }
 
 
+// select operator to check for array being null
+template <typename T1, typename T2>
+CUDA_CALLABLE inline T2 select(const array_t<T1>& arr, const T2& a, const T2& b) { return arr.data?b:a; }
+
+template <typename T1, typename T2>
+CUDA_CALLABLE inline void adj_select(const array_t<T1>& arr, const T2& a, const T2& b, const array_t<T1>& adj_cond, T2& adj_a, T2& adj_b, const T2& adj_ret)
+{
+    if (arr.data)
+        adj_b += adj_ret;
+    else
+        adj_a += adj_ret;
+}
+
 // for float and vector types this is just an alias for an atomic add
 template <typename T>
 CUDA_CALLABLE inline void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
