@@ -408,39 +408,34 @@ def apply_body_deltas(
     p0 = wp.transform_get_translation(tf)
     q0 = wp.transform_get_rotation(tf)
 
-    x_com = p0 + wp.quat_rotate(q0, body_com[tid])
 
     weight = 1.0
     if (constraint_inv_weights):
         if (constraint_inv_weights[tid] > 0.0):
             weight = 1.0 / constraint_inv_weights[tid]
 
-    dp = wp.spatial_bottom(delta) * inv_m * weight
+    dp = wp.spatial_bottom(delta) * (inv_m * weight)
     dq = wp.spatial_top(delta) * weight
     dq = wp.quat_rotate(q0, inv_I * wp.quat_rotate_inv(q0, dq))
 
-    # update position
-    p = x_com + dp * dt * dt
-
     # update orientation
-    q = q0 + 0.5 * wp.quat(dq * dt * dt, 0.0) * q0
-    q = wp.normalize(q)
+    q1 = q0 + 0.5 * wp.quat(dq * dt * dt, 0.0) * q0
+    q1 = wp.normalize(q1)
 
-    q_out[tid] = wp.transform(p - wp.quat_rotate(q, body_com[tid]), q)
+    # update position
+    com = body_com[tid]
+    x_com = p0 + wp.quat_rotate(q0, com)
+    p1 = x_com + dp * dt * dt
+    p1 -= wp.quat_rotate(q1, com)
+
+    q_out[tid] = wp.transform(p1, q1)
 
     v0 = wp.spatial_bottom(qd_in[tid])
     w0 = wp.spatial_top(qd_in[tid])
 
-    # linear part
+    # update linear and angular velocity
     v1 = v0 + dp * dt
-    # x1 = x_com + v1 * dt
-
-    # angular part (compute in body frame)
-    wb = wp.quat_rotate_inv(q0, w0 + dq * dt)
-    tb = -wp.cross(wb, body_I[tid]*wb)   # coriolis forces
-
-    w1 = wp.quat_rotate(q0, wb + inv_I * tb * dt)
-    # r1 = wp.normalize(r0 + wp.quat(w1, 0.0) * r0 * 0.5 * dt)
+    w1 = w0 + dq * dt
 
     qd_out[tid] = wp.spatial_vector(w1, v1)
 
