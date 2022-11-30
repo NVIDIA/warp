@@ -1241,12 +1241,11 @@ def collide(model, state, edge_sdf_iter: int = 5):
         state: the state of the model
         edge_sdf_iter: number of search iterations for finding closest contact points between edges and SDF
     """
-
-    # clear old count
-    model.soft_contact_count.zero_()
     
     # generate soft contacts for particles and shapes exept ground plane (last shape)
     if (model.particle_count and model.shape_count > 1):
+        # clear old count
+        model.soft_contact_count.zero_()
         wp.launch(
             kernel=create_soft_contacts,
             dim=(model.particle_count, model.shape_count-1),
