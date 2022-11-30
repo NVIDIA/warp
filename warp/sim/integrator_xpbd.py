@@ -435,11 +435,6 @@ def apply_body_deltas(
     v1 = v0 + dp * dt
     # x1 = x_com + v1 * dt
 
-    # # angular part
-    # # wb = wp.quat_rotate_inv(r0, w0)
-    # # gyr = -(inv_inertia * wp.cross(wb, inertia*wb))
-    # # w1 = w0 + dt * wp.quat_rotate(r0, gyr)
-
     # angular part (compute in body frame)
     wb = wp.quat_rotate_inv(q0, w0 + dq * dt)
     tb = -wp.cross(wb, body_I[tid]*wb)   # coriolis forces
@@ -965,49 +960,6 @@ def compute_contact_constraint_delta(
 
     return deltaLambda*relaxation
 
-
-@wp.func
-def compute_constraint_delta(
-    err: float,
-    derr: float,
-    tf_a: wp.transform,
-    tf_b: wp.transform,
-    m_inv_a: float,
-    m_inv_b: float,
-    I_inv_a: wp.mat33,
-    I_inv_b: wp.mat33,
-    linear_a: wp.vec3, 
-    linear_b: wp.vec3, 
-    angular_a: wp.vec3, 
-    angular_b: wp.vec3, 
-    lambda_in: float,
-    compliance: float,
-    damping: float,
-    relaxation: float,
-    dt: float
-) -> float:
-    denom = 0.0
-    denom += wp.length_sq(linear_a)*m_inv_a
-    denom += wp.length_sq(linear_b)*m_inv_b
-
-    q1 = wp.transform_get_rotation(tf_a)
-    q2 = wp.transform_get_rotation(tf_b)
-
-    # Eq. 2-3 (make sure to project into the frame of the body)
-    rot_angular_a = wp.quat_rotate_inv(q1, angular_a)
-    rot_angular_b = wp.quat_rotate_inv(q2, angular_b)
-
-    denom += wp.dot(rot_angular_a, I_inv_a * rot_angular_a)
-    denom += wp.dot(rot_angular_b, I_inv_b * rot_angular_b)
-
-    alpha = compliance
-    gamma = compliance * damping
-
-    deltaLambda = -(err + alpha*lambda_in + gamma*derr) / (dt*(dt + gamma)*denom + alpha)
-
-    return deltaLambda*relaxation
-
-
 @wp.func
 def compute_positional_correction(
     err: float,
@@ -1047,8 +999,6 @@ def compute_positional_correction(
     deltaLambda = -(err + alpha*lambda_in + gamma*derr) / (dt*(dt + gamma)*denom + alpha)
 
     return deltaLambda
-
-
 
 @wp.func
 def compute_angular_correction(
@@ -1552,10 +1502,12 @@ class XPBDIntegrator:
             if (model.body_count):
                 if requires_grad:
                     state_out.body_q_prev = wp.clone(state_in.body_q)
-                    state_out.body_qd_prev = wp.clone(state_in.body_qd)
+                    if (self.enable_restitution):
+                        state_out.body_qd_prev = wp.clone(state_in.body_qd)
                 else:
                     state_out.body_q_prev.assign(state_in.body_q)
-                    state_out.body_qd_prev.assign(state_in.body_qd)
+                    if (self.enable_restitution):
+                        state_out.body_qd_prev.assign(state_in.body_qd)
 
                 if (model.joint_count):
                     wp.launch(
@@ -1682,8 +1634,6 @@ class XPBDIntegrator:
                                         state_out.body_deltas],
                                     device=model.device)
 
-                        # print(state_out.body_deltas.numpy().max())
-
                     # damped springs
                     if (model.spring_count):
 
@@ -1728,8 +1678,6 @@ class XPBDIntegrator:
                     else:
                         new_particle_q = particle_q
                         new_particle_qd = particle_qd
-                    # new_particle_q = wp.clone(particle_q)
-                    # new_particle_qd = wp.clone(particle_qd)
 
                     wp.launch(kernel=apply_deltas,
                             dim=model.particle_count,
