@@ -1296,7 +1296,7 @@ def apply_rigid_restitution(
     active_contact_point0: wp.array(dtype=wp.vec3),
     active_contact_point1: wp.array(dtype=wp.vec3),
     contact_inv_weight: wp.array(dtype=float),
-    gravity: wp.array(dtype=float),
+    gravity: wp.vec3,
     dt: float,
     # outputs
     deltas: wp.array(dtype=wp.spatial_vector),
@@ -1367,9 +1367,8 @@ def apply_rigid_restitution(
     r_b = bx_b - wp.transform_point(X_wb_b, com_b)
     
     n = contact_normal[tid]
-    g = wp.vec3(gravity[0], gravity[1], gravity[2])
     if (body_a >= 0):
-        v_a = velocity_at_point(body_qd_prev[body_a], r_a) + g*dt
+        v_a = velocity_at_point(body_qd_prev[body_a], r_a) + gravity*dt
         v_a_new = velocity_at_point(body_qd[body_a], r_a)
         q_a = wp.transform_get_rotation(X_wb_a_prev)
         rxn = wp.quat_rotate_inv(q_a, wp.cross(r_a, n))
@@ -1381,7 +1380,7 @@ def apply_rigid_restitution(
         inv_mass += inv_mass_a
         # inv_mass += m_inv_a + wp.dot(rxn, I_inv_a * rxn)
     if (body_b >= 0):
-        v_b = velocity_at_point(body_qd_prev[body_b], r_b) + g*dt
+        v_b = velocity_at_point(body_qd_prev[body_b], r_b) + gravity*dt
         v_b_new = velocity_at_point(body_qd[body_b], r_b)
         q_b = wp.transform_get_rotation(X_wb_b_prev)
         rxn = wp.quat_rotate_inv(q_b, wp.cross(r_b, n))
