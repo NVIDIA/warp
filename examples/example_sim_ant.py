@@ -32,7 +32,7 @@ class Robot:
     episode_duration = 5.0      # seconds
     episode_frames = int(episode_duration/frame_dt)
 
-    sim_substeps = 10
+    sim_substeps = 5
     sim_dt = frame_dt / sim_substeps
     sim_steps = int(episode_duration / sim_dt)
    
@@ -60,7 +60,8 @@ class Robot:
             contact_kf=1.e+4,
             contact_mu=1.0,
             limit_ke=1.e+4,
-            limit_kd=1.e+1)
+            limit_kd=1.e+1,
+            enable_self_collisions=False)
 
 
         for i in range(num_envs):
@@ -91,7 +92,7 @@ class Robot:
         self.model.joint_attach_ke *= 32.0
         self.model.joint_attach_kd *= 4.0
 
-        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.XPBDIntegrator()
 
         #-----------------------
         # set up Usd renderer
