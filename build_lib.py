@@ -54,10 +54,10 @@ if os.name == 'nt':
     else:
         
         # attempt to find MSVC in environment (will set vcvars)
-        cl_path = warp.build.find_host_compiler()
+        warp.config.host_compiler = warp.build.find_host_compiler()
         
-        if (cl_path == None):
-            print("Could not find MSVC compiler in path")
+        if not warp.config.host_compiler:
+            print("Warp build error: Could not find MSVC compiler")
             sys.exit(1)
 
 
