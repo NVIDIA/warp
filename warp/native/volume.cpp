@@ -287,6 +287,11 @@ uint64_t volume_v_from_tiles_device(void* context, void* points, int num_points,
     return 0;
 }
 
+uint64_t volume_i_from_tiles_device(void* context, void* points, int num_points, float voxel_size, int bg_value, float tx, float ty, float tz, bool points_in_world_space)
+{
+    return 0;
+}
+
 void volume_get_tiles_device(uint64_t id, void** buf, uint64_t* size) {}
 
 #endif

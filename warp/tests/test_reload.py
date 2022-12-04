@@ -139,7 +139,7 @@ def test_reload_class(test, device):
         import imp
         imp.reload(warp.tests.test_class_kernel)
 
-        ctest = ClassKernelTest()
+        ctest = ClassKernelTest(device)
         expected = np.zeros((10,3,3),dtype=np.float32)
         expected[:] = np.eye(3)
         assert_np_equal(expected, ctest.identities.numpy())

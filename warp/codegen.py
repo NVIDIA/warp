@@ -119,7 +119,8 @@ class Struct:
                 fields.append((label, var.type._type_))
 
         class StructType(ctypes.Structure):
-            _fields_ = fields
+            # if struct is empty, add a dummy field to avoid launch errors on CPU device ("ffi_prep_cif failed")
+            _fields_ = fields or [("_dummy_", ctypes.c_int)]
 
         self.ctype = StructType
 
