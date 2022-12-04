@@ -250,6 +250,9 @@ class InternalState:
                 .format(", ".join(invalid_attrs))
             )
 
+        # Configure warp to only compute the forward pass.
+        wp.set_module_options({"enable_backward": False}, module=kernel_module)
+
         # Store the public members.
         self.kernel_module = kernel_module
         self.kernel_annotations = kernel_annotations

@@ -44,6 +44,11 @@ def test_transient_module(test, device):
 
     data = module.Data()
     data.x = wp.array(123, dtype=int)
+
+    wp.set_module_options({"foo": "bar"}, module=module)
+    assert wp.get_module_options(module=module).get("foo") == "bar"
+    assert module.increment.module.options.get("foo") == "bar"
+
     wp.launch(module.increment, dim=1, inputs=[data])
     assert_np_equal(data.x.numpy(), np.array([124]))
 
