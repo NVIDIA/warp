@@ -97,13 +97,14 @@ def test_stream_arg_synchronize(test, device):
     c = wp.empty(N, dtype=float, device=device)
     d = wp.empty(N, dtype=float, device=device)
 
+    stream1 = wp.get_stream(device)
     stream2 = wp.Stream(device)
     stream3 = wp.Stream(device)
 
     wp.launch(inc, dim=N, inputs=[a], device=device)
 
     # b and c depend on a
-    wp.synchronize_stream()
+    wp.synchronize_stream(stream1)
     wp.launch(inc_new, dim=N, inputs=[a, b], stream=stream2)
     wp.launch(inc_new, dim=N, inputs=[a, c], stream=stream3)
 
