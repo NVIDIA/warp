@@ -134,7 +134,7 @@ def add_function_test(cls, name, func, devices=None, **kwargs):
 
 def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=None):
     
-    def test_func(self):
+    def test_func(self, device):
 
         args = []
         if (inputs):
@@ -160,9 +160,12 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
     if name == None:
         name = kernel.key
 
-    # register test func with class for the given devices
+    # device is required for kernel tests, so use all devices if none were given
     if devices is None:
-        setattr(cls, name, test_func)
-    else:
-        for device in devices:
-            setattr(cls, name + "_" + sanitize_identifier(device), test_func)
+        devices = wp.get_devices()
+
+    # register test func with class for the given devices
+    for d in devices:
+        # use a lambda to forward the device to the inner test function
+        test_lambda = lambda test, device=d: test_func(test, device)
+        setattr(cls, name + "_" + sanitize_identifier(d), test_lambda)

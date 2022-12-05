@@ -148,8 +148,8 @@ struct array_t
         shape.dims[2] = 0;
         shape.dims[3] = 0;
         ndim = 2;
-        strides[0] = sizeof(T);
-        strides[1] = dim0 * sizeof(T);
+        strides[0] = dim1 * sizeof(T);
+        strides[1] = sizeof(T);
         strides[2] = 0;
         strides[3] = 0;
     }
@@ -160,9 +160,9 @@ struct array_t
         shape.dims[2] = dim2;
         shape.dims[3] = 0;
         ndim = 3;
-        strides[0] = sizeof(T);
-        strides[1] = dim0 * sizeof(T);
-        strides[2] = dim0 * dim1 * sizeof(T);
+        strides[0] = dim1 * dim2 * sizeof(T);
+        strides[1] = dim2 * sizeof(T);
+        strides[2] = sizeof(T);
         strides[3] = 0;
     }
     array_t(T* data, int dim0, int dim1, int dim2, int dim3) : data(data) {
@@ -172,10 +172,10 @@ struct array_t
         shape.dims[2] = dim2;
         shape.dims[3] = dim3;
         ndim = 4;
-        strides[0] = sizeof(T);
-        strides[1] = dim0 * sizeof(T);
-        strides[2] = dim0 * dim1 * sizeof(T);
-        strides[3] = dim0 * dim1 * dim2 * sizeof(T);
+        strides[0] = dim1 * dim2 * dim3 * sizeof(T);
+        strides[1] = dim2 * dim3 * sizeof(T);
+        strides[2] = dim3 * sizeof(T);
+        strides[3] = sizeof(T);
     }
 
     T* data;
@@ -394,7 +394,6 @@ template<typename T> inline CUDA_CALLABLE void store(const array_t<T>& buf, int 
 
     index(buf, i, j, k, l) = value;
 }
-
 
 // for float and vector types this is just an alias for an atomic add
 template <typename T>

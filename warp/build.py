@@ -45,6 +45,9 @@ def set_msvc_compiler(msvc_path, sdk_path):
     if "LIB" not in os.environ:
         os.environ["LIB"] = ""
 
+    msvc_path = os.path.abspath(msvc_path)
+    sdk_path = os.path.abspath(sdk_path)
+
     os.environ["INCLUDE"] += os.pathsep + os.path.join(msvc_path, "include")
     os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/winrt")
     os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/um")
@@ -56,7 +59,8 @@ def set_msvc_compiler(msvc_path, sdk_path):
     os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib/um/x64")
 
     os.environ["PATH"] += os.pathsep + os.path.join(msvc_path, "bin/HostX64/x64")
-    
+
+    warp.config.host_compiler = os.path.join(msvc_path, "bin", "HostX64", "x64", "cl.exe")
 
 
 def find_host_compiler():
@@ -83,7 +87,7 @@ def find_host_compiler():
                 if (len(pair) >= 2):
                     os.environ[pair[0]] = pair[1]
                 
-            cl_path = run_cmd("where cl.exe")
+            cl_path = run_cmd("where cl.exe").decode("utf-8").rstrip()
             cl_version = os.environ["VCToolsVersion"].split(".")
 
             # ensure at least VS2017 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
@@ -277,6 +281,11 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
 
     if os.name == 'nt':
 
+        if not warp.config.host_compiler:
+            raise RuntimeError("Warp build error: Host compiler was not found")
+        
+        host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
+
         cpp_out = cpp_path + ".obj"
 
         if cuda_disabled:
@@ -305,7 +314,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
 
 
         with ScopedTimer("build", active=warp.config.verbose):
-            cpp_cmd = f'cl.exe {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+            cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
             run_cmd(cpp_cmd)
 
             ld_inputs.append(quote(cpp_out))
@@ -326,7 +335,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
                 ld_inputs.append("cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = 'link.exe {inputs} {flags} /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), flags=ld_flags, dll_path=dll_path)
+            link_cmd = f'"{host_linker}" {" ".join(ld_inputs)} {ld_flags} /out:"{dll_path}"'
             run_cmd(link_cmd)
         
     else:

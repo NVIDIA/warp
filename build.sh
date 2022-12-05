@@ -12,4 +12,6 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 
 # pip deps
 ./_build/target-deps/python/python -m pip install numpy
-./_build/target-deps/python/python build_lib.py --cuda_path="_build/target-deps/cuda"
+
+# build with docker for increased compatibility
+./_build/host-deps/linbuild/linbuild.sh -- ./_build/target-deps/python/python build_lib.py --cuda_path="_build/target-deps/cuda"
