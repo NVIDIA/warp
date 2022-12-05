@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.6.1] - 2022-12-05
+
+- Fix for non-CUDA builds
+- Fix strides computation in array_t constructor, fixes a bug with accessing mesh indices through mesh.indices[]
+- Disable backward pass code generation for kernel node (4-6x faster compilation)
+- Switch to linbuild for universal Linux binaries (affects TeamCity builds only)
+
 ## [0.6.0] - 2022-11-28
 
 - Add support for CUDA streams, see `wp.Stream`, `wp.get_stream()`, `wp.set_stream()`, `wp.synchronize_stream()`, `wp.ScopedStream`
