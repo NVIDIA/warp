@@ -64,6 +64,9 @@ extern "C"
     WP_API void hash_grid_destroy_device(uint64_t id);
     WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
 
+    WP_API bool cutlass_gemm(int compute_capability, int m, int n, int k, const char* datatype,
+                             const void* a, const void* b, const void* c, void* d, float alpha, float beta, bool allow_tf32x3_arith);
+
     WP_API uint64_t volume_create_host(void* buf, uint64_t size);
     WP_API void volume_get_buffer_info_host(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_get_tiles_host(uint64_t id, void** buf, uint64_t* size);

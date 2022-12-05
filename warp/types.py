@@ -1354,6 +1354,57 @@ class Volume:
 
         return volume
 
+def matmul(a: array, b: array, c: array, d: array, alpha: float = 1., beta: float = 0., allow_tf32x3_arith: bool = False):
+    """ Computes a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
+
+    Args:
+        a (array): two-dimensional array containing matrix A
+        b (array): two-dimensional array containing matrix B
+        c (array): two-dimensional array containing matrix C
+        d (array): two-dimensional array to which output D is written
+        alpha (float): parameter alpha of GEMM
+        beta (float): parameter beta of GEMM
+        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
+                                   while using Tensor Cores
+    """
+    from warp.context import runtime
+
+    if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != d.dtype:
+        raise RuntimeError("wp.matmul currently only supports operation between {A, B, C, D} matrices of the same type.")
+
+    # Attempt to get the device's compute capability to route to the most appropriate CUTLASS GEMM
+    try:
+        from cuda import cudart
+        err, deviceProp = cudart.cudaGetDeviceProperties(0)
+        if err.value:
+            raise RuntimeError("cudaDeviceGetProperties() returned error: {}".format(cudart.cudaGetErrorName(err)))
+        cc = int(str(deviceProp.major) + str(deviceProp.minor))
+    except:
+        # Unable to import CUDA, or error querying device. Fall back to assuming SM50 (no Tensor Core GEMMs)
+        cc = 50
+
+    NDIM = 2
+    for param in [a, b, c, d]:
+        if param.ndim != NDIM:
+            raise RuntimeError(("Inputs {a, b, c, d} of `matmul` must be arrays with ndim of 2. "
+                               "Received {}.").format(param.ndim))
+
+    m = a.shape[0]
+    n = b.shape[1]
+    k = a.shape[1]
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              m, n, k,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(c.ptr),
+                              ctypes.c_void_p(d.ptr),
+                              alpha, beta,
+                              allow_tf32x3_arith)
+    if not ret:
+        raise RuntimeError("Matmul failed.")
+
 class HashGrid:
 
     def __init__(self, dim_x, dim_y, dim_z, device=None):
