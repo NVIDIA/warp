@@ -73,7 +73,7 @@ Built-in unit tests can be run from the command-line as follows:
 For developers who want to build the library themselves the following tools are required:
 
 * Microsoft Visual Studio 2017 upwards (Windows)
-* GCC 4.0 upwards (Linux)
+* GCC 6.0 upwards (Linux)
 * CUDA Toolkit 11.5 or higher
 * Git LFS installed (https://git-lfs.github.com/) 
 
@@ -190,7 +190,7 @@ Most optimizers (particularly ones that exploit stochasticity), are not sensitiv
 ### Does Warp support multi-GPU programming?
 -------
 
-Yes! Since verrsion `0.4.0` we support allocating, launching, and copying between multiple GPUs in a single process. We follow the naming conventions of PyTorch and use aliases such as `cuda:0`, `cuda:1`, `cpu` to identify individual devices.
+Yes! Since version `0.4.0` we support allocating, launching, and copying between multiple GPUs in a single process. We follow the naming conventions of PyTorch and use aliases such as `cuda:0`, `cuda:1`, `cpu` to identify individual devices.
 
 ### Should I switch to Warp over IsaacGym / PhysX?
 -------
