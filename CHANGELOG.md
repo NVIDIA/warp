@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## [0.6.1] - 2022-12-05
+
+- Fix for non-CUDA builds
+- Fix strides computation in array_t constructor, fixes a bug with accessing mesh indices through mesh.indices[]
+- Disable backward pass code generation for kernel node (4-6x faster compilation)
+- Switch to linbuild for universal Linux binaries (affects TeamCity builds only)
+
+## [0.6.0] - 2022-11-28
+
+- Add support for CUDA streams, see `wp.Stream`, `wp.get_stream()`, `wp.set_stream()`, `wp.synchronize_stream()`, `wp.ScopedStream`
+- Add support for CUDA events, see `wp.Event`, `wp.record_event()`, `wp.wait_event()`, `wp.wait_stream()`, `wp.Stream.record_event()`, `wp.Stream.wait_event()`, `wp.Stream.wait_stream()`
+- Add support for PyTorch stream interop, see `wp.stream_from_torch()`, `wp.stream_to_torch()`
+- Add support for allocating host arrays in pinned memory for asynchronous data transfers, use `wp.array(..., pinned=True)` (default is non-pinned)
+- Add support for direct conversions between all scalar types, e.g.: `x = wp.uint8(wp.float64(3.0))`
+- Add per-module option to enable fast math, use `wp.set_module_options({"fast_math": True})`, fast math is now *disabled* by default
+- Add support for generating CUBIN kernels instead of PTX on systems with older drivers
+- Add user preference options for CUDA kernel output ("ptx" or "cubin", e.g.: `wp.config.cuda_output = "ptx"` or per-module `wp.set_module_options({"cuda_output": "ptx"})`)
+- Add kernel node for OmniGraph
+- Add `wp.quat_slerp()`, `wp.quat_to_axis_angle()`, `wp.rotate_rodriquez()` and adjoints for all remaining quaternion operations
+- Add support for unrolling for-loops when range is a `wp.constant`
+- Add support for arithmetic operators on built-in vector / matrix types outside of `wp.kernel`
+- Add support for multiple solution variables in `wp.optim` Adam optimization
+- Add nested attribute support for `wp.struct` attributes
+- Add missing adjoint implementations for spatial math types, and document all functions with missing adjoints
+- Add support for retrieving NanoVDB tiles and voxel size, see `wp.Volume.get_tiles()`, and `wp.Volume.get_voxel_size()`
+- Add support for store operations on integer NanoVDB volumes, see `wp.volume_store_i()`
+- Expose `wp.Mesh` points, indices, as arrays inside kernels, see `wp.mesh_get()`
+- Optimizations for `wp.array` construction, 2-3x faster on average
+- Optimizations for URDF import
+- Fix various deployment issues by statically linking with all CUDA libs
+- Update warp.so/warp.dll to CUDA Toolkit 11.5
+
+## [0.5.1] - 2022-11-01
+
+- Fix for unit tests in Kit
+
 ## [0.5.0] - 2022-10-31
 
 - Add smoothed particle hydrodynamics (SPH) example, see `example_sph.py`

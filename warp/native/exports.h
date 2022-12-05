@@ -76,11 +76,14 @@ WP_API void builtin_cw_div_vec4_vec4(vec4 x, vec4 y, vec4* ret) { *ret = wp::cw_
 WP_API void builtin_svd3_mat33_mat33_vec3_mat33(mat33 A, mat33 U, vec3 sigma, mat33 V) { wp::svd3(A, U, sigma, V); }
 WP_API void builtin_quat_identity(quat* ret) { *ret = wp::quat_identity(); }
 WP_API void builtin_quat_from_axis_angle_vec3_float32(vec3 axis, float32 angle, quat* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
+WP_API void builtin_quat_to_axis_angle_quat_vec3_float32(quat q, vec3 axis, float32 angle) { wp::quat_to_axis_angle(q, axis, angle); }
 WP_API void builtin_quat_from_matrix_mat33(mat33 m, quat* ret) { *ret = wp::quat_from_matrix(m); }
 WP_API void builtin_quat_rpy_float32_float32_float32(float32 roll, float32 pitch, float32 yaw, quat* ret) { *ret = wp::quat_rpy(roll, pitch, yaw); }
 WP_API void builtin_quat_inverse_quat(quat q, quat* ret) { *ret = wp::quat_inverse(q); }
 WP_API void builtin_quat_rotate_quat_vec3(quat q, vec3 p, vec3* ret) { *ret = wp::quat_rotate(q, p); }
 WP_API void builtin_quat_rotate_inv_quat_vec3(quat q, vec3 p, vec3* ret) { *ret = wp::quat_rotate_inv(q, p); }
+WP_API void builtin_rotate_rodriguez_vec3_vec3(vec3 r, vec3 x, vec3* ret) { *ret = wp::rotate_rodriguez(r, x); }
+WP_API void builtin_quat_slerp_quat_quat_float32(quat q0, quat q1, float32 t, quat* ret) { *ret = wp::quat_slerp(q0, q1, t); }
 WP_API void builtin_quat_to_matrix_quat(quat q, mat33* ret) { *ret = wp::quat_to_matrix(q); }
 WP_API void builtin_transform_identity(transform* ret) { *ret = wp::transform_identity(); }
 WP_API void builtin_transform_get_translation_transform(transform t, vec3* ret) { *ret = wp::transform_get_translation(t); }
@@ -109,6 +112,7 @@ WP_API void builtin_hash_grid_query_uint64_vec3_float32(uint64 id, vec3 point, f
 WP_API void builtin_hash_grid_query_next_hash_grid_query_t_int32(hash_grid_query_t query, int32 index, bool* ret) { *ret = wp::hash_grid_query_next(query, index); }
 WP_API void builtin_hash_grid_point_id_uint64_int32(uint64 id, int32 index, int* ret) { *ret = wp::hash_grid_point_id(id, index); }
 WP_API void builtin_intersect_tri_tri_vec3_vec3_vec3_vec3_vec3_vec3(vec3 v0, vec3 v1, vec3 v2, vec3 u0, vec3 u1, vec3 u2, int* ret) { *ret = wp::intersect_tri_tri(v0, v1, v2, u0, u1, u2); }
+WP_API void builtin_mesh_get_uint64(uint64 id, Mesh* ret) { *ret = wp::mesh_get(id); }
 WP_API void builtin_mesh_eval_face_normal_uint64_int32(uint64 id, int32 face, vec3* ret) { *ret = wp::mesh_eval_face_normal(id, face); }
 WP_API void builtin_mesh_get_point_uint64_int32(uint64 id, int32 index, vec3* ret) { *ret = wp::mesh_get_point(id, index); }
 WP_API void builtin_mesh_get_velocity_uint64_int32(uint64 id, int32 index, vec3* ret) { *ret = wp::mesh_get_velocity(id, index); }
@@ -125,6 +129,7 @@ WP_API void builtin_volume_lookup_v_uint64_int32_int32_int32(uint64 id, int32 i,
 WP_API void builtin_volume_store_v_uint64_int32_int32_int32_vec3(uint64 id, int32 i, int32 j, int32 k, vec3 value) { wp::volume_store_v(id, i, j, k, value); }
 WP_API void builtin_volume_sample_i_uint64_vec3(uint64 id, vec3 uvw, int* ret) { *ret = wp::volume_sample_i(id, uvw); }
 WP_API void builtin_volume_lookup_i_uint64_int32_int32_int32(uint64 id, int32 i, int32 j, int32 k, int* ret) { *ret = wp::volume_lookup_i(id, i, j, k); }
+WP_API void builtin_volume_store_i_uint64_int32_int32_int32_int32(uint64 id, int32 i, int32 j, int32 k, int32 value) { wp::volume_store_i(id, i, j, k, value); }
 WP_API void builtin_volume_index_to_world_uint64_vec3(uint64 id, vec3 uvw, vec3* ret) { *ret = wp::volume_index_to_world(id, uvw); }
 WP_API void builtin_volume_world_to_index_uint64_vec3(uint64 id, vec3 xyz, vec3* ret) { *ret = wp::volume_world_to_index(id, xyz); }
 WP_API void builtin_volume_index_to_world_dir_uint64_vec3(uint64 id, vec3 uvw, vec3* ret) { *ret = wp::volume_index_to_world_dir(id, uvw); }
@@ -203,7 +208,7 @@ WP_API void builtin_lerp_quat_quat_float32(quat a, quat b, float32 t, quat* ret)
 WP_API void builtin_lerp_transform_transform_float32(transform a, transform b, float32 t, transform* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_spatial_vector_spatial_vector_float32(spatial_vector a, spatial_vector b, float32 t, spatial_vector* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_spatial_matrix_spatial_matrix_float32(spatial_matrix a, spatial_matrix b, float32 t, spatial_matrix* ret) { *ret = wp::lerp(a, b, t); }
-WP_API void builtin_smoothstep_float32_float32_float32(float32 a, float32 b, float32 t, float* ret) { *ret = wp::smoothstep(a, b, t); }
+WP_API void builtin_smoothstep_float32_float32_float32(float32 edge0, float32 edge1, float32 x, float* ret) { *ret = wp::smoothstep(edge0, edge1, x); }
 WP_API void builtin_expect_near_float32_float32_float32(float32 arg1, float32 arg2, float32 tolerance) { wp::expect_near(arg1, arg2, tolerance); }
 WP_API void builtin_expect_near_vec3_vec3_float32(vec3 arg1, vec3 arg2, float32 tolerance) { wp::expect_near(arg1, arg2, tolerance); }
 WP_API void builtin_add_int32_int32(int32 x, int32 y, int* ret) { *ret = wp::add(x, y); }

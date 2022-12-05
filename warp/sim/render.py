@@ -12,12 +12,12 @@ import warp.sim
 
 class SimRenderer(warp.render.UsdRenderer):
     
-    def __init__(self, model: warp.sim.Model, path):
+    def __init__(self, model: warp.sim.Model, path, scaling=1.0):
 
         from pxr import UsdGeom
 
         # create USD stage
-        super().__init__(path)
+        super().__init__(path, scaling=scaling)
 
         self.model = model
 

@@ -54,8 +54,8 @@ class Adam:
        https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
     """
     def __init__(self, params=None, lr=0.001, betas=(0.9, 0.999), eps=1e-08):
-        self.m = None #first moment
-        self.v = None #second moment
+        self.m = [] #first moment
+        self.v = [] #second moment
         self.set_params(params)
         self.lr = lr
         self.beta1 = betas[0]
@@ -65,21 +65,29 @@ class Adam:
 
     def set_params(self, params):
         self.params = params
-        if(params != None):
-            # Make sure both moments match the parameters shape and type.
-            if(self.m == None or self.m.shape != self.params.shape or self.m.dtype != self.params.dtype):
-                self.m = wp.zeros_like(self.params) 
-            if(self.v == None or self.v.shape != self.params.shape or self.v.dtype != self.params.dtype):
-                self.v = wp.zeros_like(self.params)
+        if(params != None and type(params) == list and len(params) > 0):
+            if(len(self.m) != len(params)):
+                self.m = [None]*len(params) #reset first moment
+            if(len(self.v) != len(params)):
+                self.v = [None]*len(params) #reset second moment
+            for i in range(len(params)):
+                param = params[i]
+                if(self.m[i] == None or self.m[i].shape != param.shape or self.m[i].dtype != param.dtype):
+                    self.m[i] = wp.zeros_like(param)
+                if(self.v[i] == None or self.v[i].shape != param.shape or self.v[i].dtype != param.dtype):
+                    self.v[i] = wp.zeros_like(param)                
 
     def reset_internal_state(self):
-        self.m.zero_()
-        self.v.zero_()
+        for m_i in self.m:
+            m_i.zero_()
+        for v_i in self.v:
+            v_i.zero_()
         self.t = 0
 
     def step(self, grad):
         assert(self.params != None)
-        Adam.step_detail(grad, self.m, self.v, self.lr, self.beta1, self.beta2, self.t, self.eps, self.params)
+        for i in range(len(self.params)):
+            Adam.step_detail(grad[i], self.m[i], self.v[i], self.lr, self.beta1, self.beta2, self.t, self.eps, self.params[i])
         self.t = self.t + 1
     
     @staticmethod

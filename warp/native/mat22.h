@@ -103,7 +103,13 @@ inline CUDA_CALLABLE mat22 atomic_max(mat22 * addr, mat22 value)
     return m;
 }
 
-
+inline CUDA_CALLABLE void adj_mat22(vec2 c0, vec2 c1,
+                      vec2& a0, vec2& a1,
+                      const mat22& adj_ret)
+{
+    a0 += adj_ret.get_col(0);
+    a1 += adj_ret.get_col(1);
+}
 
 inline CUDA_CALLABLE void adj_mat22(float m00, float m01, float m10, float m11, float& adj_m00, float& adj_m01, float& adj_m10, float& adj_m11, const mat22& adj_ret)
 {

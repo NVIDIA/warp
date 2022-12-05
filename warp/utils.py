@@ -549,6 +549,29 @@ class ScopedDevice:
         self.device.runtime.default_device = self.saved_device
 
 
+class ScopedStream:
+
+    def __init__(self, stream):
+
+        self.stream = stream
+        if stream is not None:
+            self.device = stream.device
+            self.device_scope = ScopedDevice(self.device)
+    
+    def __enter__(self):
+
+        if self.stream is not None:
+            self.device_scope.__enter__()
+            self.saved_stream = self.device.stream
+            self.device.stream = self.stream
+
+    def __exit__(self, exc_type, exc_value, traceback):
+
+        if self.stream is not None:
+            self.device.stream = self.saved_stream
+            self.device_scope.__exit__(exc_type, exc_value, traceback)
+
+
 # timer utils
 class ScopedTimer:
 
@@ -583,6 +606,8 @@ class ScopedTimer:
                 self.cp = cProfile.Profile()
                 self.cp.clear()
                 self.cp.enable()
+        
+        return self
 
 
     def __exit__(self, exc_type, exc_value, traceback):

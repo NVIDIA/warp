@@ -14,10 +14,14 @@
 
 #include "crt.h"
 
-#if _WIN32
-#define WP_API __declspec(dllexport)
+#if !defined(__CUDA_ARCH__)
+    #if defined(_WIN32)
+        #define WP_API __declspec(dllexport)
+    #else
+        #define WP_API __attribute__ ((visibility ("default")))
+    #endif
 #else
-#define WP_API
+    #define WP_API
 #endif
 
 #ifdef _WIN32
@@ -82,6 +86,13 @@ struct half
     unsigned short u;
 
     CUDA_CALLABLE inline bool operator==(const half& h) const { return u == h.u; }
+
+    CUDA_CALLABLE inline half operator+=(const half& h)
+    {
+        half sum = half(float32(*this) + float32(h));
+        this->u = sum.u;
+        return *this;
+    }
 
     CUDA_CALLABLE inline operator float32() const { return float32(half_to_float(*this)); }
     CUDA_CALLABLE inline operator float64() const { return float64(half_to_float(*this)); }
@@ -988,14 +999,6 @@ inline bool CUDA_CALLABLE isfinite(float x)
 #include "spatial.h"
 #include "intersect.h"
 #include "intersect_adj.h"
-#include "mesh.h"
-#include "bvh.h" 
-#include "svd.h"
-#include "hashgrid.h"
-#include "rand.h"
-#include "noise.h"
-#include "volume.h"
-#include "range.h"
 
 //--------------
 namespace wp
@@ -1030,30 +1033,30 @@ CUDA_CALLABLE inline void adj_lerp(const T& a, const T& b, float t, T& adj_a, T&
     adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
 }
 
-CUDA_CALLABLE inline float smoothstep(float a, float b, float t)
+CUDA_CALLABLE inline float smoothstep(float edge0, float edge1, float x)
 {
-    // remap t from the range [a, b] to [0, 1]
-    t = clamp((t - a) / (b - a), 0.0, 1.0);
-    return t * t * (3.0 - 2.0 * t);
+    // remap x from the range [edge0, edge1] to [0, 1]
+    x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+    return x * x * (3.0 - 2.0 * x);
 }
 
-CUDA_CALLABLE inline void adj_smoothstep(float a, float b, float t, float& adj_a, float& adj_b, float& adj_t, float adj_ret)
+CUDA_CALLABLE inline void adj_smoothstep(float edge0, float edge1, float x, float& adj_edge0, float& adj_edge1, float& adj_x, float adj_ret)
 {
-    float ab = a - b;
-    float at = a - t;
-    float bt = b - t;
-    float tb = t - b;
+    float ab = edge0 - edge1;
+    float ax = edge0 - x;
+    float bx = edge1 - x;
+    float xb = x - edge1;
 
-    if (bt / ab >= 0 || at / ab <= 0)
+    if (bx / ab >= 0 || ax / ab <= 0)
     {
         return;
     }
 
     float ab3 = ab * ab * ab;
     float ab4 = ab3 * ab;
-    adj_a += adj_ret * ((6 * at * bt * bt) / ab4);
-    adj_b += adj_ret * ((6 * at * at * tb) / ab4);
-    adj_t += adj_ret * ((6 * at * bt     ) / ab3);
+    adj_edge0 += adj_ret * ((6 * ax * bx * bx) / ab4);
+    adj_edge1 += adj_ret * ((6 * ax * ax * xb) / ab4);
+    adj_x     += adj_ret * ((6 * ax * bx     ) / ab3);
 }
 
 inline CUDA_CALLABLE void print(const str s)
@@ -1183,14 +1186,6 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
            m.data[5][0], m.data[5][1], m.data[5][2],  m.data[5][3], m.data[5][4], m.data[5][5]);
 }
 
-inline CUDA_CALLABLE void print(shape_t s)
-{
-    // todo: only print valid dims, currently shape has a fixed size
-    // but we don't know how many dims are valid (e.g.: 1d, 2d, etc)
-    // should probably store ndim with shape
-    printf("(%d, %d, %d, %d)\n", s.dims[0], s.dims[1], s.dims[2], s.dims[3]);
-}
-
 
 inline CUDA_CALLABLE void adj_print(int i, int& adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float f, float& adj_f) { printf("%g adj: %g\n", f, adj_f); }
@@ -1213,7 +1208,7 @@ inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
 inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
-inline CUDA_CALLABLE void adj_print(shape_t s, shape_t& shape_t) {}
+
 
 // printf defined globally in crt.h
 inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) {}
@@ -1270,4 +1265,12 @@ inline CUDA_CALLABLE void adj_expect_near(const T& actual, const T& expected, co
 
 // include array.h so we have the print, isfinite functions for the inner array types defined
 #include "array.h"
+#include "mesh.h"
+#include "bvh.h" 
+#include "svd.h"
+#include "hashgrid.h"
+#include "volume.h"
+#include "range.h"
+#include "rand.h"
+#include "noise.h"
 #include "matnn.h"

@@ -44,14 +44,15 @@ To define a computational kernel use the following syntax with the ``@wp.kernel`
 Arrays can be allocated similar to PyTorch: ::
 
     # allocate an uninitizalized array of vec3s
-    v = wp.empty(length=n, dtype=wp.vec3, device="cuda")
+    v = wp.empty(shape=n, dtype=wp.vec3, device="cuda")
 
     # allocate a zero-initialized array of quaternions    
-    q = wp.zeros(length=n, dtype=wp.quat, device="cuda")
+    q = wp.zeros(shape=n, dtype=wp.quat, device="cuda")
 
     # allocate and initialize an array from a numpy array
     # will be automatically transferred to the specified device
-    v = wp.from_numpy(array, dtype=wp.vec3, device="cuda")
+    a = np.ones((10, 3), dtype=np.float32)
+    v = wp.from_numpy(a, dtype=wp.vec3, device="cuda")
 
 
 To launch a kernel use the following syntax: ::

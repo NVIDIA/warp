@@ -245,17 +245,17 @@ def f4(arr: wp.array4d(dtype=float)):
 def test_shape(test, device):
     
     with CheckOutput(test):
-        a1 = wp.zeros(dtype=float, shape=10)
-        wp.launch(f1, dim=1, inputs=[a1])
+        a1 = wp.zeros(dtype=float, shape=10, device=device)
+        wp.launch(f1, dim=1, inputs=[a1], device=device)
 
-        a2 = wp.zeros(dtype=float, shape=(10, 20))
-        wp.launch(f2, dim=1, inputs=[a2])
+        a2 = wp.zeros(dtype=float, shape=(10, 20), device=device)
+        wp.launch(f2, dim=1, inputs=[a2], device=device)
 
-        a3 = wp.zeros(dtype=float, shape=(10, 20, 30))
-        wp.launch(f3, dim=1, inputs=[a3])
+        a3 = wp.zeros(dtype=float, shape=(10, 20, 30), device=device)
+        wp.launch(f3, dim=1, inputs=[a3], device=device)
 
-        a4 = wp.zeros(dtype=float, shape=(10, 20, 30, 40))
-        wp.launch(f4, dim=1, inputs=[a4])
+        a4 = wp.zeros(dtype=float, shape=(10, 20, 30, 40), device=device)
+        wp.launch(f4, dim=1, inputs=[a4], device=device)
 
 
 

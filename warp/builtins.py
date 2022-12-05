@@ -171,15 +171,12 @@ add_builtin("cw_div", input_types={"x": vec3, "y": vec3}, value_type=vec3, group
 add_builtin("cw_div", input_types={"x": vec4, "y": vec4}, value_type=vec4, group="Vector Math",
     doc="Component wise division of two 4d vectors.")
 
-# type construtors for compute types (int, float)
-for t in scalar_types:
-    add_builtin("int", input_types={"x": t}, value_type=int, doc="Construct an 32-bit signed integer variable, larger precision types will be truncated.", hidden=True, group="Scalar Math", export=False)
-    add_builtin("float", input_types={"x": t}, value_type=float, doc="Construct a 32-bit floating point variable, larger precision types will be truncated.", hidden=True, group="Scalar Math", export=False)
+# type construtors between all storage / compute types 
+scalar_types_all = [*scalar_types, int, float]
+for t in scalar_types_all:
+    for u in scalar_types_all:
+        add_builtin(t.__name__, input_types={"u": u}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
 
-# type construtors for storage types 
-for t in scalar_types:
-    add_builtin(t.__name__, input_types={"x": int}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
-    add_builtin(t.__name__, input_types={"x": float}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
 
 add_builtin("vec2", input_types={}, value_type=vec2, doc="Construct a zero-initialized 2d vector.", group="Vector Math", export=False)
 add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="Construct a 2d vector with compontents x, y.", group="Vector Math", export=False)
@@ -228,6 +225,8 @@ add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion 
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0")
 add_builtin("quat_from_axis_angle", input_types={"axis": vec3, "angle": float}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
+add_builtin("quat_to_axis_angle", input_types={"q": quat, "axis": vec3, "angle": float}, value_type=None, group="Quaternion Math",
+    doc="Extract the rotation axis and angle radians a quaternion represents.")
 add_builtin("quat_from_matrix", input_types={"m": mat33}, value_type=quat, group="Quaternion Math",
     doc="Construct a quaternion from a 3x3 matrix.")
 add_builtin("quat_rpy", input_types={"roll": float, "pitch": float, "yaw": float}, value_type=quat, group="Quaternion Math",
@@ -238,6 +237,10 @@ add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, 
     doc="Rotate a vector by a quaternion.")
 add_builtin("quat_rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
     doc="Rotate a vector the inverse of a quaternion.")
+add_builtin("rotate_rodriguez", input_types={"r": vec3, "x": vec3}, value_type=vec3, group="Quaternion Math",
+    doc="Rotate the vector x by the rotator r encoding rotation axis and angle radians.")
+add_builtin("quat_slerp", input_types={"q0": quat, "q1": quat, "t": float}, value_type=quat, group="Quaternion Math",
+    doc="Linearly interpolate between two quaternions.")
 add_builtin("quat_to_matrix", input_types={"q": quat}, value_type=mat33, group="Quaternion Math",
     doc="Convert a quaternion to a 3x3 rotation matrix.")
 
@@ -465,6 +468,10 @@ add_builtin("hash_grid_point_id", input_types={"id": uint64, "index": int}, valu
 add_builtin("intersect_tri_tri", input_types={"v0": vec3, "v1": vec3, "v2": vec3, "u0": vec3, "u1": vec3, "u2": vec3}, value_type=int, group="Geometry", 
     doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.")
 
+
+add_builtin("mesh_get", input_types={"id": uint64}, value_type=Mesh, group="Geometry",
+    doc="""Retrieves the mesh given its index.""")
+
 add_builtin("mesh_eval_face_normal", input_types={"id": uint64, "face": int}, value_type=vec3, group="Geometry",
     doc="""Evaluates the face normal the mesh given a face index.""")
 
@@ -528,6 +535,9 @@ add_builtin("volume_sample_i", input_types={"id": uint64, "uvw": vec3}, value_ty
 
 add_builtin("volume_lookup_i", input_types={"id": uint64, "i": int, "j": int, "k": int}, value_type=int, group="Volumes",
     doc="""Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value""")
+
+add_builtin("volume_store_i", input_types={"id": uint64, "i": int, "j": int, "k": int, "value": int}, group="Volumes",
+    doc="""Store the value at voxel with coordinates ``i``, ``j``, ``k``.""")
 
 add_builtin("volume_index_to_world", input_types={"id": uint64, "uvw": vec3}, value_type=vec3, group="Volumes",
     doc="""Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.""")
@@ -601,11 +611,11 @@ add_builtin("pnoise", input_types={"state": uint32, "xyzt": vec4, "px": int, "py
     doc="Periodic Perlin-style noise in 4d.")
 
 add_builtin("curlnoise", input_types={"state": uint32, "xy": vec2}, value_type=vec2, group="Random",
-    doc="Divergence-free vector field based on the gradient of a Perlin noise function.")
+    doc="Divergence-free vector field based on the gradient of a Perlin noise function.", missing_grad=True)
 add_builtin("curlnoise", input_types={"state": uint32, "xyz": vec3}, value_type=vec3, group="Random",
-    doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
+    doc="Divergence-free vector field based on the curl of three Perlin noise functions.", missing_grad=True)
 add_builtin("curlnoise", input_types={"state": uint32, "xyzt": vec4}, value_type=vec3, group="Random",
-    doc="Divergence-free vector field based on the curl of three Perlin noise functions.")
+    doc="Divergence-free vector field based on the curl of three Perlin noise functions.", missing_grad=True)
 
 # note printf calls directly to global CRT printf (no wp:: namespace prefix)
 add_builtin("printf", input_types={}, namespace="", variadic=True, group="Utility",
@@ -758,26 +768,26 @@ add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int
 
 
 # used to index into builtin types, i.e.: y = vec3[1]
-add_builtin("index", input_types={"a": vec2, "i": int}, value_type=float, group="Utility")
-add_builtin("index", input_types={"a": vec3, "i": int}, value_type=float, group="Utility")
-add_builtin("index", input_types={"a": vec4, "i": int}, value_type=float, group="Utility")
-add_builtin("index", input_types={"a": quat, "i": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": vec2, "i": int}, value_type=float, hidden=True, group="Utility")
+add_builtin("index", input_types={"a": vec3, "i": int}, value_type=float, hidden=True, group="Utility")
+add_builtin("index", input_types={"a": vec4, "i": int}, value_type=float, hidden=True, group="Utility")
+add_builtin("index", input_types={"a": quat, "i": int}, value_type=float, hidden=True, group="Utility")
 
-add_builtin("index", input_types={"a": mat22, "i": int}, value_type=vec2, group="Utility")
-add_builtin("index", input_types={"a": mat22, "i": int, "j": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": mat22, "i": int}, value_type=vec2, hidden=True, group="Utility")
+add_builtin("index", input_types={"a": mat22, "i": int, "j": int}, value_type=float, hidden=True, group="Utility")
 
-add_builtin("index", input_types={"a": mat33, "i": int}, value_type=vec3, group="Utility")
-add_builtin("index", input_types={"a": mat33, "i": int, "j": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": mat33, "i": int}, value_type=vec3, hidden=True, group="Utility")
+add_builtin("index", input_types={"a": mat33, "i": int, "j": int}, value_type=float, hidden=True, group="Utility")
 
-add_builtin("index", input_types={"a": mat44, "i": int}, value_type=vec4, group="Utility")
-add_builtin("index", input_types={"a": mat44, "i": int, "j": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": mat44, "i": int}, value_type=vec4, hidden=True, group="Utility")
+add_builtin("index", input_types={"a": mat44, "i": int, "j": int}, value_type=float, hidden=True, group="Utility")
 
-add_builtin("index", input_types={"a": spatial_matrix, "i": int, "j": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": spatial_matrix, "i": int, "j": int}, value_type=float, hidden=True, group="Utility")
 
-add_builtin("index", input_types={"a": spatial_vector, "i": int}, value_type=float, group="Utility")
-add_builtin("index", input_types={"a": transform, "i": int}, value_type=float, group="Utility")
+add_builtin("index", input_types={"a": spatial_vector, "i": int}, value_type=float, hidden=True, group="Utility")
+add_builtin("index", input_types={"a": transform, "i": int}, value_type=float, hidden=True, group="Utility")
 
-add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, group="Utility")
+add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
 for t in scalar_types + vector_types:
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
@@ -786,7 +796,7 @@ for t in compute_types + vector_types:
     if not type_is_int(t):
         add_builtin("lerp", input_types={"a": t, "b": t, "t": float}, value_type=t, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
 
-add_builtin("smoothstep", input_types={"a": float, "b": float, "t": float}, value_type=float, doc="Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping", group="Utility")
+add_builtin("smoothstep", input_types={"edge0": float, "edge1": float, "x": float}, value_type=float, doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping", group="Utility")
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")

@@ -10,9 +10,62 @@
 #include "cuda_util.h"
 
 #include <nvrtc.h>
+#include <nvPTXCompiler.h>
 
 #include <map>
 #include <vector>
+
+#define check_nvrtc(code) (check_nvrtc_result(code, __FILE__, __LINE__))
+#define check_nvptx(code) (check_nvptx_result(code, __FILE__, __LINE__))
+
+bool check_nvrtc_result(nvrtcResult result, const char* file, int line)
+{
+    if (result == NVRTC_SUCCESS)
+        return true;
+
+    const char* error_string = nvrtcGetErrorString(result);
+    fprintf(stderr, "Warp NVRTC compilation error %u: %s (%s:%d)\n", unsigned(result), error_string, file, line);
+    return false;
+}
+
+bool check_nvptx_result(nvPTXCompileResult result, const char* file, int line)
+{
+    if (result == NVPTXCOMPILE_SUCCESS)
+        return true;
+
+    const char* error_string;
+    switch (result)
+    {
+    case NVPTXCOMPILE_ERROR_INVALID_COMPILER_HANDLE:
+        error_string = "Invalid compiler handle";
+        break;
+    case NVPTXCOMPILE_ERROR_INVALID_INPUT:
+        error_string = "Invalid input";
+        break;
+    case NVPTXCOMPILE_ERROR_COMPILATION_FAILURE:
+        error_string = "Compilation failure";
+        break;
+    case NVPTXCOMPILE_ERROR_INTERNAL:
+        error_string = "Internal error";
+        break;
+    case NVPTXCOMPILE_ERROR_OUT_OF_MEMORY:
+        error_string = "Out of memory";
+        break;
+    case NVPTXCOMPILE_ERROR_COMPILER_INVOCATION_INCOMPLETE:
+        error_string = "Incomplete compiler invocation";
+        break;
+    case NVPTXCOMPILE_ERROR_UNSUPPORTED_PTX_VERSION:
+        error_string = "Unsupported PTX version";
+        break;
+    default:
+        error_string = "Unknown error";
+        break;
+    }
+
+    fprintf(stderr, "Warp PTX compilation error %u: %s (%s:%d)\n", unsigned(result), error_string, file, line);
+    return false;
+}
+
 
 struct DeviceInfo
 {
@@ -141,17 +194,17 @@ static ContextInfo* get_context_info(CUcontext ctx)
 }
 
 
-// void* alloc_host(size_t s)
-// {
-//     void* ptr;
-//     check_cuda(cudaMallocHost(&ptr, s));
-//     return ptr;
-// }
+void* alloc_pinned(size_t s)
+{
+    void* ptr;
+    check_cuda(cudaMallocHost(&ptr, s));
+    return ptr;
+}
 
-// void free_host(void* ptr)
-// {
-//     cudaFreeHost(ptr);
-// }
+void free_pinned(void* ptr)
+{
+    cudaFreeHost(ptr);
+}
 
 void* alloc_device(void* context, size_t s)
 {
@@ -190,15 +243,12 @@ void memcpy_d2d(void* context, void* dest, void* src, size_t n)
     check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice, get_current_stream()));
 }
 
-void memcpy_peer(void* dest_context, void* dest, void* src_context, void* src, size_t n)
+void memcpy_peer(void* context, void* dest, void* src, size_t n)
 {
-    ContextGuard guard(dest_context);
+    ContextGuard guard(context);
 
-    check_cu(cuMemcpyPeerAsync_f(
-        reinterpret_cast<CUdeviceptr>(dest), static_cast<CUcontext>(dest_context),
-        reinterpret_cast<CUdeviceptr>(src), static_cast<CUcontext>(src_context),
-        n, get_current_stream()
-    ));
+    // NB: assumes devices involved support UVA
+    check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDefault, get_current_stream()));
 }
 
 __global__ void memset_kernel(int* dest, int value, int n)
@@ -239,6 +289,37 @@ void array_sum_device(uint64_t a, uint64_t out, int len)
     
 }
 
+
+int cuda_driver_version()
+{
+    int version;
+    if (check_cu(cuDriverGetVersion_f(&version)))
+        return version;
+    else
+        return 0;
+}
+
+int cuda_toolkit_version()
+{
+    return CUDA_VERSION;
+}
+
+int nvrtc_supported_arch_count()
+{
+    int count;
+    if (check_nvrtc(nvrtcGetNumSupportedArchs(&count)))
+        return count;
+    else
+        return 0;
+}
+
+void nvrtc_supported_archs(int* archs)
+{
+    if (archs)
+    {
+        check_nvrtc(nvrtcGetSupportedArchs(archs));
+    }
+}
 
 int cuda_device_get_count()
 {
@@ -397,15 +478,18 @@ void* cuda_context_get_stream(void* context)
     ContextInfo* info = get_context_info(static_cast<CUcontext>(context));
     if (info)
     {
-        // create stream on demand
-        if (!info->stream)
-        {
-            ContextGuard guard(context, true);
-            check_cu(cuStreamCreate_f(&info->stream, CU_STREAM_DEFAULT));
-        }
         return info->stream;
     }
     return NULL;
+}
+
+void cuda_context_set_stream(void* context, void* stream)
+{
+    ContextInfo* info = get_context_info(static_cast<CUcontext>(context));
+    if (info)
+    {
+        info->stream = static_cast<CUstream>(stream);
+    }
 }
 
 int cuda_context_enable_peer_access(void* context, void* peer_context)
@@ -497,9 +581,85 @@ int cuda_context_can_access_peer(void* context, void* peer_context)
     }
 }
 
+void* cuda_stream_create(void* context)
+{
+    CUcontext ctx = context ? static_cast<CUcontext>(context) : get_current_context();
+    if (!ctx)
+        return NULL;
+
+    ContextGuard guard(context, true);
+
+    CUstream stream;
+    if (check_cu(cuStreamCreate_f(&stream, CU_STREAM_DEFAULT)))
+        return stream;
+    else
+        return NULL;
+}
+
+void cuda_stream_destroy(void* context, void* stream)
+{
+    if (!stream)
+        return;
+
+    CUcontext ctx = context ? static_cast<CUcontext>(context) : get_current_context();
+    if (!ctx)
+        return;
+
+    ContextGuard guard(context, true);
+
+    check_cu(cuStreamDestroy_f(static_cast<CUstream>(stream)));
+}
+
+void cuda_stream_synchronize(void* context, void* stream)
+{
+    ContextGuard guard(context);
+
+    check_cu(cuStreamSynchronize_f(static_cast<CUstream>(stream)));
+}
+
 void* cuda_stream_get_current()
 {
     return get_current_stream();
+}
+
+void cuda_stream_wait_event(void* context, void* stream, void* event)
+{
+    ContextGuard guard(context);
+
+    check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
+}
+
+void cuda_stream_wait_stream(void* context, void* stream, void* other_stream, void* event)
+{
+    ContextGuard guard(context);
+
+    check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(other_stream)));
+    check_cu(cuStreamWaitEvent_f(static_cast<CUstream>(stream), static_cast<CUevent>(event), 0));
+}
+
+void* cuda_event_create(void* context, unsigned flags)
+{
+    ContextGuard guard(context);
+
+    CUevent event;
+    if (check_cu(cuEventCreate_f(&event, flags)))
+        return event;
+    else
+        return NULL;
+}
+
+void cuda_event_destroy(void* context, void* event)
+{
+    ContextGuard guard(context, true);
+
+    check_cu(cuEventDestroy_f(static_cast<CUevent>(event)));
+}
+
+void cuda_event_record(void* context, void* event, void* stream)
+{
+    ContextGuard guard(context);
+
+    check_cu(cuEventRecord_f(static_cast<CUevent>(event), static_cast<CUstream>(stream)));
 }
 
 void cuda_graph_begin_capture(void* context)
@@ -552,27 +712,17 @@ void cuda_graph_destroy(void* context, void* graph_exec)
     check_cuda(cudaGraphExecDestroy((cudaGraphExec_t)graph_exec));
 }
 
-size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, const char* output_file)
+size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_dir, bool debug, bool verbose, bool verify_fp, bool fast_math, const char* output_path)
 {
-    nvrtcResult res;
-
-    nvrtcProgram prog;
-    res = nvrtcCreateProgram(
-        &prog,          // prog
-        cuda_src,      // buffer
-        NULL,          // name
-        0,             // numHeaders
-        NULL,          // headers
-        NULL);         // includeNames
-
-    if (res != NVRTC_SUCCESS)
-        return res;
+    // use file extension to determine whether to output PTX or CUBIN
+    const char* output_ext = strrchr(output_path, '.');
+    bool use_ptx = output_ext && strcmp(output_ext + 1, "ptx") == 0;
 
     // check include dir path len (path + option)
     const int max_path = 4096 + 16;
     if (strlen(include_dir) > max_path)
     {
-        printf("Include path too long\n");
+        fprintf(stderr, "Warp error: Include path too long\n");
         return size_t(-1);
     }
 
@@ -580,57 +730,126 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     strcpy(include_opt, "--include-path=");
     strcat(include_opt, include_dir);
 
-    const int max_arch = 256;
+    const int max_arch = 128;
     char arch_opt[max_arch];
-    sprintf(arch_opt, "--gpu-architecture=compute_%d", arch);
 
-    const char *opts[] = 
+    if (use_ptx)
+        snprintf(arch_opt, max_arch, "--gpu-architecture=compute_%d", arch);
+    else
+        snprintf(arch_opt, max_arch, "--gpu-architecture=sm_%d", arch);
+
+    std::vector<const char*> opts;
+    opts.push_back(arch_opt);
+    opts.push_back(include_opt);    
+    opts.push_back("--device-as-default-execution-space");
+    opts.push_back("--std=c++11");
+    opts.push_back("--define-macro=WP_CUDA");
+    opts.push_back("--define-macro=WP_NO_CRT");
+    
+    if (debug)
     {
-        "--device-as-default-execution-space",
-        arch_opt,
-        "--use_fast_math",
-        "--std=c++11",
-        "--define-macro=WP_CUDA",
-        (verify_fp ? "--define-macro=WP_VERIFY_FP" : "--undefine-macro=WP_VERIFY_FP"),
-        "--define-macro=WP_NO_CRT",
-        (debug ? "--define-macro=DEBUG" : "--define-macro=NDEBUG"),
-        include_opt
-    };
-
-    res = nvrtcCompileProgram(prog, 9, opts);
-
-    if (res == NVRTC_SUCCESS)
-    {
-        // save ptx
-        size_t ptx_size;
-        nvrtcGetPTXSize(prog, &ptx_size);
-
-        char* ptx = (char*)malloc(ptx_size);
-        nvrtcGetPTX(prog, ptx);
-
-        // write to file
-        FILE* file = fopen(output_file, "w");
-        fwrite(ptx, 1, ptx_size, file);
-        fclose(file);
-
-        free(ptx);
+        opts.push_back("--define-macro=DEBUG");
+        opts.push_back("--generate-line-info");
+        // disabling since it causes issues with `Unresolved extern function 'cudaGetParameterBufferV2'
+        //opts.push_back("--device-debug");
     }
+    else
+        opts.push_back("--define-macro=NDEBUG");
 
-    if (res != NVRTC_SUCCESS || verbose)
+    if (verify_fp)
+        opts.push_back("--define-macro=WP_VERIFY_FP");
+    else
+        opts.push_back("--undefine-macro=WP_VERIFY_FP");
+    
+    if (fast_math)
+        opts.push_back("--use_fast_math");
+
+
+    nvrtcProgram prog;
+    nvrtcResult res;
+
+    res = nvrtcCreateProgram(
+        &prog,         // prog
+        cuda_src,      // buffer
+        NULL,          // name
+        0,             // numHeaders
+        NULL,          // headers
+        NULL);         // includeNames
+
+    if (!check_nvrtc(res))
+        return size_t(res);
+
+    res = nvrtcCompileProgram(prog, int(opts.size()), opts.data());
+
+    if (!check_nvrtc(res) || verbose)
     {
         // get program log
         size_t log_size;
-        nvrtcGetProgramLogSize(prog, &log_size);
+        if (check_nvrtc(nvrtcGetProgramLogSize(prog, &log_size)))
+        {
+            std::vector<char> log(log_size);
+            if (check_nvrtc(nvrtcGetProgramLog(prog, log.data())))
+            {
+                // todo: figure out better way to return this to python
+                if (res != NVRTC_SUCCESS)
+                    fprintf(stderr, "%s", log.data());
+                else
+                    fprintf(stdout, "%s", log.data());
+            }
+        }
 
-        char* log = (char*)malloc(log_size);
-        nvrtcGetProgramLog(prog, log);
-
-        // todo: figure out better way to return this to python
-        printf("%s", log);
-        free(log);
+        if (res != NVRTC_SUCCESS)
+        {
+            nvrtcDestroyProgram(&prog);
+            return size_t(res);
+        }
     }
 
-    nvrtcDestroyProgram(&prog);
+    nvrtcResult (*get_output_size)(nvrtcProgram, size_t*);
+    nvrtcResult (*get_output_data)(nvrtcProgram, char*);
+    const char* output_mode;
+    if (use_ptx)
+    {
+        get_output_size = nvrtcGetPTXSize;
+        get_output_data = nvrtcGetPTX;
+        output_mode = "wt";
+    }
+    else
+    {
+        get_output_size = nvrtcGetCUBINSize;
+        get_output_data = nvrtcGetCUBIN;
+        output_mode = "wb";
+    }
+
+    // save output
+    size_t output_size;
+    res = get_output_size(prog, &output_size);
+    if (check_nvrtc(res))
+    {
+        std::vector<char> output(output_size);
+        res = get_output_data(prog, output.data());
+        if (check_nvrtc(res))
+        {
+            FILE* file = fopen(output_path, output_mode);
+            if (file)
+            {
+                if (fwrite(output.data(), 1, output_size, file) != output_size)
+                {
+                    fprintf(stderr, "Warp error: Failed to write output file '%s'\n", output_path);
+                    res = nvrtcResult(-1);
+                }
+                fclose(file);
+            }
+            else
+            {
+                fprintf(stderr, "Warp error: Failed to open output file '%s'\n", output_path);
+                res = nvrtcResult(-1);
+            }
+        }
+    }
+
+    check_nvrtc(nvrtcDestroyProgram(&prog));
+
     return res;
 }
 
@@ -638,42 +857,115 @@ void* cuda_load_module(void* context, const char* path)
 {
     ContextGuard guard(context);
 
+    // use file extension to determine whether to load PTX or CUBIN
+    const char* input_ext = strrchr(path, '.');
+    bool load_ptx = input_ext && strcmp(input_ext + 1, "ptx") == 0;
+
+    std::vector<char> input;
+
     FILE* file = fopen(path, "rb");
-    fseek(file, 0, SEEK_END);
-    size_t length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char* buf = (char*)malloc(length);
-    size_t result = fread(buf, 1, length, file);
-    fclose(file);
-
-    if (result != length)
+    if (file)
     {
-        printf("Warp: Failed to load PTX from disk, unexpected number of bytes\n");
+        fseek(file, 0, SEEK_END);
+        size_t length = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        input.resize(length);
+        if (fread(input.data(), 1, length, file) != length)
+        {
+            fprintf(stderr, "Warp error: Failed to read input file '%s'\n", path);
+            fclose(file);
+            return NULL;
+        }
+        fclose(file);
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Failed to open input file '%s'\n", path);
         return NULL;
     }
 
-    CUjit_option options[2];
-    void *optionVals[2];
-    char error_log[8192];
-    unsigned int logSize = 8192;
-    // Setup linker options
-    // Pass a buffer for error message
-    options[0] = CU_JIT_ERROR_LOG_BUFFER;
-    optionVals[0] = (void *) error_log;
-    // Pass the size of the error buffer
-    options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
-    optionVals[1] = (void *) (long) logSize;
-
+    int driver_cuda_version = 0;
     CUmodule module = NULL;
-    if (!check_cu(cuModuleLoadDataEx_f(&module, buf, 2, options, optionVals)))
-    {
-        printf("Warp: Loading PTX module failed\n");
-        // print error log
-        fprintf(stderr, "PTX linker error:\n%s\n", error_log);
-    }
 
-    free(buf);
+    if (load_ptx)
+    {
+        if (check_cu(cuDriverGetVersion_f(&driver_cuda_version)) && driver_cuda_version >= CUDA_VERSION)
+        {
+            // let the driver compile the PTX
+
+            CUjit_option options[2];
+            void *option_vals[2];
+            char error_log[8192] = "";
+            unsigned int log_size = 8192;
+            // Set up loader options
+            // Pass a buffer for error message
+            options[0] = CU_JIT_ERROR_LOG_BUFFER;
+            option_vals[0] = (void*)error_log;
+            // Pass the size of the error buffer
+            options[1] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
+            option_vals[1] = (void*)(size_t)log_size;
+
+            if (!check_cu(cuModuleLoadDataEx_f(&module, input.data(), 2, options, option_vals)))
+            {
+                fprintf(stderr, "Warp error: Loading PTX module failed\n");
+                // print error log if not empty
+                if (*error_log)
+                    fprintf(stderr, "PTX loader error:\n%s\n", error_log);
+                return NULL;
+            }
+        }
+        else
+        {
+            // manually compile the PTX and load as CUBIN
+
+            ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
+            if (!context_info || !context_info->device_info)
+            {
+                fprintf(stderr, "Warp error: Failed to determine target architecture\n");
+                return NULL;
+            }
+
+            int arch = context_info->device_info->arch;
+
+            char arch_opt[128];
+            sprintf(arch_opt, "--gpu-name=sm_%d", arch);
+
+            const char* compiler_options[] = { arch_opt };
+
+            nvPTXCompilerHandle compiler = NULL;
+            if (!check_nvptx(nvPTXCompilerCreate(&compiler, input.size(), input.data())))
+                return NULL;
+
+            if (!check_nvptx(nvPTXCompilerCompile(compiler, sizeof(compiler_options) / sizeof(*compiler_options), compiler_options)))
+                return NULL;
+
+            size_t cubin_size = 0;
+            if (!check_nvptx(nvPTXCompilerGetCompiledProgramSize(compiler, &cubin_size)))
+                return NULL;
+
+            std::vector<char> cubin(cubin_size);
+            if (!check_nvptx(nvPTXCompilerGetCompiledProgram(compiler, cubin.data())))
+                return NULL;
+
+            check_nvptx(nvPTXCompilerDestroy(&compiler));
+
+            if (!check_cu(cuModuleLoadDataEx_f(&module, cubin.data(), 0, NULL, NULL)))
+            {
+                fprintf(stderr, "Warp CUDA error: Loading module failed\n");
+                return NULL;
+            }
+        }
+    }
+    else
+    {
+        // load CUBIN
+        if (!check_cu(cuModuleLoadDataEx_f(&module, input.data(), 0, NULL, NULL)))
+        {
+            fprintf(stderr, "Warp CUDA error: Loading module failed\n");
+            return NULL;
+        }
+    }
 
     return module;
 }
@@ -711,8 +1003,9 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
         args,
         0);
 
-    return res;
+    check_cu(res);
 
+    return res;
 }
 
 // impl. files
@@ -721,6 +1014,7 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
 #include "sort.cu"
 #include "hashgrid.cu"
 #include "marching.cu"
+#include "volume.cu"
 #include "volume_builder.cu"
 
 //#include "spline.inl"

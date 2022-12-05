@@ -76,7 +76,7 @@ def bourke_color_map(low, high, v):
 class UsdRenderer:
     """A USD renderer
     """  
-    def __init__(self, stage, upaxis="y", fps=60):
+    def __init__(self, stage, upaxis="y", fps=60, scaling=1.0):
         """Construct a UsdRenderer object
         
         Args:
@@ -84,6 +84,7 @@ class UsdRenderer:
             stage (Usd.Stage): A USD stage (either in memory or on disk)            
             upaxis (str): The upfacing axis of the stage
             fps: The number of frames per second to use in the USD file
+            scaling: Scaling factor to use for the entities in the scene
         """
 
         from pxr import Usd, UsdGeom, UsdLux, Sdf, Gf
@@ -96,12 +97,18 @@ class UsdRenderer:
             print("Failed to create stage in renderer. Please construct with stage path or stage object.")
         self.upaxis = upaxis
         self.fps = float(fps)
+        self.time = 0.0
 
         self.draw_points = True
         self.draw_springs = False
         self.draw_triangles = False
 
         self.root = UsdGeom.Xform.Define(stage, '/root')
+        
+        # apply scaling
+        self.root.ClearXformOpOrder()
+        s = self.root.AddScaleOp()
+        s.Set(Gf.Vec3d(float(scaling), float(scaling), float(scaling)), 0.0)
 
         self.stage.SetDefaultPrim(self.root.GetPrim())
         self.stage.SetStartTimeCode(0.0)

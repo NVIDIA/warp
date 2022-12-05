@@ -5,6 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from contextlib import suppress
 from .menu import WarpMenu
 from .common import log_info
 from .common import log_error
@@ -13,8 +14,8 @@ import warp as wp
 import os
 import imp
 import webbrowser
+import importlib
 import omni.ext
-import omni.usd
 import omni.kit.actions.core
 import omni.timeline
 
@@ -26,24 +27,32 @@ WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
 class OmniWarpExtension(omni.ext.IExt):
 
+    def __init__(self):
+        with suppress(ImportError):
+            import omni.kit.app
+            app = omni.kit.app.get_app()
+            manager = app.get_extension_manager()
+            if manager.is_extension_enabled("omni.graph.ui"):
+                import omni.graph.ui
+                omni.graph.ui.ComputeNodeWidget.get_instance().add_template_path(__file__)
+
     def on_startup(self, ext_id):
         log_info("OmniWarpExtension startup")
         
         wp.init()
 
         self._is_live = True
-        self._ext_name = "omni.warp"
+        self._ext_name = omni.ext.get_extension_name(ext_id)
     
         self._register_actions()
         self._menu = WarpMenu()
 
         try:
-            import omni.kit.browser.sample
-            omni.kit.browser.sample.register_sample_folder(
+            importlib.import_module("omni.kit.browser.sample").register_sample_folder(
                 SCENES_PATH,
                 "Warp"
             )
-        except Exception as e:
+        except ImportError as e:
             print(e)
 
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
@@ -57,11 +66,10 @@ class OmniWarpExtension(omni.ext.IExt):
         self._deregister_actions()
 
         try:
-            import omni.kit.browser.sample
-            omni.kit.browser.sample.unregister_sample_folder(
+            importlib.import_module("omni.kit.browser.sample").unregister_sample_folder(
                 SCENES_PATH
             )
-        except Exception as e:
+        except ImportError as e:
             print(e)
 
         self._update_event_stream = None
@@ -77,7 +85,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "cloth_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_CLOTH),
-            display_name="Warp->Cloth Scene",
+            display_name="Warp->Cloth Simulation",
             description="",
             tag=actions_tag
         )
@@ -86,7 +94,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "deformer_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_DEFORM),
-            display_name="Warp->Deformer Scene",
+            display_name="Warp->Simple Deformer",
             description="",
             tag=actions_tag
         )
@@ -95,7 +103,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "particles_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_PARTICLES),
-            display_name="Warp->Particles Scene",
+            display_name="Warp->Particle Simulation",
             description="",
             tag=actions_tag
         )        
@@ -104,7 +112,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "wave_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_WAVE),
-            display_name="Warp->Wave Scene",
+            display_name="Warp->Wave Pool",
             description="",
             tag=actions_tag
         )
@@ -113,7 +121,7 @@ class OmniWarpExtension(omni.ext.IExt):
             self._ext_name,
             "marching_scene",
             lambda: self._on_scene_menu_click(menu_common.SCENE_MARCHING),
-            display_name="Warp->Marching Scene",
+            display_name="Warp->Marching Cubes",
             description="",
             tag=actions_tag
         )
@@ -134,7 +142,16 @@ class OmniWarpExtension(omni.ext.IExt):
             display_name="Warp->Documentation",
             description="",
             tag=actions_tag
-        )       
+        )
+
+        action_registry.register_action(
+            self._ext_name,
+            "browse_scenes",
+            lambda: self._on_browse_scenes_click(),
+            display_name="Warp->Browse Scenes",
+            description="",
+            tag=actions_tag
+        )
 
     def _deregister_actions(self):
         action_registry = omni.kit.actions.core.get_action_registry()

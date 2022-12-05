@@ -265,19 +265,13 @@ class XPBDIntegrator:
     After constructing `Model` and `State` objects this time-integrator
     may be used to advance the simulation state forward in time.
 
-    Semi-implicit time integration is a variational integrator that 
-    preserves energy, however it not unconditionally stable, and requires a time-step
-    small enough to support the required stiffness and damping forces.
-
-    See: https://en.wikipedia.org/wiki/Semi-implicit_Euler_method
-
     Example:
 
         >>> integrator = wp.SemiImplicitIntegrator()
         >>>
         >>> # simulation loop
         >>> for i in range(100):
-        >>>     state = integrator.forward(model, state, dt)
+        >>>     state = integrator.simulate(model, state_in, state_out, dt)
 
     """
 

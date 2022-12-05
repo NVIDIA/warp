@@ -27,6 +27,7 @@ from typing import List
 from typing import Dict
 from typing import Any
 from typing import Callable
+from typing import Mapping
 
 from warp.types import *
 import warp.config
@@ -54,6 +55,15 @@ builtin_operators[ast.LtE] = "<="
 builtin_operators[ast.Eq] = "=="
 builtin_operators[ast.NotEq] = "!="
 
+def get_annotations(obj: Any) -> Mapping[str, Any]:
+    """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
+    # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
+    if isinstance(obj, type):
+        return obj.__dict__.get("__annotations__", {})
+
+    return getattr(obj, "__annotations__", {})
+
+
 class StructInstance:
     def __init__(self, struct: Struct):
         self.__dict__['_struct_'] = struct
@@ -62,10 +72,14 @@ class StructInstance:
     def __setattr__(self, name, value):
         assert name in self._struct_.vars, "invalid struct member variable {}".format(name)
         if isinstance(self._struct_.vars[name].type, array):
-            # wp.array
-            assert isinstance(value, array)
-            assert value.dtype == self._struct_.vars[name].type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(name, self._struct_.vars[name].type.dtype, value.dtype)
-            setattr(self._c_struct_, name, value.__ctype__())
+            if value is None:
+                # create array with null pointer
+                setattr(self._c_struct_, name, array_t())
+            else:                    
+                # wp.array
+                assert isinstance(value, array)
+                assert value.dtype == self._struct_.vars[name].type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(name, self._struct_.vars[name].type.dtype, value.dtype)
+                setattr(self._c_struct_, name, value.__ctype__())
         elif issubclass(self._struct_.vars[name].type, ctypes.Array):
             # array type e.g. vec3
             setattr(self._c_struct_, name, self._struct_.vars[name].type(*value))
@@ -91,7 +105,8 @@ class Struct:
         self.key = key
 
         self.vars = {}
-        for label, type in self.cls.__annotations__.items():
+        annotations = get_annotations(self.cls)
+        for label, type in annotations.items():
             self.vars[label] = Var(label, type)
 
         fields = []
@@ -104,7 +119,8 @@ class Struct:
                 fields.append((label, var.type._type_))
 
         class StructType(ctypes.Structure):
-            _fields_ = fields
+            # if struct is empty, add a dummy field to avoid launch errors on CPU device ("ffi_prep_cif failed")
+            _fields_ = fields or [("_dummy_", ctypes.c_int)]
 
         self.ctype = StructType
 
@@ -328,7 +344,7 @@ class Adjoint:
         if skip_replay == False:
 
             if (replay):
-                # if custom replay specified the output it
+                # if custom replay specified then output it
                 adj.blocks[-1].body_replay.append(adj.prefix + replay)
             else:
                 # by default just replay the original statement
@@ -823,9 +839,14 @@ class Adjoint:
 
             def attribute_to_val(node, context):
                 if isinstance(node, ast.Name):
-                    return context[node.id]
+                    if node.id in context:
+                        return context[node.id]
+                    return None
                 elif isinstance(node, ast.Attribute):
-                    return getattr(attribute_to_val(node.value, context), node.attr)
+                    val = attribute_to_val(node.value, context)
+                    if val is None:
+                        return None
+                    return getattr(val, node.attr)
                 else:
                     raise RuntimeError(f"Failed to parse attribute")
 
@@ -845,9 +866,8 @@ class Adjoint:
 
                 # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
                 out = Var(attr_name, attr_type)
-                
-                adj.symbols[key] = out
-                return adj.symbols[key]
+
+                return out
             else:
 
                 # try and resolve to either a wp.constant
@@ -857,10 +877,24 @@ class Adjoint:
                 if isinstance(obj, warp.constant):
                     out = adj.add_constant(obj.val)
                     adj.symbols[key] = out          # if referencing a constant
-                else:
-                    raise TypeError(f"'{key}' is not a local variable, warp function, or warp constant")
+                    return out
+                elif isinstance(node.value, ast.Attribute):
+                    # resolve nested attribute
+                    val = adj.eval(node.value)
+                    
+                    try:
+                        attr_name = val.label + "." + node.attr
+                        attr_type = val.type.vars[node.attr].type
+                    except:
+                        raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
 
-                return out
+                    # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+                    out = Var(attr_name, attr_type)
+                    
+                    return out
+                else:
+                    raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
+
 
         elif (isinstance(node, ast.Str)):
 
@@ -939,17 +973,37 @@ class Adjoint:
         elif (isinstance(node, ast.For)):
 
             def is_num(a):
-                return isinstance(a, ast.Num) or (
-                    isinstance(a, ast.UnaryOp) and
-                    isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num))
+
+                # simple constant
+                if isinstance(a, ast.Num):
+                    return True
+                # expression of form -constant
+                elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
+                     return True
+                else:
+                    # try and resolve the expression to an object
+                    # e.g.: wp.constant in the globals scope
+                    obj, path = adj.resolve_path(a)
+                    if isinstance(obj, warp.constant):
+                        return True
+                    else:
+                        return False
+
 
             def eval_num(a):
                 if isinstance(a, ast.Num):
                     return a.n
-                if (isinstance(a, ast.UnaryOp) and
-                    isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num)):
+                elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
                     return -a.operand.n
-                return None
+                else:
+                    # try and resolve the expression to an object
+                    # e.g.: wp.constant in the globals scope
+                    obj, path = adj.resolve_path(a)
+                    if isinstance(obj, warp.constant):
+                        return obj.val
+                    else:
+                        return False
+
 
             # try and unroll simple range() statements that use constant args
             unrolled = False
@@ -1054,21 +1108,18 @@ class Adjoint:
 
             name = None
             
-            # resolve path (e.g.: module.submodule.attr) expression to a list of module names
-            path = adj.resolve_path(node.func)
-            
-            try:
-                # try and look up path in function globals
-                func = eval(".".join(path), adj.func.__globals__)
+            # try and lookup function in globals by
+            # resolving path (e.g.: module.submodule.attr) 
+            func, path = adj.resolve_path(node.func)
 
-                if isinstance(func, warp.context.Function) == False:
-                    raise RuntimeError()
-                    
-            except Exception as e:
+            if isinstance(func, warp.context.Function) == False:
 
-                # try and lookup in builtins, this allows users to avoid 
+                if len(path) == 0:
+                    raise RuntimeError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
+
+                # try and lookup function in builtins, this allows users to avoid 
                 # using "wp." prefix, and also handles type constructors
-                # e.g.: wp.vec3 which aren't explicitly a function object
+                # e.g.: wp.vec3 which aren't explicitly function objects
                 attr = path[-1]
                 if attr in warp.context.builtin_functions:
                     func = warp.context.builtin_functions[attr]
@@ -1292,7 +1343,18 @@ class Adjoint:
             modules.append(node.id)
 
         # reverse list since ast presents it backward order
-        return [*reversed(modules)]
+        path = [*reversed(modules)]
+
+        if len(path) == 0:
+            return None, path
+
+        # try and evaluate object path
+        try:
+            func = eval(".".join(path), adj.func.__globals__)
+            return func, path
+        except Exception as e:
+            return None, path
+        
 
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):

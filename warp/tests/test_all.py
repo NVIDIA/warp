@@ -35,12 +35,17 @@ import warp.tests.test_reload
 import warp.tests.test_struct
 import warp.tests.test_closest_point_edge_edge
 import warp.tests.test_multigpu
+import warp.tests.test_quat
 import warp.tests.test_atomic
 import warp.tests.test_adam
 import warp.tests.test_transient_module
 import warp.tests.test_lerp
 import warp.tests.test_smoothstep
 import warp.tests.test_model
+import warp.tests.test_fast_math
+import warp.tests.test_streams
+import warp.tests.test_torch
+import warp.tests.test_pinned
 
 
 def register_tests(parent):
@@ -73,12 +78,17 @@ def register_tests(parent):
     tests.append(warp.tests.test_struct.register(parent))
     tests.append(warp.tests.test_closest_point_edge_edge.register(parent))
     tests.append(warp.tests.test_multigpu.register(parent))
+    tests.append(warp.tests.test_quat.register(parent))
     tests.append(warp.tests.test_atomic.register(parent))
     tests.append(warp.tests.test_adam.register(parent))
     tests.append(warp.tests.test_transient_module.register(parent))
     tests.append(warp.tests.test_lerp.register(parent))
     tests.append(warp.tests.test_smoothstep.register(parent))
     tests.append(warp.tests.test_model.register(parent))
+    tests.append(warp.tests.test_fast_math.register(parent))
+    tests.append(warp.tests.test_streams.register(parent))
+    tests.append(warp.tests.test_torch.register(parent))
+    tests.append(warp.tests.test_pinned.register(parent))
 
     return tests
 
@@ -104,6 +114,7 @@ def run():
 
 
 if __name__ == '__main__':
+
     ret = run()
 
     import sys

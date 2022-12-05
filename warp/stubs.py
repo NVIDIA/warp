@@ -4,10 +4,37 @@ from typing import Any
 from typing import Tuple
 from typing import Callable
 from typing import overload
+
+
 from warp.types import array, array2d, array3d, array4d, constant
 from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix
+from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
+
+from warp.context import init, func, kernel, struct
+from warp.context import is_cpu_available, is_cuda_available, is_device_available
+from warp.context import get_devices, get_preferred_device
+from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device
+from warp.context import get_device, set_device, synchronize_device
+from warp.context import zeros, zeros_like, clone, empty, empty_like, copy, from_numpy, launch, synchronize, force_load
+from warp.context import set_module_options, get_module_options, get_module
+from warp.context import capture_begin, capture_end, capture_launch
+from warp.context import print_builtins, export_builtins, export_stubs
+from warp.context import Kernel, Function
+from warp.context import Stream, get_stream, set_stream, synchronize_stream
+from warp.context import Event, record_event, wait_event, wait_stream
+
+from warp.tape import Tape
+from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice, ScopedStream
+from warp.utils import transform_expand
+
+from warp.torch import from_torch, to_torch
+from warp.torch import device_from_torch, device_to_torch
+from warp.torch import stream_from_torch, stream_to_torch
+
+from . import builtins, render
+
 
 
 @overload
@@ -565,6 +592,13 @@ def quat_from_axis_angle(axis: vec3, angle: float32) -> quat:
    ...
 
 @overload
+def quat_to_axis_angle(q: quat, axis: vec3, angle: float32):
+   """
+   Extract the rotation axis and angle radians a quaternion represents.
+   """
+   ...
+
+@overload
 def quat_from_matrix(m: mat33) -> quat:
    """
    Construct a quaternion from a 3x3 matrix.
@@ -596,6 +630,20 @@ def quat_rotate(q: quat, p: vec3) -> vec3:
 def quat_rotate_inv(q: quat, p: vec3) -> vec3:
    """
    Rotate a vector the inverse of a quaternion.
+   """
+   ...
+
+@overload
+def rotate_rodriguez(r: vec3, x: vec3) -> vec3:
+   """
+   Rotate the vector x by the rotator r encoding rotation axis and angle radians.
+   """
+   ...
+
+@overload
+def quat_slerp(q0: quat, q1: quat, t: float32) -> quat:
+   """
+   Linearly interpolate between two quaternions.
    """
    ...
 
@@ -869,6 +917,13 @@ def intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3
    ...
 
 @overload
+def mesh_get(id: uint64) -> Mesh:
+   """
+   Retrieves the mesh given its index.
+   """
+   ...
+
+@overload
 def mesh_eval_face_normal(id: uint64, face: int32) -> vec3:
    """
    Evaluates the face normal the mesh given a face index.
@@ -963,6 +1018,13 @@ def volume_sample_i(id: uint64, uvw: vec3) -> int:
 def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
    """
    Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+   """
+   ...
+
+@overload
+def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
+   """
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
    """
    ...
 
@@ -1348,104 +1410,6 @@ def atomic_max(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
    ...
 
 @overload
-def index(a: vec2, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: vec3, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: vec4, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: quat, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat22, i: int32) -> vec2:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat22, i: int32, j: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat33, i: int32) -> vec3:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat33, i: int32, j: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat44, i: int32) -> vec4:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: mat44, i: int32, j: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: spatial_matrix, i: int32, j: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: spatial_vector, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(a: transform, i: int32) -> float:
-   """
-
-   """
-   ...
-
-@overload
-def index(s: shape_t, i: int32) -> int:
-   """
-
-   """
-   ...
-
-@overload
 def expect_eq(arg1: int8, arg2: int8):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -1670,9 +1634,9 @@ def lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
    ...
 
 @overload
-def smoothstep(a: float32, b: float32, t: float32) -> float:
+def smoothstep(edge0: float32, edge1: float32, x: float32) -> float:
    """
-   Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping
+   Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
    """
    ...
 
