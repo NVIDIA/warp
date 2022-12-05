@@ -1354,7 +1354,7 @@ class Volume:
 
         return volume
 
-def matmul(a: array, b: array, c: array, d: array, alpha: float = 1., beta: float = 0., allow_tf32x3_arith: bool = False):
+def matmul(a: array, b: array, c: array, d: array, alpha: float = 1., beta: float = 0., allow_tf32x3_arith: bool = False, device=None):
     """ Computes a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
     Args:
@@ -1368,20 +1368,11 @@ def matmul(a: array, b: array, c: array, d: array, alpha: float = 1., beta: floa
                                    while using Tensor Cores
     """
     from warp.context import runtime
+    device = runtime.get_device(device)
+    cc = device.arch
 
     if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != d.dtype:
         raise RuntimeError("wp.matmul currently only supports operation between {A, B, C, D} matrices of the same type.")
-
-    # Attempt to get the device's compute capability to route to the most appropriate CUTLASS GEMM
-    try:
-        from cuda import cudart
-        err, deviceProp = cudart.cudaGetDeviceProperties(0)
-        if err.value:
-            raise RuntimeError("cudaDeviceGetProperties() returned error: {}".format(cudart.cudaGetErrorName(err)))
-        cc = int(str(deviceProp.major) + str(deviceProp.minor))
-    except:
-        # Unable to import CUDA, or error querying device. Fall back to assuming SM50 (no Tensor Core GEMMs)
-        cc = 50
 
     NDIM = 2
     for param in [a, b, c, d]:
