@@ -30,11 +30,11 @@ struct Allocation {
   int64_t ldc;
   int64_t ldd;
 
-  Allocation(int m, int n, int k, const void* a, const void* b, const void* c, void* d) {
-    ptr_A.reset(m * k);
-    ptr_B.reset(k * n);
-    ptr_C.reset(m * n);
-    ptr_D.reset(m * n);
+  Allocation(int m, int n, int k, int batch_count, const void* a, const void* b, const void* c, void* d) {
+    ptr_A.reset(m * k * batch_count);
+    ptr_B.reset(k * n * batch_count);
+    ptr_C.reset(m * n * batch_count);
+    ptr_D.reset(m * n * batch_count);
 
     ptr_A.copy_from_host((typename Gemm::ElementA*)a);
     ptr_B.copy_from_host((typename Gemm::ElementB*)b);
@@ -50,26 +50,26 @@ struct Allocation {
 
 
 template <typename Gemm>
-bool run_gemm(int m, int n, int k, const void* a, const void* b, const void* c, void* d, float alpha, float beta) {
+bool run_gemm(int m, int n, int k, int batch_count, const void* a, const void* b, const void* c, void* d, float alpha, float beta) {
     //
     // Allocate and initialize arguments
     //
 
-    Allocation<Gemm> alloc(m, n, k, a, b, c, d);
+    Allocation<Gemm> alloc(m, n, k, batch_count, a, b, c, d);
     typename Gemm::EpilogueOutputOp::Params epilogue_params(
         (typename Gemm::EpilogueOutputOp::ElementCompute)alpha,
         (typename Gemm::EpilogueOutputOp::ElementCompute)beta);
 
     typename Gemm::Arguments arguments{
-        cutlass::gemm::GemmUniversalMode::kGemm,
+        batch_count == 1 ? cutlass::gemm::GemmUniversalMode::kGemm : cutlass::gemm::GemmUniversalMode::kBatched ,
         cutlass::gemm::GemmCoord{m, n, k}, // Problem size
-        1,         // Batch count
+        batch_count,
         epilogue_params,
         (void const*)alloc.ptr_A.get(),
         (void const*)alloc.ptr_B.get(),
         (void const*)alloc.ptr_C.get(),
         (void      *)alloc.ptr_D.get(),
-        int64_t(), int64_t(), int64_t(), int64_t(), // Batch strides
+        int64_t(m * k), int64_t(k * n), int64_t(m * n), int64_t(m * n), // Batch strides
         alloc.lda,
         alloc.ldb,
         alloc.ldc,
@@ -268,7 +268,8 @@ bool cutlass_gemm(
                   const char* datatype_str,
                   const void* a, const void* b, const void* c, void* d,
                   float alpha, float beta,
-                  bool allow_tf32x3_arith) {
+                  bool allow_tf32x3_arith,
+                  int batch_count) {
 
     std::string datatype(datatype_str);
 
@@ -276,36 +277,36 @@ bool cutlass_gemm(
     if (compute_capability == 80) {
         if (datatype == F64_STR) {
             using Gemm = DefaultGemmConfig<80, double>::Gemm;
-            return run_gemm<Gemm>(m, n, k, a, b, c, d, alpha, beta);
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
         } else if (datatype == F32_STR && allow_tf32x3_arith) {
             using Gemm = DefaultGemmConfig<80, float>::Gemm;
-            return run_gemm<Gemm>(m, n, k, a, b, c, d, alpha, beta);
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
         } else if (datatype == F16_STR) {
             using Gemm = DefaultGemmConfig<80, cutlass::half_t>::Gemm;
-            return run_gemm<Gemm>(m, n, k, a, b, c, d, alpha, beta);
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
         }
     } else if (compute_capability == 75) {
         if (datatype == F16_STR) {
             using Gemm = DefaultGemmConfig<75, cutlass::half_t>::Gemm;
-            return run_gemm<Gemm>(m, n, k, a, b, c, d, alpha, beta);
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
         }
     } else if (compute_capability == 70) {
         if (datatype == F16_STR) {
             using Gemm = DefaultGemmConfig<70, cutlass::half_t>::Gemm;
-            return run_gemm<Gemm>(m, n, k, a, b, c, d, alpha, beta);
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
         }
     }
 
     // No Tensor Core capability available. Run a SIMT kernel
     if (datatype == F64_STR) {
         using Gemm = DefaultGemmConfig<50, double>::Gemm;
-        return run_gemm<Gemm>(m, n, k, a, b, c, d, alpha, beta);
+        return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
     } else if (datatype == F32_STR) {
         using Gemm = DefaultGemmConfig<50, float>::Gemm;
-        return run_gemm<Gemm>(m, n, k, a, b, c, d, alpha, beta);
+        return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
     } else if (datatype == F16_STR) {
         using Gemm = DefaultGemmConfig<50, cutlass::half_t>::Gemm;
-        return run_gemm<Gemm>(m, n, k, a, b, c, d, alpha, beta);
+        return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
     }
 
     std::cerr << "Data type " << datatype << " is not currently supported." << std::endl;
