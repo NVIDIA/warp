@@ -141,14 +141,29 @@ class InternalState:
         self.kernel_module = None
         self.kernel_annotations = None
 
-    def _is_outdated(
+        self.is_valid = False
+
+    def is_outdated(
         self,
         db: OgnKernelDatabase,
         check_file_modified_time: bool,
     ) -> bool:
         """Checks if the internal state is outdated."""
-        if self._attrs != db.node.get_attributes():
-            return True
+        if self.is_valid:
+            # If everything is in order, we only need to recompile the kernel
+            # when attributes were removed, since adding new attributes is not
+            # a breaking change.
+            if (
+                self._attrs is None
+                or not set(self._attrs).issubset(db.node.get_attributes())
+            ):
+                return True
+        else:
+            # If something previously went wrong, we always recompile the kernel
+            # when attributes are edited, in case it might fix code that
+            # errored out due to referencing a non-existing attribute.
+            if self._attrs != db.node.get_attributes():
+                return True
 
         if self._code_provider != db.inputs.codeProvider:
             return True
@@ -175,16 +190,8 @@ class InternalState:
 
         return False
 
-    def initialize(
-        self,
-        db: OgnKernelDatabase,
-        check_file_modified_time: bool = False,
-    ) -> None:
+    def initialize(self, db: OgnKernelDatabase) -> None:
         """Initialize the internal state if needed."""
-        # Check if this internal state is outdated. If not, we can reuse it.
-        if not self._is_outdated(db, check_file_modified_time):
-            return
-
         # Cache the node attribute values relevant to this internal state.
         # They're the ones used to check whether this state is outdated or not.
         self._attrs = db.node.get_attributes()
@@ -373,10 +380,13 @@ def compute(db: OgnKernelDatabase) -> None:
 
     # Ensure that our internal state is correctly initialized.
     timeline =  omni.timeline.get_timeline_interface()
-    db.internal_state.initialize(
-        db,
-        check_file_modified_time=timeline.is_stopped(),
-    )
+    if db.internal_state.is_outdated(db, timeline.is_stopped()):
+        db.internal_state.initialize(db)
+        db.internal_state.is_valid = True
+
+    # Exit early if something's wrong with the previous compute.
+    if not db.internal_state.is_valid:
+        return
 
     # Exit early if there are no outputs.
     if not db.internal_state.kernel_annotations[ATTR_PORT_TYPE_OUTPUT]:
@@ -443,4 +453,8 @@ class OgnKernel:
 
     @staticmethod
     def compute(db) -> None:
-        compute(db)
+        try:
+            compute(db)
+        except Exception:
+            db.internal_state.is_valid = False
+            raise
