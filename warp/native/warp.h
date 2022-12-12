@@ -82,6 +82,12 @@ extern "C"
     WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
 
+    WP_API void array_scan_int_host(uint64_t in, uint64_t out, int len, bool inclusive);
+    WP_API void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive);
+
+    WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive);
+    WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive);
+
     WP_API int cuda_device_get_count();
     WP_API void* cuda_device_get_primary_context(int ordinal);
     WP_API const char* cuda_device_get_name(int ordinal);

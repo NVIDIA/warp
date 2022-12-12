@@ -7,6 +7,7 @@
  */
 
 #include "warp.h"
+#include "scan.h"
 #include "cuda_util.h"
 
 #include <nvrtc.h>
@@ -241,6 +242,15 @@ void array_sum_device(uint64_t a, uint64_t out, int len)
     
 }
 
+void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive)
+{
+    scan_device((const int*)in, (int*)out, len, inclusive);
+}
+
+void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive)
+{
+    scan_device((const float*)in, (float*)out, len, inclusive);
+}
 
 int cuda_device_get_count()
 {
@@ -705,11 +715,14 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
 
 }
 
+
+
 // impl. files
 #include "bvh.cu"
 #include "mesh.cu"
 #include "sort.cu"
 #include "hashgrid.cu"
+#include "scan.cu"
 #include "marching.cu"
 #include "volume_builder.cu"
 

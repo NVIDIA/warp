@@ -5,7 +5,7 @@
 - Fix kernel caching issue related to constants
 - Enable module dependency tracking to reload modules if dependencies were modified
 
-## [0.4.3] - 2022-09-20
+## [0.4.4] - 2022-09-20
 
 - Update all samples to use GPU interop path by default
 - Fix for arrays > 2GB in length

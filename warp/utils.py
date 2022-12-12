@@ -378,6 +378,33 @@ def get_body_twist(w_m, v_m, p_m):
     return (*w_m, *lin)
 
 
+def array_scan(in_array, out_array, inclusive = True):
+
+    if in_array.device != out_array.device:
+        raise RuntimeError("Array storage devices do not match")
+
+    if in_array.size != out_array.size:
+        raise RuntimeError("Array storage sizes do not match")
+
+    if in_array.dtype != out_array.dtype:
+        raise RuntimeError("Array data types do not match")
+
+    from warp.context import runtime
+    if in_array.device == "cpu":
+        if in_array.dtype == wp.int32:
+            runtime.core.array_scan_int_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
+        elif in_array.dtype == wp.float32:
+            runtime.core.array_scan_float_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
+        else:
+            raise RuntimeError("Unsupported data type")
+    elif in_array.device == "cuda":
+        if in_array.dtype == wp.int32:
+            runtime.core.array_scan_int_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
+        elif in_array.dtype == wp.float32:
+            runtime.core.array_scan_float_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
+        else:
+            raise RuntimeError("Unsupported data type")
+
 # code snippet for invoking cProfile
 # cp = cProfile.Profile()
 # cp.enable()

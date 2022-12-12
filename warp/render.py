@@ -368,6 +368,24 @@ class UsdRenderer:
 
         instancer.GetPositionsAttr().Set(points, self.time)
     
+    def render_points_colors(self, name: str, points, colors, radius):
+
+        from pxr import UsdGeom, Sdf
+
+        instancer_path = self.root.GetPath().AppendChild(name)
+        instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
+
+        if not instancer:
+
+            #instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
+            instancer = UsdGeom.Points.Define(self.stage, instancer_path)
+
+            instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
+
+            instancer.GetWidthsAttr().Set([radius]*len(points))
+
+        instancer.GetPointsAttr().Set(points, self.time)
+        instancer.GetDisplayColorAttr().Set(colors, self.time)
 
     def save(self):
         try:
