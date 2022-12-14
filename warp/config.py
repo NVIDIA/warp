@@ -7,15 +7,13 @@
 
 import os
 
-version = "0.4.4"
+version = "0.6.1"
 
 cuda_path = None        # path to local CUDA toolchain, if None at init time warp will attempt to find the SDK using CUDA_PATH env var
 
 verify_fp = False       # verify inputs and outputs are finite after each launch
 verify_cuda = False     # if true will check CUDA errors after each kernel launch / memory operation
 print_launches = False  # if true will print out launch information
-
-enable_backward = False # disable code gen of backwards pass
 
 mode = "release"
 verbose = False
@@ -24,5 +22,7 @@ host_compiler = None    # user can specify host compiler here, otherwise will at
 
 cache_kernels = True
 kernel_cache_dir = None # path to kernel cache directory, if None a default path will be used
+
+cuda_output = None      # preferred CUDA output format for kernels ("ptx" or "cubin"), determined automatically if unspecified
 
 ptx_target_arch = 70    # target architecture for PTX generation, defaults to the lowest architecture that supports all of Warp's features

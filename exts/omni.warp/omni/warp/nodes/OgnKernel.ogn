@@ -1,0 +1,65 @@
+{
+    "WarpKernel": {
+        "version": 1,
+        "description": "Runs a single warp Kernel.",
+        "language": "Python",
+        "uiName": "Warp Kernel",
+        "exclude": ["usd"],
+        "inputs": {
+            "execIn": {
+                "type": "execution",
+                "description": "Input execution."
+            },
+            "device": {
+                "type": "token",
+                "description": "Device to launch on.",
+                "uiName": "Device",
+                "default": "cuda:0"
+            },
+            "dim": {
+                "type": "int",
+                "description": "Number of threads to launch for the kernel.",
+                "uiName": "Dimension",
+                "default": 1
+            },
+            "codeProvider": {
+                "type": "token",
+                "description": [
+                    "Where to read the code source from."
+                ],
+                "uiName": "Code Provider",
+                "metadata": {
+                    "allowedTokens": [
+                        "embedded",
+                        "file"
+                    ]
+                },
+                "default": "embedded"
+            },
+            "codeStr": {
+                "type": "string",
+                "description": "String defining the kernel function to launch.",
+                "uiName": "Code String",
+                "default": "import warp as wp\n\n@wp.kernel\ndef compute(inputs: Inputs, outputs: Outputs):\n    tid = wp.tid()\n"
+            },
+            "codeFile": {
+                "type": "token",
+                "description": "Path to a Python file defining the kernel function to launch.",
+                "uiName": "Code File",
+                "optional": true,
+                "metadata": {
+                    "uiType": "filePath",
+                    "fileExts": {
+                        "*.py": "Python scripts (*.py)"
+                    }
+                }
+            }
+        },
+        "outputs": {
+            "execOut": {
+                "type": "execution",
+                "description": "Output execution."
+            }
+        }
+    }
+}

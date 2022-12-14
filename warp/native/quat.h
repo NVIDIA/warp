@@ -78,6 +78,13 @@ inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
     return quat(v.x, v.y, v.z, w);
 }
 
+inline CUDA_CALLABLE void quat_to_axis_angle(const quat& q, vec3& axis, float& angle)
+{
+    vec3 v = vec3(q.x, q.y, q.z);
+    axis = q.w < 0.f ? -normalize(v) : normalize(v);
+    angle = 2.f * atan2(length(v), fabs(q.w));
+}
+
 inline CUDA_CALLABLE quat quat_rpy(float roll, float pitch, float yaw)
 {
     float cy = cos(yaw * 0.5);
@@ -143,7 +150,6 @@ inline CUDA_CALLABLE quat normalize(const quat& q)
     }
 }
 
-
 inline CUDA_CALLABLE quat add(const quat& a, const quat& b)
 {
     return quat(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
@@ -180,6 +186,28 @@ inline CUDA_CALLABLE vec3 quat_rotate(const quat& q, const vec3& x)
 inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
 {
     return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
+}
+
+inline CUDA_CALLABLE vec3 rotate_rodriguez(const vec3& r, const vec3& x)
+{
+    float angle = length(r);
+    if (angle > kEps || angle < kEps)
+    {
+        vec3 axis = r / angle;
+        return x * cos(angle) + cross(axis, x) * sin(angle) + axis * dot(axis, x) * (1.f - cos(angle));
+    }
+    else
+    {
+        return x;
+    }
+}
+
+inline CUDA_CALLABLE quat quat_slerp(const quat& q0, const quat& q1, float t)
+{
+    vec3 axis;
+    float angle;
+    quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
+    return mul(q0, quat_from_axis_angle(axis, t * angle));
 }
 
 inline CUDA_CALLABLE mat33 quat_to_matrix(const quat& q)
@@ -284,176 +312,101 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle
     adj_angle += dot(dqda, adj_ret);
 }
 
+inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, float& angle, quat& adj_q, const vec3& adj_axis, const float& adj_angle)
+{   
+    float l = length(vec3(q.x, q.y, q.z));
+
+    float ax_qx = 0.f;
+    float ax_qy = 0.f;
+    float ax_qz = 0.f;
+    float ay_qx = 0.f;
+    float ay_qy = 0.f;
+    float ay_qz = 0.f;
+    float az_qx = 0.f;
+    float az_qy = 0.f;
+    float az_qz = 0.f;
+
+    float t_qx = 0.f;
+    float t_qy = 0.f;
+    float t_qz = 0.f;
+    float t_qw = 0.f;
+
+    float flip = q.w < 0.f ? -1.0 : 1.0;
+
+    if (l > 0.f)
+    {
+        float l_sq = l*l;
+        float l_inv = 1.f / l;
+        float l_inv_sq = l_inv * l_inv;
+        float l_inv_cu = l_inv_sq * l_inv;
+        
+        float C = flip * l_inv_cu;
+        ax_qx = C * (q.y*q.y + q.z*q.z);
+        ax_qy = -C * q.x*q.y;
+        ax_qz = -C * q.x*q.z;
+        ay_qx = -C * q.y*q.x;
+        ay_qy = C * (q.x*q.x + q.z*q.z);
+        ay_qz = -C * q.y*q.z;
+        az_qx = -C * q.z*q.x;
+        az_qy = -C * q.z*q.y;
+        az_qz = C * (q.x*q.x + q.y*q.y);
+
+        float D = 2.f * flip / (l_sq + q.w*q.w);
+        t_qx = D * l_inv * q.x * q.w;
+        t_qy = D * l_inv * q.y * q.w;
+        t_qz = D * l_inv * q.z * q.w;
+        t_qw = -D * l;
+    }
+    else
+    {
+        if (abs(q.w) > kEps)
+        {
+            float t_qx = 2.f / (sqrt(3.f) * abs(q.w));
+            float t_qy = 2.f / (sqrt(3.f) * abs(q.w));
+            float t_qz = 2.f / (sqrt(3.f) * abs(q.w));
+        }
+        // o/w we have a null quaternion which cannot backpropagate 
+    }
+
+    adj_q.x += ax_qx * adj_axis.x + ay_qx * adj_axis.y + az_qx * adj_axis.z + t_qx * adj_angle;
+    adj_q.y += ax_qy * adj_axis.x + ay_qy * adj_axis.y + az_qy * adj_axis.z + t_qy * adj_angle;
+    adj_q.z += ax_qz * adj_axis.x + ay_qz * adj_axis.y + az_qz * adj_axis.z + t_qz * adj_angle;
+    adj_q.w += t_qw * adj_angle;
+}
+
 inline CUDA_CALLABLE void adj_quat_rpy(float roll, float pitch, float yaw, float& adj_roll, float& adj_pitch, float& adj_yaw, const quat& adj_ret)
 {
-    // primal vars
-    const float32 var_0 = 0.5;
-    float32 var_1;
-    float32 var_2;
-    float32 var_3;
-    float32 var_4;
-    float32 var_5;
-    float32 var_6;
-    float32 var_7;
-    float32 var_8;
-    float32 var_9;
-    float32 var_10;
-    float32 var_11;
-    float32 var_12;
-    float32 var_13;
-    float32 var_14;
-    float32 var_15;
-    float32 var_16;
-    float32 var_17;
-    float32 var_18;
-    float32 var_19;
-    float32 var_20;
-    float32 var_21;
-    float32 var_22;
-    float32 var_23;
-    float32 var_24;
-    float32 var_25;
-    float32 var_26;
-    float32 var_27;
-    float32 var_28;
-    float32 var_29;
-    float32 var_30;
-    float32 var_31;
-    float32 var_32;
-    quat var_33;
-    //---------
-    // dual vars
-    float32 adj_0 = 0;
-    float32 adj_1 = 0;
-    float32 adj_2 = 0;
-    float32 adj_3 = 0;
-    float32 adj_4 = 0;
-    float32 adj_5 = 0;
-    float32 adj_6 = 0;
-    float32 adj_7 = 0;
-    float32 adj_8 = 0;
-    float32 adj_9 = 0;
-    float32 adj_10 = 0;
-    float32 adj_11 = 0;
-    float32 adj_12 = 0;
-    float32 adj_13 = 0;
-    float32 adj_14 = 0;
-    float32 adj_15 = 0;
-    float32 adj_16 = 0;
-    float32 adj_17 = 0;
-    float32 adj_18 = 0;
-    float32 adj_19 = 0;
-    float32 adj_20 = 0;
-    float32 adj_21 = 0;
-    float32 adj_22 = 0;
-    float32 adj_23 = 0;
-    float32 adj_24 = 0;
-    float32 adj_25 = 0;
-    float32 adj_26 = 0;
-    float32 adj_27 = 0;
-    float32 adj_28 = 0;
-    float32 adj_29 = 0;
-    float32 adj_30 = 0;
-    float32 adj_31 = 0;
-    float32 adj_32 = 0;
-    quat adj_33 = 0;
-    //---------
-    // forward
-    // cy = wp.cos(yaw * 0.5)
-    var_1 = wp::mul(yaw, var_0);
-    var_2 = wp::cos(var_1);
-    // sy = wp.sin(yaw * 0.5)
-    var_3 = wp::mul(yaw, var_0);
-    var_4 = wp::sin(var_3);
-    // cr = wp.cos(roll * 0.5)
-    var_5 = wp::mul(roll, var_0);
-    var_6 = wp::cos(var_5);
-    // sr = wp.sin(roll * 0.5)
-    var_7 = wp::mul(roll, var_0);
-    var_8 = wp::sin(var_7);
-    // cp = wp.cos(pitch * 0.5)
-    var_9 = wp::mul(pitch, var_0);
-    var_10 = wp::cos(var_9);
-    // sp = wp.sin(pitch * 0.5)
-    var_11 = wp::mul(pitch, var_0);
-    var_12 = wp::sin(var_11);
-    // w = (cy * cr * cp + sy * sr * sp)
-    var_13 = wp::mul(var_2, var_6);
-    var_14 = wp::mul(var_13, var_10);
-    var_15 = wp::mul(var_4, var_8);
-    var_16 = wp::mul(var_15, var_12);
-    var_17 = wp::add(var_14, var_16);
-    // x = (cy * sr * cp - sy * cr * sp)
-    var_18 = wp::mul(var_2, var_8);
-    var_19 = wp::mul(var_18, var_10);
-    var_20 = wp::mul(var_4, var_6);
-    var_21 = wp::mul(var_20, var_12);
-    var_22 = wp::sub(var_19, var_21);
-    // y = (cy * cr * sp + sy * sr * cp)
-    var_23 = wp::mul(var_2, var_6);
-    var_24 = wp::mul(var_23, var_12);
-    var_25 = wp::mul(var_4, var_8);
-    var_26 = wp::mul(var_25, var_10);
-    var_27 = wp::add(var_24, var_26);
-    // z = (sy * cr * cp - cy * sr * sp)
-    var_28 = wp::mul(var_4, var_6);
-    var_29 = wp::mul(var_28, var_10);
-    var_30 = wp::mul(var_2, var_8);
-    var_31 = wp::mul(var_30, var_12);
-    var_32 = wp::sub(var_29, var_31);
-    // return wp.quat(x, y, z, w)
-    var_33 = wp::quat(var_22, var_27, var_32, var_17);
-    goto label_adj_quat_rpy;
-    //---------
-    // reverse
-    label_adj_quat_rpy:;
-    adj_33 += adj_ret;
-    wp::adj_quat(var_22, var_27, var_32, var_17, adj_22, adj_27, adj_32, adj_17,
-                adj_33);
-    // adj: return wp.quat(x, y, z, w)
-    wp::adj_sub(var_29, var_31, adj_29, adj_31, adj_32);
-    wp::adj_mul(var_30, var_12, adj_30, adj_12, adj_31);
-    wp::adj_mul(var_2, var_8, adj_2, adj_8, adj_30);
-    wp::adj_mul(var_28, var_10, adj_28, adj_10, adj_29);
-    wp::adj_mul(var_4, var_6, adj_4, adj_6, adj_28);
-    // adj: z = (sy * cr * cp - cy * sr * sp)
-    wp::adj_add(var_24, var_26, adj_24, adj_26, adj_27);
-    wp::adj_mul(var_25, var_10, adj_25, adj_10, adj_26);
-    wp::adj_mul(var_4, var_8, adj_4, adj_8, adj_25);
-    wp::adj_mul(var_23, var_12, adj_23, adj_12, adj_24);
-    wp::adj_mul(var_2, var_6, adj_2, adj_6, adj_23);
-    // adj: y = (cy * cr * sp + sy * sr * cp)
-    wp::adj_sub(var_19, var_21, adj_19, adj_21, adj_22);
-    wp::adj_mul(var_20, var_12, adj_20, adj_12, adj_21);
-    wp::adj_mul(var_4, var_6, adj_4, adj_6, adj_20);
-    wp::adj_mul(var_18, var_10, adj_18, adj_10, adj_19);
-    wp::adj_mul(var_2, var_8, adj_2, adj_8, adj_18);
-    // adj: x = (cy * sr * cp - sy * cr * sp)
-    wp::adj_add(var_14, var_16, adj_14, adj_16, adj_17);
-    wp::adj_mul(var_15, var_12, adj_15, adj_12, adj_16);
-    wp::adj_mul(var_4, var_8, adj_4, adj_8, adj_15);
-    wp::adj_mul(var_13, var_10, adj_13, adj_10, adj_14);
-    wp::adj_mul(var_2, var_6, adj_2, adj_6, adj_13);
-    // adj: w = (cy * cr * cp + sy * sr * sp)
-    wp::adj_sin(var_11, adj_11, adj_12);
-    wp::adj_mul(pitch, var_0, adj_pitch, adj_0, adj_11);
-    // adj: sp = wp.sin(pitch * 0.5)
-    wp::adj_cos(var_9, adj_9, adj_10);
-    wp::adj_mul(pitch, var_0, adj_pitch, adj_0, adj_9);
-    // adj: cp = wp.cos(pitch * 0.5)
-    wp::adj_sin(var_7, adj_7, adj_8);
-    wp::adj_mul(roll, var_0, adj_roll, adj_0, adj_7);
-    // adj: sr = wp.sin(roll * 0.5)
-    wp::adj_cos(var_5, adj_5, adj_6);
-    wp::adj_mul(roll, var_0, adj_roll, adj_0, adj_5);
-    // adj: cr = wp.cos(roll * 0.5)
-    wp::adj_sin(var_3, adj_3, adj_4);
-    wp::adj_mul(yaw, var_0, adj_yaw, adj_0, adj_3);
-    // adj: sy = wp.sin(yaw * 0.5)
-    wp::adj_cos(var_1, adj_1, adj_2);
-    wp::adj_mul(yaw, var_0, adj_yaw, adj_0, adj_1);
-    // adj: cy = wp.cos(yaw * 0.5)
-    return;
+    float cy = cos(yaw * 0.5);
+    float sy = sin(yaw * 0.5);
+    float cr = cos(roll * 0.5);
+    float sr = sin(roll * 0.5);
+    float cp = cos(pitch * 0.5);
+    float sp = sin(pitch * 0.5);
+
+    float w = (cy * cr * cp + sy * sr * sp);
+    float x = (cy * sr * cp - sy * cr * sp);
+    float y = (cy * cr * sp + sy * sr * cp);
+    float z = (sy * cr * cp - cy * sr * sp);
+
+    float dx_dr = 0.5 * w;
+    float dx_dp = -0.5 * cy * sr * sp - 0.5 * sy * cr * cp;
+    float dx_dy = -0.5 * y;
+
+    float dy_dr = 0.5 * z;
+    float dy_dp = 0.5 * cy * cr * cp - 0.5 * sy * sr * sp;
+    float dy_dy = 0.5 * x;
+
+    float dz_dr = -0.5 * y;
+    float dz_dp = -0.5 * sy * cr * sp - 0.5 * cy * sr * cp;
+    float dz_dy = 0.5 * w;
+
+    float dw_dr = -0.5 * x;
+    float dw_dp = -0.5 * cy * cr * sp + 0.5 * sy * sr * cp;
+    float dw_dy = -0.5 * z;
+
+    adj_roll += dot(quat(dx_dr, dy_dr, dz_dr, dw_dr), adj_ret);
+    adj_pitch += dot(quat(dx_dp, dy_dp, dz_dp, dw_dp), adj_ret);
+    adj_yaw += dot(quat(dx_dy, dy_dy, dz_dy, dw_dy), adj_ret);
 }
 
 inline CUDA_CALLABLE void adj_quat_identity(const quat& adj_ret)
@@ -465,6 +418,11 @@ inline CUDA_CALLABLE void adj_dot(const quat& a, const quat& b, quat& adj_a, qua
 {
     adj_a += b*adj_ret;
     adj_b += a*adj_ret;    
+}
+
+inline CUDA_CALLABLE void tensordot(const quat& a, const quat& b, quat& adj_a, quat& adj_b, const float adj_ret)
+{
+    adj_dot(a, b, adj_a, adj_b, adj_ret);
 }
 
 inline CUDA_CALLABLE void adj_length(const quat& a, quat& adj_a, const float adj_ret)
@@ -496,23 +454,6 @@ inline CUDA_CALLABLE void adj_quat_inverse(const quat& q, quat& adj_q, const qua
     adj_q.z -= adj_ret.z;
     adj_q.w += adj_ret.w;
 }
-
-// inline void adj_normalize(const quat& a, quat& adj_a, const quat& adj_ret)
-// {
-//     float d = length(a);
-    
-//     if (d > kEps)
-//     {
-//         float invd = 1.0f/d;
-
-//         quat ahat = normalize(a);
-
-//         adj_a += (adj_ret - ahat*(dot(ahat, adj_ret))*invd);
-
-//         //if (!isfinite(adj_a))
-//         //    printf("%s:%d - adj_normalize((%f %f %f), (%f %f %f), (%f, %f, %f))\n", __FILE__, __LINE__, a.x, a.y, a.z, adj_a.x, adj_a.y, adj_a.z, adj_ret.x, adj_ret.y, adj_ret.z);
-//     }
-// }
 
 inline CUDA_CALLABLE void adj_add(const quat& a, const quat& b, quat& adj_a, quat& adj_b, const quat& adj_ret)
 {
@@ -621,6 +562,175 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
     }
 }
 
+inline CUDA_CALLABLE void adj_rotate_rodriguez(const vec3& r, const vec3& x, vec3& adj_r, vec3& adj_x, const vec3& adj_ret)
+{
+    float angle = length(r);
+    float angle_squared = angle * angle;
+
+    vec3 axis = r / angle;
+    mat33 rotation_matrix = quat_to_matrix(quat_from_axis_angle(axis, angle));
+    mat33 inverse_rotation_matrix = transpose(rotation_matrix);
+    mat33 A = mul(mul(rotation_matrix, skew(x)), -1.0);
+
+    if (!angle_squared)
+    {
+        adj_r += mul(transpose(A), adj_ret);
+    }
+    else{
+        float inv_angle_squared = 1.f / angle_squared;
+        mat33 B = mul(add(outer(r,r), mul(sub(inverse_rotation_matrix, diag(vec3(1.f))), skew(r))), inv_angle_squared);
+        adj_r += mul(transpose(mul(A, B)), adj_ret);
+    }
+    
+    // todo: add adj_x
+}
+
+inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t, quat& adj_q0, quat& adj_q1, float& adj_t, const quat& adj_ret)
+{
+    vec3 axis;
+    float angle;
+    quat q0_inv = quat_inverse(q0);
+    quat q_inc = mul(q0_inv, q1);
+    quat_to_axis_angle(q_inc, axis, angle);
+    angle = angle * 0.5;
+    
+    // adj_t
+    adj_t += dot(mul(quat_slerp(q0, q1, t), quat(angle*axis.x, angle*axis.y, angle*axis.z, 0.f)), adj_ret);
+
+    // adj_q0
+    quat q_inc_x_q0;
+    quat q_inc_y_q0;
+    quat q_inc_z_q0;
+    quat q_inc_w_q0;
+    
+    quat q_inc_x_q1;
+    quat q_inc_y_q1;
+    quat q_inc_z_q1;
+    quat q_inc_w_q1;
+
+    adj_mul(q0_inv, q1, q_inc_x_q0, q_inc_x_q1, quat(1.f, 0.f, 0.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_y_q0, q_inc_y_q1, quat(0.f, 1.f, 0.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_z_q0, q_inc_z_q1, quat(0.f, 0.f, 1.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_w_q0, q_inc_w_q1, quat(0.f, 0.f, 0.f, 1.f));
+
+    quat q_inc_q0_x = quat(-q_inc_x_q0.x, -q_inc_y_q0.x, -q_inc_z_q0.x, -q_inc_w_q0.x);
+    quat q_inc_q0_y = quat(-q_inc_x_q0.y, -q_inc_y_q0.y, -q_inc_z_q0.y, -q_inc_w_q0.y);
+    quat q_inc_q0_z = quat(-q_inc_x_q0.z, -q_inc_y_q0.z, -q_inc_z_q0.z, -q_inc_w_q0.z);
+    quat q_inc_q0_w = quat(q_inc_x_q0.w, q_inc_y_q0.w, q_inc_z_q0.w, q_inc_w_q0.w);
+
+    quat a_x_q_inc;
+    quat a_y_q_inc;
+    quat a_z_q_inc;
+    quat t_q_inc;
+
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_x_q_inc, vec3(1.f, 0.f, 0.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_y_q_inc, vec3(0.f, 1.f, 0.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_z_q_inc, vec3(0.f, 0.f, 1.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, t_q_inc, vec3(0.f, 0.f, 0.f), 1.f);
+
+    float a_x_q0_x = dot(a_x_q_inc, q_inc_q0_x);
+    float a_x_q0_y = dot(a_x_q_inc, q_inc_q0_y);
+    float a_x_q0_z = dot(a_x_q_inc, q_inc_q0_z);
+    float a_x_q0_w = dot(a_x_q_inc, q_inc_q0_w);
+    float a_y_q0_x = dot(a_y_q_inc, q_inc_q0_x);
+    float a_y_q0_y = dot(a_y_q_inc, q_inc_q0_y);
+    float a_y_q0_z = dot(a_y_q_inc, q_inc_q0_z);
+    float a_y_q0_w = dot(a_y_q_inc, q_inc_q0_w);
+    float a_z_q0_x = dot(a_z_q_inc, q_inc_q0_x);
+    float a_z_q0_y = dot(a_z_q_inc, q_inc_q0_y);
+    float a_z_q0_z = dot(a_z_q_inc, q_inc_q0_z);
+    float a_z_q0_w = dot(a_z_q_inc, q_inc_q0_w);
+    float t_q0_x = dot(t_q_inc, q_inc_q0_x);
+    float t_q0_y = dot(t_q_inc, q_inc_q0_y);
+    float t_q0_z = dot(t_q_inc, q_inc_q0_z);
+    float t_q0_w = dot(t_q_inc, q_inc_q0_w);
+
+    float cs = cos(angle*t);
+    float sn = sin(angle*t);
+
+    quat q_s_q0_x = mul(quat(1.f, 0.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * t * axis.x * t_q0_x * cs + a_x_q0_x * sn,
+        0.5 * t * axis.y * t_q0_x * cs + a_y_q0_x * sn,
+        0.5 * t * axis.z * t_q0_x * cs + a_z_q0_x * sn,
+        -0.5 * t * t_q0_x * sn));
+
+    quat q_s_q0_y = mul(quat(0.f, 1.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * t * axis.x * t_q0_y * cs + a_x_q0_y * sn,
+        0.5 * t * axis.y * t_q0_y * cs + a_y_q0_y * sn,
+        0.5 * t * axis.z * t_q0_y * cs + a_z_q0_y * sn,
+        -0.5 * t * t_q0_y * sn));
+
+    quat q_s_q0_z = mul(quat(0.f, 0.f, 1.f, 0.f), q_inc) + mul(q0, quat(
+        0.5 * t * axis.x * t_q0_z * cs + a_x_q0_z * sn,
+        0.5 * t * axis.y * t_q0_z * cs + a_y_q0_z * sn,
+        0.5 * t * axis.z * t_q0_z * cs + a_z_q0_z * sn,
+        -0.5 * t * t_q0_z * sn));
+
+    quat q_s_q0_w = mul(quat(0.f, 0.f, 0.f, 1.f), q_inc) + mul(q0, quat(
+        0.5 * t * axis.x * t_q0_w * cs + a_x_q0_w * sn,
+        0.5 * t * axis.y * t_q0_w * cs + a_y_q0_w * sn,
+        0.5 * t * axis.z * t_q0_w * cs + a_z_q0_w * sn,
+        -0.5 * t * t_q0_w * sn));
+
+    adj_q0.x += dot(q_s_q0_x, adj_ret);
+    adj_q0.y += dot(q_s_q0_y, adj_ret);
+    adj_q0.z += dot(q_s_q0_z, adj_ret);
+    adj_q0.w += dot(q_s_q0_w, adj_ret);
+
+    // adj_q1
+    quat q_inc_q1_x = quat(q_inc_x_q1.x, q_inc_y_q1.x, q_inc_z_q1.x, q_inc_w_q1.x);
+    quat q_inc_q1_y = quat(q_inc_x_q1.y, q_inc_y_q1.y, q_inc_z_q1.y, q_inc_w_q1.y);
+    quat q_inc_q1_z = quat(q_inc_x_q1.z, q_inc_y_q1.z, q_inc_z_q1.z, q_inc_w_q1.z);
+    quat q_inc_q1_w = quat(q_inc_x_q1.w, q_inc_y_q1.w, q_inc_z_q1.w, q_inc_w_q1.w);
+
+    float a_x_q1_x = dot(a_x_q_inc, q_inc_q1_x);
+    float a_x_q1_y = dot(a_x_q_inc, q_inc_q1_y);
+    float a_x_q1_z = dot(a_x_q_inc, q_inc_q1_z);
+    float a_x_q1_w = dot(a_x_q_inc, q_inc_q1_w);
+    float a_y_q1_x = dot(a_y_q_inc, q_inc_q1_x);
+    float a_y_q1_y = dot(a_y_q_inc, q_inc_q1_y);
+    float a_y_q1_z = dot(a_y_q_inc, q_inc_q1_z);
+    float a_y_q1_w = dot(a_y_q_inc, q_inc_q1_w);
+    float a_z_q1_x = dot(a_z_q_inc, q_inc_q1_x);
+    float a_z_q1_y = dot(a_z_q_inc, q_inc_q1_y);
+    float a_z_q1_z = dot(a_z_q_inc, q_inc_q1_z);
+    float a_z_q1_w = dot(a_z_q_inc, q_inc_q1_w);
+    float t_q1_x = dot(t_q_inc, q_inc_q1_x);
+    float t_q1_y = dot(t_q_inc, q_inc_q1_y);
+    float t_q1_z = dot(t_q_inc, q_inc_q1_z);
+    float t_q1_w = dot(t_q_inc, q_inc_q1_w);
+
+    quat q_s_q1_x = mul(q0, quat(
+        0.5 * t * axis.x * t_q1_x * cs + a_x_q1_x * sn,
+        0.5 * t * axis.y * t_q1_x * cs + a_y_q1_x * sn,
+        0.5 * t * axis.z * t_q1_x * cs + a_z_q1_x * sn,
+        -0.5 * t * t_q1_x * sn));
+
+    quat q_s_q1_y = mul(q0, quat(
+        0.5 * t * axis.x * t_q1_y * cs + a_x_q1_y * sn,
+        0.5 * t * axis.y * t_q1_y * cs + a_y_q1_y * sn,
+        0.5 * t * axis.z * t_q1_y * cs + a_z_q1_y * sn,
+        -0.5 * t * t_q1_y * sn));
+
+    quat q_s_q1_z = mul(q0, quat(
+        0.5 * t * axis.x * t_q1_z * cs + a_x_q1_z * sn,
+        0.5 * t * axis.y * t_q1_z * cs + a_y_q1_z * sn,
+        0.5 * t * axis.z * t_q1_z * cs + a_z_q1_z * sn,
+        -0.5 * t * t_q1_z * sn));
+
+    quat q_s_q1_w = mul(q0, quat(
+        0.5 * t * axis.x * t_q1_w * cs + a_x_q1_w * sn,
+        0.5 * t * axis.y * t_q1_w * cs + a_y_q1_w * sn,
+        0.5 * t * axis.z * t_q1_w * cs + a_z_q1_w * sn,
+        -0.5 * t * t_q1_w * sn));
+
+    adj_q1.x += dot(q_s_q1_x, adj_ret);
+    adj_q1.y += dot(q_s_q1_y, adj_ret);
+    adj_q1.z += dot(q_s_q1_z, adj_ret);
+    adj_q1.w += dot(q_s_q1_w, adj_ret);    
+
+}
+
 inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)
 {
     // we don't care about adjoint w.r.t. constant identity matrix
@@ -631,10 +741,166 @@ inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& 
     adj_quat_rotate(q, vec3(0.0, 0.0, 1.0), adj_q, t, adj_ret.get_col(2));
 }
 
-
 inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, const quat& adj_ret)
 {
-    // TODO
+    const float tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
+    float x, y, z, w, h = 0.0f;
+
+    float dx_dm00 = 0.f, dx_dm01 = 0.f, dx_dm02 = 0.f;
+    float dx_dm10 = 0.f, dx_dm11 = 0.f, dx_dm12 = 0.f;
+    float dx_dm20 = 0.f, dx_dm21 = 0.f, dx_dm22 = 0.f;
+    float dy_dm00 = 0.f, dy_dm01 = 0.f, dy_dm02 = 0.f;
+    float dy_dm10 = 0.f, dy_dm11 = 0.f, dy_dm12 = 0.f;
+    float dy_dm20 = 0.f, dy_dm21 = 0.f, dy_dm22 = 0.f;
+    float dz_dm00 = 0.f, dz_dm01 = 0.f, dz_dm02 = 0.f;
+    float dz_dm10 = 0.f, dz_dm11 = 0.f, dz_dm12 = 0.f;
+    float dz_dm20 = 0.f, dz_dm21 = 0.f, dz_dm22 = 0.f;
+    float dw_dm00 = 0.f, dw_dm01 = 0.f, dw_dm02 = 0.f;
+    float dw_dm10 = 0.f, dw_dm11 = 0.f, dw_dm12 = 0.f;
+    float dw_dm20 = 0.f, dw_dm21 = 0.f, dw_dm22 = 0.f;
+
+    if (tr >= 0.0f) {
+        h = sqrt(tr + 1.0f);
+        w = 0.5 * h;
+        h = 0.5f / h;
+
+        x = (m.data[2][1] - m.data[1][2]) * h;
+        y = (m.data[0][2] - m.data[2][0]) * h;
+        z = (m.data[1][0] - m.data[0][1]) * h;
+
+        dw_dm00 = 0.5f * h;
+        dw_dm11 = 0.5f * h;
+        dw_dm22 = 0.5f * h;
+        dx_dm21 = h;
+        dx_dm12 = -h;
+        dx_dm00 = 2.f * h*h*h * (m.data[1][2] - m.data[2][1]);
+        dx_dm11 = 2.f * h*h*h * (m.data[1][2] - m.data[2][1]);
+        dx_dm22 = 2.f * h*h*h * (m.data[1][2] - m.data[2][1]);
+        dy_dm02 = h;
+        dy_dm20 = -h;
+        dy_dm00 = 2.f * h*h*h * (m.data[2][0] - m.data[0][2]);
+        dy_dm11 = 2.f * h*h*h * (m.data[2][0] - m.data[0][2]);
+        dy_dm22 = 2.f * h*h*h * (m.data[2][0] - m.data[0][2]);
+        dz_dm10 = h;
+        dz_dm01 = -h;
+        dz_dm00 = 2.f * h*h*h * (m.data[0][1] - m.data[1][0]);
+        dz_dm11 = 2.f * h*h*h * (m.data[0][1] - m.data[1][0]);
+        dz_dm22 = 2.f * h*h*h * (m.data[0][1] - m.data[1][0]);
+    } else {
+        size_t max_diag = 0;
+        if (m.data[1][1] > m.data[0][0]) {
+            max_diag = 1;
+        }
+        if (m.data[2][2] > m.data[max_diag][max_diag]) {
+            max_diag = 2;
+        }
+        
+        if (max_diag == 0) {
+            h = sqrt((m.data[0][0] - (m.data[1][1] + m.data[2][2])) + 1.0f);
+            x = 0.5f * h;
+            h = 0.5f / h;
+
+            y = (m.data[0][1] + m.data[1][0]) * h;
+            z = (m.data[2][0] + m.data[0][2]) * h;
+            w = (m.data[2][1] - m.data[1][2]) * h;
+
+            dx_dm00 = 0.5f * h;
+            dx_dm11 = -0.5f * h;
+            dx_dm22 = -0.5f * h;
+            dy_dm01 = h;
+            dy_dm10 = h;
+            dy_dm00 = -2.f * h*h*h * (m.data[0][1] + m.data[1][0]);
+            dy_dm11 = 2.f * h*h*h * (m.data[0][1] + m.data[1][0]);
+            dy_dm22 = 2.f * h*h*h * (m.data[0][1] + m.data[1][0]);
+            dz_dm20 = h;
+            dz_dm02 = h;
+            dz_dm00 = -2.f * h*h*h * (m.data[2][0] + m.data[0][2]);
+            dz_dm11 = 2.f * h*h*h * (m.data[2][0] + m.data[0][2]);
+            dz_dm22 = 2.f * h*h*h * (m.data[2][0] + m.data[0][2]);
+            dw_dm21 = h;
+            dw_dm12 = -h;
+            dw_dm00 = 2.f * h*h*h * (m.data[1][2] - m.data[2][1]);
+            dw_dm11 = 2.f * h*h*h * (m.data[2][1] - m.data[1][2]);
+            dw_dm22 = 2.f * h*h*h * (m.data[2][1] - m.data[1][2]);
+        } else if (max_diag == 1) {
+            h = sqrt((m.data[1][1] - (m.data[2][2] + m.data[0][0])) + 1.0f);
+            y = 0.5f * h;
+            h = 0.5f / h;
+
+            z = (m.data[1][2] + m.data[2][1]) * h;
+            x = (m.data[0][1] + m.data[1][0]) * h;
+            w = (m.data[0][2] - m.data[2][0]) * h;
+
+            dy_dm00 = -0.5f * h;
+            dy_dm11 = 0.5f * h;
+            dy_dm22 = -0.5f * h;
+            dz_dm12 = h;
+            dz_dm21 = h;
+            dz_dm00 = 2.f * h*h*h * (m.data[1][2] + m.data[2][1]);
+            dz_dm11 = -2.f * h*h*h * (m.data[1][2] + m.data[2][1]);
+            dz_dm22 = 2.f * h*h*h * (m.data[1][2] + m.data[2][1]);
+            dx_dm01 = h;
+            dx_dm10 = h;
+            dx_dm00 = 2.f * h*h*h * (m.data[0][1] + m.data[1][0]);
+            dx_dm11 = -2.f * h*h*h * (m.data[0][1] + m.data[1][0]);
+            dx_dm22 = 2.f * h*h*h * (m.data[0][1] + m.data[1][0]);
+            dw_dm02 = h;
+            dw_dm20 = -h;
+            dw_dm00 = 2.f * h*h*h * (m.data[0][2] - m.data[2][0]);
+            dw_dm11 = 2.f * h*h*h * (m.data[2][0] - m.data[0][2]);
+            dw_dm22 = 2.f * h*h*h * (m.data[0][2] - m.data[2][0]);
+        } if (max_diag == 2) {
+            h = sqrt((m.data[2][2] - (m.data[0][0] + m.data[1][1])) + 1.0f);
+            z = 0.5f * h;
+            h = 0.5f / h;
+
+            x = (m.data[2][0] + m.data[0][2]) * h;
+            y = (m.data[1][2] + m.data[2][1]) * h;
+            w = (m.data[1][0] - m.data[0][1]) * h;
+
+            dz_dm00 = -0.5f * h;
+            dz_dm11 = -0.5f * h;
+            dz_dm22 = 0.5f * h;
+            dx_dm20 = h;
+            dx_dm02 = h;
+            dx_dm00 = 2.f * h*h*h * (m.data[2][0] + m.data[0][2]);
+            dx_dm11 = 2.f * h*h*h * (m.data[2][0] + m.data[0][2]);
+            dx_dm22 = -2.f * h*h*h * (m.data[2][0] + m.data[0][2]);
+            dy_dm12 = h;
+            dy_dm21 = h;
+            dy_dm00 = 2.f * h*h*h * (m.data[1][2] + m.data[2][1]);
+            dy_dm11 = 2.f * h*h*h * (m.data[1][2] + m.data[2][1]);
+            dy_dm22 = -2.f * h*h*h * (m.data[1][2] + m.data[2][1]);
+            dw_dm10 = h;
+            dw_dm01 = -h;
+            dw_dm00 = 2.f * h*h*h * (m.data[1][0] - m.data[0][1]);
+            dw_dm11 = 2.f * h*h*h * (m.data[1][0] - m.data[0][1]);
+            dw_dm22 = 2.f * h*h*h * (m.data[0][1] - m.data[1][0]);
+        }
+    }
+
+    quat dq_dm00 = quat(dx_dm00, dy_dm00, dz_dm00, dw_dm00);
+    quat dq_dm01 = quat(dx_dm01, dy_dm01, dz_dm01, dw_dm01);
+    quat dq_dm02 = quat(dx_dm02, dy_dm02, dz_dm02, dw_dm02);
+    quat dq_dm10 = quat(dx_dm10, dy_dm10, dz_dm10, dw_dm10);
+    quat dq_dm11 = quat(dx_dm11, dy_dm11, dz_dm11, dw_dm11);
+    quat dq_dm12 = quat(dx_dm12, dy_dm12, dz_dm12, dw_dm12);
+    quat dq_dm20 = quat(dx_dm20, dy_dm20, dz_dm20, dw_dm20);
+    quat dq_dm21 = quat(dx_dm21, dy_dm21, dz_dm21, dw_dm21);
+    quat dq_dm22 = quat(dx_dm22, dy_dm22, dz_dm22, dw_dm22);
+
+    quat adj_q;
+    adj_normalize(quat(x, y, z, w), adj_q, adj_ret);
+
+    adj_m.data[0][0] += dot(dq_dm00, adj_q);
+    adj_m.data[0][1] += dot(dq_dm01, adj_q);
+    adj_m.data[0][2] += dot(dq_dm02, adj_q);
+    adj_m.data[1][0] += dot(dq_dm10, adj_q);
+    adj_m.data[1][1] += dot(dq_dm11, adj_q);
+    adj_m.data[1][2] += dot(dq_dm12, adj_q);
+    adj_m.data[2][0] += dot(dq_dm20, adj_q);
+    adj_m.data[2][1] += dot(dq_dm21, adj_q);
+    adj_m.data[2][2] += dot(dq_dm22, adj_q);
 }
 
 } // namespace wp

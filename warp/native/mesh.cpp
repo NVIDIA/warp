@@ -55,9 +55,9 @@ uint64_t mesh_create_host(vec3* points, vec3* velocities, int* indices, int num_
 
     m->context = NULL;
 
-    m->points = points;
-    m->velocities = velocities;
-    m->indices = indices;
+    m->points = array_t<vec3>(points, num_points);
+    m->velocities = array_t<vec3>(velocities, num_points);
+    m->indices = array_t<int>(indices, num_tris, 3);
 
     m->num_points = num_points;
     m->num_tris = num_tris;
@@ -84,9 +84,9 @@ uint64_t mesh_create_device(void* context, vec3* points, vec3* velocities, int* 
 
     mesh.context = context ? context : cuda_context_get_current();
 
-    mesh.points = points;
-    mesh.velocities = velocities;
-    mesh.indices = indices;
+    mesh.points = array_t<vec3>(points, num_points);
+    mesh.velocities = array_t<vec3>(velocities, num_points);
+    mesh.indices = array_t<int>(indices, num_tris, 3);
 
     mesh.num_points = num_points;
     mesh.num_tris = num_tris;
@@ -168,9 +168,9 @@ void mesh_refit_host(uint64_t id)
     for (int i=0; i < m->num_tris; ++i)
     {
         m->bounds[i] = bounds3();
-        m->bounds[i].add_point(m->points[m->indices[i*3+0]]);
-        m->bounds[i].add_point(m->points[m->indices[i*3+1]]);
-        m->bounds[i].add_point(m->points[m->indices[i*3+2]]);
+        m->bounds[i].add_point(m->points.data[m->indices.data[i*3+0]]);
+        m->bounds[i].add_point(m->points.data[m->indices.data[i*3+1]]);
+        m->bounds[i].add_point(m->points.data[m->indices.data[i*3+2]]);
     }
 
     bvh_refit_host(m->bvh, m->bounds);

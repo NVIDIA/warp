@@ -266,6 +266,31 @@ Vector Math
    Compute the length of a 4d vector.
 
 
+.. function:: length(x: quat) -> float
+
+   Compute the length of a quaternion.
+
+
+.. function:: length_sq(x: vec2) -> float
+
+   Compute the squared length of a 2d vector.
+
+
+.. function:: length_sq(x: vec3) -> float
+
+   Compute the squared length of a 3d vector.
+
+
+.. function:: length_sq(x: vec4) -> float
+
+   Compute the squared length of a 4d vector.
+
+
+.. function:: length_sq(x: quat) -> float
+
+   Compute the squared length of a quaternion.
+
+
 .. function:: normalize(x: vec2) -> vec2
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
@@ -334,6 +359,21 @@ Vector Math
 .. function:: determinant(m: mat44) -> float
 
    Return the determinant of the matrix m
+
+
+.. function:: trace(m: mat22) -> float
+
+   Return the trace of the matrix m
+
+
+.. function:: trace(m: mat33) -> float
+
+   Return the trace of the matrix m
+
+
+.. function:: trace(m: mat44) -> float
+
+   Return the trace of the matrix m
 
 
 .. function:: diag(d: vec2) -> mat22
@@ -466,6 +506,16 @@ Vector Math
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
+.. function:: qr3(A: mat33, Q: mat33, R: mat33) -> None
+
+   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
+
+.. function:: eig3(A: mat33, Q: mat33, d: vec3) -> None
+
+   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
+
+
+
 
 
 
@@ -497,6 +547,11 @@ Quaternion Math
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
+.. function:: quat_to_axis_angle(q: quat, axis: vec3, angle: float32) -> None
+
+   Extract the rotation axis and angle radians a quaternion represents.
+
+
 .. function:: quat_from_matrix(m: mat33) -> quat
 
    Construct a quaternion from a 3x3 matrix.
@@ -520,6 +575,16 @@ Quaternion Math
 .. function:: quat_rotate_inv(q: quat, p: vec3) -> vec3
 
    Rotate a vector the inverse of a quaternion.
+
+
+.. function:: rotate_rodriguez(r: vec3, x: vec3) -> vec3
+
+   Rotate the vector x by the rotator r encoding rotation axis and angle radians.
+
+
+.. function:: quat_slerp(q0: quat, q1: quat, t: float32) -> quat
+
+   Linearly interpolate between two quaternions.
 
 
 .. function:: quat_to_matrix(q: quat) -> mat33
@@ -744,34 +809,44 @@ Utility
    Atomically subtract ``value`` onto the array at location given by indices.
 
 
-.. function:: index(a: vec2, i: int32) -> float
+.. function:: atomic_min(a: array[Any], i: int32, value: Any)
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: index(a: vec3, i: int32) -> float
+.. function:: atomic_min(a: array[Any], i: int32, j: int32, value: Any)
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: index(a: vec4, i: int32) -> float
+.. function:: atomic_min(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: index(a: quat, i: int32) -> float
+.. function:: atomic_min(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: index(a: mat22, i: int32) -> vec2
+.. function:: atomic_max(a: array[Any], i: int32, value: Any)
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: index(a: mat22, i: int32, j: int32) -> float
+.. function:: atomic_max(a: array[Any], i: int32, j: int32, value: Any)
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: index(a: mat33, i: int32) -> vec3
+.. function:: atomic_max(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: index(a: mat33, i: int32, j: int32) -> float
+.. function:: atomic_max(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
 
-
-.. function:: index(a: mat44, i: int32) -> vec4
-
-
-.. function:: index(a: mat44, i: int32, j: int32) -> float
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
 .. function:: expect_eq(arg1: int8, arg2: int8) -> None
@@ -879,17 +954,7 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: lerp(a: float16, b: float16, t: float32) -> float16
-
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-
-
 .. function:: lerp(a: float32, b: float32, t: float32) -> float32
-
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-
-
-.. function:: lerp(a: float64, b: float64, t: float32) -> float64
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
@@ -944,6 +1009,11 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
+.. function:: smoothstep(edge0: float32, edge1: float32, x: float32) -> float
+
+   Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
+
+
 .. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
@@ -958,6 +1028,32 @@ Utility
 
 Geometry
 ---------------
+.. function:: bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t
+
+   Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
+   inside a bvh. Returns an object that is used to track state during bvh traversal.
+    
+   :param id: The bvh identifier
+   :param lower: The lower bound of the bounding box in bvh space
+   :param upper: The upper bound of the bounding box in bvh space
+
+
+.. function:: bvh_query_ray(id: uint64, start: vec3, dir: vec3) -> bvh_query_t
+
+   Construct a ray query against a bvh object. This query can be used to iterate over all bounds
+   that intersect the ray. Returns an object that is used to track state during bvh traversal.
+    
+   :param id: The bvh identifier
+   :param start: The start of the ray in bvh space
+   :param dir: The direction of the ray in bvh space
+
+
+.. function:: bvh_query_next(query: bvh_query_t, index: int32) -> bool
+
+   Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
+   if there are no more overlapping bound.
+
+
 .. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
 
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
@@ -1036,6 +1132,11 @@ Geometry
    Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.
 
 
+.. function:: mesh_get(id: uint64) -> Mesh
+
+   Retrieves the mesh given its index.
+
+
 .. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3
 
    Evaluates the face normal the mesh given a face index.
@@ -1082,6 +1183,11 @@ Volumes
    Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
+.. function:: volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32) -> None
+
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+
+
 .. function:: volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int32) -> vec3
 
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
@@ -1092,6 +1198,11 @@ Volumes
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
+.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3) -> None
+
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+
+
 .. function:: volume_sample_i(id: uint64, uvw: vec3) -> int
 
    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
@@ -1100,6 +1211,11 @@ Volumes
 .. function:: volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int
 
    Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+
+
+.. function:: volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32) -> None
+
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
 .. function:: volume_index_to_world(id: uint64, uvw: vec3) -> vec3
@@ -1255,17 +1371,17 @@ Random
 
 .. function:: curlnoise(state: uint32, xy: vec2) -> vec2
 
-   Divergence-free vector field based on the gradient of a Perlin noise function.
+   Divergence-free vector field based on the gradient of a Perlin noise function. [1]_
 
 
 .. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
 
-   Divergence-free vector field based on the curl of three Perlin noise functions.
+   Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
 
 .. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
 
-   Divergence-free vector field based on the curl of three Perlin noise functions.
+   Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
 
 
@@ -1484,3 +1600,5 @@ Operators
 .. function:: unot(b: bool) -> bool
 
 
+.. rubric:: Footnotes
+.. [1] Note: function gradients not implemented for backpropagation.

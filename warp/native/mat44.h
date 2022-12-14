@@ -651,13 +651,13 @@ inline CUDA_CALLABLE void adj_inverse(const mat44& m, mat44& adj_m, const mat44&
 
 inline CUDA_CALLABLE vec3 transform_point(const mat44& m, const vec3& v)
 {
-    vec4 out = mul(m, vec4(v.x, v.y, v.z, 1.0));
+    vec4 out = mul(m, vec4(v.x, v.y, v.z, 1.f));
     return vec3(out.x, out.y, out.z);
 }
 
 inline CUDA_CALLABLE vec3 transform_vector(const mat44& m, const vec3& v)
 {
-    vec4 out = mul(m, vec4(v.x, v.y, v.z, 0.0));
+    vec4 out = mul(m, vec4(v.x, v.y, v.z, 0.f));
     return vec3(out.x, out.y, out.z);
 }
 
@@ -666,16 +666,23 @@ inline CUDA_CALLABLE mat44 outer(const vec4& a, const vec4& b)
     return mat44(a*b.x, a*b.y, a*b.z, a*b.w);    
 }
 
-
 inline CUDA_CALLABLE void adj_transform_point(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
 {
-    printf("todo: adj_transform_point\n");
-}
-inline CUDA_CALLABLE void adj_transform_vector(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
-{
-    printf("todo: adj_transform_vector\n");
+    vec4 out = vec4(v.x, v.y, v.z, 1.f);
+    adj_m = add(adj_m, transpose(mat44(adj_ret.x * out, adj_ret.y * out, adj_ret.z * out, vec4())));
+    adj_v.x += dot(vec3(m.data[0][0], m.data[1][0], m.data[2][0]), adj_ret);
+    adj_v.y += dot(vec3(m.data[0][1], m.data[1][1], m.data[2][1]), adj_ret);
+    adj_v.z += dot(vec3(m.data[0][2], m.data[1][2], m.data[2][2]), adj_ret);
 }
 
+inline CUDA_CALLABLE void adj_transform_vector(const mat44& m, const vec3& v, mat44& adj_m, vec3& adj_v, const vec3& adj_ret)
+{
+    vec4 out = vec4(v.x, v.y, v.z, 0.f);
+    adj_m = add(adj_m, transpose(mat44(adj_ret.x * out, adj_ret.y * out, adj_ret.z * out, vec4())));
+    adj_v.x += dot(vec3(m.data[0][0], m.data[1][0], m.data[2][0]), adj_ret);
+    adj_v.y += dot(vec3(m.data[0][1], m.data[1][1], m.data[2][1]), adj_ret);
+    adj_v.z += dot(vec3(m.data[0][2], m.data[1][2], m.data[2][2]), adj_ret);
+}
 
 inline void CUDA_CALLABLE adj_index(const mat44& m, int row, int col, mat44& adj_m, int& adj_row, int& adj_col, float adj_ret)
 {

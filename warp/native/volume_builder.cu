@@ -9,7 +9,7 @@
 // Explanation of key types
 // ------------------------
 //
-// full_key:
+// leaf_key:
 // .__.__. .... .__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.__.
 //  63 62  ....  27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00
 //  XX|< tile key >|<               upper offset               >|<           lower offset          >|
@@ -19,9 +19,9 @@
 //   (uint64_t(uint32(ijk[1]) >> ChildT::TOTAL)) << 12 |
 //   (uint64_t(uint32(ijk[0]) >> ChildT::TOTAL)) << 24 
 //
-// lower_key (51 bits) == full_key >> 12
+// lower_key (51 bits) == leaf_key >> 12
 //
-// upper_key (36 bits) == lower_key >> 15 == full_key >> 27 == tile key
+// upper_key (36 bits) == lower_key >> 15 == leaf_key >> 27 == tile key
 
 CUDA_CALLABLE inline uint64_t coord_to_full_key(const nanovdb::Coord& ijk) 
 {
@@ -59,7 +59,7 @@ void generate_keys(size_t num_points, const nanovdb::Vec3f* points, uint64_t* al
 }
 
 // Convert a 36 bit tile key to the ijk origin of the addressed tile
-CUDA_CALLABLE inline nanovdb::Coord tile_key32_to_coord(uint64_t tile_key36) {
+CUDA_CALLABLE inline nanovdb::Coord tile_key36_to_coord(uint64_t tile_key36) {
     auto extend_sign = [](uint32_t i) -> int32_t { return i | ((i>>11 & 1) * 0xFFFFF800);};
     constexpr uint32_t MASK_12BITS = (1u << 12) - 1u;
     const int32_t i = extend_sign(uint32_t(tile_key36 >> 24) & MASK_12BITS);
@@ -204,7 +204,7 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
         allocator.DeviceFree(d_temp_storage);
         check_cuda(cudaMemcpy(&lower_node_count, node_counts + 1, sizeof(uint32_t), cudaMemcpyDeviceToHost));
 
-        // Get the keys unique to lower nodes and the number of them
+        // Get the keys unique to upper nodes and the number of them
         allocator.DeviceAllocate((void**)&upper_keys, sizeof(uint64_t) * lower_node_count);
         cub::DeviceSelect::Unique(nullptr, temp_storage_bytes, ShiftRightIterator<15>(lower_keys), upper_keys, node_counts + 2, lower_node_count);
         allocator.DeviceAllocate((void**)&d_temp_storage, temp_storage_bytes);
@@ -237,8 +237,8 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     typename Tree::DataType* const tree = reinterpret_cast<typename Tree::DataType*>(grid + 1); // The tree is immediately after the grid
     typename Tree::RootType::DataType* const root = reinterpret_cast<typename Tree::RootType::DataType*>(tree + 1); // The root is immediately after the tree
     typename Tree::RootType::Tile* const tiles = reinterpret_cast<typename Tree::RootType::Tile*>(root + 1);
-    typename Tree::Node1::DataType* const lower_nodes = nanovdb::PtrAdd<typename Tree::Node1::DataType>(grid, lower_mem_offset);
     typename Tree::Node2::DataType* const upper_nodes = nanovdb::PtrAdd<typename Tree::Node2::DataType>(grid, upper_mem_offset);
+    typename Tree::Node1::DataType* const lower_nodes = nanovdb::PtrAdd<typename Tree::Node1::DataType>(grid, lower_mem_offset);
     typename Tree::Node0::DataType* const leaf_nodes  = nanovdb::PtrAdd<typename Tree::Node0::DataType>(grid, leaf_mem_offset);
 
     // Phase 2: building the tree
@@ -269,7 +269,7 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     num_blocks = (upper_node_count + num_threads - 1) / num_threads;
     {
         kernel<<<num_blocks, num_threads>>>(upper_node_count, [=] __device__(size_t i) {
-            tiles[i].key = root->CoordToKey(tile_key32_to_coord(upper_keys[i]));
+            tiles[i].key = root->CoordToKey(tile_key36_to_coord(upper_keys[i]));
             tiles[i].child = sizeof(typename Tree::RootType) + sizeof(typename Tree::RootType::Tile) * upper_node_count + sizeof(typename Tree::Node2) * i;
             tiles[i].state = 0;
             tiles[i].value = background_value;
@@ -299,7 +299,7 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     {
         kernel<<<num_blocks, num_threads>>>(lower_node_count, [=] __device__(size_t i) {
             uint32_t upper_offset = lower_keys[i] & MASK_15BITS;
-            auto*    upper_node = root->getChild(find_tile(root, tile_key32_to_coord(lower_keys[i] >> 15)))->data();
+            auto*    upper_node = root->getChild(find_tile(root, tile_key36_to_coord(lower_keys[i] >> 15)))->data();
             set_mask_atomic(upper_node->mChildMask, upper_offset);
             upper_node->setChild(upper_offset, lower_nodes + i);
 
@@ -325,7 +325,7 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
         kernel<<<num_blocks, num_threads>>>(leaf_count, [=] __device__(size_t i) {
             uint32_t lower_offset = leaf_keys[i] & MASK_12BITS;
             uint32_t upper_offset = (leaf_keys[i] >> 12) & MASK_15BITS;
-            const nanovdb::Coord ijk = tile_key32_to_coord(leaf_keys[i] >> 27);
+            const nanovdb::Coord ijk = tile_key36_to_coord(leaf_keys[i] >> 27);
 
             auto* upper_node = root->getChild(find_tile(root, ijk))->data();
             auto* lower_node = upper_node->getChild(upper_offset)->data();
@@ -358,7 +358,7 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
     num_blocks = (lower_node_count + num_threads - 1) / num_threads;
     {
         kernel<<<num_blocks, num_threads>>>(lower_node_count, [=] __device__(size_t i) {
-            auto* upper_node = root->getChild(find_tile(root, tile_key32_to_coord(lower_keys[i] >> 15)))->data();
+            auto* upper_node = root->getChild(find_tile(root, tile_key36_to_coord(lower_keys[i] >> 15)))->data();
             expand_cwise_atomic(upper_node->mBBox, lower_nodes[i].mBBox.min());
             expand_cwise_atomic(upper_node->mBBox, lower_nodes[i].mBBox.max());
         });
@@ -422,3 +422,4 @@ void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<BuildT>> *&out_grid,
 
 template void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<float>>*&, size_t&, const void*, size_t, bool, const BuildGridParams<float>&);
 template void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<nanovdb::Vec3f>>*&, size_t&, const void*, size_t, bool, const BuildGridParams<nanovdb::Vec3f>&);
+template void build_grid_from_tiles(nanovdb::Grid<nanovdb::NanoTree<int32_t>>*&, size_t&, const void*, size_t, bool, const BuildGridParams<int32_t>&);

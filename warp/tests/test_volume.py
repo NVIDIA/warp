@@ -257,6 +257,24 @@ def test_volume_store_v(volume: wp.uint64,
     values[tid] = wp.volume_lookup_v(volume, i, j, k)
 
 
+@wp.kernel
+def test_volume_store_i(volume: wp.uint64,
+                        points: wp.array(dtype=wp.vec3),
+                        values: wp.array(dtype=wp.int32)):
+
+    tid = wp.tid()
+
+    p = points[tid]
+    i = int(p[0])
+    j = int(p[1])
+    k = int(p[2])
+
+    # NB: Writing outside the allocated domain overwrites the background value of the Volume
+    if abs(i) <= 11 and abs(j) <= 11 and abs(k) <= 11:
+        wp.volume_store_i(volume, i, j, k, i + 100*j + 10000*k)
+    values[tid] = wp.volume_lookup_i(volume, i, j, k)
+
+
 devices = wp.get_devices()
 rng = np.random.default_rng(101215)
 
@@ -286,6 +304,12 @@ volume_paths = {
     "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb")),
     "float_write": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
 }
+
+test_volume_tiles = np.array([[i, j, k] for i in range(-2, 2)
+                              for j in range(-2, 2)
+                              for k in range(-2, 2)],
+                             dtype=np.int32) * 8
+
 
 volumes = {}
 points = {}
@@ -380,12 +404,6 @@ def register(parent):
                     grad_expected = grad_values.numpy()
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
 
-                    tape.reset()
-
-                    with tape:
-                        wp.launch(test_volume_world_to_index, dim=1, inputs=[volumes["torus"][device.alias].id, points, values, grad_values], device=device)
-                    tape.backward(values)
-
                     grad_computed = tape.gradients[points].numpy()
                     grad_expected = grad_values.numpy()
                     np.testing.assert_allclose(grad_computed, grad_expected, rtol=1e-4)
@@ -433,7 +451,33 @@ def register(parent):
                 values_res = values.numpy()
                 np.testing.assert_equal(values_res, values_ref)
 
+        def test_volume_allocation_i(self):
 
+            bg_value = -123
+            points_np = np.append(point_grid, [[8096, 8096, 8096]], axis=0)
+            values_ref = np.append(np.array([x + 100*y + 10000*z for x,y,z in point_grid], dtype=np.int32), bg_value)
+            for device in devices:
+                if device.is_cpu: continue
+
+                volume = wp.Volume.allocate(min=[-11,-11,-11], max=[11, 11, 11], voxel_size=0.1, bg_value=bg_value, device=device)
+                points = wp.array(points_np, dtype=wp.vec3, device=device)
+                values = wp.empty(len(points_np), dtype=wp.int32, device=device)
+                wp.launch(test_volume_store_i, dim=len(points_np), inputs=[volume.id, points, values], device=device)
+
+                values_res = values.numpy()
+                np.testing.assert_equal(values_res, values_ref)
+
+        def test_volume_introspection(self):
+
+            for volume_names in ("float", "vec3f"):
+                for device in devices:
+                    volume = volumes[volume_names][device.alias]
+                    tiles_actual = volume.get_tiles().numpy()
+                    tiles_sorted = tiles_actual[np.lexsort(tiles_actual.T[::-1])]
+                    voxel_size = np.array(volume.get_voxel_size())
+
+                    np.testing.assert_equal(test_volume_tiles, tiles_sorted)
+                    np.testing.assert_equal([0.25] * 3, voxel_size)
 
     for device in devices:
         points_jittered_np = point_grid + rng.uniform(-0.5, 0.5, size=point_grid.shape)

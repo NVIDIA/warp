@@ -1,11 +1,69 @@
 # CHANGELOG
 
-## [0.4.4] - 2022-10-04
+## [0.6.1] - 2022-12-05
 
-- Fix kernel caching issue related to constants
-- Enable module dependency tracking to reload modules if dependencies were modified
+- Fix for non-CUDA builds
+- Fix strides computation in array_t constructor, fixes a bug with accessing mesh indices through mesh.indices[]
+- Disable backward pass code generation for kernel node (4-6x faster compilation)
+- Switch to linbuild for universal Linux binaries (affects TeamCity builds only)
 
-## [0.4.4] - 2022-09-20
+## [0.6.0] - 2022-11-28
+
+- Add support for CUDA streams, see `wp.Stream`, `wp.get_stream()`, `wp.set_stream()`, `wp.synchronize_stream()`, `wp.ScopedStream`
+- Add support for CUDA events, see `wp.Event`, `wp.record_event()`, `wp.wait_event()`, `wp.wait_stream()`, `wp.Stream.record_event()`, `wp.Stream.wait_event()`, `wp.Stream.wait_stream()`
+- Add support for PyTorch stream interop, see `wp.stream_from_torch()`, `wp.stream_to_torch()`
+- Add support for allocating host arrays in pinned memory for asynchronous data transfers, use `wp.array(..., pinned=True)` (default is non-pinned)
+- Add support for direct conversions between all scalar types, e.g.: `x = wp.uint8(wp.float64(3.0))`
+- Add per-module option to enable fast math, use `wp.set_module_options({"fast_math": True})`, fast math is now *disabled* by default
+- Add support for generating CUBIN kernels instead of PTX on systems with older drivers
+- Add user preference options for CUDA kernel output ("ptx" or "cubin", e.g.: `wp.config.cuda_output = "ptx"` or per-module `wp.set_module_options({"cuda_output": "ptx"})`)
+- Add kernel node for OmniGraph
+- Add `wp.quat_slerp()`, `wp.quat_to_axis_angle()`, `wp.rotate_rodriquez()` and adjoints for all remaining quaternion operations
+- Add support for unrolling for-loops when range is a `wp.constant`
+- Add support for arithmetic operators on built-in vector / matrix types outside of `wp.kernel`
+- Add support for multiple solution variables in `wp.optim` Adam optimization
+- Add nested attribute support for `wp.struct` attributes
+- Add missing adjoint implementations for spatial math types, and document all functions with missing adjoints
+- Add support for retrieving NanoVDB tiles and voxel size, see `wp.Volume.get_tiles()`, and `wp.Volume.get_voxel_size()`
+- Add support for store operations on integer NanoVDB volumes, see `wp.volume_store_i()`
+- Expose `wp.Mesh` points, indices, as arrays inside kernels, see `wp.mesh_get()`
+- Optimizations for `wp.array` construction, 2-3x faster on average
+- Optimizations for URDF import
+- Fix various deployment issues by statically linking with all CUDA libs
+- Update warp.so/warp.dll to CUDA Toolkit 11.5
+
+## [0.5.1] - 2022-11-01
+
+- Fix for unit tests in Kit
+
+## [0.5.0] - 2022-10-31
+
+- Add smoothed particle hydrodynamics (SPH) example, see `example_sph.py`
+- Add support for accessing `array.shape` inside kernels, e.g.: `width = arr.shape[0]`
+- Add dependency tracking to hot-reload modules if dependencies were modified
+- Add lazy acquisition of CUDA kernel contexts (save ~300Mb of GPU memory in MGPU environments)
+- Add BVH object, see `wp.Bvh` and `bvh_query_ray()`, `bvh_query_aabb()` functions
+- Add component index operations for `spatial_vector`, `spatial_matrix` types
+- Add `wp.lerp()` and `wp.smoothstep()` builtins
+- Add `wp.optim` module with implementation of the Adam optimizer for float and vector types
+- Add support for transient Python modules (fix for Houdini integration)
+- Add `wp.length_sq()`, `wp.trace()` for vector / matrix types respectively
+- Add missing adjoints for `wp.quat_rpy()`, `wp.determinant()`
+- Add `wp.atomic_min()`, `wp.atomic_max()` operators
+- Add vectorized version of `warp.sim.model.add_cloth_mesh()` 
+- Add NVDB volume allocation API, see `wp.Volume.allocate()`, and `wp.Volume.allocate_by_tiles()`
+- Add NVDB volume write methods, see `wp.volume_store_i()`, `wp.volume_store_f()`, `wp.volume_store_v()`
+- Add MGPU documentation
+- Add example showing how to compute Jacobian of multiple environements in parallel, see `example_jacobian_ik.py`
+- Add `wp.Tape.zero()` support for `wp.struct` types
+- Make SampleBrowser an optional dependency for Kit extension
+- Make `wp.Mesh` object accept both 1d and 2d arrays of face vertex indices
+- Fix for reloading of class member kernel / function definitions using `importlib.reload()`
+- Fix for hashing of `wp.constants()` not invalidating kernels
+- Fix for reload when multiple `.ptx` versions are present
+- Improved error reporting during code-gen
+ 
+## [0.4.3] - 2022-09-20
 
 - Update all samples to use GPU interop path by default
 - Fix for arrays > 2GB in length

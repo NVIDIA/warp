@@ -266,13 +266,13 @@ class Example:
     def __init__(self, stage): 
 
         # render params
-        self.frame_dt = 1.0/24
-        self.frame_count = 150
+        self.frame_dt = 1.0/60.0
+        self.frame_count = 600
         self.renderer = wp.render.UsdRenderer(stage)
         self.sim_time = 0.0
 
         # simulation params
-        self.smoothing_length = 1.0 # NOTE change this to adjust number of particles
+        self.smoothing_length = 0.8 # NOTE change this to adjust number of particles
         self.width = 80.0 # x
         self.height = 80.0 # y
         self.length = 80.0 # z
@@ -284,7 +284,7 @@ class Example:
         self.damping_coef = -0.95
         self.gravity = -0.1
         self.n = int(self.height * (self.width/4.0) * (self.height/4.0) / (self.smoothing_length**3)) # number particles (small box in corner)
-        self.sim_step_to_frame_ratio = int(128 / self.smoothing_length)
+        self.sim_step_to_frame_ratio = int(32 / self.smoothing_length)
 
         # constants
         self.density_normalization = (315.0 * self.particle_mass) / (64.0 * np.pi * self.smoothing_length**9) # integrate density kernel

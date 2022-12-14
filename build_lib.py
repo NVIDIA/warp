@@ -19,6 +19,7 @@ parser.add_argument('--cuda_path', type=str, help='Path to CUDA SDK')
 parser.add_argument('--mode', type=str, default="release", help="Build configuration, either 'release' or 'debug'")
 parser.add_argument('--verbose', type=bool, default=True, help="Verbose building output, default True")
 parser.add_argument('--verify_fp', type=bool, default=False, help="Verify kernel inputs and outputs are finite after each launch, default False")
+parser.add_argument('--fast_math', type=bool, default=False, help="Enable fast math on library, default False")
 args = parser.parse_args()
 
 # set build output path off this file
@@ -29,6 +30,7 @@ print(args)
 warp.config.verbose = args.verbose
 warp.config.mode = args.mode
 warp.config.verify_fp = args.verify_fp
+warp.config.fast_math = args.fast_math
 
 # setup CUDA paths
 if sys.platform == 'darwin':
@@ -52,10 +54,10 @@ if os.name == 'nt':
     else:
         
         # attempt to find MSVC in environment (will set vcvars)
-        cl_path = warp.build.find_host_compiler()
+        warp.config.host_compiler = warp.build.find_host_compiler()
         
-        if (cl_path == None):
-            print("Could not find MSVC compiler in path")
+        if not warp.config.host_compiler:
+            print("Warp build error: Could not find MSVC compiler")
             sys.exit(1)
 
 
@@ -78,6 +80,7 @@ try:
                         dll_path=dll_path,
                         config=warp.config.mode,
                         verify_fp=warp.config.verify_fp,
+                        fast_math=args.fast_math,
                         force=True)
 
     else:
@@ -88,12 +91,13 @@ try:
                         dll_path=dll_path,
                         config=warp.config.mode,
                         verify_fp=warp.config.verify_fp,
+                        fast_math=args.fast_math,
                         force=True)
                     
 except Exception as e:
 
     # output build error
-    print(e)
+    print(f"Warp build error: {e}")
 
     # report error
     sys.exit(1)

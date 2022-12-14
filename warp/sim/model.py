@@ -43,6 +43,57 @@ JOINT_FREE = wp.constant(4)
 JOINT_COMPOUND = wp.constant(5)
 JOINT_UNIVERSAL = wp.constant(6)
 
+# Calculates the mass and inertia of a body given mesh data.
+@wp.kernel
+def compute_mass_inertia(
+    #inputs
+    com: wp.vec3,
+    alpha: float,
+    weight: float,
+    indices: wp.array(dtype=int, ndim=1),
+    vertices: wp.array(dtype=wp.vec3, ndim=1),
+    quads: wp.array(dtype=wp.vec3, ndim=2),
+    #outputs
+    mass: wp.array(dtype=float, ndim=1),
+    inertia: wp.array(dtype=wp.mat33, ndim=1)):
+
+    i = wp.tid()
+
+    p = vertices[indices[i * 3 + 0]]
+    q = vertices[indices[i * 3 + 1]]
+    r = vertices[indices[i * 3 + 2]]
+
+    mid = (com + p + q + r) / 4.
+
+    pcom = p - com
+    qcom = q - com
+    rcom = r - com
+
+    Dm = wp.mat33(pcom[0], qcom[0], rcom[0],
+                  pcom[1], qcom[1], rcom[1],
+                  pcom[2], qcom[2], rcom[2])
+
+    volume = wp.determinant(Dm) / 6.0
+
+    # quadrature points lie on the line between the
+    # centroid and each vertex of the tetrahedron
+    quads[i, 0] = alpha * (p - mid) + mid
+    quads[i, 1] = alpha * (q - mid) + mid
+    quads[i, 2] = alpha * (r - mid) + mid
+    quads[i, 3] = alpha * (com - mid) + mid
+    
+    for j in range(4):
+        # displacement of quadrature point from COM
+        d = quads[i,j] - com
+
+        # accumulate mass
+        wp.atomic_add(mass, 0, weight * volume)
+
+        # accumulate inertia
+        identity = wp.mat33(1., 0., 0., 0., 1., 0., 0., 0., 1.)
+        I = weight * volume * (wp.dot(d, d) * identity - wp.outer(d, d))
+        wp.atomic_add(inertia, 0, I)
+
 class Mesh:
     """Describes a triangle collision mesh for simulation
 
@@ -71,9 +122,9 @@ class Mesh:
         self.indices = indices
 
         if compute_inertia:
-
             # compute com and inertia (using density=1.0)
             com = np.mean(vertices, 0)
+            com_warp = wp.vec3(com[0], com[1], com[2])
 
             num_tris = int(len(indices) / 3)
 
@@ -84,35 +135,31 @@ class Mesh:
             weight = 0.25
             alpha = math.sqrt(5.0) / 5.0
 
-            I = np.zeros((3, 3))
-            mass = 0.0
+            # Allocating for mass and inertia.
+            I_warp = wp.zeros(1, dtype=wp.mat33)
+            mass_warp = wp.zeros(1, dtype=float)
 
-            for i in range(num_tris):
+            # Quadrature points
+            quads_warp = wp.zeros(shape=(num_tris, 4), dtype=wp.vec3)
 
-                p = np.array(vertices[indices[i * 3 + 0]])
-                q = np.array(vertices[indices[i * 3 + 1]])
-                r = np.array(vertices[indices[i * 3 + 2]])
+            # Launch warp kernel for calculating mass and inertia of body given mesh data.
+            wp.launch(kernel=compute_mass_inertia,
+                      dim=num_tris,
+                      inputs=[
+                          com_warp,
+                          alpha,
+                          weight,
+                          wp.array(indices, dtype=int),
+                          wp.array(vertices, dtype=wp.vec3),
+                          quads_warp
+                          ],
+                      outputs=[
+                          mass_warp,
+                          I_warp])
 
-                mid = (com + p + q + r) / 4.0
-
-                pcom = p - com
-                qcom = q - com
-                rcom = r - com
-
-                Dm = np.array((pcom, qcom, rcom)).T
-                volume = np.linalg.det(Dm) / 6.0
-
-                # quadrature points lie on the line between the
-                # centroid and each vertex of the tetrahedron
-                quads = (mid + (p - mid) * alpha, mid + (q - mid) * alpha, mid + (r - mid) * alpha, mid + (com - mid) * alpha)
-
-                for j in range(4):
-
-                    # displacement of quadrature point from COM
-                    d = quads[j] - com
-
-                    I += weight * volume * (wp.dot(d,d) * np.eye(3, 3) - np.outer(d, d))
-                    mass += weight * volume
+            # Extract mass and inertia and save to class attributes.
+            mass = mass_warp.numpy()[0]
+            I = I_warp.numpy()[0]
 
             self.I = I
             self.mass = mass
@@ -524,9 +571,10 @@ class ModelBuilder:
 
     Example:
 
-        >>> import wp as wp
+        >>> import warp as wp
+        >>> import warp.sim
         >>>
-        >>> builder = wp.ModelBuilder()
+        >>> builder = wp.sim.ModelBuilder()
         >>>
         >>> # anchor point (zero mass)
         >>> builder.add_particle((0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
@@ -537,7 +585,15 @@ class ModelBuilder:
         >>>     builder.add_spring(i-1, i, 1.e+3, 0.0, 0)
         >>>
         >>> # create model
-        >>> model = builder.finalize()
+        >>> model = builder.finalize("cuda")
+        >>> 
+        >>> state = model.state()
+        >>> integrator = wp.sim.SemiImplicitIntegrator()
+        >>>
+        >>> for i in range(100):
+        >>>
+        >>>    state.clear_forces()
+        >>>    integrator.simulate(model, state, state, dt=1.0/60.0)
 
     Note:
         It is strongly recommended to use the ModelBuilder to construct a simulation rather

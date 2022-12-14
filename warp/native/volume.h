@@ -330,6 +330,25 @@ CUDA_CALLABLE inline void adj_volume_store_v(
     adj_value = add(adj_value, volume_lookup_v(adj_id, i, j, k));
 }
 
+CUDA_CALLABLE inline void volume_store_i(uint64_t id, int32_t i, int32_t j, int32_t k, const int32_t& value)
+{
+    if (volume::get_grid_type(volume::id_to_buffer(id)) != PNANOVDB_GRID_TYPE_INT32) return;
+
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_root_handle_t root = volume::get_root(buf);
+
+    const pnanovdb_coord_t ijk{ i, j, k };
+    const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_INT32, buf, root, PNANOVDB_REF(ijk));
+    pnanovdb_write_int32(buf, address, value);
+}
+
+CUDA_CALLABLE inline void adj_volume_store_i(
+    uint64_t id, int32_t i, int32_t j, int32_t k, const int32_t& value,
+    uint64_t& adj_id, int32_t& adj_i, int32_t& adj_j, int32_t& adj_k, int32_t& adj_value)
+{
+    adj_value = add(adj_value, volume_lookup_i(adj_id, i, j, k));
+}
+
 // Transform position from index space to world space
 CUDA_CALLABLE inline vec3 volume_index_to_world(uint64_t id, vec3 uvw)
 {

@@ -4,10 +4,37 @@ from typing import Any
 from typing import Tuple
 from typing import Callable
 from typing import overload
+
+
 from warp.types import array, array2d, array3d, array4d, constant
 from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix
+from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
+
+from warp.context import init, func, kernel, struct
+from warp.context import is_cpu_available, is_cuda_available, is_device_available
+from warp.context import get_devices, get_preferred_device
+from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device
+from warp.context import get_device, set_device, synchronize_device
+from warp.context import zeros, zeros_like, clone, empty, empty_like, copy, from_numpy, launch, synchronize, force_load
+from warp.context import set_module_options, get_module_options, get_module
+from warp.context import capture_begin, capture_end, capture_launch
+from warp.context import print_builtins, export_builtins, export_stubs
+from warp.context import Kernel, Function
+from warp.context import Stream, get_stream, set_stream, synchronize_stream
+from warp.context import Event, record_event, wait_event, wait_stream
+
+from warp.tape import Tape
+from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice, ScopedStream
+from warp.utils import transform_expand
+
+from warp.torch import from_torch, to_torch
+from warp.torch import device_from_torch, device_to_torch
+from warp.torch import stream_from_torch, stream_to_torch
+
+from . import builtins, render
+
 
 
 @overload
@@ -326,6 +353,41 @@ def length(x: vec4) -> float:
    ...
 
 @overload
+def length(x: quat) -> float:
+   """
+   Compute the length of a quaternion.
+   """
+   ...
+
+@overload
+def length_sq(x: vec2) -> float:
+   """
+   Compute the squared length of a 2d vector.
+   """
+   ...
+
+@overload
+def length_sq(x: vec3) -> float:
+   """
+   Compute the squared length of a 3d vector.
+   """
+   ...
+
+@overload
+def length_sq(x: vec4) -> float:
+   """
+   Compute the squared length of a 4d vector.
+   """
+   ...
+
+@overload
+def length_sq(x: quat) -> float:
+   """
+   Compute the squared length of a quaternion.
+   """
+   ...
+
+@overload
 def normalize(x: vec2) -> vec2:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
@@ -350,34 +412,6 @@ def normalize(x: vec4) -> vec4:
 def normalize(x: quat) -> quat:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
-   """
-   ...
-
-@overload
-def length_sq(x: vec2) -> float:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq (x: vec3) -> float:
-   """
-   Compute the squared length of a 3d vector.
-   """
-   ...
-
-@overload
-def length_sq (x: vec4) -> float:
-   """
-   Compute the squared length of a 4d vector.
-   """
-   ...
-
-@overload
-def length_sq (x: quat) -> float:
-   """
-   Compute the squared length of a quaternion.
    """
    ...
 
@@ -544,6 +578,22 @@ def svd3(A: mat33, U: mat33, sigma: vec3, V: mat33):
    ...
 
 @overload
+def qr3(A: mat33, Q: mat33, R: mat33):
+   """
+   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, 
+   while the upper triangular matrix is returend in R.
+   """
+   ...
+
+@overload
+def eig3(A: mat33, Q: mat33, d: vec3):
+   """
+   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, 
+   while the corresponding eigen values are returned in d.
+   """
+   ...
+
+@overload
 def quat_identity() -> quat:
    """
    Construct an identity quaternion with zero imaginary part and real part of 1.0
@@ -554,6 +604,13 @@ def quat_identity() -> quat:
 def quat_from_axis_angle(axis: vec3, angle: float32) -> quat:
    """
    Construct a quaternion representing a rotation of angle radians around the given axis.
+   """
+   ...
+
+@overload
+def quat_to_axis_angle(q: quat, axis: vec3, angle: float32):
+   """
+   Extract the rotation axis and angle radians a quaternion represents.
    """
    ...
 
@@ -589,6 +646,20 @@ def quat_rotate(q: quat, p: vec3) -> vec3:
 def quat_rotate_inv(q: quat, p: vec3) -> vec3:
    """
    Rotate a vector the inverse of a quaternion.
+   """
+   ...
+
+@overload
+def rotate_rodriguez(r: vec3, x: vec3) -> vec3:
+   """
+   Rotate the vector x by the rotator r encoding rotation axis and angle radians.
+   """
+   ...
+
+@overload
+def quat_slerp(q0: quat, q1: quat, t: float32) -> quat:
+   """
+   Linearly interpolate between two quaternions.
    """
    ...
 
@@ -731,12 +802,11 @@ def mlp(weights: array[float32], bias: array[float32], activation: Callable, ind
    """
    ...
 
-
 @overload
 def bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t:
    """
    Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
-      inside a volume. Returns an object that is used to track state during bvh traversal.
+      inside a bvh. Returns an object that is used to track state during bvh traversal.
     
       :param id: The bvh identifier
       :param lower: The lower bound of the bounding box in bvh space
@@ -747,20 +817,20 @@ def bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t:
 @overload
 def bvh_query_ray(id: uint64, start: vec3, dir: vec3) -> bvh_query_t:
    """
-   Construct an ray query against a bvh object. This query can be used to iterate over all bounds
+   Construct a ray query against a bvh object. This query can be used to iterate over all bounds
       that intersect the ray. Returns an object that is used to track state during bvh traversal.
     
       :param id: The bvh identifier
       :param start: The start of the ray in bvh space
-      :param dir: The direction of the ray bvh space
+      :param dir: The direction of the ray in bvh space
    """
    ...
 
 @overload
 def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
    """
-   Move to the next bound intersected by the ray. The index of the current bound is stored in ``index``, returns ``False``
-      if there are no more overlapping bounds.
+   Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
+      if there are no more overlapping bound.
    """
    ...
 
@@ -863,6 +933,13 @@ def intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3
    ...
 
 @overload
+def mesh_get(id: uint64) -> Mesh:
+   """
+   Retrieves the mesh given its index.
+   """
+   ...
+
+@overload
 def mesh_eval_face_normal(id: uint64, face: int32) -> vec3:
    """
    Evaluates the face normal the mesh given a face index.
@@ -919,6 +996,13 @@ def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
    ...
 
 @overload
+def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
+   """
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+   """
+   ...
+
+@overload
 def volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int32) -> vec3:
    """
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
@@ -933,6 +1017,13 @@ def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3:
    ...
 
 @overload
+def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3):
+   """
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
+   """
+   ...
+
+@overload
 def volume_sample_i(id: uint64, uvw: vec3) -> int:
    """
    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
@@ -943,6 +1034,13 @@ def volume_sample_i(id: uint64, uvw: vec3) -> int:
 def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
    """
    Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
+   """
+   ...
+
+@overload
+def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
+   """
+   Store the value at voxel with coordinates ``i``, ``j``, ``k``.
    """
    ...
 
@@ -1272,72 +1370,58 @@ def atomic_sub(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any
    ...
 
 @overload
-def index(a: vec2, i: int32) -> float:
+def atomic_min(a: array[Any], i: int32, value: Any):
    """
-
-   """
-   ...
-
-@overload
-def index(a: vec3, i: int32) -> float:
-   """
-
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
 @overload
-def index(a: vec4, i: int32) -> float:
+def atomic_min(a: array[Any], i: int32, j: int32, value: Any):
    """
-
-   """
-   ...
-
-@overload
-def index(a: quat, i: int32) -> float:
-   """
-
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
 @overload
-def index(a: mat22, i: int32) -> vec2:
+def atomic_min(a: array[Any], i: int32, j: int32, k: int32, value: Any):
    """
-
-   """
-   ...
-
-@overload
-def index(a: mat22, i: int32, j: int32) -> float:
-   """
-
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
 @overload
-def index(a: mat33, i: int32) -> vec3:
+def atomic_min(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
    """
-
-   """
-   ...
-
-@overload
-def index(a: mat33, i: int32, j: int32) -> float:
-   """
-
+   Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
 @overload
-def index(a: mat44, i: int32) -> vec4:
+def atomic_max(a: array[Any], i: int32, value: Any):
    """
-
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
 @overload
-def index(a: mat44, i: int32, j: int32) -> float:
+def atomic_max(a: array[Any], i: int32, j: int32, value: Any):
    """
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
 
+@overload
+def atomic_max(a: array[Any], i: int32, j: int32, k: int32, value: Any):
+   """
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
+   """
+   ...
+
+@overload
+def atomic_max(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+   """
+   Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
@@ -1566,9 +1650,9 @@ def lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
    ...
 
 @overload
-def smoothstep(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
+def smoothstep(edge0: float32, edge1: float32, x: float32) -> float:
    """
-   Smoothly interpolate two values a and b using factor t, using a cubic Hermite interpolation after clamping
+   Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
    """
    ...
 
