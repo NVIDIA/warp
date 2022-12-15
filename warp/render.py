@@ -353,46 +353,34 @@ class UsdRenderer:
         instancer_capsule = UsdGeom.Capsule.Get(self.stage, instancer.GetPath().AppendChild("capsule"))
         instancer_capsule.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
 
-    def render_points(self, name: str, points, radius):
+    def render_points(self, name: str, points, radius, colors=None):
 
         from pxr import UsdGeom, Gf
 
         instancer_path = self.root.GetPath().AppendChild(name)
         instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
-
         if not instancer:
+            if colors is None:            
+                instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
+                instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
+                instancer_sphere.GetRadiusAttr().Set(radius)
 
-            instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
-            instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
-            instancer_sphere.GetRadiusAttr().Set(radius)
+                instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
+                instancer.CreateProtoIndicesAttr().Set([0] * len(points))
 
-            instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
-            instancer.CreateProtoIndicesAttr().Set([0] * len(points))
+                # set identity rotations
+                quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
+                instancer.GetOrientationsAttr().Set(quats, self.time)
+            else:
+                instancer = UsdGeom.Points.Define(self.stage, instancer_path)
 
-            # set identity rotations
-            quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
-            instancer.GetOrientationsAttr().Set(quats, self.time)
+                instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
+                instancer.GetWidthsAttr().Set([radius]*len(points))
 
-        instancer.GetPositionsAttr().Set(points, self.time)
-    
-    def render_points_colors(self, name: str, points, colors, radius):
+        if colors is not None:
+            instancer.GetDisplayColorAttr().Set(colors, self.time)
 
-        from pxr import UsdGeom, Sdf
-
-        instancer_path = self.root.GetPath().AppendChild(name)
-        instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
-
-        if not instancer:
-
-            #instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
-            instancer = UsdGeom.Points.Define(self.stage, instancer_path)
-
-            instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
-
-            instancer.GetWidthsAttr().Set([radius]*len(points))
-
-        instancer.GetPointsAttr().Set(points, self.time)
-        instancer.GetDisplayColorAttr().Set(colors, self.time)
+        instancer.GetPositionsAttr().Set(points, self.time)    
 
     def save(self):
         try:
