@@ -377,10 +377,11 @@ class UsdRenderer:
                 instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
                 instancer.GetWidthsAttr().Set([radius]*len(points))
 
-        if colors is not None:
+        if colors is None:
+            instancer.GetPositionsAttr().Set(points, self.time)    
+        else:
+            instancer.GetPointsAttr().Set(points, self.time)
             instancer.GetDisplayColorAttr().Set(colors, self.time)
-
-        instancer.GetPositionsAttr().Set(points, self.time)    
 
     def save(self):
         try:
