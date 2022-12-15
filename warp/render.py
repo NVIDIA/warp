@@ -372,6 +372,7 @@ class UsdRenderer:
                 quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
                 instancer.GetOrientationsAttr().Set(quats, self.time)
             else:
+                from pxr import Sdf
                 instancer = UsdGeom.Points.Define(self.stage, instancer_path)
 
                 instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
