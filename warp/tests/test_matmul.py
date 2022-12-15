@@ -40,10 +40,10 @@ class GemmTestbedRunner:
             assert np.array_equal(D_np, D.numpy())
 
     def run(self):
-        Ms = [128, 256, 512, 1024]
-        Ns = [128, 256, 512, 1024]
-        Ks = [128, 256, 512, 1024]
-        batch_counts = [1, 2, 4]
+        Ms = [128, 512, 1024]
+        Ns = [128, 512, 1024]
+        Ks = [128, 512, 1024]
+        batch_counts = [1, 4]
         betas = [0., 1.]
         alpha = 1.
 
