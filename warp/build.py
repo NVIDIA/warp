@@ -175,7 +175,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
-    cutlass_home = "cutlass" # TODO: Decide how to integrate CUTLASS source into Warp (e.g., via a Git submodule)
+    cutlass_home = "warp/native/cutlass"
     cutlass_includes = f'-I"{cutlass_home}/include" -I"{cutlass_home}/tools/util/include"'
 
     import pathlib
