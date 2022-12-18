@@ -6,6 +6,8 @@
  * license agreement from NVIDIA CORPORATION is strictly prohibited.
  */
 
+#include "builtin.h"
+
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm_universal.h"
 #include "cutlass/util/device_memory.h"
@@ -261,7 +263,7 @@ struct DefaultGemmConfig<50, Element> {
 
 extern "C" {
 
-__attribute__ ((visibility ("default")))
+WP_API
 bool cutlass_gemm(
                   int compute_capability,
                   int m, int n, int k,

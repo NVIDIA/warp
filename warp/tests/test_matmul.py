@@ -76,7 +76,7 @@ def register(parent):
     class TestMatmul(parent):
         pass
 
-    add_function_test(TestMatmul, "test_f16", test_f16, devices=devices)
+    #add_function_test(TestMatmul, "test_f16", test_f16, devices=devices)
     add_function_test(TestMatmul, "test_f32", test_f32, devices=devices)
     add_function_test(TestMatmul, "test_f64", test_f64, devices=devices)
 
