@@ -13,6 +13,7 @@ from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64,
 from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
+from warp.types import matmul, batched_matmul
 
 from warp.context import init, func, kernel, struct
 from warp.context import is_cpu_available, is_cuda_available, is_device_available

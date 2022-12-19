@@ -1354,6 +1354,88 @@ class Volume:
 
         return volume
 
+def matmul(a: array2d, b: array2d, c: array2d, d: array2d, alpha: float = 1., beta: float = 0., allow_tf32x3_arith: bool = False, device=None):
+    """ Computes a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
+
+    Args:
+        a (array2d): two-dimensional array containing matrix A
+        b (array2d): two-dimensional array containing matrix B
+        c (array2d): two-dimensional array containing matrix C
+        d (array2d): two-dimensional array to which output D is written
+        alpha (float): parameter alpha of GEMM
+        beta (float): parameter beta of GEMM
+        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
+                                   while using Tensor Cores
+    """
+    from warp.context import runtime
+    device = runtime.get_device(device)
+    cc = device.arch
+
+    if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != d.dtype:
+        raise RuntimeError("wp.matmul currently only supports operation between {A, B, C, D} matrices of the same type.")
+
+    m = a.shape[0]
+    n = b.shape[1]
+    k = a.shape[1]
+    if b.shape != (k, n) or c.shape != (m, n) or d.shape != (m, n):
+        raise RuntimeError("Invalid shapes for matrices: A = {} B = {} C = {} D = {}".format(
+            a.shape, b.shape, c.shape, d.shape))
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              m, n, k,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(c.ptr),
+                              ctypes.c_void_p(d.ptr),
+                              alpha, beta,
+                              allow_tf32x3_arith,
+                              1)
+    if not ret:
+        raise RuntimeError("Matmul failed.")
+
+
+def batched_matmul(a: array3d, b: array3d, c: array3d, d: array3d, alpha: float = 1., beta: float = 0., allow_tf32x3_arith: bool = False, device=None):
+    """ Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
+
+    Args:
+        a (array3d): three-dimensional array containing A matrices. Overall array dimension is {batch_count, M, K}
+        b (array3d): three-dimensional array containing B matrices. Overall array dimension is {batch_count, K, N}
+        c (array3d): three-dimensional array containing C matrices. Overall array dimension is {batch_count, M, N}
+        d (array3d): three-dimensional array to which output D is written. Overall array dimension is {batch_count, M, N}
+        alpha (float): parameter alpha of GEMM
+        beta (float): parameter beta of GEMM
+        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
+                                   while using Tensor Cores
+    """
+    from warp.context import runtime
+    device = runtime.get_device(device)
+    cc = device.arch
+
+    if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != d.dtype:
+        raise RuntimeError("wp.batched_matmul currently only supports operation between {A, B, C, D} matrices of the same type.")
+
+    m = a.shape[1]
+    n = b.shape[2]
+    k = a.shape[2]
+    batch_count = a.shape[0]
+    if b.shape != (batch_count, k, n) or c.shape != (batch_count, m, n) or d.shape != (batch_count, m, n):
+        raise RuntimeError("Invalid shapes for matrices: A = {} B = {} C = {} D = {}".format(
+            a.shape, b.shape, c.shape, d.shape))
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              m, n, k,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(c.ptr),
+                              ctypes.c_void_p(d.ptr),
+                              alpha, beta,
+                              allow_tf32x3_arith,
+                              batch_count)
+    if not ret:
+        raise RuntimeError("Batched matmul failed.")
+
 class HashGrid:
 
     def __init__(self, dim_x, dim_y, dim_z, device=None):
