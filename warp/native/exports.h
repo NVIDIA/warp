@@ -74,6 +74,8 @@ WP_API void builtin_cw_div_vec2_vec2(vec2 x, vec2 y, vec2* ret) { *ret = wp::cw_
 WP_API void builtin_cw_div_vec3_vec3(vec3 x, vec3 y, vec3* ret) { *ret = wp::cw_div(x, y); }
 WP_API void builtin_cw_div_vec4_vec4(vec4 x, vec4 y, vec4* ret) { *ret = wp::cw_div(x, y); }
 WP_API void builtin_svd3_mat33_mat33_vec3_mat33(mat33 A, mat33 U, vec3 sigma, mat33 V) { wp::svd3(A, U, sigma, V); }
+WP_API void builtin_qr3_mat33_mat33_mat33(mat33 A, mat33 Q, mat33 R) { wp::qr3(A, Q, R); }
+WP_API void builtin_eig3_mat33_mat33_vec3(mat33 A, mat33 Q, vec3 d) { wp::eig3(A, Q, d); }
 WP_API void builtin_quat_identity(quat* ret) { *ret = wp::quat_identity(); }
 WP_API void builtin_quat_from_axis_angle_vec3_float32(vec3 axis, float32 angle, quat* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
 WP_API void builtin_quat_to_axis_angle_quat_vec3_float32(quat q, vec3 axis, float32 angle) { wp::quat_to_axis_angle(q, axis, angle); }

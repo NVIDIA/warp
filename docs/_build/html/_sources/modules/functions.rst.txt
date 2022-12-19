@@ -506,6 +506,14 @@ Vector Math
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
+.. function:: qr3(A: mat33, Q: mat33, R: mat33) -> None
+
+   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
+
+.. function:: eig3(A: mat33, Q: mat33, d: vec3) -> None
+
+   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
+
 
 
 

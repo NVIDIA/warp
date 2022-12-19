@@ -353,28 +353,36 @@ class UsdRenderer:
         instancer_capsule = UsdGeom.Capsule.Get(self.stage, instancer.GetPath().AppendChild("capsule"))
         instancer_capsule.GetDisplayColorAttr().Set([Gf.Vec3f(color)], self.time)
 
-    def render_points(self, name: str, points, radius):
+    def render_points(self, name: str, points, radius, colors=None):
 
         from pxr import UsdGeom, Gf
 
         instancer_path = self.root.GetPath().AppendChild(name)
         instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
-
         if not instancer:
+            if colors is None:            
+                instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
+                instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
+                instancer_sphere.GetRadiusAttr().Set(radius)
 
-            instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
-            instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
-            instancer_sphere.GetRadiusAttr().Set(radius)
+                instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
+                instancer.CreateProtoIndicesAttr().Set([0] * len(points))
 
-            instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
-            instancer.CreateProtoIndicesAttr().Set([0] * len(points))
+                # set identity rotations
+                quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
+                instancer.GetOrientationsAttr().Set(quats, self.time)
+            else:
+                from pxr import Sdf
+                instancer = UsdGeom.Points.Define(self.stage, instancer_path)
 
-            # set identity rotations
-            quats = [Gf.Quath(1.0, 0.0, 0.0, 0.0)] * len(points)
-            instancer.GetOrientationsAttr().Set(quats, self.time)
+                instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
+                instancer.GetWidthsAttr().Set([radius]*len(points))
 
-        instancer.GetPositionsAttr().Set(points, self.time)
-    
+        if colors is None:
+            instancer.GetPositionsAttr().Set(points, self.time)    
+        else:
+            instancer.GetPointsAttr().Set(points, self.time)
+            instancer.GetDisplayColorAttr().Set(colors, self.time)
 
     def save(self):
         try:

@@ -578,6 +578,22 @@ def svd3(A: mat33, U: mat33, sigma: vec3, V: mat33):
    ...
 
 @overload
+def qr3(A: mat33, Q: mat33, R: mat33):
+   """
+   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, 
+   while the upper triangular matrix is returend in R.
+   """
+   ...
+
+@overload
+def eig3(A: mat33, Q: mat33, d: vec3):
+   """
+   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, 
+   while the corresponding eigen values are returned in d.
+   """
+   ...
+
+@overload
 def quat_identity() -> quat:
    """
    Construct an identity quaternion with zero imaginary part and real part of 1.0

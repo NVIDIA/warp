@@ -190,14 +190,17 @@ add_builtin("vec4", input_types={}, value_type=vec4, doc="Construct a zero-initi
 add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="Construct a 4d vector with compontents x, y, z, w.", group="Vector Math", export=False)
 add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="Construct a 4d vector with all components set to s.", group="Vector Math", export=False)
 
+add_builtin("mat22", input_types={}, value_type=mat22, doc="Construct a 2x2 zero matrix", group="Vector Math", export=False)
 add_builtin("mat22", input_types={"c0": vec2, "c1": vec2 }, value_type=mat22, doc="Construct a 2x2 matrix from column vectors c0, c1.", group="Vector Math", export=False)
 add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="Construct a 2x2 matrix from components.", group="Vector Math", export=False)
 
+add_builtin("mat33", input_types={}, value_type=mat33, doc="Construct a 3x3 zero matrix", group="Vector Math", export=False)
 add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="Construct a 3x3 matrix from column vectors c0, c1, c2.", group="Vector Math", export=False)
 add_builtin("mat33", input_types={"m00": float, "m01": float, "m02": float,
                                   "m10": float, "m11": float, "m12": float,
                                   "m20": float, "m21": float, "m22": float}, value_type=mat33, doc="Construct a 3x3 matrix from components.", group="Vector Math", export=False)
 
+add_builtin("mat44", input_types={}, value_type=mat44, doc="Construct a 4x4 zero matrix", group="Vector Math", export=False)
 add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="Construct a 4x4 matrix from column vectors c0, c1, c2, c4.", group="Vector Math", export=False)
 add_builtin("mat44", input_types={"m00": float, "m01": float, "m02": float, "m03": float,
                                   "m10": float, "m11": float, "m12": float, "m13": float,
@@ -210,6 +213,12 @@ add_builtin("mat44", input_types={"pos": vec3, "rot": quat, "scale": vec3}, valu
 add_builtin("svd3", input_types={"A": mat33, "U":mat33, "sigma":vec3, "V":mat33}, value_type=None, group="Vector Math",
     doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.""")
+
+add_builtin("qr3", input_types={"A": mat33, "Q":mat33, "R":mat33}, value_type=None, group="Vector Math",
+    doc="""Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.""")
+
+add_builtin("eig3", input_types={"A": mat33, "Q":mat33, "d":vec3}, value_type=None, group="Vector Math",
+    doc="""Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.""")
 
 #---------------------------------
 # Quaternion Math

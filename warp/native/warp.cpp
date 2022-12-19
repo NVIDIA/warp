@@ -7,6 +7,7 @@
  */
 
 #include "warp.h"
+#include "scan.h"
 
 #include "stdlib.h"
 #include "string.h"
@@ -88,12 +89,23 @@ void array_sum_host(uint64_t a, uint64_t out, int len)
         *ptr_out += ptr_a[i];
 }
 
+void array_scan_int_host(uint64_t in, uint64_t out, int len, bool inclusive)
+{
+    scan_host((const int*)in, (int*)out, len, inclusive);
+}
+
+void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
+{
+    scan_host((const float*)in, (float*)out, len, inclusive);
+}
+
 
 // impl. files
 #include "cuda_util.cpp"
 #include "bvh.cpp"
 #include "mesh.cpp"
 #include "hashgrid.cpp"
+#include "scan.cpp"
 #include "sort.cpp"
 #include "volume.cpp"
 #include "marching.cpp"

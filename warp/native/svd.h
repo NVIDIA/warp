@@ -452,4 +452,91 @@ inline CUDA_CALLABLE void adj_svd3(const mat33& A,
   adj_A = adj_A + (u_term + v_term + sigma_term);
 }
 
+
+inline CUDA_CALLABLE void qr3(const mat33& A, mat33& Q, mat33& R) {
+    QRDecomposition(A.data[0][0], A.data[0][1], A.data[0][2],
+       A.data[1][0], A.data[1][1], A.data[1][2],
+       A.data[2][0], A.data[2][1], A.data[2][2],
+       
+       Q.data[0][0], Q.data[0][1], Q.data[0][2],
+       Q.data[1][0], Q.data[1][1], Q.data[1][2],
+       Q.data[2][0], Q.data[2][1], Q.data[2][2],
+
+       R.data[0][0], R.data[0][1], R.data[0][2],
+       R.data[1][0], R.data[1][1], R.data[1][2],
+       R.data[2][0], R.data[2][1], R.data[2][2]);       
+}
+
+
+inline CUDA_CALLABLE void adj_qr3(const mat33& A,
+                                  const mat33& Q,                                  
+                                  const mat33& R,
+                                  mat33& adj_A,
+                                  const mat33& adj_Q,
+                                  const mat33& adj_R) {
+    // Eq 3 of https://arxiv.org/pdf/2009.10071.pdf
+    mat33 M = mul(R,transpose(adj_R)) - mul(transpose(adj_Q), Q);
+    mat33 copyltuM = mat33(M.data[0][0], M.data[1][0], M.data[2][0],
+                           0.0,          M.data[1][1], M.data[2][1],
+                           0.0,          0.0,          M.data[2][2]);
+    adj_A = adj_A + mul(adj_Q + mul(Q,copyltuM), inverse(transpose(R)));
+}
+
+
+inline CUDA_CALLABLE void eig3(const mat33& A, mat33& Q, vec3& d) {
+    float qV[4];
+    float s11 = A.data[0][0];
+    float s21 = A.data[1][0];
+    float s22 = A.data[1][1];
+    float s31 = A.data[2][0];
+    float s32 = A.data[2][1];
+    float s33 = A.data[2][2];
+                       
+    jacobiEigenanlysis(s11, s21, s22, s31, s32, s33, qV);
+    quatToMat3(qV, Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2]);
+    mat33 t;
+    multAtB(Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2],
+            A.data[0][0], A.data[0][1], A.data[0][2], A.data[1][0], A.data[1][1], A.data[1][2], A.data[2][0], A.data[2][1], A.data[2][2],
+            t.data[0][0], t.data[0][1], t.data[0][2], t.data[1][0], t.data[1][1], t.data[1][2], t.data[2][0], t.data[2][1], t.data[2][2]);
+
+    mat33 u;
+    multAB(t.data[0][0], t.data[0][1], t.data[0][2], t.data[1][0], t.data[1][1], t.data[1][2], t.data[2][0], t.data[2][1], t.data[2][2],
+           Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2],           
+           u.data[0][0], u.data[0][1], u.data[0][2], u.data[1][0], u.data[1][1], u.data[1][2], u.data[2][0], u.data[2][1], u.data[2][2]
+           );
+    d = vec3(u.data[0][0], u.data[1][1], u.data[2][2]);
+}
+
+inline CUDA_CALLABLE void adj_eig3(const mat33& A, const mat33& Q, const vec3& d, 
+                                     mat33& adj_A, const mat33& adj_Q, const vec3& adj_d) {
+    // Page 10 of https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
+    mat33 D = mat33(d.x, 0, 0,
+                    0, d.y, 0,
+                    0, 0, d.z);
+    mat33 D_bar = mat33(adj_d.x, 0, 0,
+                    0, adj_d.y, 0,
+                    0, 0, adj_d.z);
+                    
+    float dyx = d.y - d.x;
+    float dzx = d.z - d.x;
+    float dzy = d.z - d.y;
+
+    if ((dyx < 0.0) && (dyx > -1e-6)) dyx = -1e-6;
+    if ((dyx > 0.0) && (dyx < 1e-6)) dyx = 1e-6;
+
+    if ((dzx < 0.0) && (dzx > -1e-6)) dzx = -1e-6;
+    if ((dzx > 0.0) && (dzx < 1e-6)) dzx = 1e-6;
+
+    if ((dzy < 0.0) && (dzy > -1e-6)) dzy = -1e-6;
+    if ((dzy > 0.0) && (dzy < 1e-6)) dzy = 1e-6;
+
+    float F01 = 1.0f / dyx;
+    float F02 = 1.0f / dzx;
+    float F12 = 1.0f / dzy;
+    mat33 F = mat33(0, F01, F02,
+                 -F01, 0, F12,
+                 -F02, -F12, 0);
+    mat33 QT = transpose(Q);
+    adj_A = adj_A + mul(Q, mul(D_bar + element_mul(F, mul(QT, adj_Q)), QT));
+}
 }
