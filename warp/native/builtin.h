@@ -750,15 +750,6 @@ template <typename T>
 CUDA_CALLABLE inline T& operator -= (T& a, const T& b) { a = sub(a, b); return a; }
 
 template <typename T>
-CUDA_CALLABLE inline T operator*(const T& a, float s) { return mul(a, s); }
-
-template <typename T>
-CUDA_CALLABLE inline T operator*(float s, const T& a) { return mul(a, s); }
-
-template <typename T>
-CUDA_CALLABLE inline T operator/(const T& a, float s) { return div(a, s); }
-
-template <typename T>
 CUDA_CALLABLE inline T operator+(const T& a, const T& b) { return add(a, b); }
 
 template <typename T>
@@ -989,13 +980,9 @@ inline bool CUDA_CALLABLE isfinite(float x)
 
 } // namespace wp
 
-#include "vec2.h"
-#include "vec3.h"
-#include "vec4.h"
-#include "mat22.h"
-#include "mat33.h"
+#include "vec.h"
+#include "mat.h"
 #include "quat.h"
-#include "mat44.h"
 #include "spatial.h"
 #include "intersect.h"
 #include "intersect_adj.h"
@@ -1005,32 +992,22 @@ namespace wp
 {
 
 
-// define scalar multiplication in reverse order i.e.: s*M, individual types just implement M*s
-template <typename T>
-T mul(float s, const T& x) { return mul(x, s); }
-
-template <typename T>
-void adj_mul(float s, const T& x, float& adj_s, T& adj_x, const T& adj_ret) { adj_mul(x, s, adj_x, adj_s, adj_ret); }
-
-
 // dot for scalar types just to make some templates compile for scalar/vector
 inline CUDA_CALLABLE float dot(float a, float b) { return mul(a, b); }
 inline CUDA_CALLABLE void adj_dot(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_mul(a, b, adj_a, adj_b, adj_ret); }
 inline CUDA_CALLABLE float tensordot(float a, float b) { return mul(a, b); }
 
 
-template <typename T>
-CUDA_CALLABLE inline T lerp(const T& a, const T& b, float t)
+CUDA_CALLABLE inline float lerp(float a, float b, float t)
 {
     return a*(1.0-t) + b*t;
 }
 
-template <typename T>
-CUDA_CALLABLE inline void adj_lerp(const T& a, const T& b, float t, T& adj_a, T& adj_b, float& adj_t, const T& adj_ret)
+CUDA_CALLABLE inline void adj_lerp(float a, float b, float t, float& adj_a, float& adj_b, float& adj_t, float adj_ret)
 {
     adj_a += adj_ret*(1.0-t);
     adj_b += adj_ret*t;
-    adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
+    adj_t += b * adj_ret - a * adj_ret;
 }
 
 CUDA_CALLABLE inline float smoothstep(float edge0, float edge1, float x)
@@ -1119,19 +1096,14 @@ inline CUDA_CALLABLE void print(double f)
     printf("%g\n", f);
 }
 
-inline CUDA_CALLABLE void print(vec2 v)
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void print(vec<Length, Type> v)
 {
-    printf("%g %g\n", v.x, v.y);
-}
-
-inline CUDA_CALLABLE void print(vec3 v)
-{
-    printf("%g %g %g\n", v.x, v.y, v.z);
-}
-
-inline CUDA_CALLABLE void print(vec4 v)
-{
-    printf("%g %g %g %g\n", v.x, v.y, v.z, v.w);
+    for( unsigned i=0; i < Length; ++i )
+    {
+        printf("%g ", v[i]);
+    }
+    printf("\n");
 }
 
 inline CUDA_CALLABLE void print(quat i)
@@ -1139,35 +1111,27 @@ inline CUDA_CALLABLE void print(quat i)
     printf("%g %g %g %g\n", i.x, i.y, i.z, i.w);
 }
 
-inline CUDA_CALLABLE void print(mat22 m)
+template<unsigned Rows,unsigned Cols,typename Type>
+inline CUDA_CALLABLE void print(const mat<Rows,Cols,Type> &m)
 {
-    printf("%g %g\n%g %g\n", m.data[0][0], m.data[0][1], 
-                             m.data[1][0], m.data[1][1]);
-}
-
-inline CUDA_CALLABLE void print(mat33 m)
-{
-    printf("%g %g %g\n%g %g %g\n%g %g %g\n", m.data[0][0], m.data[0][1], m.data[0][2], 
-                                             m.data[1][0], m.data[1][1], m.data[1][2], 
-                                             m.data[2][0], m.data[2][1], m.data[2][2]);
-}
-
-inline CUDA_CALLABLE void print(mat44 m)
-{
-    printf("%g %g %g %g\n%g %g %g %g\n%g %g %g %g\n%g %g %g %g\n", m.data[0][0], m.data[0][1], m.data[0][2], m.data[0][3],
-                                                                   m.data[1][0], m.data[1][1], m.data[1][2], m.data[1][3],
-                                                                   m.data[2][0], m.data[2][1], m.data[2][2], m.data[2][3],
-                                                                   m.data[3][0], m.data[3][1], m.data[3][2], m.data[3][3]);
+    for( unsigned i=0; i< Rows; ++i )
+    {
+        for( unsigned j=0; j< Cols; ++j )
+        {
+            printf("%g ",m.data[i][j]);
+        }
+        printf("\n");
+    }
 }
 
 inline CUDA_CALLABLE void print(transform t)
 {
-    printf("(%g %g %g) (%g %g %g %g)\n", t.p.x, t.p.y, t.p.z, t.q.x, t.q.y, t.q.z, t.q.w);
+    printf("(%g %g %g) (%g %g %g %g)\n", t.p[0], t.p[1], t.p[2], t.q.x, t.q.y, t.q.z, t.q.w);
 }
 
 inline CUDA_CALLABLE void print(spatial_vector v)
 {
-    printf("(%g %g %g) (%g %g %g)\n", v.w.x, v.w.y, v.w.z, v.v.x, v.v.y, v.v.z);
+    printf("(%g %g %g) (%g %g %g)\n", v.w[0], v.w[1], v.w[2], v.v[0], v.v[1], v.v[2]);
 }
 
 inline CUDA_CALLABLE void print(spatial_matrix m)
@@ -1197,13 +1161,15 @@ inline CUDA_CALLABLE void adj_print(unsigned short f, unsigned short& adj_f) { p
 inline CUDA_CALLABLE void adj_print(unsigned long f, unsigned long& adj_f) { printf("%lu adj: %lu\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(unsigned long long f, unsigned long long& adj_f) { printf("%llu adj: %llu\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(half h, half& adj_h) { printf("%g adj: %g\n", half_to_float(h), half_to_float(adj_h)); }
-inline CUDA_CALLABLE void adj_print(vec2 v, vec2& adj_v) { printf("%g %g adj: %g %g \n", v.x, v.y, adj_v.x, adj_v.y); }
-inline CUDA_CALLABLE void adj_print(vec3 v, vec3& adj_v) { printf("%g %g %g adj: %g %g %g \n", v.x, v.y, v.z, adj_v.x, adj_v.y, adj_v.z); }
-inline CUDA_CALLABLE void adj_print(vec4 v, vec4& adj_v) { printf("%g %g %g %g adj: %g %g %g %g\n", v.x, v.y, v.z, v.w, adj_v.x, adj_v.y, adj_v.z, adj_v.w); }
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_print(vec<Length, Type> v, vec<Length, Type>& adj_v) { printf("%g %g adj: %g %g \n", v[0], v[1], adj_v[0], adj_v[1]); }
+
 inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%g %g %g %g adj: %g %g %g %g\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
-inline CUDA_CALLABLE void adj_print(mat22 m, mat22& adj_m) { }
-inline CUDA_CALLABLE void adj_print(mat33 m, mat33& adj_m) { }
-inline CUDA_CALLABLE void adj_print(mat44 m, mat44& adj_m) { }
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_print(mat<Rows, Cols, Type> m, mat<Rows, Cols, Type>& adj_m) { }
+
 inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
 inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
@@ -1246,7 +1212,7 @@ inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const 
 template <>
 inline CUDA_CALLABLE void expect_near<vec3>(const vec3& actual, const vec3& expected, const float& tolerance)
 {
-    const float diff = max(max(abs(actual.x - expected.x), abs(actual.y - expected.y)), abs(actual.z - expected.z));
+    const float diff = max(max(abs(actual[0] - expected[0]), abs(actual[1] - expected[1])), abs(actual[2] - expected[2]));
     if (diff > tolerance)
     {
         printf("Error, expect_near() failed with torerance "); print(tolerance);

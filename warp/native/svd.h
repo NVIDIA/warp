@@ -45,43 +45,47 @@ namespace wp
 
 // TODO: replace sqrt with rsqrt
 
+template<typename Type>
 inline CUDA_CALLABLE
-float accurateSqrt(float x)
+Type accurateSqrt(Type x)
 {
   return x / sqrt(x);
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
-void condSwap(bool c, float &X, float &Y)
+void condSwap(bool c, Type &X, Type &Y)
 {
     // used in step 2
-    float Z = X;
+    Type Z = X;
     X = c ? Y : X;
     Y = c ? Z : Y;
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
-void condNegSwap(bool c, float &X, float &Y)
+void condNegSwap(bool c, Type &X, Type &Y)
 {
     // used in step 2 and 3
-    float Z = -X;
+    Type Z = -X;
     X = c ? Y : X;
     Y = c ? Z : Y;
 }
 
 // matrix multiplication M = A * B
+template<typename Type>
 inline CUDA_CALLABLE
-void multAB(float a11, float a12, float a13,
-          float a21, float a22, float a23,
-          float a31, float a32, float a33,
+void multAB(Type a11, Type a12, Type a13,
+          Type a21, Type a22, Type a23,
+          Type a31, Type a32, Type a33,
           //
-          float b11, float b12, float b13,
-          float b21, float b22, float b23,
-          float b31, float b32, float b33,
+          Type b11, Type b12, Type b13,
+          Type b21, Type b22, Type b23,
+          Type b31, Type b32, Type b33,
           //
-          float &m11, float &m12, float &m13,
-          float &m21, float &m22, float &m23,
-          float &m31, float &m32, float &m33)
+          Type &m11, Type &m12, Type &m13,
+          Type &m21, Type &m22, Type &m23,
+          Type &m31, Type &m32, Type &m33)
 {
 
     m11=a11*b11 + a12*b21 + a13*b31; m12=a11*b12 + a12*b22 + a13*b32; m13=a11*b13 + a12*b23 + a13*b33;
@@ -90,84 +94,88 @@ void multAB(float a11, float a12, float a13,
 }
 
 // matrix multiplication M = Transpose[A] * B
+template<typename Type>
 inline CUDA_CALLABLE
-void multAtB(float a11, float a12, float a13,
-          float a21, float a22, float a23,
-          float a31, float a32, float a33,
+void multAtB(Type a11, Type a12, Type a13,
+          Type a21, Type a22, Type a23,
+          Type a31, Type a32, Type a33,
           //
-          float b11, float b12, float b13,
-          float b21, float b22, float b23,
-          float b31, float b32, float b33,
+          Type b11, Type b12, Type b13,
+          Type b21, Type b22, Type b23,
+          Type b31, Type b32, Type b33,
           //
-          float &m11, float &m12, float &m13,
-          float &m21, float &m22, float &m23,
-          float &m31, float &m32, float &m33)
+          Type &m11, Type &m12, Type &m13,
+          Type &m21, Type &m22, Type &m23,
+          Type &m31, Type &m32, Type &m33)
 {
   m11=a11*b11 + a21*b21 + a31*b31; m12=a11*b12 + a21*b22 + a31*b32; m13=a11*b13 + a21*b23 + a31*b33;
   m21=a12*b11 + a22*b21 + a32*b31; m22=a12*b12 + a22*b22 + a32*b32; m23=a12*b13 + a22*b23 + a32*b33;
   m31=a13*b11 + a23*b21 + a33*b31; m32=a13*b12 + a23*b22 + a33*b32; m33=a13*b13 + a23*b23 + a33*b33;
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
-void quatToMat3(const float * qV,
-float &m11, float &m12, float &m13,
-float &m21, float &m22, float &m23,
-float &m31, float &m32, float &m33
+void quatToMat3(const Type * qV,
+Type &m11, Type &m12, Type &m13,
+Type &m21, Type &m22, Type &m23,
+Type &m31, Type &m32, Type &m33
 )
 {
-    float w = qV[3];
-    float x = qV[0];
-    float y = qV[1];
-    float z = qV[2];
+    Type w = qV[3];
+    Type x = qV[0];
+    Type y = qV[1];
+    Type z = qV[2];
 
-    float qxx = x*x;
-    float qyy = y*y;
-    float qzz = z*z;
-    float qxz = x*z;
-    float qxy = x*y;
-    float qyz = y*z;
-    float qwx = w*x;
-    float qwy = w*y;
-    float qwz = w*z;
+    Type qxx = x*x;
+    Type qyy = y*y;
+    Type qzz = z*z;
+    Type qxz = x*z;
+    Type qxy = x*y;
+    Type qyz = y*z;
+    Type qwx = w*x;
+    Type qwy = w*y;
+    Type qwz = w*z;
 
-     m11=1 - 2*(qyy + qzz); m12=2*(qxy - qwz); m13=2*(qxz + qwy);
-    m21=2*(qxy + qwz); m22=1 - 2*(qxx + qzz); m23=2*(qyz - qwx);
-    m31=2*(qxz - qwy); m32=2*(qyz + qwx); m33=1 - 2*(qxx + qyy);
+    m11=Type(1) - Type(2)*(qyy + qzz); m12=Type(2)*(qxy - qwz); m13=Type(2)*(qxz + qwy);
+    m21=Type(2)*(qxy + qwz); m22=Type(1) - Type(2)*(qxx + qzz); m23=Type(2)*(qyz - qwx);
+    m31=Type(2)*(qxz - qwy); m32=Type(2)*(qyz + qwx); m33=Type(1) - Type(2)*(qxx + qyy);
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
-void approximateGivensQuaternion(float a11, float a12, float a22, float &ch, float &sh)
+void approximateGivensQuaternion(Type a11, Type a12, Type a22, Type &ch, Type &sh)
 {
 /*
      * Given givens angle computed by approximateGivensAngles,
      * compute the corresponding rotation quaternion.
      */
-    ch = 2*(a11-a22);
+    ch = Type(2)*(a11-a22);
     sh = a12;
     bool b = _gamma*sh*sh < ch*ch;
-    float w = 1.0 / sqrt(ch*ch+sh*sh);
-    ch=b?w*ch:_cstar;
-    sh=b?w*sh:_sstar;
+    Type w = Type(1) / sqrt(ch*ch+sh*sh);
+    ch=b?w*ch:Type(_cstar);
+    sh=b?w*sh:Type(_sstar);
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
 void jacobiConjugation( const int x, const int y, const int z,
-                        float &s11,
-                        float &s21, float &s22,
-                        float &s31, float &s32, float &s33,
-                        float * qV)
+                        Type &s11,
+                        Type &s21, Type &s22,
+                        Type &s31, Type &s32, Type &s33,
+                        Type * qV)
 {
-    float ch,sh;
+    Type ch,sh;
     approximateGivensQuaternion(s11,s21,s22,ch,sh);
 
-    float scale = ch*ch+sh*sh;
-    float a = (ch*ch-sh*sh)/scale;
-    float b = (2*sh*ch)/scale;
+    Type scale = ch*ch+sh*sh;
+    Type a = (ch*ch-sh*sh)/scale;
+    Type b = (Type(2)*sh*ch)/scale;
 
     // make temp copy of S
-    float _s11 = s11;
-    float _s21 = s21; float _s22 = s22;
-    float _s31 = s31; float _s32 = s32; float _s33 = s33;
+    Type _s11 = s11;
+    Type _s21 = s21; Type _s22 = s22;
+    Type _s31 = s31; Type _s32 = s32; Type _s33 = s33;
 
     // perform conjugation S = Q'*S*Q
     // Q already implicitly solved from a, b
@@ -176,7 +184,7 @@ void jacobiConjugation( const int x, const int y, const int z,
     s31 =a*_s31 + b*_s32;								s32=-b*_s31 + a*_s32; s33=_s33;
 
     // update cumulative rotation qV
-    float tmp[3];
+    Type tmp[3];
     tmp[0]=qV[0]*sh;
     tmp[1]=qV[1]*sh;
     tmp[2]=qV[2]*sh;
@@ -204,20 +212,22 @@ void jacobiConjugation( const int x, const int y, const int z,
 
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
-float dist2(float x, float y, float z)
+Type dist2(Type x, Type y, Type z)
 {
     return x*x+y*y+z*z;
 }
 
 // finds transformation that diagonalizes a symmetric matrix
+template<typename Type>
 inline CUDA_CALLABLE
 void jacobiEigenanlysis( // symmetric matrix
-                                float &s11,
-                                float &s21, float &s22,
-                                float &s31, float &s32, float &s33,
+                                Type &s11,
+                                Type &s21, Type &s22,
+                                Type &s31, Type &s32, Type &s33,
                                 // quaternion representation of V
-                                float * qV)
+                                Type * qV)
 {
     qV[3]=1; qV[0]=0;qV[1]=0;qV[2]=0; // follow same indexing convention as GLM
     for (int i=0;i<4;i++)
@@ -232,19 +242,20 @@ void jacobiEigenanlysis( // symmetric matrix
     }
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
 void sortSingularValues(// matrix that we want to decompose
-                            float &b11, float &b12, float &b13,
-                            float &b21, float &b22, float &b23,
-                            float &b31, float &b32, float &b33,
+                            Type &b11, Type &b12, Type &b13,
+                            Type &b21, Type &b22, Type &b23,
+                            Type &b31, Type &b32, Type &b33,
                           // sort V simultaneously
-                            float &v11, float &v12, float &v13,
-                            float &v21, float &v22, float &v23,
-                            float &v31, float &v32, float &v33)
+                            Type &v11, Type &v12, Type &v13,
+                            Type &v21, Type &v22, Type &v23,
+                            Type &v31, Type &v32, Type &v33)
 {
-    float rho1 = dist2(b11,b21,b31);
-    float rho2 = dist2(b12,b22,b32);
-    float rho3 = dist2(b13,b23,b33);
+    Type rho1 = dist2(b11,b21,b31);
+    Type rho2 = dist2(b12,b22,b32);
+    Type rho3 = dist2(b13,b23,b33);
     bool c;
     c = rho1 < rho2;
     condNegSwap(c,b11,b12); condNegSwap(c,v11,v12);
@@ -262,44 +273,46 @@ void sortSingularValues(// matrix that we want to decompose
     condNegSwap(c,b32,b33); condNegSwap(c,v32,v33);
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
-void QRGivensQuaternion(float a1, float a2, float &ch, float &sh)
+void QRGivensQuaternion(Type a1, Type a2, Type &ch, Type &sh)
 {
     // a1 = pivot point on diagonal
     // a2 = lower triangular entry we want to annihilate
-    float epsilon = _EPSILON;
-    float rho = accurateSqrt(a1*a1 + a2*a2);
+    Type epsilon = _EPSILON;
+    Type rho = accurateSqrt(a1*a1 + a2*a2);
 
-    sh = rho > epsilon ? a2 : 0;
-    ch = fabs(a1) + fmax(rho,epsilon);
-    bool b = a1 < 0;
+    sh = rho > epsilon ? a2 : Type(0);
+    ch = abs(a1) + max(rho,epsilon);
+    bool b = a1 < Type(0);
     condSwap(b,sh,ch);
-    float w = 1.0 / sqrt(ch*ch+sh*sh);
+    Type w = Type(1) / sqrt(ch*ch+sh*sh);
     ch *= w;
     sh *= w;
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
 void QRDecomposition(// matrix that we want to decompose
-                            float b11, float b12, float b13,
-                            float b21, float b22, float b23,
-                            float b31, float b32, float b33,
+                            Type b11, Type b12, Type b13,
+                            Type b21, Type b22, Type b23,
+                            Type b31, Type b32, Type b33,
                             // output Q
-                            float &q11, float &q12, float &q13,
-                            float &q21, float &q22, float &q23,
-                            float &q31, float &q32, float &q33,
+                            Type &q11, Type &q12, Type &q13,
+                            Type &q21, Type &q22, Type &q23,
+                            Type &q31, Type &q32, Type &q33,
                             // output R
-                            float &r11, float &r12, float &r13,
-                            float &r21, float &r22, float &r23,
-                            float &r31, float &r32, float &r33)
+                            Type &r11, Type &r12, Type &r13,
+                            Type &r21, Type &r22, Type &r23,
+                            Type &r31, Type &r32, Type &r33)
 {
-    float ch1,sh1,ch2,sh2,ch3,sh3;
-    float a,b;
+    Type ch1,sh1,ch2,sh2,ch3,sh3;
+    Type a,b;
 
     // first givens rotation (ch,0,0,sh)
     QRGivensQuaternion(b11,b21,ch1,sh1);
-    a=1-2*sh1*sh1;
-    b=2*ch1*sh1;
+    a=Type(1)-Type(2)*sh1*sh1;
+    b=Type(2)*ch1*sh1;
     // apply B = Q' * B
     r11=a*b11+b*b21;  r12=a*b12+b*b22;  r13=a*b13+b*b23;
     r21=-b*b11+a*b21; r22=-b*b12+a*b22; r23=-b*b13+a*b23;
@@ -307,8 +320,8 @@ void QRDecomposition(// matrix that we want to decompose
 
     // second givens rotation (ch,0,-sh,0)
     QRGivensQuaternion(r11,r31,ch2,sh2);
-    a=1-2*sh2*sh2;
-    b=2*ch2*sh2;
+    a=Type(1)-Type(2)*sh2*sh2;
+    b=Type(2)*ch2*sh2;
     // apply B = Q' * B;
     b11=a*r11+b*r31;  b12=a*r12+b*r32;  b13=a*r13+b*r33;
     b21=r21;           b22=r22;           b23=r23;
@@ -316,8 +329,8 @@ void QRDecomposition(// matrix that we want to decompose
 
     // third givens rotation (ch,sh,0,0)
     QRGivensQuaternion(b22,b32,ch3,sh3);
-    a=1-2*sh3*sh3;
-    b=2*ch3*sh3;
+    a=Type(1)-Type(2)*sh3*sh3;
+    b=Type(2)*ch3*sh3;
     // R is now set to desired value
     r11=b11;             r12=b12;           r13=b13;
     r21=a*b21+b*b31;     r22=a*b22+b*b32;   r23=a*b23+b*b33;
@@ -327,58 +340,59 @@ void QRDecomposition(// matrix that we want to decompose
     // the number of floating point operations for three quaternion multiplications
     // is more or less comparable to the explicit form of the joined matrix.
     // certainly more memory-efficient!
-    float sh12=sh1*sh1;
-    float sh22=sh2*sh2;
-    float sh32=sh3*sh3;
+    Type sh12=sh1*sh1;
+    Type sh22=sh2*sh2;
+    Type sh32=sh3*sh3;
 
-    q11=(-1+2*sh12)*(-1+2*sh22);
-    q12=4*ch2*ch3*(-1+2*sh12)*sh2*sh3+2*ch1*sh1*(-1+2*sh32);
-    q13=4*ch1*ch3*sh1*sh3-2*ch2*(-1+2*sh12)*sh2*(-1+2*sh32);
+    q11=(Type(-1)+Type(2)*sh12)*(Type(-1)+Type(2)*sh22);
+    q12=Type(4)*ch2*ch3*(Type(-1)+Type(2)*sh12)*sh2*sh3+Type(2)*ch1*sh1*(Type(-1)+Type(2)*sh32);
+    q13=Type(4)*ch1*ch3*sh1*sh3-Type(2)*ch2*(Type(-1)+Type(2)*sh12)*sh2*(Type(-1)+Type(2)*sh32);
 
-    q21=2*ch1*sh1*(1-2*sh22);
-    q22=-8*ch1*ch2*ch3*sh1*sh2*sh3+(-1+2*sh12)*(-1+2*sh32);
-    q23=-2*ch3*sh3+4*sh1*(ch3*sh1*sh3+ch1*ch2*sh2*(-1+2*sh32));
+    q21=Type(2)*ch1*sh1*(Type(1)-Type(2)*sh22);
+    q22=Type(-8)*ch1*ch2*ch3*sh1*sh2*sh3+(Type(-1)+Type(2)*sh12)*(Type(-1)+Type(2)*sh32);
+    q23=Type(-2)*ch3*sh3+Type(4)*sh1*(ch3*sh1*sh3+ch1*ch2*sh2*(Type(-1)+Type(2)*sh32));
 
-    q31=2*ch2*sh2;
-    q32=2*ch3*(1-2*sh22)*sh3;
-    q33=(-1+2*sh22)*(-1+2*sh32);
+    q31=Type(2)*ch2*sh2;
+    q32=Type(2)*ch3*(Type(1)-Type(2)*sh22)*sh3;
+    q33=(Type(-1)+Type(2)*sh22)*(Type(-1)+Type(2)*sh32);
 }
 
+template<typename Type>
 inline CUDA_CALLABLE
 void _svd(// input A
-        float a11, float a12, float a13,
-        float a21, float a22, float a23,
-        float a31, float a32, float a33,
+        Type a11, Type a12, Type a13,
+        Type a21, Type a22, Type a23,
+        Type a31, Type a32, Type a33,
         // output U
-        float &u11, float &u12, float &u13,
-        float &u21, float &u22, float &u23,
-        float &u31, float &u32, float &u33,
+        Type &u11, Type &u12, Type &u13,
+        Type &u21, Type &u22, Type &u23,
+        Type &u31, Type &u32, Type &u33,
         // output S
-        float &s11, float &s12, float &s13,
-        float &s21, float &s22, float &s23,
-        float &s31, float &s32, float &s33,
+        Type &s11, Type &s12, Type &s13,
+        Type &s21, Type &s22, Type &s23,
+        Type &s31, Type &s32, Type &s33,
         // output V
-        float &v11, float &v12, float &v13,
-        float &v21, float &v22, float &v23,
-        float &v31, float &v32, float &v33)
+        Type &v11, Type &v12, Type &v13,
+        Type &v21, Type &v22, Type &v23,
+        Type &v31, Type &v32, Type &v33)
 {
     // normal equations matrix
-    float ATA11, ATA12, ATA13;
-    float ATA21, ATA22, ATA23;
-    float ATA31, ATA32, ATA33;
+    Type ATA11, ATA12, ATA13;
+    Type ATA21, ATA22, ATA23;
+    Type ATA31, ATA32, ATA33;
 
     multAtB(a11,a12,a13,a21,a22,a23,a31,a32,a33,
           a11,a12,a13,a21,a22,a23,a31,a32,a33,
           ATA11,ATA12,ATA13,ATA21,ATA22,ATA23,ATA31,ATA32,ATA33);
 
     // symmetric eigenalysis
-    float qV[4];
+    Type qV[4];
     jacobiEigenanlysis( ATA11,ATA21,ATA22, ATA31,ATA32,ATA33,qV);
     quatToMat3(qV,v11,v12,v13,v21,v22,v23,v31,v32,v33);
 
-    float b11, b12, b13;
-    float b21, b22, b23;
-    float b31, b32, b33;
+    Type b11, b12, b13;
+    Type b21, b22, b23;
+    Type b31, b32, b33;
     multAB(a11,a12,a13,a21,a22,a23,a31,a32,a33,
         v11,v12,v13,v21,v22,v23,v31,v32,v33,
         b11, b12, b13, b21, b22, b23, b31, b32, b33);
@@ -394,8 +408,9 @@ void _svd(// input A
     );
 }
 
-inline CUDA_CALLABLE void svd3(const mat33& A, mat33& U, vec3& sigma, mat33& V) {
-  float s12, s13, s21, s23, s31, s32;
+template<typename Type>
+inline CUDA_CALLABLE void svd3(const mat<3,3,Type>& A, mat<3,3,Type>& U, vec<3,Type>& sigma, mat<3,3,Type>& V) {
+  Type s12, s13, s21, s23, s31, s32;
   _svd(A.data[0][0], A.data[0][1], A.data[0][2],
        A.data[1][0], A.data[1][1], A.data[1][2],
        A.data[2][0], A.data[2][1], A.data[2][2],
@@ -404,56 +419,58 @@ inline CUDA_CALLABLE void svd3(const mat33& A, mat33& U, vec3& sigma, mat33& V) 
        U.data[1][0], U.data[1][1], U.data[1][2],
        U.data[2][0], U.data[2][1], U.data[2][2],
 
-       sigma.x, s12, s13,
-       s21, sigma.y, s23,
-       s31, s32, sigma.z,
+       sigma[0], s12, s13,
+       s21, sigma[1], s23,
+       s31, s32, sigma[2],
 
        V.data[0][0], V.data[0][1], V.data[0][2],
        V.data[1][0], V.data[1][1], V.data[1][2],
        V.data[2][0], V.data[2][1], V.data[2][2]);
 }
 
-inline CUDA_CALLABLE void adj_svd3(const mat33& A,
-                                  const mat33& U,
-                                  const vec3& sigma,
-                                  const mat33& V,
-                                  mat33& adj_A,
-                                  const mat33& adj_U,
-                                  const vec3& adj_sigma,
-                                  const mat33& adj_V) {
-  float sx2 = sigma.x * sigma.x;
-  float sy2 = sigma.y * sigma.y;
-  float sz2 = sigma.z * sigma.z;
+template<typename Type>
+inline CUDA_CALLABLE void adj_svd3(const mat<3,3,Type>& A,
+                                  const mat<3,3,Type>& U,
+                                  const vec<3,Type>& sigma,
+                                  const mat<3,3,Type>& V,
+                                  mat<3,3,Type>& adj_A,
+                                  const mat<3,3,Type>& adj_U,
+                                  const vec<3,Type>& adj_sigma,
+                                  const mat<3,3,Type>& adj_V) {
+  Type sx2 = sigma[0] * sigma[0];
+  Type sy2 = sigma[1] * sigma[1];
+  Type sz2 = sigma[2] * sigma[2];
 
-  float F01 = 1.0f / min(sy2 - sx2, -1e-6f);
-  float F02 = 1.0f / min(sz2 - sx2, -1e-6f);
-  float F12 = 1.0f / min(sz2 - sy2, -1e-6f);
+  Type F01 = Type(1) / min(sy2 - sx2, Type(-1e-6f));
+  Type F02 = Type(1) / min(sz2 - sx2, Type(-1e-6f));
+  Type F12 = Type(1) / min(sz2 - sy2, Type(-1e-6f));
 
-  mat33 F = mat33(0, F01, F02,
+  mat<3,3,Type> F = mat<3,3,Type>(0, F01, F02,
                   -F01, 0, F12,
                   -F02, -F12, 0);
 
-  mat33 adj_sigma_mat = mat33(adj_sigma.x, 0, 0,
-                              0, adj_sigma.y, 0,
-                              0, 0, adj_sigma.z);
-  mat33 s_mat = mat33(sigma.x, 0, 0,
-                      0, sigma.y, 0,
-                      0, 0, sigma.z);
+  mat<3,3,Type> adj_sigma_mat = mat<3,3,Type>(adj_sigma[0], 0, 0,
+                              0, adj_sigma[1], 0,
+                              0, 0, adj_sigma[2]);
+  mat<3,3,Type> s_mat = mat<3,3,Type>(sigma[0], 0, 0,
+                      0, sigma[1], 0,
+                      0, 0, sigma[2]);
 
   // https://github.com/pytorch/pytorch/blob/d7ddae8e4fe66fa1330317673438d1eb5aa99ca4/torch/csrc/autograd/FunctionsManual.cpp
-  mat33 UT = transpose(U);
-  mat33 VT = transpose(V);
+  mat<3,3,Type> UT = transpose(U);
+  mat<3,3,Type> VT = transpose(V);
 
-  mat33 sigma_term = mul(U, mul(adj_sigma_mat, VT));
+  mat<3,3,Type> sigma_term = mul(U, mul(adj_sigma_mat, VT));
 
-  mat33 u_term = mul(mul(U, mul(element_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
-  mat33 v_term = mul(U, mul(s_mat, mul(element_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
+  mat<3,3,Type> u_term = mul(mul(U, mul(cw_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
+  mat<3,3,Type> v_term = mul(U, mul(s_mat, mul(cw_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
 
   adj_A = adj_A + (u_term + v_term + sigma_term);
 }
 
 
-inline CUDA_CALLABLE void qr3(const mat33& A, mat33& Q, mat33& R) {
+template<typename Type>
+inline CUDA_CALLABLE void qr3(const mat<3,3,Type>& A, mat<3,3,Type>& Q, mat<3,3,Type>& R) {
     QRDecomposition(A.data[0][0], A.data[0][1], A.data[0][2],
        A.data[1][0], A.data[1][1], A.data[1][2],
        A.data[2][0], A.data[2][1], A.data[2][2],
@@ -468,75 +485,78 @@ inline CUDA_CALLABLE void qr3(const mat33& A, mat33& Q, mat33& R) {
 }
 
 
-inline CUDA_CALLABLE void adj_qr3(const mat33& A,
-                                  const mat33& Q,                                  
-                                  const mat33& R,
-                                  mat33& adj_A,
-                                  const mat33& adj_Q,
-                                  const mat33& adj_R) {
+template<typename Type>
+inline CUDA_CALLABLE void adj_qr3(const mat<3,3,Type>& A,
+                                  const mat<3,3,Type>& Q,                                  
+                                  const mat<3,3,Type>& R,
+                                  mat<3,3,Type>& adj_A,
+                                  const mat<3,3,Type>& adj_Q,
+                                  const mat<3,3,Type>& adj_R) {
     // Eq 3 of https://arxiv.org/pdf/2009.10071.pdf
-    mat33 M = mul(R,transpose(adj_R)) - mul(transpose(adj_Q), Q);
-    mat33 copyltuM = mat33(M.data[0][0], M.data[1][0], M.data[2][0],
+    mat<3,3,Type> M = mul(R,transpose(adj_R)) - mul(transpose(adj_Q), Q);
+    mat<3,3,Type> copyltuM = mat<3,3,Type>(M.data[0][0], M.data[1][0], M.data[2][0],
                            0.0,          M.data[1][1], M.data[2][1],
                            0.0,          0.0,          M.data[2][2]);
     adj_A = adj_A + mul(adj_Q + mul(Q,copyltuM), inverse(transpose(R)));
 }
 
 
-inline CUDA_CALLABLE void eig3(const mat33& A, mat33& Q, vec3& d) {
-    float qV[4];
-    float s11 = A.data[0][0];
-    float s21 = A.data[1][0];
-    float s22 = A.data[1][1];
-    float s31 = A.data[2][0];
-    float s32 = A.data[2][1];
-    float s33 = A.data[2][2];
+template<typename Type>
+inline CUDA_CALLABLE void eig3(const mat<3,3,Type>& A, mat<3,3,Type>& Q, vec<3,Type>& d) {
+    Type qV[4];
+    Type s11 = A.data[0][0];
+    Type s21 = A.data[1][0];
+    Type s22 = A.data[1][1];
+    Type s31 = A.data[2][0];
+    Type s32 = A.data[2][1];
+    Type s33 = A.data[2][2];
                        
     jacobiEigenanlysis(s11, s21, s22, s31, s32, s33, qV);
     quatToMat3(qV, Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2]);
-    mat33 t;
+    mat<3,3,Type> t;
     multAtB(Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2],
             A.data[0][0], A.data[0][1], A.data[0][2], A.data[1][0], A.data[1][1], A.data[1][2], A.data[2][0], A.data[2][1], A.data[2][2],
             t.data[0][0], t.data[0][1], t.data[0][2], t.data[1][0], t.data[1][1], t.data[1][2], t.data[2][0], t.data[2][1], t.data[2][2]);
 
-    mat33 u;
+    mat<3,3,Type> u;
     multAB(t.data[0][0], t.data[0][1], t.data[0][2], t.data[1][0], t.data[1][1], t.data[1][2], t.data[2][0], t.data[2][1], t.data[2][2],
            Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2],           
            u.data[0][0], u.data[0][1], u.data[0][2], u.data[1][0], u.data[1][1], u.data[1][2], u.data[2][0], u.data[2][1], u.data[2][2]
            );
-    d = vec3(u.data[0][0], u.data[1][1], u.data[2][2]);
+    d = vec<3,Type>(u.data[0][0], u.data[1][1], u.data[2][2]);
 }
 
-inline CUDA_CALLABLE void adj_eig3(const mat33& A, const mat33& Q, const vec3& d, 
-                                     mat33& adj_A, const mat33& adj_Q, const vec3& adj_d) {
+template<typename Type>
+inline CUDA_CALLABLE void adj_eig3(const mat<3,3,Type>& A, const mat<3,3,Type>& Q, const vec<3,Type>& d, 
+                                     mat<3,3,Type>& adj_A, const mat<3,3,Type>& adj_Q, const vec<3,Type>& adj_d) {
     // Page 10 of https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
-    mat33 D = mat33(d.x, 0, 0,
-                    0, d.y, 0,
-                    0, 0, d.z);
-    mat33 D_bar = mat33(adj_d.x, 0, 0,
-                    0, adj_d.y, 0,
-                    0, 0, adj_d.z);
+    mat<3,3,Type> D = mat<3,3,Type>(d[0], 0, 0,
+                    0, d[1], 0,
+                    0, 0, d[2]);
+    mat<3,3,Type> D_bar = mat<3,3,Type>(adj_d[0], 0, 0,
+                    0, adj_d[1], 0,
+                    0, 0, adj_d[2]);
                     
-    float dyx = d.y - d.x;
-    float dzx = d.z - d.x;
-    float dzy = d.z - d.y;
+    Type dyx = d[1] - d[0];
+    Type dzx = d[2] - d[0];
+    Type dzy = d[2] - d[1];
 
-    if ((dyx < 0.0) && (dyx > -1e-6)) dyx = -1e-6;
-    if ((dyx > 0.0) && (dyx < 1e-6)) dyx = 1e-6;
+    if ((dyx < Type(0)) && (dyx > Type(-1e-6))) dyx = -1e-6;
+    if ((dyx > Type(0)) && (dyx < Type(1e-6))) dyx = 1e-6;
 
-    if ((dzx < 0.0) && (dzx > -1e-6)) dzx = -1e-6;
-    if ((dzx > 0.0) && (dzx < 1e-6)) dzx = 1e-6;
+    if ((dzx < Type(0)) && (dzx > Type(-1e-6))) dzx = -1e-6;
+    if ((dzx > Type(0)) && (dzx < Type(1e-6))) dzx = 1e-6;
 
-    if ((dzy < 0.0) && (dzy > -1e-6)) dzy = -1e-6;
-    if ((dzy > 0.0) && (dzy < 1e-6)) dzy = 1e-6;
+    if ((dzy < Type(0)) && (dzy > Type(-1e-6))) dzy = -1e-6;
+    if ((dzy > Type(0)) && (dzy < Type(1e-6))) dzy = 1e-6;
 
-    float F01 = 1.0f / dyx;
-    float F02 = 1.0f / dzx;
-    float F12 = 1.0f / dzy;
-    mat33 F = mat33(0, F01, F02,
+    Type F01 = Type(1) / dyx;
+    Type F02 = Type(1) / dzx;
+    Type F12 = Type(1) / dzy;
+    mat<3,3,Type> F = mat<3,3,Type>(0, F01, F02,
                  -F01, 0, F12,
                  -F02, -F12, 0);
-    mat33 QT = transpose(Q);
-    adj_A = adj_A + mul(Q, mul(D_bar + element_mul(F, mul(QT, adj_Q)), QT));
+    mat<3,3,Type> QT = transpose(Q);
+    adj_A = adj_A + mul(Q, mul(D_bar + cw_mul(F, mul(QT, adj_Q)), QT));
 }
 }

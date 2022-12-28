@@ -243,15 +243,15 @@ CUDA_CALLABLE inline bool mesh_query_point(uint64_t id, const vec3& point, float
 		max_point = point;
 		max_point_dist = sqrtf(min_dist_sq);
 
-		printf("max_tests: %d max_point: %f %f %f max_point_dist: %f max_second_culls: %d\n", max_tests, max_point.x, max_point.y, max_point.z, max_point_dist, max_secondary_culls);
+		printf("max_tests: %d max_point: %f %f %f max_point_dist: %f max_second_culls: %d\n", max_tests, max_point[0], max_point[1], max_point[2], max_point_dist, max_secondary_culls);
 
 		FILE* f = fopen("test_history.txt", "w");
 		for (int i=0; i < test_history.size(); ++i)
 		{
 			fprintf(f, "%d, %f, %f, %f, %f, %f, %f\n", 
 			test_history[i], 
-			test_centers[i].x, test_centers[i].y, test_centers[i].z,
-			test_extents[i].x, test_extents[i].y, test_extents[i].z);
+			test_centers[i][0], test_centers[i][1], test_centers[i][2],
+			test_extents[i][0], test_extents[i][1], test_extents[i][2]);
 		}
 
 		fclose(f);
@@ -309,7 +309,7 @@ CUDA_CALLABLE inline bool mesh_query_ray(uint64_t id, const vec3& start, const v
 	stack[0] = mesh.bvh.root;
 	int count = 1;
 
-	vec3 rcp_dir = vec3(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
+	vec3 rcp_dir = vec3(1.0f/dir[0], 1.0f/dir[1], 1.0f/dir[2]);
 
 	float min_t = max_t;
 	int min_face;
@@ -670,8 +670,8 @@ CUDA_CALLABLE inline void adj_mesh_eval_position(uint64_t id, int tri, float u, 
 	vec3 q = mesh.points[j];
 	vec3 r = mesh.points[k];
 
-	adj_u += (p.x - r.x) * adj_ret.x + (p.y - r.y) * adj_ret.y + (p.z - r.z) * adj_ret.z;
-	adj_v += (q.x - r.x) * adj_ret.x + (q.y - r.y) * adj_ret.y + (q.z - r.z) * adj_ret.z;
+	adj_u += (p[0] - r[0]) * adj_ret[0] + (p[1] - r[1]) * adj_ret[1] + (p[2] - r[2]) * adj_ret[2];
+	adj_v += (q[0] - r[0]) * adj_ret[0] + (q[1] - r[1]) * adj_ret[1] + (q[2] - r[2]) * adj_ret[2];
 }
 
 CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float u, float v,
@@ -692,8 +692,8 @@ CUDA_CALLABLE inline void adj_mesh_eval_velocity(uint64_t id, int tri, float u, 
 	vec3 vq = mesh.velocities[j];
 	vec3 vr = mesh.velocities[k];
 
-	adj_u += (vp.x - vr.x) * adj_ret.x + (vp.y - vr.y) * adj_ret.y + (vp.z - vr.z) * adj_ret.z;
-	adj_v += (vq.x - vr.x) * adj_ret.x + (vq.y - vr.y) * adj_ret.y + (vq.z - vr.z) * adj_ret.z;
+	adj_u += (vp[0] - vr[0]) * adj_ret[0] + (vp[1] - vr[1]) * adj_ret[1] + (vp[2] - vr[2]) * adj_ret[2];
+	adj_v += (vq[0] - vr[0]) * adj_ret[0] + (vq[1] - vr[1]) * adj_ret[1] + (vq[2] - vr[2]) * adj_ret[2];
 }
 
 CUDA_CALLABLE inline vec3 mesh_eval_face_normal(uint64_t id, int tri)

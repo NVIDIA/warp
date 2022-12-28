@@ -67,9 +67,9 @@ CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int
 CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, const vec3& p)
 {
     return hash_grid_index(grid, 
-                           int(p.x*grid.cell_width_inv), 
-                           int(p.y*grid.cell_width_inv),
-                           int(p.z*grid.cell_width_inv));
+                           int(p[0]*grid.cell_width_inv), 
+                           int(p[1]*grid.cell_width_inv),
+                           int(p[2]*grid.cell_width_inv));
 }
 
 // stores state required to traverse neighboring cells of a point
@@ -107,14 +107,14 @@ CUDA_CALLABLE inline hash_grid_query_t hash_grid_query(uint64_t id, wp::vec3 pos
     query.grid = *(const HashGrid*)(id);
 
     // convert coordinate to grid
-    query.x_start = int((pos.x-radius)*query.grid.cell_width_inv);
-    query.y_start = int((pos.y-radius)*query.grid.cell_width_inv);
-    query.z_start = int((pos.z-radius)*query.grid.cell_width_inv);
+    query.x_start = int((pos[0]-radius)*query.grid.cell_width_inv);
+    query.y_start = int((pos[1]-radius)*query.grid.cell_width_inv);
+    query.z_start = int((pos[2]-radius)*query.grid.cell_width_inv);
 
     // do not want to visit any cells more than once, so limit large radius offset to one pass over each dimension
-    query.x_end = min(int((pos.x+radius)*query.grid.cell_width_inv), query.x_start + query.grid.dim_x-1);
-    query.y_end = min(int((pos.y+radius)*query.grid.cell_width_inv), query.y_start + query.grid.dim_y-1);
-    query.z_end = min(int((pos.z+radius)*query.grid.cell_width_inv), query.z_start + query.grid.dim_z-1);
+    query.x_end = min(int((pos[0]+radius)*query.grid.cell_width_inv), query.x_start + query.grid.dim_x-1);
+    query.y_end = min(int((pos[1]+radius)*query.grid.cell_width_inv), query.y_start + query.grid.dim_y-1);
+    query.z_end = min(int((pos[2]+radius)*query.grid.cell_width_inv), query.z_start + query.grid.dim_z-1);
 
     query.x = query.x_start;
     query.y = query.y_start;

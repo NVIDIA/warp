@@ -82,7 +82,7 @@ CUDA_CALLABLE inline T volume_sample(uint64_t id, vec3 uvw, int sampling_mode)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_root_handle_t root = volume::get_root(buf);
-    const pnanovdb_vec3_t uvw_pnano{ uvw.x, uvw.y, uvw.z };
+    const pnanovdb_vec3_t uvw_pnano{ uvw[0], uvw[1], uvw[2] };
 
     if (sampling_mode == volume::CLOSEST)
     {
@@ -153,7 +153,7 @@ CUDA_CALLABLE inline void adj_volume_sample_f(
 
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_root_handle_t root = volume::get_root(buf);
-    const pnanovdb_vec3_t uvw_pnano{ uvw.x, uvw.y, uvw.z };
+    const pnanovdb_vec3_t uvw_pnano{ uvw[0], uvw[1], uvw[2] };
 
     constexpr pnanovdb_coord_t OFFSETS[] = {
         { 0, 0, 0 }, { 0, 0, 1 }, { 0, 1, 0 }, { 0, 1, 1 }, { 1, 0, 0 }, { 1, 0, 1 }, { 1, 1, 0 }, { 1, 1, 1 },
@@ -176,7 +176,7 @@ CUDA_CALLABLE inline void adj_volume_sample_f(
         float v;
         pnano_read(v, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijk_shifted));
         const vec3 signs(offs.x * 2 - 1, offs.y * 2 - 1, offs.z * 2 - 1);
-        const vec3 grad_w(signs.x * wy[offs.y] * wz[offs.z], signs.y * wx[offs.x] * wz[offs.z], signs.z * wx[offs.x] * wy[offs.y]); 
+        const vec3 grad_w(signs[0] * wy[offs.y] * wz[offs.z], signs[1] * wx[offs.x] * wz[offs.z], signs[2] * wx[offs.x] * wy[offs.y]); 
         dphi = add(dphi, mul(v, grad_w));
     }
 
@@ -194,7 +194,7 @@ CUDA_CALLABLE inline void adj_volume_sample_v(
 
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_root_handle_t root = volume::get_root(buf);
-    const pnanovdb_vec3_t uvw_pnano{ uvw.x, uvw.y, uvw.z };
+    const pnanovdb_vec3_t uvw_pnano{ uvw[0], uvw[1], uvw[2] };
 
     constexpr pnanovdb_coord_t OFFSETS[] = {
         { 0, 0, 0 }, { 0, 0, 1 }, { 0, 1, 0 }, { 0, 1, 1 }, { 1, 0, 0 }, { 1, 0, 1 }, { 1, 1, 0 }, { 1, 1, 1 },
@@ -217,10 +217,10 @@ CUDA_CALLABLE inline void adj_volume_sample_v(
         vec3 v;
         pnano_read(v, buf, PNANOVDB_REF(accessor), PNANOVDB_REF(ijk_shifted));
         const vec3 signs(offs.x * 2 - 1, offs.y * 2 - 1, offs.z * 2 - 1);
-        const vec3 grad_w(signs.x * wy[offs.y] * wz[offs.z], signs.y * wx[offs.x] * wz[offs.z], signs.z * wx[offs.x] * wy[offs.y]); 
-        dphi[0] = add(dphi[0], mul(v.x, grad_w));
-        dphi[1] = add(dphi[1], mul(v.y, grad_w));
-        dphi[2] = add(dphi[2], mul(v.z, grad_w));
+        const vec3 grad_w(signs[0] * wy[offs.y] * wz[offs.z], signs[1] * wx[offs.x] * wz[offs.z], signs[2] * wx[offs.x] * wy[offs.y]); 
+        dphi[0] = add(dphi[0], mul(v[0], grad_w));
+        dphi[1] = add(dphi[1], mul(v[1], grad_w));
+        dphi[2] = add(dphi[2], mul(v[2], grad_w));
     }
 
     for (int k = 0; k < 3; ++k)
@@ -319,7 +319,7 @@ CUDA_CALLABLE inline void volume_store_v(uint64_t id, int32_t i, int32_t j, int3
 
     const pnanovdb_coord_t ijk{ i, j, k };
     const pnanovdb_address_t address = pnanovdb_root_get_value_address(PNANOVDB_GRID_TYPE_VEC3F, buf, root, PNANOVDB_REF(ijk));
-    const pnanovdb_vec3_t v{ value.x, value.y, value.z };
+    const pnanovdb_vec3_t v{ value[0], value[1], value[2] };
     pnanovdb_write_vec3(buf, address, &v);
 }
 
@@ -354,7 +354,7 @@ CUDA_CALLABLE inline vec3 volume_index_to_world(uint64_t id, vec3 uvw)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
-    const pnanovdb_vec3_t pos{ uvw.x, uvw.y, uvw.z };
+    const pnanovdb_vec3_t pos{ uvw[0], uvw[1], uvw[2] };
     const pnanovdb_vec3_t xyz = pnanovdb_grid_index_to_worldf(buf, grid, PNANOVDB_REF(pos));
     return { xyz.x, xyz.y, xyz.z };
 }
@@ -364,7 +364,7 @@ CUDA_CALLABLE inline vec3 volume_world_to_index(uint64_t id, vec3 xyz)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
-    const pnanovdb_vec3_t pos{ xyz.x, xyz.y, xyz.z };
+    const pnanovdb_vec3_t pos{ xyz[0], xyz[1], xyz[2] };
     const pnanovdb_vec3_t uvw = pnanovdb_grid_world_to_indexf(buf, grid, PNANOVDB_REF(pos));
     return { uvw.x, uvw.y, uvw.z };
 }
@@ -373,7 +373,7 @@ CUDA_CALLABLE inline void adj_volume_index_to_world(uint64_t id, vec3 uvw, uint6
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
-    const pnanovdb_vec3_t pos{ adj_ret.x, adj_ret.y, adj_ret.z };
+    const pnanovdb_vec3_t pos{ adj_ret[0], adj_ret[1], adj_ret[2] };
     const pnanovdb_vec3_t xyz = pnanovdb_grid_index_to_world_dirf(buf, grid, PNANOVDB_REF(pos));
     adj_uvw = add(adj_uvw, vec3{ xyz.x, xyz.y, xyz.z });
 }
@@ -382,7 +382,7 @@ CUDA_CALLABLE inline void adj_volume_world_to_index(uint64_t id, vec3 xyz, uint6
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
-    const pnanovdb_vec3_t pos{ adj_ret.x, adj_ret.y, adj_ret.z };
+    const pnanovdb_vec3_t pos{ adj_ret[0], adj_ret[1], adj_ret[2] };
     const pnanovdb_vec3_t uvw = pnanovdb_grid_world_to_index_dirf(buf, grid, PNANOVDB_REF(pos));
     adj_xyz = add(adj_xyz, vec3{ uvw.x, uvw.y, uvw.z });
 }
@@ -392,7 +392,7 @@ CUDA_CALLABLE inline vec3 volume_index_to_world_dir(uint64_t id, vec3 uvw)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
-    const pnanovdb_vec3_t pos{ uvw.x, uvw.y, uvw.z };
+    const pnanovdb_vec3_t pos{ uvw[0], uvw[1], uvw[2] };
     const pnanovdb_vec3_t xyz = pnanovdb_grid_index_to_world_dirf(buf, grid, PNANOVDB_REF(pos));
     return { xyz.x, xyz.y, xyz.z };
 }
@@ -402,7 +402,7 @@ CUDA_CALLABLE inline vec3 volume_world_to_index_dir(uint64_t id, vec3 xyz)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
-    const pnanovdb_vec3_t pos{ xyz.x, xyz.y, xyz.z };
+    const pnanovdb_vec3_t pos{ xyz[0], xyz[1], xyz[2] };
     const pnanovdb_vec3_t uvw = pnanovdb_grid_world_to_index_dirf(buf, grid, PNANOVDB_REF(pos));
     return { uvw.x, uvw.y, uvw.z };
 }
