@@ -8,48 +8,52 @@
 
 #pragma once
 
-#include "mat33.h"
+#include "mat.h"
 
 namespace wp
 {
 
-struct quat
+template<typename Type>
+struct quaternion
 {
     // imaginary part
-    float x;
-    float y;
-    float z;
+    Type x;
+    Type y;
+    Type z;
     
     // real part
-    float w;
+    Type w;
 
-    inline CUDA_CALLABLE quat(float x=0.0f, float y=0.0f, float z=0.0f, float w=0.0) : x(x), y(y), z(z), w(w) {}    
-    explicit inline CUDA_CALLABLE quat(const vec3& v, float w=0.0f) : x(v.x), y(v.y), z(v.z), w(w) {}
+    inline CUDA_CALLABLE quaternion(Type x=0.0f, Type y=0.0f, Type z=0.0f, Type w=0.0) : x(x), y(y), z(z), w(w) {}    
+    explicit inline CUDA_CALLABLE quaternion(const vec<3,Type>& v, Type w=0.0f) : x(v[0]), y(v[1]), z(v[2]), w(w) {}
 
 };
 
-inline CUDA_CALLABLE bool operator==(const quat& a, const quat& b)
+template<typename Type>
+inline CUDA_CALLABLE bool operator==(const quaternion<Type>& a, const quaternion<Type>& b)
 {
     return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
 }
 
-inline bool CUDA_CALLABLE isfinite(const quat& q)
+template<typename Type>
+inline bool CUDA_CALLABLE isfinite(const quaternion<Type>& q)
 {
-    return ::isfinite(q.x) && ::isfinite(q.y) && ::isfinite(q.z) && ::isfinite(q.w);
+    return isfinite(q.x) && isfinite(q.y) && isfinite(q.z) && isfinite(q.w);
 }
 
-inline CUDA_CALLABLE quat atomic_add(quat * addr, quat value) 
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> atomic_add(quaternion<Type> * addr, quaternion<Type> value) 
 {
-    float x = atomic_add(&(addr -> x), value.x);
-    float y = atomic_add(&(addr -> y), value.y);
-    float z = atomic_add(&(addr -> z), value.z);
-    float w = atomic_add(&(addr -> w), value.w);
+    Type x = atomic_add(&(addr -> x), value.x);
+    Type y = atomic_add(&(addr -> y), value.y);
+    Type z = atomic_add(&(addr -> z), value.z);
+    Type w = atomic_add(&(addr -> w), value.w);
 
-    return quat(x, y, z, w);
+    return quaternion<Type>(x, y, z, w);
 }
 
-
-inline CUDA_CALLABLE void adj_quat(float x, float y, float z, float w, float& adj_x, float& adj_y, float& adj_z, float& adj_w, quat adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quaternion(Type x, Type y, Type z, Type w, Type& adj_x, Type& adj_y, Type& adj_z, Type& adj_w, quaternion<Type> adj_ret)
 {
     adj_x += adj_ret.x;
     adj_y += adj_ret.y;
@@ -57,163 +61,191 @@ inline CUDA_CALLABLE void adj_quat(float x, float y, float z, float w, float& ad
     adj_w += adj_ret.w;
 }
 
-inline CUDA_CALLABLE void adj_quat(const vec3& v, float w, vec3& adj_v, float& adj_w, quat adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quaternion(const vec<3,Type>& v, Type w, vec<3,Type>& adj_v, Type& adj_w, quaternion<Type> adj_ret)
 {
-    adj_v.x += adj_ret.x;
-    adj_v.y += adj_ret.y;
-    adj_v.z += adj_ret.z;
+    adj_v[0] += adj_ret.x;
+    adj_v[1] += adj_ret.y;
+    adj_v[2] += adj_ret.z;
     adj_w   += adj_ret.w;
 }
 
 // forward methods
 
-inline CUDA_CALLABLE quat quat_from_axis_angle(const vec3& axis, float angle)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> quat_from_axis_angle(const vec<3,Type>& axis, Type angle)
 {
-    float half = angle*0.5f;
-    float w = cos(half);
+    Type half = angle*Type(Type(0.5));
+    Type w = cos(half);
 
-    float sin_theta_over_two = sin(half);
-    vec3 v = axis*sin_theta_over_two;
+    Type sin_theta_over_two = sin(half);
+    vec<3,Type> v = axis*sin_theta_over_two;
 
-    return quat(v.x, v.y, v.z, w);
+    return quaternion<Type>(v[0], v[1], v[2], w);
 }
 
-inline CUDA_CALLABLE void quat_to_axis_angle(const quat& q, vec3& axis, float& angle)
+template<typename Type>
+inline CUDA_CALLABLE void quat_to_axis_angle(const quaternion<Type>& q, vec<3,Type>& axis, Type& angle)
 {
-    vec3 v = vec3(q.x, q.y, q.z);
-    axis = q.w < 0.f ? -normalize(v) : normalize(v);
-    angle = 2.f * atan2(length(v), fabs(q.w));
+    vec<3,Type> v = vec<3,Type>(q.x, q.y, q.z);
+    axis = q.w < Type(0) ? -normalize(v) : normalize(v);
+    angle = Type(2) * atan2(length(v), abs(q.w));
 }
 
-inline CUDA_CALLABLE quat quat_rpy(float roll, float pitch, float yaw)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> quat_rpy(Type roll, Type pitch, Type yaw)
 {
-    float cy = cos(yaw * 0.5);
-    float sy = sin(yaw * 0.5);
-    float cr = cos(roll * 0.5);
-    float sr = sin(roll * 0.5);
-    float cp = cos(pitch * 0.5);
-    float sp = sin(pitch * 0.5);
+    Type cy = cos(yaw * Type(0.5));
+    Type sy = sin(yaw * Type(0.5));
+    Type cr = cos(roll * Type(0.5));
+    Type sr = sin(roll * Type(0.5));
+    Type cp = cos(pitch * Type(0.5));
+    Type sp = sin(pitch * Type(0.5));
 
-    float w = (cy * cr * cp + sy * sr * sp);
-    float x = (cy * sr * cp - sy * cr * sp);
-    float y = (cy * cr * sp + sy * sr * cp);
-    float z = (sy * cr * cp - cy * sr * sp);
+    Type w = (cy * cr * cp + sy * sr * sp);
+    Type x = (cy * sr * cp - sy * cr * sp);
+    Type y = (cy * cr * sp + sy * sr * cp);
+    Type z = (sy * cr * cp - cy * sr * sp);
 
-    return quat(x, y, z, w);
-}
-
-
-inline CUDA_CALLABLE quat quat_identity()
-{
-    return quat(0.0f, 0.0f, 0.0f, 1.0f);
-}
-
-inline CUDA_CALLABLE quat quat_inverse(const quat& q)
-{
-    return quat(-q.x, -q.y, -q.z, q.w);
+    return quaternion<Type>(x, y, z, w);
 }
 
 
-inline CUDA_CALLABLE float dot(const quat& a, const quat& b)
+
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> quat_inverse(const quaternion<Type>& q)
+{
+    return quaternion<Type>(-q.x, -q.y, -q.z, q.w);
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE Type dot(const quaternion<Type>& a, const quaternion<Type>& b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
 }
 
-inline CUDA_CALLABLE float tensordot(const quat& a, const quat& b)
+template<typename Type>
+inline CUDA_CALLABLE Type tensordot(const quaternion<Type>& a, const quaternion<Type>& b)
 {
     // corresponds to `np.tensordot()` with all axes being contracted
     return dot(a, b);
 }
 
-inline CUDA_CALLABLE float length(const quat& q)
+template<typename Type>
+inline CUDA_CALLABLE Type length(const quaternion<Type>& q)
 {
     return sqrt(dot(q, q));
 }
 
-inline CUDA_CALLABLE float length_sq(const quat& q)
+template<typename Type>
+inline CUDA_CALLABLE Type length_sq(const quaternion<Type>& q)
 {
     return dot(q, q);
 }
 
-inline CUDA_CALLABLE quat normalize(const quat& q)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> normalize(const quaternion<Type>& q)
 {
-    float l = length(q);
-    if (l > kEps)
+    Type l = length(q);
+    if (l > Type(kEps))
     {
-        float inv_l = 1.0f/l;
+        Type inv_l = Type(1)/l;
 
-        return quat(q.x*inv_l, q.y*inv_l, q.z*inv_l, q.w*inv_l);
+        return quaternion<Type>(q.x*inv_l, q.y*inv_l, q.z*inv_l, q.w*inv_l);
     }
     else
     {
-        return quat(0.0f, 0.0f, 0.0f, 1.0f);
+        return quaternion<Type>(0.0f, 0.0f, 0.0f, Type(1));
     }
 }
 
-inline CUDA_CALLABLE quat add(const quat& a, const quat& b)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> add(const quaternion<Type>& a, const quaternion<Type>& b)
 {
-    return quat(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
+    return quaternion<Type>(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
 }
 
-inline CUDA_CALLABLE quat sub(const quat& a, const quat& b)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> sub(const quaternion<Type>& a, const quaternion<Type>& b)
 {
-    return quat(a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w);}
+    return quaternion<Type>(a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w);}
 
 
-inline CUDA_CALLABLE quat mul(const quat& a, const quat& b)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> mul(const quaternion<Type>& a, const quaternion<Type>& b)
 {
-    return quat(a.w*b.x + b.w*a.x + a.y*b.z - b.y*a.z,
+    return quaternion<Type>(a.w*b.x + b.w*a.x + a.y*b.z - b.y*a.z,
                 a.w*b.y + b.w*a.y + a.z*b.x - b.z*a.x,
                 a.w*b.z + b.w*a.z + a.x*b.y - b.x*a.y,
                 a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z);
 }
 
-inline CUDA_CALLABLE quat mul(const quat& a, float s)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> mul(const quaternion<Type>& a, Type s)
 {
-    return quat(a.x*s, a.y*s, a.z*s, a.w*s);    
+    return quaternion<Type>(a.x*s, a.y*s, a.z*s, a.w*s);    
 }
 
-inline CUDA_CALLABLE quat mul(float s, const quat& a)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> mul(Type s, const quaternion<Type>& a)
 {
     return mul(a, s);
 }
 
-inline CUDA_CALLABLE vec3 quat_rotate(const quat& q, const vec3& x)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> operator*(Type s, const quaternion<Type>& a)
 {
-    return x*(2.0f*q.w*q.w-1.0f) + cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
+    return mul(a, s);
 }
 
-inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> operator*(const quaternion<Type>& a, Type s)
 {
-    return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
+    return mul(a, s);
 }
 
-inline CUDA_CALLABLE quat quat_slerp(const quat& q0, const quat& q1, float t)
+template<typename Type>
+inline CUDA_CALLABLE vec<3,Type> quat_rotate(const quaternion<Type>& q, const vec<3,Type>& x)
 {
-    vec3 axis;
-    float angle;
+    return x*(Type(2)*q.w*q.w-Type(1)) + cross(vec<3,Type>(q.x,q.y,q.z), x)*q.w*Type(2) + vec<3,Type>(q.x,q.y,q.z)*dot(vec<3,Type>(q.x,q.y,q.z), x)*Type(2);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec<3,Type> quat_rotate_inv(const quaternion<Type>& q, const vec<3,Type>& x)
+{
+    return x*(Type(2)*q.w*q.w-Type(1)) - cross(vec<3,Type>(q.x,q.y,q.z), x)*q.w*Type(2) + vec<3,Type>(q.x,q.y,q.z)*dot(vec<3,Type>(q.x,q.y,q.z), x)*Type(2);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> quat_slerp(const quaternion<Type>& q0, const quaternion<Type>& q1, Type t)
+{
+    vec<3,Type> axis;
+    Type angle;
     quat_to_axis_angle(mul(quat_inverse(q0), q1), axis, angle);
     return mul(q0, quat_from_axis_angle(axis, t * angle));
 }
 
-inline CUDA_CALLABLE mat33 quat_to_matrix(const quat& q)
+template<typename Type>
+inline CUDA_CALLABLE mat<3,3,Type> quat_to_matrix(const quaternion<Type>& q)
 {
-    vec3 c1 = quat_rotate(q, vec3(1.0, 0.0, 0.0));
-    vec3 c2 = quat_rotate(q, vec3(0.0, 1.0, 0.0));
-    vec3 c3 = quat_rotate(q, vec3(0.0, 0.0, 1.0));
+    vec<3,Type> c1 = quat_rotate(q, vec<3,Type>(1.0, 0.0, 0.0));
+    vec<3,Type> c2 = quat_rotate(q, vec<3,Type>(0.0, 1.0, 0.0));
+    vec<3,Type> c3 = quat_rotate(q, vec<3,Type>(0.0, 0.0, 1.0));
 
-    return mat33(c1, c2, c3);
+    return mat<3,3,Type>(c1, c2, c3);
 }
 
-inline CUDA_CALLABLE quat quat_from_matrix(const mat33& m)
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> quat_from_matrix(const mat<3,3,Type>& m)
 {
-    const float tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
-    float x, y, z, w, h = 0.0f;
+    const Type tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
+    Type x, y, z, w, h = 0.0f;
 
-    if (tr >= 0.0f) {
-        h = sqrt(tr + 1.0f);
-        w = 0.5f * h;
-        h = 0.5f / h;
+    if (tr >= Type(0)) {
+        h = sqrt(tr + Type(1));
+        w = Type(0.5) * h;
+        h = Type(0.5) / h;
 
         x = (m.data[2][1] - m.data[1][2]) * h;
         y = (m.data[0][2] - m.data[2][0]) * h;
@@ -228,25 +260,25 @@ inline CUDA_CALLABLE quat quat_from_matrix(const mat33& m)
         }
 
         if (max_diag == 0) {
-            h = sqrt((m.data[0][0] - (m.data[1][1] + m.data[2][2])) + 1.0f);
-            x = 0.5f * h;
-            h = 0.5f / h;
+            h = sqrt((m.data[0][0] - (m.data[1][1] + m.data[2][2])) + Type(1));
+            x = Type(0.5) * h;
+            h = Type(0.5) / h;
 
             y = (m.data[0][1] + m.data[1][0]) * h;
             z = (m.data[2][0] + m.data[0][2]) * h;
             w = (m.data[2][1] - m.data[1][2]) * h;
         } else if (max_diag == 1) {
-            h = sqrt((m.data[1][1] - (m.data[2][2] + m.data[0][0])) + 1.0f);
-            y = 0.5f * h;
-            h = 0.5f / h;
+            h = sqrt((m.data[1][1] - (m.data[2][2] + m.data[0][0])) + Type(1));
+            y = Type(0.5) * h;
+            h = Type(0.5) / h;
 
             z = (m.data[1][2] + m.data[2][1]) * h;
             x = (m.data[0][1] + m.data[1][0]) * h;
             w = (m.data[0][2] - m.data[2][0]) * h;
         } if (max_diag == 2) {
-            h = sqrt((m.data[2][2] - (m.data[0][0] + m.data[1][1])) + 1.0f);
-            z = 0.5f * h;
-            h = 0.5f / h;
+            h = sqrt((m.data[2][2] - (m.data[0][0] + m.data[1][1])) + Type(1));
+            z = Type(0.5) * h;
+            h = Type(0.5) / h;
 
             x = (m.data[2][0] + m.data[0][2]) * h;
             y = (m.data[1][2] + m.data[2][1]) * h;
@@ -254,15 +286,16 @@ inline CUDA_CALLABLE quat quat_from_matrix(const mat33& m)
         }
     }
 
-    return normalize(quat(x, y, z, w));
+    return normalize(quaternion<Type>(x, y, z, w));
 }
 
-inline CUDA_CALLABLE float index(const quat& a, int idx)
+template<typename Type>
+inline CUDA_CALLABLE Type index(const quaternion<Type>& a, int idx)
 {
 #if FP_CHECK
     if (idx < 0 || idx > 3)
     {
-        printf("quat index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
+        printf("quaternion index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
@@ -270,12 +303,27 @@ inline CUDA_CALLABLE float index(const quat& a, int idx)
     return (&a.x)[idx];
 }
 
-inline CUDA_CALLABLE void adj_index(const quat& a, int idx, quat& adj_a, int & adj_idx, float & adj_ret)
+template<typename Type>
+CUDA_CALLABLE inline quaternion<Type> lerp(const quaternion<Type>& a, const quaternion<Type>& b, Type t)
+{
+    return a*(Type(1)-t) + b*t;
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_lerp(const quaternion<Type>& a, const quaternion<Type>& b, Type t, quaternion<Type>& adj_a, quaternion<Type>& adj_b, Type& adj_t, const quaternion<Type>& adj_ret)
+{
+    adj_a += adj_ret*(Type(1)-t);
+    adj_b += adj_ret*t;
+    adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_index(const quaternion<Type>& a, int idx, quaternion<Type>& adj_a, int & adj_idx, Type & adj_ret)
 {
 #if FP_CHECK
     if (idx < 0 || idx > 3)
     {
-        printf("quat index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
+        printf("quaternion index %d out of bounds at %s %d", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
@@ -285,48 +333,50 @@ inline CUDA_CALLABLE void adj_index(const quat& a, int idx, quat& adj_a, int & a
 
 
 // backward methods
-inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec3& axis, float angle, vec3& adj_axis, float& adj_angle, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_from_axis_angle(const vec<3,Type>& axis, Type angle, vec<3,Type>& adj_axis, Type& adj_angle, const quaternion<Type>& adj_ret)
 {
-    vec3 v = vec3(adj_ret.x, adj_ret.y, adj_ret.z);
+    vec<3,Type> v = vec<3,Type>(adj_ret.x, adj_ret.y, adj_ret.z);
 
-    float s = sin(angle*0.5f);
-    float c = cos(angle*0.5f);
+    Type s = sin(angle*Type(0.5));
+    Type c = cos(angle*Type(0.5));
 
-    quat dqda = quat(axis.x*c, axis.y*c, axis.z*c, -s)*0.5f;
+    quaternion<Type> dqda = quaternion<Type>(axis[0]*c, axis[1]*c, axis[2]*c, -s)*Type(0.5);
 
     adj_axis += v*s;
     adj_angle += dot(dqda, adj_ret);
 }
 
-inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, float& angle, quat& adj_q, const vec3& adj_axis, const float& adj_angle)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quaternion<Type>& q, vec<3,Type>& axis, Type& angle, quaternion<Type>& adj_q, const vec<3,Type>& adj_axis, const Type& adj_angle)
 {   
-    float l = length(vec3(q.x, q.y, q.z));
+    Type l = length(vec<3,Type>(q.x, q.y, q.z));
 
-    float ax_qx = 0.f;
-    float ax_qy = 0.f;
-    float ax_qz = 0.f;
-    float ay_qx = 0.f;
-    float ay_qy = 0.f;
-    float ay_qz = 0.f;
-    float az_qx = 0.f;
-    float az_qy = 0.f;
-    float az_qz = 0.f;
+    Type ax_qx = 0.f;
+    Type ax_qy = 0.f;
+    Type ax_qz = 0.f;
+    Type ay_qx = 0.f;
+    Type ay_qy = 0.f;
+    Type ay_qz = 0.f;
+    Type az_qx = 0.f;
+    Type az_qy = 0.f;
+    Type az_qz = 0.f;
 
-    float t_qx = 0.f;
-    float t_qy = 0.f;
-    float t_qz = 0.f;
-    float t_qw = 0.f;
+    Type t_qx = 0.f;
+    Type t_qy = 0.f;
+    Type t_qz = 0.f;
+    Type t_qw = 0.f;
 
-    float flip = q.w < 0.f ? -1.0 : 1.0;
+    Type flip = q.w < 0.f ? -1.0 : 1.0;
 
     if (l > 0.f)
     {
-        float l_sq = l*l;
-        float l_inv = 1.f / l;
-        float l_inv_sq = l_inv * l_inv;
-        float l_inv_cu = l_inv_sq * l_inv;
+        Type l_sq = l*l;
+        Type l_inv = 1.f / l;
+        Type l_inv_sq = l_inv * l_inv;
+        Type l_inv_cu = l_inv_sq * l_inv;
         
-        float C = flip * l_inv_cu;
+        Type C = flip * l_inv_cu;
         ax_qx = C * (q.y*q.y + q.z*q.z);
         ax_qy = -C * q.x*q.y;
         ax_qz = -C * q.x*q.z;
@@ -337,7 +387,7 @@ inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, floa
         az_qy = -C * q.z*q.y;
         az_qz = C * (q.x*q.x + q.y*q.y);
 
-        float D = 2.f * flip / (l_sq + q.w*q.w);
+        Type D = 2.f * flip / (l_sq + q.w*q.w);
         t_qx = D * l_inv * q.x * q.w;
         t_qy = D * l_inv * q.y * q.w;
         t_qz = D * l_inv * q.z * q.w;
@@ -345,95 +395,98 @@ inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat& q, vec3& axis, floa
     }
     else
     {
-        if (abs(q.w) > kEps)
+        if (abs(q.w) > Type(kEps))
         {
-            float t_qx = 2.f / (sqrt(3.f) * abs(q.w));
-            float t_qy = 2.f / (sqrt(3.f) * abs(q.w));
-            float t_qz = 2.f / (sqrt(3.f) * abs(q.w));
+            Type t_qx = 2.f / (sqrt(3.f) * abs(q.w));
+            Type t_qy = 2.f / (sqrt(3.f) * abs(q.w));
+            Type t_qz = 2.f / (sqrt(3.f) * abs(q.w));
         }
         // o/w we have a null quaternion which cannot backpropagate 
     }
 
-    adj_q.x += ax_qx * adj_axis.x + ay_qx * adj_axis.y + az_qx * adj_axis.z + t_qx * adj_angle;
-    adj_q.y += ax_qy * adj_axis.x + ay_qy * adj_axis.y + az_qy * adj_axis.z + t_qy * adj_angle;
-    adj_q.z += ax_qz * adj_axis.x + ay_qz * adj_axis.y + az_qz * adj_axis.z + t_qz * adj_angle;
+    adj_q.x += ax_qx * adj_axis[0] + ay_qx * adj_axis[1] + az_qx * adj_axis[2] + t_qx * adj_angle;
+    adj_q.y += ax_qy * adj_axis[0] + ay_qy * adj_axis[1] + az_qy * adj_axis[2] + t_qy * adj_angle;
+    adj_q.z += ax_qz * adj_axis[0] + ay_qz * adj_axis[1] + az_qz * adj_axis[2] + t_qz * adj_angle;
     adj_q.w += t_qw * adj_angle;
 }
 
-inline CUDA_CALLABLE void adj_quat_rpy(float roll, float pitch, float yaw, float& adj_roll, float& adj_pitch, float& adj_yaw, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_rpy(Type roll, Type pitch, Type yaw, Type& adj_roll, Type& adj_pitch, Type& adj_yaw, const quaternion<Type>& adj_ret)
 {
-    float cy = cos(yaw * 0.5);
-    float sy = sin(yaw * 0.5);
-    float cr = cos(roll * 0.5);
-    float sr = sin(roll * 0.5);
-    float cp = cos(pitch * 0.5);
-    float sp = sin(pitch * 0.5);
+    Type cy = cos(yaw * 0.5);
+    Type sy = sin(yaw * 0.5);
+    Type cr = cos(roll * 0.5);
+    Type sr = sin(roll * 0.5);
+    Type cp = cos(pitch * 0.5);
+    Type sp = sin(pitch * 0.5);
 
-    float w = (cy * cr * cp + sy * sr * sp);
-    float x = (cy * sr * cp - sy * cr * sp);
-    float y = (cy * cr * sp + sy * sr * cp);
-    float z = (sy * cr * cp - cy * sr * sp);
+    Type w = (cy * cr * cp + sy * sr * sp);
+    Type x = (cy * sr * cp - sy * cr * sp);
+    Type y = (cy * cr * sp + sy * sr * cp);
+    Type z = (sy * cr * cp - cy * sr * sp);
 
-    float dx_dr = 0.5 * w;
-    float dx_dp = -0.5 * cy * sr * sp - 0.5 * sy * cr * cp;
-    float dx_dy = -0.5 * y;
+    Type dx_dr = 0.5 * w;
+    Type dx_dp = -0.5 * cy * sr * sp - 0.5 * sy * cr * cp;
+    Type dx_dy = -0.5 * y;
 
-    float dy_dr = 0.5 * z;
-    float dy_dp = 0.5 * cy * cr * cp - 0.5 * sy * sr * sp;
-    float dy_dy = 0.5 * x;
+    Type dy_dr = 0.5 * z;
+    Type dy_dp = 0.5 * cy * cr * cp - 0.5 * sy * sr * sp;
+    Type dy_dy = 0.5 * x;
 
-    float dz_dr = -0.5 * y;
-    float dz_dp = -0.5 * sy * cr * sp - 0.5 * cy * sr * cp;
-    float dz_dy = 0.5 * w;
+    Type dz_dr = -0.5 * y;
+    Type dz_dp = -0.5 * sy * cr * sp - 0.5 * cy * sr * cp;
+    Type dz_dy = 0.5 * w;
 
-    float dw_dr = -0.5 * x;
-    float dw_dp = -0.5 * cy * cr * sp + 0.5 * sy * sr * cp;
-    float dw_dy = -0.5 * z;
+    Type dw_dr = -0.5 * x;
+    Type dw_dp = -0.5 * cy * cr * sp + 0.5 * sy * sr * cp;
+    Type dw_dy = -0.5 * z;
 
-    adj_roll += dot(quat(dx_dr, dy_dr, dz_dr, dw_dr), adj_ret);
-    adj_pitch += dot(quat(dx_dp, dy_dp, dz_dp, dw_dp), adj_ret);
-    adj_yaw += dot(quat(dx_dy, dy_dy, dz_dy, dw_dy), adj_ret);
+    adj_roll += dot(quaternion<Type>(dx_dr, dy_dr, dz_dr, dw_dr), adj_ret);
+    adj_pitch += dot(quaternion<Type>(dx_dp, dy_dp, dz_dp, dw_dp), adj_ret);
+    adj_yaw += dot(quaternion<Type>(dx_dy, dy_dy, dz_dy, dw_dy), adj_ret);
 }
 
-inline CUDA_CALLABLE void adj_quat_identity(const quat& adj_ret)
-{
-    // nop
-}
 
-inline CUDA_CALLABLE void adj_dot(const quat& a, const quat& b, quat& adj_a, quat& adj_b, const float adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_dot(const quaternion<Type>& a, const quaternion<Type>& b, quaternion<Type>& adj_a, quaternion<Type>& adj_b, const Type adj_ret)
 {
     adj_a += b*adj_ret;
     adj_b += a*adj_ret;    
 }
 
-inline CUDA_CALLABLE void tensordot(const quat& a, const quat& b, quat& adj_a, quat& adj_b, const float adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void tensordot(const quaternion<Type>& a, const quaternion<Type>& b, quaternion<Type>& adj_a, quaternion<Type>& adj_b, const Type adj_ret)
 {
     adj_dot(a, b, adj_a, adj_b, adj_ret);
 }
 
-inline CUDA_CALLABLE void adj_length(const quat& a, quat& adj_a, const float adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_length(const quaternion<Type>& a, quaternion<Type>& adj_a, const Type adj_ret)
 {
     adj_a += normalize(a)*adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_length_sq(const quat& a, quat& adj_a, const float adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_length_sq(const quaternion<Type>& a, quaternion<Type>& adj_a, const Type adj_ret)
 {
-    adj_a += 2.0f*a*adj_ret;
+    adj_a += Type(2)*a*adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_normalize(const quat& q, quat& adj_q, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_normalize(const quaternion<Type>& q, quaternion<Type>& adj_q, const quaternion<Type>& adj_ret)
 {
-    float l = length(q);
+    Type l = length(q);
 
-    if (l > kEps)
+    if (l > Type(kEps))
     {
-        float l_inv = 1.0f/l;
+        Type l_inv = Type(1)/l;
 
         adj_q += adj_ret*l_inv - q*(l_inv*l_inv*l_inv*dot(q, adj_ret));
     }
 }
 
-inline CUDA_CALLABLE void adj_quat_inverse(const quat& q, quat& adj_q, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_inverse(const quaternion<Type>& q, quaternion<Type>& adj_q, const quaternion<Type>& adj_ret)
 {
     adj_q.x -= adj_ret.x;
     adj_q.y -= adj_ret.y;
@@ -441,199 +494,208 @@ inline CUDA_CALLABLE void adj_quat_inverse(const quat& q, quat& adj_q, const qua
     adj_q.w += adj_ret.w;
 }
 
-inline CUDA_CALLABLE void adj_add(const quat& a, const quat& b, quat& adj_a, quat& adj_b, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_add(const quaternion<Type>& a, const quaternion<Type>& b, quaternion<Type>& adj_a, quaternion<Type>& adj_b, const quaternion<Type>& adj_ret)
 {
     adj_a += adj_ret;
     adj_b += adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_sub(const quat& a, const quat& b, quat& adj_a, quat& adj_b, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_sub(const quaternion<Type>& a, const quaternion<Type>& b, quaternion<Type>& adj_a, quaternion<Type>& adj_b, const quaternion<Type>& adj_ret)
 {
     adj_a += adj_ret;
     adj_b -= adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_mul(const quat& a, const quat& b, quat& adj_a, quat& adj_b, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_mul(const quaternion<Type>& a, const quaternion<Type>& b, quaternion<Type>& adj_a, quaternion<Type>& adj_b, const quaternion<Type>& adj_ret)
 {
     // shorthand
-    const quat& r = adj_ret;
+    const quaternion<Type>& r = adj_ret;
 
-    adj_a += quat(b.w*r.x - b.x*r.w + b.y*r.z - b.z*r.y,
+    adj_a += quaternion<Type>(b.w*r.x - b.x*r.w + b.y*r.z - b.z*r.y,
                   b.w*r.y - b.y*r.w - b.x*r.z + b.z*r.x,
                   b.w*r.z + b.x*r.y - b.y*r.x - b.z*r.w,
                   b.w*r.w + b.x*r.x + b.y*r.y + b.z*r.z);
 
-    adj_b += quat(a.w*r.x - a.x*r.w - a.y*r.z + a.z*r.y,
+    adj_b += quaternion<Type>(a.w*r.x - a.x*r.w - a.y*r.z + a.z*r.y,
                   a.w*r.y - a.y*r.w + a.x*r.z - a.z*r.x,
                   a.w*r.z - a.x*r.y + a.y*r.x - a.z*r.w,
                   a.w*r.w + a.x*r.x + a.y*r.y + a.z*r.z);
 
 }
 
-inline CUDA_CALLABLE void adj_mul(const quat& a, float s, quat& adj_a, float& adj_s, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_mul(const quaternion<Type>& a, Type s, quaternion<Type>& adj_a, Type& adj_s, const quaternion<Type>& adj_ret)
 {
     adj_a += adj_ret*s;
     adj_s += dot(a, adj_ret);
 }
 
-inline CUDA_CALLABLE void adj_mul(float s, const quat& a, float& adj_s, quat& adj_a, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_mul(Type s, const quaternion<Type>& a, Type& adj_s, quaternion<Type>& adj_a, const quaternion<Type>& adj_ret)
 {
     adj_mul(a, s, adj_a, adj_s, adj_ret);
 }
 
-inline CUDA_CALLABLE void adj_quat_rotate(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_rotate(const quaternion<Type>& q, const vec<3,Type>& p, quaternion<Type>& adj_q, vec<3,Type>& adj_p, const vec<3,Type>& adj_ret)
 {
-    const vec3& r = adj_ret;
+    const vec<3,Type>& r = adj_ret;
 
     {
-        float t2 = p.z*q.z*2.0f;
-        float t3 = p.y*q.w*2.0f;
-        float t4 = p.x*q.w*2.0f;
-        float t5 = p.x*q.x*2.0f;
-        float t6 = p.y*q.y*2.0f;
-        float t7 = p.z*q.y*2.0f;
-        float t8 = p.x*q.z*2.0f;
-        float t9 = p.x*q.y*2.0f;
-        float t10 = p.y*q.x*2.0f;
-        adj_q.x += r.z*(t3+t8)+r.x*(t2+t6+p.x*q.x*4.0f)+r.y*(t9-p.z*q.w*2.0f);
-        adj_q.y += r.y*(t2+t5+p.y*q.y*4.0f)+r.x*(t10+p.z*q.w*2.0f)-r.z*(t4-p.y*q.z*2.0f);
-        adj_q.z += r.y*(t4+t7)+r.z*(t5+t6+p.z*q.z*4.0f)-r.x*(t3-p.z*q.x*2.0f);
-        adj_q.w += r.x*(t7+p.x*q.w*4.0f-p.y*q.z*2.0f)+r.y*(t8+p.y*q.w*4.0f-p.z*q.x*2.0f)+r.z*(-t9+t10+p.z*q.w*4.0f);
+        Type t2 = p[2]*q.z*Type(2);
+        Type t3 = p[1]*q.w*Type(2);
+        Type t4 = p[0]*q.w*Type(2);
+        Type t5 = p[0]*q.x*Type(2);
+        Type t6 = p[1]*q.y*Type(2);
+        Type t7 = p[2]*q.y*Type(2);
+        Type t8 = p[0]*q.z*Type(2);
+        Type t9 = p[0]*q.y*Type(2);
+        Type t10 = p[1]*q.x*Type(2);
+        adj_q.x += r[2]*(t3+t8)+r[0]*(t2+t6+p[0]*q.x*Type(4))+r[1]*(t9-p[2]*q.w*Type(2));
+        adj_q.y += r[1]*(t2+t5+p[1]*q.y*Type(4))+r[0]*(t10+p[2]*q.w*Type(2))-r[2]*(t4-p[1]*q.z*Type(2));
+        adj_q.z += r[1]*(t4+t7)+r[2]*(t5+t6+p[2]*q.z*Type(4))-r[0]*(t3-p[2]*q.x*Type(2));
+        adj_q.w += r[0]*(t7+p[0]*q.w*Type(4)-p[1]*q.z*Type(2))+r[1]*(t8+p[1]*q.w*Type(4)-p[2]*q.x*Type(2))+r[2]*(-t9+t10+p[2]*q.w*Type(4));
     }
 
     {
-        float t2 = q.w*q.w;
-        float t3 = t2*2.0f;
-        float t4 = q.w*q.z*2.0f;
-        float t5 = q.x*q.y*2.0f;
-        float t6 = q.w*q.y*2.0f;
-        float t7 = q.w*q.x*2.0f;
-        float t8 = q.y*q.z*2.0f;
-        adj_p.x += r.y*(t4+t5)+r.x*(t3+(q.x*q.x)*2.0f-1.0f)-r.z*(t6-q.x*q.z*2.0f);
-        adj_p.y += r.z*(t7+t8)-r.x*(t4-t5)+r.y*(t3+(q.y*q.y)*2.0f-1.0f);
-        adj_p.z += -r.y*(t7-t8)+r.z*(t3+(q.z*q.z)*2.0f-1.0f)+r.x*(t6+q.x*q.z*2.0f);
+        Type t2 = q.w*q.w;
+        Type t3 = t2*Type(2);
+        Type t4 = q.w*q.z*Type(2);
+        Type t5 = q.x*q.y*Type(2);
+        Type t6 = q.w*q.y*Type(2);
+        Type t7 = q.w*q.x*Type(2);
+        Type t8 = q.y*q.z*Type(2);
+        adj_p[0] += r[1]*(t4+t5)+r[0]*(t3+(q.x*q.x)*Type(2)-Type(1))-r[2]*(t6-q.x*q.z*Type(2));
+        adj_p[1] += r[2]*(t7+t8)-r[0]*(t4-t5)+r[1]*(t3+(q.y*q.y)*Type(2)-Type(1));
+        adj_p[2] += -r[1]*(t7-t8)+r[2]*(t3+(q.z*q.z)*Type(2)-Type(1))+r[0]*(t6+q.x*q.z*Type(2));
     }
 }
 
-inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat& adj_q, vec3& adj_p, const vec3& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_rotate_inv(const quaternion<Type>& q, const vec<3,Type>& p, quaternion<Type>& adj_q, vec<3,Type>& adj_p, const vec<3,Type>& adj_ret)
 {
-    const vec3& r = adj_ret;
+    const vec<3,Type>& r = adj_ret;
 
     {
-        float t2 = p.z*q.w*2.0f;
-        float t3 = p.z*q.z*2.0f;
-        float t4 = p.y*q.w*2.0f;
-        float t5 = p.x*q.w*2.0f;
-        float t6 = p.x*q.x*2.0f;
-        float t7 = p.y*q.y*2.0f;
-        float t8 = p.y*q.z*2.0f;
-        float t9 = p.z*q.x*2.0f;
-        float t10 = p.x*q.y*2.0f;
-        adj_q.x += r.y*(t2+t10)+r.x*(t3+t7+p.x*q.x*4.0f)-r.z*(t4-p.x*q.z*2.0f);
-        adj_q.y += r.z*(t5+t8)+r.y*(t3+t6+p.y*q.y*4.0f)-r.x*(t2-p.y*q.x*2.0f);
-        adj_q.z += r.x*(t4+t9)+r.z*(t6+t7+p.z*q.z*4.0f)-r.y*(t5-p.z*q.y*2.0f);
-        adj_q.w += r.x*(t8+p.x*q.w*4.0f-p.z*q.y*2.0f)+r.y*(t9+p.y*q.w*4.0f-p.x*q.z*2.0f)+r.z*(t10-p.y*q.x*2.0f+p.z*q.w*4.0f);
+        Type t2 = p[2]*q.w*Type(2);
+        Type t3 = p[2]*q.z*Type(2);
+        Type t4 = p[1]*q.w*Type(2);
+        Type t5 = p[0]*q.w*Type(2);
+        Type t6 = p[0]*q.x*Type(2);
+        Type t7 = p[1]*q.y*Type(2);
+        Type t8 = p[1]*q.z*Type(2);
+        Type t9 = p[2]*q.x*Type(2);
+        Type t10 = p[0]*q.y*Type(2);
+        adj_q.x += r[1]*(t2+t10)+r[0]*(t3+t7+p[0]*q.x*Type(4))-r[2]*(t4-p[0]*q.z*Type(2));
+        adj_q.y += r[2]*(t5+t8)+r[1]*(t3+t6+p[1]*q.y*Type(4))-r[0]*(t2-p[1]*q.x*Type(2));
+        adj_q.z += r[0]*(t4+t9)+r[2]*(t6+t7+p[2]*q.z*Type(4))-r[1]*(t5-p[2]*q.y*Type(2));
+        adj_q.w += r[0]*(t8+p[0]*q.w*Type(4)-p[2]*q.y*Type(2))+r[1]*(t9+p[1]*q.w*Type(4)-p[0]*q.z*Type(2))+r[2]*(t10-p[1]*q.x*Type(2)+p[2]*q.w*Type(4));
     }
 
     {
-        float t2 = q.w*q.w;
-        float t3 = t2*2.0f;
-        float t4 = q.w*q.z*2.0f;
-        float t5 = q.w*q.y*2.0f;
-        float t6 = q.x*q.z*2.0f;
-        float t7 = q.w*q.x*2.0f;
-        adj_p.x += r.z*(t5+t6)+r.x*(t3+(q.x*q.x)*2.0f-1.0f)-r.y*(t4-q.x*q.y*2.0f);
-        adj_p.y += r.y*(t3+(q.y*q.y)*2.0f-1.0f)+r.x*(t4+q.x*q.y*2.0f)-r.z*(t7-q.y*q.z*2.0f);
-        adj_p.z += -r.x*(t5-t6)+r.z*(t3+(q.z*q.z)*2.0f-1.0f)+r.y*(t7+q.y*q.z*2.0f);
+        Type t2 = q.w*q.w;
+        Type t3 = t2*Type(2);
+        Type t4 = q.w*q.z*Type(2);
+        Type t5 = q.w*q.y*Type(2);
+        Type t6 = q.x*q.z*Type(2);
+        Type t7 = q.w*q.x*Type(2);
+        adj_p[0] += r[2]*(t5+t6)+r[0]*(t3+(q.x*q.x)*Type(2)-Type(1))-r[1]*(t4-q.x*q.y*Type(2));
+        adj_p[1] += r[1]*(t3+(q.y*q.y)*Type(2)-Type(1))+r[0]*(t4+q.x*q.y*Type(2))-r[2]*(t7-q.y*q.z*Type(2));
+        adj_p[2] += -r[0]*(t5-t6)+r[2]*(t3+(q.z*q.z)*Type(2)-Type(1))+r[1]*(t7+q.y*q.z*Type(2));
     }
 }
 
-inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t, quat& adj_q0, quat& adj_q1, float& adj_t, const quat& adj_ret)
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_slerp(const quaternion<Type>& q0, const quaternion<Type>& q1, Type t, quaternion<Type>& adj_q0, quaternion<Type>& adj_q1, Type& adj_t, const quaternion<Type>& adj_ret)
 {
-    vec3 axis;
-    float angle;
-    quat q0_inv = quat_inverse(q0);
-    quat q_inc = mul(q0_inv, q1);
+    vec<3,Type> axis;
+    Type angle;
+    quaternion<Type> q0_inv = quat_inverse(q0);
+    quaternion<Type> q_inc = mul(q0_inv, q1);
     quat_to_axis_angle(q_inc, axis, angle);
     quat qt = quat_from_axis_angle(axis, angle * t);
     angle = angle * 0.5;
     
     // adj_t
-    adj_t += dot(mul(quat_slerp(q0, q1, t), quat(angle*axis.x, angle*axis.y, angle*axis.z, 0.f)), adj_ret);
+    adj_t += dot(mul(quat_slerp(q0, q1, t), quaternion<Type>(angle*axis[0], angle*axis[1], angle*axis[2], 0.f)), adj_ret);
 
     // adj_q0
-    quat q_inc_x_q0;
-    quat q_inc_y_q0;
-    quat q_inc_z_q0;
-    quat q_inc_w_q0;
+    quaternion<Type> q_inc_x_q0;
+    quaternion<Type> q_inc_y_q0;
+    quaternion<Type> q_inc_z_q0;
+    quaternion<Type> q_inc_w_q0;
     
-    quat q_inc_x_q1;
-    quat q_inc_y_q1;
-    quat q_inc_z_q1;
-    quat q_inc_w_q1;
+    quaternion<Type> q_inc_x_q1;
+    quaternion<Type> q_inc_y_q1;
+    quaternion<Type> q_inc_z_q1;
+    quaternion<Type> q_inc_w_q1;
 
-    adj_mul(q0_inv, q1, q_inc_x_q0, q_inc_x_q1, quat(1.f, 0.f, 0.f, 0.f));
-    adj_mul(q0_inv, q1, q_inc_y_q0, q_inc_y_q1, quat(0.f, 1.f, 0.f, 0.f));
-    adj_mul(q0_inv, q1, q_inc_z_q0, q_inc_z_q1, quat(0.f, 0.f, 1.f, 0.f));
-    adj_mul(q0_inv, q1, q_inc_w_q0, q_inc_w_q1, quat(0.f, 0.f, 0.f, 1.f));
+    adj_mul(q0_inv, q1, q_inc_x_q0, q_inc_x_q1, quaternion<Type>(1.f, 0.f, 0.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_y_q0, q_inc_y_q1, quaternion<Type>(0.f, 1.f, 0.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_z_q0, q_inc_z_q1, quaternion<Type>(0.f, 0.f, 1.f, 0.f));
+    adj_mul(q0_inv, q1, q_inc_w_q0, q_inc_w_q1, quaternion<Type>(0.f, 0.f, 0.f, 1.f));
 
-    quat q_inc_q0_x = quat(-q_inc_x_q0.x, -q_inc_y_q0.x, -q_inc_z_q0.x, -q_inc_w_q0.x);
-    quat q_inc_q0_y = quat(-q_inc_x_q0.y, -q_inc_y_q0.y, -q_inc_z_q0.y, -q_inc_w_q0.y);
-    quat q_inc_q0_z = quat(-q_inc_x_q0.z, -q_inc_y_q0.z, -q_inc_z_q0.z, -q_inc_w_q0.z);
-    quat q_inc_q0_w = quat(q_inc_x_q0.w, q_inc_y_q0.w, q_inc_z_q0.w, q_inc_w_q0.w);
+    quaternion<Type> q_inc_q0_x = quaternion<Type>(-q_inc_x_q0.x, -q_inc_y_q0.x, -q_inc_z_q0.x, -q_inc_w_q0.x);
+    quaternion<Type> q_inc_q0_y = quaternion<Type>(-q_inc_x_q0.y, -q_inc_y_q0.y, -q_inc_z_q0.y, -q_inc_w_q0.y);
+    quaternion<Type> q_inc_q0_z = quaternion<Type>(-q_inc_x_q0.z, -q_inc_y_q0.z, -q_inc_z_q0.z, -q_inc_w_q0.z);
+    quaternion<Type> q_inc_q0_w = quaternion<Type>(q_inc_x_q0.w, q_inc_y_q0.w, q_inc_z_q0.w, q_inc_w_q0.w);
 
-    quat a_x_q_inc;
-    quat a_y_q_inc;
-    quat a_z_q_inc;
-    quat t_q_inc;
+    quaternion<Type> a_x_q_inc;
+    quaternion<Type> a_y_q_inc;
+    quaternion<Type> a_z_q_inc;
+    quaternion<Type> t_q_inc;
 
-    adj_quat_to_axis_angle(q_inc, axis, angle, a_x_q_inc, vec3(1.f, 0.f, 0.f), 0.f);
-    adj_quat_to_axis_angle(q_inc, axis, angle, a_y_q_inc, vec3(0.f, 1.f, 0.f), 0.f);
-    adj_quat_to_axis_angle(q_inc, axis, angle, a_z_q_inc, vec3(0.f, 0.f, 1.f), 0.f);
-    adj_quat_to_axis_angle(q_inc, axis, angle, t_q_inc, vec3(0.f, 0.f, 0.f), 1.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_x_q_inc, vec<3,Type>(1.f, 0.f, 0.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_y_q_inc, vec<3,Type>(0.f, 1.f, 0.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, a_z_q_inc, vec<3,Type>(0.f, 0.f, 1.f), 0.f);
+    adj_quat_to_axis_angle(q_inc, axis, angle, t_q_inc, vec<3,Type>(0.f, 0.f, 0.f), 1.f);
 
-    float a_x_q0_x = dot(a_x_q_inc, q_inc_q0_x);
-    float a_x_q0_y = dot(a_x_q_inc, q_inc_q0_y);
-    float a_x_q0_z = dot(a_x_q_inc, q_inc_q0_z);
-    float a_x_q0_w = dot(a_x_q_inc, q_inc_q0_w);
-    float a_y_q0_x = dot(a_y_q_inc, q_inc_q0_x);
-    float a_y_q0_y = dot(a_y_q_inc, q_inc_q0_y);
-    float a_y_q0_z = dot(a_y_q_inc, q_inc_q0_z);
-    float a_y_q0_w = dot(a_y_q_inc, q_inc_q0_w);
-    float a_z_q0_x = dot(a_z_q_inc, q_inc_q0_x);
-    float a_z_q0_y = dot(a_z_q_inc, q_inc_q0_y);
-    float a_z_q0_z = dot(a_z_q_inc, q_inc_q0_z);
-    float a_z_q0_w = dot(a_z_q_inc, q_inc_q0_w);
-    float t_q0_x = dot(t_q_inc, q_inc_q0_x);
-    float t_q0_y = dot(t_q_inc, q_inc_q0_y);
-    float t_q0_z = dot(t_q_inc, q_inc_q0_z);
-    float t_q0_w = dot(t_q_inc, q_inc_q0_w);
+    Type a_x_q0_x = dot(a_x_q_inc, q_inc_q0_x);
+    Type a_x_q0_y = dot(a_x_q_inc, q_inc_q0_y);
+    Type a_x_q0_z = dot(a_x_q_inc, q_inc_q0_z);
+    Type a_x_q0_w = dot(a_x_q_inc, q_inc_q0_w);
+    Type a_y_q0_x = dot(a_y_q_inc, q_inc_q0_x);
+    Type a_y_q0_y = dot(a_y_q_inc, q_inc_q0_y);
+    Type a_y_q0_z = dot(a_y_q_inc, q_inc_q0_z);
+    Type a_y_q0_w = dot(a_y_q_inc, q_inc_q0_w);
+    Type a_z_q0_x = dot(a_z_q_inc, q_inc_q0_x);
+    Type a_z_q0_y = dot(a_z_q_inc, q_inc_q0_y);
+    Type a_z_q0_z = dot(a_z_q_inc, q_inc_q0_z);
+    Type a_z_q0_w = dot(a_z_q_inc, q_inc_q0_w);
+    Type t_q0_x = dot(t_q_inc, q_inc_q0_x);
+    Type t_q0_y = dot(t_q_inc, q_inc_q0_y);
+    Type t_q0_z = dot(t_q_inc, q_inc_q0_z);
+    Type t_q0_w = dot(t_q_inc, q_inc_q0_w);
 
-    float cs = cos(angle*t);
-    float sn = sin(angle*t);
+    Type cs = cos(angle*t);
+    Type sn = sin(angle*t);
 
-    quat q_s_q0_x = mul(quat(1.f, 0.f, 0.f, 0.f), qt) + mul(q0, quat(
-        0.5 * t * axis.x * t_q0_x * cs + a_x_q0_x * sn,
-        0.5 * t * axis.y * t_q0_x * cs + a_y_q0_x * sn,
-        0.5 * t * axis.z * t_q0_x * cs + a_z_q0_x * sn,
+    quaternion<Type> q_s_q0_x = mul(quaternion<Type>(1.f, 0.f, 0.f, 0.f), qt) + mul(q0, quaternion<Type>(
+        0.5 * t * axis[0] * t_q0_x * cs + a_x_q0_x * sn,
+        0.5 * t * axis[1] * t_q0_x * cs + a_y_q0_x * sn,
+        0.5 * t * axis[2] * t_q0_x * cs + a_z_q0_x * sn,
         -0.5 * t * t_q0_x * sn));
 
-    quat q_s_q0_y = mul(quat(0.f, 1.f, 0.f, 0.f), qt) + mul(q0, quat(
-        0.5 * t * axis.x * t_q0_y * cs + a_x_q0_y * sn,
-        0.5 * t * axis.y * t_q0_y * cs + a_y_q0_y * sn,
-        0.5 * t * axis.z * t_q0_y * cs + a_z_q0_y * sn,
+    quaternion<Type> q_s_q0_y = mul(quaternion<Type>(0.f, 1.f, 0.f, 0.f), qt) + mul(q0, quaternion<Type>(
+        0.5 * t * axis[0] * t_q0_y * cs + a_x_q0_y * sn,
+        0.5 * t * axis[1] * t_q0_y * cs + a_y_q0_y * sn,
+        0.5 * t * axis[2] * t_q0_y * cs + a_z_q0_y * sn,
         -0.5 * t * t_q0_y * sn));
 
-    quat q_s_q0_z = mul(quat(0.f, 0.f, 1.f, 0.f), qt) + mul(q0, quat(
-        0.5 * t * axis.x * t_q0_z * cs + a_x_q0_z * sn,
-        0.5 * t * axis.y * t_q0_z * cs + a_y_q0_z * sn,
-        0.5 * t * axis.z * t_q0_z * cs + a_z_q0_z * sn,
+    quaternion<Type> q_s_q0_z = mul(quaternion<Type>(0.f, 0.f, 1.f, 0.f), qt) + mul(q0, quaternion<Type>(
+        0.5 * t * axis[0] * t_q0_z * cs + a_x_q0_z * sn,
+        0.5 * t * axis[1] * t_q0_z * cs + a_y_q0_z * sn,
+        0.5 * t * axis[2] * t_q0_z * cs + a_z_q0_z * sn,
         -0.5 * t * t_q0_z * sn));
 
-    quat q_s_q0_w = mul(quat(0.f, 0.f, 0.f, 1.f), qt) + mul(q0, quat(
-        0.5 * t * axis.x * t_q0_w * cs + a_x_q0_w * sn,
-        0.5 * t * axis.y * t_q0_w * cs + a_y_q0_w * sn,
-        0.5 * t * axis.z * t_q0_w * cs + a_z_q0_w * sn,
+    quaternion<Type> q_s_q0_w = mul(quaternion<Type>(0.f, 0.f, 0.f, 1.f), qt) + mul(q0, quaternion<Type>(
+        0.5 * t * axis[0] * t_q0_w * cs + a_x_q0_w * sn,
+        0.5 * t * axis[1] * t_q0_w * cs + a_y_q0_w * sn,
+        0.5 * t * axis[2] * t_q0_w * cs + a_z_q0_w * sn,
         -0.5 * t * t_q0_w * sn));
 
     adj_q0.x += dot(q_s_q0_x, adj_ret);
@@ -642,50 +704,50 @@ inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t
     adj_q0.w += dot(q_s_q0_w, adj_ret);
 
     // adj_q1
-    quat q_inc_q1_x = quat(q_inc_x_q1.x, q_inc_y_q1.x, q_inc_z_q1.x, q_inc_w_q1.x);
-    quat q_inc_q1_y = quat(q_inc_x_q1.y, q_inc_y_q1.y, q_inc_z_q1.y, q_inc_w_q1.y);
-    quat q_inc_q1_z = quat(q_inc_x_q1.z, q_inc_y_q1.z, q_inc_z_q1.z, q_inc_w_q1.z);
-    quat q_inc_q1_w = quat(q_inc_x_q1.w, q_inc_y_q1.w, q_inc_z_q1.w, q_inc_w_q1.w);
+    quaternion<Type> q_inc_q1_x = quaternion<Type>(q_inc_x_q1.x, q_inc_y_q1.x, q_inc_z_q1.x, q_inc_w_q1.x);
+    quaternion<Type> q_inc_q1_y = quaternion<Type>(q_inc_x_q1.y, q_inc_y_q1.y, q_inc_z_q1.y, q_inc_w_q1.y);
+    quaternion<Type> q_inc_q1_z = quaternion<Type>(q_inc_x_q1.z, q_inc_y_q1.z, q_inc_z_q1.z, q_inc_w_q1.z);
+    quaternion<Type> q_inc_q1_w = quaternion<Type>(q_inc_x_q1.w, q_inc_y_q1.w, q_inc_z_q1.w, q_inc_w_q1.w);
 
-    float a_x_q1_x = dot(a_x_q_inc, q_inc_q1_x);
-    float a_x_q1_y = dot(a_x_q_inc, q_inc_q1_y);
-    float a_x_q1_z = dot(a_x_q_inc, q_inc_q1_z);
-    float a_x_q1_w = dot(a_x_q_inc, q_inc_q1_w);
-    float a_y_q1_x = dot(a_y_q_inc, q_inc_q1_x);
-    float a_y_q1_y = dot(a_y_q_inc, q_inc_q1_y);
-    float a_y_q1_z = dot(a_y_q_inc, q_inc_q1_z);
-    float a_y_q1_w = dot(a_y_q_inc, q_inc_q1_w);
-    float a_z_q1_x = dot(a_z_q_inc, q_inc_q1_x);
-    float a_z_q1_y = dot(a_z_q_inc, q_inc_q1_y);
-    float a_z_q1_z = dot(a_z_q_inc, q_inc_q1_z);
-    float a_z_q1_w = dot(a_z_q_inc, q_inc_q1_w);
-    float t_q1_x = dot(t_q_inc, q_inc_q1_x);
-    float t_q1_y = dot(t_q_inc, q_inc_q1_y);
-    float t_q1_z = dot(t_q_inc, q_inc_q1_z);
-    float t_q1_w = dot(t_q_inc, q_inc_q1_w);
+    Type a_x_q1_x = dot(a_x_q_inc, q_inc_q1_x);
+    Type a_x_q1_y = dot(a_x_q_inc, q_inc_q1_y);
+    Type a_x_q1_z = dot(a_x_q_inc, q_inc_q1_z);
+    Type a_x_q1_w = dot(a_x_q_inc, q_inc_q1_w);
+    Type a_y_q1_x = dot(a_y_q_inc, q_inc_q1_x);
+    Type a_y_q1_y = dot(a_y_q_inc, q_inc_q1_y);
+    Type a_y_q1_z = dot(a_y_q_inc, q_inc_q1_z);
+    Type a_y_q1_w = dot(a_y_q_inc, q_inc_q1_w);
+    Type a_z_q1_x = dot(a_z_q_inc, q_inc_q1_x);
+    Type a_z_q1_y = dot(a_z_q_inc, q_inc_q1_y);
+    Type a_z_q1_z = dot(a_z_q_inc, q_inc_q1_z);
+    Type a_z_q1_w = dot(a_z_q_inc, q_inc_q1_w);
+    Type t_q1_x = dot(t_q_inc, q_inc_q1_x);
+    Type t_q1_y = dot(t_q_inc, q_inc_q1_y);
+    Type t_q1_z = dot(t_q_inc, q_inc_q1_z);
+    Type t_q1_w = dot(t_q_inc, q_inc_q1_w);
 
-    quat q_s_q1_x = mul(q0, quat(
-        0.5 * t * axis.x * t_q1_x * cs + a_x_q1_x * sn,
-        0.5 * t * axis.y * t_q1_x * cs + a_y_q1_x * sn,
-        0.5 * t * axis.z * t_q1_x * cs + a_z_q1_x * sn,
+    quaternion<Type> q_s_q1_x = mul(q0, quaternion<Type>(
+        0.5 * t * axis[0] * t_q1_x * cs + a_x_q1_x * sn,
+        0.5 * t * axis[1] * t_q1_x * cs + a_y_q1_x * sn,
+        0.5 * t * axis[2] * t_q1_x * cs + a_z_q1_x * sn,
         -0.5 * t * t_q1_x * sn));
 
-    quat q_s_q1_y = mul(q0, quat(
-        0.5 * t * axis.x * t_q1_y * cs + a_x_q1_y * sn,
-        0.5 * t * axis.y * t_q1_y * cs + a_y_q1_y * sn,
-        0.5 * t * axis.z * t_q1_y * cs + a_z_q1_y * sn,
+    quaternion<Type> q_s_q1_y = mul(q0, quaternion<Type>(
+        0.5 * t * axis[0] * t_q1_y * cs + a_x_q1_y * sn,
+        0.5 * t * axis[1] * t_q1_y * cs + a_y_q1_y * sn,
+        0.5 * t * axis[2] * t_q1_y * cs + a_z_q1_y * sn,
         -0.5 * t * t_q1_y * sn));
 
-    quat q_s_q1_z = mul(q0, quat(
-        0.5 * t * axis.x * t_q1_z * cs + a_x_q1_z * sn,
-        0.5 * t * axis.y * t_q1_z * cs + a_y_q1_z * sn,
-        0.5 * t * axis.z * t_q1_z * cs + a_z_q1_z * sn,
+    quaternion<Type> q_s_q1_z = mul(q0, quaternion<Type>(
+        0.5 * t * axis[0] * t_q1_z * cs + a_x_q1_z * sn,
+        0.5 * t * axis[1] * t_q1_z * cs + a_y_q1_z * sn,
+        0.5 * t * axis[2] * t_q1_z * cs + a_z_q1_z * sn,
         -0.5 * t * t_q1_z * sn));
 
-    quat q_s_q1_w = mul(q0, quat(
-        0.5 * t * axis.x * t_q1_w * cs + a_x_q1_w * sn,
-        0.5 * t * axis.y * t_q1_w * cs + a_y_q1_w * sn,
-        0.5 * t * axis.z * t_q1_w * cs + a_z_q1_w * sn,
+    quaternion<Type> q_s_q1_w = mul(q0, quaternion<Type>(
+        0.5 * t * axis[0] * t_q1_w * cs + a_x_q1_w * sn,
+        0.5 * t * axis[1] * t_q1_w * cs + a_y_q1_w * sn,
+        0.5 * t * axis[2] * t_q1_w * cs + a_z_q1_w * sn,
         -0.5 * t * t_q1_w * sn));
 
     adj_q1.x += dot(q_s_q1_x, adj_ret);
@@ -695,46 +757,48 @@ inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t
 
 }
 
-inline CUDA_CALLABLE void adj_quat_to_matrix(const quat& q, quat& adj_q, mat33& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_to_matrix(const quaternion<Type>& q, quaternion<Type>& adj_q, mat<3,3,Type>& adj_ret)
 {
     // we don't care about adjoint w.r.t. constant identity matrix
-    vec3 t;
+    vec<3,Type> t;
 
-    adj_quat_rotate(q, vec3(1.0, 0.0, 0.0), adj_q, t, adj_ret.get_col(0));
-    adj_quat_rotate(q, vec3(0.0, 1.0, 0.0), adj_q, t, adj_ret.get_col(1));
-    adj_quat_rotate(q, vec3(0.0, 0.0, 1.0), adj_q, t, adj_ret.get_col(2));
+    adj_quat_rotate(q, vec<3,Type>(1.0, 0.0, 0.0), adj_q, t, adj_ret.get_col(0));
+    adj_quat_rotate(q, vec<3,Type>(0.0, 1.0, 0.0), adj_q, t, adj_ret.get_col(1));
+    adj_quat_rotate(q, vec<3,Type>(0.0, 0.0, 1.0), adj_q, t, adj_ret.get_col(2));
 }
 
-inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, const quat& adj_ret)
+template<typename Type>
+inline CUDA_CALLABLE void adj_quat_from_matrix(const mat<3,3,Type>& m, mat<3,3,Type>& adj_m, const quaternion<Type>& adj_ret)
 {
-    const float tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
-    float x, y, z, w, h = 0.0f;
+    const Type tr = m.data[0][0] + m.data[1][1] + m.data[2][2];
+    Type x, y, z, w, h = 0.0f;
 
-    float dx_dm00 = 0.f, dx_dm01 = 0.f, dx_dm02 = 0.f;
-    float dx_dm10 = 0.f, dx_dm11 = 0.f, dx_dm12 = 0.f;
-    float dx_dm20 = 0.f, dx_dm21 = 0.f, dx_dm22 = 0.f;
-    float dy_dm00 = 0.f, dy_dm01 = 0.f, dy_dm02 = 0.f;
-    float dy_dm10 = 0.f, dy_dm11 = 0.f, dy_dm12 = 0.f;
-    float dy_dm20 = 0.f, dy_dm21 = 0.f, dy_dm22 = 0.f;
-    float dz_dm00 = 0.f, dz_dm01 = 0.f, dz_dm02 = 0.f;
-    float dz_dm10 = 0.f, dz_dm11 = 0.f, dz_dm12 = 0.f;
-    float dz_dm20 = 0.f, dz_dm21 = 0.f, dz_dm22 = 0.f;
-    float dw_dm00 = 0.f, dw_dm01 = 0.f, dw_dm02 = 0.f;
-    float dw_dm10 = 0.f, dw_dm11 = 0.f, dw_dm12 = 0.f;
-    float dw_dm20 = 0.f, dw_dm21 = 0.f, dw_dm22 = 0.f;
+    Type dx_dm00 = 0.f, dx_dm01 = 0.f, dx_dm02 = 0.f;
+    Type dx_dm10 = 0.f, dx_dm11 = 0.f, dx_dm12 = 0.f;
+    Type dx_dm20 = 0.f, dx_dm21 = 0.f, dx_dm22 = 0.f;
+    Type dy_dm00 = 0.f, dy_dm01 = 0.f, dy_dm02 = 0.f;
+    Type dy_dm10 = 0.f, dy_dm11 = 0.f, dy_dm12 = 0.f;
+    Type dy_dm20 = 0.f, dy_dm21 = 0.f, dy_dm22 = 0.f;
+    Type dz_dm00 = 0.f, dz_dm01 = 0.f, dz_dm02 = 0.f;
+    Type dz_dm10 = 0.f, dz_dm11 = 0.f, dz_dm12 = 0.f;
+    Type dz_dm20 = 0.f, dz_dm21 = 0.f, dz_dm22 = 0.f;
+    Type dw_dm00 = 0.f, dw_dm01 = 0.f, dw_dm02 = 0.f;
+    Type dw_dm10 = 0.f, dw_dm11 = 0.f, dw_dm12 = 0.f;
+    Type dw_dm20 = 0.f, dw_dm21 = 0.f, dw_dm22 = 0.f;
 
     if (tr >= 0.0f) {
-        h = sqrt(tr + 1.0f);
+        h = sqrt(tr + Type(1));
         w = 0.5 * h;
-        h = 0.5f / h;
+        h = Type(0.5) / h;
 
         x = (m.data[2][1] - m.data[1][2]) * h;
         y = (m.data[0][2] - m.data[2][0]) * h;
         z = (m.data[1][0] - m.data[0][1]) * h;
 
-        dw_dm00 = 0.5f * h;
-        dw_dm11 = 0.5f * h;
-        dw_dm22 = 0.5f * h;
+        dw_dm00 = Type(0.5) * h;
+        dw_dm11 = Type(0.5) * h;
+        dw_dm22 = Type(0.5) * h;
         dx_dm21 = h;
         dx_dm12 = -h;
         dx_dm00 = 2.f * h*h*h * (m.data[1][2] - m.data[2][1]);
@@ -760,17 +824,17 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
         }
         
         if (max_diag == 0) {
-            h = sqrt((m.data[0][0] - (m.data[1][1] + m.data[2][2])) + 1.0f);
-            x = 0.5f * h;
-            h = 0.5f / h;
+            h = sqrt((m.data[0][0] - (m.data[1][1] + m.data[2][2])) + Type(1));
+            x = Type(0.5) * h;
+            h = Type(0.5) / h;
 
             y = (m.data[0][1] + m.data[1][0]) * h;
             z = (m.data[2][0] + m.data[0][2]) * h;
             w = (m.data[2][1] - m.data[1][2]) * h;
 
-            dx_dm00 = 0.5f * h;
-            dx_dm11 = -0.5f * h;
-            dx_dm22 = -0.5f * h;
+            dx_dm00 = Type(0.5) * h;
+            dx_dm11 = -Type(0.5) * h;
+            dx_dm22 = -Type(0.5) * h;
             dy_dm01 = h;
             dy_dm10 = h;
             dy_dm00 = -2.f * h*h*h * (m.data[0][1] + m.data[1][0]);
@@ -787,17 +851,17 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
             dw_dm11 = 2.f * h*h*h * (m.data[2][1] - m.data[1][2]);
             dw_dm22 = 2.f * h*h*h * (m.data[2][1] - m.data[1][2]);
         } else if (max_diag == 1) {
-            h = sqrt((m.data[1][1] - (m.data[2][2] + m.data[0][0])) + 1.0f);
-            y = 0.5f * h;
-            h = 0.5f / h;
+            h = sqrt((m.data[1][1] - (m.data[2][2] + m.data[0][0])) + Type(1));
+            y = Type(0.5) * h;
+            h = Type(0.5) / h;
 
             z = (m.data[1][2] + m.data[2][1]) * h;
             x = (m.data[0][1] + m.data[1][0]) * h;
             w = (m.data[0][2] - m.data[2][0]) * h;
 
-            dy_dm00 = -0.5f * h;
-            dy_dm11 = 0.5f * h;
-            dy_dm22 = -0.5f * h;
+            dy_dm00 = -Type(0.5) * h;
+            dy_dm11 = Type(0.5) * h;
+            dy_dm22 = -Type(0.5) * h;
             dz_dm12 = h;
             dz_dm21 = h;
             dz_dm00 = 2.f * h*h*h * (m.data[1][2] + m.data[2][1]);
@@ -814,17 +878,17 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
             dw_dm11 = 2.f * h*h*h * (m.data[2][0] - m.data[0][2]);
             dw_dm22 = 2.f * h*h*h * (m.data[0][2] - m.data[2][0]);
         } if (max_diag == 2) {
-            h = sqrt((m.data[2][2] - (m.data[0][0] + m.data[1][1])) + 1.0f);
-            z = 0.5f * h;
-            h = 0.5f / h;
+            h = sqrt((m.data[2][2] - (m.data[0][0] + m.data[1][1])) + Type(1));
+            z = Type(0.5) * h;
+            h = Type(0.5) / h;
 
             x = (m.data[2][0] + m.data[0][2]) * h;
             y = (m.data[1][2] + m.data[2][1]) * h;
             w = (m.data[1][0] - m.data[0][1]) * h;
 
-            dz_dm00 = -0.5f * h;
-            dz_dm11 = -0.5f * h;
-            dz_dm22 = 0.5f * h;
+            dz_dm00 = -Type(0.5) * h;
+            dz_dm11 = -Type(0.5) * h;
+            dz_dm22 = Type(0.5) * h;
             dx_dm20 = h;
             dx_dm02 = h;
             dx_dm00 = 2.f * h*h*h * (m.data[2][0] + m.data[0][2]);
@@ -843,18 +907,18 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
         }
     }
 
-    quat dq_dm00 = quat(dx_dm00, dy_dm00, dz_dm00, dw_dm00);
-    quat dq_dm01 = quat(dx_dm01, dy_dm01, dz_dm01, dw_dm01);
-    quat dq_dm02 = quat(dx_dm02, dy_dm02, dz_dm02, dw_dm02);
-    quat dq_dm10 = quat(dx_dm10, dy_dm10, dz_dm10, dw_dm10);
-    quat dq_dm11 = quat(dx_dm11, dy_dm11, dz_dm11, dw_dm11);
-    quat dq_dm12 = quat(dx_dm12, dy_dm12, dz_dm12, dw_dm12);
-    quat dq_dm20 = quat(dx_dm20, dy_dm20, dz_dm20, dw_dm20);
-    quat dq_dm21 = quat(dx_dm21, dy_dm21, dz_dm21, dw_dm21);
-    quat dq_dm22 = quat(dx_dm22, dy_dm22, dz_dm22, dw_dm22);
+    quaternion<Type> dq_dm00 = quaternion<Type>(dx_dm00, dy_dm00, dz_dm00, dw_dm00);
+    quaternion<Type> dq_dm01 = quaternion<Type>(dx_dm01, dy_dm01, dz_dm01, dw_dm01);
+    quaternion<Type> dq_dm02 = quaternion<Type>(dx_dm02, dy_dm02, dz_dm02, dw_dm02);
+    quaternion<Type> dq_dm10 = quaternion<Type>(dx_dm10, dy_dm10, dz_dm10, dw_dm10);
+    quaternion<Type> dq_dm11 = quaternion<Type>(dx_dm11, dy_dm11, dz_dm11, dw_dm11);
+    quaternion<Type> dq_dm12 = quaternion<Type>(dx_dm12, dy_dm12, dz_dm12, dw_dm12);
+    quaternion<Type> dq_dm20 = quaternion<Type>(dx_dm20, dy_dm20, dz_dm20, dw_dm20);
+    quaternion<Type> dq_dm21 = quaternion<Type>(dx_dm21, dy_dm21, dz_dm21, dw_dm21);
+    quaternion<Type> dq_dm22 = quaternion<Type>(dx_dm22, dy_dm22, dz_dm22, dw_dm22);
 
-    quat adj_q;
-    adj_normalize(quat(x, y, z, w), adj_q, adj_ret);
+    quaternion<Type> adj_q;
+    adj_normalize(quaternion<Type>(x, y, z, w), adj_q, adj_ret);
 
     adj_m.data[0][0] += dot(dq_dm00, adj_q);
     adj_m.data[0][1] += dot(dq_dm01, adj_q);
@@ -866,5 +930,108 @@ inline CUDA_CALLABLE void adj_quat_from_matrix(const mat33& m, mat33& adj_m, con
     adj_m.data[2][1] += dot(dq_dm21, adj_q);
     adj_m.data[2][2] += dot(dq_dm22, adj_q);
 }
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mat(const vec<3,Type>& pos, const quaternion<Type>& rot, const vec<3,Type>& scale,
+                                    vec<3,Type>& adj_pos, quaternion<Type>& adj_rot, vec<3,Type>& adj_scale, const mat<4,4,Type>& adj_ret)
+{
+    mat<3,3,Type> R = quat_to_matrix(rot);
+    mat<3,3,Type> adj_R(0);
+
+    adj_pos[0] += adj_ret.data[0][3];
+    adj_pos[1] += adj_ret.data[1][3];
+    adj_pos[2] += adj_ret.data[2][3];
+
+    adj_mul(R.data[0][0], scale[0], adj_R.data[0][0], adj_scale[0], adj_ret.data[0][0]);
+    adj_mul(R.data[1][0], scale[0], adj_R.data[1][0], adj_scale[0], adj_ret.data[1][0]);
+    adj_mul(R.data[2][0], scale[0], adj_R.data[2][0], adj_scale[0], adj_ret.data[2][0]);
+
+    adj_mul(R.data[0][1], scale[1], adj_R.data[0][1], adj_scale[1], adj_ret.data[0][1]);
+    adj_mul(R.data[1][1], scale[1], adj_R.data[1][1], adj_scale[1], adj_ret.data[1][1]);
+    adj_mul(R.data[2][1], scale[1], adj_R.data[2][1], adj_scale[1], adj_ret.data[2][1]);
+
+    adj_mul(R.data[0][2], scale[2], adj_R.data[0][2], adj_scale[2], adj_ret.data[0][2]);
+    adj_mul(R.data[1][2], scale[2], adj_R.data[1][2], adj_scale[2], adj_ret.data[1][2]);
+    adj_mul(R.data[2][2], scale[2], adj_R.data[2][2], adj_scale[2], adj_ret.data[2][2]);
+
+    adj_quat_to_matrix(rot, adj_rot, adj_R);
+}
+
+template<unsigned Rows,unsigned Cols,typename Type>
+inline CUDA_CALLABLE mat<Rows,Cols,Type>::mat(const vec<3,Type>& pos, const quaternion<Type>& rot, const vec<3,Type>& scale)
+{
+    mat<3,3,Type> R = quat_to_matrix(rot);
+
+    data[0][0] = R.data[0][0]*scale[0];
+    data[1][0] = R.data[1][0]*scale[0];
+    data[2][0] = R.data[2][0]*scale[0];
+    data[3][0] = 0.0f;
+
+    data[0][1] = R.data[0][1]*scale[1];
+    data[1][1] = R.data[1][1]*scale[1];
+    data[2][1] = R.data[2][1]*scale[1];
+    data[3][1] = 0.0f;
+
+    data[0][2] = R.data[0][2]*scale[2];
+    data[1][2] = R.data[1][2]*scale[2];
+    data[2][2] = R.data[2][2]*scale[2];
+    data[3][2] = 0.0f;
+
+    data[0][3] = pos[0];
+    data[1][3] = pos[1];
+    data[2][3] = pos[2];
+    data[3][3] = Type(1);       
+}
+
+using quath = quaternion<half>;
+using quat = quaternion<float>;
+using quatd = quaternion<double>;
+
+inline CUDA_CALLABLE quath quath_identity()
+{
+    return quath(0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+inline CUDA_CALLABLE void adj_quath_identity(const quath& adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE quat quat_identity()
+{
+    return quat(0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+inline CUDA_CALLABLE void adj_quat_identity(const quat& adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE quatd quatd_identity()
+{
+    return quatd(0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+inline CUDA_CALLABLE void adj_quatd_identity(const quatd& adj_ret)
+{
+    // nop
+}
+
+inline CUDA_CALLABLE void adj_mat44(const vec3& pos, const quat& rot, const vec3& scale,
+                                    vec3& adj_pos, quat& adj_rot, vec3& adj_scale, const mat44& adj_ret)
+{
+    adj_mat44(pos, rot, scale, adj_pos, adj_rot, adj_scale, adj_ret);
+}
+
+inline CUDA_CALLABLE void adj_quat(float x, float y, float z, float w, float& adj_x, float& adj_y, float& adj_z, float& adj_w, quat adj_ret)
+{
+    adj_quaternion(x, y, z, w, adj_x, adj_y, adj_z, adj_w, adj_ret);
+}
+
+inline CUDA_CALLABLE void adj_quat(const vec3& v, float w, vec3& adj_v, float& adj_w, quat adj_ret)
+{
+    adj_quaternion(v, w, adj_v, adj_w, adj_ret);
+}
+
 
 } // namespace wp

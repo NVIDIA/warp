@@ -36,16 +36,16 @@ struct bounds3
 		upper += r;
 	}
 
-	CUDA_CALLABLE inline bool empty() const { return lower.x >= upper.x || lower.y >= upper.y || lower.z >= upper.z; }
+	CUDA_CALLABLE inline bool empty() const { return lower[0] >= upper[0] || lower[1] >= upper[1] || lower[2] >= upper[2]; }
 
 	CUDA_CALLABLE inline bool overlaps(const vec3& p) const
 	{
-		if (p.x < lower.x ||
-			p.y < lower.y ||
-			p.z < lower.z ||
-			p.x > upper.x ||
-			p.y > upper.y ||
-			p.z > upper.z)
+		if (p[0] < lower[0] ||
+			p[1] < lower[1] ||
+			p[2] < lower[2] ||
+			p[0] > upper[0] ||
+			p[1] > upper[1] ||
+			p[2] > upper[2])
 		{
 			return false;
 		}
@@ -57,12 +57,12 @@ struct bounds3
 
 	CUDA_CALLABLE inline bool overlaps(const bounds3& b) const
 	{
-		if (lower.x > b.upper.x ||
-			lower.y > b.upper.y ||
-			lower.z > b.upper.z ||
-			upper.x < b.lower.x ||
-			upper.y < b.lower.y ||
-			upper.z < b.lower.z)
+		if (lower[0] > b.upper[0] ||
+			lower[1] > b.upper[1] ||
+			lower[2] > b.upper[2] ||
+			upper[0] < b.lower[0] ||
+			upper[1] < b.lower[1] ||
+			upper[2] < b.lower[2])
 		{
 			return false;
 		}
@@ -81,7 +81,7 @@ struct bounds3
 	CUDA_CALLABLE inline float area() const
 	{
 		vec3 e = upper-lower;
-		return 2.0f*(e.x*e.y + e.x*e.z + e.y*e.z);
+		return 2.0f*(e[0]*e[1] + e[0]*e[2] + e[1]*e[2]);
 	}
 
 	vec3 lower;
@@ -152,9 +152,9 @@ BVH bvh_clone(void* context, const BVH& bvh_host);
 CUDA_CALLABLE inline BVHPackedNodeHalf make_node(const vec3& bound, int child, bool leaf)
 {
     BVHPackedNodeHalf n;
-    n.x = bound.x;
-    n.y = bound.y;
-    n.z = bound.z;
+    n.x = bound[0];
+    n.y = bound[1];
+    n.z = bound[2];
     n.i = (unsigned int)child;
     n.b = (unsigned int)(leaf?1:0);
 
@@ -164,9 +164,9 @@ CUDA_CALLABLE inline BVHPackedNodeHalf make_node(const vec3& bound, int child, b
 // variation of make_node through volatile pointers used in BuildHierarchy
 CUDA_CALLABLE inline void make_node(volatile BVHPackedNodeHalf* n, const vec3& bound, int child, bool leaf)
 {
-    n->x = bound.x;
-    n->y = bound.y;
-    n->z = bound.z;
+    n->x = bound[0];
+    n->y = bound[1];
+    n->z = bound[2];
     n->i = (unsigned int)child;
     n->b = (unsigned int)(leaf?1:0);
 }
