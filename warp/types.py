@@ -8,7 +8,6 @@
 import ctypes 
 import hashlib
 import inspect
-import itertools
 import struct
 import zlib
 import numpy as np
@@ -46,7 +45,7 @@ class constant:
         elif isinstance(x, tuple(scalar_types)):
             p = ctypes.pointer(x._type_(x.value))
             constant._hash.update(p.contents)
-        elif isinstance(x, tuple(vector_types)):
+        elif isinstance(x, ctypes.Array):
             constant._hash.update(bytes(x))
         else:
             raise RuntimeError(f"Invalid constant type: {type(x)}")
@@ -65,7 +64,10 @@ def vector(length, type):
 
         _length_ = length
         _shape_ = (length, )
-        _type_ = type
+        _type_ = type._type_
+        
+        # warp scalar type:
+        _wp_scalar_type_ = type
         
         def __add__(self, y):
             return warp.add(self, y)
@@ -115,7 +117,10 @@ def matrix(shape, type):
 
         _length_ = shape[0]*shape[1]
         _shape_ = shape
-        _type_ = type        
+        _type_ = type._type_
+        
+        # warp scalar type:
+        _wp_scalar_type_ = type
         
         def __add__(self, y):
             return warp.add(self, y)
@@ -147,7 +152,7 @@ def matrix(shape, type):
         def _row(self, r):
             row_start = r*self._shape_[1]
             row_end = row_start + self._shape_[1]
-            row_type = vector(self._shape_[1], self._type_)
+            row_type = vector(self._shape_[1], self._wp_scalar_type_)
             row_val = row_type(*super().__getitem__(slice(row_start,row_end)))
 
             return row_val
@@ -173,50 +178,6 @@ def matrix(shape, type):
 
     return matrix_t
 
-
-
-class vec2(vector(length=2, type=ctypes.c_float)):
-    pass
-    
-class vec3(vector(length=3, type=ctypes.c_float)):
-    pass
-
-class vec4(vector(length=4, type=ctypes.c_float)):
-    pass
-
-class quat(vector(length=4, type=ctypes.c_float)):
-    pass
-    
-class mat22(matrix(shape=(2,2), type=ctypes.c_float)):
-    pass
-    
-class mat33(matrix(shape=(3,3), type=ctypes.c_float)):
-    pass
-
-class mat44(matrix(shape=(4,4), type=ctypes.c_float)):
-    pass
-
-class spatial_vector(vector(length=6, type=ctypes.c_float)):
-    pass
-
-class spatial_matrix(matrix(shape=(6,6), type=ctypes.c_float)):
-    pass
-
-class transform(vector(length=7, type=ctypes.c_float)):
-    
-    def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
-        super().__init__()
-
-        self[0:3] = vec3(*p)
-        self[3:7] = quat(*q)
-
-    @property 
-    def p(self):
-        return self[0:3]
-
-    @property 
-    def q(self):
-        return self[3:7]
 
 class void:
 
@@ -311,6 +272,51 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
+class transform(vector(length=7, type=float32)):
+    
+    def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
+        super().__init__()
+
+        self[0:3] = vec3(*p)
+        self[3:7] = quat(*q)
+
+    @property 
+    def p(self):
+        return self[0:3]
+
+    @property 
+    def q(self):
+        return self[3:7]
+
+class vec2(vector(length=2, type=float32)):
+    pass
+
+print( isinstance(vec2,ctypes.Array) )
+
+class vec3(vector(length=3, type=float32)):
+    pass
+
+class vec4(vector(length=4, type=float32)):
+    pass
+
+class quat(vector(length=4, type=float32)):
+    pass
+    
+class mat22(matrix(shape=(2,2), type=float32)):
+    pass
+    
+class mat33(matrix(shape=(3,3), type=float32)):
+    pass
+
+class mat44(matrix(shape=(4,4), type=float32)):
+    pass
+
+class spatial_vector(vector(length=6, type=float32)):
+    pass
+
+class spatial_matrix(matrix(shape=(6,6), type=float32)):
+    pass
+
 
 compute_types = [int32, float32]
 scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64]
@@ -324,7 +330,6 @@ np_dtype_to_warp_type = {
     np.dtype(np.uint16): uint16,
     np.dtype(np.int32): int32,
     np.dtype(np.int64): int64,
-    np.dtype(np.uint8): uint8,
     np.dtype(np.uint32): uint32,
     np.dtype(np.uint64): uint64,
     np.dtype(np.byte): int8,
@@ -431,7 +436,9 @@ def type_length(dtype):
         return dtype._length_
 
 def type_size_in_bytes(dtype):
-    if (dtype == float or dtype == int or dtype == ctypes.c_float or dtype == ctypes.c_int32):
+    if dtype.__module__ == "ctypes":
+        return ctypes.sizeof(dtype)
+    elif (dtype == float or dtype == int ):
         return 4
     elif hasattr(dtype, "_type_"):
         return getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
@@ -471,8 +478,7 @@ def type_typestr(dtype):
     elif dtype == uint64:
         return "<u8"
     elif issubclass(dtype, ctypes.Array):
-        # vector types all currently float type
-        return "<f4"
+        return type_typestr(dtype._wp_scalar_type_)
     else:
         raise Exception("Unknown ctype")
 
@@ -723,7 +729,7 @@ class array (Generic[T]):
             self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
 
         # store flat shape (including type shape)
-        if dtype in vector_types:
+        if dtype != Any and issubclass(dtype,ctypes.Array):
             # vector type, flatten the dimensions into one tuple
             arr_shape = (*self.shape, *self.dtype._shape_)
             dtype_strides =  strides_from_shape(self.dtype._shape_, self.dtype._type_) 
