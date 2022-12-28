@@ -69,6 +69,20 @@ def vector(length, type):
         # warp scalar type:
         _wp_scalar_type_ = type
         
+        def __init__(self, *args):
+            if self._wp_scalar_type_ == float16:
+                
+                # special case for float16 type: in this case, data is stored
+                # as uint16 but it's actually half precision floating point
+                # data. This means we need to convert each of the arguments
+                # to uint16s containing half float bits before storing them in
+                # the array:
+
+                from warp.context import runtime
+                super().__init__(*[runtime.core.float_to_half_bits(x) for x in args])
+            else:
+                super().__init__(*args)
+        
         def __add__(self, y):
             return warp.add(self, y)
 
@@ -121,7 +135,21 @@ def matrix(shape, type):
         
         # warp scalar type:
         _wp_scalar_type_ = type
-        
+
+        def __init__(self, *args):
+            if self._wp_scalar_type_ == float16:
+                
+                # special case for float16 type: in this case, data is stored
+                # as uint16 but it's actually half precision floating point
+                # data. This means we need to convert each of the arguments
+                # to uint16s containing half float bits before storing them in
+                # the array:
+
+                from warp.context import runtime
+                super().__init__(*[runtime.core.float_to_half_bits(x) for x in args])
+            else:
+                super().__init__(*args)
+
         def __add__(self, y):
             return warp.add(self, y)
 
@@ -320,6 +348,7 @@ class spatial_matrix(matrix(shape=(6,6), type=float32)):
 
 compute_types = [int32, float32]
 scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64]
+
 vector_types = [vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix]
 
 
