@@ -25,6 +25,12 @@ extern "C"
 
 int cuda_init();
 
+
+uint16_t float_to_half_bits(float x)
+{
+    return wp::half(x).u;
+}
+
 int init()
 {
 #if !WP_DISABLE_CUDA
@@ -65,6 +71,15 @@ void memset_host(void* dest, int value, size_t n)
         const int num_words = n/4;
         for (int i=0; i < num_words; ++i)
             ((int*)dest)[i] = value;
+    }
+}
+
+void memtile_host(void* dest, void *src, size_t srcsize, size_t n)
+{
+    for( size_t i=0; i < n; ++i )
+    {
+        memcpy(dest,src,srcsize);
+        dest = (char*)dest + srcsize;
     }
 }
 
@@ -156,6 +171,10 @@ void memcpy_peer(void* context, void* dest, void* src, size_t n)
 }
 
 void memset_device(void* context, void* dest, int value, size_t n)
+{
+}
+
+void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t n)
 {
 }
 

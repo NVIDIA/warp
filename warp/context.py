@@ -1072,6 +1072,7 @@ class Device:
 
             # TODO: add more device-specific dispatch functions
             self.memset = runtime.core.memset_host
+            self.memtile = runtime.core.memtile_host
 
         elif ordinal >= 0 and ordinal < runtime.core.cuda_device_get_count():
 
@@ -1088,6 +1089,7 @@ class Device:
 
             # TODO: add more device-specific dispatch functions
             self.memset = lambda ptr, value, size: runtime.core.memset_device(self.context, ptr, value, size)
+            self.memtile = lambda ptr, src, srcsize, reps: runtime.core.memtile_device(self.context, ptr, src, srcsize, reps)
 
         else:
             raise RuntimeError(f"Invalid device ordinal ({ordinal})'")
@@ -1238,6 +1240,9 @@ class Runtime:
         self.core.alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         self.core.alloc_device.restype = ctypes.c_void_p
 
+        self.core.float_to_half_bits.argtypes = [ctypes.c_float]
+        self.core.float_to_half_bits.restype = ctypes.c_uint16
+
         self.core.free_host.argtypes = [ctypes.c_void_p]
         self.core.free_host.restype = None
         self.core.free_pinned.argtypes = [ctypes.c_void_p]
@@ -1249,6 +1254,11 @@ class Runtime:
         self.core.memset_host.restype = None
         self.core.memset_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
         self.core.memset_device.restype = None
+
+        self.core.memtile_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
+        self.core.memtile_host.restype = None
+        self.core.memtile_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
+        self.core.memtile_device.restype = None
 
         self.core.memcpy_h2h.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_h2h.restype = None

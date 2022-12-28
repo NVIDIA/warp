@@ -857,15 +857,70 @@ class array (Generic[T]):
 
         if self.device is not None and self.ptr is not None:
 
-            # convert value to array type
-            src_type = type_ctype(self.dtype)
-            src_value = src_type(value)
+            if isinstance(value, ctypes.Array):
 
-            # cast to a 4-byte integer for memset
-            dest_ptr = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int))
-            dest_value = dest_ptr.contents
+                # in this case we're filling the array with a vector or
+                # something similar, eg arr.fill_(wp.vec3(1.0,2.0,3.0)).
 
-            self.device.memset(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
+                # check input type:
+                valueTypeOk = False
+                if issubclass( self.dtype, ctypes.Array ):
+                    valueTypeOk = (self.dtype._length_ == value._length_) and (self.dtype._type_ == value._type_)
+                if not valueTypeOk:
+                    raise RuntimeError(f"wp.array has Array type elements (eg vec, mat etc). Value type must match element type in wp.array.fill_() method")
+
+                src = ctypes.cast(value, ctypes.POINTER(ctypes.c_void_p))
+
+                srcsize = value._length_*ctypes.sizeof(value._type_)
+                dst = ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int))
+                self.device.memtile(dst, src, srcsize, self.size)
+
+            else:
+
+                # In this case we're just filling the array with a scalar,
+                # eg arr.fill_(1.0). If the elements are scalars, we need to
+                # set them all to "value", otherwise we need to set all the
+                # components of all the vector elements to "value":
+                
+                # work out array element type:
+                elem_type = self.dtype._type_ if issubclass( self.dtype, ctypes.Array ) else type_ctype(self.dtype)
+                elem_size = ctypes.sizeof(elem_type)
+
+                # convert value to array type
+                # we need a special case for float16 because it's annoying...
+                if types_equal(self.dtype, float16) or ( hasattr(self.dtype, "_wp_scalar_type_") and types_equal(self.dtype._wp_scalar_type_, float16) ):
+                    # special case for float16:
+                    # If you just do elem_type(value), it'll just convert "value"
+                    # to uint16 then interpret the bits as float16, which will
+                    # mess the data up. Instead, we use float_to_half_bits() to
+                    # convert "value" to a float16 and return its bits in a uint16:
+
+                    from warp.context import runtime
+                    src_value = elem_type(runtime.core.float_to_half_bits( ctypes.c_float(value) ))
+                else:
+                    src_value = elem_type(value)
+
+                # use memset for these special cases because it's quicker (probably...):
+                total_bytes = self.size*type_size_in_bytes(self.dtype)
+                if elem_size in [1,2,4] and (total_bytes % 4 == 0):
+                    # interpret as a 4 byte integer:
+                    dest_value = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int)).contents
+                    if elem_size == 1:
+                        # need to repeat the bits, otherwise we'll get an array interleaved with zeros:
+                        dest_value.value = dest_value.value & 0x000000ff
+                        dest_value.value = dest_value.value + (dest_value.value << 8) + (dest_value.value << 16) + (dest_value.value << 24)
+                    elif elem_size == 2:
+                        # need to repeat the bits, otherwise we'll get an array interleaved with zeros:
+                        dest_value.value = dest_value.value & 0x0000ffff
+                        dest_value.value = dest_value.value + (dest_value.value << 16)
+
+                    self.device.memset(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(total_bytes))
+                else:
+
+                    num_elems = self.size * self.dtype._length_ if issubclass( self.dtype, ctypes.Array ) else self.size
+                    dst = ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int))
+                    self.device.memtile(dst, ctypes.pointer(src_value), elem_size, num_elems)
+
 
     # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):

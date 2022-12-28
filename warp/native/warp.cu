@@ -279,6 +279,34 @@ void memset_device(void* context, void* dest, int value, size_t n)
     }
 }
 
+__global__ void memtile_kernel(char* dest, char* src, size_t srcsize, size_t n)
+{
+    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    
+    if (tid < n)
+    {
+        char *d = dest + srcsize * tid;
+        char *s = src;
+        for( size_t i=0; i < srcsize; ++i,++d,++s )
+        {
+            *d = *s;
+        }
+    }
+}
+
+void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t n)
+{
+    ContextGuard guard(context);
+
+    void* src_device;
+    check_cuda(cudaMalloc(&src_device, srcsize));
+    check_cuda(cudaMemcpyAsync(src_device, src, srcsize, cudaMemcpyHostToDevice, get_current_stream()));
+
+    wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, ((char *)dest,(char *)src_device,srcsize,n));
+
+    check_cuda(cudaFree(src_device));
+}
+
 
 void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len)
 {
