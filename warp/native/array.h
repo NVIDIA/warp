@@ -400,7 +400,7 @@ template <typename T>
 CUDA_CALLABLE inline void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
 
 
-// for integral types (and doubles) we do not accumulate gradients
+// for integral types we do not accumulate gradients
 CUDA_CALLABLE inline void adj_atomic_add(int8* buf, int8 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(uint8* buf, uint8 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(int16* buf, int16 value) { }
@@ -409,7 +409,6 @@ CUDA_CALLABLE inline void adj_atomic_add(int32* buf, int32 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(uint32* buf, uint32 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(int64* buf, int64 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(uint64* buf, uint64 value) { }
-CUDA_CALLABLE inline void adj_atomic_add(float64* buf, float64 value) { }
 
 // only generate gradients for T types
 template<typename T> inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, const array_t<T>& adj_buf, int& adj_i, const T& adj_output) { if (adj_buf.data) { adj_atomic_add(&index(adj_buf, i), adj_output); } }
