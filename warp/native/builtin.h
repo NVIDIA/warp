@@ -1263,6 +1263,22 @@ inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj
     // nop
 }
 
+template <typename T>
+inline CUDA_CALLABLE void expect_neq(const T& actual, const T& expected)
+{
+    if (actual == expected)
+    {
+        printf("Error, expect_neq() failed:\n");
+        printf("\t Expected: "); print(expected); 
+        printf("\t Actual: "); print(actual);
+    }
+}
+
+template <typename T>
+inline CUDA_CALLABLE void adj_expect_neq(const T& a, const T& b, T& adj_a, T& adj_b)
+{
+    // nop
+}
 
 template <typename T>
 inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const float& tolerance)
