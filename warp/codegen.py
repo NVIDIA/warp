@@ -148,6 +148,14 @@ class Struct:
                 StructInstance.__init__(inst, self)
         return NewStructInstance()
 
+def computeTypestr(generictype,typeparams):
+    def param2str(p):
+        if isinstance(p,int):
+            return str(p)
+        return p.__name__
+
+    return f"{generictype}<{','.join(map(param2str,typeparams))}>"
+            
 class Var:
     def __init__(self, label, type, requires_grad=False, constant=None):
 
@@ -167,9 +175,15 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            return f"array_t<{str(self.type.dtype.__name__)}>"
-        if (isinstance(self.type, Struct)):
+            if hasattr(self.type.dtype,"_wp_generic_type_str_"):
+                typestr = computeTypestr( self.type.dtype._wp_generic_type_str_, self.type.dtype._wp_type_params_ )
+            else:
+                typestr = str(self.type.dtype.__name__)
+            return f"array_t<{typestr}>"
+        elif (isinstance(self.type, Struct)):
             return make_full_qualified_name(self.type.cls)
+        elif hasattr(self.type,"_wp_generic_type_str_"):
+            return computeTypestr( self.type._wp_generic_type_str_, self.type._wp_type_params_ )
         else:
             return str(self.type.__name__)
 
@@ -420,7 +434,7 @@ class Adjoint:
                         continue
 
                     # otherwise check arg type matches input variable type
-                    if not types_equal(a, inputs[i].type):
+                    if not types_equal(a, inputs[i].type, match_generic=True):
                         match = False
                         break
 
@@ -1261,7 +1275,7 @@ class Adjoint:
                 # check type matches if symbol already defined
                 if (name in adj.symbols):
                 
-                    if (rhs.type != adj.symbols[name].type):
+                    if not types_equal(rhs.type, adj.symbols[name].type):
                         raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
 
                 # handle simple assignment case (a = b), where we generate a value copy rather than reference

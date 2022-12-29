@@ -20,6 +20,8 @@ from typing import List
 
 import warp
 
+Scalar = TypeVar('Scalar')
+
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels
     
@@ -62,10 +64,11 @@ def vector(length, type):
         
     class vector_t(ctypes.Array):
 
-        _length_ = length
-        _shape_ = (length, )
-        _type_ = type._type_
-        
+        # ctypes.Array data for length, shape and c type:
+        _length_ = 0 if length is Any else length
+        _shape_ = (_length_, )
+        _type_ = ctypes.c_float if type is Scalar else type._type_
+
         # warp scalar type:
         _wp_scalar_type_ = type
         
@@ -122,6 +125,14 @@ def vector(length, type):
 
     return vector_t
 
+def vec(length=Any, type=Scalar):
+    ret = vector(length=length, type=type)
+    
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [length, type]
+    ret._wp_generic_type_str_ = "vec"
+
+    return ret
 
 def matrix(shape, type):
         
@@ -129,10 +140,10 @@ def matrix(shape, type):
 
     class matrix_t(ctypes.Array):
 
-        _length_ = shape[0]*shape[1]
-        _shape_ = shape
-        _type_ = type._type_
-        
+        _length_ = 0 if shape[0] == Any or shape[1] == Any else shape[0]*shape[1]
+        _shape_ = (0,0) if _length_ == 0 else shape
+        _type_ = ctypes.c_float if type is Scalar else type._type_
+
         # warp scalar type:
         _wp_scalar_type_ = type
 
@@ -180,7 +191,7 @@ def matrix(shape, type):
         def _row(self, r):
             row_start = r*self._shape_[1]
             row_end = row_start + self._shape_[1]
-            row_type = vector(self._shape_[1], self._wp_scalar_type_)
+            row_type = vec(self._shape_[1], self._wp_scalar_type_)
             row_val = row_type(*super().__getitem__(slice(row_start,row_end)))
 
             return row_val
@@ -205,6 +216,15 @@ def matrix(shape, type):
                     return self._row(key)
 
     return matrix_t
+
+def mat(shape=(Any,Any), type=Scalar):
+    ret = matrix(shape=shape, type=type)
+
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [shape[0], shape[1], type]
+    ret._wp_generic_type_str_ = "mat"
+
+    return ret
 
 
 class void:
@@ -300,49 +320,85 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
-class transform(vector(length=7, type=float32)):
+def quaternion(type=Any):
+    ret = vector(length=4, type=type)
     
-    def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
-        super().__init__()
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [type]
+    ret._wp_generic_type_str_ = "quaternion"
 
-        self[0:3] = vec3(*p)
-        self[3:7] = quat(*q)
+    return ret
 
-    @property 
-    def p(self):
-        return self[0:3]
-
-    @property 
-    def q(self):
-        return self[3:7]
-
-class vec2(vector(length=2, type=float32)):
+class quat(quaternion(type=float32)):
     pass
 
-print( isinstance(vec2,ctypes.Array) )
+def transform_t(type=Any):
 
-class vec3(vector(length=3, type=float32)):
+    class transform_class(vector(length=7, type=type)):
+        
+        _wp_type_params_ = [type]
+        _wp_generic_type_str_ = "transform_t"
+
+        def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
+            super().__init__()
+
+            self[0:3] = vector(length=3,type=type)(*p)
+            self[3:7] = quaternion(type=type)(*q)
+
+        @property 
+        def p(self):
+            return self[0:3]
+
+        @property 
+        def q(self):
+            return self[3:7]
+
+    return transform_class
+
+class transform(transform_t(type=float32)):
     pass
 
-class vec4(vector(length=4, type=float32)):
+class vec2(vec(length=2, type=float32)):
     pass
 
-class quat(vector(length=4, type=float32)):
+class vec3(vec(length=3, type=float32)):
+    pass
+
+class vec4(vec(length=4, type=float32)):
     pass
     
-class mat22(matrix(shape=(2,2), type=float32)):
+class mat22(mat(shape=(2,2), type=float32)):
     pass
     
-class mat33(matrix(shape=(3,3), type=float32)):
+class mat33(mat(shape=(3,3), type=float32)):
     pass
 
-class mat44(matrix(shape=(4,4), type=float32)):
+class mat44(mat(shape=(4,4), type=float32)):
     pass
 
-class spatial_vector(vector(length=6, type=float32)):
+
+def spatial_vector_t(type=Any):
+    ret = vector(length=6, type=type)
+    
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [type]
+    ret._wp_generic_type_str_ = "spatial_vector_t"
+
+    return ret
+
+class spatial_vector(spatial_vector_t(type=float32)):
     pass
 
-class spatial_matrix(matrix(shape=(6,6), type=float32)):
+def spatial_matrix_t(type=Any):
+    ret = matrix(shape=(6,6), type=type)
+    
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [type]
+    ret._wp_generic_type_str_ = "spatial_matrix_t"
+
+    return ret
+
+class spatial_matrix(spatial_matrix_t(type=float32)):
     pass
 
 
@@ -531,7 +587,7 @@ def type_is_float(t):
     else:
         return False
 
-def types_equal(a, b):
+def types_equal(a, b, match_generic=False):
     
     # convert to canonical types
     if (a == float):
@@ -543,11 +599,26 @@ def types_equal(a, b):
         b = float32
     if (b == int):
         b = int32
+
+    def are_equal(p1,p2):
+    
+        if match_generic:
+            if p1 == Any or p2 == Any:
+                return True
+            if p1 == Scalar and p2 in scalar_types:
+                return True
+            if p2 == Scalar and p1 in scalar_types:
+                return True
+            if p1 == Scalar and p2 == Scalar:
+                return True
+        return p1 == p2
         
+    if hasattr(a,"_wp_generic_type_str_") and hasattr(b,"_wp_generic_type_str_") and a._wp_generic_type_str_ == b._wp_generic_type_str_:
+        return all( [are_equal(p1,p2) for p1,p2 in zip(a._wp_type_params_, b._wp_type_params_)] )
     if isinstance(a, array) and isinstance(b, array):
         return True
     else:
-        return a == b
+        return are_equal(a,b)
 
 def strides_from_shape(shape:Tuple, dtype):
 
@@ -758,7 +829,7 @@ class array (Generic[T]):
             self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
 
         # store flat shape (including type shape)
-        if dtype != Any and issubclass(dtype,ctypes.Array):
+        if dtype not in [Any,Scalar] and issubclass(dtype,ctypes.Array):
             # vector type, flatten the dimensions into one tuple
             arr_shape = (*self.shape, *self.dtype._shape_)
             dtype_strides =  strides_from_shape(self.dtype._shape_, self.dtype._type_) 
