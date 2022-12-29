@@ -47,7 +47,8 @@ class Function:
                  group="",
                  hidden=False,
                  skip_replay=False,
-                 missing_grad=False):
+                 missing_grad=False,
+                 generic=False):
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -63,6 +64,7 @@ class Function:
         self.hidden = hidden            # function will not be listed in docs
         self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
         self.missing_grad = missing_grad # whether or not builtin is missing a corresponding adjoint
+        self.generic = generic
 
         # embedded linked list of all overloads
         # the module's function dictionary holds 
@@ -114,10 +116,13 @@ class Function:
             error = None
 
             for f in self.overloads:
+
+                if f.generic:
+                    continue
                     
                 # try and find builtin in the warp.dll            
                 if hasattr(warp.context.runtime.core, f.mangled_name) == False:
-                    raise RuntimeError(f"Couldn't find function {self.key} with mangled name {self.mangled_name} in the Warp native library")
+                    raise RuntimeError(f"Couldn't find function {self.key} with mangled name {f.mangled_name} in the Warp native library")
                 
                 try:
                     # try and pack args into what the function expects
@@ -364,6 +369,87 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
         def value_func(args,templates):
             return value_type
    
+    def is_generic(t):
+        ret = False
+        if t == warp.types.Scalar:
+            ret = True
+        if hasattr(t,"_wp_type_params_"):
+            ret = warp.types.Scalar in t._wp_type_params_ or warp.types.Any in t._wp_type_params_
+        
+        return ret
+
+    # Add specialized versions of this builtin if it's generic by matching arguments against
+    # hard coded types. We do this so you can use hard coded warp types outside kernels:
+    generic = any( is_generic(x) for x in input_types.values() )
+    if generic and export:
+
+        # get a list of existing generic vector types (includes matrices and stuff)
+        # so we can match arguments against them:
+        generic_vtypes = [x for x in warp.types.vector_types if hasattr(x,"_wp_generic_type_str_")]
+
+        # collect the parent type names of all the generic arguments:
+        def generic_names(l):
+            for t in l:
+                if hasattr(t,"_wp_generic_type_str_"):
+                    yield t._wp_generic_type_str_
+        genericset = set(generic_names(input_types.values()))
+        
+        # for each of those type names, get a list of all hard coded types derived
+        # from them:
+        def derived(name):
+            return [x for x in generic_vtypes if x._wp_generic_type_str_ == name]
+        gtypes = { k : derived(k) for k in genericset }
+
+        # find the scalar data types supported by all the arguments by intersecting
+        # sets:
+        def scalar_type(t):
+            return [p for p in t._wp_type_params_ if p in warp.types.scalar_types][0]
+        scalartypes = [ {scalar_type(x) for x in gtypes[k]} for k in gtypes.keys() ]
+        if scalartypes:
+            scalartypes = scalartypes.pop().intersection(*scalartypes)
+
+        # generate function calls for each of these scalar types:
+        for stype in scalartypes:
+
+            # find concrete types for this scalar type (eg if the scalar type is float32
+            # this dict will look something like this:
+            # {"vec":[wp.vec2,wp.vec3,wp.vec4], "mat":[wp.mat22,wp.mat33,wp.mat44]})
+            consistenttypes = { k : [ x for x in v if scalar_type(x) == stype] for k,v in gtypes.items() }
+
+            def typelist(param):
+                if param == warp.types.Scalar:
+                    return [stype]
+                if hasattr(param, "_wp_generic_type_str_"):
+                    l = consistenttypes[param._wp_generic_type_str_]
+                    return [x for x in l if warp.types.types_equal(param,x,match_generic=True)]
+                return [param]
+
+            # gotta try generating function calls for all combinations of these argument types
+            # now. 
+            import itertools
+            typelists = [typelist(param) for param in input_types.values()]
+            for argtypes in itertools.product(*typelists):
+
+                # Some of these argument lists won't work, eg if the function is mul(), we won't be
+                # able to do a matrix vector multiplication for a mat22 and a vec3, so we call value_func
+                # on the generated argument list and skip generation if it fails.
+                # This also gives us the return type, which we keep for later:
+                try:
+                    return_type = value_func([warp.codegen.Var("",t) for t in argtypes],[])
+                except Exception as e:
+                    continue
+
+                # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
+                # in the list of hard coded types so it knows it's returning one of them:
+                if hasattr(return_type,"_wp_generic_type_str_"):
+                    return_type_match = [x for x in generic_vtypes if x._wp_generic_type_str_ == return_type._wp_generic_type_str_ and x._wp_type_params_ == return_type._wp_type_params_]
+                    if not return_type_match:
+                        continue
+                    return_type = return_type_match[0]
+                
+                # finally we can generate a function call for these concrete types:
+                add_builtin(key, input_types=dict(zip(input_types.keys(),argtypes)), value_type=return_type, doc=doc, namespace=namespace, variadic=variadic, initializer_list=initializer_list, export=export, group=group, hidden=hidden, skip_replay=skip_replay, missing_grad=missing_grad)
+
     func = Function(func=None,
                     key=key,
                     namespace=namespace,
@@ -376,7 +462,8 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     group=group,
                     hidden=hidden,
                     skip_replay=skip_replay,
-                    missing_grad=missing_grad)
+                    missing_grad=missing_grad,
+                    generic=generic)
 
     if key in builtin_functions:
         builtin_functions[key].add_overload(func)
@@ -2501,7 +2588,7 @@ def export_stubs(file):
 
             return_str = ""
 
-            if f.export == False or f.hidden == True:
+            if f.export == False or f.hidden == True or f.generic:
                 continue
             
             try:
@@ -2530,7 +2617,7 @@ def export_builtins(file):
 
         for f in g.overloads:
 
-            if f.export == False:
+            if f.export == False or f.generic:
                 continue
 
             simple = True
