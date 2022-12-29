@@ -91,7 +91,7 @@ def infer_scalar_type(args):
     return list(scalarTypes)[0]
 
 def sametype_value_func(default):
-    def fn(args):
+    def fn(args,_):
         if args is None:
             return default
         if not all( types_equal(args[0].type,a.type) for a in args[1:] ):
@@ -99,7 +99,7 @@ def sametype_value_func(default):
         return args[0].type
     return fn
 
-def sametype_scalar_value_func(args):
+def sametype_scalar_value_func(args,_):
     if args is None:
         return Scalar
     if not all( types_equal(args[0].type,a.type) for a in args[1:] ):
@@ -115,7 +115,7 @@ add_builtin("dot", input_types={"x": vec(length=Any,type=Scalar), "y": vec(lengt
 add_builtin("ddot", input_types={"x": mat(shape=(Any,Any),type=Scalar), "y": mat(shape=(Any,Any),type=Scalar)}, value_func=sametype_scalar_value_func, group="Vector Math",
     doc="Compute the double dot product between two matrices.")
 
-def value_func_outer(args):
+def value_func_outer(args,_):
 
     if args is None:
         return mat(shape=(Any,Any),type=Scalar)
@@ -129,7 +129,7 @@ add_builtin("outer", input_types={"x": vec(length=Any,type=Scalar), "y": vec(len
 
 add_builtin("cross", input_types={"x": vec(length=3,type=Scalar), "y": vec(length=3,type=Scalar)}, value_func=sametype_value_func(vec(length=3,type=Scalar)), group="Vector Math",
     doc="Compute the cross product of two 3d vectors.")
-add_builtin("skew", input_types={"x": vec(length=3,type=Scalar)}, value_func=lambda args: mat(shape=(3,3),type=args[0].type._wp_scalar_type_), group="Vector Math",
+add_builtin("skew", input_types={"x": vec(length=3,type=Scalar)}, value_func=lambda args,_: mat(shape=(3,3),type=args[0].type._wp_scalar_type_), group="Vector Math",
     doc="Compute the skew symmetric matrix for a 3d vector.")
 
 add_builtin("length", input_types={"x": vec(length=Any,type=Scalar)}, value_func=sametype_scalar_value_func, group="Vector Math",
@@ -145,12 +145,12 @@ add_builtin("normalize", input_types={"x": vec(length=Any,type=Scalar)}, value_f
 add_builtin("normalize", input_types={"x": quaternion(type=Scalar)}, value_func=sametype_value_func(quaternion(type=Scalar)), group="Vector Math",
     doc="Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.")
 
-add_builtin("transpose", input_types={"m": mat(shape=(Any,Any),type=Scalar)}, value_func=lambda args: mat(shape=(args[0].type._shape_[1],args[0].type._shape_[0]),type=args[0].type._wp_scalar_type_), group="Vector Math",
+add_builtin("transpose", input_types={"m": mat(shape=(Any,Any),type=Scalar)}, value_func=lambda args,_: mat(shape=(args[0].type._shape_[1],args[0].type._shape_[0]),type=args[0].type._wp_scalar_type_), group="Vector Math",
     doc="Return the transpose of the matrix m")
 add_builtin("transpose", input_types={"m": spatial_matrix_t(type=Scalar)}, value_func=sametype_value_func(spatial_matrix_t(type=Scalar)), group="Vector Math",
     doc="Return the transpose of the matrix m")
 
-def value_func_mat_inv(args):
+def value_func_mat_inv(args,_):
     if args is None:
         return mat(shape=(Any,Any),type=Scalar)
     if args[0].type._shape_[0] != args[0].type._shape_[1]:
@@ -162,7 +162,7 @@ def value_func_mat_inv(args):
 add_builtin("inverse", input_types={"m": mat(shape=(Any,Any),type=Scalar)}, value_func=value_func_mat_inv, group="Vector Math",
     doc="Return the inverse of the matrix m")
 
-def value_func_mat_det(args):
+def value_func_mat_det(args,_):
     if args is None:
         return Scalar
     if args[0].type._shape_[0] != args[0].type._shape_[1]:
@@ -174,7 +174,7 @@ def value_func_mat_det(args):
 add_builtin("determinant", input_types={"m": mat(shape=(Any,Any),type=Scalar)}, value_func=value_func_mat_det, group="Vector Math",
     doc="Return the determinant of the matrix m")
 
-def value_func_mat_trace(args):
+def value_func_mat_trace(args,_):
     if args is None:
         return Scalar
     if args[0].type._shape_[0] != args[0].type._shape_[1]:
@@ -184,7 +184,7 @@ def value_func_mat_trace(args):
 add_builtin("trace", input_types={"m": mat(shape=(Any,Any),type=Scalar)}, value_func=value_func_mat_trace, group="Vector Math",
     doc="Return the trace of the matrix m")
 
-add_builtin("diag", input_types={"d": vec(length=Any,type=Scalar)}, value_func=lambda args: mat(shape=(args[0].type._length_,args[0].type._length_),type=args[0].type._wp_scalar_type_), group="Vector Math",
+add_builtin("diag", input_types={"d": vec(length=Any,type=Scalar)}, value_func=lambda args,_: mat(shape=(args[0].type._length_,args[0].type._length_),type=args[0].type._wp_scalar_type_), group="Vector Math",
     doc="Returns a matrix with the components of the vector d on the diagonal")
 
 add_builtin("cw_mul", input_types={"x": vec(length=Any,type=Scalar), "y": vec(length=Any,type=Scalar)}, value_func=sametype_value_func(vec(length=Any,type=Scalar)), group="Vector Math",
@@ -204,37 +204,88 @@ for t in scalar_types_all:
     for u in scalar_types_all:
         add_builtin(t.__name__, input_types={"u": u}, value_type=t, doc="", hidden=True, group="Scalar Math", export=False)
 
+def vec_constructor_value_func(args,templates):
+    if templates is None:
+        return vec(length=Any,type=Scalar)
+    
+    veclen,vectype = templates
+    if len(args) and args[0].type != vectype:
+        raise RuntimeError("Wrong scalar type for vec<{}> constructor".format( ",".join(map(str,templates)) ))
+    
+    return vec(length=veclen,type=vectype)
 
-add_builtin("vec2", input_types={}, value_type=vec2, doc="Construct a zero-initialized 2d vector.", group="Vector Math", export=False)
-add_builtin("vec2", input_types={"x": float, "y": float }, value_type=vec2, doc="Construct a 2d vector with compontents x, y.", group="Vector Math", export=False)
-add_builtin("vec2", input_types={"s": float}, value_type=vec2, doc="Construct a 2d vector with all components set to s.", group="Vector Math", export=False)
+add_builtin("vec", input_types={}, value_func=vec_constructor_value_func, doc="Construct a zero-initialized vector.", group="Vector Math", export=False)
+add_builtin("vec", input_types={"s": Scalar}, value_func=vec_constructor_value_func, doc="Construct a vector with all components set to s.", group="Vector Math", export=False)
 
-add_builtin("vec3", input_types={}, value_type=vec3, doc="Construct a zero-initialized 3d vector.", group="Vector Math", export=False)
-add_builtin("vec3", input_types={"x": float, "y": float, "z": float}, value_type=vec3, doc="Construct a 3d vector with compontents x, y, z.", group="Vector Math", export=False)
-add_builtin("vec3", input_types={"s": float}, value_type=vec3, doc="Construct a 3d vector with all components set to s.", group="Vector Math", export=False)
+def vec_component_constructor_value_func(args,templates):
+    if templates is None:
+        return vec(length=Any,type=Scalar)
+    
+    # check to make sure the user entered the correct number and type of components given the template arguments:
+    veclen,vectype = templates
+    if veclen != len(args):
+        raise RuntimeError("Wrong number of arguments for vec<{}> constructor".format( ",".join(map(str,templates)) ))
+    if not all( vectype == a.type for a in args ):
+        raise RuntimeError("Wrong type of arguments for vec<{}> constructor".format( ",".join(map(str,templates)) ))
+    return vec(length=veclen,type=vectype)
 
-add_builtin("vec4", input_types={}, value_type=vec4, doc="Construct a zero-initialized 4d vector.", group="Vector Math", export=False)
-add_builtin("vec4", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=vec4, doc="Construct a 4d vector with compontents x, y, z, w.", group="Vector Math", export=False)
-add_builtin("vec4", input_types={"s": float}, value_type=vec4, doc="Construct a 4d vector with all components set to s.", group="Vector Math", export=False)
+add_builtin("vec", input_types={}, variadic=True, initializer_list=True, value_func=vec_component_constructor_value_func, doc="Construct a vector from scalar compontents.", group="Vector Math", export=False)
 
-add_builtin("mat22", input_types={}, value_type=mat22, doc="Construct a 2x2 zero matrix", group="Vector Math", export=False)
-add_builtin("mat22", input_types={"c0": vec2, "c1": vec2 }, value_type=mat22, doc="Construct a 2x2 matrix from column vectors c0, c1.", group="Vector Math", export=False)
-add_builtin("mat22", input_types={"m00": float, "m01": float, "m10": float, "m11": float}, value_type=mat22, doc="Construct a 2x2 matrix from components.", group="Vector Math", export=False)
+def mat_constructor_value_func(args,templates):
+    if templates is None:
+        return mat(shape=(Any,Any),type=Scalar)
+    
+    matrows,matcols,mattype = templates
+    if len(args) and args[0].type != mattype:
+        raise RuntimeError("Wrong scalar type for mat<{}> constructor".format( ",".join(map(str,templates)) ))
+        
+    return mat(shape=(matrows,matcols),type=mattype)
 
-add_builtin("mat33", input_types={}, value_type=mat33, doc="Construct a 3x3 zero matrix", group="Vector Math", export=False)
-add_builtin("mat33", input_types={"c0": vec3, "c1": vec3, "c2": vec3 }, value_type=mat33, doc="Construct a 3x3 matrix from column vectors c0, c1, c2.", group="Vector Math", export=False)
-add_builtin("mat33", input_types={"m00": float, "m01": float, "m02": float,
-                                  "m10": float, "m11": float, "m12": float,
-                                  "m20": float, "m21": float, "m22": float}, value_type=mat33, doc="Construct a 3x3 matrix from components.", group="Vector Math", export=False)
+add_builtin("mat", input_types={}, value_func=mat_constructor_value_func, doc="Construct a zero matrix", group="Vector Math", export=False)
+add_builtin("mat", input_types={"s": Scalar}, value_func=mat_constructor_value_func, doc="Construct a matrix with all components set to s", group="Vector Math", export=False)
 
-add_builtin("mat44", input_types={}, value_type=mat44, doc="Construct a 4x4 zero matrix", group="Vector Math", export=False)
-add_builtin("mat44", input_types={"c0": vec4, "c1": vec4, "c2": vec4, "c3": vec4 }, value_type=mat44, doc="Construct a 4x4 matrix from column vectors c0, c1, c2, c4.", group="Vector Math", export=False)
-add_builtin("mat44", input_types={"m00": float, "m01": float, "m02": float, "m03": float,
-                                  "m10": float, "m11": float, "m12": float, "m13": float,
-                                  "m20": float, "m21": float, "m22": float, "m23": float,
-                                  "m30": float, "m31": float, "m32": float, "m33": float}, value_type=mat44, doc="Construct a 4x4 matrix from components.", group="Vector Math", export=False)
+# The following constructor accepts both scalars and vectors
+def mat_initlist_constructor_value_func(args,templates):
 
-add_builtin("mat44", input_types={"pos": vec3, "rot": quat, "scale": vec3}, value_type=mat44, 
+    if templates is None:
+        return mat(shape=(Any,Any),type=Scalar)
+    
+    matrows,matcols,mattype = templates
+    if infer_scalar_type(args) != mattype:
+        raise RuntimeError("Wrong scalar type for mat<{}> constructor".format( ",".join(map(str,templates)) ))
+
+    types = [a.type for a in args]
+    if all( hasattr(a,"_wp_generic_type_str_") and a._wp_generic_type_str_ == "vec" for a in types ):
+        cols = len(types)
+        if matcols != cols:
+            raise RuntimeError("Wrong number of vectors when attempting to construct a matrix with column vectors")
+        
+        if not all( a._length_ == matrows for a in types ):
+            raise RuntimeError("Wrong vector row count when attempting to construct a matrix with column vectors")
+
+    else:
+        ncmps = matrows * matcols
+        if len(types) != ncmps:
+            raise RuntimeError("Wrong number of scalars when attempting to construct a matrix from a list of components")
+
+    return mat(shape=(matrows,matcols),type=mattype)
+
+add_builtin("mat", input_types={}, variadic=True, initializer_list=True, value_func=mat_initlist_constructor_value_func, doc="Construct a matrix from components or column vectors.", group="Vector Math", export=False)
+
+def mat_quat_constructor_value_func(args,templates):
+    
+    if templates is None:
+        return mat(shape=(Any,Any),type=Scalar)
+    
+    matrows,matcols,mattype = templates
+    if (matrows,matcols) != (4,4):
+        raise RuntimeError("Can only construct 4x4 matrices with position, rotation and scale")
+    if infer_scalar_type(args) != mattype:
+        raise RuntimeError("Wrong scalar type for mat<{}> constructor".format( ",".join(map(str,templates)) ))
+    
+    return mat(shape=(4,4),type=mattype)
+
+add_builtin("mat", input_types={"pos": vec(length=3,type=Scalar), "rot": quaternion(type=Scalar), "scale": vec(length=3,type=Scalar)}, value_func=mat_quat_constructor_value_func, 
     doc="""Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""", group="Vector Math", export=False)
 
 add_builtin("svd3", input_types={"A": mat(shape=(3,3),type=Scalar), "U":mat(shape=(3,3),type=Scalar), "sigma":vec(length=3,type=Scalar), "V":mat(shape=(3,3),type=Scalar)}, value_type=None, group="Vector Math",
@@ -250,57 +301,80 @@ add_builtin("eig3", input_types={"A": mat(shape=(3,3),type=Scalar), "Q":mat(shap
 #---------------------------------
 # Quaternion Math
 
-add_builtin("quat", input_types={}, value_type=quat, group="Quaternion Math", 
+def quat_constructor_value_func(args,templates):
+    if templates is None:
+        return quaternion(type=Scalar)
+    
+    quattype = templates[0]
+    if len(args) and infer_scalar_type(args) != quattype:
+        raise RuntimeError("Wrong scalar type for quaternion<{}> constructor".format( ",".join(map(str,templates)) ))
+    
+    return quaternion(type=quattype)
+
+add_builtin("quaternion", input_types={}, value_func=quat_constructor_value_func, group="Quaternion Math", 
     doc="""Construct a zero-initialized quaternion, quaternions are laid out as
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.""", export=False)
-add_builtin("quat", input_types={"x": float, "y": float, "z": float, "w": float}, value_type=quat, group="Quaternion Math",
+add_builtin("quaternion", input_types={"x": Scalar, "y": Scalar, "z": Scalar, "w": Scalar}, value_func=quat_constructor_value_func, group="Quaternion Math",
     doc="Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.", export=False)
-add_builtin("quat", input_types={"i": vec3, "r": float}, value_type=quat, group="Quaternion Math",
+add_builtin("quaternion", input_types={"i": vec(length=3,type=Scalar), "r": Scalar}, value_func=quat_constructor_value_func, group="Quaternion Math",
     doc="Construct a quaternion from it's imaginary components i, and real part r", export=False)
-add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion Math",
-    doc="Construct an identity quaternion with zero imaginary part and real part of 1.0")
 
-add_builtin("quat_from_axis_angle", input_types={"axis": vec(length=3,type=Scalar), "angle": Scalar}, value_func=lambda args: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion Math",
+    doc="Construct a float32 identity quaternion with zero imaginary part and real part of 1.0")
+
+add_builtin("quat_from_axis_angle", input_types={"axis": vec(length=3,type=Scalar), "angle": Scalar}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
 add_builtin("quat_to_axis_angle", input_types={"q": quaternion(type=Scalar), "axis": vec(length=3,type=Scalar), "angle": Scalar}, value_type=None, group="Quaternion Math",
     doc="Extract the rotation axis and angle radians a quaternion represents.")
-add_builtin("quat_from_matrix", input_types={"m": mat(shape=(3,3),type=Scalar)}, value_func=lambda args: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_from_matrix", input_types={"m": mat(shape=(3,3),type=Scalar)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion from a 3x3 matrix.")
-add_builtin("quat_rpy", input_types={"roll": Scalar, "pitch": Scalar, "yaw": Scalar}, value_func=lambda args: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_rpy", input_types={"roll": Scalar, "pitch": Scalar, "yaw": Scalar}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.")
-add_builtin("quat_inverse", input_types={"q": quaternion(type=Scalar)}, value_func=lambda args: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_inverse", input_types={"q": quaternion(type=Scalar)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Compute quaternion conjugate.")
-add_builtin("quat_rotate", input_types={"q": quaternion(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args: vec(length=3,type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_rotate", input_types={"q": quaternion(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Rotate a vector by a quaternion.")
-add_builtin("quat_rotate_inv", input_types={"q": quaternion(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args: vec(length=3,type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_rotate_inv", input_types={"q": quaternion(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Rotate a vector the inverse of a quaternion.")
 add_builtin("quat_slerp", input_types={"q0": quaternion(type=Scalar), "q1": quaternion(type=Scalar), "t": Scalar}, value_func=lambda args: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Linearly interpolate between two quaternions.")
-add_builtin("quat_to_matrix", input_types={"q": quaternion(type=Scalar)}, value_func=lambda args: mat(shape=(3,3),type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_to_matrix", input_types={"q": quaternion(type=Scalar)}, value_func=lambda args,_: mat(shape=(3,3),type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Convert a quaternion to a 3x3 rotation matrix.")
 
 #---------------------------------
 # Transformations 
 
-add_builtin("transform", input_types={"p": vec(length=3,type=Scalar), "q": quaternion(type=Scalar)}, value_func=lambda args: transform_t(type=infer_scalar_type(args)), group="Transformations",
+def transform_constructor_value_func(args,templates):
+    if templates is None:
+        return transform_t(type=Scalar)
+    
+    transtype = templates[0]
+    if infer_scalar_type(args) != transtype:
+        raise RuntimeError("Wrong scalar type for transform_t<{}> constructor".format( ",".join(map(str,templates)) ))
+    
+    return transform_t(type=transtype)
+
+add_builtin("transform_t", input_types={"p": vec(length=3,type=Scalar), "q": quaternion(type=Scalar)}, value_func=transform_constructor_value_func, group="Transformations",
     doc="Construct a rigid body transformation with translation part p and rotation q.", export=False)
+
 add_builtin("transform_identity", input_types={}, value_type=transform, group="Transformations",
-    doc="Construct an identity transform with zero translation and identity rotation.")
-add_builtin("transform_get_translation", input_types={"t": transform_t(type=Scalar)}, value_func=lambda args: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
+    doc="Construct a float32 identity transform with zero translation and identity rotation.")
+
+add_builtin("transform_get_translation", input_types={"t": transform_t(type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
     doc="Return the translational part of a transform.")
-add_builtin("transform_get_rotation", input_types={"t": transform_t(type=Scalar)}, value_func=lambda args: quaternion(type=infer_scalar_type(args)), group="Transformations",
+add_builtin("transform_get_rotation", input_types={"t": transform_t(type=Scalar)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Transformations",
     doc="Return the rotational part of a transform.")
-add_builtin("transform_multiply", input_types={"a": transform_t(type=Scalar), "b": transform_t(type=Scalar)}, value_func=lambda args: transform_t(type=infer_scalar_type(args)), group="Transformations",
+add_builtin("transform_multiply", input_types={"a": transform_t(type=Scalar), "b": transform_t(type=Scalar)}, value_func=lambda args,_: transform_t(type=infer_scalar_type(args)), group="Transformations",
     doc="Multiply two rigid body transformations together.")
-add_builtin("transform_point", input_types={"t": transform_t(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
+add_builtin("transform_point", input_types={"t": transform_t(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
     doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).")
-add_builtin("transform_point", input_types={"m": mat(shape=(4,4),type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args: vec(length=3,type=infer_scalar_type(args)), group="Vector Math",
+add_builtin("transform_point", input_types={"m": mat(shape=(4,4),type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Vector Math",
     doc="""Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.""")
-add_builtin("transform_vector", input_types={"t": transform_t(type=Scalar), "v": vec(length=3,type=Scalar)}, value_func=lambda args: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
+add_builtin("transform_vector", input_types={"t": transform_t(type=Scalar), "v": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
     doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
-add_builtin("transform_vector", input_types={"m": mat(shape=(4,4),type=Scalar), "v": vec(length=3,type=Scalar)}, value_func=lambda args: vec(length=3,type=infer_scalar_type(args)), group="Vector Math",
+add_builtin("transform_vector", input_types={"m": mat(shape=(4,4),type=Scalar), "v": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Vector Math",
     doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.""")
@@ -309,18 +383,36 @@ add_builtin("transform_inverse", input_types={"t": transform_t(type=Scalar)}, va
 #---------------------------------
 # Spatial Math 
 
-add_builtin("spatial_vector", input_types={}, value_type=spatial_vector, group="Spatial Math",
+def spatial_vector_constructor_value_func(args,templates):
+    if templates is None:
+        return spatial_vector_t(type=Scalar)
+    
+    vectype = templates[0]
+    if len(args) and infer_scalar_type(args) != vectype:
+        raise RuntimeError("Wrong scalar type for spatial_vector_t<{}> constructor".format( ",".join(map(str,templates)) ))
+    
+    return spatial_vector_t(type=vectype)
+
+add_builtin("spatial_vector_t", input_types={}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
     doc="Construct a zero-initialized 6d screw vector. Screw vectors may be used to represent rigid body wrenches and twists (velocites).", export=False)
-add_builtin("spatial_vector", input_types={"a": Scalar, "b": Scalar, "c": Scalar, "d": Scalar, "e": Scalar, "f": Scalar}, value_type=spatial_vector, group="Spatial Math",
+add_builtin("spatial_vector_t", input_types={"a": Scalar, "b": Scalar, "c": Scalar, "d": Scalar, "e": Scalar, "f": Scalar}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
     doc="Construct a 6d screw vector from it's components.", export=False)
-add_builtin("spatial_vector", input_types={"w": vec3, "v": vec3}, value_type=spatial_vector, group="Spatial Math",
+add_builtin("spatial_vector_t", input_types={"w": vec(length=3,type=Scalar), "v": vec(length=3,type=Scalar)}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
     doc="Construct a 6d screw vector from two 3d vectors.", export=False)
-add_builtin("spatial_vector", input_types={"s": float}, value_type=spatial_vector, group="Spatial Math",
+add_builtin("spatial_vector_t", input_types={"s": Scalar}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
     doc="Construct a 6d screw vector with all components set to s", export=False)
-add_builtin("spatial_matrix", input_types={}, value_type=spatial_matrix, group="Spatial Math",
+
+def spatial_matrix_constructor_value_func(args,templates):
+    if templates is None:
+        return spatial_matrix_t(type=Scalar)
+    
+    mattype = templates[0]
+    return spatial_matrix_t(type=mattype)
+
+add_builtin("spatial_matrix_t", input_types={}, value_func=spatial_matrix_constructor_value_func, group="Spatial Math",
     doc="Construct a 6x6 zero-initialized spatial inertia matrix", export=False)
 
-add_builtin("spatial_adjoint", input_types={"r": mat(shape=(3,3),type=Scalar), "s": mat(shape=(3,3),type=Scalar)}, value_func=lambda args: spatial_matrix_t(type=infer_scalar_type(args)), group="Spatial Math",
+add_builtin("spatial_adjoint", input_types={"r": mat(shape=(3,3),type=Scalar), "s": mat(shape=(3,3),type=Scalar)}, value_func=lambda args,_: spatial_matrix_t(type=infer_scalar_type(args)), group="Spatial Math",
     doc="Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.", export=False)
 add_builtin("spatial_dot", input_types={"a": spatial_vector_t(type=Scalar), "b": spatial_vector_t(type=Scalar)}, value_func=sametype_scalar_value_func, group="Spatial Math",
     doc="Compute the dot product of two 6d screw vectors.")
@@ -329,9 +421,9 @@ add_builtin("spatial_cross", input_types={"a": spatial_vector_t(type=Scalar), "b
 add_builtin("spatial_cross_dual", input_types={"a": spatial_vector_t(type=Scalar), "b": spatial_vector_t(type=Scalar)}, value_func=sametype_value_func(spatial_vector_t(type=Scalar)), group="Spatial Math",
     doc="Compute the dual cross-product of two 6d screw vectors.")
 
-add_builtin("spatial_top", input_types={"a": spatial_vector_t(type=Scalar)}, value_func=lambda args: vec(length=3,type=args[0].type._wp_scalar_type_), group="Spatial Math",
+add_builtin("spatial_top", input_types={"a": spatial_vector_t(type=Scalar)}, value_func=lambda args,_: vec(length=3,type=args[0].type._wp_scalar_type_), group="Spatial Math",
     doc="Return the top (first) part of a 6d screw vector.")
-add_builtin("spatial_bottom", input_types={"a": spatial_vector_t(type=Scalar)}, value_func=lambda args: vec(length=3,type=args[0].type._wp_scalar_type_), group="Spatial Math",
+add_builtin("spatial_bottom", input_types={"a": spatial_vector_t(type=Scalar)}, value_func=lambda args,_: vec(length=3,type=args[0].type._wp_scalar_type_), group="Spatial Math",
     doc="Return the bottom (second) part of a 6d screw vector.")
 
 add_builtin("spatial_jacobian",
@@ -678,10 +770,10 @@ add_builtin("tid", input_types={}, value_type=[int, int, int, int], group="Utili
 
 
 add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
-add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
+add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args,_: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
 
 # does argument checking and type progagation for load()
-def load_value_func(args):
+def load_value_func(args,_):
 
     if (type(args[0].type) != array):
         raise RuntimeError("load() argument 0 must be an array")
@@ -703,7 +795,7 @@ def load_value_func(args):
     return args[0].type.dtype
 
 # does argument checking and type progagation for view()
-def view_value_func(args):
+def view_value_func(args,_):
     if (type(args[0].type) != array):
         raise RuntimeError("view() argument 0 must be an array")
 
@@ -727,7 +819,7 @@ def view_value_func(args):
     return view_type
 
 # does argument checking and type progagation for store()
-def store_value_func(args):
+def store_value_func(args,_):
     # check target type
     if (type(args[0].type) != array):
         raise RuntimeError("store() argument 0 must be an array")
@@ -758,7 +850,7 @@ add_builtin("load", variadic=True, hidden=True, value_func=load_value_func, grou
 add_builtin("view", variadic=True, hidden=True, value_func=view_value_func, group="Utility")
 add_builtin("store", variadic=True, hidden=True, value_func=store_value_func, skip_replay=True, group="Utility")
 
-def atomic_op_value_type(args):
+def atomic_op_value_type(args,_):
 
     # check target type
     if (type(args[0].type) != array):
@@ -807,13 +899,13 @@ add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int
 
 
 # used to index into builtin types, i.e.: y = vec3[1]
-def index_value_func(args):
+def index_value_func(args,_):
     return args[0].type._wp_scalar_type_
 
 add_builtin("index", input_types={"a": vec(length=Any,type=Scalar), "i": int}, value_func=index_value_func, hidden=True, group="Utility")
 add_builtin("index", input_types={"a": quaternion(type=Scalar), "i": int}, value_func=index_value_func, hidden=True, group="Utility")
 
-add_builtin("index", input_types={"a": mat(shape=(Any,Any),type=Scalar), "i": int}, value_func=lambda args: vec(length=args[0].type._shape_[0],type=args[0].type._wp_scalar_type_), hidden=True, group="Utility")
+add_builtin("index", input_types={"a": mat(shape=(Any,Any),type=Scalar), "i": int}, value_func=lambda args,_: vec(length=args[0].type._shape_[0],type=args[0].type._wp_scalar_type_), hidden=True, group="Utility")
 add_builtin("index", input_types={"a": mat(shape=(Any,Any),type=Scalar), "i": int, "j": int}, value_func=index_value_func, hidden=True, group="Utility")
 
 add_builtin("index", input_types={"a": spatial_matrix_t(type=Scalar), "i": int, "j": int}, value_func=index_value_func, hidden=True, group="Utility")
@@ -861,7 +953,7 @@ add_builtin("sub", input_types={"x": spatial_vector_t(type=Scalar), "y": spatial
 add_builtin("sub", input_types={"x": spatial_matrix_t(type=Scalar), "y": spatial_matrix_t(type=Scalar)}, value_func=sametype_value_func(spatial_matrix_t(type=Scalar)), doc="", group="Operators")
 
 def scalar_mul_value_func(default):
-    def fn(args):
+    def fn(args,_):
         if args is None:
             return default
         scalar = [a.type for a in args if a.type in scalar_types][0]
@@ -871,7 +963,7 @@ def scalar_mul_value_func(default):
         return compound
     return fn
 
-def mul_matvec_value_func(args):
+def mul_matvec_value_func(args,_):
     if args is None:
         return vec(length=Any,type=Scalar)
 
@@ -883,7 +975,7 @@ def mul_matvec_value_func(args):
 
     return vec(length=args[0].type._shape_[0],type=args[0].type._wp_scalar_type_)
 
-def mul_matmat_value_func(args):
+def mul_matmat_value_func(args,_):
     if args is None:
         return mat(length=Any,type=Scalar)
 
@@ -895,7 +987,7 @@ def mul_matmat_value_func(args):
 
     return mat(shape=(args[0].type._shape_[0],args[1].type._shape_[1]),type=args[0].type._wp_scalar_type_)
 
-def mul_spatial_matvec_value_func(args):
+def mul_spatial_matvec_value_func(args,_):
     if args is None:
         return spatial_vector_t(type=Scalar)
 
@@ -906,8 +998,6 @@ def mul_spatial_matvec_value_func(args):
 
 add_builtin("mul", input_types={"x": int, "y": int}, value_type=int, doc="", group="Operators")
 add_builtin("mul", input_types={"x": float, "y": float}, value_type=float, doc="", group="Operators")
-add_builtin("mul", input_types={"x": Scalar, "y": quaternion(type=Scalar)}, value_func=scalar_mul_value_func(quaternion(type=Scalar)), doc="", group="Operators")
-add_builtin("mul", input_types={"x": Scalar, "y": mat(shape=(Any,Any),type=Scalar)}, value_func=scalar_mul_value_func(mat(shape=(Any,Any),type=Scalar)), doc="", group="Operators")
 add_builtin("mul", input_types={"x": vec(length=Any,type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(vec(length=Any,type=Scalar)), doc="", group="Operators")
 add_builtin("mul", input_types={"x": Scalar, "y": vec(length=Any,type=Scalar)}, value_func=scalar_mul_value_func(vec(length=Any,type=Scalar)), doc="", group="Operators")
 add_builtin("mul", input_types={"x": quaternion(type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(quaternion(type=Scalar)), doc="", group="Operators")
