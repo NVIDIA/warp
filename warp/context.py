@@ -41,6 +41,7 @@ class Function:
                  value_func=None,
                  module=None,
                  variadic=False,
+                 initializer_list=False,
                  export=False,
                  doc="",
                  group="",
@@ -51,13 +52,14 @@ class Function:
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
-        self.value_func = value_func    # a function that takes a list of args and returns the value type, e.g.: load(array, index) returns the type of value being loaded
+        self.value_func = value_func    # a function that takes a list of args and a list of templates and returns the value type, e.g.: load(array, index) returns the type of value being loaded
         self.input_types = {}
         self.export = export
         self.doc = doc
         self.group = group
         self.module = module
         self.variadic = variadic        # function can take arbitrary number of inputs, e.g.: printf()
+        self.initializer_list = initializer_list # True if the arguments should be emitted as an initializer list in the c++ code
         self.hidden = hidden            # function will not be listed in docs
         self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
         self.missing_grad = missing_grad # whether or not builtin is missing a corresponding adjoint
@@ -76,7 +78,7 @@ class Function:
             for name, type in self.adj.arg_types.items():
                 
                 if name == "return":
-                    def value_func(args):
+                    def value_func(args,templates):
                         return type
                     self.value_func = value_func
                 
@@ -177,7 +179,7 @@ class Function:
                             # scalar type
                             return dtype._type_
 
-                    value_type = type_ctype(f.value_func(None))
+                    value_type = type_ctype(f.value_func(None,None))
 
                     # construct return value (passed by address)
                     ret = value_type()
@@ -227,7 +229,7 @@ class Function:
         try:
             # todo: construct a default value for each of the functions args
             # so we can generate the return type for overloaded functions
-            return_type = type_str(self.value_func(None))
+            return_type = type_str(self.value_func(None,None))
         except:
             return False
 
@@ -256,6 +258,9 @@ class Function:
         # is a previously created function with the same signature
         self.overloads.append(f)
 
+        # make sure variadic overloads appear last so non variadic
+        # ones are matched first:
+        self.overloads.sort(key=lambda f : f.variadic)
 
 class KernelHooks:
     def __init__(self, forward, backward):
@@ -352,11 +357,11 @@ def struct(c):
 builtin_functions = {}
 
 
-def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
+def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, initializer_list=False, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
 
     # wrap simple single-type functions with a value_func()
     if value_func == None:
-        def value_func(args):
+        def value_func(args,templates):
             return value_type
    
     func = Function(func=None,
@@ -365,6 +370,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     input_types=input_types,
                     value_func=value_func,
                     variadic=variadic,
+                    initializer_list=initializer_list,
                     export=export,
                     doc=doc,
                     group=group,
@@ -473,7 +479,7 @@ class ModuleBuilder:
             if not func.value_func:
 
                 def wrap(adj):
-                    def value_type(args):
+                    def value_type(args,templates):
                         if (adj.return_var):
                             return adj.return_var.type
                         else:
@@ -2396,7 +2402,7 @@ def print_function(f, file):
 
         # todo: construct a default value for each of the functions args
         # so we can generate the return type for overloaded functions
-        return_type = " -> " + type_str(f.value_func(None))
+        return_type = " -> " + type_str(f.value_func(None,None))
     except:
         pass
 
@@ -2502,7 +2508,7 @@ def export_stubs(file):
                        
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
-                return_type = f.value_func(None)
+                return_type = f.value_func(None,None)
                 if return_type:
                     return_str = " -> " + type_str(return_type)
 
@@ -2546,7 +2552,7 @@ def export_builtins(file):
             try:
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
-                return_type = type_str(f.value_func(None))
+                return_type = type_str(f.value_func(None,None))
             except:
                 pass
 
