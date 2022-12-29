@@ -916,7 +916,20 @@ add_builtin("index", input_types={"a": transform_t(type=Scalar), "i": int}, valu
 add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
 for t in scalar_types + vector_types:
+    if t in [vec2,vec3,vec4,mat22,mat33,mat44]:
+        continue
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
+
+def expect_eq_val_func(args,_):
+    if not types_equal(args[0].type,args[1].type):
+        raise RuntimeError("Can't test equality for objects with different types")
+    return None
+
+add_builtin("expect_eq", input_types={"arg1": vec(length=Any,type=Scalar), "arg2": vec(length=Any,type=Scalar)}, value_func=expect_eq_val_func, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
+add_builtin("expect_neq", input_types={"arg1": vec(length=Any,type=Scalar), "arg2": vec(length=Any,type=Scalar)}, value_func=expect_eq_val_func, doc="Prints an error to stdout if arg1 and arg2 are equal", group="Utility")
+
+add_builtin("expect_eq", input_types={"arg1": mat(shape=(Any,Any),type=Scalar), "arg2": mat(shape=(Any,Any),type=Scalar)}, value_func=expect_eq_val_func, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
+add_builtin("expect_neq", input_types={"arg1": mat(shape=(Any,Any),type=Scalar), "arg2": mat(shape=(Any,Any),type=Scalar)}, value_func=expect_eq_val_func, doc="Prints an error to stdout if arg1 and arg2 are equal", group="Utility")
 
 for t in compute_types + vector_types:
     if not type_is_int(t):
