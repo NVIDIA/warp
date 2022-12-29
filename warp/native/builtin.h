@@ -86,11 +86,37 @@ struct half
     unsigned short u;
 
     CUDA_CALLABLE inline bool operator==(const half& h) const { return u == h.u; }
+    CUDA_CALLABLE inline bool operator!=(const half& h) const { return u != h.u; }
+    CUDA_CALLABLE inline bool operator>(const half& h) const { return half_to_float(*this) > half_to_float(h); }
+    CUDA_CALLABLE inline bool operator>=(const half& h) const { return half_to_float(*this) >= half_to_float(h); }
+    CUDA_CALLABLE inline bool operator<(const half& h) const { return half_to_float(*this) < half_to_float(h); }
+    CUDA_CALLABLE inline bool operator<=(const half& h) const { return half_to_float(*this) <= half_to_float(h); }
+
+    CUDA_CALLABLE inline half operator*=(const half& h)
+    {
+        half prod = half(float32(*this) * float32(h));
+        this->u = prod.u;
+        return *this;
+    }
+
+    CUDA_CALLABLE inline half operator/=(const half& h)
+    {
+        half quot = half(float32(*this) / float32(h));
+        this->u = quot.u;
+        return *this;
+    }
 
     CUDA_CALLABLE inline half operator+=(const half& h)
     {
         half sum = half(float32(*this) + float32(h));
         this->u = sum.u;
+        return *this;
+    }
+    
+    CUDA_CALLABLE inline half operator-=(const half& h)
+    {
+        half diff = half(float32(*this) - float32(h));
+        this->u = diff.u;
         return *this;
     }
 
@@ -217,6 +243,46 @@ inline float half_to_float(half h)
 
 
 #endif
+
+
+// BAD operator implementations for fp16 arithmetic...
+
+// negation:
+inline CUDA_CALLABLE half operator - (half a)
+{
+    return float_to_half( -half_to_float(a) );
+}
+
+inline CUDA_CALLABLE half operator + (half a,half b)
+{
+    return float_to_half( half_to_float(a) + half_to_float(b) );
+}
+
+inline CUDA_CALLABLE half operator - (half a,half b)
+{
+    return float_to_half( half_to_float(a) - half_to_float(b) );
+}
+
+inline CUDA_CALLABLE half operator * (half a,half b)
+{
+    return float_to_half( half_to_float(a) * half_to_float(b) );
+}
+
+inline CUDA_CALLABLE half operator * (half a,double b)
+{
+    return float_to_half( half_to_float(a) * b );
+}
+
+inline CUDA_CALLABLE half operator * (double a,half b)
+{
+    return float_to_half( a * half_to_float(b) );
+}
+
+inline CUDA_CALLABLE half operator / (half a,half b)
+{
+    return float_to_half( half_to_float(a) / half_to_float(b) );
+}
+
 
 
 
