@@ -15,64 +15,71 @@ from typing import Dict
 from typing import Any
 from typing import Callable
 
+
+def sametype_value_func(default):
+    def fn(args,_):
+        if args is None:
+            return default
+        if not all( types_equal(args[0].type,a.type) for a in args[1:] ):
+            raise RuntimeError(f"Input types must be exactly the same, {[a.type for a in args]}")
+        return args[0].type
+    return fn
+
 #---------------------------------
 # Scalar Math
 
-add_builtin("min", input_types={"x": int, "y": int}, value_type=int, doc="Return the minimum of two integers.", group="Scalar Math")
-add_builtin("min", input_types={"x": float, "y": float}, value_type=float, doc="Return the minimum of two floats.", group="Scalar Math")
+add_builtin("min", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="Return the minimum of two integers.", group="Scalar Math")
 
-add_builtin("max", input_types={"x": int, "y": int}, value_type=int, doc="Return the maximum of two integers.", group="Scalar Math")
-add_builtin("max", input_types={"x": float, "y": float}, value_type=float, doc="Return the maximum of two floats.", group="Scalar Math")
+add_builtin("max", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="Return the maximum of two integers.", group="Scalar Math")
 
-add_builtin("clamp", input_types={"x": int, "a": int, "b": int}, value_type=int, doc="Clamp the value of x to the range [a, b].", group="Scalar Math")
-add_builtin("clamp", input_types={"x": float, "a": float, "b": float}, value_type=float, doc="Clamp the value of x to the range [a, b].", group="Scalar Math")
+add_builtin("clamp", input_types={"x": Scalar, "a": Scalar, "b": Scalar}, value_func=sametype_value_func(Scalar), doc="Clamp the value of x to the range [a, b].", group="Scalar Math")
 
-add_builtin("abs", input_types={"x": int}, value_type=int, doc="Return the absolute value of x.", group="Scalar Math")
-add_builtin("abs", input_types={"x": float}, value_type=float, doc="Return the absolute value of x.", group="Scalar Math")
-add_builtin("sign", input_types={"x": int}, value_type=int, doc="Return -1 if x < 0, return 1 otherwise.", group="Scalar Math")
-add_builtin("sign", input_types={"x": float}, value_type=float, doc="Return -1.0 if x < 0.0, return 1.0 otherwise.", group="Scalar Math")
+add_builtin("abs", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), doc="Return the absolute value of x.", group="Scalar Math")
+add_builtin("sign", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), doc="Return -1 if x < 0, return 1 otherwise.", group="Scalar Math")
 
-add_builtin("step", input_types={"x": float}, value_type=float, doc="Return 1.0 if x < 0.0, return 0.0 otherwise.", group="Scalar Math")
-add_builtin("nonzero", input_types={"x": float}, value_type=float, doc="Return 1.0 if x is not equal to zero, return 0.0 otherwise.", group="Scalar Math")
-add_builtin("sin", input_types={"x": float}, value_type=float, doc="Return the sine of x in radians.", group="Scalar Math")
-add_builtin("cos", input_types={"x": float}, value_type=float, doc="Return the cosine of x in radians.", group="Scalar Math")
-add_builtin("acos", input_types={"x": float}, value_type=float, doc="Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].", group="Scalar Math")
-add_builtin("asin", input_types={"x": float}, value_type=float, doc="Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].", group="Scalar Math")
-add_builtin("sqrt", input_types={"x": float}, value_type=float, doc="Return the sqrt of x, where x is positive.", group="Scalar Math")
-add_builtin("tan", input_types={"x": float}, value_type=float, doc="Return tangent of x in radians.", group="Scalar Math")
-add_builtin("atan", input_types={"x": float}, value_type=float, doc="Return arctan of x.", group="Scalar Math")
-add_builtin("atan2", input_types={"y": float, "x": float}, value_type=float, doc="Return atan2 of x.", group="Scalar Math")
-add_builtin("sinh", input_types={"x": float}, value_type=float, doc="Return the sinh of x.", group="Scalar Math")
-add_builtin("cosh", input_types={"x": float}, value_type=float, doc="Return the cosh of x.", group="Scalar Math")
-add_builtin("tanh", input_types={"x": float}, value_type=float, doc="Return the tanh of x.", group="Scalar Math")
+add_builtin("step", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), doc="Return 1.0 if x < 0.0, return 0.0 otherwise.", group="Scalar Math")
+add_builtin("nonzero", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), doc="Return 1.0 if x is not equal to zero, return 0.0 otherwise.", group="Scalar Math")
 
-add_builtin("log", input_types={"x": float}, value_type=float, doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
-add_builtin("log2", input_types={"x": float}, value_type=float, doc="Return the natural log (base-2) of x, where x is positive.", group="Scalar Math")
-add_builtin("log10", input_types={"x": float}, value_type=float, doc="Return the natural log (base-10) of x, where x is positive.", group="Scalar Math")
-add_builtin("exp", input_types={"x": float}, value_type=float, doc="Return base-e exponential, e^x.", group="Scalar Math")
-add_builtin("pow", input_types={"x": float, "y": float}, value_type=float, doc="Return the result of x raised to power of y.", group="Scalar Math")
+for T in [float16,float32,float64]:
+    add_builtin("sin", input_types={"x": T}, value_type=T, doc="Return the sine of x in radians.", group="Scalar Math")
+    add_builtin("cos", input_types={"x": T}, value_type=T, doc="Return the cosine of x in radians.", group="Scalar Math")
+    add_builtin("acos", input_types={"x": T}, value_type=T, doc="Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].", group="Scalar Math")
+    add_builtin("asin", input_types={"x": T}, value_type=T, doc="Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].", group="Scalar Math")
+    add_builtin("sqrt", input_types={"x": T}, value_type=T, doc="Return the sqrt of x, where x is positive.", group="Scalar Math")
+    add_builtin("tan", input_types={"x": T}, value_type=T, doc="Return tangent of x in radians.", group="Scalar Math")
+    add_builtin("atan", input_types={"x": T}, value_type=T, doc="Return arctan of x.", group="Scalar Math")
+    add_builtin("atan2", input_types={"y": T, "x": T}, value_type=T, doc="Return atan2 of x.", group="Scalar Math")
+    add_builtin("sinh", input_types={"x": T}, value_type=T, doc="Return the sinh of x.", group="Scalar Math")
+    add_builtin("cosh", input_types={"x": T}, value_type=T, doc="Return the cosh of x.", group="Scalar Math")
+    add_builtin("tanh", input_types={"x": T}, value_type=T, doc="Return the tanh of x.", group="Scalar Math")
 
-add_builtin("round", input_types={"x": float}, value_type=float, group="Scalar Math",
-    doc="""Calculate the nearest integer value, rounding halfway cases away from zero.
-   This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-   Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.""")
+    add_builtin("log", input_types={"x": T}, value_type=T, doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
+    add_builtin("log2", input_types={"x": T}, value_type=T, doc="Return the natural log (base-2) of x, where x is positive.", group="Scalar Math")
+    add_builtin("log10", input_types={"x": T}, value_type=T, doc="Return the natural log (base-10) of x, where x is positive.", group="Scalar Math")
+    add_builtin("exp", input_types={"x": T}, value_type=T, doc="Return base-e exponential, e^x.", group="Scalar Math")
+    add_builtin("pow", input_types={"x": T, "y": T}, value_type=T, doc="Return the result of x raised to power of y.", group="Scalar Math")
 
-add_builtin("rint", input_types={"x": float}, value_type=float, group="Scalar Math",
-    doc="""Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-   It is generally faster than ``warp.round()``.
-   Equivalent to ``numpy.rint()``.""")
+    add_builtin("round", input_types={"x": T}, value_type=T, group="Scalar Math",
+        doc="""Calculate the nearest integer value, rounding halfway cases away from zero.
+    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
+    Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.""")
 
-add_builtin("trunc", input_types={"x": float}, value_type=float, group="Scalar Math",
-    doc="""Calculate the nearest integer that is closer to zero than x.
-   In other words, it discards the fractional part of x.
-   It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-   Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.""")
+    add_builtin("rint", input_types={"x": T}, value_type=T, group="Scalar Math",
+        doc="""Calculate the nearest integer value, rounding halfway cases to nearest even integer.
+    It is generally faster than ``warp.round()``.
+    Equivalent to ``numpy.rint()``.""")
 
-add_builtin("floor", input_types={"x": float}, value_type=float, group="Scalar Math",
-    doc="""Calculate the largest integer that is less than or equal to x.""")
+    add_builtin("trunc", input_types={"x": T}, value_type=T, group="Scalar Math",
+        doc="""Calculate the nearest integer that is closer to zero than x.
+    In other words, it discards the fractional part of x.
+    It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+    Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.""")
 
-add_builtin("ceil", input_types={"x": float}, value_type=float, group="Scalar Math",
-    doc="""Calculate the smallest integer that is greater than or equal to x.""")
+    add_builtin("floor", input_types={"x": T}, value_type=T, group="Scalar Math",
+        doc="""Calculate the largest integer that is less than or equal to x.""")
+
+    add_builtin("ceil", input_types={"x": T}, value_type=T, group="Scalar Math",
+        doc="""Calculate the smallest integer that is greater than or equal to x.""")
 
 def infer_scalar_type(args):
     if args is None:
@@ -90,14 +97,6 @@ def infer_scalar_type(args):
         raise RuntimeError(f"Couldn't figure out return type as arguments have multiple precisions: {list(scalarTypes)}")
     return list(scalarTypes)[0]
 
-def sametype_value_func(default):
-    def fn(args,_):
-        if args is None:
-            return default
-        if not all( types_equal(args[0].type,a.type) for a in args[1:] ):
-            raise RuntimeError(f"Input types must be exactly the same, {[a.type for a in args]}")
-        return args[0].type
-    return fn
 
 def sametype_scalar_value_func(args,_):
     if args is None:
@@ -930,12 +929,18 @@ add_builtin("expect_neq", input_types={"arg1": vec(length=Any,type=Scalar), "arg
 
 add_builtin("expect_eq", input_types={"arg1": mat(shape=(Any,Any),type=Scalar), "arg2": mat(shape=(Any,Any),type=Scalar)}, value_func=expect_eq_val_func, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 add_builtin("expect_neq", input_types={"arg1": mat(shape=(Any,Any),type=Scalar), "arg2": mat(shape=(Any,Any),type=Scalar)}, value_func=expect_eq_val_func, doc="Prints an error to stdout if arg1 and arg2 are equal", group="Utility")
+    
+for t in [float16,float32,float64,]:
+    
+    add_builtin("lerp", input_types={"a": t, "b": t, "t": t}, value_type=t, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
+    add_builtin("smoothstep", input_types={"edge0": t, "edge1": t, "x": t}, value_type=t, doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping", group="Utility")
 
-for t in compute_types + vector_types:
-    if not type_is_int(t):
-        add_builtin("lerp", input_types={"a": t, "b": t, "t": float}, value_type=t, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
+for typ in vector_types:
+    t = typ._wp_scalar_type_
+    if t not in [float16,float32,float64,]:
+        continue
 
-add_builtin("smoothstep", input_types={"edge0": float, "edge1": float, "x": float}, value_type=float, doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping", group="Utility")
+    add_builtin("lerp", input_types={"a": typ, "b": typ, "t": t}, value_type=typ, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
