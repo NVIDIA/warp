@@ -10,7 +10,12 @@
 
 from warp.types import array, array2d, array3d, array4d, constant
 from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
-from warp.types import vec, vec2, vec3, vec4, mat, mat22, mat33, mat44, quaternion, quat, transform, spatial_vector, spatial_matrix
+from warp.types import vec, vec2h, vec3h, vec4h, vec2, vec3, vec4, vec2d, vec3d, vec4d, vec2ub, vec3ub, vec4ub
+from warp.types import mat, mat22h, mat33h, mat44h, mat22, mat33, mat44, mat22d, mat33d, mat44d
+from warp.types import quaternion, quath, quat, quatd
+from warp.types import transformh, transform, transformd
+from warp.types import spatial_vectorh, spatial_vector, spatial_vectord
+from warp.types import spatial_matrixh, spatial_matrix, spatial_matrixd
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
 from warp.types import matmul, batched_matmul
