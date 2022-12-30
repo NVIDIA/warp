@@ -38,8 +38,12 @@
 
 #ifdef WP_VERIFY_FP
 #define FP_CHECK 1
+#define DO_IF_FPCHECK(X) {X}
+#define DO_IF_NO_FPCHECK(X)
 #else
 #define FP_CHECK 0
+#define DO_IF_FPCHECK(X)
+#define DO_IF_NO_FPCHECK(X) {X}
 #endif
 
 
@@ -328,48 +332,169 @@ CUDA_CALLABLE inline void adj_float64(T x, T& adj_x, float64 adj_ret) { adj_x +=
 #define kEps 0.0f
 
 // basic ops for integer types
-inline CUDA_CALLABLE int mul(int a, int b) { return a*b; }
-inline CUDA_CALLABLE int div(int a, int b) { return a/b; }
-inline CUDA_CALLABLE int add(int a, int b) { return a+b; }
-inline CUDA_CALLABLE int sub(int a, int b) { return a-b; }
-inline CUDA_CALLABLE int mod(int a, int b) { return a%b; }
-inline CUDA_CALLABLE int min(int a, int b) { return a<b?a:b; }
-inline CUDA_CALLABLE int max(int a, int b) { return a>b?a:b; }
-inline CUDA_CALLABLE int abs(int x) { return ::abs(x); }
-inline CUDA_CALLABLE int sign(int x) { return x < 0 ? -1 : 1; }
-inline CUDA_CALLABLE int clamp(int x, int a, int b) { return min(max(a, x), b); }
-inline CUDA_CALLABLE int floordiv(int a, int b) { return a/b; }
+#define DECLARE_INT_OPS(T) \
+inline CUDA_CALLABLE T mul(T a, T b) { return a*b; } \
+inline CUDA_CALLABLE T div(T a, T b) { return a/b; } \
+inline CUDA_CALLABLE T add(T a, T b) { return a+b; } \
+inline CUDA_CALLABLE T sub(T a, T b) { return a-b; } \
+inline CUDA_CALLABLE T mod(T a, T b) { return a%b; } \
+inline CUDA_CALLABLE T min(T a, T b) { return a<b?a:b; } \
+inline CUDA_CALLABLE T max(T a, T b) { return a>b?a:b; } \
+inline CUDA_CALLABLE T clamp(T x, T a, T b) { return min(max(a, x), b); } \
+inline CUDA_CALLABLE T floordiv(T a, T b) { return a/b; } \
+inline CUDA_CALLABLE T nonzero(T x) { return x == T(0) ? T(0) : T(1); }\
+inline CUDA_CALLABLE T sqrt(T x) { return 0; }\
+inline CUDA_CALLABLE bool isfinite(T x) { return true; }\
+inline CUDA_CALLABLE void adj_mul(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_div(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_add(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_sub(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_min(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_max(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_abs(T x, T adj_x, T& adj_ret) { } \
+inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) { } \
+inline CUDA_CALLABLE void adj_clamp(T x, T a, T b, T& adj_x, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) { }\
+inline CUDA_CALLABLE void adj_step(T x, T& adj_x, T adj_ret) { }\
+inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { }
+
+inline CUDA_CALLABLE int8 abs(int8 x) { return ::abs(x); }
+inline CUDA_CALLABLE int16 abs(int16 x) { return ::abs(x); }
+inline CUDA_CALLABLE int32 abs(int32 x) { return ::abs(x); }
+inline CUDA_CALLABLE int64 abs(int64 x) { return ::abs(x); }
+inline CUDA_CALLABLE uint8 abs(uint8 x) { return x; }
+inline CUDA_CALLABLE uint16 abs(uint16 x) { return x; }
+inline CUDA_CALLABLE uint32 abs(uint32 x) { return x; }
+inline CUDA_CALLABLE uint64 abs(uint64 x) { return x; }
+
+ DECLARE_INT_OPS(int8)
+ DECLARE_INT_OPS(int16)
+ DECLARE_INT_OPS(int32)
+ DECLARE_INT_OPS(int64)
+ DECLARE_INT_OPS(uint8)
+ DECLARE_INT_OPS(uint16)
+ DECLARE_INT_OPS(uint32)
+ DECLARE_INT_OPS(uint64)
+ 
+
+inline CUDA_CALLABLE int8 step(int8 x) { return x < 0 ? 1 : 0; }
+inline CUDA_CALLABLE int16 step(int16 x) { return x < 0 ? 1 : 0; }
+inline CUDA_CALLABLE int32 step(int32 x) { return x < 0 ? 1 : 0; }
+inline CUDA_CALLABLE int64 step(int64 x) { return x < 0 ? 1 : 0; }
+inline CUDA_CALLABLE uint8 step(uint8 x) { return 0; }
+inline CUDA_CALLABLE uint16 step(uint16 x) { return 0; }
+inline CUDA_CALLABLE uint32 step(uint32 x) { return 0; }
+inline CUDA_CALLABLE uint64 step(uint64 x) { return 0; }
 
 
-inline CUDA_CALLABLE void adj_mul(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
-inline CUDA_CALLABLE void adj_div(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
-inline CUDA_CALLABLE void adj_add(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
-inline CUDA_CALLABLE void adj_sub(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
-inline CUDA_CALLABLE void adj_mod(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
-inline CUDA_CALLABLE void adj_min(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
-inline CUDA_CALLABLE void adj_max(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
-inline CUDA_CALLABLE void adj_abs(int x, int adj_x, int& adj_ret) { }
-inline CUDA_CALLABLE void adj_sign(int x, int adj_x, int& adj_ret) { }
-inline CUDA_CALLABLE void adj_clamp(int x, int a, int b, int& adj_x, int& adj_a, int& adj_b, int adj_ret) { }
-inline CUDA_CALLABLE void adj_floordiv(int a, int b, int& adj_a, int& adj_b, int adj_ret) { }
+inline CUDA_CALLABLE int8 sign(int8 x) { return x < 0 ? -1 : 1; }
+inline CUDA_CALLABLE int8 sign(int16 x) { return x < 0 ? -1 : 1; }
+inline CUDA_CALLABLE int8 sign(int32 x) { return x < 0 ? -1 : 1; }
+inline CUDA_CALLABLE int8 sign(int64 x) { return x < 0 ? -1 : 1; }
+inline CUDA_CALLABLE uint8 sign(uint8 x) { return 1; }
+inline CUDA_CALLABLE uint16 sign(uint16 x) { return 1; }
+inline CUDA_CALLABLE uint32 sign(uint32 x) { return 1; }
+inline CUDA_CALLABLE uint64 sign(uint64 x) { return 1; }
+
+
+
+inline bool CUDA_CALLABLE isfinite(half x)
+{
+    return ::isfinite(float(x));
+}
+inline bool CUDA_CALLABLE isfinite(float x)
+{
+    return ::isfinite(x);
+}
+inline bool CUDA_CALLABLE isfinite(double x)
+{
+    return ::isfinite(x);
+}
+
+inline CUDA_CALLABLE void print(float16 f)
+{
+    printf("%g\n", half_to_float(f));
+}
+
+inline CUDA_CALLABLE void print(float f)
+{
+    printf("%g\n", f);
+}
+
+inline CUDA_CALLABLE void print(double f)
+{
+    printf("%g\n", f);
+}
+
 
 // basic ops for float types
-inline CUDA_CALLABLE float mul(float a, float b) { return a*b; }
-inline CUDA_CALLABLE float div(float a, float b)
-{
-#if FP_CHECK
-    if (!isfinite(a) || !isfinite(b) || b == 0.0f)
-    {
-        printf("%s:%d div(%f, %f)\n", __FILE__, __LINE__, a, b);
-        assert(0);
-    }
-#endif
-    return a/b;
+#define DECLARE_FLOAT_OPS(T) \
+inline CUDA_CALLABLE T mul(T a, T b) { return a*b; } \
+inline CUDA_CALLABLE T add(T a, T b) { return a+b; } \
+inline CUDA_CALLABLE T sub(T a, T b) { return a-b; } \
+inline CUDA_CALLABLE T div(T a, T b)\
+{\
+    DO_IF_FPCHECK(\
+    if (!isfinite(a) || !isfinite(b) || b == T(0))\
+    {\
+        printf("%s:%d div(", __FILE__, __LINE__);\
+        print(a);\
+        printf(",");\
+        print(b);\
+        printf(")\n");\
+        assert(0);\
+    })\
+    return a/b;\
+}\
+inline CUDA_CALLABLE T min(T a, T b) { return a<b?a:b; }\
+inline CUDA_CALLABLE T max(T a, T b) { return a>b?a:b; }\
+inline CUDA_CALLABLE void adj_mul(T a, T b, T& adj_a, T& adj_b, T adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; } \
+inline CUDA_CALLABLE void adj_add(T a, T b, T& adj_a, T& adj_b, T adj_ret) { adj_a += adj_ret; adj_b += adj_ret; } \
+inline CUDA_CALLABLE void adj_sub(T a, T b, T& adj_a, T& adj_b, T adj_ret) { adj_a += adj_ret; adj_b -= adj_ret; } \
+inline CUDA_CALLABLE void adj_div(T a, T b, T& adj_a, T& adj_b, T adj_ret)\
+{\
+    adj_a += adj_ret/b;\
+    adj_b -= adj_ret*(a/b)/b;\
+    DO_IF_FPCHECK(\
+    if (!isfinite(adj_a) || !isfinite(adj_b))\
+    {\
+        printf("%s:%d - adj_div(", __FILE__, __LINE__);\
+        print(a);\
+        printf(", ");\
+        print(b);\
+        printf(", ");\
+        print(adj_a);\
+        printf(", ");\
+        print(adj_b);\
+        printf(", ");\
+        print(adj_ret);\
+        printf(")\n");\
+        assert(0);\
+    })\
+}\
+inline CUDA_CALLABLE void adj_min(T a, T b, T& adj_a, T& adj_b, T adj_ret)\
+{\
+    if (a < b)\
+        adj_a += adj_ret;\
+    else\
+        adj_b += adj_ret;\
+}\
+inline CUDA_CALLABLE void adj_max(T a, T b, T& adj_a, T& adj_b, T adj_ret)\
+{\
+    if (a > b)\
+        adj_a += adj_ret;\
+    else\
+        adj_b += adj_ret;\
 }
-inline CUDA_CALLABLE float add(float a, float b) { return a+b; }
-inline CUDA_CALLABLE float sub(float a, float b) { return a-b; }
-inline CUDA_CALLABLE float min(float a, float b) { return a<b?a:b; }
-inline CUDA_CALLABLE float max(float a, float b) { return a>b?a:b; }
+
+DECLARE_FLOAT_OPS(float16)
+DECLARE_FLOAT_OPS(float32)
+DECLARE_FLOAT_OPS(float64)
+
+
+
+// basic ops for float types
 inline CUDA_CALLABLE float mod(float a, float b)
 {
 #if FP_CHECK
@@ -460,7 +585,11 @@ inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, 
 inline CUDA_CALLABLE float clamp(float x, float a, float b) { return min(max(a, x), b); }
 inline CUDA_CALLABLE float step(float x) { return x < 0.0f ? 1.0f : 0.0f; }
 inline CUDA_CALLABLE float sign(float x) { return x < 0.0f ? -1.0f : 1.0f; }
+
+inline CUDA_CALLABLE half abs(half x) { return ::fabs(float(x)); }
 inline CUDA_CALLABLE float abs(float x) { return ::fabs(x); }
+inline CUDA_CALLABLE double abs(double x) { return ::fabs(x); }
+
 inline CUDA_CALLABLE float nonzero(float x) { return x == 0.0f ? 0.0f : 1.0f; }
 
 inline CUDA_CALLABLE float acos(float x)
@@ -475,6 +604,7 @@ inline CUDA_CALLABLE float atan(float x) { return ::atan(x); }
 inline CUDA_CALLABLE float atan2(float y, float x) { return ::atan2(y, x); }
 inline CUDA_CALLABLE float sin(float x) { return ::sin(x); }
 inline CUDA_CALLABLE float cos(float x) { return ::cos(x); }
+
 inline CUDA_CALLABLE float sqrt(float x)
 {
 #if FP_CHECK
@@ -486,6 +616,29 @@ inline CUDA_CALLABLE float sqrt(float x)
 #endif
     return ::sqrt(x);
 }
+inline CUDA_CALLABLE double sqrt(double x)
+{
+#if FP_CHECK
+    if (x < 0.0)
+    {
+        printf("%s:%d sqrt(%f)\n", __FILE__, __LINE__, x);
+        assert(0);
+    }
+#endif
+    return ::sqrt(x);
+}
+inline CUDA_CALLABLE half sqrt(half x)
+{
+#if FP_CHECK
+    if (float(x) < 0.0f)
+    {
+        printf("%s:%d sqrt(%f)\n", __FILE__, __LINE__, float(x));
+        assert(0);
+    }
+#endif
+    return ::sqrt(float(x));
+}
+
 inline CUDA_CALLABLE float tan(float x) { return ::tan(x); }
 inline CUDA_CALLABLE float sinh(float x) { return ::sinhf(x);}
 inline CUDA_CALLABLE float cosh(float x) { return ::coshf(x);}
@@ -497,21 +650,6 @@ inline CUDA_CALLABLE float trunc(float x) { return ::truncf(x); }
 inline CUDA_CALLABLE float floor(float x) { return ::floorf(x); }
 inline CUDA_CALLABLE float ceil(float x) { return ::ceilf(x); }
 
-inline CUDA_CALLABLE void adj_mul(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; }
-inline CUDA_CALLABLE void adj_div(float a, float b, float& adj_a, float& adj_b, float adj_ret)
-{
-    adj_a += adj_ret/b;
-    adj_b -= adj_ret*(a/b)/b;
-#if FP_CHECK
-    if (!isfinite(adj_a) || !isfinite(adj_b))
-    {
-        printf("%s:%d - adj_div(%f, %f, %f, %f, %f)\n", __FILE__, __LINE__, a, b, adj_a, adj_b, adj_ret);
-        assert(0);
-    }
-#endif
-}
-inline CUDA_CALLABLE void adj_add(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b += adj_ret; }
-inline CUDA_CALLABLE void adj_sub(float a, float b, float& adj_a, float& adj_b, float adj_ret) { adj_a += adj_ret; adj_b -= adj_ret; }
 inline CUDA_CALLABLE void adj_mod(float a, float b, float& adj_a, float& adj_b, float adj_ret)
 {
     printf("adj_mod not implemented for floating point types\n");
@@ -569,22 +707,6 @@ inline CUDA_CALLABLE void adj_pow(float a, float b, float& adj_a, float& adj_b, 
 }
 inline CUDA_CALLABLE void adj_floordiv(float a, float b, float& adj_a, float& adj_b, float adj_ret) { }
 
-inline CUDA_CALLABLE void adj_min(float a, float b, float& adj_a, float& adj_b, float adj_ret)
-{
-    if (a < b)
-        adj_a += adj_ret;
-    else
-        adj_b += adj_ret;
-}
-
-inline CUDA_CALLABLE void adj_max(float a, float b, float& adj_a, float& adj_b, float adj_ret)
-{
-    if (a > b)
-        adj_a += adj_ret;
-    else
-        adj_b += adj_ret;
-}
-
 inline CUDA_CALLABLE void adj_leaky_min(float a, float b, float r, float& adj_a, float& adj_b, float& adj_r, float adj_ret)
 {
     if (a < b)
@@ -632,9 +754,23 @@ inline CUDA_CALLABLE void adj_sign(float x, float& adj_x, float adj_ret)
     // nop
 }
 
+inline CUDA_CALLABLE void adj_abs(half x, half& adj_x, half adj_ret)
+{
+    if (float(x) < 0.0f)
+        adj_x -= adj_ret;
+    else
+        adj_x += adj_ret;                
+}
 inline CUDA_CALLABLE void adj_abs(float x, float& adj_x, float adj_ret)
 {
     if (x < 0.0f)
+        adj_x -= adj_ret;
+    else
+        adj_x += adj_ret;                
+}
+inline CUDA_CALLABLE void adj_abs(double x, double& adj_x, double adj_ret)
+{
+    if (x < 0.0)
         adj_x -= adj_ret;
     else
         adj_x += adj_ret;                
@@ -739,9 +875,33 @@ inline CUDA_CALLABLE void adj_tanh(float x, float& adj_x, float adj_ret)
     adj_x += (1.0f - tanh_x*tanh_x)*adj_ret;
 }
 
+inline CUDA_CALLABLE void adj_sqrt(half x, half& adj_x, half adj_ret)
+{
+    adj_x += 0.5f*(1.0f/sqrt(float(x)))*float(adj_ret);
+#if FP_CHECK    
+    if (!isfinite(float(adj_x)))
+    {
+        printf("%s:%d - adj_sqrt(%f, %f, %f)\n", __FILE__, __LINE__, float(x), float(adj_x), float(adj_ret));
+        assert(0);
+    }
+#endif
+}
+
 inline CUDA_CALLABLE void adj_sqrt(float x, float& adj_x, float adj_ret)
 {
     adj_x += 0.5f*(1.0f/sqrt(x))*adj_ret;
+#if FP_CHECK    
+    if (!isfinite(adj_x))
+    {
+        printf("%s:%d - adj_sqrt(%f, %f, %f)\n", __FILE__, __LINE__, x, adj_x, adj_ret);
+        assert(0);
+    }
+#endif
+}
+
+inline CUDA_CALLABLE void adj_sqrt(double x, double& adj_x, double adj_ret)
+{
+    adj_x += 0.5*(1.0/sqrt(x))*adj_ret;
 #if FP_CHECK    
     if (!isfinite(adj_x))
     {
@@ -775,9 +935,6 @@ inline CUDA_CALLABLE void adj_ceil(float x, float& adj_x, float adj_ret)
 {
     // nop
 }
-
-// basic arithmetic for fp16, this is only called for adjoint accumulation
-inline CUDA_CALLABLE half add(half a, half b) { return half(float(a)+float(b)); }
 
 
 template <typename T>
@@ -1039,10 +1196,6 @@ inline CUDA_CALLABLE int atomic_min(int* address, int val)
 #endif
 }
 
-inline bool CUDA_CALLABLE isfinite(float x)
-{
-    return ::isfinite(x);
-}
 
 } // namespace wp
 
@@ -1147,34 +1300,20 @@ inline CUDA_CALLABLE void print(unsigned long long i)
     printf("%llu\n", i);
 }
 
-inline CUDA_CALLABLE void print(float16 f)
-{
-    printf("%g\n", half_to_float(f));
-}
-
-inline CUDA_CALLABLE void print(float f)
-{
-    printf("%g\n", f);
-}
-
-inline CUDA_CALLABLE void print(double f)
-{
-    printf("%g\n", f);
-}
-
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void print(vec<Length, Type> v)
 {
     for( unsigned i=0; i < Length; ++i )
     {
-        printf("%g ", v[i]);
+        printf("%g ", float(v[i]));
     }
     printf("\n");
 }
 
-inline CUDA_CALLABLE void print(quat i)
+template<typename Type>
+inline CUDA_CALLABLE void print(quaternion<Type> i)
 {
-    printf("%g %g %g %g\n", i.x, i.y, i.z, i.w);
+    printf("%g %g %g %g\n", float(i.x), float(i.y), float(i.z), float(i.w));
 }
 
 template<unsigned Rows,unsigned Cols,typename Type>
@@ -1184,23 +1323,26 @@ inline CUDA_CALLABLE void print(const mat<Rows,Cols,Type> &m)
     {
         for( unsigned j=0; j< Cols; ++j )
         {
-            printf("%g ",m.data[i][j]);
+            printf("%g ",float(m.data[i][j]));
         }
         printf("\n");
     }
 }
 
-inline CUDA_CALLABLE void print(transform t)
+template<typename Type>
+inline CUDA_CALLABLE void print(transform_t<Type> t)
 {
-    printf("(%g %g %g) (%g %g %g %g)\n", t.p[0], t.p[1], t.p[2], t.q.x, t.q.y, t.q.z, t.q.w);
+    printf("(%g %g %g) (%g %g %g %g)\n", float(t.p[0]), float(t.p[1]), float(t.p[2]), float(t.q.x), float(t.q.y), float(t.q.z), float(t.q.w));
 }
 
-inline CUDA_CALLABLE void print(spatial_vector v)
+template<typename Type>
+inline CUDA_CALLABLE void print(spatial_vector_t<Type> v)
 {
-    printf("(%g %g %g) (%g %g %g)\n", v.w[0], v.w[1], v.w[2], v.v[0], v.v[1], v.v[2]);
+    printf("(%g %g %g) (%g %g %g)\n", float(v.w[0]), float(v.w[1]), float(v.w[2]), float(v.v[0]), float(v.v[1]), float(v.v[2]));
 }
 
-inline CUDA_CALLABLE void print(spatial_matrix m)
+template<typename Type>
+inline CUDA_CALLABLE void print(spatial_matrix_t<Type> m)
 {
     printf("%g %g %g %g %g %g\n"
            "%g %g %g %g %g %g\n"
@@ -1208,12 +1350,12 @@ inline CUDA_CALLABLE void print(spatial_matrix m)
            "%g %g %g %g %g %g\n"
            "%g %g %g %g %g %g\n"
            "%g %g %g %g %g %g\n", 
-           m.data[0][0], m.data[0][1], m.data[0][2],  m.data[0][3], m.data[0][4], m.data[0][5], 
-           m.data[1][0], m.data[1][1], m.data[1][2],  m.data[1][3], m.data[1][4], m.data[1][5], 
-           m.data[2][0], m.data[2][1], m.data[2][2],  m.data[2][3], m.data[2][4], m.data[2][5], 
-           m.data[3][0], m.data[3][1], m.data[3][2],  m.data[3][3], m.data[3][4], m.data[3][5], 
-           m.data[4][0], m.data[4][1], m.data[4][2],  m.data[4][3], m.data[4][4], m.data[4][5], 
-           m.data[5][0], m.data[5][1], m.data[5][2],  m.data[5][3], m.data[5][4], m.data[5][5]);
+           float(m.data[0][0]), float(m.data[0][1]), float(m.data[0][2]), float(m.data[0][3]), float(m.data[0][4]), float(m.data[0][5]), 
+           float(m.data[1][0]), float(m.data[1][1]), float(m.data[1][2]), float(m.data[1][3]), float(m.data[1][4]), float(m.data[1][5]), 
+           float(m.data[2][0]), float(m.data[2][1]), float(m.data[2][2]), float(m.data[2][3]), float(m.data[2][4]), float(m.data[2][5]), 
+           float(m.data[3][0]), float(m.data[3][1]), float(m.data[3][2]), float(m.data[3][3]), float(m.data[3][4]), float(m.data[3][5]), 
+           float(m.data[4][0]), float(m.data[4][1]), float(m.data[4][2]), float(m.data[4][3]), float(m.data[4][4]), float(m.data[4][5]), 
+           float(m.data[5][0]), float(m.data[5][1]), float(m.data[5][2]), float(m.data[5][3]), float(m.data[5][4]), float(m.data[5][5]));
 }
 
 

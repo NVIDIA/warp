@@ -49,7 +49,12 @@ import warp.tests.test_torch
 import warp.tests.test_pinned
 import warp.tests.test_matmul
 import warp.tests.test_options
+<<<<<<< HEAD
 import warp.tests.test_dlpack
+=======
+import warp.tests.test_vec
+import warp.tests.test_mat
+>>>>>>> dfe604e (Added unit tests for generic matrix/vector types)
 
 
 def register_tests(parent):
@@ -96,6 +101,8 @@ def register_tests(parent):
     tests.append(warp.tests.test_matmul.register(parent))
     tests.append(warp.tests.test_options.register(parent))
     tests.append(warp.tests.test_dlpack.register(parent))
+    tests.append(warp.tests.test_vec.register(parent))
+    tests.append(warp.tests.test_mat.register(parent))
 
     return tests
 

@@ -196,16 +196,22 @@ WP_API void builtin_expect_eq_uint64_uint64(uint64 arg1, uint64 arg2) { wp::expe
 WP_API void builtin_expect_eq_float16_float16(float16 arg1, float16 arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_float32_float32(float32 arg1, float32 arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_float64_float64(float64 arg1, float64 arg2) { wp::expect_eq(arg1, arg2); }
+WP_API void builtin_expect_eq_quat_quat(quat arg1, quat arg2) { wp::expect_eq(arg1, arg2); }
+WP_API void builtin_expect_eq_transform_transform(transform arg1, transform arg2) { wp::expect_eq(arg1, arg2); }
+WP_API void builtin_expect_eq_spatial_vector_spatial_vector(spatial_vector arg1, spatial_vector arg2) { wp::expect_eq(arg1, arg2); }
+WP_API void builtin_expect_eq_spatial_matrix_spatial_matrix(spatial_matrix arg1, spatial_matrix arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_vec2_vec2(vec2 arg1, vec2 arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_vec3_vec3(vec3 arg1, vec3 arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_vec4_vec4(vec4 arg1, vec4 arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_mat22_mat22(mat22 arg1, mat22 arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_mat33_mat33(mat33 arg1, mat33 arg2) { wp::expect_eq(arg1, arg2); }
 WP_API void builtin_expect_eq_mat44_mat44(mat44 arg1, mat44 arg2) { wp::expect_eq(arg1, arg2); }
-WP_API void builtin_expect_eq_quat_quat(quat arg1, quat arg2) { wp::expect_eq(arg1, arg2); }
-WP_API void builtin_expect_eq_transform_transform(transform arg1, transform arg2) { wp::expect_eq(arg1, arg2); }
-WP_API void builtin_expect_eq_spatial_vector_spatial_vector(spatial_vector arg1, spatial_vector arg2) { wp::expect_eq(arg1, arg2); }
-WP_API void builtin_expect_eq_spatial_matrix_spatial_matrix(spatial_matrix arg1, spatial_matrix arg2) { wp::expect_eq(arg1, arg2); }
+WP_API void builtin_expect_neq_vec2_vec2(vec2 arg1, vec2 arg2) { wp::expect_neq(arg1, arg2); }
+WP_API void builtin_expect_neq_vec3_vec3(vec3 arg1, vec3 arg2) { wp::expect_neq(arg1, arg2); }
+WP_API void builtin_expect_neq_vec4_vec4(vec4 arg1, vec4 arg2) { wp::expect_neq(arg1, arg2); }
+WP_API void builtin_expect_neq_mat22_mat22(mat22 arg1, mat22 arg2) { wp::expect_neq(arg1, arg2); }
+WP_API void builtin_expect_neq_mat33_mat33(mat33 arg1, mat33 arg2) { wp::expect_neq(arg1, arg2); }
+WP_API void builtin_expect_neq_mat44_mat44(mat44 arg1, mat44 arg2) { wp::expect_neq(arg1, arg2); }
 WP_API void builtin_lerp_float32_float32_float32(float32 a, float32 b, float32 t, float32* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_vec2_vec2_float32(vec2 a, vec2 b, float32 t, vec2* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void builtin_lerp_vec3_vec3_float32(vec3 a, vec3 b, float32 t, vec3* ret) { *ret = wp::lerp(a, b, t); }
@@ -220,8 +226,6 @@ WP_API void builtin_lerp_spatial_matrix_spatial_matrix_float32(spatial_matrix a,
 WP_API void builtin_smoothstep_float32_float32_float32(float32 edge0, float32 edge1, float32 x, float* ret) { *ret = wp::smoothstep(edge0, edge1, x); }
 WP_API void builtin_expect_near_float32_float32_float32(float32 arg1, float32 arg2, float32 tolerance) { wp::expect_near(arg1, arg2, tolerance); }
 WP_API void builtin_expect_near_vec3_vec3_float32(vec3 arg1, vec3 arg2, float32 tolerance) { wp::expect_near(arg1, arg2, tolerance); }
-WP_API void builtin_add_int32_int32(int32 x, int32 y, int* ret) { *ret = wp::add(x, y); }
-WP_API void builtin_add_float32_float32(float32 x, float32 y, float* ret) { *ret = wp::add(x, y); }
 WP_API void builtin_add_vec2_vec2(vec2 x, vec2 y, vec2* ret) { *ret = wp::add(x, y); }
 WP_API void builtin_add_vec3_vec3(vec3 x, vec3 y, vec3* ret) { *ret = wp::add(x, y); }
 WP_API void builtin_add_vec4_vec4(vec4 x, vec4 y, vec4* ret) { *ret = wp::add(x, y); }
@@ -231,8 +235,6 @@ WP_API void builtin_add_mat33_mat33(mat33 x, mat33 y, mat33* ret) { *ret = wp::a
 WP_API void builtin_add_mat44_mat44(mat44 x, mat44 y, mat44* ret) { *ret = wp::add(x, y); }
 WP_API void builtin_add_spatial_vector_spatial_vector(spatial_vector x, spatial_vector y, spatial_vector* ret) { *ret = wp::add(x, y); }
 WP_API void builtin_add_spatial_matrix_spatial_matrix(spatial_matrix x, spatial_matrix y, spatial_matrix* ret) { *ret = wp::add(x, y); }
-WP_API void builtin_sub_int32_int32(int32 x, int32 y, int* ret) { *ret = wp::sub(x, y); }
-WP_API void builtin_sub_float32_float32(float32 x, float32 y, float* ret) { *ret = wp::sub(x, y); }
 WP_API void builtin_sub_vec2_vec2(vec2 x, vec2 y, vec2* ret) { *ret = wp::sub(x, y); }
 WP_API void builtin_sub_vec3_vec3(vec3 x, vec3 y, vec3* ret) { *ret = wp::sub(x, y); }
 WP_API void builtin_sub_vec4_vec4(vec4 x, vec4 y, vec4* ret) { *ret = wp::sub(x, y); }
@@ -241,8 +243,6 @@ WP_API void builtin_sub_mat33_mat33(mat33 x, mat33 y, mat33* ret) { *ret = wp::s
 WP_API void builtin_sub_mat44_mat44(mat44 x, mat44 y, mat44* ret) { *ret = wp::sub(x, y); }
 WP_API void builtin_sub_spatial_vector_spatial_vector(spatial_vector x, spatial_vector y, spatial_vector* ret) { *ret = wp::sub(x, y); }
 WP_API void builtin_sub_spatial_matrix_spatial_matrix(spatial_matrix x, spatial_matrix y, spatial_matrix* ret) { *ret = wp::sub(x, y); }
-WP_API void builtin_mul_int32_int32(int32 x, int32 y, int* ret) { *ret = wp::mul(x, y); }
-WP_API void builtin_mul_float32_float32(float32 x, float32 y, float* ret) { *ret = wp::mul(x, y); }
 WP_API void builtin_mul_vec2_float32(vec2 x, float32 y, vec2* ret) { *ret = wp::mul(x, y); }
 WP_API void builtin_mul_vec3_float32(vec3 x, float32 y, vec3* ret) { *ret = wp::mul(x, y); }
 WP_API void builtin_mul_vec4_float32(vec4 x, float32 y, vec4* ret) { *ret = wp::mul(x, y); }
@@ -268,17 +268,12 @@ WP_API void builtin_mul_spatial_vector_float32(spatial_vector x, float32 y, spat
 WP_API void builtin_mul_spatial_matrix_spatial_matrix(spatial_matrix x, spatial_matrix y, spatial_matrix* ret) { *ret = wp::mul(x, y); }
 WP_API void builtin_mul_spatial_matrix_spatial_vector(spatial_matrix x, spatial_vector y, spatial_vector* ret) { *ret = wp::mul(x, y); }
 WP_API void builtin_mul_transform_transform(transform x, transform y, transform* ret) { *ret = wp::mul(x, y); }
-WP_API void builtin_mod_int32_int32(int32 x, int32 y, int* ret) { *ret = wp::mod(x, y); }
-WP_API void builtin_mod_float32_float32(float32 x, float32 y, float* ret) { *ret = wp::mod(x, y); }
-WP_API void builtin_div_int32_int32(int32 x, int32 y, int* ret) { *ret = wp::div(x, y); }
-WP_API void builtin_div_float32_float32(float32 x, float32 y, float* ret) { *ret = wp::div(x, y); }
 WP_API void builtin_div_vec2_float32(vec2 x, float32 y, vec2* ret) { *ret = wp::div(x, y); }
 WP_API void builtin_div_vec3_float32(vec3 x, float32 y, vec3* ret) { *ret = wp::div(x, y); }
 WP_API void builtin_div_vec4_float32(vec4 x, float32 y, vec4* ret) { *ret = wp::div(x, y); }
-WP_API void builtin_floordiv_int32_int32(int32 x, int32 y, int* ret) { *ret = wp::floordiv(x, y); }
-WP_API void builtin_floordiv_float32_float32(float32 x, float32 y, float* ret) { *ret = wp::floordiv(x, y); }
-WP_API void builtin_neg_int32(int32 x, int* ret) { *ret = wp::neg(x); }
-WP_API void builtin_neg_float32(float32 x, float* ret) { *ret = wp::neg(x); }
+WP_API void builtin_div_mat22_float32(mat22 x, float32 y, mat22* ret) { *ret = wp::div(x, y); }
+WP_API void builtin_div_mat33_float32(mat33 x, float32 y, mat33* ret) { *ret = wp::div(x, y); }
+WP_API void builtin_div_mat44_float32(mat44 x, float32 y, mat44* ret) { *ret = wp::div(x, y); }
 WP_API void builtin_neg_vec2(vec2 x, vec2* ret) { *ret = wp::neg(x); }
 WP_API void builtin_neg_vec3(vec3 x, vec3* ret) { *ret = wp::neg(x); }
 WP_API void builtin_neg_vec4(vec4 x, vec4* ret) { *ret = wp::neg(x); }
