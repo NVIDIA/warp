@@ -1160,17 +1160,36 @@ class Adjoint:
                 # using "wp." prefix, and also handles type constructors
                 # e.g.: wp.vec3 which aren't explicitly function objects
                 attr = path[-1]
+                caller = func
+                func = None
                 if attr in warp.context.builtin_functions:
                     func = warp.context.builtin_functions[attr]
-                elif hasattr(func,"_wp_generic_type_str_"):
+                elif hasattr(caller,"_wp_generic_type_str_"):
 
                     # This is a constructor for an object with a generic type,
                     # so we're going to need the template information stored in
                     # the class to actually figure out what the c++ template arguments
                     # are:
                     
-                    templates = func._wp_type_params_
-                    func = warp.context.builtin_functions.get(func._wp_generic_type_str_)
+                    templates = caller._wp_type_params_
+                    func = warp.context.builtin_functions.get(caller._wp_generic_type_str_)
+
+                if func is None and caller.__class__.__name__ in warp.context.builtin_functions:
+
+                    # This can be necessary if you've aliased a type before defining the
+                    # kernel then used it inside the kernel, eg
+                     
+                    # wptype = wp.float64
+                    # @wp.kernel
+                    # def mykernel( ... )
+                    #   ...
+                    #   a = wptype(2)
+                    
+                    # The attr variable we used to try and look up the builtin for wptype
+                    # is just "wptype", which isn't in the builtins, so we try and look
+                    # it up based on wptype's class name instead:
+                    
+                    func = warp.context.builtin_functions.get(caller.__class__.__name__)
 
                 if func is None:
                     raise RuntimeError(f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel.")
@@ -1399,7 +1418,14 @@ class Adjoint:
 
         # try and evaluate object path
         try:
-            func = eval(".".join(path), adj.func.__globals__)
+
+            # Look up the closure info and append it to adj.func.__globals__
+            # in case you want to define a kernel inside a function and refer
+            # to varibles you've declared inside that function:
+            
+            capturedvars = dict(zip(adj.func.__code__.co_freevars,[ c.cell_contents() for c in (adj.func.__closure__ or []) ]))
+            vars_dict = {**adj.func.__globals__, **capturedvars}
+            func = eval(".".join(path), vars_dict)
             return func, path
         except:
             pass
