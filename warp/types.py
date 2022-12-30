@@ -329,7 +329,13 @@ def quaternion(type=Any):
 
     return ret
 
+class quath(quaternion(type=float16)):
+    pass
+
 class quat(quaternion(type=float32)):
+    pass
+
+class quatd(quaternion(type=float64)):
     pass
 
 def transform_t(type=Any):
@@ -355,7 +361,22 @@ def transform_t(type=Any):
 
     return transform_class
 
+class transformh(transform_t(type=float16)):
+    pass
+
 class transform(transform_t(type=float32)):
+    pass
+
+class transformd(transform_t(type=float64)):
+    pass
+
+class vec2h(vec(length=2, type=float16)):
+    pass
+
+class vec3h(vec(length=3, type=float16)):
+    pass
+
+class vec4h(vec(length=4, type=float16)):
     pass
 
 class vec2(vec(length=2, type=float32)):
@@ -366,6 +387,33 @@ class vec3(vec(length=3, type=float32)):
 
 class vec4(vec(length=4, type=float32)):
     pass
+
+class vec2d(vec(length=2, type=float64)):
+    pass
+
+class vec3d(vec(length=3, type=float64)):
+    pass
+
+class vec4d(vec(length=4, type=float64)):
+    pass
+
+class vec2ub(vec(length=2, type=uint8)):
+    pass
+    
+class vec3ub(vec(length=3, type=uint8)):
+    pass
+
+class vec4ub(vec(length=4, type=uint8)):
+    pass
+    
+class mat22h(mat(shape=(2,2), type=float16)):
+    pass
+    
+class mat33h(mat(shape=(3,3), type=float16)):
+    pass
+
+class mat44h(mat(shape=(4,4), type=float16)):
+    pass
     
 class mat22(mat(shape=(2,2), type=float32)):
     pass
@@ -374,6 +422,15 @@ class mat33(mat(shape=(3,3), type=float32)):
     pass
 
 class mat44(mat(shape=(4,4), type=float32)):
+    pass
+    
+class mat22d(mat(shape=(2,2), type=float64)):
+    pass
+    
+class mat33d(mat(shape=(3,3), type=float64)):
+    pass
+
+class mat44d(mat(shape=(4,4), type=float64)):
     pass
 
 
@@ -386,7 +443,13 @@ def spatial_vector_t(type=Any):
 
     return ret
 
+class spatial_vectorh(spatial_vector_t(type=float16)):
+    pass
+
 class spatial_vector(spatial_vector_t(type=float32)):
+    pass
+
+class spatial_vectord(spatial_vector_t(type=float64)):
     pass
 
 def spatial_matrix_t(type=Any):
@@ -398,7 +461,13 @@ def spatial_matrix_t(type=Any):
 
     return ret
 
+class spatial_matrixh(spatial_matrix_t(type=float16)):
+    pass
+
 class spatial_matrix(spatial_matrix_t(type=float32)):
+    pass
+
+class spatial_matrixd(spatial_matrix_t(type=float64)):
     pass
 
 
