@@ -655,7 +655,7 @@ class Adjoint:
 
         # zero adjoints
         for i in body_block.vars:
-             reverse.append(adj.prefix + f"\tadj_{i} = 0;")
+             reverse.append(adj.prefix + f"\tadj_{i} = {i.ctype()}(0);")
 
         # replay
         for i in body_block.body_replay:
@@ -716,7 +716,7 @@ class Adjoint:
 
         # zero adjoints of local vars
         for i in body_block.vars:
-             reverse.append(f"adj_{i} = 0;")
+             reverse.append(f"adj_{i} = {i.ctype()}(0);")
 
         # replay
         for i in body_block.body_replay:
@@ -1748,7 +1748,7 @@ def codegen_func_reverse(adj, func_type='kernel', device='cpu'):
     s += "    // dual vars\n"
 
     for var in adj.variables:
-        s += "    " + var.ctype() + " adj_" + str(var.label) + " = 0;\n"
+        s += "    " + var.ctype() + " adj_" + str(var.label) + "(0);\n"
 
     if device == 'cpu':
         s += codegen_func_reverse_body(adj, device=device, indent=4)
