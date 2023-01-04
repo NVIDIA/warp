@@ -31,16 +31,18 @@ class _State:
 
 def _get_attribute_creation_handler(state: _State) -> Callable:
 
-    def fn(name, port_type, data_type_name):
+    def fn(name, port_type, data_type_name, optional):
         type_name = og.AttributeType.type_from_sdf_type_name(data_type_name)
-        if og.Controller.create_attribute(
+        attr = og.Controller.create_attribute(
             state.layout.node,
             "{}:{}".format(og.get_port_type_namespace(port_type), name),
             type_name,
             port_type,
-        ) is None:
+        )
+        if attr is None:
             return
 
+        attr.is_optional_for_compute = optional
         state.layout.refresh()
 
     return fn
