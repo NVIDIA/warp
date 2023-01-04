@@ -34,7 +34,11 @@
 
 // function pointers to driver API entry points
 // these are explicitly versioned according to cudaTypedefs.h from CUDA Toolkit WP_CUDA_VERSION
+#if CUDA_VERSION < 12000
 static PFN_cuGetProcAddress_v11030 pfn_cuGetProcAddress;
+#else
+static PFN_cuGetProcAddress_v12000 pfn_cuGetProcAddress;
+#endif
 static PFN_cuDriverGetVersion_v2020 pfn_cuDriverGetVersion;
 static PFN_cuGetErrorName_v6000 pfn_cuGetErrorName;
 static PFN_cuGetErrorString_v6000 pfn_cuGetErrorString;
@@ -75,7 +79,12 @@ static bool get_driver_entry_point(const char* name, void** pfn)
     if (!pfn_cuGetProcAddress || !name || !pfn)
         return false;
 
+#if CUDA_VERSION < 12000
     CUresult r = pfn_cuGetProcAddress(name, pfn, WP_CUDA_DRIVER_VERSION, CU_GET_PROC_ADDRESS_DEFAULT);
+#else
+    CUresult r = pfn_cuGetProcAddress(name, pfn, WP_CUDA_DRIVER_VERSION, CU_GET_PROC_ADDRESS_DEFAULT, NULL);
+#endif
+
     if (r != CUDA_SUCCESS)
     {
         fprintf(stderr, "Warp CUDA error: Failed to get driver entry point '%s' (CUDA error %u)\n", name, unsigned(r));
