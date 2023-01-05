@@ -1741,6 +1741,10 @@ def codegen_func(adj, device='cpu'):
 
 def codegen_kernel(kernel, device, options):
 
+    # Update the module's options with the ones defined on the kernel, if any.
+    options = dict(options)
+    options.update(kernel.options)
+
     adj = kernel.adj
 
     forward_args = ["launch_bounds_t dim"]
