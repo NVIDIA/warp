@@ -530,14 +530,14 @@ inline bool CUDA_CALLABLE isfinite(vec<4, Type> x)
 }
 
 
-
+// These two functions seem to compile very slowly
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec<Length,Type> min(vec<Length,Type> a, vec<Length,Type> b)
 {
     vec<Length,Type> ret;
     for( unsigned i=0; i < Length; ++i )
     {
-        ret[i] = ::min(a[i],b[i]);
+        ret[i] = a[i] < b[i] ? a[i] : b[i];
     }
     return ret;
 }
@@ -548,7 +548,7 @@ inline CUDA_CALLABLE vec<Length,Type> max(vec<Length,Type> a, vec<Length,Type> b
     vec<Length,Type> ret;
     for( unsigned i=0; i < Length; ++i )
     {
-        ret[i] = ::max(a[i],b[i]);
+        ret[i] = a[i] > b[i] ? a[i] : b[i];
     }
     return ret;
 }
@@ -608,7 +608,6 @@ inline CUDA_CALLABLE void adj_cw_mul(vec<Length, Type> a, vec<Length, Type> b, v
   adj_a += cw_mul(b, adj_ret);
   adj_b += cw_mul(a, adj_ret);
 }
-
 
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_div(vec<Length, Type> a, Type s, vec<Length, Type>& adj_a, Type& adj_s, const vec<Length, Type>& adj_ret)
@@ -742,6 +741,30 @@ inline CUDA_CALLABLE void adj_cross(vec<3,Type> a, vec<3,Type> b, vec<3,Type>& a
     // todo: sign check
     adj_a += cross(b, adj_ret);
     adj_b -= cross(a, adj_ret);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_min(const vec<Length,Type> &a, const vec<Length,Type> &b, vec<Length,Type>& adj_a, vec<Length,Type>& adj_b, const vec<Length,Type> &adj_ret)
+{
+    for( unsigned i=0; i < Length; ++i )
+    {
+        if (a[i] < b[i])
+            adj_a[i] += adj_ret[i];
+        else
+            adj_b[i] += adj_ret[i];
+    }
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_max(const vec<Length,Type> &a, const vec<Length,Type> &b, vec<Length,Type>& adj_a, vec<Length,Type>& adj_b, const vec<Length,Type> &adj_ret)
+{
+    for( unsigned i=0; i < Length; ++i )
+    {
+        if (a[i] > b[i])
+            adj_a[i] += adj_ret[i];
+        else
+            adj_b[i] += adj_ret[i];
+    }
 }
 
 // Do I need to specialize these for different lengths?

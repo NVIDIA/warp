@@ -28,9 +28,9 @@ def sametype_value_func(default):
 #---------------------------------
 # Scalar Math
 
-add_builtin("min", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="Return the minimum of two integers.", group="Scalar Math")
+add_builtin("min", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="Return the minimum of two scalars.", group="Scalar Math")
 
-add_builtin("max", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="Return the maximum of two integers.", group="Scalar Math")
+add_builtin("max", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="Return the maximum of two scalars.", group="Scalar Math")
 
 add_builtin("clamp", input_types={"x": Scalar, "a": Scalar, "b": Scalar}, value_func=sametype_value_func(Scalar), doc="Clamp the value of x to the range [a, b].", group="Scalar Math")
 
@@ -113,6 +113,10 @@ add_builtin("dot", input_types={"x": vec(length=Any,type=Scalar), "y": vec(lengt
     doc="Compute the dot product between two vectors.")
 add_builtin("ddot", input_types={"x": mat(shape=(Any,Any),type=Scalar), "y": mat(shape=(Any,Any),type=Scalar)}, value_func=sametype_scalar_value_func, group="Vector Math",
     doc="Compute the double dot product between two matrices.")
+
+add_builtin("min", input_types={"x": vec(length=Any,type=Scalar), "y": vec(length=Any,type=Scalar)}, value_func=sametype_value_func(vec(length=Any,type=Scalar)), doc="Return the element wise minimum of two vectors.", group="Vector Math")
+add_builtin("max", input_types={"x": vec(length=Any,type=Scalar), "y": vec(length=Any,type=Scalar)}, value_func=sametype_value_func(vec(length=Any,type=Scalar)), doc="Return the element wise maximum of two vectors.", group="Vector Math")
+
 
 def value_func_outer(args,_):
 
