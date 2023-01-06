@@ -49,6 +49,18 @@ def getkernel(func,suffix=""):
     module = wp.get_module(func.__name__ + "_" + suffix)
     return wp.Kernel(func=func, key=func.__name__ + "_" + suffix, module=module)
 
+def get_select_kernel2(dtype):
+    
+    def output_select_kernel2_fn(
+        input: wp.array(dtype=dtype,ndim=2),
+        index0: int,
+        index1: int,
+        out: wp.array(dtype=dtype),
+    ):
+        out[0] = input[index0,index1]
+    
+    return getkernel(output_select_kernel2_fn,suffix=dtype.__name__)
+
 def test_arrays(test, device, dtype):
 
     np.random.seed(123)
@@ -2119,6 +2131,137 @@ def test_crossproduct(test,device,dtype):
         assert_np_equal(tape.gradients[v3].numpy(), 3.0 * 2.0 * np.array([-s3.numpy()[0,1],s3.numpy()[0,0],0]), tol=10*tol)
         tape.zero()
 
+def test_minmax(test,device,dtype):
+    np.random.seed(123)
+
+    # \TODO: not quite sure why, but the numbers are off for 16 bit float
+    # on the cpu (but not cuda). This is probably just the sketchy float16
+    # arithmetic I implemented to get all this stuff working, so
+    # hopefully that can be fixed when we do that correctly.
+    tol = {
+        np.float16: 1.e-2,
+    }.get(dtype,0)
+    
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp.vec(length=2,type=wptype)
+    vec3 = wp.vec(length=3,type=wptype)
+    vec4 = wp.vec(length=4,type=wptype)
+    vec5 = wp.vec(length=5,type=wptype)
+    
+    # \TODO: Also not quite sure why: this kernel compiles incredibly
+    # slowly though...
+    def check_vec_min_max(
+        a: wp.array(dtype=wptype,ndim=2),
+        b: wp.array(dtype=wptype,ndim=2),
+        mins: wp.array(dtype=wptype,ndim=2),
+        maxs: wp.array(dtype=wptype,ndim=2),
+    ):
+        for i in range(10):
+            
+            a2read = wptype(2) * vec2(a[i,0],a[i,1])
+            b2read = wptype(2) * vec2(b[i,0],b[i,1])
+            c2 = wp.min(a2read, b2read)
+            d2 = wp.max(a2read, b2read)
+
+            a3read = wptype(3) * vec3(a[i,2],a[i,3],a[i,4])
+            b3read = wptype(3) * vec3(b[i,2],b[i,3],b[i,4])
+            c3 = wp.min(a3read, b3read)
+            d3 = wp.max(a3read, b3read)
+            
+            a4read = wptype(2) * vec4(a[i,5],a[i,6],a[i,7],a[i,8])
+            b4read = wptype(2) * vec4(b[i,5],b[i,6],b[i,7],b[i,8])
+            c4 = wp.min(a4read, b4read)
+            d4 = wp.max(a4read, b4read)
+            
+            a5read = wptype(3) * vec5(a[i,9],a[i,10],a[i,11],a[i,12],a[i,13])
+            b5read = wptype(3) * vec5(b[i,9],b[i,10],b[i,11],b[i,12],b[i,13])
+            c5 = wp.min(a5read, b5read)
+            d5 = wp.max(a5read, b5read)
+
+            mins[i,0] = c2[0]
+            mins[i,1] = c2[1]
+
+            mins[i,2] = c3[0]
+            mins[i,3] = c3[1]
+            mins[i,4] = c3[2]
+
+            mins[i,5] = c4[0]
+            mins[i,6] = c4[1]
+            mins[i,7] = c4[2]
+            mins[i,8] = c4[3]
+
+            mins[i,9] = c5[0]
+            mins[i,10] = c5[1]
+            mins[i,11] = c5[2]
+            mins[i,12] = c5[3]
+            mins[i,13] = c5[4]
+
+            maxs[i,0] = d2[0]
+            maxs[i,1] = d2[1]
+
+            maxs[i,2] = d3[0]
+            maxs[i,3] = d3[1]
+            maxs[i,4] = d3[2]
+
+            maxs[i,5] = d4[0]
+            maxs[i,6] = d4[1]
+            maxs[i,7] = d4[2]
+            maxs[i,8] = d4[3]
+
+            maxs[i,9] = d5[0]
+            maxs[i,10] = d5[1]
+            maxs[i,11] = d5[2]
+            maxs[i,12] = d5[3]
+            maxs[i,13] = d5[4]
+            
+    a = wp.array(randvals((10,14),dtype), dtype=wptype, requires_grad=True, device=device)
+    b = wp.array(randvals((10,14),dtype), dtype=wptype, requires_grad=True, device=device)
+
+    mins = wp.zeros((10,14), dtype=wptype, requires_grad=True, device=device)
+    maxs = wp.zeros((10,14), dtype=wptype, requires_grad=True, device=device)
+
+    kernel = getkernel(check_vec_min_max,suffix=dtype.__name__)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=1, inputs=[a,b], outputs=[mins,maxs], device=device)
+
+    coeffs = np.array([2,2,3,3,3,2,2,2,2,3,3,3,3,3],dtype=dtype)[None,:]
+
+    assert_np_equal(mins.numpy(),np.minimum(coeffs*a.numpy(),coeffs*b.numpy()),tol=tol)
+    assert_np_equal(maxs.numpy(),np.maximum(coeffs*a.numpy(),coeffs*b.numpy()),tol=tol)
+    
+    output_select_kernel = get_select_kernel2(wptype)
+    out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+    if dtype in np_float_types:
+        for i in range(10):
+            for j in range(14):
+
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(kernel, dim=1, inputs=[a,b], outputs=[mins,maxs], device=device)
+                    wp.launch(output_select_kernel, dim=1, inputs=[ mins,i,j ], outputs=[out], device=device)
+
+                tape.backward(loss=out)
+                expected = np.zeros_like(a.numpy())
+                expected[i,j] = coeffs[0,j] if (coeffs[0,j] * a.numpy()[i,j] < coeffs[0,j] * b.numpy()[i,j]) else 0
+                assert_np_equal(tape.gradients[a].numpy(),expected, tol=tol)
+                expected[i,j] = coeffs[0,j] if (coeffs[0,j] * b.numpy()[i,j] < coeffs[0,j] * a.numpy()[i,j]) else 0
+                assert_np_equal(tape.gradients[b].numpy(),expected, tol=tol)
+                tape.zero()
+    
+                tape = wp.Tape()
+                with tape:
+                    wp.launch(kernel, dim=1, inputs=[a,b], outputs=[mins,maxs], device=device)
+                    wp.launch(output_select_kernel, dim=1, inputs=[ maxs,i,j ], outputs=[out], device=device)
+
+                tape.backward(loss=out)
+                expected = np.zeros_like(a.numpy())
+                expected[i,j] = coeffs[0,j] if (coeffs[0,j] * a.numpy()[i,j] > coeffs[0,j] * b.numpy()[i,j]) else 0
+                assert_np_equal(tape.gradients[a].numpy(),expected, tol=tol)
+                expected[i,j] = coeffs[0,j] if (coeffs[0,j] * b.numpy()[i,j] > coeffs[0,j] * a.numpy()[i,j]) else 0
+                assert_np_equal(tape.gradients[b].numpy(),expected, tol=tol)
+                tape.zero()
+    
 
 def register(parent):
 
@@ -2134,7 +2277,7 @@ def register(parent):
         add_function_test(TestVec, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype)
         add_function_test(TestVec, f"test_crossproduct_{dtype.__name__}", test_crossproduct, devices=devices, dtype=dtype)
         add_function_test(TestVec, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype)
-
+    
     for dtype in np_scalar_types:
         add_function_test(TestVec, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
         add_function_test(TestVec, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype)
@@ -2147,11 +2290,12 @@ def register(parent):
         add_function_test(TestVec, f"test_cw_division_{dtype.__name__}", test_cw_division, devices=devices, dtype=dtype)
         add_function_test(TestVec, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype)
         add_function_test(TestVec, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype)
-
+        add_function_test(TestVec, f"test_minmax_{dtype.__name__}", test_minmax, devices=devices, dtype=dtype)
+    
     for dtype in np_float_types:
         add_function_test(TestVec, f"test_length_{dtype.__name__}", test_length, devices=devices, dtype=dtype)
         add_function_test(TestVec, f"test_normalize_{dtype.__name__}", test_normalize, devices=devices, dtype=dtype)
-
+    
     return TestVec
 
 if __name__ == '__main__':
