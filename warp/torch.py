@@ -94,13 +94,13 @@ dtype_is_compatible.compatible_sets = None
 # wrap a torch tensor to a wp array, data is not copied
 def from_torch(t, dtype=None):
 
-    # ensure tensors are contiguous
-    assert(t.is_contiguous())
-
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
         raise RuntimeError(f"Incompatible data types: {t.dtype} and {dtype}")
+
+    # get size of underlying data type to compute strides
+    ctype_size = ctypes.sizeof(dtype._type_)
 
     # if target is a vector or matrix type
     # then check if trailing dimensions match
@@ -111,23 +111,33 @@ def from_torch(t, dtype=None):
             num_dims = len(dtype._shape_)
             type_dims = dtype._shape_
             source_dims = t.shape[-num_dims:]
+            source_strides = t.stride()[-num_dims:]
+            stride = 1
 
             for i in range(len(type_dims)):
+                # ensure the inner dimension size matches
                 if source_dims[i] != type_dims[i]:
                     raise RuntimeError()
+                # ensure the inner strides are contiguous
+                if source_strides[-i - 1] != stride:
+                    raise RuntimeError()
+                stride *= type_dims[i]
 
-            shape = t.shape[:-num_dims]
+            shape = tuple(t.shape[:-num_dims])
+            strides = tuple(s * ctype_size for s in t.stride()[:-num_dims])
 
         except:
             raise RuntimeError(f"Could not convert source Torch tensor with shape {t.shape}, to Warp array with dtype={dtype}, ensure that trailing dimensions match ({source_dims} != {type_dims}")
     
     else:
-        shape = t.shape
+        shape = tuple(t.shape)
+        strides = tuple(s * ctype_size for s in t.stride())
 
     a = warp.types.array(
         ptr=t.data_ptr(),
         dtype=dtype,
-        shape=tuple(shape),
+        shape=shape,
+        strides=strides,
         copy=False,
         owner=False,
         requires_grad=t.requires_grad,
