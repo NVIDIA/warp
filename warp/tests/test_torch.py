@@ -36,6 +36,42 @@ def arange(start: int, step: int, a: wp.array(dtype=int)):
     a[tid] = start + step * tid
 
 
+# copy elements between non-contiguous 1d arrays of float
+@wp.kernel
+def copy1d_float_kernel(dst: wp.array(dtype=float), src: wp.array(dtype=float)):
+
+    i = wp.tid()
+    dst[i] = src[i]
+
+# copy elements between non-contiguous 2d arrays of float
+@wp.kernel
+def copy2d_float_kernel(dst: wp.array2d(dtype=float), src: wp.array2d(dtype=float)):
+
+    i, j = wp.tid()
+    dst[i, j] = src[i, j]
+
+# copy elements between non-contiguous 3d arrays of float
+@wp.kernel
+def copy3d_float_kernel(dst: wp.array3d(dtype=float), src: wp.array3d(dtype=float)):
+
+    i, j, k = wp.tid()
+    dst[i, j, k] = src[i, j, k]
+
+# copy elements between non-contiguous 2d arrays of vec3
+@wp.kernel
+def copy2d_vec3_kernel(dst: wp.array2d(dtype=wp.vec3), src: wp.array2d(dtype=wp.vec3)):
+
+    i, j = wp.tid()
+    dst[i, j] = src[i, j]
+
+# copy elements between non-contiguous 2d arrays of mat22
+@wp.kernel
+def copy2d_mat22_kernel(dst: wp.array2d(dtype=wp.mat22), src: wp.array2d(dtype=wp.mat22)):
+
+    i, j = wp.tid()
+    dst[i, j] = src[i, j]
+
+
 def test_torch_zerocopy(test, device):
 
     import torch
@@ -167,6 +203,121 @@ def test_to_torch(test, device):
     wrap_mat_array(3, 3, wp.mat33)
     wrap_mat_array(4, 4, wp.mat44)
     wrap_mat_array(6, 6, wp.spatial_matrix)
+
+
+def test_from_torch_slices(test, device):
+
+    import torch
+
+    torch_device = wp.device_to_torch(device)
+
+    # 1D slice, contiguous
+    t_base = torch.arange(10, dtype=torch.float32, device=torch_device)
+    t = t_base[2:9]
+    a = wp.from_torch(t)
+    assert(a.ptr == t.data_ptr())
+    assert(a.is_contiguous)
+    assert(a.shape == tuple(t.shape))
+    assert_np_equal(a.numpy(), t.cpu().numpy())
+
+    # 1D slice with non-contiguous stride
+    t_base = torch.arange(10, dtype=torch.float32, device=torch_device)
+    t = t_base[2:9:2]
+    a = wp.from_torch(t)
+    assert(a.ptr == t.data_ptr())
+    assert(not a.is_contiguous)
+    assert(a.shape == tuple(t.shape))
+    # copy contents to contiguous array
+    a_contiguous = wp.empty_like(a)
+    wp.launch(copy1d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
+    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+
+    # 2D slices (non-contiguous)
+    t_base = torch.arange(24, dtype=torch.float32, device=torch_device).reshape((4, 6))
+    t = t_base[1:3, 2:5]
+    a = wp.from_torch(t)
+    assert(a.ptr == t.data_ptr())
+    assert(not a.is_contiguous)
+    assert(a.shape == tuple(t.shape))
+    # copy contents to contiguous array
+    a_contiguous = wp.empty_like(a)
+    wp.launch(copy2d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
+    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+
+    # 3D slices (non-contiguous)
+    t_base = torch.arange(36, dtype=torch.float32, device=torch_device).reshape((4, 3, 3))
+    t = t_base[::2, 0:1, 1:2]
+    a = wp.from_torch(t)
+    assert(a.ptr == t.data_ptr())
+    assert(not a.is_contiguous)
+    assert(a.shape == tuple(t.shape))
+    # copy contents to contiguous array
+    a_contiguous = wp.empty_like(a)
+    wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
+    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+
+    # 2D slices of vec3 (inner contiguous, outer non-contiguous)
+    t_base = torch.arange(150, dtype=torch.float32, device=torch_device).reshape((10, 5, 3))
+    t = t_base[1:7:2, 2:5]
+    a = wp.from_torch(t, dtype=wp.vec3)
+    assert(a.ptr == t.data_ptr())
+    assert(not a.is_contiguous)
+    assert(a.shape == tuple(t.shape[:-1]))
+    # copy contents to contiguous array
+    a_contiguous = wp.empty_like(a)
+    wp.launch(copy2d_vec3_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
+    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+
+    # 2D slices of mat22 (inner contiguous, outer non-contiguous)
+    t_base = torch.arange(200, dtype=torch.float32, device=torch_device).reshape((10, 5, 2, 2))
+    t = t_base[1:7:2, 2:5]
+    a = wp.from_torch(t, dtype=wp.mat22)
+    assert(a.ptr == t.data_ptr())
+    assert(not a.is_contiguous)
+    assert(a.shape == tuple(t.shape[:-2]))
+    # copy contents to contiguous array
+    a_contiguous = wp.empty_like(a)
+    wp.launch(copy2d_mat22_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
+    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+
+
+def test_from_torch_zero_strides(test, device):
+
+    import torch
+
+    torch_device = wp.device_to_torch(device)
+
+    t_base = torch.arange(9, dtype=torch.float32, device=torch_device).reshape((3, 3))
+
+    # expand outermost dimension
+    t = t_base.unsqueeze(0).expand(3, -1, -1)
+    a = wp.from_torch(t)
+    assert(a.ptr == t.data_ptr())
+    assert(not a.is_contiguous)
+    assert(a.shape == tuple(t.shape))
+    a_contiguous = wp.empty_like(a)
+    wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
+    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+
+    # expand middle dimension
+    t = t_base.unsqueeze(1).expand(-1, 3, -1)
+    a = wp.from_torch(t)
+    assert(a.ptr == t.data_ptr())
+    assert(not a.is_contiguous)
+    assert(a.shape == tuple(t.shape))
+    a_contiguous = wp.empty_like(a)
+    wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
+    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
+
+    # expand innermost dimension
+    t = t_base.unsqueeze(2).expand(-1, -1, 3)
+    a = wp.from_torch(t)
+    assert(a.ptr == t.data_ptr())
+    assert(not a.is_contiguous)
+    assert(a.shape == tuple(t.shape))
+    a_contiguous = wp.empty_like(a)
+    wp.launch(copy3d_float_kernel, dim=a.shape, inputs=[a_contiguous, a], device=device)
+    assert_np_equal(a_contiguous.numpy(), t.cpu().numpy())
 
 
 def test_torch_mgpu_from_torch(test, device):
@@ -454,6 +605,8 @@ def register(parent):
 
         devices = wp.get_devices()
         add_function_test(TestTorch, "test_from_torch", test_from_torch, devices=devices)
+        add_function_test(TestTorch, "test_from_torch_slices", test_from_torch_slices, devices=devices)
+        add_function_test(TestTorch, "test_from_torch_zero_strides", test_from_torch_zero_strides, devices=devices)
         add_function_test(TestTorch, "test_to_torch", test_to_torch, devices=devices)
         add_function_test(TestTorch, "test_torch_zerocopy", test_torch_zerocopy, devices=devices)
         add_function_test(TestTorch, "test_torch_autograd", test_torch_autograd, devices=devices)

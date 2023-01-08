@@ -2,7 +2,9 @@
 
 ## [0.6.2] - 2023-01-04
 
-- Updated `wp.from_torch()` to support more data types and automatically determine the Warp data type if not specified
+- Updated `wp.from_torch()` to support more data types
+- Updated `wp.from_torch()` to automatically determine the target Warp data type if not specified
+- Updated `wp.from_torch()` to support non-contiguous tensors with arbitrary strides
 
 ## [0.6.1] - 2022-12-05
 
