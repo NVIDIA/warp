@@ -148,7 +148,7 @@ class Struct:
                 StructInstance.__init__(inst, self)
         return NewStructInstance()
 
-def computeTypestr(generictype,typeparams):
+def compute_type_str(generictype,typeparams):
     def param2str(p):
         if isinstance(p,int):
             return str(p)
@@ -176,14 +176,14 @@ class Var:
     def ctype(self):
         if (isinstance(self.type, array)):
             if hasattr(self.type.dtype,"_wp_generic_type_str_"):
-                typestr = computeTypestr( self.type.dtype._wp_generic_type_str_, self.type.dtype._wp_type_params_ )
+                typestr = compute_type_str( self.type.dtype._wp_generic_type_str_, self.type.dtype._wp_type_params_ )
             else:
                 typestr = str(self.type.dtype.__name__)
             return f"array_t<{typestr}>"
         elif (isinstance(self.type, Struct)):
             return make_full_qualified_name(self.type.cls)
         elif hasattr(self.type,"_wp_generic_type_str_"):
-            return computeTypestr( self.type._wp_generic_type_str_, self.type._wp_type_params_ )
+            return compute_type_str( self.type._wp_generic_type_str_, self.type._wp_type_params_ )
         else:
             return str(self.type.__name__)
 
@@ -487,7 +487,7 @@ class Adjoint:
 
         funcname = func.key
         if templates:
-            funcname = computeTypestr( func.key, templates )
+            funcname = compute_type_str( func.key, templates )
 
         # handle expression (zero output), e.g.: void do_something();
         if (value_type == None):
