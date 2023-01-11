@@ -1339,10 +1339,21 @@ def test_cw_division(test,device,dtype):
                 outcomponents[idx] = v5result[i,j]
                 idx = idx + 1
     
-    s2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
-    s3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
-    s4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
-    s5 = wp.array(randvals([1,5,5],dtype), dtype=mat55, requires_grad=True, device=device)
+    s2 = randvals([1,2,2],dtype)
+    s3 = randvals([1,3,3],dtype)
+    s4 = randvals([1,4,4],dtype)
+    s5 = randvals([1,5,5],dtype)
+
+    s2[s2 == 0] = 1
+    s3[s3 == 0] = 1
+    s4[s4 == 0] = 1
+    s5[s5 == 0] = 1
+
+    s2 = wp.array(s2, dtype=mat22, requires_grad=True, device=device)
+    s3 = wp.array(s3, dtype=mat33, requires_grad=True, device=device)
+    s4 = wp.array(s4, dtype=mat44, requires_grad=True, device=device)
+    s5 = wp.array(s5, dtype=mat55, requires_grad=True, device=device)
+
     v2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     v3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     v4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -2533,7 +2544,7 @@ def test_qr(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_qr,suffix=dtype.__name__)
-    m3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
+    m3 = wp.array(0.5 * (randvals([1,3,3],dtype) + np.eye(3)), dtype=mat33, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(2*3*3, dtype=wptype, requires_grad=True, device=device)
     Qout = wp.zeros(1, dtype=mat33, requires_grad=True, device=device)
@@ -2609,7 +2620,7 @@ def test_eig(test,device,dtype):
         dout: wp.array(dtype=vec3),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m3load = wptype(2)*m3[0]
+        m3load = wptype(2)*( m3[0] + wp.transpose(m3[0]) )
         Q = mat33()
         d = vec3()
 
@@ -2629,11 +2640,10 @@ def test_eig(test,device,dtype):
             idx = idx + 1
     
     kernel = getkernel(check_mat_eig,suffix=dtype.__name__)
-    m3_np = randvals([1,3,3],dtype)
-    m3_np[0] += m3_np[0].T
+    m3_np = randvals([1,3,3],dtype) + np.eye(3,dtype=dtype)
     m3 = wp.array(m3_np, dtype=mat33, requires_grad=True, device=device)
 
-    outcomponents = wp.zeros(2*3*3, dtype=wptype, requires_grad=True, device=device)
+    outcomponents = wp.zeros(3*3 + 3, dtype=wptype, requires_grad=True, device=device)
     Qout = wp.zeros(1, dtype=mat33, requires_grad=True, device=device)
     dout = wp.zeros(1, dtype=vec3, requires_grad=True, device=device)
 
@@ -2647,7 +2657,7 @@ def test_eig(test,device,dtype):
     assert_np_equal(np.matmul(Qout_np.T,Qout_np), np.eye(3),tol=tol)
 
     # check Q contains eigenvectors:
-    assert_np_equal(np.matmul(Qout_np,np.matmul(Dout_np,Qout_np.T)), 2*m3_np,tol=tol)
+    assert_np_equal(np.matmul(Qout_np,np.matmul(Dout_np,Qout_np.T)), 2*(m3_np[0] + m3_np[0].transpose()),tol=tol)
 
     if dtype == np.float16:
         # I'm not even going to bother testing the gradients for float16
