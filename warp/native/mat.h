@@ -1146,6 +1146,10 @@ using mat22 = mat<2,2,float>;
 using mat33 = mat<3,3,float>;
 using mat44 = mat<4,4,float>;
 
+using mat22f = mat<2,2,float>;
+using mat33f = mat<3,3,float>;
+using mat44f = mat<4,4,float>;
+
 using mat22d = mat<2,2,double>;
 using mat33d = mat<3,3,double>;
 using mat44d = mat<4,4,double>;

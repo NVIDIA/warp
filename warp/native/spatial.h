@@ -837,13 +837,13 @@ CUDA_CALLABLE void print(spatial_matrix_t<Type> m);
 template<typename Type>
 CUDA_CALLABLE inline spatial_matrix_t<Type> lerp(const spatial_matrix_t<Type>& a, const spatial_matrix_t<Type>& b, Type t)
 {
-    return a*(1.0f-t) + b*t;
+    return a*(Type(1)-t) + b*t;
 }
 
 template<typename Type>
 CUDA_CALLABLE inline void adj_lerp(const spatial_matrix_t<Type>& a, const spatial_matrix_t<Type>& b, Type t, spatial_matrix_t<Type>& adj_a, spatial_matrix_t<Type>& adj_b, Type& adj_t, const spatial_matrix_t<Type>& adj_ret)
 {
-    adj_a += adj_ret*(1.0f-t);
+    adj_a += adj_ret*(Type(1)-t);
     adj_b += adj_ret*t;
     adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
 }
@@ -851,13 +851,13 @@ CUDA_CALLABLE inline void adj_lerp(const spatial_matrix_t<Type>& a, const spatia
 template<typename Type>
 CUDA_CALLABLE inline transform_t<Type> lerp(const transform_t<Type>& a, const transform_t<Type>& b, Type t)
 {
-    return a*(1.0f-t) + b*t;
+    return a*(Type(1)-t) + b*t;
 }
 
 template<typename Type>
 CUDA_CALLABLE inline void adj_lerp(const transform_t<Type>& a, const transform_t<Type>& b, Type t, transform_t<Type>& adj_a, transform_t<Type>& adj_b, Type& adj_t, const transform_t<Type>& adj_ret)
 {
-    adj_a += adj_ret*(1.0f-t);
+    adj_a += adj_ret*(Type(1)-t);
     adj_b += adj_ret*t;
     adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
 }
@@ -866,13 +866,13 @@ CUDA_CALLABLE inline void adj_lerp(const transform_t<Type>& a, const transform_t
 template<typename Type>
 CUDA_CALLABLE inline spatial_vector_t<Type> lerp(const spatial_vector_t<Type>& a, const spatial_vector_t<Type>& b, Type t)
 {
-    return a*(1.0f-t) + b*t;
+    return a*(Type(1)-t) + b*t;
 }
 
 template<typename Type>
 CUDA_CALLABLE inline void adj_lerp(const spatial_vector_t<Type>& a, const spatial_vector_t<Type>& b, Type t, spatial_vector_t<Type>& adj_a, spatial_vector_t<Type>& adj_b, Type& adj_t, const spatial_vector_t<Type>& adj_ret)
 {
-    adj_a += adj_ret*(1.0f-t);
+    adj_a += adj_ret*(Type(1)-t);
     adj_b += adj_ret*t;
     adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
 }
@@ -1253,14 +1253,17 @@ CUDA_CALLABLE inline void adj_spatial_mass(
 
 using transformh = transform_t<half>;
 using transform = transform_t<float>;
+using transformf = transform_t<float>;
 using transformd = transform_t<double>;
 
 using spatial_vectorh = spatial_vector_t<half>;
 using spatial_vector = spatial_vector_t<float>;
+using spatial_vectorf = spatial_vector_t<float>;
 using spatial_vectord = spatial_vector_t<double>;
 
 using spatial_matrixh = spatial_matrix_t<half>;
 using spatial_matrix = spatial_matrix_t<float>;
+using spatial_matrixf = spatial_matrix_t<float>;
 using spatial_matrixd = spatial_matrix_t<double>;
 
 

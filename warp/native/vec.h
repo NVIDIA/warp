@@ -553,6 +553,27 @@ inline CUDA_CALLABLE vec<Length,Type> max(vec<Length,Type> a, vec<Length,Type> b
     return ret;
 }
 
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void expect_near(const vec<Length, Type>& actual, const vec<Length, Type>& expected, const Type& tolerance)
+{
+    const Type diff(0);
+    for(size_t i=0; i<Length; ++i)
+    {
+        diff = max(diff,abs(actual[i] - expected[i]));
+    }
+    if (diff > tolerance)
+    {
+        printf("Error, expect_near() failed with torerance "); print(tolerance);
+        printf("\t Expected: "); print(expected); 
+        printf("\t Actual: "); print(actual);
+    }
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_expect_near(const vec<Length, Type>& actual, const vec<Length, Type>& expected, Type tolerance, vec<Length, Type>& adj_actual, vec<Length, Type>& adj_expected, Type adj_tolerance)
+{
+    // nop
+}
 
 // adjoint for the initializer_list constructor:
 template<unsigned Length, typename Type>
@@ -882,6 +903,10 @@ using vec4h = vec<4,half>;
 using vec2 = vec<2,float>;
 using vec3 = vec<3,float>;
 using vec4 = vec<4,float>;
+
+using vec2f = vec<2,float>;
+using vec3f = vec<3,float>;
+using vec4f = vec<4,float>;
 
 using vec2d = vec<2,double>;
 using vec3d = vec<3,double>;

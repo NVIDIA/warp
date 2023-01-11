@@ -1492,7 +1492,7 @@ inline CUDA_CALLABLE void adj_expect_neq(const T& a, const T& b, T& adj_a, T& ad
 }
 
 template <typename T>
-inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const float& tolerance)
+inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const T& tolerance)
 {
     if (abs(actual - expected) > tolerance)
     {
@@ -1502,8 +1502,7 @@ inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const 
     }
 }
 
-template <>
-inline CUDA_CALLABLE void expect_near<vec3>(const vec3& actual, const vec3& expected, const float& tolerance)
+inline CUDA_CALLABLE void expect_near(const vec3& actual, const vec3& expected, const float& tolerance)
 {
     const float diff = max(max(abs(actual[0] - expected[0]), abs(actual[1] - expected[1])), abs(actual[2] - expected[2]));
     if (diff > tolerance)
@@ -1515,10 +1514,16 @@ inline CUDA_CALLABLE void expect_near<vec3>(const vec3& actual, const vec3& expe
 }
 
 template <typename T>
-inline CUDA_CALLABLE void adj_expect_near(const T& actual, const T& expected, const float& tolerance, T& adj_actual, T& adj_expected, float& adj_tolerance)
+inline CUDA_CALLABLE void adj_expect_near(const T& actual, const T& expected, const T& tolerance, T& adj_actual, T& adj_expected, T& adj_tolerance)
 {
     // nop
 }
+
+inline CUDA_CALLABLE void adj_expect_near(const vec3& actual, const vec3& expected, float tolerance, vec3& adj_actual, vec3& adj_expected, float adj_tolerance)
+{
+    // nop
+}
+
 
 } // namespace wp
 
