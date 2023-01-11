@@ -495,8 +495,8 @@ inline CUDA_CALLABLE void adj_qr3(const mat<3,3,Type>& A,
     // Eq 3 of https://arxiv.org/pdf/2009.10071.pdf
     mat<3,3,Type> M = mul(R,transpose(adj_R)) - mul(transpose(adj_Q), Q);
     mat<3,3,Type> copyltuM = mat<3,3,Type>(M.data[0][0], M.data[1][0], M.data[2][0],
-                           0.0,          M.data[1][1], M.data[2][1],
-                           0.0,          0.0,          M.data[2][2]);
+                           M.data[1][0], M.data[1][1], M.data[2][1],
+                           M.data[2][0], M.data[2][1], M.data[2][2]);
     adj_A = adj_A + mul(adj_Q + mul(Q,copyltuM), inverse(transpose(R)));
 }
 
