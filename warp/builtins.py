@@ -40,46 +40,45 @@ add_builtin("sign", input_types={"x": Scalar}, value_func=sametype_value_func(Sc
 add_builtin("step", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), doc="Return 1.0 if x < 0.0, return 0.0 otherwise.", group="Scalar Math")
 add_builtin("nonzero", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), doc="Return 1.0 if x is not equal to zero, return 0.0 otherwise.", group="Scalar Math")
 
-for T in [float16,float32,float64]:
-    add_builtin("sin", input_types={"x": T}, value_type=T, doc="Return the sine of x in radians.", group="Scalar Math")
-    add_builtin("cos", input_types={"x": T}, value_type=T, doc="Return the cosine of x in radians.", group="Scalar Math")
-    add_builtin("acos", input_types={"x": T}, value_type=T, doc="Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].", group="Scalar Math")
-    add_builtin("asin", input_types={"x": T}, value_type=T, doc="Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].", group="Scalar Math")
-    add_builtin("sqrt", input_types={"x": T}, value_type=T, doc="Return the sqrt of x, where x is positive.", group="Scalar Math")
-    add_builtin("tan", input_types={"x": T}, value_type=T, doc="Return tangent of x in radians.", group="Scalar Math")
-    add_builtin("atan", input_types={"x": T}, value_type=T, doc="Return arctan of x.", group="Scalar Math")
-    add_builtin("atan2", input_types={"y": T, "x": T}, value_type=T, doc="Return atan2 of x.", group="Scalar Math")
-    add_builtin("sinh", input_types={"x": T}, value_type=T, doc="Return the sinh of x.", group="Scalar Math")
-    add_builtin("cosh", input_types={"x": T}, value_type=T, doc="Return the cosh of x.", group="Scalar Math")
-    add_builtin("tanh", input_types={"x": T}, value_type=T, doc="Return the tanh of x.", group="Scalar Math")
+add_builtin("sin", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the sine of x in radians.", group="Scalar Math")
+add_builtin("cos", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the cosine of x in radians.", group="Scalar Math")
+add_builtin("acos", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].", group="Scalar Math")
+add_builtin("asin", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].", group="Scalar Math")
+add_builtin("sqrt", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the sqrt of x, where x is positive.", group="Scalar Math")
+add_builtin("tan", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return tangent of x in radians.", group="Scalar Math")
+add_builtin("atan", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return arctan of x.", group="Scalar Math")
+add_builtin("atan2", input_types={"y": Float, "x": Float}, value_func=sametype_value_func(Float), doc="Return atan2 of x.", group="Scalar Math")
+add_builtin("sinh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the sinh of x.", group="Scalar Math")
+add_builtin("cosh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the cosh of x.", group="Scalar Math")
+add_builtin("tanh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the tanh of x.", group="Scalar Math")
 
-    add_builtin("log", input_types={"x": T}, value_type=T, doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
-    add_builtin("log2", input_types={"x": T}, value_type=T, doc="Return the natural log (base-2) of x, where x is positive.", group="Scalar Math")
-    add_builtin("log10", input_types={"x": T}, value_type=T, doc="Return the natural log (base-10) of x, where x is positive.", group="Scalar Math")
-    add_builtin("exp", input_types={"x": T}, value_type=T, doc="Return base-e exponential, e^x.", group="Scalar Math")
-    add_builtin("pow", input_types={"x": T, "y": T}, value_type=T, doc="Return the result of x raised to power of y.", group="Scalar Math")
+add_builtin("log", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
+add_builtin("log2", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the natural log (base-2) of x, where x is positive.", group="Scalar Math")
+add_builtin("log10", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the natural log (base-10) of x, where x is positive.", group="Scalar Math")
+add_builtin("exp", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return base-e exponential, e^x.", group="Scalar Math")
+add_builtin("pow", input_types={"x": Float, "y": Float}, value_func=sametype_value_func(Float), doc="Return the result of x raised to power of y.", group="Scalar Math")
 
-    add_builtin("round", input_types={"x": T}, value_type=T, group="Scalar Math",
-        doc="""Calculate the nearest integer value, rounding halfway cases away from zero.
-    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-    Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.""")
+add_builtin("round", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
+    doc="""Calculate the nearest integer value, rounding halfway cases away from zero.
+This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
+Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.""")
 
-    add_builtin("rint", input_types={"x": T}, value_type=T, group="Scalar Math",
-        doc="""Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-    It is generally faster than ``warp.round()``.
-    Equivalent to ``numpy.rint()``.""")
+add_builtin("rint", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
+    doc="""Calculate the nearest integer value, rounding halfway cases to nearest even integer.
+It is generally faster than ``warp.round()``.
+Equivalent to ``numpy.rint()``.""")
 
-    add_builtin("trunc", input_types={"x": T}, value_type=T, group="Scalar Math",
-        doc="""Calculate the nearest integer that is closer to zero than x.
-    In other words, it discards the fractional part of x.
-    It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-    Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.""")
+add_builtin("trunc", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
+    doc="""Calculate the nearest integer that is closer to zero than x.
+In other words, it discards the fractional part of x.
+It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.""")
 
-    add_builtin("floor", input_types={"x": T}, value_type=T, group="Scalar Math",
-        doc="""Calculate the largest integer that is less than or equal to x.""")
+add_builtin("floor", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
+    doc="""Calculate the largest integer that is less than or equal to x.""")
 
-    add_builtin("ceil", input_types={"x": T}, value_type=T, group="Scalar Math",
-        doc="""Calculate the smallest integer that is greater than or equal to x.""")
+add_builtin("ceil", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
+    doc="""Calculate the smallest integer that is greater than or equal to x.""")
 
 def infer_scalar_type(args):
     if args is None:
@@ -135,17 +134,17 @@ add_builtin("cross", input_types={"x": vec(length=3,type=Scalar), "y": vec(lengt
 add_builtin("skew", input_types={"x": vec(length=3,type=Scalar)}, value_func=lambda args,_: mat(shape=(3,3),type=args[0].type._wp_scalar_type_), group="Vector Math",
     doc="Compute the skew symmetric matrix for a 3d vector.")
 
-add_builtin("length", input_types={"x": vec(length=Any,type=Scalar)}, value_func=sametype_scalar_value_func, group="Vector Math",
+add_builtin("length", input_types={"x": vec(length=Any,type=Float)}, value_func=sametype_scalar_value_func, group="Vector Math",
     doc="Compute the length of a vector.")
-add_builtin("length", input_types={"x": quaternion(type=Scalar)}, value_func=sametype_scalar_value_func, group="Vector Math",
+add_builtin("length", input_types={"x": quaternion(type=Float)}, value_func=sametype_scalar_value_func, group="Vector Math",
     doc="Compute the length of a quaternion.")
 add_builtin("length_sq", input_types={"x": vec(length=Any,type=Scalar)}, value_func=sametype_scalar_value_func, group="Vector Math",
     doc="Compute the squared length of a 2d vector.")
 add_builtin("length_sq", input_types={"x": quaternion(type=Scalar)}, value_func=sametype_scalar_value_func, group="Vector Math",
     doc="Compute the squared length of a quaternion.")
-add_builtin("normalize", input_types={"x": vec(length=Any,type=Scalar)}, value_func=sametype_value_func(vec(length=Any,type=Scalar)), group="Vector Math",
+add_builtin("normalize", input_types={"x": vec(length=Any,type=Float)}, value_func=sametype_value_func(vec(length=Any,type=Scalar)), group="Vector Math",
     doc="Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.")
-add_builtin("normalize", input_types={"x": quaternion(type=Scalar)}, value_func=sametype_value_func(quaternion(type=Scalar)), group="Vector Math",
+add_builtin("normalize", input_types={"x": quaternion(type=Float)}, value_func=sametype_value_func(quaternion(type=Scalar)), group="Vector Math",
     doc="Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.")
 
 add_builtin("transpose", input_types={"m": mat(shape=(Any,Any),type=Scalar)}, value_func=lambda args,_: mat(shape=(args[0].type._shape_[1],args[0].type._shape_[0]),type=args[0].type._wp_scalar_type_), group="Vector Math",
@@ -155,14 +154,14 @@ add_builtin("transpose", input_types={"m": spatial_matrix_t(type=Scalar)}, value
 
 def value_func_mat_inv(args,_):
     if args is None:
-        return mat(shape=(Any,Any),type=Scalar)
+        return mat(shape=(Any,Any),type=Float)
     if args[0].type._shape_[0] != args[0].type._shape_[1]:
         raise RuntimeError(f"Matrix shape is {args[0].type._shape_}. Cannot invert non square matrices")
     if args[0].type._shape_[0] not in [2,3,4]:
         raise RuntimeError(f"Matrix inverse only supported for sizes 2,3 and 4 right now")
     return args[0].type
 
-add_builtin("inverse", input_types={"m": mat(shape=(Any,Any),type=Scalar)}, value_func=value_func_mat_inv, group="Vector Math",
+add_builtin("inverse", input_types={"m": mat(shape=(Any,Any),type=Float)}, value_func=value_func_mat_inv, group="Vector Math",
     doc="Return the inverse of the matrix m")
 
 def value_func_mat_det(args,_):
@@ -278,7 +277,7 @@ add_builtin("mat", input_types={}, variadic=True, initializer_list=True, value_f
 def mat_quat_constructor_value_func(args,templates):
     
     if templates is None:
-        return mat(shape=(Any,Any),type=Scalar)
+        return mat(shape=(Any,Any),type=Float)
     
     matrows,matcols,mattype = templates
     if (matrows,matcols) != (4,4):
@@ -288,17 +287,17 @@ def mat_quat_constructor_value_func(args,templates):
     
     return mat(shape=(4,4),type=mattype)
 
-add_builtin("mat", input_types={"pos": vec(length=3,type=Scalar), "rot": quaternion(type=Scalar), "scale": vec(length=3,type=Scalar)}, value_func=mat_quat_constructor_value_func, 
+add_builtin("mat", input_types={"pos": vec(length=3,type=Float), "rot": quaternion(type=Float), "scale": vec(length=3,type=Float)}, value_func=mat_quat_constructor_value_func, 
     doc="""Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""", group="Vector Math", export=False)
 
-add_builtin("svd3", input_types={"A": mat(shape=(3,3),type=Scalar), "U":mat(shape=(3,3),type=Scalar), "sigma":vec(length=3,type=Scalar), "V":mat(shape=(3,3),type=Scalar)}, value_type=None, group="Vector Math",
+add_builtin("svd3", input_types={"A": mat(shape=(3,3),type=Float), "U":mat(shape=(3,3),type=Float), "sigma":vec(length=3,type=Float), "V":mat(shape=(3,3),type=Scalar)}, value_type=None, group="Vector Math",
     doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.""")
 
-add_builtin("qr3", input_types={"A": mat(shape=(3,3),type=Scalar), "Q":mat(shape=(3,3),type=Scalar), "R":mat(shape=(3,3),type=Scalar)}, value_type=None, group="Vector Math",
+add_builtin("qr3", input_types={"A": mat(shape=(3,3),type=Float), "Q":mat(shape=(3,3),type=Float), "R":mat(shape=(3,3),type=Float)}, value_type=None, group="Vector Math",
     doc="""Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.""")
 
-add_builtin("eig3", input_types={"A": mat(shape=(3,3),type=Scalar), "Q":mat(shape=(3,3),type=Scalar), "d":vec(length=3,type=Scalar)}, value_type=None, group="Vector Math",
+add_builtin("eig3", input_types={"A": mat(shape=(3,3),type=Float), "Q":mat(shape=(3,3),type=Float), "d":vec(length=3,type=Float)}, value_type=None, group="Vector Math",
     doc="""Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.""")
 
 #---------------------------------
@@ -306,7 +305,7 @@ add_builtin("eig3", input_types={"A": mat(shape=(3,3),type=Scalar), "Q":mat(shap
 
 def quat_constructor_value_func(args,templates):
     if templates is None:
-        return quaternion(type=Scalar)
+        return quaternion(type=Float)
     
     quattype = templates[0]
     if len(args) and infer_scalar_type(args) != quattype:
@@ -317,31 +316,31 @@ def quat_constructor_value_func(args,templates):
 add_builtin("quaternion", input_types={}, value_func=quat_constructor_value_func, group="Quaternion Math", 
     doc="""Construct a zero-initialized quaternion, quaternions are laid out as
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.""", export=False)
-add_builtin("quaternion", input_types={"x": Scalar, "y": Scalar, "z": Scalar, "w": Scalar}, value_func=quat_constructor_value_func, group="Quaternion Math",
+add_builtin("quaternion", input_types={"x": Float, "y": Float, "z": Float, "w": Float}, value_func=quat_constructor_value_func, group="Quaternion Math",
     doc="Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.", export=False)
-add_builtin("quaternion", input_types={"i": vec(length=3,type=Scalar), "r": Scalar}, value_func=quat_constructor_value_func, group="Quaternion Math",
+add_builtin("quaternion", input_types={"i": vec(length=3,type=Float), "r": Float}, value_func=quat_constructor_value_func, group="Quaternion Math",
     doc="Construct a quaternion from it's imaginary components i, and real part r", export=False)
 
 add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion Math",
     doc="Construct a float32 identity quaternion with zero imaginary part and real part of 1.0")
 
-add_builtin("quat_from_axis_angle", input_types={"axis": vec(length=3,type=Scalar), "angle": Scalar}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_from_axis_angle", input_types={"axis": vec(length=3,type=Float), "angle": Float}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
-add_builtin("quat_to_axis_angle", input_types={"q": quaternion(type=Scalar), "axis": vec(length=3,type=Scalar), "angle": Scalar}, value_type=None, group="Quaternion Math",
+add_builtin("quat_to_axis_angle", input_types={"q": quaternion(type=Float), "axis": vec(length=3,type=Float), "angle": Float}, value_type=None, group="Quaternion Math",
     doc="Extract the rotation axis and angle radians a quaternion represents.")
-add_builtin("quat_from_matrix", input_types={"m": mat(shape=(3,3),type=Scalar)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_from_matrix", input_types={"m": mat(shape=(3,3),type=Float)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion from a 3x3 matrix.")
-add_builtin("quat_rpy", input_types={"roll": Scalar, "pitch": Scalar, "yaw": Scalar}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_rpy", input_types={"roll": Float, "pitch": Float, "yaw": Float}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.")
-add_builtin("quat_inverse", input_types={"q": quaternion(type=Scalar)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_inverse", input_types={"q": quaternion(type=Float)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Compute quaternion conjugate.")
-add_builtin("quat_rotate", input_types={"q": quaternion(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_rotate", input_types={"q": quaternion(type=Float), "p": vec(length=3,type=Float)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Rotate a vector by a quaternion.")
-add_builtin("quat_rotate_inv", input_types={"q": quaternion(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_rotate_inv", input_types={"q": quaternion(type=Float), "p": vec(length=3,type=Float)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Rotate a vector the inverse of a quaternion.")
-add_builtin("quat_slerp", input_types={"q0": quaternion(type=Scalar), "q1": quaternion(type=Scalar), "t": Scalar}, value_func=lambda args: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_slerp", input_types={"q0": quaternion(type=Float), "q1": quaternion(type=Float), "t": Float}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Linearly interpolate between two quaternions.")
-add_builtin("quat_to_matrix", input_types={"q": quaternion(type=Scalar)}, value_func=lambda args,_: mat(shape=(3,3),type=infer_scalar_type(args)), group="Quaternion Math",
+add_builtin("quat_to_matrix", input_types={"q": quaternion(type=Float)}, value_func=lambda args,_: mat(shape=(3,3),type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Convert a quaternion to a 3x3 rotation matrix.")
 
 #---------------------------------
@@ -357,17 +356,17 @@ def transform_constructor_value_func(args,templates):
     
     return transform_t(type=transtype)
 
-add_builtin("transform_t", input_types={"p": vec(length=3,type=Scalar), "q": quaternion(type=Scalar)}, value_func=transform_constructor_value_func, group="Transformations",
+add_builtin("transform_t", input_types={"p": vec(length=3,type=Float), "q": quaternion(type=Float)}, value_func=transform_constructor_value_func, group="Transformations",
     doc="Construct a rigid body transformation with translation part p and rotation q.", export=False)
 
 add_builtin("transform_identity", input_types={}, value_type=transform, group="Transformations",
     doc="Construct a float32 identity transform with zero translation and identity rotation.")
 
-add_builtin("transform_get_translation", input_types={"t": transform_t(type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
+add_builtin("transform_get_translation", input_types={"t": transform_t(type=Float)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
     doc="Return the translational part of a transform.")
-add_builtin("transform_get_rotation", input_types={"t": transform_t(type=Scalar)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Transformations",
+add_builtin("transform_get_rotation", input_types={"t": transform_t(type=Float)}, value_func=lambda args,_: quaternion(type=infer_scalar_type(args)), group="Transformations",
     doc="Return the rotational part of a transform.")
-add_builtin("transform_multiply", input_types={"a": transform_t(type=Scalar), "b": transform_t(type=Scalar)}, value_func=lambda args,_: transform_t(type=infer_scalar_type(args)), group="Transformations",
+add_builtin("transform_multiply", input_types={"a": transform_t(type=Float), "b": transform_t(type=Float)}, value_func=lambda args,_: transform_t(type=infer_scalar_type(args)), group="Transformations",
     doc="Multiply two rigid body transformations together.")
 add_builtin("transform_point", input_types={"t": transform_t(type=Scalar), "p": vec(length=3,type=Scalar)}, value_func=lambda args,_: vec(length=3,type=infer_scalar_type(args)), group="Transformations",
     doc="Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).")
@@ -381,14 +380,14 @@ add_builtin("transform_vector", input_types={"m": mat(shape=(4,4),type=Scalar), 
     doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.""")
-add_builtin("transform_inverse", input_types={"t": transform_t(type=Scalar)}, value_func=sametype_value_func(transform_t(type=Scalar)), group="Transformations",
+add_builtin("transform_inverse", input_types={"t": transform_t(type=Float)}, value_func=sametype_value_func(transform_t(type=Float)), group="Transformations",
     doc="Compute the inverse of the transform.")
 #---------------------------------
 # Spatial Math 
 
 def spatial_vector_constructor_value_func(args,templates):
     if templates is None:
-        return spatial_vector_t(type=Scalar)
+        return spatial_vector_t(type=Float)
     
     vectype = templates[0]
     if len(args) and infer_scalar_type(args) != vectype:
@@ -398,16 +397,16 @@ def spatial_vector_constructor_value_func(args,templates):
 
 add_builtin("spatial_vector_t", input_types={}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
     doc="Construct a zero-initialized 6d screw vector. Screw vectors may be used to represent rigid body wrenches and twists (velocites).", export=False)
-add_builtin("spatial_vector_t", input_types={"a": Scalar, "b": Scalar, "c": Scalar, "d": Scalar, "e": Scalar, "f": Scalar}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
+add_builtin("spatial_vector_t", input_types={"a": Float, "b": Float, "c": Float, "d": Float, "e": Float, "f": Float}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
     doc="Construct a 6d screw vector from it's components.", export=False)
-add_builtin("spatial_vector_t", input_types={"w": vec(length=3,type=Scalar), "v": vec(length=3,type=Scalar)}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
+add_builtin("spatial_vector_t", input_types={"w": vec(length=3,type=Float), "v": vec(length=3,type=Float)}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
     doc="Construct a 6d screw vector from two 3d vectors.", export=False)
-add_builtin("spatial_vector_t", input_types={"s": Scalar}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
+add_builtin("spatial_vector_t", input_types={"s": Float}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
     doc="Construct a 6d screw vector with all components set to s", export=False)
 
 def spatial_matrix_constructor_value_func(args,templates):
     if templates is None:
-        return spatial_matrix_t(type=Scalar)
+        return spatial_matrix_t(type=Float)
     
     mattype = templates[0]
     return spatial_matrix_t(type=mattype)
@@ -415,35 +414,35 @@ def spatial_matrix_constructor_value_func(args,templates):
 add_builtin("spatial_matrix_t", input_types={}, value_func=spatial_matrix_constructor_value_func, group="Spatial Math",
     doc="Construct a 6x6 zero-initialized spatial inertia matrix", export=False)
 
-add_builtin("spatial_adjoint", input_types={"r": mat(shape=(3,3),type=Scalar), "s": mat(shape=(3,3),type=Scalar)}, value_func=lambda args,_: spatial_matrix_t(type=infer_scalar_type(args)), group="Spatial Math",
+add_builtin("spatial_adjoint", input_types={"r": mat(shape=(3,3),type=Float), "s": mat(shape=(3,3),type=Float)}, value_func=lambda args,_: spatial_matrix_t(type=infer_scalar_type(args)), group="Spatial Math",
     doc="Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.", export=False)
-add_builtin("spatial_dot", input_types={"a": spatial_vector_t(type=Scalar), "b": spatial_vector_t(type=Scalar)}, value_func=sametype_scalar_value_func, group="Spatial Math",
+add_builtin("spatial_dot", input_types={"a": spatial_vector_t(type=Float), "b": spatial_vector_t(type=Float)}, value_func=sametype_scalar_value_func, group="Spatial Math",
     doc="Compute the dot product of two 6d screw vectors.")
-add_builtin("spatial_cross", input_types={"a": spatial_vector_t(type=Scalar), "b": spatial_vector_t(type=Scalar)}, value_func=sametype_value_func(spatial_vector_t(type=Scalar)), group="Spatial Math",
+add_builtin("spatial_cross", input_types={"a": spatial_vector_t(type=Float), "b": spatial_vector_t(type=Float)}, value_func=sametype_value_func(spatial_vector_t(type=Float)), group="Spatial Math",
     doc="Compute the cross-product of two 6d screw vectors.")
-add_builtin("spatial_cross_dual", input_types={"a": spatial_vector_t(type=Scalar), "b": spatial_vector_t(type=Scalar)}, value_func=sametype_value_func(spatial_vector_t(type=Scalar)), group="Spatial Math",
+add_builtin("spatial_cross_dual", input_types={"a": spatial_vector_t(type=Float), "b": spatial_vector_t(type=Float)}, value_func=sametype_value_func(spatial_vector_t(type=Float)), group="Spatial Math",
     doc="Compute the dual cross-product of two 6d screw vectors.")
 
-add_builtin("spatial_top", input_types={"a": spatial_vector_t(type=Scalar)}, value_func=lambda args,_: vec(length=3,type=args[0].type._wp_scalar_type_), group="Spatial Math",
+add_builtin("spatial_top", input_types={"a": spatial_vector_t(type=Float)}, value_func=lambda args,_: vec(length=3,type=args[0].type._wp_scalar_type_), group="Spatial Math",
     doc="Return the top (first) part of a 6d screw vector.")
-add_builtin("spatial_bottom", input_types={"a": spatial_vector_t(type=Scalar)}, value_func=lambda args,_: vec(length=3,type=args[0].type._wp_scalar_type_), group="Spatial Math",
+add_builtin("spatial_bottom", input_types={"a": spatial_vector_t(type=Float)}, value_func=lambda args,_: vec(length=3,type=args[0].type._wp_scalar_type_), group="Spatial Math",
     doc="Return the bottom (second) part of a 6d screw vector.")
 
 add_builtin("spatial_jacobian",
-     input_types={"S": array(dtype=spatial_vector_t(type=Scalar)), 
+     input_types={"S": array(dtype=spatial_vector_t(type=Float)), 
                   "joint_parents": array(dtype=int),
                   "joint_qd_start": array(dtype=int),
                   "joint_start": int,
                   "joint_count": int,
                   "J_start": int,
-                  "J_out": array(dtype=Scalar)}, value_type=None, doc="", group="Spatial Math")
+                  "J_out": array(dtype=Float)}, value_type=None, doc="", group="Spatial Math")
 
 add_builtin("spatial_mass",
-     input_types={"I_s": array(dtype=spatial_matrix_t(type=Scalar)),
+     input_types={"I_s": array(dtype=spatial_matrix_t(type=Float)),
                   "joint_start": int,
                   "joint_count": int,
                   "M_start": int,
-                  "M": array(dtype=Scalar)}, value_type=None, doc="", group="Spatial Math")
+                  "M": array(dtype=Float)}, value_type=None, doc="", group="Spatial Math")
 
 #---------------------------------
 # Linear Algebra
@@ -919,7 +918,7 @@ add_builtin("index", input_types={"a": transform_t(type=Scalar), "i": int}, valu
 add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
 for t in scalar_types + vector_types:
-    if t in [vec2,vec3,vec4,mat22,mat33,mat44]:
+    if "vec" in t.__name__ or "mat" in t.__name__:
         continue
     add_builtin("expect_eq", input_types={"arg1": t, "arg2": t}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 
@@ -934,10 +933,8 @@ add_builtin("expect_neq", input_types={"arg1": vec(length=Any,type=Scalar), "arg
 add_builtin("expect_eq", input_types={"arg1": mat(shape=(Any,Any),type=Scalar), "arg2": mat(shape=(Any,Any),type=Scalar)}, value_func=expect_eq_val_func, doc="Prints an error to stdout if arg1 and arg2 are not equal", group="Utility")
 add_builtin("expect_neq", input_types={"arg1": mat(shape=(Any,Any),type=Scalar), "arg2": mat(shape=(Any,Any),type=Scalar)}, value_func=expect_eq_val_func, doc="Prints an error to stdout if arg1 and arg2 are equal", group="Utility")
     
-for t in [float16,float32,float64,]:
-    
-    add_builtin("lerp", input_types={"a": t, "b": t, "t": t}, value_type=t, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
-    add_builtin("smoothstep", input_types={"edge0": t, "edge1": t, "x": t}, value_type=t, doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping", group="Utility")
+add_builtin("lerp", input_types={"a": Float, "b": Float, "t": Float}, value_func=sametype_value_func(Float), doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
+add_builtin("smoothstep", input_types={"edge0": Float, "edge1": Float, "x": Float}, value_func=sametype_value_func(Float), doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping", group="Utility")
 
 for typ in vector_types:
     t = typ._wp_scalar_type_
@@ -947,14 +944,13 @@ for typ in vector_types:
     add_builtin("lerp", input_types={"a": typ, "b": typ, "t": t}, value_type=typ, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
 
 # fuzzy compare for float values
-add_builtin("expect_near", input_types={"arg1": float, "arg2": float, "tolerance": float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
+add_builtin("expect_near", input_types={"arg1": Float, "arg2": Float, "tolerance": Float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 add_builtin("expect_near", input_types={"arg1": vec3, "arg2": vec3, "tolerance": float}, value_type=None, doc="Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
 
 #---------------------------------
 # Algorithms
 
-add_builtin("lower_bound", input_types={"arr": array(dtype=int), "value": int}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
-add_builtin("lower_bound", input_types={"arr": array(dtype=float), "value": float}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
+add_builtin("lower_bound", input_types={"arr": array(dtype=Scalar), "value": Scalar}, value_type=int, doc="Search a sorted array for the closest element greater than or equal to value.")
 
 #---------------------------------
 # Operators

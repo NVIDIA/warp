@@ -210,7 +210,10 @@ class Function:
 
             # overload resolution or call failed
             # raise the last exception encountered
-            raise error
+            if error:
+                raise error
+            else:
+                raise RuntimeError(f"Error calling function '{f.key}'.")
 
         else:
             raise RuntimeError(f"Error, functions decorated with @wp.func can only be called from within Warp kernels (trying to call {self.key}())")
@@ -371,10 +374,10 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
    
     def is_generic(t):
         ret = False
-        if t == warp.types.Scalar:
+        if t in [warp.types.Scalar,warp.types.Float]:
             ret = True
         if hasattr(t,"_wp_type_params_"):
-            ret = warp.types.Scalar in t._wp_type_params_ or warp.types.Any in t._wp_type_params_
+            ret = warp.types.Scalar in t._wp_type_params_ or warp.types.Float in t._wp_type_params_ or warp.types.Any in t._wp_type_params_
         
         return ret
 
@@ -383,6 +386,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
     generic = any( is_generic(x) for x in input_types.values() )
     if generic and export:
 
+        
         # get a list of existing generic vector types (includes matrices and stuff)
         # so we can match arguments against them:
         generic_vtypes = [x for x in warp.types.vector_types if hasattr(x,"_wp_generic_type_str_")]
@@ -392,17 +396,25 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
             for t in l:
                 if hasattr(t,"_wp_generic_type_str_"):
                     yield t._wp_generic_type_str_
+                elif t in [warp.types.Float,warp.types.Scalar]:
+                    yield t.__name__
         genericset = set(generic_names(input_types.values()))
-        
+
         # for each of those type names, get a list of all hard coded types derived
         # from them:
         def derived(name):
+            if name == "Float":
+                return warp.types.float_types
+            elif name == "Scalar":
+                return warp.types.scalar_types
             return [x for x in generic_vtypes if x._wp_generic_type_str_ == name]
         gtypes = { k : derived(k) for k in genericset }
 
         # find the scalar data types supported by all the arguments by intersecting
         # sets:
         def scalar_type(t):
+            if t in warp.types.scalar_types:
+                return t
             return [p for p in t._wp_type_params_ if p in warp.types.scalar_types][0]
         scalartypes = [ {scalar_type(x) for x in gtypes[k]} for k in gtypes.keys() ]
         if scalartypes:
@@ -417,7 +429,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
             consistenttypes = { k : [ x for x in v if scalar_type(x) == stype] for k,v in gtypes.items() }
 
             def typelist(param):
-                if param == warp.types.Scalar:
+                if param in [warp.types.Scalar, warp.types.Float]:
                     return [stype]
                 if hasattr(param, "_wp_generic_type_str_"):
                     l = consistenttypes[param._wp_generic_type_str_]

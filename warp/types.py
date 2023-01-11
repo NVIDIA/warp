@@ -21,6 +21,7 @@ from typing import List
 import warp
 
 Scalar = TypeVar('Scalar')
+Float = TypeVar('Float')
 
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels
@@ -67,7 +68,7 @@ def vector(length, type):
         # ctypes.Array data for length, shape and c type:
         _length_ = 0 if length is Any else length
         _shape_ = (_length_, )
-        _type_ = ctypes.c_float if type is Scalar else type._type_
+        _type_ = ctypes.c_float if type in [Scalar,Float] else type._type_
 
         # warp scalar type:
         _wp_scalar_type_ = type
@@ -142,7 +143,7 @@ def matrix(shape, type):
 
         _length_ = 0 if shape[0] == Any or shape[1] == Any else shape[0]*shape[1]
         _shape_ = (0,0) if _length_ == 0 else shape
-        _type_ = ctypes.c_float if type is Scalar else type._type_
+        _type_ = ctypes.c_float if type in [Scalar,Float] else type._type_
 
         # warp scalar type:
         _wp_scalar_type_ = type
@@ -335,6 +336,9 @@ class quath(quaternion(type=float16)):
 class quat(quaternion(type=float32)):
     pass
 
+class quatf(quaternion(type=float32)):
+    pass
+
 class quatd(quaternion(type=float64)):
     pass
 
@@ -367,6 +371,9 @@ class transformh(transform_t(type=float16)):
 class transform(transform_t(type=float32)):
     pass
 
+class transformf(transform_t(type=float32)):
+    pass
+
 class transformd(transform_t(type=float64)):
     pass
 
@@ -386,6 +393,15 @@ class vec3(vec(length=3, type=float32)):
     pass
 
 class vec4(vec(length=4, type=float32)):
+    pass
+
+class vec2f(vec(length=2, type=float32)):
+    pass
+
+class vec3f(vec(length=3, type=float32)):
+    pass
+
+class vec4f(vec(length=4, type=float32)):
     pass
 
 class vec2d(vec(length=2, type=float64)):
@@ -424,6 +440,15 @@ class mat33(mat(shape=(3,3), type=float32)):
 class mat44(mat(shape=(4,4), type=float32)):
     pass
     
+class mat22f(mat(shape=(2,2), type=float32)):
+    pass
+    
+class mat33f(mat(shape=(3,3), type=float32)):
+    pass
+
+class mat44f(mat(shape=(4,4), type=float32)):
+    pass
+    
 class mat22d(mat(shape=(2,2), type=float64)):
     pass
     
@@ -449,6 +474,9 @@ class spatial_vectorh(spatial_vector_t(type=float16)):
 class spatial_vector(spatial_vector_t(type=float32)):
     pass
 
+class spatial_vectorf(spatial_vector_t(type=float32)):
+    pass
+
 class spatial_vectord(spatial_vector_t(type=float64)):
     pass
 
@@ -467,14 +495,27 @@ class spatial_matrixh(spatial_matrix_t(type=float16)):
 class spatial_matrix(spatial_matrix_t(type=float32)):
     pass
 
+class spatial_matrixf(spatial_matrix_t(type=float32)):
+    pass
+
 class spatial_matrixd(spatial_matrix_t(type=float64)):
     pass
 
 
-compute_types = [int32, float32]
 scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64]
-
-vector_types = [vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix]
+float_types = [float16, float32, float64]
+vector_types = [
+    vec2ub, vec2h, vec2f, vec2d, vec2,
+    vec3ub, vec3h, vec3f, vec3d, vec3,
+    vec4ub, vec4h, vec4f, vec4d, vec4,
+    mat22h, mat22f, mat22d, mat22,
+    mat33h, mat33f, mat33d, mat33,
+    mat44h, mat44f, mat44d, mat44,
+    quath, quatf, quatd, quat,
+    transformh, transformf, transformd, transform,
+    spatial_vectorh, spatial_vectorf, spatial_vectord, spatial_vector,
+    spatial_matrixh, spatial_matrixf, spatial_matrixd, spatial_matrix
+]
 
 
 np_dtype_to_warp_type = {
@@ -679,6 +720,12 @@ def types_equal(a, b, match_generic=False):
             if p2 == Scalar and p1 in scalar_types:
                 return True
             if p1 == Scalar and p2 == Scalar:
+                return True
+            if p1 == Float and p2 in float_types:
+                return True
+            if p2 == Float and p1 in float_types:
+                return True
+            if p1 == Float and p2 == Float:
                 return True
         return p1 == p2
         
@@ -898,7 +945,7 @@ class array (Generic[T]):
             self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
 
         # store flat shape (including type shape)
-        if dtype not in [Any,Scalar] and issubclass(dtype,ctypes.Array):
+        if dtype not in [Any,Scalar,Float] and issubclass(dtype,ctypes.Array):
             # vector type, flatten the dimensions into one tuple
             arr_shape = (*self.shape, *self.dtype._shape_)
             dtype_strides =  strides_from_shape(self.dtype._shape_, self.dtype._type_) 

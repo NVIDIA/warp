@@ -985,6 +985,7 @@ inline CUDA_CALLABLE mat<Rows,Cols,Type>::mat(const vec<3,Type>& pos, const quat
 
 using quath = quaternion<half>;
 using quat = quaternion<float>;
+using quatf = quaternion<float>;
 using quatd = quaternion<double>;
 
 inline CUDA_CALLABLE quath quath_identity()
