@@ -33,14 +33,17 @@ def _get_attribute_creation_handler(state: _State) -> Callable:
 
     def fn(name, port_type, data_type_name, optional):
         type_name = og.AttributeType.type_from_sdf_type_name(data_type_name)
+        attr_name = "{}:{}".format(og.get_port_type_namespace(port_type), name)
         attr = og.Controller.create_attribute(
             state.layout.node,
-            "{}:{}".format(og.get_port_type_namespace(port_type), name),
+            attr_name,
             type_name,
             port_type,
         )
         if attr is None:
-            return
+            raise RuntimeError(
+                "Failed to create the attribute '{}'.".format(attr_name)
+            )
 
         attr.is_optional_for_compute = optional
         state.layout.refresh()

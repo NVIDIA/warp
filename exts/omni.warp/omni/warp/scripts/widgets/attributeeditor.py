@@ -106,7 +106,11 @@ class AttributeEditor:
             and self.optional_checkbox.model.get_value_as_bool()
         )
 
-        self.create_attr_callback(name, port_type, data_type_name, optional)
+        try:
+            self.create_attr_callback(name, port_type, data_type_name, optional)
+        except Exception as e:
+            self.error_msg_label.text = str(e)
+            return
 
         self.dialog.visible = False
 
