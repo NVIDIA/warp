@@ -128,11 +128,11 @@ def test_constructors(test, device,dtype):
         input: wp.array(dtype=wptype),
         outcomponents: wp.array(dtype=wptype),
     ):
-        outcomponents[0] = wptype(0.0)
-        m2result = mat22(wptype(2.0) * input[0])
-        m3result = mat33(wptype(3.0) * input[0])
-        m4result = mat44(wptype(4.0) * input[0])
-        m5result = mat55(wptype(5.0) * input[0])
+        # multiply outputs by 2 so we've got something to backpropagate:
+        m2result = wptype(2) * mat22(input[0])
+        m3result = wptype(2) * mat33(input[0])
+        m4result = wptype(2) * mat44(input[0])
+        m5result = wptype(2) * mat55(input[0])
 
         idx = 0
         for i in range(2):
@@ -163,47 +163,47 @@ def test_constructors(test, device,dtype):
 
     wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy()[:4], 2.0 * val * np.ones(2*2), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], 3.0 * val * np.ones(3*3), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], 4.0 * val * np.ones(4*4), tol=tol)
-    assert_np_equal(outcomponents.numpy()[29:54], 5.0 * val * np.ones(5*5), tol=tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * val * np.ones(2*2), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * val * np.ones(3*3), tol=tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * val * np.ones(4*4), tol=tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * val * np.ones(5*5), tol=tol)
 
     if dtype in np_float_types:
-        expectedgrads = [2.0]*(2*2) + [3.0]*(3*3) + [4.0]*(4*4) + [5.0]*(5*5)
         for idx in range(len(outcomponents)):
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
                 wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
             tape.backward(loss=out)
-            test.assertEqual(tape.gradients[input].numpy()[0],expectedgrads[idx])
+            test.assertEqual(tape.gradients[input].numpy()[0],2)
             tape.zero()
     
     def check_component_mat_constructor(
         input: wp.array(dtype=wptype),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2result = mat22(
-            wptype(2.0) * input[0], wptype(3.0) * input[1],
-            wptype(4.0) * input[2], wptype(5.0) * input[3]
+        # multiply outputs by 2 so we've got something to backpropagate:
+        m2result = wptype(2) * mat22(
+            input[0], input[1],
+            input[2], input[3]
         )
-        m3result = mat33(
-            wptype(6.0) * input[4], wptype(7.0) * input[5], wptype(8.0) * input[6], 
-            wptype(9.0) * input[7], wptype(10.0) * input[8], wptype(11.0) * input[9], 
-            wptype(12.0) * input[10], wptype(13.0) * input[11], wptype(14.0) * input[12], 
+        m3result = wptype(2) * mat33(
+            input[4], input[5], input[6], 
+            input[7], input[8], input[9], 
+            input[10], input[11], input[12], 
         )
-        m4result = mat44(
-            wptype(15.0) * input[13], wptype(16.0) * input[14], wptype(17.0) * input[15], wptype(18.0) * input[16], 
-            wptype(19.0) * input[17], wptype(20.0) * input[18], wptype(21.0) * input[19], wptype(22.0) * input[20], 
-            wptype(23.0) * input[21], wptype(24.0) * input[22], wptype(25.0) * input[23], wptype(26.0) * input[24], 
-            wptype(27.0) * input[25], wptype(28.0) * input[26], wptype(29.0) * input[27], wptype(30.0) * input[28], 
+        m4result = wptype(2) * mat44(
+            input[13], input[14], input[15], input[16], 
+            input[17], input[18], input[19], input[20], 
+            input[21], input[22], input[23], input[24], 
+            input[25], input[26], input[27], input[28], 
         )
-        m5result = mat55(
-            wptype(31.0) * input[29], wptype(32.0) * input[30], wptype(33.0) * input[31], wptype(34.0) * input[32], wptype(35.0) * input[33], 
-            wptype(36.0) * input[34], wptype(37.0) * input[35], wptype(38.0) * input[36], wptype(39.0) * input[37], wptype(40.0) * input[38], 
-            wptype(41.0) * input[39], wptype(42.0) * input[40], wptype(43.0) * input[41], wptype(44.0) * input[42], wptype(45.0) * input[43], 
-            wptype(46.0) * input[44], wptype(47.0) * input[45], wptype(48.0) * input[46], wptype(49.0) * input[47], wptype(50.0) * input[48], 
-            wptype(51.0) * input[49], wptype(52.0) * input[50], wptype(53.0) * input[51], wptype(54.0) * input[52], wptype(55.0) * input[53], 
+        m5result = wptype(2) * mat55(
+            input[29], input[30], input[31], input[32], input[33], 
+            input[34], input[35], input[36], input[37], input[38], 
+            input[39], input[40], input[41], input[42], input[43], 
+            input[44], input[45], input[46], input[47], input[48], 
+            input[49], input[50], input[51], input[52], input[53], 
         )
 
         idx = 0
@@ -231,7 +231,7 @@ def test_constructors(test, device,dtype):
     kernel = getkernel(check_component_mat_constructor,suffix=dtype.__name__)
 
     wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
-    assert_np_equal( np.array( range(2,56), dtype=dtype ) * input.numpy(), outcomponents.numpy(), tol=10*tol )
+    assert_np_equal( 2 * input.numpy(), outcomponents.numpy(), tol=10*tol )
 
     if dtype in np_float_types:
         for idx in range(len(outcomponents)):
@@ -241,7 +241,7 @@ def test_constructors(test, device,dtype):
                 wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
             tape.backward(loss=out)
             expectedgrads = np.zeros(len(input))
-            expectedgrads[idx] = idx + 2
+            expectedgrads[idx] = 2
             assert_np_equal( tape.gradients[input].numpy(),expectedgrads)
             tape.zero()
 
@@ -249,27 +249,28 @@ def test_constructors(test, device,dtype):
         input: wp.array(dtype=wptype),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2result = mat22(
-            vec2(wptype(2.0) * input[0], wptype(4.0) * input[2]),
-            vec2(wptype(3.0) * input[1], wptype(5.0) * input[3])
+        # multiply outputs by 2 so we've got something to backpropagate:
+        m2result = wptype(2) * mat22(
+            vec2(input[0], input[2]),
+            vec2(input[1], input[3])
         )
-        m3result = mat33(
-            vec3(wptype(6.0) * input[4], wptype(9.0) * input[7], wptype(12.0) * input[10]), 
-            vec3(wptype(7.0) * input[5], wptype(10.0) * input[8], wptype(13.0) * input[11]), 
-            vec3(wptype(8.0) * input[6], wptype(11.0) * input[9], wptype(14.0) * input[12]),
+        m3result = wptype(2) * mat33(
+            vec3(input[4], input[7], input[10]), 
+            vec3(input[5], input[8], input[11]), 
+            vec3(input[6], input[9], input[12]),
         )
-        m4result = mat44(
-            vec4(wptype(15.0) * input[13], wptype(19.0) * input[17], wptype(23.0) * input[21], wptype(27.0) * input[25]), 
-            vec4(wptype(16.0) * input[14], wptype(20.0) * input[18], wptype(24.0) * input[22], wptype(28.0) * input[26]), 
-            vec4(wptype(17.0) * input[15], wptype(21.0) * input[19], wptype(25.0) * input[23], wptype(29.0) * input[27]), 
-            vec4(wptype(18.0) * input[16], wptype(22.0) * input[20], wptype(26.0) * input[24], wptype(30.0) * input[28]), 
+        m4result = wptype(2) * mat44(
+            vec4(input[13], input[17], input[21], input[25]), 
+            vec4(input[14], input[18], input[22], input[26]), 
+            vec4(input[15], input[19], input[23], input[27]), 
+            vec4(input[16], input[20], input[24], input[28]), 
         )
-        m5result = mat55(
-            vec5(wptype(31.0) * input[29], wptype(36.0) * input[34], wptype(41.0) * input[39], wptype(46.0) * input[44], wptype(51.0) * input[49]), 
-            vec5(wptype(32.0) * input[30], wptype(37.0) * input[35], wptype(42.0) * input[40], wptype(47.0) * input[45], wptype(52.0) * input[50]), 
-            vec5(wptype(33.0) * input[31], wptype(38.0) * input[36], wptype(43.0) * input[41], wptype(48.0) * input[46], wptype(53.0) * input[51]), 
-            vec5(wptype(34.0) * input[32], wptype(39.0) * input[37], wptype(44.0) * input[42], wptype(49.0) * input[47], wptype(54.0) * input[52]), 
-            vec5(wptype(35.0) * input[33], wptype(40.0) * input[38], wptype(45.0) * input[43], wptype(50.0) * input[48], wptype(55.0) * input[53]), 
+        m5result = wptype(2) * mat55(
+            vec5(input[29], input[34], input[39], input[44], input[49]), 
+            vec5(input[30], input[35], input[40], input[45], input[50]), 
+            vec5(input[31], input[36], input[41], input[46], input[51]), 
+            vec5(input[32], input[37], input[42], input[47], input[52]), 
+            vec5(input[33], input[38], input[43], input[48], input[53]), 
         )
 
         idx = 0
@@ -296,7 +297,7 @@ def test_constructors(test, device,dtype):
     kernel = getkernel(check_vector_mat_constructor,suffix=dtype.__name__)
 
     wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
-    assert_np_equal( np.array( range(2,56), dtype=dtype ) * input.numpy(), outcomponents.numpy(), tol=10*tol )
+    assert_np_equal( 2 * input.numpy(), outcomponents.numpy(), tol=10*tol )
 
     if dtype in np_float_types:
         for idx in range(len(outcomponents)):
@@ -306,7 +307,7 @@ def test_constructors(test, device,dtype):
                 wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
             tape.backward(loss=out)
             expectedgrads = np.zeros(len(input))
-            expectedgrads[idx] = idx + 2
+            expectedgrads[idx] = 2
             assert_np_equal( tape.gradients[input].numpy(),expectedgrads)
             tape.zero()
     
@@ -369,7 +370,7 @@ def test_quat_constructor(test,device,dtype):
 
     # scale:
     s = wp.array(np.random.randn(1,3).astype(dtype), dtype=vec3, requires_grad=True, device=device)
-    return
+    
     # just going to generate the matrix using the constructor, then
     # more manually, and make sure the values/gradients are the same:
     outcomponents = wp.zeros(4*4, dtype=wptype, requires_grad=True, device=device)
@@ -432,25 +433,26 @@ def test_indexing(test,device,dtype):
         
         outcomponents: wp.array(dtype=wptype),
     ):
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = m2[0][i,j]
+                outcomponents[idx] = wptype(2) * m2[0][i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = m3[0][i,j]
+                outcomponents[idx] = wptype(2) * m3[0][i,j]
                 idx = idx + 1
         
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = m4[0][i,j]
+                outcomponents[idx] = wptype(2) * m4[0][i,j]
                 idx = idx + 1
         
         for i in range(5):
             for j in range(5):
-                outcomponents[idx] = m5[0][i,j]
+                outcomponents[idx] = wptype(2) * m5[0][i,j]
                 idx = idx + 1
 
 
@@ -463,10 +465,10 @@ def test_indexing(test,device,dtype):
     
     wp.launch(kernel, dim=1, inputs=[ m2,m3,m4,m5 ], outputs=[outcomponents], device=device)
     
-    assert_np_equal(outcomponents.numpy()[:4], m2.numpy().reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], m3.numpy().reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], m4.numpy().reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[29:54], m5.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * m2.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * m3.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * m4.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * m5.numpy().reshape(-1), tol=tol)
         
     if dtype in np_float_types:
         idx = 0
@@ -480,7 +482,7 @@ def test_indexing(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = 1.0
+                    expectedresult[i,j] = 2
                     assert_np_equal(tape.gradients[input].numpy()[0],expectedresult)
                     tape.zero()
                     idx = idx + 1
@@ -588,7 +590,6 @@ def test_equality(test,device,dtype):
 
 def test_negation(test,device,dtype):
     
-
     np.random.seed(123)
     
     tol = {
@@ -613,35 +614,31 @@ def test_negation(test,device,dtype):
         
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2read = wptype(2.0) * m2[0]
-        m3read = wptype(3.0) * m3[0]
-        m4read = wptype(4.0) * m4[0]
-        m5read = wptype(5.0) * m5[0]
+        mat2 = -m2[0]
+        mat3 = -m3[0]
+        mat4 = -m4[0]
+        mat5 = -m5[0]
 
-        mat2 = -m2read
-        mat3 = -m3read
-        mat4 = -m4read
-        mat5 = -m5read
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = mat2[i,j]
+                outcomponents[idx] = wptype(2) * mat2[i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = mat3[i,j]
+                outcomponents[idx] = wptype(2) * mat3[i,j]
                 idx = idx + 1
         
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = mat4[i,j]
+                outcomponents[idx] = wptype(2) * mat4[i,j]
                 idx = idx + 1
         
         for i in range(5):
             for j in range(5):
-                outcomponents[idx] = mat5[i,j]
+                outcomponents[idx] = wptype(2) * mat5[i,j]
                 idx = idx + 1
 
     kernel = getkernel(check_mat_negation,suffix=dtype.__name__)
@@ -653,15 +650,14 @@ def test_negation(test,device,dtype):
     
     wp.launch(kernel, dim=1, inputs=[ m2,m3,m4,m5 ], outputs=[outcomponents], device=device)
     
-    assert_np_equal(outcomponents.numpy()[:4], -2.0 * m2.numpy().reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], -3.0 * m3.numpy().reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], -4.0 * m4.numpy().reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[29:54], -5.0 * m5.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[:4], -2 * m2.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], -2 * m3.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[13:29], -2 * m4.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[29:54], -2 * m5.numpy().reshape(-1), tol=tol)
     
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2
         for dim,input in [(2,m2),(3,m3),(4,m4),(5,m5)]:
             for i in range(dim):
                 for j in range(dim):
@@ -671,16 +667,14 @@ def test_negation(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = -m
+                    expectedresult[i,j] = -2
                     assert_np_equal(tape.gradients[input].numpy()[0],expectedresult)
                     tape.zero()
                     idx = idx + 1
-            m = m + 1
 
 
 def test_transpose(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -707,17 +701,13 @@ def test_transpose(test,device,dtype):
         
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2read = wptype(2.0) * m2[0]
-        m3read = wptype(3.0) * m3[0]
-        m4read = wptype(4.0) * m4[0]
-        m5read = wptype(5.0) * m5[0]
-        m32read = wptype(5.0) * m32[0]
 
-        mat2 = wp.transpose(m2read)
-        mat3 = wp.transpose(m3read)
-        mat4 = wp.transpose(m4read)
-        mat5 = wp.transpose(m5read)
-        mat32 = wp.transpose(m32read)
+        # multiply outputs by 2 so we've got something to backpropagate:
+        mat2 = wptype(2) * wp.transpose(m2[0])
+        mat3 = wptype(2) * wp.transpose(m3[0])
+        mat4 = wptype(2) * wp.transpose(m4[0])
+        mat5 = wptype(2) * wp.transpose(m5[0])
+        mat32 = wptype(2) * wp.transpose(m32[0])
 
         idx = 0
         for i in range(2):
@@ -755,17 +745,16 @@ def test_transpose(test,device,dtype):
     
     wp.launch(kernel, dim=1, inputs=[ m2,m3,m4,m5,m32 ], outputs=[outcomponents], device=device)
     
-    assert_np_equal(outcomponents.numpy()[:4], 2.0 * m2.numpy()[0].T.reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], 3.0 * m3.numpy()[0].T.reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], 4.0 * m4.numpy()[0].T.reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[29:54], 5.0 * m5.numpy()[0].T.reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[54:], 5.0 * m32.numpy()[0].T.reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * m2.numpy()[0].T.reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * m3.numpy()[0].T.reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * m4.numpy()[0].T.reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * m5.numpy()[0].T.reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[54:], 2 * m32.numpy()[0].T.reshape(-1), tol=tol)
 
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2
-        for dim,input in [(2,m2),(3,m3),(4,m4),(5,m5)]:
+        for input in [m2,m3,m4,m5]:
             for i in range(input.dtype._shape_[0]):
                 for j in range(input.dtype._shape_[1]):
                     tape = wp.Tape()
@@ -774,15 +763,14 @@ def test_transpose(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((input.dtype._shape_[1],input.dtype._shape_[0]),dtype=dtype)
-                    expectedresult[j,i] = m
+                    expectedresult[j,i] = 2
                     assert_np_equal(tape.gradients[input].numpy()[0],expectedresult)
                     tape.zero()
                     idx = idx + 1
-            m = m + 1
+
 
 def test_scalar_multiplication(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -808,46 +796,40 @@ def test_scalar_multiplication(test,device,dtype):
         outcomponents: wp.array(dtype=wptype),
         outcomponents_rightmul: wp.array(dtype=wptype),
     ):
-        m2load = wptype(2.0) * m2[0]
-        m3load = wptype(3.0) * m3[0]
-        m4load = wptype(4.0) * m4[0]
-        m5load = wptype(5.0) * m5[0]
+        m2result = s[0] * m2[0]
+        m3result = s[0] * m3[0]
+        m4result = s[0] * m4[0]
+        m5result = s[0] * m5[0]
 
-        sload = wptype(6.0) * s[0]
+        m2resultright = m2[0] * s[0]
+        m3resultright = m3[0] * s[0]
+        m4resultright = m4[0] * s[0]
+        m5resultright = m5[0] * s[0]
 
-        m2result = sload * m2load
-        m3result = sload * m3load
-        m4result = sload * m4load
-        m5result = sload * m5load
-
-        m2resultright = m2load * sload
-        m3resultright = m3load * sload
-        m4resultright = m4load * sload
-        m5resultright = m5load * sload
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = m2result[i,j]
-                outcomponents_rightmul[idx] = m2resultright[i,j]
+                outcomponents[idx] = wptype(2) * m2result[i,j]
+                outcomponents_rightmul[idx] = wptype(2) * m2resultright[i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = m3result[i,j]
-                outcomponents_rightmul[idx] = m3resultright[i,j]
+                outcomponents[idx] = wptype(2) * m3result[i,j]
+                outcomponents_rightmul[idx] = wptype(2) * m3resultright[i,j]
                 idx = idx + 1
         
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = m4result[i,j]
-                outcomponents_rightmul[idx] = m4resultright[i,j]
+                outcomponents[idx] = wptype(2) * m4result[i,j]
+                outcomponents_rightmul[idx] = wptype(2) * m4resultright[i,j]
                 idx = idx + 1
         
         for i in range(5):
             for j in range(5):
-                outcomponents[idx] = m5result[i,j]
-                outcomponents_rightmul[idx] = m5resultright[i,j]
+                outcomponents[idx] = wptype(2) * m5result[i,j]
+                outcomponents_rightmul[idx] = wptype(2) * m5resultright[i,j]
                 idx = idx + 1
     
     kernel = getkernel(check_mat_scalar_mul,suffix=dtype.__name__)
@@ -862,20 +844,19 @@ def test_scalar_multiplication(test,device,dtype):
     wp.launch(kernel, dim=1, inputs=[ s,m2,m3,m4,m5 ], outputs=[outcomponents,outcomponents_rightmul], device=device)
     
     sval = s.numpy()[0]
-    assert_np_equal(outcomponents.numpy()[:4], 2.0 * 6.0 * sval * m2.numpy().reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], 3.0 * 6.0 * sval * m3.numpy().reshape(-1), tol=10*tol)
-    assert_np_equal(outcomponents.numpy()[13:29], 4.0 * 6.0 * sval * m4.numpy().reshape(-1), tol=10*tol)
-    assert_np_equal(outcomponents.numpy()[29:54], 5.0 * 6.0 * sval * m5.numpy().reshape(-1), tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * sval * m2.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * sval * m3.numpy().reshape(-1), tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * sval * m4.numpy().reshape(-1), tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * sval * m5.numpy().reshape(-1), tol=10*tol)
 
-    assert_np_equal(outcomponents_rightmul.numpy()[:4], 2.0 * 6.0 * sval * m2.numpy().reshape(-1), tol=tol)
-    assert_np_equal(outcomponents_rightmul.numpy()[4:13], 3.0 * 6.0 * sval * m3.numpy().reshape(-1), tol=10*tol)
-    assert_np_equal(outcomponents_rightmul.numpy()[13:29], 4.0 * 6.0 * sval * m4.numpy().reshape(-1), tol=10*tol)
-    assert_np_equal(outcomponents_rightmul.numpy()[29:54], 5.0 * 6.0 * sval * m5.numpy().reshape(-1), tol=10*tol)
+    assert_np_equal(outcomponents_rightmul.numpy()[:4], 2 * sval * m2.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents_rightmul.numpy()[4:13], 2 * sval * m3.numpy().reshape(-1), tol=10*tol)
+    assert_np_equal(outcomponents_rightmul.numpy()[13:29], 2 * sval * m4.numpy().reshape(-1), tol=10*tol)
+    assert_np_equal(outcomponents_rightmul.numpy()[29:54], 2 * sval * m5.numpy().reshape(-1), tol=10*tol)
 
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2
         for dim,input in [(2,m2),(3,m3),(4,m4),(5,m5)]:
             for i in range(dim):
                 for j in range(dim):
@@ -887,9 +868,9 @@ def test_scalar_multiplication(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = m * 6 * sval
+                    expectedresult[i,j] = 2 * sval
                     assert_np_equal(tape.gradients[input].numpy()[0],expectedresult,tol=10*tol)
-                    assert_np_equal(tape.gradients[s].numpy()[0],m * 6 * input.numpy()[0,i,j],tol=10*tol)
+                    assert_np_equal(tape.gradients[s].numpy()[0],2 * input.numpy()[0,i,j],tol=10*tol)
                     tape.zero()
 
                     # test right mul gradient:
@@ -899,13 +880,12 @@ def test_scalar_multiplication(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents_rightmul,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = m * 6 * sval
+                    expectedresult[i,j] = 2 * sval
                     assert_np_equal(tape.gradients[input].numpy()[0],expectedresult,tol=10*tol)
-                    assert_np_equal(tape.gradients[s].numpy()[0],m * 6 * input.numpy()[0,i,j],tol=10*tol)
+                    assert_np_equal(tape.gradients[s].numpy()[0],2 * input.numpy()[0,i,j],tol=10*tol)
                     tape.zero()
 
                     idx = idx + 1
-            m = m + 1
 
 
 def test_matvec_multiplication(test,device,dtype):
@@ -946,44 +926,33 @@ def test_matvec_multiplication(test,device,dtype):
         m32: wp.array(dtype=mat32),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2load = wptype(2.0) * m2[0]
-        m3load = wptype(3.0) * m3[0]
-        m4load = wptype(2.0) * m4[0]
-        m5load = wptype(3.0) * m5[0]
-        m32load = wptype(2.0) * m32[0]
-
-        v2load = v2[0] * wptype(3.0)
-        v3load = v3[0] * wptype(2.0)
-        v4load = v4[0] * wptype(3.0)
-        v5load = v5[0] * wptype(2.0)
-        v32load = v32[0] * wptype(3.0)
-
-        v2result = m2load * v2load
-        v3result = m3load * v3load
-        v4result = m4load * v4load
-        v5result = m5load * v5load
-        v32result = m32load * v32load
+        v2result = m2[0] * v2[0]
+        v3result = m3[0] * v3[0]
+        v4result = m4[0] * v4[0]
+        v5result = m5[0] * v5[0]
+        v32result = m32[0] * v32[0]
 
         idx = 0
         
+        # multiply outputs by 2 so we've got something to backpropagate:
         for i in range(2):
-            outcomponents[idx] = v2result[i]
+            outcomponents[idx] = wptype(2) * v2result[i]
             idx = idx + 1
         
         for i in range(3):
-            outcomponents[idx] = v3result[i]
+            outcomponents[idx] = wptype(2) * v3result[i]
             idx = idx + 1
         
         for i in range(4):
-            outcomponents[idx] = v4result[i]
+            outcomponents[idx] = wptype(2) * v4result[i]
             idx = idx + 1
         
         for i in range(5):
-            outcomponents[idx] = v5result[i]
+            outcomponents[idx] = wptype(2) * v5result[i]
             idx = idx + 1
 
         for i in range(3):
-            outcomponents[idx] = v32result[i]
+            outcomponents[idx] = wptype(2) * v32result[i]
             idx = idx + 1
         
     kernel = getkernel(check_mat_vec_mul,suffix=dtype.__name__)
@@ -1001,16 +970,15 @@ def test_matvec_multiplication(test,device,dtype):
 
     wp.launch(kernel, dim=1, inputs=[ v2,v3,v4,v5,v32,m2,m3,m4,m5,m32 ], outputs=[outcomponents], device=device)
     
-    assert_np_equal(outcomponents.numpy()[:2], (2.0 * 3.0 ) * np.matmul(m2.numpy()[0],v2.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[2:5], (3.0 * 2.0 ) * np.matmul(m3.numpy()[0],v3.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[5:9], (2.0 * 3.0 ) * np.matmul(m4.numpy()[0],v4.numpy()[0]), tol=5*tol)
-    assert_np_equal(outcomponents.numpy()[9:14], (3.0 * 2.0 ) * np.matmul(m5.numpy()[0],v5.numpy()[0]), tol=5*tol)
-    assert_np_equal(outcomponents.numpy()[14:17], (2.0 * 3.0 ) * np.matmul(m32.numpy()[0],v32.numpy()[0]), tol=5*tol)
+    assert_np_equal(outcomponents.numpy()[:2], 2 * np.matmul(m2.numpy()[0],v2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[2:5], 2 * np.matmul(m3.numpy()[0],v3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[5:9], 2 * np.matmul(m4.numpy()[0],v4.numpy()[0]), tol=5*tol)
+    assert_np_equal(outcomponents.numpy()[9:14], 2 * np.matmul(m5.numpy()[0],v5.numpy()[0]), tol=5*tol)
+    assert_np_equal(outcomponents.numpy()[14:17], 2 * np.matmul(m32.numpy()[0],v32.numpy()[0]), tol=5*tol)
     
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2
         for dim,invec,inmat in [(2,v2,m2),(3,v3,m3),(4,v4,m4),(5,v5,m5),(3,v32,m32)]:
             for i in range(dim):
 
@@ -1020,20 +988,18 @@ def test_matvec_multiplication(test,device,dtype):
                     wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                 tape.backward(loss=out)
                 
-                assert_np_equal(tape.gradients[invec].numpy()[0],6*inmat.numpy()[0,i,:], tol=2*tol)
+                assert_np_equal(tape.gradients[invec].numpy()[0],2*inmat.numpy()[0,i,:], tol=2*tol)
                 expectedresult = np.zeros(inmat.dtype._shape_,dtype=dtype)
-                expectedresult[i,:] = 6*invec.numpy()[0]
+                expectedresult[i,:] = 2*invec.numpy()[0]
                 assert_np_equal(tape.gradients[inmat].numpy()[0], expectedresult, tol=2*tol)
                 
                 tape.zero()
 
                 idx = idx + 1
-            m = m + 1
 
 
 def test_matmat_multiplication(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -1064,54 +1030,43 @@ def test_matmat_multiplication(test,device,dtype):
         m32: wp.array(dtype=mat32),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2load = wptype(2.0) * m2[0]
-        m3load = wptype(3.0) * m3[0]
-        m4load = wptype(2.0) * m4[0]
-        m5load = wptype(3.0) * m5[0]
-        m32load = wptype(2.0) * m32[0]
+        m2result = m2[0] * v2[0]
+        m3result = m3[0] * v3[0]
+        m4result = m4[0] * v4[0]
+        m5result = m5[0] * v5[0]
+        m32result = m32[0] * v2[0]
+        m32result2 = m3[0] * v32[0]
 
-        v2load = v2[0] * wptype(3.0)
-        v3load = v3[0] * wptype(2.0)
-        v4load = v4[0] * wptype(3.0)
-        v5load = v5[0] * wptype(2.0)
-        v32load = v32[0] * wptype(3.0)
-
-        m2result = m2load * v2load
-        m3result = m3load * v3load
-        m4result = m4load * v4load
-        m5result = m5load * v5load
-        m32result = m32load * v2load
-        m32result2 = m3load * v32load
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = m2result[i,j]
+                outcomponents[idx] = wptype(2) * m2result[i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = m3result[i,j]
+                outcomponents[idx] = wptype(2) * m3result[i,j]
                 idx = idx + 1
         
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = m4result[i,j]
+                outcomponents[idx] = wptype(2) * m4result[i,j]
                 idx = idx + 1
         
         for i in range(5):
             for j in range(5):
-                outcomponents[idx] = m5result[i,j]
+                outcomponents[idx] = wptype(2) * m5result[i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(2):
-                outcomponents[idx] = m32result[i,j]
+                outcomponents[idx] = wptype(2) * m32result[i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(2):
-                outcomponents[idx] = m32result2[i,j]
+                outcomponents[idx] = wptype(2) * m32result2[i,j]
                 idx = idx + 1
         
     kernel = getkernel(check_mat_mat_mul,suffix=dtype.__name__)
@@ -1129,17 +1084,17 @@ def test_matmat_multiplication(test,device,dtype):
 
     wp.launch(kernel, dim=1, inputs=[ v2,v3,v4,v5,v32,m2,m3,m4,m5,m32 ], outputs=[outcomponents], device=device)
     
-    assert_np_equal(outcomponents.numpy()[:4], np.matmul(2.0 * m2.numpy()[0],3.0 * v2.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], np.matmul(3.0 * m3.numpy()[0],2.0 * v3.numpy()[0]), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], np.matmul(2.0 * m4.numpy()[0],3.0 * v4.numpy()[0]), tol=2*tol)
-    assert_np_equal(outcomponents.numpy()[29:54], np.matmul(3.0 * m5.numpy()[0],2.0 * v5.numpy()[0]), tol=10*tol)
-    assert_np_equal(outcomponents.numpy()[54:60], np.matmul(2.0 * m32.numpy()[0],3.0 * v2.numpy()[0]), tol=5*tol)
-    assert_np_equal(outcomponents.numpy()[60:], np.matmul(3.0 * m3.numpy()[0],3.0 * v32.numpy()[0]), tol=5*tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * np.matmul(m2.numpy()[0], v2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * np.matmul(m3.numpy()[0], v3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=2*tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[54:60], 2 * np.matmul(m32.numpy()[0], v2.numpy()[0]), tol=5*tol)
+    assert_np_equal(outcomponents.numpy()[60:], 2 * np.matmul(m3.numpy()[0], v32.numpy()[0]), tol=5*tol)
     
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        for v,m,fct in [(v2,m2,2.0 * 3.0),(v3,m3,3.0 * 2.0),(v4,m4,2.0 * 3.0),(v5,m5,3.0 * 2.0),(v2,m32,2.0 * 3.0),(v32,m3,3.0 * 3.0)]:
+        for v,m in [(v2,m2),(v3,m3),(v4,m4),(v5,m5),(v2,m32),(v32,m3)]:
 
             rows,cols = m.dtype._shape_[0],v.dtype._shape_[1]
             for i in range(rows):
@@ -1152,11 +1107,11 @@ def test_matmat_multiplication(test,device,dtype):
                     tape.backward(loss=out)
                     
                     expected = np.zeros(v.dtype._shape_,dtype=dtype)
-                    expected[:,j] = fct * m.numpy()[0,i,:]
+                    expected[:,j] = 2 * m.numpy()[0,i,:]
                     assert_np_equal(tape.gradients[v].numpy()[0],expected, tol=10*tol)
 
                     expected = np.zeros(m.dtype._shape_,dtype=dtype)
-                    expected[i,:] = fct * v.numpy()[0,:,j]
+                    expected[i,:] = 2 * v.numpy()[0,:,j]
                     assert_np_equal(tape.gradients[m].numpy()[0],expected, tol=10*tol)
 
                     tape.zero()
@@ -1194,21 +1149,13 @@ def test_cw_multiplication(test,device,dtype):
         v5: wp.array(dtype=mat55),
         outcomponents: wp.array(dtype=wptype),
     ):
-        v2load = wptype(2.0) * v2[0]
-        v3load = wptype(3.0) * v3[0]
-        v4load = wptype(4.0) * v4[0]
-        v5load = wptype(5.0) * v5[0]
 
-        s2load = wptype(1.0) * s2[0]
-        s3load = wptype(2.0) * s3[0]
-        s4load = wptype(3.0) * s4[0]
-        s5load = wptype(4.0) * s5[0]
+        v2result = wptype(2) * wp.cw_mul( v2[0], s2[0] )
+        v3result = wptype(2) * wp.cw_mul( v3[0], s3[0] )
+        v4result = wptype(2) * wp.cw_mul( v4[0], s4[0] )
+        v5result = wptype(2) * wp.cw_mul( v5[0], s5[0] )
 
-        v2result = np.cw_mul( v2load, s2load )
-        v3result = np.cw_mul( v3load, s3load )
-        v4result = np.cw_mul( v4load, s4load )
-        v5result = np.cw_mul( v5load, s5load )
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
@@ -1243,15 +1190,14 @@ def test_cw_multiplication(test,device,dtype):
     kernel = getkernel(check_mat_cw_mul,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy()[:4], ( 2.0 * v2.numpy() * 1.0 * s2.numpy() ).reshape(-1), tol=50*tol)
-    assert_np_equal(outcomponents.numpy()[4:13], ( 3.0 * v3.numpy() * 2.0 * s3.numpy() ).reshape(-1), tol=50*tol)
-    assert_np_equal(outcomponents.numpy()[13:29], ( 4.0 * v4.numpy() * 3.0 * s4.numpy() ).reshape(-1), tol=50*tol)
-    assert_np_equal(outcomponents.numpy()[29:54], ( 5.0 * v5.numpy() * 4.0 * s5.numpy() ).reshape(-1), tol=50*tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() * s2.numpy()).reshape(-1), tol=50*tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * (v3.numpy() * s3.numpy()).reshape(-1), tol=50*tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * (v4.numpy() * s4.numpy()).reshape(-1), tol=50*tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * (v5.numpy() * s5.numpy()).reshape(-1), tol=50*tol)
     
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2.0
         for dim,in1,in2 in [(2,s2,v2),(3,s3,v3),(4,s4,v4),(5,s5,v5)]:
             for i in range(dim):
                 for j in range(dim):
@@ -1262,20 +1208,18 @@ def test_cw_multiplication(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = m * (m-1.0) * in1.numpy()[0][i,j]
+                    expectedresult[i,j] = 2 * in1.numpy()[0][i,j]
                     assert_np_equal(tape.gradients[in2].numpy()[0],expectedresult,tol=5*tol)
-                    expectedresult[i,j] = m * (m-1.0) * in2.numpy()[0][i,j]
+                    expectedresult[i,j] = 2 * in2.numpy()[0][i,j]
                     assert_np_equal(tape.gradients[in1].numpy()[0],expectedresult,tol=5*tol)
                     tape.zero()
 
                     idx = idx + 1
-            m = m + 1
+
 
 def test_cw_division(test,device,dtype):
     
-
     np.random.seed(123)
-
 
     tol = {
         np.float16: 1.e-2,
@@ -1286,7 +1230,6 @@ def test_cw_division(test,device,dtype):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat22 = wp.mat(shape=(2,2),type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
-    mat32 = wp.mat(shape=(3,2),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
     mat55 = wp.mat(shape=(5,5),type=wptype)
     
@@ -1303,21 +1246,12 @@ def test_cw_division(test,device,dtype):
         v5: wp.array(dtype=mat55),
         outcomponents: wp.array(dtype=wptype),
     ):
-        v2load = wptype(2.0) * v2[0]
-        v3load = wptype(3.0) * v3[0]
-        v4load = wptype(4.0) * v4[0]
-        v5load = wptype(5.0) * v5[0]
+        v2result = wptype(2) * wp.cw_div( v2[0], s2[0] )
+        v3result = wptype(2) * wp.cw_div( v3[0], s3[0] )
+        v4result = wptype(2) * wp.cw_div( v4[0], s4[0] )
+        v5result = wptype(2) * wp.cw_div( v5[0], s5[0] )
 
-        s2load = wptype(1.0) * s2[0]
-        s3load = wptype(2.0) * s3[0]
-        s4load = wptype(3.0) * s4[0]
-        s5load = wptype(4.0) * s5[0]
-
-        v2result = np.cw_div( v2load, s2load )
-        v3result = np.cw_div( v3load, s3load )
-        v4result = np.cw_div( v4load, s4load )
-        v5result = np.cw_div( v5load, s5load )
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
@@ -1364,20 +1298,19 @@ def test_cw_division(test,device,dtype):
     wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[outcomponents], device=device)
 
     if dtype in np_float_types:
-        assert_np_equal(outcomponents.numpy()[:4], ( 2.0 * v2.numpy() / (1.0 * s2.numpy()) ).reshape(-1), tol=50*tol)
-        assert_np_equal(outcomponents.numpy()[4:13], ( 3.0 * v3.numpy() / (2.0 * s3.numpy()) ).reshape(-1), tol=50*tol)
-        assert_np_equal(outcomponents.numpy()[13:29], ( 4.0 * v4.numpy() / (3.0 * s4.numpy()) ).reshape(-1), tol=50*tol)
-        assert_np_equal(outcomponents.numpy()[29:54], ( 5.0 * v5.numpy() / (4.0 * s5.numpy()) ).reshape(-1), tol=50*tol)
+        assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() / s2.numpy()).reshape(-1), tol=50*tol)
+        assert_np_equal(outcomponents.numpy()[4:13], 2 * (v3.numpy() / s3.numpy()).reshape(-1), tol=50*tol)
+        assert_np_equal(outcomponents.numpy()[13:29], 2 * (v4.numpy() / s4.numpy()).reshape(-1), tol=50*tol)
+        assert_np_equal(outcomponents.numpy()[29:54], 2 * (v5.numpy() / s5.numpy()).reshape(-1), tol=50*tol)
     else:
-        assert_np_equal(outcomponents.numpy()[:4], ( 2.0 * v2.numpy() // (1.0 * s2.numpy()) ).reshape(-1), tol=50*tol)
-        assert_np_equal(outcomponents.numpy()[4:13], ( 3.0 * v3.numpy() // (2.0 * s3.numpy()) ).reshape(-1), tol=50*tol)
-        assert_np_equal(outcomponents.numpy()[13:29], ( 4.0 * v4.numpy() // (3.0 * s4.numpy()) ).reshape(-1), tol=50*tol)
-        assert_np_equal(outcomponents.numpy()[29:54], ( 5.0 * v5.numpy() // (4.0 * s5.numpy()) ).reshape(-1), tol=50*tol)
+        assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() // s2.numpy()).reshape(-1), tol=50*tol)
+        assert_np_equal(outcomponents.numpy()[4:13], 2 * (v3.numpy() // s3.numpy()).reshape(-1), tol=50*tol)
+        assert_np_equal(outcomponents.numpy()[13:29], 2 * (v4.numpy() // s4.numpy()).reshape(-1), tol=50*tol)
+        assert_np_equal(outcomponents.numpy()[29:54], 2 * (v5.numpy() // s5.numpy()).reshape(-1), tol=50*tol)
     
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2.0
         for dim,s,v in [(2,s2,v2),(3,s3,v3),(4,s4,v4),(5,s5,v5)]:
             for i in range(dim):
                 for j in range(dim):
@@ -1393,14 +1326,13 @@ def test_cw_division(test,device,dtype):
                     # dy/ds = -v/s^2
 
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = (m / (m-1.0)) / (s.numpy()[0,i,j])
+                    expectedresult[i,j] = 2.0 / (s.numpy()[0,i,j])
                     assert_np_equal(tape.gradients[v].numpy()[0],expectedresult,tol=50*tol)
-                    expectedresult[i,j] = -(m / (m-1.0)) * v.numpy()[0,i,j]/ (s.numpy()[0,i,j]**2)
+                    expectedresult[i,j] = -2.0 * v.numpy()[0,i,j]/ (s.numpy()[0,i,j]**2)
                     assert_np_equal(tape.gradients[s].numpy()[0],expectedresult,tol=abs(outcomponents.numpy()[idx]) * 50*tol)
                     tape.zero()
 
                     idx = idx + 1
-            m = m + 1
 
 
 def test_outer_product(test,device,dtype):
@@ -1419,10 +1351,6 @@ def test_outer_product(test,device,dtype):
     vec3 = wp.vec(length=3,type=wptype)
     vec4 = wp.vec(length=4,type=wptype)
     vec5 = wp.vec(length=5,type=wptype)
-    mat22 = wp.mat(shape=(2,2),type=wptype)
-    mat33 = wp.mat(shape=(3,3),type=wptype)
-    mat44 = wp.mat(shape=(4,4),type=wptype)
-    mat55 = wp.mat(shape=(5,5),type=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1437,22 +1365,14 @@ def test_outer_product(test,device,dtype):
         v5: wp.array(dtype=vec5),
         outcomponents: wp.array(dtype=wptype),
     ):
-        s2load = wptype(2.0) * s2[0]
-        s3load = wptype(3.0) * s3[0]
-        s4load = wptype(4.0) * s4[0]
-        s5load = wptype(5.0) * s5[0]
-        
-        v2load = wptype(1.0) * v2[0]
-        v3load = wptype(2.0) * v3[0]
-        v4load = wptype(3.0) * v4[0]
-        v5load = wptype(4.0) * v5[0]
 
-        m22result = wp.outer(s2load,v2load)
-        m33result = wp.outer(s3load,v3load)
-        m44result = wp.outer(s4load,v4load)
-        m55result = wp.outer(s5load,v5load)
-        m25result = wp.outer(s2load,v5load)
+        m22result = wptype(2) * wp.outer(s2[0],v2[0])
+        m33result = wptype(2) * wp.outer(s3[0],v3[0])
+        m44result = wptype(2) * wp.outer(s4[0],v4[0])
+        m55result = wptype(2) * wp.outer(s5[0],v5[0])
+        m25result = wptype(2) * wp.outer(s2[0],v5[0])
 
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
@@ -1492,16 +1412,16 @@ def test_outer_product(test,device,dtype):
 
     wp.launch(kernel, dim=1, inputs=[ s2,s3,s4,s5, v2,v3,v4,v5 ], outputs=[outcomponents], device=device)
     
-    assert_np_equal(outcomponents.numpy()[:4], 2.0 * 1.0 * s2.numpy()[0,:,None] * v2.numpy()[0,None,:], tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], 3.0 * 2.0 * s3.numpy()[0,:,None] * v3.numpy()[0,None,:], tol=10*tol)
-    assert_np_equal(outcomponents.numpy()[13:29], 4.0 * 3.0 * s4.numpy()[0,:,None] * v4.numpy()[0,None,:], tol=10*tol)
-    assert_np_equal(outcomponents.numpy()[29:54], 5.0 * 4.0 * s5.numpy()[0,:,None] * v5.numpy()[0,None,:], tol=10*tol)
-    assert_np_equal(outcomponents.numpy()[54:], 2.0 * 4.0 * s2.numpy()[0,:,None] * v5.numpy()[0,None,:], tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * s2.numpy()[0,:,None] * v2.numpy()[0,None,:], tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * s3.numpy()[0,:,None] * v3.numpy()[0,None,:], tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * s4.numpy()[0,:,None] * v4.numpy()[0,None,:], tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[29:54],  2* s5.numpy()[0,:,None] * v5.numpy()[0,None,:], tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[54:], 2 * s2.numpy()[0,:,None] * v5.numpy()[0,None,:], tol=10*tol)
 
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        for s,v,m in [(s2,v2,2.0 * 1.0),(s3,v3,3.0 * 2.0),(s4,v4,4.0 * 3.0),(s5,v5,5.0 * 4.0),(s2,v5,2.0 * 4.0)]:
+        for s,v in [(s2,v2),(s3,v3),(s4,v4),(s5,v5),(s2,v5)]:
             rows = s.dtype._length_
             cols = v.dtype._length_
             for i in range(rows):
@@ -1517,21 +1437,19 @@ def test_outer_product(test,device,dtype):
                     # at the ith component and its v gradient will be nonzero at the jth component:
 
                     expectedresult = np.zeros((rows),dtype=dtype)
-                    expectedresult[i] = m * v.numpy()[0,j]
+                    expectedresult[i] = 2 * v.numpy()[0,j]
                     assert_np_equal(tape.gradients[s].numpy()[0],expectedresult,tol=10*tol)
 
                     expectedresult = np.zeros((cols),dtype=dtype)
-                    expectedresult[j] = m * s.numpy()[0,i]
+                    expectedresult[j] = 2 * s.numpy()[0,i]
                     assert_np_equal(tape.gradients[v].numpy()[0],expectedresult,tol=10*tol)
                     tape.zero()
 
                     idx = idx + 1
-            m = m + 1
 
 
 def test_scalar_division(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -1543,7 +1461,6 @@ def test_scalar_division(test,device,dtype):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat22 = wp.mat(shape=(2,2),type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
-    mat32 = wp.mat(shape=(3,2),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
     mat55 = wp.mat(shape=(5,5),type=wptype)
     
@@ -1557,37 +1474,31 @@ def test_scalar_division(test,device,dtype):
         m5: wp.array(dtype=mat55),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2load = wptype(2.0) * m2[0]
-        m3load = wptype(3.0) * m3[0]
-        m4load = wptype(4.0) * m4[0]
-        m5load = wptype(5.0) * m5[0]
+        m2result = m2[0] / s[0]
+        m3result = m3[0] / s[0]
+        m4result = m4[0] / s[0]
+        m5result = m5[0] / s[0]
 
-        sload = wptype(6.0) * s[0]
-
-        m2result = m2load / sload
-        m3result = m3load / sload
-        m4result = m4load / sload
-        m5result = m5load / sload
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = m2result[i,j]
+                outcomponents[idx] = wptype(2) * m2result[i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = m3result[i,j]
+                outcomponents[idx] = wptype(2) * m3result[i,j]
                 idx = idx + 1
         
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = m4result[i,j]
+                outcomponents[idx] = wptype(2) * m4result[i,j]
                 idx = idx + 1
         
         for i in range(5):
             for j in range(5):
-                outcomponents[idx] = m5result[i,j]
+                outcomponents[idx] = wptype(2) * m5result[i,j]
                 idx = idx + 1
     
     kernel = getkernel(check_mat_scalar_div,suffix=dtype.__name__)
@@ -1602,20 +1513,19 @@ def test_scalar_division(test,device,dtype):
     
     sval = s.numpy()[0]
     if dtype in np_float_types:
-        assert_np_equal(outcomponents.numpy()[:4], 2.0 * m2.numpy().reshape(-1) / (6.0 * sval), tol=tol)
-        assert_np_equal(outcomponents.numpy()[4:13], 3.0 * m3.numpy().reshape(-1) / (6.0 * sval), tol=10*tol)
-        assert_np_equal(outcomponents.numpy()[13:29], 4.0 * m4.numpy().reshape(-1) / (6.0 * sval), tol=10*tol)
-        assert_np_equal(outcomponents.numpy()[29:54], 5.0 * m5.numpy().reshape(-1) / (6.0 * sval), tol=10*tol)
+        assert_np_equal(outcomponents.numpy()[:4], 2 * m2.numpy().reshape(-1) / sval, tol=tol)
+        assert_np_equal(outcomponents.numpy()[4:13], 2 * m3.numpy().reshape(-1) / sval, tol=10*tol)
+        assert_np_equal(outcomponents.numpy()[13:29], 2 * m4.numpy().reshape(-1) / sval, tol=10*tol)
+        assert_np_equal(outcomponents.numpy()[29:54], 2 * m5.numpy().reshape(-1) / sval, tol=10*tol)
     else:
-        assert_np_equal(outcomponents.numpy()[:4], 2.0 * m2.numpy().reshape(-1) // (6.0 * sval), tol=tol)
-        assert_np_equal(outcomponents.numpy()[4:13], 3.0 * m3.numpy().reshape(-1) // (6.0 * sval), tol=10*tol)
-        assert_np_equal(outcomponents.numpy()[13:29], 4.0 * m4.numpy().reshape(-1) // (6.0 * sval), tol=10*tol)
-        assert_np_equal(outcomponents.numpy()[29:54], 5.0 * m5.numpy().reshape(-1) // (6.0 * sval), tol=10*tol)
+        assert_np_equal(outcomponents.numpy()[:4], 2 * (m2.numpy().reshape(-1) // sval), tol=tol)
+        assert_np_equal(outcomponents.numpy()[4:13], 2 * (m3.numpy().reshape(-1) // sval), tol=10*tol)
+        assert_np_equal(outcomponents.numpy()[13:29], 2 * (m4.numpy().reshape(-1) // sval), tol=10*tol)
+        assert_np_equal(outcomponents.numpy()[29:54], 2 * (m5.numpy().reshape(-1) // sval), tol=10*tol)
 
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2
         for dim,input in [(2,m2),(3,m3),(4,m4),(5,m5)]:
             for i in range(dim):
                 for j in range(dim):
@@ -1626,13 +1536,12 @@ def test_scalar_division(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = m / (6 * sval)
+                    expectedresult[i,j] = 2.0 / sval
                     assert_np_equal(tape.gradients[input].numpy()[0],expectedresult,tol=10*tol)
-                    assert_np_equal(tape.gradients[s].numpy()[0],-m*input.numpy()[0,i,j] / (6 * sval * sval),tol=10*tol)
+                    assert_np_equal(tape.gradients[s].numpy()[0],-2*input.numpy()[0,i,j] / (sval * sval),tol=10*tol)
                     tape.zero()
 
                     idx = idx + 1
-            m = m + 1
     
 def test_addition(test,device,dtype):
     
@@ -1645,10 +1554,6 @@ def test_addition(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
-    vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
     mat22 = wp.mat(shape=(2,2),type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
@@ -1666,40 +1571,31 @@ def test_addition(test,device,dtype):
         v5: wp.array(dtype=mat55),
         outcomponents: wp.array(dtype=wptype),
     ):
-        v2load = wptype(2.0) * v2[0]
-        v3load = wptype(3.0) * v3[0]
-        v4load = wptype(4.0) * v4[0]
-        v5load = wptype(5.0) * v5[0]
+        v2result = v2[0] + s2[0]
+        v3result = v3[0] + s3[0]
+        v4result = v4[0] + s4[0]
+        v5result = v5[0] + s5[0]
 
-        s2load = wptype(1.0) * s2[0]
-        s3load = wptype(2.0) * s3[0]
-        s4load = wptype(3.0) * s4[0]
-        s5load = wptype(4.0) * s5[0]
-
-        v2result = v2load + s2load
-        v3result = v3load + s3load
-        v4result = v4load + s4load
-        v5result = v5load + s5load
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = v2result[i,j]
+                outcomponents[idx] = wptype(2) * v2result[i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = v3result[i,j]
+                outcomponents[idx] = wptype(2) * v3result[i,j]
                 idx = idx + 1
         
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = v4result[i,j]
+                outcomponents[idx] = wptype(2) * v4result[i,j]
                 idx = idx + 1
         
         for i in range(5):
             for j in range(5):
-                outcomponents[idx] = v5result[i,j]
+                outcomponents[idx] = wptype(2) * v5result[i,j]
                 idx = idx + 1
     
     s2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
@@ -1715,15 +1611,14 @@ def test_addition(test,device,dtype):
     kernel = getkernel(check_mat_add,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy()[:4], ( 2.0 * v2.numpy() + 1.0 * s2.numpy() ).reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], ( 3.0 * v3.numpy() + 2.0 * s3.numpy() ).reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], ( 4.0 * v4.numpy() + 3.0 * s4.numpy() ).reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[29:54], ( 5.0 * v5.numpy() + 4.0 * s5.numpy() ).reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() + s2.numpy()).reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * (v3.numpy() + s3.numpy()).reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * (v4.numpy() + s4.numpy()).reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * (v5.numpy() + s5.numpy()).reshape(-1), tol=tol)
     
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2.0
         for dim,in1,in2 in [(2,s2,v2),(3,s3,v3),(4,s4,v4),(5,s5,v5)]:
             for i in range(dim):
                 for j in range(dim):
@@ -1734,18 +1629,17 @@ def test_addition(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = m
+                    expectedresult[i,j] = 2
                     assert_np_equal(tape.gradients[in2].numpy()[0],expectedresult,tol=10*tol)
-                    expectedresult[i,j] = m - 1.0
+                    expectedresult[i,j] = 2
                     assert_np_equal(tape.gradients[in1].numpy()[0],expectedresult,tol=10*tol)
                     tape.zero()
 
                     idx = idx + 1
-            m = m + 1
+
 
 def test_subtraction(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -1755,10 +1649,6 @@ def test_subtraction(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
-    vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
     mat22 = wp.mat(shape=(2,2),type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
@@ -1776,40 +1666,31 @@ def test_subtraction(test,device,dtype):
         v5: wp.array(dtype=mat55),
         outcomponents: wp.array(dtype=wptype),
     ):
-        v2load = wptype(2.0) * v2[0]
-        v3load = wptype(3.0) * v3[0]
-        v4load = wptype(4.0) * v4[0]
-        v5load = wptype(5.0) * v5[0]
+        v2result = v2[0] - s2[0]
+        v3result = v3[0] - s3[0]
+        v4result = v4[0] - s4[0]
+        v5result = v5[0] - s5[0]
 
-        s2load = wptype(1.0) * s2[0]
-        s3load = wptype(2.0) * s3[0]
-        s4load = wptype(3.0) * s4[0]
-        s5load = wptype(4.0) * s5[0]
-
-        v2result = v2load - s2load
-        v3result = v3load - s3load
-        v4result = v4load - s4load
-        v5result = v5load - s5load
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = v2result[i,j]
+                outcomponents[idx] = wptype(2) * v2result[i,j]
                 idx = idx + 1
         
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = v3result[i,j]
+                outcomponents[idx] = wptype(2) * v3result[i,j]
                 idx = idx + 1
         
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = v4result[i,j]
+                outcomponents[idx] = wptype(2) * v4result[i,j]
                 idx = idx + 1
         
         for i in range(5):
             for j in range(5):
-                outcomponents[idx] = v5result[i,j]
+                outcomponents[idx] = wptype(2) * v5result[i,j]
                 idx = idx + 1
     
     s2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
@@ -1825,15 +1706,14 @@ def test_subtraction(test,device,dtype):
     kernel = getkernel(check_mat_sub,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy()[:4], ( 2.0 * v2.numpy() - 1.0 * s2.numpy() ).reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], ( 3.0 * v3.numpy() - 2.0 * s3.numpy() ).reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], ( 4.0 * v4.numpy() - 3.0 * s4.numpy() ).reshape(-1), tol=tol)
-    assert_np_equal(outcomponents.numpy()[29:54], ( 5.0 * v5.numpy() - 4.0 * s5.numpy() ).reshape(-1), tol=10*tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() - s2.numpy() ).reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * (v3.numpy() - s3.numpy() ).reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * (v4.numpy() - s4.numpy() ).reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * (v5.numpy() - s5.numpy() ).reshape(-1), tol=10*tol)
     
     if dtype in np_float_types:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2.0
         for dim,in1,in2 in [(2,s2,v2),(3,s3,v3),(4,s4,v4),(5,s5,v5)]:
             for i in range(dim):
                 for j in range(dim):
@@ -1844,18 +1724,17 @@ def test_subtraction(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     expectedresult = np.zeros((dim,dim),dtype=dtype)
-                    expectedresult[i,j] = m
+                    expectedresult[i,j] = 2
                     assert_np_equal(tape.gradients[in2].numpy()[0],expectedresult,tol=10*tol)
-                    expectedresult[i,j] = 1.0 - m
+                    expectedresult[i,j] = -2
                     assert_np_equal(tape.gradients[in1].numpy()[0],expectedresult,tol=10*tol)
                     tape.zero()
 
                     idx = idx + 1
-            m = m + 1
+
 
 def test_ddot(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -1865,16 +1744,11 @@ def test_ddot(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
-    vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
     mat22 = wp.mat(shape=(2,2),type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
     mat55 = wp.mat(shape=(5,5),type=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
     def check_mat_dot(
         s2: wp.array(dtype=mat22),
         s3: wp.array(dtype=mat33),
@@ -1889,20 +1763,11 @@ def test_ddot(test,device,dtype):
         dot4: wp.array(dtype=wptype),
         dot5: wp.array(dtype=wptype),
     ):
-        v2load = wptype(2.0) * v2[0]
-        v3load = wptype(1.0) * v3[0]
-        v4load = wptype(2.0) * v4[0]
-        v5load = wptype(1.0) * v5[0]
-
-        s2load = wptype(1.0) * s2[0]
-        s3load = wptype(2.0) * s3[0]
-        s4load = wptype(1.0) * s4[0]
-        s5load = wptype(2.0) * s5[0]
-
-        dot2[0] = wp.ddot(v2load,s2load)
-        dot3[0] = wp.ddot(v3load,s3load)
-        dot4[0] = wp.ddot(v4load,s4load)
-        dot5[0] = wp.ddot(v5load,s5load)
+        # multiply outputs by 2 so we've got something to backpropagate:
+        dot2[0] = wptype(2) * wp.ddot(v2[0],s2[0])
+        dot3[0] = wptype(2) * wp.ddot(v3[0],s3[0])
+        dot4[0] = wptype(2) * wp.ddot(v4[0],s4[0])
+        dot5[0] = wptype(2) * wp.ddot(v5[0],s5[0])
 
     s2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     s3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
@@ -1922,59 +1787,59 @@ def test_ddot(test,device,dtype):
     with tape:
         wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[dot2,dot3,dot4,dot5], device=device)
 
-    assert_np_equal(dot2.numpy()[0], 2 * 1 * (v2.numpy() * s2.numpy()).sum(), tol=10*tol)
-    assert_np_equal(dot3.numpy()[0], 1 * 2 * (v3.numpy() * s3.numpy()).sum(), tol=10*tol)
-    assert_np_equal(dot4.numpy()[0], 2 * 1 * (v4.numpy() * s4.numpy()).sum(), tol=50*tol)
-    assert_np_equal(dot5.numpy()[0], 1 * 2 * (v5.numpy() * s5.numpy()).sum(), tol=200*tol)
+    assert_np_equal(dot2.numpy()[0], 2 * (v2.numpy() * s2.numpy()).sum(), tol=10*tol)
+    assert_np_equal(dot3.numpy()[0], 2 * (v3.numpy() * s3.numpy()).sum(), tol=10*tol)
+    assert_np_equal(dot4.numpy()[0], 2 * (v4.numpy() * s4.numpy()).sum(), tol=50*tol)
+    assert_np_equal(dot5.numpy()[0], 2 * (v5.numpy() * s5.numpy()).sum(), tol=200*tol)
     
     if dtype in np_float_types:
         tape.backward(loss=dot2)
         sgrads = tape.gradients[s2].numpy()[0]
-        expected_grads = 2.0 * 1.0 * v2.numpy()[0]
+        expected_grads = 2.0 * v2.numpy()[0]
         assert_np_equal(sgrads,expected_grads, tol=10*tol)
 
         vgrads = tape.gradients[v2].numpy()[0]
-        expected_grads = 2.0 * 1.0 * s2.numpy()[0]
+        expected_grads = 2.0 * s2.numpy()[0]
         assert_np_equal(vgrads,expected_grads, tol=10*tol)
         
         tape.zero()
         
         tape.backward(loss=dot3)
         sgrads = tape.gradients[s3].numpy()[0]
-        expected_grads = 1.0 * 2.0 * v3.numpy()[0]
+        expected_grads = 2.0 * v3.numpy()[0]
         assert_np_equal(sgrads,expected_grads, tol=10*tol)
 
         vgrads = tape.gradients[v3].numpy()[0]
-        expected_grads = 1.0 * 2.0 * s3.numpy()[0]
+        expected_grads = 2.0 * s3.numpy()[0]
         assert_np_equal(vgrads,expected_grads, tol=10*tol)
         
         tape.zero()
         
         tape.backward(loss=dot4)
         sgrads = tape.gradients[s4].numpy()[0]
-        expected_grads = 2.0 * 1.0 * v4.numpy()[0]
+        expected_grads = 2.0 * v4.numpy()[0]
         assert_np_equal(sgrads,expected_grads, tol=10*tol)
 
         vgrads = tape.gradients[v4].numpy()[0]
-        expected_grads = 2.0 * 1.0 * s4.numpy()[0]
+        expected_grads = 2.0 * s4.numpy()[0]
         assert_np_equal(vgrads,expected_grads, tol=10*tol)
         
         tape.zero()
         
         tape.backward(loss=dot5)
         sgrads = tape.gradients[s5].numpy()[0]
-        expected_grads = 1.0 * 2.0 * v5.numpy()[0]
+        expected_grads = 2.0 * v5.numpy()[0]
         assert_np_equal(sgrads,expected_grads, tol=10*tol)
 
         vgrads = tape.gradients[v5].numpy()[0]
-        expected_grads = 1.0 * 2.0 * s5.numpy()[0]
+        expected_grads = 2.0 * s5.numpy()[0]
         assert_np_equal(vgrads,expected_grads, tol=10*tol)
         
         tape.zero()
 
+
 def test_determinant(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -1984,14 +1849,9 @@ def test_determinant(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
-    vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
     mat22 = wp.mat(shape=(2,2),type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
-    mat55 = wp.mat(shape=(5,5),type=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
     def check_mat_det(
@@ -2002,13 +1862,10 @@ def test_determinant(test,device,dtype):
         det3: wp.array(dtype=wptype),
         det4: wp.array(dtype=wptype),
     ):
-        v2load = wptype(2.0) * v2[0]
-        v3load = wptype(3.0) * v3[0]
-        v4load = wptype(2.0) * v4[0]
-
-        det2[0] = wp.determinant(v2load)
-        det3[0] = wp.determinant(v3load)
-        det4[0] = wp.determinant(v4load)
+        # multiply outputs by 2 so we've got something to backpropagate:
+        det2[0] = wptype(2) * wp.determinant(v2[0])
+        det3[0] = wptype(2) * wp.determinant(v3[0])
+        det4[0] = wptype(2) * wp.determinant(v4[0])
     
     v2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     v3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
@@ -2023,13 +1880,13 @@ def test_determinant(test,device,dtype):
         wp.launch(kernel, dim=1, inputs=[v2,v3,v4,], outputs=[det2,det3,det4,], device=device)
 
     if dtype in np_float_types:
-        assert_np_equal(det2.numpy()[0], np.linalg.det( 2 * v2.numpy()[0].astype(np.float64) ), tol=100*tol)
-        assert_np_equal(det3.numpy()[0], np.linalg.det( 3 * v3.numpy()[0].astype(np.float64) ), tol=100*tol)
-        assert_np_equal(det4.numpy()[0], np.linalg.det( 2 * v4.numpy()[0].astype(np.float64) ), tol=420*tol)
+        assert_np_equal(det2.numpy()[0], 2 * np.linalg.det( v2.numpy()[0].astype(np.float64) ), tol=100*tol)
+        assert_np_equal(det3.numpy()[0], 2 * np.linalg.det( v3.numpy()[0].astype(np.float64) ), tol=100*tol)
+        assert_np_equal(det4.numpy()[0], 2 * np.linalg.det( v4.numpy()[0].astype(np.float64) ), tol=420*tol)
     else:
-        assert_np_equal(det2.numpy()[0], np.around(np.linalg.det( 2 * v2.numpy()[0] )).astype(int) )
-        assert_np_equal(det3.numpy()[0], np.around(np.linalg.det( 3 * v3.numpy()[0] )).astype(int) )
-        assert_np_equal(det4.numpy()[0], np.around(np.linalg.det( 2 * v4.numpy()[0] )).astype(int) )
+        assert_np_equal(det2.numpy()[0], 2 * np.around(np.linalg.det( v2.numpy()[0] )).astype(int) )
+        assert_np_equal(det3.numpy()[0], 2 * np.around(np.linalg.det( v3.numpy()[0] )).astype(int) )
+        assert_np_equal(det4.numpy()[0], 2 * np.around(np.linalg.det( v4.numpy()[0] )).astype(int) )
 
     if dtype in np_float_types:
         # determinant derivative formula is annoying so finite differences?
@@ -2085,7 +1942,6 @@ def test_determinant(test,device,dtype):
 
 def test_trace(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -2095,16 +1951,10 @@ def test_trace(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
-    vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
     mat22 = wp.mat(shape=(2,2),type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
     mat55 = wp.mat(shape=(5,5),type=wptype)
-
-    output_select_kernel = get_select_kernel(wptype)
 
     def check_mat_trace(
         v2: wp.array(dtype=mat22),
@@ -2116,15 +1966,11 @@ def test_trace(test,device,dtype):
         tr4: wp.array(dtype=wptype),
         tr5: wp.array(dtype=wptype),
     ):
-        v2load = wptype(2.0) * v2[0]
-        v3load = wptype(3.0) * v3[0]
-        v4load = wptype(4.0) * v4[0]
-        v5load = wptype(5.0) * v5[0]
-
-        tr2[0] = wp.trace(v2load)
-        tr3[0] = wp.trace(v3load)
-        tr4[0] = wp.trace(v4load)
-        tr5[0] = wp.trace(v5load)
+        # multiply outputs by 2 so we've got something to backpropagate:
+        tr2[0] = wptype(2) * wp.trace(v2[0])
+        tr3[0] = wptype(2) * wp.trace(v3[0])
+        tr4[0] = wptype(2) * wp.trace(v4[0])
+        tr5[0] = wptype(2) * wp.trace(v5[0])
     
     v2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     v3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
@@ -2140,10 +1986,10 @@ def test_trace(test,device,dtype):
     with tape:
         wp.launch(kernel, dim=1, inputs=[v2,v3,v4,v5,], outputs=[tr2,tr3,tr4,tr5,], device=device)
 
-    assert_np_equal(tr2.numpy()[0], np.trace( 2.0 * v2.numpy()[0] ), tol=10*tol)
-    assert_np_equal(tr3.numpy()[0], np.trace( 3.0 * v3.numpy()[0] ), tol=10*tol)
-    assert_np_equal(tr4.numpy()[0], np.trace( 4.0 * v4.numpy()[0] ), tol=200*tol)
-    assert_np_equal(tr4.numpy()[0], np.trace( 4.0 * v4.numpy()[0] ), tol=200*tol)
+    assert_np_equal(tr2.numpy()[0], 2 * np.trace(v2.numpy()[0]), tol=10*tol)
+    assert_np_equal(tr3.numpy()[0], 2 * np.trace(v3.numpy()[0]), tol=10*tol)
+    assert_np_equal(tr4.numpy()[0], 2 * np.trace(v4.numpy()[0]), tol=200*tol)
+    assert_np_equal(tr4.numpy()[0], 2 * np.trace(v4.numpy()[0]), tol=200*tol)
     
     if dtype in np_float_types:
         tape.backward(loss=tr2)
@@ -2153,23 +1999,22 @@ def test_trace(test,device,dtype):
         
         tape.backward(loss=tr3)
         vgrads = tape.gradients[v3].numpy()[0]
-        assert_np_equal(vgrads,3.0 * np.eye(3), tol=10*tol)
+        assert_np_equal(vgrads,2.0 * np.eye(3), tol=10*tol)
         tape.zero()
         
         tape.backward(loss=tr4)
         vgrads = tape.gradients[v4].numpy()[0]
-        assert_np_equal(vgrads,4.0 * np.eye(4), tol=10*tol)
+        assert_np_equal(vgrads,2.0 * np.eye(4), tol=10*tol)
         tape.zero()
         
         tape.backward(loss=tr5)
         vgrads = tape.gradients[v5].numpy()[0]
-        assert_np_equal(vgrads,5.0 * np.eye(5), tol=10*tol)
+        assert_np_equal(vgrads,2.0 * np.eye(5), tol=10*tol)
         tape.zero()
     
 
 def test_diag(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -2179,14 +2024,7 @@ def test_diag(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
-    vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
     vec5 = wp.vec(length=5,type=wptype)
-    mat22 = wp.mat(shape=(2,2),type=wptype)
-    mat33 = wp.mat(shape=(3,3),type=wptype)
-    mat44 = wp.mat(shape=(4,4),type=wptype)
-    mat55 = wp.mat(shape=(5,5),type=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -2194,8 +2032,8 @@ def test_diag(test,device,dtype):
         s5: wp.array(dtype=vec5),
         outcomponents: wp.array(dtype=wptype),
     ):
-        s5load = wptype(5.0) * s5[0]
-        m55result = wp.diag(s5load)
+        # multiply outputs by 2 so we've got something to backpropagate:
+        m55result = wptype(2) * wp.diag(s5[0])
 
         idx = 0
         for i in range(5):
@@ -2210,7 +2048,7 @@ def test_diag(test,device,dtype):
 
     wp.launch(kernel, dim=1, inputs=[ s5 ], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy(), 5.0 * np.diag(s5.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy(), 2 * np.diag(s5.numpy()[0]), tol=tol)
 
     if dtype in np_float_types:
         idx = 0
@@ -2224,7 +2062,7 @@ def test_diag(test,device,dtype):
                 tape.backward(loss=out)
                 expectedresult = np.zeros(5,dtype=dtype)
                 if i == j:
-                    expectedresult[i] = 5.0
+                    expectedresult[i] = 2
                 assert_np_equal(tape.gradients[s5].numpy()[0],expectedresult,tol=10*tol)
                 tape.zero()
 
@@ -2233,24 +2071,18 @@ def test_diag(test,device,dtype):
 
 def test_inverse(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
-        np.float16: 1.e-3,
+        np.float16: 2.e-3,
         np.float32: 1.e-6,
         np.float64: 1.e-8,
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
-    vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
     mat22 = wp.mat(shape=(2,2),type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
-    mat55 = wp.mat(shape=(5,5),type=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -2260,49 +2092,45 @@ def test_inverse(test,device,dtype):
         m4: wp.array(dtype=mat44),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2load = wptype(2.0) * m2[0]
-        m3load = wptype(3.0) * m3[0]
-        m4load = wptype(4.0) * m4[0]
+        m2result = wp.inverse(m2[0])
+        m3result = wp.inverse(m3[0])
+        m4result = wp.inverse(m4[0])
 
-        m2result = wp.inverse(m2load)
-        m3result = wp.inverse(m3load)
-        m4result = wp.inverse(m4load)
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = m2result[i,j]
+                outcomponents[idx] = wptype(2) * m2result[i,j]
                 idx = idx + 1
                 
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = m3result[i,j]
+                outcomponents[idx] = wptype(2) * m3result[i,j]
                 idx = idx + 1
                 
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = m4result[i,j]
+                outcomponents[idx] = wptype(2) * m4result[i,j]
                 idx = idx + 1
     
     kernel = getkernel(check_mat_inverse,suffix=dtype.__name__)
-    m2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
-    m3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
-    m4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
+    m2 = wp.array( 2 * (randvals([1,2,2],dtype) + 0.2 * np.eye(2)), dtype=mat22, requires_grad=True, device=device)
+    m3 = wp.array( 2 * (randvals([1,3,3],dtype) + 0.2 * np.eye(3)), dtype=mat33, requires_grad=True, device=device)
+    m4 = wp.array( 2 * (randvals([1,4,4],dtype) + 0.2 * np.eye(4)), dtype=mat44, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(2*2 + 3*3 + 4*4, dtype=wptype, requires_grad=True, device=device)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[ m2,m3,m4 ], outputs=[outcomponents], device=device)
 
-    assert_np_equal(outcomponents.numpy()[:4], np.linalg.inv(2.0 * m2.numpy()[0].astype(np.float64)), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], np.linalg.inv(3.0 * m3.numpy()[0].astype(np.float64)), tol=5*tol)
-    assert_np_equal(outcomponents.numpy()[13:], np.linalg.inv(4.0 * m4.numpy()[0].astype(np.float64)), tol=5*tol)
+    assert_np_equal(outcomponents.numpy()[:4], 2 * np.linalg.inv(m2.numpy()[0].astype(np.float64)), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * np.linalg.inv(m3.numpy()[0].astype(np.float64)), tol=5*tol)
+    assert_np_equal(outcomponents.numpy()[13:], 2 * np.linalg.inv(m4.numpy()[0].astype(np.float64)), tol=5*tol)
     
     if dtype in np_float_types:
         # check gradients:
         idx = 0
         out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        m = 2.0
         for dim,input in [(2,m2),(3,m3),(4,m4)]:
             minv = np.linalg.inv(input.numpy()[0].astype(np.float64))
             for i in range(dim):
@@ -2314,26 +2142,25 @@ def test_inverse(test,device,dtype):
                         wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
                     tape.backward(loss=out)
                     d = np.zeros((dim,dim))
-                    d[j,i] = 1.0/m
+                    d[j,i] = 2
                     assert_np_equal(tape.gradients[input].numpy()[0],-np.matmul(minv,np.matmul(d,minv)).T,tol=10*tol)
                     tape.zero()
 
                     idx = idx + 1
-            m = m + 1
 
     # let's check 2x2 using different formulae just for (in)sanity's sake:
     m = m2.numpy()[0]
     
     det = (m[0,0]*m[1,1] - m[1,0] * m[0,1])
-    expected = 0.5 * np.array([
+    expected = 2 * np.array([
         [m[1,1],-m[0,1]],
         [-m[1,0], m[0,0]]
     ], dtype=dtype) / det
     assert_np_equal(expected, outcomponents.numpy()[:4],tol=tol)
 
     # 0,0 component is this:
-    # 0.5 * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])
-    assert_np_equal(0.5 * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1]), outcomponents.numpy()[0],tol=tol)
+    # 2 * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])
+    assert_np_equal(2 * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1]), outcomponents.numpy()[0],tol=tol)
 
     tape = wp.Tape()
     with tape:
@@ -2343,15 +2170,15 @@ def test_inverse(test,device,dtype):
     if dtype in np_float_types:
         tape.backward(loss=out)
         g = tape.gradients[m2].numpy()[0]
-        assert_np_equal(-0.5 * m[1,1] * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,0],tol=tol)
-        assert_np_equal(0.5 * m[1,1] * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,0],tol=tol)
-        assert_np_equal(-0.5 * m[0,1] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,1],tol=tol)
-        assert_np_equal(0.5 * m[1,1] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,1],tol=tol)
+        assert_np_equal(-2 * m[1,1] * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,0],tol=tol)
+        assert_np_equal(2 * m[1,1] * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,0],tol=tol)
+        assert_np_equal(-2 * m[0,1] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,1],tol=tol)
+        assert_np_equal(2 * m[1,1] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,1],tol=tol)
         tape.zero()
 
     # 0,1 component is this:
-    # -0.5 * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])
-    assert_np_equal(-0.5 * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1]), outcomponents.numpy()[1],tol=tol)
+    # -2 * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])
+    assert_np_equal(-2 * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1]), outcomponents.numpy()[1],tol=tol)
 
     tape = wp.Tape()
     with tape:
@@ -2360,15 +2187,15 @@ def test_inverse(test,device,dtype):
     if dtype in np_float_types:
         tape.backward(loss=out)
         g = tape.gradients[m2].numpy()[0]
-        assert_np_equal(0.5 * m[0,1] * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,0],tol=tol)
-        assert_np_equal(-0.5 * m[0,1] * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,0],tol=tol)
-        assert_np_equal(0.5 * m[0,0] * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,1],tol=tol)
-        assert_np_equal(-0.5 * m[1,1] * m[0,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,1],tol=tol)
+        assert_np_equal(2 * m[0,1] * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,0],tol=tol)
+        assert_np_equal(-2 * m[0,1] * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,0],tol=tol)
+        assert_np_equal(2 * m[0,0] * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,1],tol=tol)
+        assert_np_equal(-2 * m[1,1] * m[0,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,1],tol=tol)
         tape.zero()
 
     # 1,0 component is this:
-    # -0.5 * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])
-    assert_np_equal(-0.5 * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1]), outcomponents.numpy()[2],tol=tol)
+    # -2 * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])
+    assert_np_equal(-2 * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1]), outcomponents.numpy()[2],tol=tol)
 
     tape = wp.Tape()
     with tape:
@@ -2378,15 +2205,15 @@ def test_inverse(test,device,dtype):
     if dtype in np_float_types:
         tape.backward(loss=out)
         g = tape.gradients[m2].numpy()[0]
-        assert_np_equal(0.5 * m[1,1] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,0],tol=tol)
-        assert_np_equal(-0.5 * m[0,0] * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,0],tol=tol)
-        assert_np_equal(0.5 * m[0,0] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,1],tol=tol)
-        assert_np_equal(-0.5 * m[1,0] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,1],tol=tol)
+        assert_np_equal(2 * m[1,1] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,0],tol=tol)
+        assert_np_equal(-2 * m[0,0] * m[1,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,0],tol=tol)
+        assert_np_equal(2 * m[0,0] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,1],tol=tol)
+        assert_np_equal(-2 * m[1,0] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,1],tol=tol)
         tape.zero()
 
     # 1,1 component is this:
-    # 0.5 * m[0,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])
-    assert_np_equal(0.5 * m[0,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1]), outcomponents.numpy()[3],tol=tol)
+    # 2 * m[0,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])
+    assert_np_equal(2 * m[0,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1]), outcomponents.numpy()[3],tol=tol)
 
     tape = wp.Tape()
     with tape:
@@ -2396,10 +2223,10 @@ def test_inverse(test,device,dtype):
     if dtype in np_float_types:
         tape.backward(loss=out)
         g = tape.gradients[m2].numpy()[0]
-        assert_np_equal(-0.5 * m[0,1] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,0],tol=tol)
-        assert_np_equal(0.5 * m[0,0] * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,0],tol=tol)
-        assert_np_equal(0.5 * m[0,0] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,1],tol=tol)
-        assert_np_equal(-0.5 * m[0,0] * m[0,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,1],tol=tol)
+        assert_np_equal(-2 * m[0,1] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,0],tol=tol)
+        assert_np_equal(2 * m[0,0] * m[0,1] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,0],tol=tol)
+        assert_np_equal(2 * m[0,0] * m[1,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[0,1],tol=tol)
+        assert_np_equal(-2 * m[0,0] * m[0,0] / (m[0,0]*m[1,1] - m[1,0] * m[0,1])**2, g[1,1],tol=tol)
         tape.zero()
 
 
@@ -2424,34 +2251,34 @@ def test_svd(test,device,dtype):
         Vout: wp.array(dtype=mat33),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m3load = wptype(2)*m3[0]
         U = mat33()
         sigma = vec3()
         V = mat33()
 
-        wp.svd3(m3load, U, sigma, V)
+        wp.svd3(m3[0], U, sigma, V)
 
         Uout[0] = U
         sigmaout[0] = sigma
         Vout[0] = V
 
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = U[i,j]
+                outcomponents[idx] = wptype(2) * U[i,j]
                 idx = idx + 1
         
         for i in range(3):
-            outcomponents[idx] = sigma[i]
+            outcomponents[idx] = wptype(2) * sigma[i]
             idx = idx + 1
                 
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = V[i,j]
+                outcomponents[idx] = wptype(2) * V[i,j]
                 idx = idx + 1
     
     kernel = getkernel(check_mat_svd,suffix=dtype.__name__)
-    m3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
+    m3 = wp.array(randvals([1,3,3],dtype) + np.eye(3), dtype=mat33, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(2*3*3 + 3, dtype=wptype, requires_grad=True, device=device)
     Uout = wp.zeros(1, dtype=mat33, requires_grad=True, device=device)
@@ -2464,7 +2291,7 @@ def test_svd(test,device,dtype):
     sigmaout_np = np.diag(sigmaout.numpy()[0].astype(np.float64))
     Vout_np = Vout.numpy()[0].astype(np.float64)
 
-    assert_np_equal(np.matmul(Uout_np,np.matmul(sigmaout_np,Vout_np.T)),2*m3.numpy()[0].astype(np.float64),tol=30*tol)
+    assert_np_equal(np.matmul(Uout_np,np.matmul(sigmaout_np,Vout_np.T)),m3.numpy()[0].astype(np.float64),tol=30*tol)
 
     if dtype == np.float16:
         # I'm not even going to bother testing the gradients for float16
@@ -2503,6 +2330,7 @@ def test_svd(test,device,dtype):
 
                 assert_np_equal((plusval - minusval) / (2*dx),m3grads[ii,jj],tol=fdtol)
 
+
 def test_qr(test,device,dtype):
     
     np.random.seed(123)
@@ -2514,7 +2342,6 @@ def test_qr(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.vec(length=3,type=wptype)
     mat33 = wp.mat(shape=(3,3),type=wptype)
 
     def check_mat_qr(
@@ -2523,24 +2350,24 @@ def test_qr(test,device,dtype):
         Rout: wp.array(dtype=mat33),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m3load = wptype(2)*m3[0]
         Q = mat33()
         R = mat33()
 
-        wp.qr3(m3load, Q,R)
+        wp.qr3(m3[0], Q,R)
 
         Qout[0] = Q
         Rout[0] = R
 
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = Q[i,j]
+                outcomponents[idx] = wptype(2) * Q[i,j]
                 idx = idx + 1
 
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = R[i,j]
+                outcomponents[idx] = wptype(2) * R[i,j]
                 idx = idx + 1
     
     kernel = getkernel(check_mat_qr,suffix=dtype.__name__)
@@ -2561,7 +2388,7 @@ def test_qr(test,device,dtype):
     assert_np_equal(Rout_np[2,[0,1]],np.zeros(2,dtype=np.float64),tol=tol)
 
     # check it's a factorization:
-    assert_np_equal(np.matmul(Qout_np,Rout_np),2*m3.numpy()[0].astype(np.float64),tol=30*tol)
+    assert_np_equal(np.matmul(Qout_np,Rout_np), m3.numpy()[0].astype(np.float64),tol=30*tol)
     
     if dtype == np.float16:
         # I'm not even going to bother testing the gradients for float16
@@ -2620,23 +2447,23 @@ def test_eig(test,device,dtype):
         dout: wp.array(dtype=vec3),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m3load = wptype(2)*( m3[0] + wp.transpose(m3[0]) )
         Q = mat33()
         d = vec3()
 
-        wp.eig3(m3load, Q,d)
+        wp.eig3(m3[0] + wp.transpose(m3[0]), Q,d)
 
         Qout[0] = Q
         dout[0] = d
 
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = Q[i,j]
+                outcomponents[idx] = wptype(2) * Q[i,j]
                 idx = idx + 1
 
         for i in range(3):
-            outcomponents[idx] = d[i]
+            outcomponents[idx] = wptype(2) * d[i]
             idx = idx + 1
     
     kernel = getkernel(check_mat_eig,suffix=dtype.__name__)
@@ -2657,7 +2484,7 @@ def test_eig(test,device,dtype):
     assert_np_equal(np.matmul(Qout_np.T,Qout_np), np.eye(3),tol=tol)
 
     # check Q contains eigenvectors:
-    assert_np_equal(np.matmul(Qout_np,np.matmul(Dout_np,Qout_np.T)), 2*(m3_np[0] + m3_np[0].transpose()),tol=tol)
+    assert_np_equal(np.matmul(Qout_np,np.matmul(Dout_np,Qout_np.T)), (m3_np[0] + m3_np[0].transpose()),tol=tol)
 
     if dtype == np.float16:
         # I'm not even going to bother testing the gradients for float16
@@ -2708,14 +2535,7 @@ def test_skew(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
     vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
-    mat22 = wp.mat(shape=(2,2),type=wptype)
-    mat33 = wp.mat(shape=(3,3),type=wptype)
-    mat44 = wp.mat(shape=(4,4),type=wptype)
-    mat55 = wp.mat(shape=(5,5),type=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -2723,14 +2543,13 @@ def test_skew(test,device,dtype):
         v3: wp.array(dtype=vec3),
         outcomponents: wp.array(dtype=wptype),
     ):
-        v3load = wptype(3.0) * v3[0]
+        m3result = wp.skew(v3[0])
 
-        m3result = wp.skew(v3load)
-
+        # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = m3result[i,j]
+                outcomponents[idx] = wptype(2) * m3result[i,j]
                 idx = idx + 1
     
     kernel = getkernel(check_mat_skew,suffix=dtype.__name__)
@@ -2744,9 +2563,9 @@ def test_skew(test,device,dtype):
     # make sure it gives you a cross product matrix:
     crossprodmat = outcomponents.numpy().reshape(3,3)
     v = np.array([1,0,0])
-    assert_np_equal(np.matmul(crossprodmat,np.array([1,0,0])).reshape(-1),3 * np.cross(v3.numpy()[0],np.array([1,0,0])),tol=tol)
-    assert_np_equal(np.matmul(crossprodmat,np.array([0,1,0])).reshape(-1),3 * np.cross(v3.numpy()[0],np.array([0,1,0])),tol=tol)
-    assert_np_equal(np.matmul(crossprodmat,np.array([0,0,1])).reshape(-1),3 * np.cross(v3.numpy()[0],np.array([0,0,1])),tol=tol)
+    assert_np_equal(np.matmul(crossprodmat,np.array([1,0,0])).reshape(-1), 2 * np.cross(v3.numpy()[0],np.array([1,0,0])),tol=tol)
+    assert_np_equal(np.matmul(crossprodmat,np.array([0,1,0])).reshape(-1), 2 * np.cross(v3.numpy()[0],np.array([0,1,0])),tol=tol)
+    assert_np_equal(np.matmul(crossprodmat,np.array([0,0,1])).reshape(-1), 2 * np.cross(v3.numpy()[0],np.array([0,0,1])),tol=tol)
     
     # check it another way:
     x0 = v3.numpy()[0,0]
@@ -2757,7 +2576,7 @@ def test_skew(test,device,dtype):
         [x2, 0,-x0],
         [-x1,x0, 0],
     ],dtype=dtype)
-    assert_np_equal(crossprodmat,3*crossprodmat_expected, tol=tol)
+    assert_np_equal(crossprodmat,2*crossprodmat_expected, tol=tol)
 
     if dtype in np_float_types:
         idx = 0
@@ -2774,23 +2593,23 @@ def test_skew(test,device,dtype):
                 if i == j:
                     assert_np_equal(tape.gradients[v3].numpy()[0],np.zeros(3))
                 elif [i,j] == [0,1]:
-                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([0,0,-3]))
+                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([0,0,-2]))
                 elif [i,j] == [1,0]:
-                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([0,0,3]))
+                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([0,0,2]))
                 elif [i,j] == [0,2]:
-                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([0,3,0]))
+                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([0,2,0]))
                 elif [i,j] == [2,0]:
-                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([0,-3,0]))
+                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([0,-2,0]))
                 elif [i,j] == [1,2]:
-                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([-3,0,0]))
+                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([-2,0,0]))
                 elif [i,j] == [2,1]:
-                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([3,0,0]))
+                    assert_np_equal(tape.gradients[v3].numpy()[0],np.array([2,0,0]))
                 tape.zero()
 
                 idx = idx + 1
 
+
 def test_transform_point(test,device,dtype):
-    
 
     np.random.seed(123)
 
@@ -2801,14 +2620,8 @@ def test_transform_point(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
     vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
-    mat22 = wp.mat(shape=(2,2),type=wptype)
-    mat33 = wp.mat(shape=(3,3),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
-    mat55 = wp.mat(shape=(5,5),type=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -2817,10 +2630,8 @@ def test_transform_point(test,device,dtype):
         m4: wp.array(dtype=mat44),
         outcomponents: wp.array(dtype=wptype),
     ):
-        v3load = wptype(3.0) * v3[0]
-        m4load = wptype(1.0) * m4[0]
-
-        presult = wp.transform_point(m4load,v3load)
+        # multiply outputs by 2 so we've got something to backpropagate:
+        presult = wptype(2) * wp.transform_point(m4[0],v3[0])
 
         outcomponents[0] = presult[0]
         outcomponents[1] = presult[1]
@@ -2836,8 +2647,8 @@ def test_transform_point(test,device,dtype):
     wp.launch(kernel, dim=1, inputs=[ v3,m4 ], outputs=[outcomponents], device=device)
 
     v3homog = np.ones(4,dtype=dtype)
-    v3homog[:3] = 3*v3.numpy()[0]
-    assert_np_equal(outcomponents.numpy(),np.matmul(1.0*m4.numpy()[0], v3homog )[:3],tol=10*tol)
+    v3homog[:3] = v3.numpy()[0]
+    assert_np_equal(outcomponents.numpy(),2 * np.matmul(m4.numpy()[0], v3homog )[:3],tol=10*tol)
 
     if dtype in np_float_types:
         for j in range(3):
@@ -2848,17 +2659,17 @@ def test_transform_point(test,device,dtype):
                 wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,j ], outputs=[out], device=device)
             tape.backward(loss=out)
 
-            assert_np_equal(3*1.0 * m4.numpy()[0,j,:3], tape.gradients[v3].numpy(), tol=tol)
+            assert_np_equal(2 * m4.numpy()[0,j,:3], tape.gradients[v3].numpy(), tol=tol)
             expected = np.zeros((4,4),dtype=dtype)
-            expected[j,:3] = 3*1.0*v3.numpy()
-            expected[j,3] = 1.0
+            expected[j,:3] = 2*v3.numpy()
+            expected[j,3] = 2
             assert_np_equal(tape.gradients[m4].numpy(),expected, tol=tol)
 
             tape.zero()
 
+
 def test_transform_vector(test,device,dtype):
     
-
     np.random.seed(123)
 
     tol = {
@@ -2868,14 +2679,8 @@ def test_transform_vector(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2,type=wptype)
     vec3 = wp.vec(length=3,type=wptype)
-    vec4 = wp.vec(length=4,type=wptype)
-    vec5 = wp.vec(length=5,type=wptype)
-    mat22 = wp.mat(shape=(2,2),type=wptype)
-    mat33 = wp.mat(shape=(3,3),type=wptype)
     mat44 = wp.mat(shape=(4,4),type=wptype)
-    mat55 = wp.mat(shape=(5,5),type=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -2884,10 +2689,8 @@ def test_transform_vector(test,device,dtype):
         m4: wp.array(dtype=mat44),
         outcomponents: wp.array(dtype=wptype),
     ):
-        v3load = wptype(3.0) * v3[0]
-        m4load = wptype(1.0) * m4[0]
-
-        presult = wp.transform_vector(m4load,v3load)
+        # multiply outputs by 2 so we've got something to backpropagate:
+        presult = wptype(2) * wp.transform_vector(m4[0],v3[0])
 
         outcomponents[0] = presult[0]
         outcomponents[1] = presult[1]
@@ -2903,8 +2706,8 @@ def test_transform_vector(test,device,dtype):
     wp.launch(kernel, dim=1, inputs=[ v3,m4 ], outputs=[outcomponents], device=device)
 
     v3homog = np.zeros(4,dtype=dtype)
-    v3homog[:3] = 3*v3.numpy()[0]
-    assert_np_equal(outcomponents.numpy(),np.matmul(1.0*m4.numpy()[0], v3homog )[:3],tol=10*tol)
+    v3homog[:3] = v3.numpy()[0]
+    assert_np_equal(outcomponents.numpy(), 2 * np.matmul(m4.numpy()[0], v3homog )[:3],tol=10*tol)
 
     if dtype in np_float_types:
         for j in range(3):
@@ -2915,9 +2718,9 @@ def test_transform_vector(test,device,dtype):
                 wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,j ], outputs=[out], device=device)
             tape.backward(loss=out)
 
-            assert_np_equal(3*1.0 * m4.numpy()[0,j,:3], tape.gradients[v3].numpy(), tol=tol)
+            assert_np_equal(2 * m4.numpy()[0,j,:3], tape.gradients[v3].numpy(), tol=tol)
             expected = np.zeros((4,4),dtype=dtype)
-            expected[j,:3] = 3*1.0*v3.numpy()
+            expected[j,:3] = 2 * v3.numpy()
             assert_np_equal(tape.gradients[m4].numpy(),expected, tol=tol)
 
             tape.zero()
@@ -2929,13 +2732,13 @@ def register(parent):
 
     class TestMat(parent):
         pass
-    
+
     for dtype in np_signed_int_types + np_float_types:
         add_function_test(TestMat, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_determinant_{dtype.__name__}", test_determinant, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
-
+    
     for dtype in np_scalar_types:
         add_function_test(TestMat, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype)
@@ -2962,7 +2765,7 @@ def register(parent):
         add_function_test(TestMat, f"test_svd_{dtype.__name__}", test_svd, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
-
+        
     return TestMat
 
 if __name__ == '__main__':
