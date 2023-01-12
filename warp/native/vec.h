@@ -133,28 +133,6 @@ inline CUDA_CALLABLE vec<Length, Type> operator - (vec<Length, Type> a)
     return ret;
 }
 
-// I'm specializing to the original implementations for
-// Length = 2,3,4 as you don't get the unnecessary zero
-// initialization. Maybe there's a way of just avoiding that
-// and having a single implementation that's always efficient...
-template<typename Type>
-inline CUDA_CALLABLE vec<2, Type> operator - (vec<2, Type> a)
-{
-    return { Type(-a[0]), Type(-a[1]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<3, Type> operator - (vec<3, Type> a)
-{
-    return { Type(-a[0]), Type(-a[1]), Type(-a[2]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<4, Type> operator - (vec<4, Type> a)
-{
-    return { Type(-a[0]), Type(-a[1]), Type(-a[2]), Type(-a[3]) };
-}
-
 template<unsigned Length, typename Type>
 CUDA_CALLABLE inline vec<Length, Type> neg(const vec<Length, Type>& x)
 {
@@ -181,27 +159,6 @@ inline CUDA_CALLABLE bool operator ==(const vec<Length, Type>& a, const vec<Leng
     return true;
 }
 
-// again, specializing for Length = 2,3,4 in case it's more
-// efficient this way, although it's probably worth testing:
-template<typename Type>
-inline CUDA_CALLABLE bool operator==(const vec<2, Type>& a, const vec<2, Type>& b)
-{
-    return a[0] == b[0] && a[1] == b[1];
-}
-
-template<typename Type>
-inline CUDA_CALLABLE bool operator==(const vec<3, Type>& a, const vec<3, Type>& b)
-{
-    return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
-}
-
-template<typename Type>
-inline CUDA_CALLABLE bool operator==(const vec<4, Type>& a, const vec<4, Type>& b)
-{
-    return a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3];
-}
-
-
 // scalar multiplication:
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec<Length, Type> mul(vec<Length, Type> a, Type s)
@@ -212,24 +169,6 @@ inline CUDA_CALLABLE vec<Length, Type> mul(vec<Length, Type> a, Type s)
         ret[i] = a[i] * s;
     }
     return ret;
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<2,Type> mul(vec<2, Type> a, Type s)
-{
-    return { Type(a[0]*s), Type(a[1]*s) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<3,Type> mul(vec<3, Type> a, Type s)
-{
-    return { Type(a[0]*s), Type(a[1]*s), Type(a[2]*s) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<4,Type> mul(vec<4, Type> a, Type s)
-{
-    return { Type(a[0]*s), Type(a[1]*s), Type(a[2]*s), Type(a[3]*s) };
 }
 
 template<unsigned Length, typename Type>
@@ -263,25 +202,6 @@ inline CUDA_CALLABLE vec<Length, Type> cw_mul(vec<Length, Type> a, vec<Length, T
     return ret;
 }
 
-template<typename Type>
-inline CUDA_CALLABLE vec<2, Type> cw_mul(vec<2, Type> a, vec<2, Type> b)
-{
-    return { Type(a[0]*b[0]), Type(a[1]*b[1]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<3, Type> cw_mul(vec<3, Type> a, vec<3, Type> b)
-{
-    return { Type(a[0]*b[0]), Type(a[1]*b[1]), Type(a[2]*b[2]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<4, Type> cw_mul(vec<4, Type> a, vec<4, Type> b)
-{
-    return { Type(a[0]*b[0]), Type(a[1]*b[1]), Type(a[2]*b[2]), Type(a[3]*b[3]) };
-}
-
-
 // division
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec<Length, Type> div(vec<Length, Type> a, Type s)
@@ -292,24 +212,6 @@ inline CUDA_CALLABLE vec<Length, Type> div(vec<Length, Type> a, Type s)
         ret[i] = a[i] / s;
     }
     return ret;
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<2, Type> div(vec<2, Type> a, Type s)
-{
-    return { Type(a[0]/s), Type(a[1]/s) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<3, Type> div(vec<3, Type> a, Type s)
-{
-    return { Type(a[0]/s), Type(a[1]/s), Type(a[2]/s) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<4, Type> div(vec<4, Type> a, Type s)
-{
-    return { Type(a[0]/s), Type(a[1]/s), Type(a[2]/s), Type(a[3]/s) };
 }
 
 template<unsigned Length, typename Type>
@@ -330,25 +232,6 @@ inline CUDA_CALLABLE vec<Length, Type> cw_div(vec<Length, Type> a, vec<Length, T
     return ret;
 }
 
-template<typename Type>
-inline CUDA_CALLABLE vec<2, Type> cw_div(vec<2, Type> a, vec<2, Type> b)
-{
-    return { Type(a[0]/b[0]), Type(a[1]/b[1]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<3, Type> cw_div(vec<3, Type> a, vec<3, Type> b)
-{
-    return { Type(a[0]/b[0]), Type(a[1]/b[1]), Type(a[2]/b[2]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<4, Type> cw_div(vec<4, Type> a, vec<4, Type> b)
-{
-    return { Type(a[0]/b[0]), Type(a[1]/b[1]), Type(a[2]/b[2]), Type(a[3]/b[3]) };
-}
-
-
 // addition
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec<Length, Type> add(vec<Length, Type> a, vec<Length, Type> b)
@@ -360,25 +243,6 @@ inline CUDA_CALLABLE vec<Length, Type> add(vec<Length, Type> a, vec<Length, Type
     }
     return ret;
 }
-
-template<typename Type>
-inline CUDA_CALLABLE vec<2, Type> add(vec<2, Type> a, vec<2, Type> b)
-{
-    return { Type(a[0]+b[0]), Type(a[1]+b[1]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<3, Type> add(vec<3, Type> a, vec<3, Type> b)
-{
-    return { Type(a[0]+b[0]), Type(a[1]+b[1]), Type(a[2]+b[2]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<4, Type> add(vec<4, Type> a, vec<4, Type> b)
-{
-    return { Type(a[0]+b[0]), Type(a[1]+b[1]), Type(a[2]+b[2]), Type(a[3]+b[3]) };
-}
-
 
 // subtraction
 template<unsigned Length, typename Type>
@@ -392,25 +256,6 @@ inline CUDA_CALLABLE vec<Length, Type> sub(vec<Length, Type> a, vec<Length, Type
     return ret;
 }
 
-template<typename Type>
-inline CUDA_CALLABLE vec<2, Type> sub(vec<2, Type> a, vec<2, Type> b)
-{
-    return { Type(a[0]-b[0]), Type(a[1]-b[1]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<3, Type> sub(vec<3, Type> a, vec<3, Type> b)
-{
-    return { Type(a[0]-b[0]), Type(a[1]-b[1]), Type(a[2]-b[2]) };
-}
-
-template<typename Type>
-inline CUDA_CALLABLE vec<4, Type> sub(vec<4, Type> a, vec<4, Type> b)
-{
-    return { Type(a[0]-b[0]), Type(a[1]-b[1]), Type(a[2]-b[2]), Type(a[3]-b[3]) };
-}
-
-
 // dot product:
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE Type dot(vec<Length, Type> a, vec<Length, Type> b)
@@ -421,24 +266,6 @@ inline CUDA_CALLABLE Type dot(vec<Length, Type> a, vec<Length, Type> b)
         ret += a[i] * b[i];
     }
     return ret;
-}
-
-template<typename Type>
-inline CUDA_CALLABLE Type dot(vec<2, Type> a, vec<2, Type> b)
-{
-    return a[0]*b[0] + a[1]*b[1];
-}
-
-template<typename Type>
-inline CUDA_CALLABLE Type dot(vec<3, Type> a, vec<3, Type> b)
-{
-    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
-}
-
-template<typename Type>
-inline CUDA_CALLABLE Type dot(vec<4, Type> a, vec<4, Type> b)
-{
-    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2] + a[3]*b[3];
 }
 
 template<unsigned Length, typename Type>
@@ -510,25 +337,6 @@ inline bool CUDA_CALLABLE isfinite(vec<Length, Type> x)
     }
     return true;
 }
-
-template<typename Type>
-inline bool CUDA_CALLABLE isfinite(vec<2, Type> x)
-{
-    return isfinite(x[0]) && isfinite(x[1]);
-}
-
-template<typename Type>
-inline bool CUDA_CALLABLE isfinite(vec<3, Type> x)
-{
-    return isfinite(x[0]) && isfinite(x[1]) && isfinite(x[2]);
-}
-
-template<typename Type>
-inline bool CUDA_CALLABLE isfinite(vec<4, Type> x)
-{
-    return isfinite(x[0]) && isfinite(x[1]) && isfinite(x[2]) && isfinite(x[3]);
-}
-
 
 // These two functions seem to compile very slowly
 template<unsigned Length, typename Type>
@@ -846,26 +654,6 @@ CUDA_CALLABLE inline int longest_axis(const vec<Length, Type>& v)
     }
     return ret;
 }
-
-template<typename Type>
-CUDA_CALLABLE inline int longest_axis(const vec<3, Type>& v)
-{
-    Type x = fabs(v[0]);
-    Type y = fabs(v[1]);
-    Type z = fabs(v[2]);
-	if( (x > y) && (x > z) )
-		return 0;
-	else
-		return (y > z) ? 1 : 2;
-}
-
-
-template<typename Type>
-CUDA_CALLABLE inline int longest_axis(const vec<2, Type>& v)
-{
-    return fabs(v[0]) > fabs(v[1]) ? 0 : 1;
-}
-
 
 template<unsigned Length, typename Type>
 CUDA_CALLABLE inline vec<Length,Type> lerp(const vec<Length,Type>& a, const vec<Length,Type>& b, Type t)
