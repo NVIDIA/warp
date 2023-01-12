@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import os
 import tempfile
+import traceback
 from typing import (
     Any,
     Mapping,
@@ -138,23 +139,10 @@ class InternalState:
         self._code_file = None
         self._code_file_timestamp = None
 
-        self.connections = None
         self.kernel_module = None
         self.kernel_annotations = None
 
-        self._skip_compute = True
-
-    @property
-    def skip_compute(self) -> bool:
-        return self._skip_compute
-
-    @skip_compute.setter
-    def skip_compute(self, value: bool) -> None:
-        self._skip_compute = value
-
-        # Reset the connections used to check whether the node should
-        # be recomputed upon attributes being connected/disconnected.
-        self._connections = None
+        self.is_valid = False
 
     def is_outdated(
         self,
@@ -162,13 +150,7 @@ class InternalState:
         check_file_modified_time: bool,
     ) -> bool:
         """Checks if the internal state is outdated."""
-        if self.skip_compute:
-            # If something previously went wrong, we always recompile the kernel
-            # when attributes are edited, in case it might fix code that
-            # errored out due to referencing a non-existing attribute.
-            if self._attrs != db.node.get_attributes():
-                return True
-        else:
+        if self.is_valid:
             # If everything is in order, we only need to recompile the kernel
             # when attributes were removed, since adding new attributes is not
             # a breaking change.
@@ -176,6 +158,12 @@ class InternalState:
                 self._attrs is None
                 or not set(self._attrs).issubset(db.node.get_attributes())
             ):
+                return True
+        else:
+            # If something previously went wrong, we always recompile the kernel
+            # when attributes are edited, in case it might fix code that
+            # errored out due to referencing a non-existing attribute.
+            if self._attrs != db.node.get_attributes():
                 return True
 
         if self._code_provider != db.inputs.codeProvider:
@@ -395,36 +383,11 @@ def compute(db: OgnKernelDatabase) -> None:
     timeline =  omni.timeline.get_timeline_interface()
     if db.internal_state.is_outdated(db, timeline.is_stopped()):
         db.internal_state.initialize(db)
-        db.internal_state.skip_compute = False
+        db.internal_state.is_valid = True
 
     # Exit early if there are no outputs.
     if not db.internal_state.kernel_annotations[ATTR_PORT_TYPE_OUTPUT]:
         return
-
-    # If the node is in an incorrect state and cannot compute, we exit early
-    # unless the connections have been updated, in which case we give it
-    # another try.
-    if db.internal_state.skip_compute:
-        connections = tuple(
-            tuple(y.attr.get_path() for y in x.get_upstream_connections_info())
-            for x in db.node.get_attributes()
-            if x.get_port_type() == ATTR_PORT_TYPE_INPUT
-        )
-
-        if db.internal_state.connections is None:
-            # The node was just invalidated so we store its initial connections.
-            db.internal_state.connections = connections
-            return
-
-        if connections == db.internal_state.connections:
-            # Exit early.
-            return
-
-        # The connections have been updated, try computing the node again
-        # to see if that solves anything, which might happen for example
-        # if a non-optional array attribute wasn't connected previously.
-        db.internal_state.connections = connections
-        db.internal_state.skip_compute = False
 
     # Retrieve the inputs and outputs argument values to pass to the kernel.
     inputs, outputs = get_kernel_args(
@@ -498,5 +461,6 @@ class OgnKernel:
         try:
             compute(db)
         except Exception:
-            db.internal_state.skip_compute = True
-            raise
+            db.internal_state.is_valid = False
+            db.log_error(traceback.format_exc())
+            return
