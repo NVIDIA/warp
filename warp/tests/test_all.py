@@ -51,6 +51,7 @@ import warp.tests.test_options
 import warp.tests.test_vec
 import warp.tests.test_mat
 import warp.tests.test_arithmetic
+import warp.tests.test_spatial
 
 
 def register_tests(parent):
@@ -99,6 +100,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_vec.register(parent))
     tests.append(warp.tests.test_mat.register(parent))
     tests.append(warp.tests.test_arithmetic.register(parent))
+    tests.append(warp.tests.test_spatial.register(parent))
 
     return tests
 
