@@ -96,6 +96,11 @@ struct half
     CUDA_CALLABLE inline bool operator<(const half& h) const { return half_to_float(*this) < half_to_float(h); }
     CUDA_CALLABLE inline bool operator<=(const half& h) const { return half_to_float(*this) <= half_to_float(h); }
 
+    CUDA_CALLABLE inline bool operator!() const
+    {
+        return float32(*this) == 0;
+    }
+
     CUDA_CALLABLE inline half operator*=(const half& h)
     {
         half prod = half(float32(*this) * float32(h));
@@ -1028,7 +1033,7 @@ CUDA_CALLABLE inline void adj_copy(T& dest, const T& src, T& adj_dest, T& adj_sr
 {
     // nop, this is non-differentiable operation since it violates SSA
     adj_src = adj_dest;
-    adj_dest = 0.0;
+    adj_dest = T(0);
 }
 
 
