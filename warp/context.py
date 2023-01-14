@@ -143,6 +143,12 @@ class Function:
 
                             # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
                             if isinstance(a, ctypes.Array) == False:
+
+                                # assume you want the float32 version of the function so it doesn't just
+                                # grab an override for a random data type:
+                                if arg_type._type_ != ctypes.c_float:
+                                    raise RuntimeError(f"Error calling function '{f.key}', parameter for argument '{arg_name}' does not have c_float type.")
+
                                 a = np.array(a)
 
                                 # flatten to 1D array
