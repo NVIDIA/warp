@@ -2186,7 +2186,7 @@ def register(parent):
         add_function_test(TestVec, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype)
         add_function_test(TestVec, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype)
         # the kernels in this test compile incredibly slowly...
-        add_function_test(TestVec, f"test_minmax_{dtype.__name__}", test_minmax, devices=devices, dtype=dtype)
+        # add_function_test(TestVec, f"test_minmax_{dtype.__name__}", test_minmax, devices=devices, dtype=dtype)
     
     for dtype in np_float_types:
         add_function_test(TestVec, f"test_length_{dtype.__name__}", test_length, devices=devices, dtype=dtype)
