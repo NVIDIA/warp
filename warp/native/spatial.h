@@ -203,6 +203,12 @@ CUDA_CALLABLE inline void adj_mul(const spatial_vector_t<Type>& a, Type s, spati
 }
 
 template<typename Type>
+CUDA_CALLABLE inline void adj_mul(Type s, const spatial_vector_t<Type>& a, Type& adj_s, spatial_vector_t<Type>& adj_a, const spatial_vector_t<Type>& adj_ret)
+{
+    adj_mul(a, s, adj_a, adj_s, adj_ret);
+}
+
+template<typename Type>
 CUDA_CALLABLE inline void adj_spatial_dot(const spatial_vector_t<Type>& a, const spatial_vector_t<Type>& b, spatial_vector_t<Type>& adj_a, spatial_vector_t<Type>& adj_b, const Type& adj_ret)
 {
     adj_dot(a.w, b.w, adj_a.w, adj_b.w, adj_ret);
@@ -357,6 +363,8 @@ CUDA_CALLABLE inline spatial_vector_t<Type> transform_t<Type>_wrench(const trans
 }
 */
 
+// not totally sure why you'd want to do this seeing as adding/subtracting two rotation
+// quaternions doesn't seem to do anything meaningful
 template<typename Type>
 CUDA_CALLABLE inline transform_t<Type> add(const transform_t<Type>& a, const transform_t<Type>& b)
 {
@@ -369,10 +377,17 @@ CUDA_CALLABLE inline transform_t<Type> sub(const transform_t<Type>& a, const tra
     return { a.p - b.p, a.q - b.q };
 }
 
+// also not sure why you'd want to do this seeing as the quaternion would end up unnormalized
 template<typename Type>
 CUDA_CALLABLE inline transform_t<Type> mul(const transform_t<Type>& a, Type s)
 {
     return { a.p*s, a.q*s };
+}
+
+template<typename Type>
+CUDA_CALLABLE inline transform_t<Type> mul(Type s, const transform_t<Type>& a)
+{
+    return mul(a, s);
 }
 
 template<typename Type>
@@ -437,6 +452,12 @@ CUDA_CALLABLE inline void adj_mul(const transform_t<Type>& a, Type s, transform_
 }
 
 template<typename Type>
+CUDA_CALLABLE inline void adj_mul(Type s, const transform_t<Type>& a, Type& adj_s, transform_t<Type>& adj_a, const transform_t<Type>& adj_ret)
+{
+    adj_mul(a, s, adj_a, adj_s, adj_ret);
+}
+
+template<typename Type>
 CUDA_CALLABLE inline void adj_mul(const transform_t<Type>& a, const transform_t<Type>& b, transform_t<Type>& adj_a, transform_t<Type>& adj_b, const transform_t<Type>& adj_ret)
 {
     adj_transform_multiply(a, b, adj_a, adj_b, adj_ret);
@@ -483,10 +504,10 @@ CUDA_CALLABLE inline void adj_transform_inverse(const transform_t<Type>& t, tran
     // transform_t<Type> t = transform_t<Type>(np, q_inv)
 
     // backward
-    quaternion<Type> adj_q_inv = 0.0f;
-    quaternion<Type> adj_q = 0.0f;
-    vec<3,Type> adj_p = 0.0f;
-    vec<3,Type> adj_np = 0.0f;
+    quaternion<Type> adj_q_inv(0.0f);
+    quaternion<Type> adj_q(0.0f);
+    vec<3,Type> adj_p(0.0f);
+    vec<3,Type> adj_np(0.0f);
 
     adj_transform_t(np, q_inv, adj_np, adj_q_inv, adj_ret);
     adj_p = -adj_np;
@@ -597,10 +618,13 @@ CUDA_CALLABLE inline void adj_spatial_jcalc(int type, Type* q, vec<3,Type> axis,
 template<typename Type>
 struct spatial_matrix_t
 {
-    Type data[6][6] = { { 0 } };
+    Type data[6][6];
 
     CUDA_CALLABLE inline spatial_matrix_t(Type f=0.0f)
     {
+        for (unsigned i=0; i < 6; ++i)
+            for (unsigned j=0; j < 6; ++j)
+                data[i][j] = f;
     }
 
     CUDA_CALLABLE inline spatial_matrix_t(
@@ -736,6 +760,11 @@ inline CUDA_CALLABLE spatial_matrix_t<Type> mul(const spatial_matrix_t<Type>& a,
     return out;
 }
 
+template<typename Type>
+inline CUDA_CALLABLE spatial_matrix_t<Type> mul(Type b, const spatial_matrix_t<Type>& a)
+{
+    return mul(a,b);
+}
 
 template<typename Type>
 inline CUDA_CALLABLE spatial_vector_t<Type> mul(const spatial_matrix_t<Type>& a, const spatial_vector_t<Type>& b)
@@ -885,12 +914,12 @@ CUDA_CALLABLE inline void adj_spatial_matrix_t(
     Type a30, Type a31, Type a32, Type a33, Type a34, Type a35,
     Type a40, Type a41, Type a42, Type a43, Type a44, Type a45,
     Type a50, Type a51, Type a52, Type a53, Type a54, Type a55,
-    Type adj_a00, Type adj_a01, Type adj_a02, Type adj_a03, Type adj_a04, Type adj_a05,
-    Type adj_a10, Type adj_a11, Type adj_a12, Type adj_a13, Type adj_a14, Type adj_a15,
-    Type adj_a20, Type adj_a21, Type adj_a22, Type adj_a23, Type adj_a24, Type adj_a25,
-    Type adj_a30, Type adj_a31, Type adj_a32, Type adj_a33, Type adj_a34, Type adj_a35,
-    Type adj_a40, Type adj_a41, Type adj_a42, Type adj_a43, Type adj_a44, Type adj_a45,
-    Type adj_a50, Type adj_a51, Type adj_a52, Type adj_a53, Type adj_a54, Type adj_a55,
+    Type &adj_a00, Type &adj_a01, Type &adj_a02, Type &adj_a03, Type &adj_a04, Type &adj_a05,
+    Type &adj_a10, Type &adj_a11, Type &adj_a12, Type &adj_a13, Type &adj_a14, Type &adj_a15,
+    Type &adj_a20, Type &adj_a21, Type &adj_a22, Type &adj_a23, Type &adj_a24, Type &adj_a25,
+    Type &adj_a30, Type &adj_a31, Type &adj_a32, Type &adj_a33, Type &adj_a34, Type &adj_a35,
+    Type &adj_a40, Type &adj_a41, Type &adj_a42, Type &adj_a43, Type &adj_a44, Type &adj_a45,
+    Type &adj_a50, Type &adj_a51, Type &adj_a52, Type &adj_a53, Type &adj_a54, Type &adj_a55,
     const spatial_matrix_t<Type>& adj_ret)
 {
     adj_a00 += adj_ret.data[0][0];
@@ -932,12 +961,19 @@ CUDA_CALLABLE inline void adj_spatial_matrix_t(
 }
 
 template<typename Type>
+inline CUDA_CALLABLE void adj_outer(const spatial_vector_t<Type>& a, const spatial_vector_t<Type>& b, spatial_vector_t<Type>& adj_a, spatial_vector_t<Type>& adj_b, const spatial_matrix_t<Type>& adj_ret)
+{
+  adj_a += mul(adj_ret, b);
+  adj_b += mul(transpose(adj_ret), a);
+}
+
+template<typename Type>
 inline CUDA_CALLABLE spatial_matrix_t<Type> spatial_adjoint(const mat<3,3,Type>& R, const mat<3,3,Type>& S)
 {    
     spatial_matrix_t<Type> adT;
 
-    // T = [R          0]
-    //     [skew(p)*R  R]
+    // T = [Rah,   0]
+    //     [S  R]
 
     // diagonal blocks    
     for (int i=0; i < 3; ++i)
@@ -1033,6 +1069,25 @@ inline CUDA_CALLABLE void adj_mul(const spatial_matrix_t<Type>& a, const spatial
 {
     adj_a += mul(adj_ret, transpose(b));
     adj_b += mul(transpose(a), adj_ret);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mul(const spatial_matrix_t<Type>& a, Type b, spatial_matrix_t<Type>& adj_a, Type& adj_b, const spatial_matrix_t<Type>& adj_ret)
+{
+    for (unsigned i=0; i < 6; ++i)
+    {
+        for (unsigned j=0; j < 6; ++j)
+        {
+            adj_a.data[i][j] += b*adj_ret.data[i][j];
+            adj_b += a.data[i][j]*adj_ret.data[i][j];
+        }
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mul( Type b, const spatial_matrix_t<Type>& a, Type& adj_b, spatial_matrix_t<Type>& adj_a, const spatial_matrix_t<Type>& adj_ret)
+{
+    adj_mul(a, b, adj_a, adj_b, adj_ret);
 }
 
 template<typename Type>

@@ -343,6 +343,8 @@ add_builtin("quat_slerp", input_types={"q0": quaternion(type=Float), "q1": quate
 add_builtin("quat_to_matrix", input_types={"q": quaternion(type=Float)}, value_func=lambda args,_: mat(shape=(3,3),type=infer_scalar_type(args)), group="Quaternion Math",
     doc="Convert a quaternion to a 3x3 rotation matrix.")
 
+add_builtin("dot", input_types={"x": quaternion(type=Float), "y": quaternion(type=Float)}, value_func=sametype_scalar_value_func, group="Quaternion Math",
+    doc="Compute the dot product between two quaternions.")
 #---------------------------------
 # Transformations 
 
@@ -409,10 +411,29 @@ def spatial_matrix_constructor_value_func(args,templates):
         return spatial_matrix_t(type=Float)
     
     mattype = templates[0]
+    if len(args) and args[0].type != mattype:
+        raise RuntimeError("Wrong scalar type for spatial_matrix<{}> constructor".format( ",".join(map(str,templates)) ))
+    
     return spatial_matrix_t(type=mattype)
 
 add_builtin("spatial_matrix_t", input_types={}, value_func=spatial_matrix_constructor_value_func, group="Spatial Math",
     doc="Construct a 6x6 zero-initialized spatial inertia matrix", export=False)
+
+add_builtin("spatial_matrix_t", input_types={f"s{i}" : Scalar for i in range(6*6)}, value_func=spatial_matrix_constructor_value_func, group="Spatial Math",
+    doc="Construct a 6x6 spatial inertia matrix from components", export=False)
+
+
+def value_func_spatial_outer(args,_):
+
+    if args is None:
+        return spatial_matrix_t(type=Float)
+    
+    scalarType = infer_scalar_type(args)
+    return spatial_matrix_t(type=scalarType)
+
+
+add_builtin("outer", input_types={"x": spatial_vector_t(type=Float), "y": spatial_vector_t(type=Float)}, value_func=value_func_spatial_outer, group="Vector Math",
+    doc="Compute the outer product x*y^T for two spatial_vector objects.")
 
 add_builtin("spatial_adjoint", input_types={"r": mat(shape=(3,3),type=Float), "s": mat(shape=(3,3),type=Float)}, value_func=lambda args,_: spatial_matrix_t(type=infer_scalar_type(args)), group="Spatial Math",
     doc="Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.", export=False)
@@ -961,12 +982,15 @@ add_builtin("add", input_types={"x": quaternion(type=Scalar), "y": quaternion(ty
 add_builtin("add", input_types={"x": mat(shape=(Any,Any),type=Scalar), "y": mat(shape=(Any,Any),type=Scalar)}, value_func=sametype_value_func(mat(shape=(Any,Any),type=Scalar)), doc="", group="Operators")
 add_builtin("add", input_types={"x": spatial_vector_t(type=Scalar), "y": spatial_vector_t(type=Scalar)}, value_func=sametype_value_func(spatial_vector_t(type=Scalar)), doc="", group="Operators")
 add_builtin("add", input_types={"x": spatial_matrix_t(type=Scalar), "y": spatial_matrix_t(type=Scalar)}, value_func=sametype_value_func(spatial_matrix_t(type=Scalar)), doc="", group="Operators")
+add_builtin("add", input_types={"x": transform_t(type=Scalar), "y": transform_t(type=Scalar)}, value_func=sametype_value_func(transform_t(type=Scalar)), doc="", group="Operators")
 
 add_builtin("sub", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="", group="Operators")
 add_builtin("sub", input_types={"x": vec(length=Any,type=Scalar), "y": vec(length=Any,type=Scalar)}, value_func=sametype_value_func(vec(length=Any,type=Scalar)), doc="", group="Operators")
 add_builtin("sub", input_types={"x": mat(shape=(Any,Any),type=Scalar), "y": mat(shape=(Any,Any),type=Scalar)}, value_func=sametype_value_func(mat(shape=(Any,Any),type=Scalar)), doc="", group="Operators")
 add_builtin("sub", input_types={"x": spatial_vector_t(type=Scalar), "y": spatial_vector_t(type=Scalar)}, value_func=sametype_value_func(spatial_vector_t(type=Scalar)), doc="", group="Operators")
 add_builtin("sub", input_types={"x": spatial_matrix_t(type=Scalar), "y": spatial_matrix_t(type=Scalar)}, value_func=sametype_value_func(spatial_matrix_t(type=Scalar)), doc="", group="Operators")
+add_builtin("sub", input_types={"x": quaternion(type=Scalar), "y": quaternion(type=Scalar)}, value_func=sametype_value_func(quaternion(type=Scalar)), doc="", group="Operators")
+add_builtin("sub", input_types={"x": transform_t(type=Scalar), "y": transform_t(type=Scalar)}, value_func=sametype_value_func(transform_t(type=Scalar)), doc="", group="Operators")
 
 def scalar_mul_value_func(default):
     def fn(args,_):
@@ -1022,16 +1046,25 @@ add_builtin("mul", input_types={"x": Scalar, "y": mat(shape=(Any,Any),type=Scala
 add_builtin("mul", input_types={"x": mat(shape=(Any,Any),type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(mat(shape=(Any,Any),type=Scalar)), doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat(shape=(Any,Any),type=Scalar), "y": vec(length=Any,type=Scalar)}, value_func=mul_matvec_value_func, doc="", group="Operators")
 add_builtin("mul", input_types={"x": mat(shape=(Any,Any),type=Scalar), "y": mat(shape=(Any,Any),type=Scalar)}, value_func=mul_matmat_value_func, doc="", group="Operators")
+
 add_builtin("mul", input_types={"x": spatial_vector_t(type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(spatial_vector_t(type=Scalar)), doc="", group="Operators")
+add_builtin("mul", input_types={"x": Scalar, "y": spatial_vector_t(type=Scalar)}, value_func=scalar_mul_value_func(spatial_vector_t(type=Scalar)), doc="", group="Operators")
+
 add_builtin("mul", input_types={"x": spatial_matrix_t(type=Scalar), "y": spatial_matrix_t(type=Scalar)}, value_func=sametype_value_func(spatial_matrix_t(type=Scalar)), doc="", group="Operators")
 add_builtin("mul", input_types={"x": spatial_matrix_t(type=Scalar), "y": spatial_vector_t(type=Scalar)}, value_func=mul_spatial_matvec_value_func, doc="", group="Operators")
+add_builtin("mul", input_types={"x": spatial_matrix_t(type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(spatial_matrix_t(type=Scalar)), doc="", group="Operators")
+add_builtin("mul", input_types={"x": Scalar, "y": spatial_matrix_t(type=Scalar)}, value_func=scalar_mul_value_func(spatial_matrix_t(type=Scalar)), doc="", group="Operators")
+
 add_builtin("mul", input_types={"x": transform_t(type=Scalar), "y": transform_t(type=Scalar)}, value_func=sametype_value_func(transform_t(type=Scalar)), doc="", group="Operators")
+add_builtin("mul", input_types={"x": Scalar, "y": transform_t(type=Scalar)}, value_func=scalar_mul_value_func(transform_t(type=Scalar)), doc="", group="Operators")
+add_builtin("mul", input_types={"x": transform_t(type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(transform_t(type=Scalar)), doc="", group="Operators")
 
 add_builtin("mod", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="", group="Operators")
 
 add_builtin("div", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="", group="Operators")
 add_builtin("div", input_types={"x": vec(length=Any,type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(vec(length=Any,type=Scalar)), doc="", group="Operators")
 add_builtin("div", input_types={"x": mat(shape=(Any,Any),type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(mat(shape=(Any,Any),type=Scalar)), doc="", group="Operators")
+add_builtin("div", input_types={"x": quaternion(type=Scalar), "y": Scalar}, value_func=scalar_mul_value_func(quaternion(type=Scalar)), doc="", group="Operators")
 
 add_builtin("floordiv", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="", group="Operators")
 
