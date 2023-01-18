@@ -13,7 +13,7 @@ _A selection of physical simulations computed with Warp_
 
 ## Installing 
 
-Warp supports Python versions 3.7.x-3.9.x. The easiest way is to install from PyPi:
+Warp supports Python versions 3.7.x-3.11.x. The easiest way is to install from PyPi:
 
     pip install warp-lang
 
