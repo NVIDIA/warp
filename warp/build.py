@@ -8,7 +8,7 @@
 import math
 import os
 import sys
-import imp
+import importlib
 import subprocess
 import ctypes
 import _ctypes
