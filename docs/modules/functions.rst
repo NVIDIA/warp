@@ -466,6 +466,11 @@ Vector Math
    Construct a 4d vector with all components set to s.
 
 
+.. function:: mat22() -> mat22
+
+   Construct a 2x2 zero matrix
+
+
 .. function:: mat22(c0: vec2, c1: vec2) -> mat22
 
    Construct a 2x2 matrix from column vectors c0, c1.
@@ -476,6 +481,11 @@ Vector Math
    Construct a 2x2 matrix from components.
 
 
+.. function:: mat33() -> mat33
+
+   Construct a 3x3 zero matrix
+
+
 .. function:: mat33(c0: vec3, c1: vec3, c2: vec3) -> mat33
 
    Construct a 3x3 matrix from column vectors c0, c1, c2.
@@ -484,6 +494,11 @@ Vector Math
 .. function:: mat33(m00: float32, m01: float32, m02: float32, m10: float32, m11: float32, m12: float32, m20: float32, m21: float32, m22: float32) -> mat33
 
    Construct a 3x3 matrix from components.
+
+
+.. function:: mat44() -> mat44
+
+   Construct a 4x4 zero matrix
 
 
 .. function:: mat44(c0: vec4, c1: vec4, c2: vec4, c3: vec4) -> mat44
@@ -506,9 +521,11 @@ Vector Math
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
+
 .. function:: qr3(A: mat33, Q: mat33, R: mat33) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
+
 
 .. function:: eig3(A: mat33, Q: mat33, d: vec3) -> None
 
@@ -573,11 +590,6 @@ Quaternion Math
 .. function:: quat_rotate_inv(q: quat, p: vec3) -> vec3
 
    Rotate a vector the inverse of a quaternion.
-
-
-.. function:: rotate_rodriguez(r: vec3, x: vec3) -> vec3
-
-   Rotate the vector x by the rotator r encoding rotation axis and angle radians.
 
 
 .. function:: quat_slerp(q0: quat, q1: quat, t: float32) -> quat

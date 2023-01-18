@@ -11,6 +11,7 @@ from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64,
 from warp.types import vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
+from warp.types import matmul, batched_matmul
 
 from warp.context import init, func, kernel, struct
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
@@ -580,16 +581,14 @@ def svd3(A: mat33, U: mat33, sigma: vec3, V: mat33):
 @overload
 def qr3(A: mat33, Q: mat33, R: mat33):
    """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, 
-   while the upper triangular matrix is returend in R.
+   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
    """
    ...
 
 @overload
 def eig3(A: mat33, Q: mat33, d: vec3):
    """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, 
-   while the corresponding eigen values are returned in d.
+   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
    """
    ...
 
@@ -646,13 +645,6 @@ def quat_rotate(q: quat, p: vec3) -> vec3:
 def quat_rotate_inv(q: quat, p: vec3) -> vec3:
    """
    Rotate a vector the inverse of a quaternion.
-   """
-   ...
-
-@overload
-def rotate_rodriguez(r: vec3, x: vec3) -> vec3:
-   """
-   Rotate the vector x by the rotator r encoding rotation axis and angle radians.
    """
    ...
 

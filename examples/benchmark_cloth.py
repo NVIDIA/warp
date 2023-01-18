@@ -229,9 +229,8 @@ def run_benchmark(mode, dim, timers, render=False):
         else:
             raise RuntimeError("Unknown simulation backend")
 
-
-        # run one warm-up iteration to accurately measure initialization time (some engines do lazy init)
-        positions = integrator.simulate(sim_dt, sim_substeps)
+            # run one warm-up iteration to accurately measure initialization time (some engines do lazy init)
+            positions = integrator.simulate(sim_dt, sim_substeps)
 
     label = "Dim ({}^2)".format(dim)
 
@@ -260,9 +259,9 @@ if len(sys.argv) > 1:
 else:
     mode = "warp_gpu"
 
-run_benchmark(mode, 16, timers, render=False)
 run_benchmark(mode, 32, timers, render=False)
 run_benchmark(mode, 64, timers, render=False)
+run_benchmark(mode, 128, timers, render=False)
 
 # write results
 import csv
@@ -274,11 +273,11 @@ report = open(os.path.join(os.path.dirname(__file__), "outputs/benchmark.csv"), 
 writer = csv.writer(report,  delimiter=',')
 
 if (report.tell() == 0):
-    writer.writerow(["Name", "Init", "Dim (16^2)", "Dim (32^2)", "Dim (64^2)"])
+    writer.writerow(["Name", "Init", "Dim (32^2)", "Dim (64^2)", "Dim (128^2)"])
 
 writer.writerow([mode, np.max(timers["Initialization"]),
-                       np.mean(timers["Dim (16^2)"]),
                        np.mean(timers["Dim (32^2)"]),
-                       np.mean(timers["Dim (64^2)"])])
+                       np.mean(timers["Dim (64^2)"]),
+                       np.mean(timers["Dim (128^2)"])])
 
 report.close()
