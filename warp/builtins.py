@@ -246,8 +246,6 @@ add_builtin("quat_rotate", input_types={"q": quat, "p": vec3}, value_type=vec3, 
     doc="Rotate a vector by a quaternion.")
 add_builtin("quat_rotate_inv", input_types={"q": quat, "p": vec3}, value_type=vec3, group="Quaternion Math",
     doc="Rotate a vector the inverse of a quaternion.")
-add_builtin("rotate_rodriguez", input_types={"r": vec3, "x": vec3}, value_type=vec3, group="Quaternion Math",
-    doc="Rotate the vector x by the rotator r encoding rotation axis and angle radians.")
 add_builtin("quat_slerp", input_types={"q0": quat, "q1": quat, "t": float}, value_type=quat, group="Quaternion Math",
     doc="Linearly interpolate between two quaternions.")
 add_builtin("quat_to_matrix", input_types={"q": quat}, value_type=mat33, group="Quaternion Math",

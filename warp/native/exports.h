@@ -84,7 +84,6 @@ WP_API void builtin_quat_rpy_float32_float32_float32(float32 roll, float32 pitch
 WP_API void builtin_quat_inverse_quat(quat q, quat* ret) { *ret = wp::quat_inverse(q); }
 WP_API void builtin_quat_rotate_quat_vec3(quat q, vec3 p, vec3* ret) { *ret = wp::quat_rotate(q, p); }
 WP_API void builtin_quat_rotate_inv_quat_vec3(quat q, vec3 p, vec3* ret) { *ret = wp::quat_rotate_inv(q, p); }
-WP_API void builtin_rotate_rodriguez_vec3_vec3(vec3 r, vec3 x, vec3* ret) { *ret = wp::rotate_rodriguez(r, x); }
 WP_API void builtin_quat_slerp_quat_quat_float32(quat q0, quat q1, float32 t, quat* ret) { *ret = wp::quat_slerp(q0, q1, t); }
 WP_API void builtin_quat_to_matrix_quat(quat q, mat33* ret) { *ret = wp::quat_to_matrix(q); }
 WP_API void builtin_transform_identity(transform* ret) { *ret = wp::transform_identity(); }
