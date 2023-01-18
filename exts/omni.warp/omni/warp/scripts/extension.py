@@ -12,9 +12,8 @@ from .common import log_error
 from . import menu_common
 import warp as wp
 import os
-import imp
 import webbrowser
-import importlib
+import importlib as imp
 import omni.ext
 import omni.kit.actions.core
 import omni.timeline
