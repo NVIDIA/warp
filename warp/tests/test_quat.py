@@ -131,14 +131,14 @@ def quat_sampler(
 
 def test_slerp_grad(test, device):
     seed = 42
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     N = 50
 
     q0 = wp.zeros(N, dtype=wp.quat, device=device, requires_grad=True)
     q1 = wp.zeros(N, dtype=wp.quat, device=device, requires_grad=True)
 
-    wp.launch(kernel=quat_sampler, dim=N, inputs=[seed, q0], device=device)
-    wp.launch(kernel=quat_sampler, dim=N, inputs=[seed, q1], device=device)
+    wp.launch(kernel=quat_sampler, dim=N, inputs=[rng.integers(1024), q0], device=device)
+    wp.launch(kernel=quat_sampler, dim=N, inputs=[rng.integers(1024), q1], device=device)
 
     t = np.random.uniform(0.0, 1.0, N)
     t = wp.array(t, dtype=float, device=device, requires_grad=True)
@@ -260,12 +260,12 @@ def quat_to_axis_angle_kernel_forward(
 
 def test_quat_to_axis_angle_grad(test, device):
     
-    np.random.seed(42)
     seed = 42
+    rng = np.random.default_rng(seed)
     num_rand = 50
     
     quats = wp.zeros(num_rand, dtype=wp.quat, device=device, requires_grad=True)
-    wp.launch(kernel=quat_sampler, dim=num_rand, inputs=[seed, quats], device=device)
+    wp.launch(kernel=quat_sampler, dim=num_rand, inputs=[rng.integers(1024), quats], device=device)
     
     edge_cases = np.array([(1.0, 0.0, 0.0, 0.0), (0.0, 1.0 / np.sqrt(3), 1.0 / np.sqrt(3), 1.0 / np.sqrt(3)), (0.0, 0.0, 0.0, 0.0)])
     num_edge = len(edge_cases)
