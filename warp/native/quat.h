@@ -592,6 +592,7 @@ inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t
     quat q0_inv = quat_inverse(q0);
     quat q_inc = mul(q0_inv, q1);
     quat_to_axis_angle(q_inc, axis, angle);
+    quat qt = quat_from_axis_angle(axis, angle * t);
     angle = angle * 0.5;
     
     // adj_t
@@ -648,25 +649,25 @@ inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t
     float cs = cos(angle*t);
     float sn = sin(angle*t);
 
-    quat q_s_q0_x = mul(quat(1.f, 0.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+    quat q_s_q0_x = mul(quat(1.f, 0.f, 0.f, 0.f), qt) + mul(q0, quat(
         0.5 * t * axis.x * t_q0_x * cs + a_x_q0_x * sn,
         0.5 * t * axis.y * t_q0_x * cs + a_y_q0_x * sn,
         0.5 * t * axis.z * t_q0_x * cs + a_z_q0_x * sn,
         -0.5 * t * t_q0_x * sn));
 
-    quat q_s_q0_y = mul(quat(0.f, 1.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+    quat q_s_q0_y = mul(quat(0.f, 1.f, 0.f, 0.f), qt) + mul(q0, quat(
         0.5 * t * axis.x * t_q0_y * cs + a_x_q0_y * sn,
         0.5 * t * axis.y * t_q0_y * cs + a_y_q0_y * sn,
         0.5 * t * axis.z * t_q0_y * cs + a_z_q0_y * sn,
         -0.5 * t * t_q0_y * sn));
 
-    quat q_s_q0_z = mul(quat(0.f, 0.f, 1.f, 0.f), q_inc) + mul(q0, quat(
+    quat q_s_q0_z = mul(quat(0.f, 0.f, 1.f, 0.f), qt) + mul(q0, quat(
         0.5 * t * axis.x * t_q0_z * cs + a_x_q0_z * sn,
         0.5 * t * axis.y * t_q0_z * cs + a_y_q0_z * sn,
         0.5 * t * axis.z * t_q0_z * cs + a_z_q0_z * sn,
         -0.5 * t * t_q0_z * sn));
 
-    quat q_s_q0_w = mul(quat(0.f, 0.f, 0.f, 1.f), q_inc) + mul(q0, quat(
+    quat q_s_q0_w = mul(quat(0.f, 0.f, 0.f, 1.f), qt) + mul(q0, quat(
         0.5 * t * axis.x * t_q0_w * cs + a_x_q0_w * sn,
         0.5 * t * axis.y * t_q0_w * cs + a_y_q0_w * sn,
         0.5 * t * axis.z * t_q0_w * cs + a_z_q0_w * sn,
