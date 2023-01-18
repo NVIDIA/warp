@@ -136,7 +136,7 @@ def test_reload_class(test, device):
         import warp.tests.test_class_kernel
         from warp.tests.test_class_kernel import ClassKernelTest
 
-        import imp
+        import importlib as imp
         imp.reload(warp.tests.test_class_kernel)
 
         ctest = ClassKernelTest(device)

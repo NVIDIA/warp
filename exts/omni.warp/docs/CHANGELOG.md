@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [0.6.2] - 2023-01-19
+
+- Updated `wp.from_torch()` to support more data types
+- Updated `wp.from_torch()` to automatically determine the target Warp data type if not specified
+- Updated `wp.from_torch()` to support non-contiguous tensors with arbitrary strides
+- Add CUTLASS integration for dense GEMMs, see `wp.matmul()` and `wp.matmul_batched()` 
+- Add QR and Eigen decompositions for `mat33` types, see `wp.qr3()`, and `wp.eig3()`
+- Add default (zero) constructors for matrix types
+- Skip recompilation when Kernel Node attributes are edited
+- Allow optional attributes for Kernel Node
+- Allow disabling backward pass code-gen on a per-kernel basis, use `@wp.kernel(enable_backward=False)`
+- Replace Python `imp` package with `importlib`
+- Fix for quaterion slerp gradients (`wp.quat_slerp()`)
+
 ## [0.6.1] - 2022-12-05
 
 - Fix for non-CUDA builds

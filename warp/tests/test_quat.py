@@ -9,79 +9,6 @@ wp.init()
 ############################################################
 
 @wp.kernel
-def rodriguez_kernel(rotators: wp.array(dtype=wp.vec3), u: wp.vec3, loss: wp.array(dtype=float), coord_idx: int):
-    tid = wp.tid()
-    v = rotators[tid]
-    u_new = wp.rotate_rodriguez(v, u)
-    wp.atomic_add(loss, 0, u_new[coord_idx])
-
-@wp.kernel
-def rodriguez_kernel_autodiff(rotators: wp.array(dtype=wp.vec3), u: wp.vec3, loss: wp.array(dtype=float), coord_idx: int):
-    tid = wp.tid()
-    v = rotators[tid]
-    angle = wp.length(v)
-    if angle != 0.0:
-        axis = v / angle
-        u_new = u * wp.cos(angle) + wp.cross(axis, u) * wp.sin(angle) + axis * wp.dot(axis, u) * (1.0 - wp.cos(angle))
-    else:
-        u_new = u
-    wp.atomic_add(loss, 0, u_new[coord_idx])
-
-@wp.kernel
-def rodriguez_kernel_forward(rotators: wp.array(dtype=wp.vec3), u: wp.vec3, rotated: wp.array(dtype=wp.vec3)):
-    tid = wp.tid()
-    v = rotators[tid]
-    angle = wp.length(v)
-    if angle != 0.0:
-        axis = v / angle
-        rotated[tid] = u * wp.cos(angle) + wp.cross(axis, u) * wp.sin(angle) + axis * wp.dot(axis, u) * (1.0 - wp.cos(angle))
-    else:
-        rotated[tid] = u
-
-def test_rotate_rodriguez_grad(test, device):
-    np.random.seed(42)
-    num_rotators = 50
-    x = wp.vec3(0.5, 0.5, 0.0)
-    rotators = np.random.randn(num_rotators, 3)
-    rotators = wp.array(rotators, dtype=wp.vec3, device=device, requires_grad=True)
-
-    def compute_gradients(kernel, index):
-        loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
-        tape = wp.Tape()
-        with tape:
-            wp.launch(
-                kernel=kernel,
-                dim=num_rotators,
-                inputs=[rotators, x, loss, index],
-                device=device)
-
-            tape.backward(loss)
-
-        gradients = tape.gradients[rotators].numpy()
-        tape.zero()
-
-        return gradients
-
-    # gather gradients from builtin adjoints
-    gradients_x = compute_gradients(rodriguez_kernel, 0)
-    gradients_y = compute_gradients(rodriguez_kernel, 1)
-    gradients_z = compute_gradients(rodriguez_kernel, 2)
-
-    # gather gradients from autodiff
-    gradients_x_auto = compute_gradients(rodriguez_kernel_autodiff, 0)
-    gradients_y_auto = compute_gradients(rodriguez_kernel_autodiff, 1)
-    gradients_z_auto = compute_gradients(rodriguez_kernel_autodiff, 2)
-
-    # compare autodiff and adj_rotate_rodriguez
-    eps = 2.0e-6
-
-    test.assertTrue((np.abs(gradients_x - gradients_x_auto) < eps).all())
-    test.assertTrue((np.abs(gradients_y - gradients_y_auto) < eps).all())
-    test.assertTrue((np.abs(gradients_z - gradients_z_auto) < eps).all())
-
-############################################################
-
-@wp.kernel
 def slerp_kernel(
     q0: wp.array(dtype=wp.quat),
     q1: wp.array(dtype=wp.quat),
@@ -131,14 +58,14 @@ def quat_sampler(
 
 def test_slerp_grad(test, device):
     seed = 42
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     N = 50
 
     q0 = wp.zeros(N, dtype=wp.quat, device=device, requires_grad=True)
     q1 = wp.zeros(N, dtype=wp.quat, device=device, requires_grad=True)
 
-    wp.launch(kernel=quat_sampler, dim=N, inputs=[seed, q0], device=device)
-    wp.launch(kernel=quat_sampler, dim=N, inputs=[seed, q1], device=device)
+    wp.launch(kernel=quat_sampler, dim=N, inputs=[rng.integers(1024), q0], device=device)
+    wp.launch(kernel=quat_sampler, dim=N, inputs=[rng.integers(1024), q1], device=device)
 
     t = np.random.uniform(0.0, 1.0, N)
     t = wp.array(t, dtype=float, device=device, requires_grad=True)
@@ -260,12 +187,12 @@ def quat_to_axis_angle_kernel_forward(
 
 def test_quat_to_axis_angle_grad(test, device):
     
-    np.random.seed(42)
     seed = 42
+    rng = np.random.default_rng(seed)
     num_rand = 50
     
     quats = wp.zeros(num_rand, dtype=wp.quat, device=device, requires_grad=True)
-    wp.launch(kernel=quat_sampler, dim=num_rand, inputs=[seed, quats], device=device)
+    wp.launch(kernel=quat_sampler, dim=num_rand, inputs=[rng.integers(1024), quats], device=device)
     
     edge_cases = np.array([(1.0, 0.0, 0.0, 0.0), (0.0, 1.0 / np.sqrt(3), 1.0 / np.sqrt(3), 1.0 / np.sqrt(3)), (0.0, 0.0, 0.0, 0.0)])
     num_edge = len(edge_cases)
@@ -558,7 +485,6 @@ def register(parent):
     class TestQuat(parent):
         pass
 
-    add_function_test(TestQuat, "test_rotate_rodriguez_grad", test_rotate_rodriguez_grad, devices=devices)
     add_function_test(TestQuat, "test_quat_to_axis_angle_grad", test_quat_to_axis_angle_grad, devices=devices)
     add_function_test(TestQuat, "test_slerp_grad", test_slerp_grad, devices=devices)
     add_function_test(TestQuat, "test_quat_rpy_grad", test_quat_rpy_grad, devices=devices)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import re
 import sys
-import imp
+import importlib
 import ast
 import math
 import inspect
@@ -1740,6 +1740,10 @@ def codegen_func(adj, device='cpu'):
 
 
 def codegen_kernel(kernel, device, options):
+
+    # Update the module's options with the ones defined on the kernel, if any.
+    options = dict(options)
+    options.update(kernel.options)
 
     adj = kernel.adj
 

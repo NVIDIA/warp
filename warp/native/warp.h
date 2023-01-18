@@ -64,6 +64,10 @@ extern "C"
     WP_API void hash_grid_destroy_device(uint64_t id);
     WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
 
+    WP_API bool cutlass_gemm(int compute_capability, int m, int n, int k, const char* datatype,
+                             const void* a, const void* b, const void* c, void* d, float alpha, float beta,
+                             bool allow_tf32x3_arith, int batch_count);
+
     WP_API uint64_t volume_create_host(void* buf, uint64_t size);
     WP_API void volume_get_buffer_info_host(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_get_tiles_host(uint64_t id, void** buf, uint64_t* size);
@@ -89,6 +93,11 @@ extern "C"
     WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
 
+    WP_API void array_scan_int_host(uint64_t in, uint64_t out, int len, bool inclusive);
+    WP_API void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive);
+
+    WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive);
+    WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive);
     WP_API int cuda_driver_version();   // CUDA driver version
     WP_API int cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
 

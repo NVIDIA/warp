@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import os
 import tempfile
+import traceback
 from typing import (
     Any,
     Mapping,
@@ -141,14 +142,29 @@ class InternalState:
         self.kernel_module = None
         self.kernel_annotations = None
 
-    def _is_outdated(
+        self.is_valid = False
+
+    def is_outdated(
         self,
         db: OgnKernelDatabase,
         check_file_modified_time: bool,
     ) -> bool:
         """Checks if the internal state is outdated."""
-        if self._attrs != db.node.get_attributes():
-            return True
+        if self.is_valid:
+            # If everything is in order, we only need to recompile the kernel
+            # when attributes were removed, since adding new attributes is not
+            # a breaking change.
+            if (
+                self._attrs is None
+                or not set(self._attrs).issubset(db.node.get_attributes())
+            ):
+                return True
+        else:
+            # If something previously went wrong, we always recompile the kernel
+            # when attributes are edited, in case it might fix code that
+            # errored out due to referencing a non-existing attribute.
+            if self._attrs != db.node.get_attributes():
+                return True
 
         if self._code_provider != db.inputs.codeProvider:
             return True
@@ -175,16 +191,8 @@ class InternalState:
 
         return False
 
-    def initialize(
-        self,
-        db: OgnKernelDatabase,
-        check_file_modified_time: bool = False,
-    ) -> None:
+    def initialize(self, db: OgnKernelDatabase) -> None:
         """Initialize the internal state if needed."""
-        # Check if this internal state is outdated. If not, we can reuse it.
-        if not self._is_outdated(db, check_file_modified_time):
-            return
-
         # Cache the node attribute values relevant to this internal state.
         # They're the ones used to check whether this state is outdated or not.
         self._attrs = db.node.get_attributes()
@@ -373,10 +381,9 @@ def compute(db: OgnKernelDatabase) -> None:
 
     # Ensure that our internal state is correctly initialized.
     timeline =  omni.timeline.get_timeline_interface()
-    db.internal_state.initialize(
-        db,
-        check_file_modified_time=timeline.is_stopped(),
-    )
+    if db.internal_state.is_outdated(db, timeline.is_stopped()):
+        db.internal_state.initialize(db)
+        db.internal_state.is_valid = True
 
     # Exit early if there are no outputs.
     if not db.internal_state.kernel_annotations[ATTR_PORT_TYPE_OUTPUT]:
@@ -390,14 +397,23 @@ def compute(db: OgnKernelDatabase) -> None:
         device,
     )
 
-    # Ensure that all array input attributes are not NULL.
+    # Ensure that all array input attributes are not NULL, unless they are set
+    # as being optional.
+    # Note that adding a new non-optional array attribute might still cause
+    # the compute to succeed since the kernel recompilation is delayed until
+    # `InternalState.is_outdated()` requests it, meaning that the new attribute
+    # won't show up as a kernel annotation just yet.
     for attr_name in db.internal_state.kernel_annotations[ATTR_PORT_TYPE_INPUT]:
         value = getattr(inputs, attr_name)
         if not isinstance(value, wp.array):
             continue
 
-        if not value.ptr:
-            return
+        attr = og.Controller.attribute("inputs:{}".format(attr_name), db.node)
+        if not attr.is_optional_for_compute and not value.ptr:
+            raise RuntimeError(
+                "Empty value for non-optional attribute 'inputs:{}'."
+                .format(attr_name)
+            )
 
     # Launch the kernel.
     with wp.ScopedDevice(device):
@@ -431,7 +447,6 @@ class OgnKernel:
 
     @staticmethod
     def initialize(graph_context, node):
-        
         # Populate the devices tokens.
         attr = og.Controller.attribute("inputs:device", node)
         if attr.get_metadata(og.MetadataKeys.ALLOWED_TOKENS) is None:
@@ -443,4 +458,9 @@ class OgnKernel:
 
     @staticmethod
     def compute(db) -> None:
-        compute(db)
+        try:
+            compute(db)
+        except Exception:
+            db.internal_state.is_valid = False
+            db.log_error(traceback.format_exc())
+            return

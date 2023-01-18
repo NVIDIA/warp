@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="warp-lang",
-    version="0.6.1",
+    version="0.6.2",
     author="NVIDIA",
     author_email="mmacklin@nvidia.com",
     description="A Python framework for high-performance simulation and graphics programming",

@@ -12,9 +12,8 @@ from .common import log_error
 from . import menu_common
 import warp as wp
 import os
-import imp
 import webbrowser
-import importlib
+import importlib as imp
 import omni.ext
 import omni.kit.actions.core
 import omni.timeline
@@ -53,7 +52,7 @@ class OmniWarpExtension(omni.ext.IExt):
                 "Warp"
             )
         except ImportError as e:
-            print(e)
+            print("Warning: sample browser not enabled.")
 
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
         self._stage_event_sub = omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)

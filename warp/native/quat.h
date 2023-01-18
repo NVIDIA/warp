@@ -188,20 +188,6 @@ inline CUDA_CALLABLE vec3 quat_rotate_inv(const quat& q, const vec3& x)
     return x*(2.0f*q.w*q.w-1.0f) - cross(vec3(&q.x), x)*q.w*2.0f + vec3(&q.x)*dot(vec3(&q.x), x)*2.0f;
 }
 
-inline CUDA_CALLABLE vec3 rotate_rodriguez(const vec3& r, const vec3& x)
-{
-    float angle = length(r);
-    if (angle > kEps || angle < kEps)
-    {
-        vec3 axis = r / angle;
-        return x * cos(angle) + cross(axis, x) * sin(angle) + axis * dot(axis, x) * (1.f - cos(angle));
-    }
-    else
-    {
-        return x;
-    }
-}
-
 inline CUDA_CALLABLE quat quat_slerp(const quat& q0, const quat& q1, float t)
 {
     vec3 axis;
@@ -562,29 +548,6 @@ inline CUDA_CALLABLE void adj_quat_rotate_inv(const quat& q, const vec3& p, quat
     }
 }
 
-inline CUDA_CALLABLE void adj_rotate_rodriguez(const vec3& r, const vec3& x, vec3& adj_r, vec3& adj_x, const vec3& adj_ret)
-{
-    float angle = length(r);
-    float angle_squared = angle * angle;
-
-    vec3 axis = r / angle;
-    mat33 rotation_matrix = quat_to_matrix(quat_from_axis_angle(axis, angle));
-    mat33 inverse_rotation_matrix = transpose(rotation_matrix);
-    mat33 A = mul(mul(rotation_matrix, skew(x)), -1.0);
-
-    if (!angle_squared)
-    {
-        adj_r += mul(transpose(A), adj_ret);
-    }
-    else{
-        float inv_angle_squared = 1.f / angle_squared;
-        mat33 B = mul(add(outer(r,r), mul(sub(inverse_rotation_matrix, diag(vec3(1.f))), skew(r))), inv_angle_squared);
-        adj_r += mul(transpose(mul(A, B)), adj_ret);
-    }
-    
-    // todo: add adj_x
-}
-
 inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t, quat& adj_q0, quat& adj_q1, float& adj_t, const quat& adj_ret)
 {
     vec3 axis;
@@ -592,6 +555,7 @@ inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t
     quat q0_inv = quat_inverse(q0);
     quat q_inc = mul(q0_inv, q1);
     quat_to_axis_angle(q_inc, axis, angle);
+    quat qt = quat_from_axis_angle(axis, angle * t);
     angle = angle * 0.5;
     
     // adj_t
@@ -648,25 +612,25 @@ inline CUDA_CALLABLE void adj_quat_slerp(const quat& q0, const quat& q1, float t
     float cs = cos(angle*t);
     float sn = sin(angle*t);
 
-    quat q_s_q0_x = mul(quat(1.f, 0.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+    quat q_s_q0_x = mul(quat(1.f, 0.f, 0.f, 0.f), qt) + mul(q0, quat(
         0.5 * t * axis.x * t_q0_x * cs + a_x_q0_x * sn,
         0.5 * t * axis.y * t_q0_x * cs + a_y_q0_x * sn,
         0.5 * t * axis.z * t_q0_x * cs + a_z_q0_x * sn,
         -0.5 * t * t_q0_x * sn));
 
-    quat q_s_q0_y = mul(quat(0.f, 1.f, 0.f, 0.f), q_inc) + mul(q0, quat(
+    quat q_s_q0_y = mul(quat(0.f, 1.f, 0.f, 0.f), qt) + mul(q0, quat(
         0.5 * t * axis.x * t_q0_y * cs + a_x_q0_y * sn,
         0.5 * t * axis.y * t_q0_y * cs + a_y_q0_y * sn,
         0.5 * t * axis.z * t_q0_y * cs + a_z_q0_y * sn,
         -0.5 * t * t_q0_y * sn));
 
-    quat q_s_q0_z = mul(quat(0.f, 0.f, 1.f, 0.f), q_inc) + mul(q0, quat(
+    quat q_s_q0_z = mul(quat(0.f, 0.f, 1.f, 0.f), qt) + mul(q0, quat(
         0.5 * t * axis.x * t_q0_z * cs + a_x_q0_z * sn,
         0.5 * t * axis.y * t_q0_z * cs + a_y_q0_z * sn,
         0.5 * t * axis.z * t_q0_z * cs + a_z_q0_z * sn,
         -0.5 * t * t_q0_z * sn));
 
-    quat q_s_q0_w = mul(quat(0.f, 0.f, 0.f, 1.f), q_inc) + mul(q0, quat(
+    quat q_s_q0_w = mul(quat(0.f, 0.f, 0.f, 1.f), qt) + mul(q0, quat(
         0.5 * t * axis.x * t_q0_w * cs + a_x_q0_w * sn,
         0.5 * t * axis.y * t_q0_w * cs + a_y_q0_w * sn,
         0.5 * t * axis.z * t_q0_w * cs + a_z_q0_w * sn,

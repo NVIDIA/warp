@@ -33,6 +33,8 @@ class AttributeEditor:
         self.input_port_btn = None
         self.output_port_btn = None
         self.selected_data_type_btn = None
+        self.optional_frame = None
+        self.optional_checkbox = None
         self.error_msg_label = None
         self._build()
 
@@ -42,6 +44,12 @@ class AttributeEditor:
 
         self.selected_data_type_btn = btn
         self.selected_data_type_btn.checked = True
+
+    def _handle_input_port_btn_clicked(self):
+        self.optional_frame.enabled = True
+
+    def _handle_output_port_btn_clicked(self):
+        self.optional_frame.enabled = False
 
     def _handle_search(self, text):
         if text is None:
@@ -93,7 +101,16 @@ class AttributeEditor:
             )
             return
 
-        self.create_attr_callback(name, port_type, data_type_name)
+        optional = (
+            self.input_port_btn.checked
+            and self.optional_checkbox.model.get_value_as_bool()
+        )
+
+        try:
+            self.create_attr_callback(name, port_type, data_type_name, optional)
+        except Exception as e:
+            self.error_msg_label.text = str(e)
+            return
 
         self.dialog.visible = False
 
@@ -138,11 +155,13 @@ class AttributeEditor:
                     with ui.HStack(width=_FIELD_WIDTH):
                         self.input_port_btn = ui.RadioButton(
                             text="input",
-                            radio_collection=radio_collection
+                            radio_collection=radio_collection,
+                            clicked_fn=self._handle_input_port_btn_clicked,
                         )
                         self.output_port_btn = ui.RadioButton(
                             text="output",
-                            radio_collection=radio_collection
+                            radio_collection=radio_collection,
+                            clicked_fn=self._handle_output_port_btn_clicked,
                         )
 
                 # Data type.
@@ -163,6 +182,12 @@ class AttributeEditor:
                             style_type_name_override="TreeView"
                         )
                         self._build_data_type_frame()
+
+                # Optional flag.
+                self.optional_frame = ui.HStack(height=0)
+                with self.optional_frame:
+                    ui.Label("Optional: ", alignment=ui.Alignment.LEFT)
+                    self.optional_checkbox = ui.CheckBox(width=_FIELD_WIDTH)
 
                 # Dialog buttons
                 with ui.HStack(height=0):

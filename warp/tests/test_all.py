@@ -46,6 +46,8 @@ import warp.tests.test_fast_math
 import warp.tests.test_streams
 import warp.tests.test_torch
 import warp.tests.test_pinned
+import warp.tests.test_matmul
+import warp.tests.test_options
 
 
 def register_tests(parent):
@@ -89,6 +91,8 @@ def register_tests(parent):
     tests.append(warp.tests.test_streams.register(parent))
     tests.append(warp.tests.test_torch.register(parent))
     tests.append(warp.tests.test_pinned.register(parent))
+    tests.append(warp.tests.test_matmul.register(parent))
+    tests.append(warp.tests.test_options.register(parent))
 
     return tests
 

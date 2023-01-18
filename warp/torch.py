@@ -27,16 +27,80 @@ def device_to_torch(wp_device):
     raise RuntimeError(f"Warp device {device} is not compatible with torch")
 
 
+def dtype_from_torch(torch_dtype):
+
+    # initialize lookup table on first call to defer torch import
+    if dtype_from_torch.type_map is None:
+        import torch
+        dtype_from_torch.type_map = {
+            torch.float64: warp.float64,
+            torch.float32: warp.float32,
+            torch.float16: warp.float16,
+            torch.int64: warp.int64,
+            torch.int32: warp.int32,
+            torch.int16: warp.int16,
+            torch.int8: warp.int8,
+            torch.uint8: warp.uint8,
+            torch.bool: warp.uint8,
+            # currently unsupported by Warp
+            # torch.bfloat16:
+            # torch.complex64:
+            # torch.complex128:
+        }
+
+    warp_dtype = dtype_from_torch.type_map.get(torch_dtype)
+
+    if warp_dtype is not None:
+        return warp_dtype
+    else:
+        raise TypeError(f"Invalid or unsupported data type: {torch_dtype}")
+
+dtype_from_torch.type_map = None
+
+
+def dtype_is_compatible(torch_dtype, warp_dtype):
+
+    # initialize lookup table on first call to defer torch import
+    if dtype_is_compatible.compatible_sets is None:
+        import torch
+        dtype_is_compatible.compatible_sets = {
+            torch.float64: {warp.float64},
+            # float32 can be used for scalars and vector/matrix types
+            torch.float32: {warp.float32, *warp.types.vector_types},
+            torch.float16: {warp.float16},
+            # allow aliasing integer tensors as signed or unsigned integer arrays
+            torch.int64: {warp.int64, warp.uint64},
+            torch.int32: {warp.int32, warp.uint32},
+            torch.int16: {warp.int16, warp.uint16},
+            torch.int8: {warp.int8, warp.uint8},
+            torch.uint8: {warp.uint8, warp.int8},
+            torch.bool: {warp.uint8, warp.int8},
+            # currently unsupported by Warp
+            # torch.bfloat16:
+            # torch.complex64:
+            # torch.complex128:
+        }
+
+    compatible_set = dtype_is_compatible.compatible_sets.get(torch_dtype)
+
+    if compatible_set is not None:
+        return warp_dtype in compatible_set
+    else:
+        raise TypeError(f"Invalid or unsupported data type: {torch_dtype}")
+
+dtype_is_compatible.compatible_sets = None
+
+
 # wrap a torch tensor to a wp array, data is not copied
-def from_torch(t, dtype=warp.types.float32):
+def from_torch(t, dtype=None):
 
-    import torch
+    if dtype is None:
+        dtype = dtype_from_torch(t.dtype)
+    elif not dtype_is_compatible(t.dtype, dtype):
+        raise RuntimeError(f"Incompatible data types: {t.dtype} and {dtype}")
 
-    # ensure tensors are contiguous
-    assert(t.is_contiguous())
-
-    if (t.dtype != torch.float32 and t.dtype != torch.int32):
-        raise RuntimeError("Error aliasing Torch tensor to Warp array. Torch tensor must be float32 or int32 type")
+    # get size of underlying data type to compute strides
+    ctype_size = ctypes.sizeof(dtype._type_)
 
     # if target is a vector or matrix type
     # then check if trailing dimensions match
@@ -47,23 +111,33 @@ def from_torch(t, dtype=warp.types.float32):
             num_dims = len(dtype._shape_)
             type_dims = dtype._shape_
             source_dims = t.shape[-num_dims:]
+            source_strides = t.stride()[-num_dims:]
+            stride = 1
 
             for i in range(len(type_dims)):
+                # ensure the inner dimension size matches
                 if source_dims[i] != type_dims[i]:
                     raise RuntimeError()
+                # ensure the inner strides are contiguous
+                if source_strides[-i - 1] != stride:
+                    raise RuntimeError()
+                stride *= type_dims[i]
 
-            shape = t.shape[:-num_dims]
+            shape = tuple(t.shape[:-num_dims])
+            strides = tuple(s * ctype_size for s in t.stride()[:-num_dims])
 
         except:
             raise RuntimeError(f"Could not convert source Torch tensor with shape {t.shape}, to Warp array with dtype={dtype}, ensure that trailing dimensions match ({source_dims} != {type_dims}")
     
     else:
-        shape = t.shape
+        shape = tuple(t.shape)
+        strides = tuple(s * ctype_size for s in t.stride())
 
     a = warp.types.array(
         ptr=t.data_ptr(),
         dtype=dtype,
         shape=shape,
+        strides=strides,
         copy=False,
         owner=False,
         requires_grad=t.requires_grad,

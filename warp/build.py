@@ -8,7 +8,7 @@
 import math
 import os
 import sys
-import imp
+import importlib
 import subprocess
 import ctypes
 import _ctypes
@@ -175,6 +175,8 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
+    cutlass_home = "warp/native/cutlass"
+    cutlass_includes = f'-I"{cutlass_home}/include" -I"{cutlass_home}/tools/util/include"'
 
     import pathlib
     warp_home_path = pathlib.Path(__file__).parent
@@ -324,10 +326,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -I"{nanovdb_home}" -DNDEBUG -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -I"{nanovdb_home}" -DNDEBUG -DWP_CUDA {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -374,10 +376,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_CUDA {cutlass_includes} -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_CUDA {cutlass_includes} -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)

@@ -266,11 +266,12 @@ class KernelHooks:
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
 
-    def __init__(self, func, key, module):
+    def __init__(self, func, key, module, options=None):
 
         self.func = func
         self.module = module
         self.key = key
+        self.options = {} if options is None else options
 
         self.adj = warp.codegen.Adjoint(func)
 
@@ -315,12 +316,28 @@ def func(f):
 
 # decorator to register kernel, @kernel, custom_name may be a string
 # that creates a kernel with a different name from the actual function
-def kernel(f):
-    
-    m = get_module(f.__module__)
-    k = Kernel(func=f, key=warp.codegen.make_full_qualified_name(f), module=m)
+def kernel(f=None, *, enable_backward=None):
 
-    return k
+    def wrapper(f, *args, **kwargs):
+        options = {}
+
+        if enable_backward is not None:
+            options["enable_backward"] = enable_backward
+
+        m = get_module(f.__module__)
+        k = Kernel(
+            func=f,
+            key=warp.codegen.make_full_qualified_name(f),
+            module=m,
+            options=options,
+        )
+        return k
+
+    if f is None:
+        # Arguments were passed to the decorator.
+        return wrapper
+
+    return wrapper(f)
 
 
 # decorator to register struct, @struct
@@ -1279,6 +1296,15 @@ class Runtime:
         self.core.hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
         self.core.hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p, ctypes.c_int]
         self.core.hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
+
+
+        self.core.cutlass_gemm.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_float, ctypes.c_float, ctypes.c_bool, ctypes.c_int]
+        self.core.cutlass_gemm.restypes = ctypes.c_bool
+
+        self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+        self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+        self.core.array_scan_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+        self.core.array_scan_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]      
 
         self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
         self.core.volume_create_host.restype = ctypes.c_uint64
