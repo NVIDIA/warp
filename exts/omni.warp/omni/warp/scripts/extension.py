@@ -13,7 +13,7 @@ from . import menu_common
 import warp as wp
 import os
 import webbrowser
-import importlib as imp
+import importlib
 import omni.ext
 import omni.kit.actions.core
 import omni.timeline
@@ -198,7 +198,7 @@ class OmniWarpExtension(omni.ext.IExt):
 
             import_path = os.path.normpath(os.path.join(SCRIPTS_PATH, script_name))
 
-            module = imp.load_source(script_name, import_path)
+            module = importlib.load_source(script_name, import_path)
             self._example = module.Example()
 
             if self._example is None:
