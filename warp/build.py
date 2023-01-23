@@ -296,12 +296,12 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
             cuda_includes = f' /I"{cuda_home}/include"'
 
         if (config == "debug"):
-            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo /MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo /Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/dll'
             ld_inputs = []
 
