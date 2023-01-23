@@ -8,6 +8,7 @@
 - Add CUTLASS integration for dense GEMMs, see `wp.matmul()` and `wp.matmul_batched()` 
 - Add QR and Eigen decompositions for `mat33` types, see `wp.qr3()`, and `wp.eig3()`
 - Add default (zero) constructors for matrix types
+- Add a flag to suppress all output except errors and warnings (set `wp.config.quiet = True`)
 - Skip recompilation when Kernel Node attributes are edited
 - Allow optional attributes for Kernel Node
 - Allow disabling backward pass code-gen on a per-kernel basis, use `@wp.kernel(enable_backward=False)`

@@ -749,7 +749,7 @@ class Module:
             if not warp.is_cuda_available():
                 raise RuntimeError("Failed to build CUDA module because CUDA is not available")
 
-        with warp.utils.ScopedTimer(f"Module {self.name} load on device '{device}'"):
+        with warp.utils.ScopedTimer(f"Module {self.name} load on device '{device}'", active=not warp.config.quiet):
 
             build_path = warp.build.kernel_bin_dir
             gen_path = warp.build.kernel_gen_dir
@@ -1480,18 +1480,19 @@ class Runtime:
         warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
 
         # print device and version information
-        print(f"Warp {warp.config.version} initialized:")
-        if cuda_device_count > 0:
-            toolkit_version = (self.toolkit_version // 1000, (self.toolkit_version % 1000) // 10)
-            driver_version = (self.driver_version // 1000, (self.driver_version % 1000) // 10)
-            print(f"   CUDA Toolkit: {toolkit_version[0]}.{toolkit_version[1]}, Driver: {driver_version[0]}.{driver_version[1]}")
-        else:
-            print(f"   CUDA not available")
-        print("   Devices:")
-        print(f"     \"{self.cpu_device.alias}\"    | {self.cpu_device.name}")
-        for cuda_device in self.cuda_devices:
-            print(f"     \"{cuda_device.alias}\" | {cuda_device.name} (sm_{cuda_device.arch})")
-        print(f"   Kernel cache: {warp.config.kernel_cache_dir}")
+        if not warp.config.quiet:
+            print(f"Warp {warp.config.version} initialized:")
+            if cuda_device_count > 0:
+                toolkit_version = (self.toolkit_version // 1000, (self.toolkit_version % 1000) // 10)
+                driver_version = (self.driver_version // 1000, (self.driver_version % 1000) // 10)
+                print(f"   CUDA Toolkit: {toolkit_version[0]}.{toolkit_version[1]}, Driver: {driver_version[0]}.{driver_version[1]}")
+            else:
+                print(f"   CUDA not available")
+            print("   Devices:")
+            print(f"     \"{self.cpu_device.alias}\"    | {self.cpu_device.name}")
+            for cuda_device in self.cuda_devices:
+                print(f"     \"{cuda_device.alias}\" | {cuda_device.name} (sm_{cuda_device.arch})")
+            print(f"   Kernel cache: {warp.config.kernel_cache_dir}")
 
         # global tape
         self.tape = None
