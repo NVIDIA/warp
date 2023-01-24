@@ -477,6 +477,30 @@ inline CUDA_CALLABLE void adj_vec(std::initializer_list<Type> cmps, std::initial
     }
 }
 
+// adjoint for the component constructors:
+template<typename Type>
+inline CUDA_CALLABLE void adj_vec(Type cmpx, Type cmpy, Type &adj_cmpx, Type &adj_cmpy, const vec<2, Type>& adj_ret)
+{
+    adj_cmpx += adj_ret.c[0];
+    adj_cmpy += adj_ret.c[1];
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_vec(Type cmpx, Type cmpy, Type cmpz, Type &adj_cmpx, Type &adj_cmpy, Type &adj_cmpz, const vec<3, Type>& adj_ret)
+{
+    adj_cmpx += adj_ret.c[0];
+    adj_cmpy += adj_ret.c[1];
+    adj_cmpz += adj_ret.c[2];
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_vec(Type cmpx, Type cmpy, Type cmpz, Type cmpw, Type &adj_cmpx, Type &adj_cmpy, Type &adj_cmpz, Type &adj_cmpw, const vec<4, Type>& adj_ret)
+{
+    adj_cmpx += adj_ret.c[0];
+    adj_cmpy += adj_ret.c[1];
+    adj_cmpz += adj_ret.c[2];
+    adj_cmpw += adj_ret.c[3];
+}
 
 // adjoint for the constant constructor:
 template<unsigned Length, typename Type>
