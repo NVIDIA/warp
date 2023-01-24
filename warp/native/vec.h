@@ -32,14 +32,6 @@ struct vec
             c[i] = s;
         }
     }
-    /*
-    explicit inline CUDA_CALLABLE vec(const Type* p)
-    {
-        for( unsigned i=0; i < Length; ++i )
-        {
-            c[i] = p[i];
-        }
-    }*/
 
     // Implementing constructors with fixed argument lists.
 
@@ -125,6 +117,18 @@ CUDA_CALLABLE inline vec<Length, Type> neg(const vec<Length, Type>& x)
     return -x;
 }
 
+template<typename Type>
+CUDA_CALLABLE inline vec<3, Type> neg(const vec<3, Type>& x)
+{
+    return vec<3, Type>(-x.c[0], -x.c[1], -x.c[2]);
+}
+
+template<typename Type>
+CUDA_CALLABLE inline vec<2, Type> neg(const vec<2, Type>& x)
+{
+    return vec<2, Type>(-x.c[0], -x.c[1]);
+}
+
 template<unsigned Length, typename Type>
 CUDA_CALLABLE inline void adj_neg(const vec<Length, Type>& x, vec<Length, Type>& adj_x, const vec<Length, Type>& adj_ret)
 {
@@ -155,6 +159,18 @@ inline CUDA_CALLABLE vec<Length, Type> mul(vec<Length, Type> a, Type s)
         ret[i] = a[i] * s;
     }
     return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec<3, Type> mul(vec<3, Type> a, Type s)
+{
+    return vec<3, Type>(a.c[0]*s,a.c[1]*s,a.c[2]*s);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec<2, Type> mul(vec<2, Type> a, Type s)
+{
+    return vec<2, Type>(a.c[0]*s,a.c[1]*s);
 }
 
 template<unsigned Length, typename Type>
@@ -200,6 +216,18 @@ inline CUDA_CALLABLE vec<Length, Type> div(vec<Length, Type> a, Type s)
     return ret;
 }
 
+template<typename Type>
+inline CUDA_CALLABLE vec<3, Type> div(vec<3, Type> a, Type s)
+{
+    return vec<3, Type>(a.c[0]/s,a.c[1]/s,a.c[2]/s);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec<2, Type> div(vec<2, Type> a, Type s)
+{
+    return vec<2, Type>(a.c[0]/s,a.c[1]/s);
+}
+
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec<Length, Type> operator / (vec<Length, Type> a, Type s)
 {
@@ -230,6 +258,18 @@ inline CUDA_CALLABLE vec<Length, Type> add(vec<Length, Type> a, vec<Length, Type
     return ret;
 }
 
+template<typename Type>
+inline CUDA_CALLABLE vec<2, Type> add(vec<2, Type> a, vec<2, Type> b)
+{
+    return vec<2, Type>( a.c[0] + b.c[0], a.c[1] + b.c[1]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec<3, Type> add(vec<3, Type> a, vec<3, Type> b)
+{
+    return vec<3, Type>( a.c[0] + b.c[0], a.c[1] + b.c[1], a.c[2] + b.c[2]);
+}
+
 // subtraction
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec<Length, Type> sub(vec<Length, Type> a, vec<Length, Type> b)
@@ -242,6 +282,18 @@ inline CUDA_CALLABLE vec<Length, Type> sub(vec<Length, Type> a, vec<Length, Type
     return ret;
 }
 
+template<typename Type>
+inline CUDA_CALLABLE vec<2, Type> sub(vec<2, Type> a, vec<2, Type> b)
+{
+    return vec<2, Type>( a.c[0] - b.c[0], a.c[1] - b.c[1]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec<3, Type> sub(vec<3, Type> a, vec<3, Type> b)
+{
+    return vec<3, Type>( a.c[0] - b.c[0], a.c[1] - b.c[1], a.c[2] - b.c[2]);
+}
+
 // dot product:
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE Type dot(vec<Length, Type> a, vec<Length, Type> b)
@@ -252,6 +304,18 @@ inline CUDA_CALLABLE Type dot(vec<Length, Type> a, vec<Length, Type> b)
         ret += a[i] * b[i];
     }
     return ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE Type dot(vec<2, Type> a, vec<2, Type> b)
+{
+    return a.c[0] * b.c[0] + a.c[1] * b.c[1];
+}
+
+template<typename Type>
+inline CUDA_CALLABLE Type dot(vec<3, Type> a, vec<3, Type> b)
+{
+    return a.c[0] * b.c[0] + a.c[1] * b.c[1] + a.c[2] * b.c[2];
 }
 
 template<unsigned Length, typename Type>
@@ -289,6 +353,19 @@ inline CUDA_CALLABLE Type length_sq(vec<Length, Type> a)
     return dot(a, a);
 }
 
+
+template<typename Type>
+inline CUDA_CALLABLE Type length(vec<2, Type> a)
+{
+    return sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1]);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE Type length(vec<3, Type> a)
+{
+    return sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1] + a.c[2] * a.c[2]);
+}
+
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE vec<Length, Type> normalize(vec<Length, Type> a)
 {
@@ -297,6 +374,26 @@ inline CUDA_CALLABLE vec<Length, Type> normalize(vec<Length, Type> a)
         return div(a,l);
     else
         return vec<Length, Type>();
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec<2, Type> normalize(vec<2, Type> a)
+{
+    Type l = sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1]);
+    if (l > Type(kEps))
+        return vec<2, Type>(a.c[0]/l,a.c[1]/l);
+    else
+        return vec<2, Type>();
+}
+
+template<typename Type>
+inline CUDA_CALLABLE vec<3, Type> normalize(vec<3, Type> a)
+{
+    Type l = sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1] + a.c[2] * a.c[2]);
+    if (l > Type(kEps))
+        return vec<3, Type>(a.c[0]/l,a.c[1]/l,a.c[2]/l);
+    else
+        return vec<3, Type>();
 }
 
 
@@ -458,11 +555,51 @@ inline CUDA_CALLABLE void adj_add(vec<Length, Type> a, vec<Length, Type> b, vec<
     adj_b += adj_ret;
 }
 
+template<typename Type>
+inline CUDA_CALLABLE void adj_add(vec<2, Type> a, vec<2, Type> b, vec<2, Type>& adj_a, vec<2, Type>& adj_b, const vec<2, Type>& adj_ret)
+{
+    adj_a.c[0] += adj_ret.c[0];
+    adj_a.c[1] += adj_ret.c[1];
+    adj_b.c[0] += adj_ret.c[0];
+    adj_b.c[1] += adj_ret.c[1];
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_add(vec<3, Type> a, vec<3, Type> b, vec<3, Type>& adj_a, vec<3, Type>& adj_b, const vec<3, Type>& adj_ret)
+{
+    adj_a.c[0] += adj_ret.c[0];
+    adj_a.c[1] += adj_ret.c[1];
+    adj_a.c[2] += adj_ret.c[2];
+    adj_b.c[0] += adj_ret.c[0];
+    adj_b.c[1] += adj_ret.c[1];
+    adj_b.c[2] += adj_ret.c[2];
+}
+
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_sub(vec<Length, Type> a, vec<Length, Type> b, vec<Length, Type>& adj_a, vec<Length, Type>& adj_b, const vec<Length, Type>& adj_ret)
 {
     adj_a += adj_ret;
     adj_b -= adj_ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_sub(vec<2, Type> a, vec<2, Type> b, vec<2, Type>& adj_a, vec<2, Type>& adj_b, const vec<2, Type>& adj_ret)
+{
+    adj_a.c[0] += adj_ret.c[0];
+    adj_a.c[1] += adj_ret.c[1];
+    adj_b.c[0] -= adj_ret.c[0];
+    adj_b.c[1] -= adj_ret.c[1];
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_sub(vec<3, Type> a, vec<3, Type> b, vec<3, Type>& adj_a, vec<3, Type>& adj_b, const vec<3, Type>& adj_ret)
+{
+    adj_a.c[0] += adj_ret.c[0];
+    adj_a.c[1] += adj_ret.c[1];
+    adj_a.c[2] += adj_ret.c[2];
+    adj_b.c[0] -= adj_ret.c[0];
+    adj_b.c[1] -= adj_ret.c[1];
+    adj_b.c[2] -= adj_ret.c[2];
 }
 
 template<unsigned Length, typename Type>
@@ -479,6 +616,30 @@ inline CUDA_CALLABLE void adj_dot(vec<Length, Type> a, vec<Length, Type> b, vec<
         assert(0);
     }
 #endif
+}
+
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_dot(vec<2, Type> a, vec<2, Type> b, vec<2, Type>& adj_a, vec<2, Type>& adj_b, const Type adj_ret)
+{
+    adj_a.c[0] += b.c[0]*adj_ret;
+    adj_a.c[1] += b.c[1]*adj_ret;
+
+    adj_b.c[0] += a.c[0]*adj_ret;
+    adj_b.c[1] += a.c[1]*adj_ret;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_dot(vec<3, Type> a, vec<3, Type> b, vec<3, Type>& adj_a, vec<3, Type>& adj_b, const Type adj_ret)
+{
+    adj_a.c[0] += b.c[0]*adj_ret;
+    adj_a.c[1] += b.c[1]*adj_ret;
+    adj_a.c[2] += b.c[2]*adj_ret;
+
+    adj_b.c[0] += a.c[0]*adj_ret;
+    adj_b.c[1] += a.c[1]*adj_ret;
+    adj_b.c[2] += a.c[2]*adj_ret;
 }
 
 
