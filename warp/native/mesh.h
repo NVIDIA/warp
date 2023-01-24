@@ -422,18 +422,11 @@ CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
 
 	int vote = 0;
 
-    // x-axis    
-    if (mesh_query_ray(id, p, vec3(1.0f, 0.0f, 0.0f), FLT_MAX, t, u, v, sign, n, face) && sign < 0) {
-        vote++;
-    }
-    // y-axis
-    if (mesh_query_ray(id, p, vec3(0.0f, 1.0f, 0.0f), FLT_MAX, t, u, v, sign, n, face) && sign < 0) {
-        vote++;
-    }
-    // z-axis
-    if (mesh_query_ray(id, p, vec3(0.0f, 0.0f, 1.0f), FLT_MAX, t, u, v, sign, n, face) && sign < 0) {
-        vote++;
-    }
+	for(int i = 0; i <3; ++i){
+		if (mesh_query_ray(id, p, vec3(float(i==0), float(i==1), float(i==2)), FLT_MAX, t, u, v, sign, n, face) && sign < 0) {
+			vote++;
+		}
+	}
 
 	if (vote == 3)
 		return -1.0f;
