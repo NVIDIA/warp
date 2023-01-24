@@ -26,9 +26,7 @@ struct mat
     
     inline CUDA_CALLABLE mat()
     {
-        for (unsigned i=0; i < Rows; ++i)
-            for (unsigned j=0; j < Cols; ++j)
-                data[i][j] = Type(0);
+        memset(data[0], 0, Rows * Cols * sizeof(Type));
     }
     
     inline CUDA_CALLABLE mat(Type s)

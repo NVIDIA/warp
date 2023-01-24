@@ -18,25 +18,11 @@ namespace wp
 template<unsigned Length, typename Type>
 struct vec
 {
-    // I don't know if there's a way of aliasing components of this
-    // array so you can use v.x etc...
-    // Was thinking about delcaring Type &x = c[0] etc below it, but
-    // it looks like that just compiles to a bunch of pointers and
-    // inflates the class size (at least on clang++-7, c++17 from
-    // replit.com). Even if that didn't happen, v.w would lead to an 
-    // access violation for vectors with Length < 4 etc, so I'm not
-    // really sure what to do about that.
     Type c[Length];
 
-    // I'm hoping it just unrolls the for loops in these constructors
-    // and you end up with something equivalent to eg vec2() x(0), y(0) {}
-    // so they're not a performance concern...
     inline CUDA_CALLABLE vec()
     {
-        for( unsigned i=0; i < Length; ++i )
-        {
-            c[i] = Type(0);
-        }
+        memset(c, 0, Length * sizeof(Type));
     }
     
     inline CUDA_CALLABLE vec(Type s)
