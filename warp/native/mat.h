@@ -1097,6 +1097,70 @@ inline CUDA_CALLABLE void adj_mat(std::initializer_list<Type> cmps, std::initial
     }
 }
 
+template<typename Type>
+inline CUDA_CALLABLE void adj_mat(Type m00, Type m01, Type m10, Type m11, Type& adj_m00, Type& adj_m01, Type& adj_m10, Type& adj_m11, const mat<2, 2, Type>& adj_ret)
+{
+    adj_m00 += adj_ret.data[0][0];
+    adj_m01 += adj_ret.data[0][1];
+    adj_m10 += adj_ret.data[1][0];
+    adj_m11 += adj_ret.data[1][1];
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mat(Type m00, Type m01, Type m02,
+                      Type m10, Type m11, Type m12,
+                      Type m20, Type m21, Type m22,
+                      Type& a00, Type& a01, Type& a02,
+                      Type& a10, Type& a11, Type& a12,
+                      Type& a20, Type& a21, Type& a22,
+                      const mat<3, 3, Type>& adj_ret)
+{
+    a00 += adj_ret.data[0][0];
+    a01 += adj_ret.data[0][1];
+    a02 += adj_ret.data[0][2];
+    a10 += adj_ret.data[1][0];
+    a11 += adj_ret.data[1][1];
+    a12 += adj_ret.data[1][2];
+    a20 += adj_ret.data[2][0];
+    a21 += adj_ret.data[2][1];
+    a22 += adj_ret.data[2][2];
+}
+
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mat(Type m00, Type m01, Type m02, Type m03,
+                      Type m10, Type m11, Type m12, Type m13,
+                      Type m20, Type m21, Type m22, Type m23,
+                      Type m30, Type m31, Type m32, Type m33,
+                      Type& a00, Type& a01, Type& a02, Type& a03,
+                      Type& a10, Type& a11, Type& a12, Type& a13,
+                      Type& a20, Type& a21, Type& a22, Type& a23,
+                      Type& a30, Type& a31, Type& a32, Type& a33,
+                      const mat<4, 4, Type>& adj_ret)
+{
+    a00 += adj_ret.data[0][0];
+    a01 += adj_ret.data[0][1];
+    a02 += adj_ret.data[0][2];
+    a03 += adj_ret.data[0][3];
+
+    a10 += adj_ret.data[1][0];
+    a11 += adj_ret.data[1][1];
+    a12 += adj_ret.data[1][2];
+    a13 += adj_ret.data[1][3];
+
+    a20 += adj_ret.data[2][0];
+    a21 += adj_ret.data[2][1];
+    a22 += adj_ret.data[2][2];
+    a23 += adj_ret.data[2][3];
+
+    a30 += adj_ret.data[3][0];
+    a31 += adj_ret.data[3][1];
+    a32 += adj_ret.data[3][2];
+    a33 += adj_ret.data[3][3];
+}
+
+
+
 // adjoint for the initializer_list vector constructor:
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_mat(std::initializer_list< vec<Rows,Type> > cmps, std::initializer_list< vec<Rows,Type>* > adj_cmps, const mat<Rows, Cols, Type>& adj_ret)
@@ -1109,6 +1173,39 @@ inline CUDA_CALLABLE void adj_mat(std::initializer_list< vec<Rows,Type> > cmps, 
         {
             (*col)[i] += adj_ret.data[i][j];
         }
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mat(const vec<2,Type> &cmps0, const vec<2,Type> &cmps1, vec<2,Type> &adj_cmps0, vec<2,Type> &adj_cmps1, const mat<2, 2, Type>& adj_ret)
+{
+    for (unsigned i=0; i < 2; ++i)
+    {
+        adj_cmps0[i] += adj_ret.data[i][0];
+        adj_cmps1[i] += adj_ret.data[i][1];
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mat(const vec<3,Type> &cmps0, const vec<3,Type> &cmps1, const vec<3,Type> &cmps2, vec<3,Type> &adj_cmps0, vec<3,Type> &adj_cmps1, vec<3,Type> &adj_cmps2, const mat<3, 3, Type>& adj_ret)
+{
+    for (unsigned i=0; i < 3; ++i)
+    {
+        adj_cmps0[i] += adj_ret.data[i][0];
+        adj_cmps1[i] += adj_ret.data[i][1];
+        adj_cmps2[i] += adj_ret.data[i][2];
+    }
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_mat(const vec<4,Type> &cmps0, const vec<4,Type> &cmps1, const vec<4,Type> &cmps2, const vec<4,Type> &cmps3, vec<4,Type> &adj_cmps0, vec<4,Type> &adj_cmps1, vec<4,Type> &adj_cmps2, vec<4,Type> &adj_cmps3, const mat<4, 4, Type>& adj_ret)
+{
+    for (unsigned i=0; i < 4; ++i)
+    {
+        adj_cmps0[i] += adj_ret.data[i][0];
+        adj_cmps1[i] += adj_ret.data[i][1];
+        adj_cmps2[i] += adj_ret.data[i][2];
+        adj_cmps3[i] += adj_ret.data[i][3];
     }
 }
 

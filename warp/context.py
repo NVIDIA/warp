@@ -41,7 +41,7 @@ class Function:
                  value_func=None,
                  module=None,
                  variadic=False,
-                 initializer_list=False,
+                 initializer_list_func=None,
                  export=False,
                  doc="",
                  group="",
@@ -60,7 +60,10 @@ class Function:
         self.group = group
         self.module = module
         self.variadic = variadic        # function can take arbitrary number of inputs, e.g.: printf()
-        self.initializer_list = initializer_list # True if the arguments should be emitted as an initializer list in the c++ code
+        if initializer_list_func is None:
+            self.initializer_list_func = lambda x,y : False
+        else:
+            self.initializer_list_func = initializer_list_func # True if the arguments should be emitted as an initializer list in the c++ code
         self.hidden = hidden            # function will not be listed in docs
         self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
         self.missing_grad = missing_grad # whether or not builtin is missing a corresponding adjoint
@@ -371,12 +374,16 @@ def struct(c):
 builtin_functions = {}
 
 
-def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, initializer_list=False, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
+def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, initializer_list_func=None, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
 
     # wrap simple single-type functions with a value_func()
     if value_func == None:
         def value_func(args,templates):
             return value_type
+    
+    if initializer_list_func == None:
+        def initializer_list_func(args,templates):
+            return False
    
     def is_generic(t):
         ret = False
@@ -466,7 +473,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     return_type = return_type_match[0]
                 
                 # finally we can generate a function call for these concrete types:
-                add_builtin(key, input_types=dict(zip(input_types.keys(),argtypes)), value_type=return_type, doc=doc, namespace=namespace, variadic=variadic, initializer_list=initializer_list, export=export, group=group, hidden=hidden, skip_replay=skip_replay, missing_grad=missing_grad)
+                add_builtin(key, input_types=dict(zip(input_types.keys(),argtypes)), value_type=return_type, doc=doc, namespace=namespace, variadic=variadic, initializer_list_func=initializer_list_func, export=export, group=group, hidden=hidden, skip_replay=skip_replay, missing_grad=missing_grad)
 
     func = Function(func=None,
                     key=key,
@@ -474,7 +481,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     input_types=input_types,
                     value_func=value_func,
                     variadic=variadic,
-                    initializer_list=initializer_list,
+                    initializer_list_func=initializer_list_func,
                     export=export,
                     doc=doc,
                     group=group,

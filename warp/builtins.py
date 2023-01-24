@@ -231,7 +231,10 @@ def vec_component_constructor_value_func(args,templates):
         raise RuntimeError("Wrong type of arguments for vec<{}> constructor".format( ",".join(map(str,templates)) ))
     return vec(length=veclen,type=vectype)
 
-add_builtin("vec", input_types={}, variadic=True, initializer_list=True, value_func=vec_component_constructor_value_func, doc="Construct a vector from scalar compontents.", group="Vector Math", export=False)
+def vec_initlist_func(args,_):
+    return len(args) > 4
+
+add_builtin("vec", input_types={}, variadic=True, initializer_list_func=vec_initlist_func, value_func=vec_component_constructor_value_func, doc="Construct a vector from scalar compontents.", group="Vector Math", export=False)
 
 def mat_constructor_value_func(args,templates):
     if templates is None:
@@ -272,7 +275,13 @@ def mat_initlist_constructor_value_func(args,templates):
 
     return mat(shape=(matrows,matcols),type=mattype)
 
-add_builtin("mat", input_types={}, variadic=True, initializer_list=True, value_func=mat_initlist_constructor_value_func, doc="Construct a matrix from components or column vectors.", group="Vector Math", export=False)
+def mat_initlist_func(args,templates):
+    matrows,matcols,mattype = templates
+    if matrows == matcols and matcols < 5:
+        return False
+    return True
+
+add_builtin("mat", input_types={}, variadic=True, initializer_list_func=mat_initlist_func, value_func=mat_initlist_constructor_value_func, doc="Construct a matrix from components or column vectors.", group="Vector Math", export=False)
 
 def mat_quat_constructor_value_func(args,templates):
     

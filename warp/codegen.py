@@ -490,9 +490,10 @@ class Adjoint:
             funcname = compute_type_str( func.key, templates )
 
         # handle expression (zero output), e.g.: void do_something();
+        initializer_list = func.initializer_list_func(inputs, templates)
         if (value_type == None):
 
-            if func.initializer_list:
+            if initializer_list:
                 forward_call = func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs))
             else:
                 forward_call = func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs))
@@ -503,7 +504,7 @@ class Adjoint:
                 adj.add_forward(forward_call)
 
             if (len(inputs)):
-                if func.initializer_list:
+                if initializer_list:
                     reverse_call = func.namespace + "{}({}, {{{}}});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("&adj_", inputs))
                 else:
                     reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs))
@@ -515,14 +516,14 @@ class Adjoint:
         elif (isinstance(value_type, list)):
 
             output = [adj.add_var(v) for v in value_type]
-            if func.initializer_list:
+            if initializer_list:
                 forward_call = func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs+output))
             else:
                 forward_call = func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs+output))
             adj.add_forward(forward_call)
 
             if (len(inputs)):
-                if func.initializer_list:
+                if initializer_list:
                     reverse_call = func.namespace + "{}({{{}}}, {{{}}}, {});".format(
                         "adj_" + func.key, adj.format_args("var_", inputs+output), adj.format_args("&adj_", inputs), adj.format_args("adj_", output))
                 else:
@@ -540,7 +541,7 @@ class Adjoint:
 
             output = adj.add_var(func.value_func(inputs,templates))
 
-            if func.initializer_list:
+            if initializer_list:
                 forward_call = "var_{} = ".format(output) + func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs))
             else:
                 forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs))
@@ -552,7 +553,7 @@ class Adjoint:
             
             if (len(inputs)):
 
-                if func.initializer_list:
+                if initializer_list:
                     reverse_call = func.namespace + "{}({{{}}}, {{{}}}, {});".format(
                         "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("&adj_", inputs), adj.format_args("adj_", [output]))
                 else:
