@@ -221,13 +221,25 @@ inline CUDA_CALLABLE quaternion<Type> operator*(const quaternion<Type>& a, Type 
 template<typename Type>
 inline CUDA_CALLABLE vec<3,Type> quat_rotate(const quaternion<Type>& q, const vec<3,Type>& x)
 {
-    return x*(Type(2)*q.w*q.w-Type(1)) + cross(vec<3,Type>(q.x,q.y,q.z), x)*q.w*Type(2) + vec<3,Type>(q.x,q.y,q.z)*dot(vec<3,Type>(q.x,q.y,q.z), x)*Type(2);
+    Type c = (Type(2)*q.w*q.w-Type(1));
+    Type d = Type(2)*(q.x*x.c[0] + q.y*x.c[1] + q.z*x.c[2]);
+    return vec<3,Type>(
+        x.c[0]*c + q.x*d + (q.y * x[2] - q.z * x[1])*q.w*Type(2),
+        x.c[1]*c + q.y*d + (q.z * x[0] - q.x * x[2])*q.w*Type(2),
+        x.c[2]*c + q.z*d + (q.x * x[1] - q.y * x[0])*q.w*Type(2)
+    );
 }
 
 template<typename Type>
 inline CUDA_CALLABLE vec<3,Type> quat_rotate_inv(const quaternion<Type>& q, const vec<3,Type>& x)
 {
-    return x*(Type(2)*q.w*q.w-Type(1)) - cross(vec<3,Type>(q.x,q.y,q.z), x)*q.w*Type(2) + vec<3,Type>(q.x,q.y,q.z)*dot(vec<3,Type>(q.x,q.y,q.z), x)*Type(2);
+    Type c = (Type(2)*q.w*q.w-Type(1));
+    Type d = Type(2)*(q.x*x.c[0] + q.y*x.c[1] + q.z*x.c[2]);
+    return vec<3,Type>(
+        x.c[0]*c + q.x*d - (q.y * x[2] - q.z * x[1])*q.w*Type(2),
+        x.c[1]*c + q.y*d - (q.z * x[0] - q.x * x[2])*q.w*Type(2),
+        x.c[2]*c + q.z*d - (q.x * x[1] - q.y * x[0])*q.w*Type(2)
+    );
 }
 
 template<typename Type>
@@ -562,7 +574,6 @@ inline CUDA_CALLABLE void adj_div(quaternion<Type> a, Type s, quaternion<Type>& 
 template<typename Type>
 inline CUDA_CALLABLE void adj_quat_rotate(const quaternion<Type>& q, const vec<3,Type>& p, quaternion<Type>& adj_q, vec<3,Type>& adj_p, const vec<3,Type>& adj_ret)
 {
-    const vec<3,Type>& r = adj_ret;
 
     {
         Type t2 = p[2]*q.z*Type(2);
@@ -574,10 +585,10 @@ inline CUDA_CALLABLE void adj_quat_rotate(const quaternion<Type>& q, const vec<3
         Type t8 = p[0]*q.z*Type(2);
         Type t9 = p[0]*q.y*Type(2);
         Type t10 = p[1]*q.x*Type(2);
-        adj_q.x += r[2]*(t3+t8)+r[0]*(t2+t6+p[0]*q.x*Type(4))+r[1]*(t9-p[2]*q.w*Type(2));
-        adj_q.y += r[1]*(t2+t5+p[1]*q.y*Type(4))+r[0]*(t10+p[2]*q.w*Type(2))-r[2]*(t4-p[1]*q.z*Type(2));
-        adj_q.z += r[1]*(t4+t7)+r[2]*(t5+t6+p[2]*q.z*Type(4))-r[0]*(t3-p[2]*q.x*Type(2));
-        adj_q.w += r[0]*(t7+p[0]*q.w*Type(4)-p[1]*q.z*Type(2))+r[1]*(t8+p[1]*q.w*Type(4)-p[2]*q.x*Type(2))+r[2]*(-t9+t10+p[2]*q.w*Type(4));
+        adj_q.x += adj_ret[2]*(t3+t8)+adj_ret[0]*(t2+t6+p[0]*q.x*Type(4))+adj_ret[1]*(t9-p[2]*q.w*Type(2));
+        adj_q.y += adj_ret[1]*(t2+t5+p[1]*q.y*Type(4))+adj_ret[0]*(t10+p[2]*q.w*Type(2))-adj_ret[2]*(t4-p[1]*q.z*Type(2));
+        adj_q.z += adj_ret[1]*(t4+t7)+adj_ret[2]*(t5+t6+p[2]*q.z*Type(4))-adj_ret[0]*(t3-p[2]*q.x*Type(2));
+        adj_q.w += adj_ret[0]*(t7+p[0]*q.w*Type(4)-p[1]*q.z*Type(2))+adj_ret[1]*(t8+p[1]*q.w*Type(4)-p[2]*q.x*Type(2))+adj_ret[2]*(-t9+t10+p[2]*q.w*Type(4));
     }
 
     {
@@ -588,9 +599,9 @@ inline CUDA_CALLABLE void adj_quat_rotate(const quaternion<Type>& q, const vec<3
         Type t6 = q.w*q.y*Type(2);
         Type t7 = q.w*q.x*Type(2);
         Type t8 = q.y*q.z*Type(2);
-        adj_p[0] += r[1]*(t4+t5)+r[0]*(t3+(q.x*q.x)*Type(2)-Type(1))-r[2]*(t6-q.x*q.z*Type(2));
-        adj_p[1] += r[2]*(t7+t8)-r[0]*(t4-t5)+r[1]*(t3+(q.y*q.y)*Type(2)-Type(1));
-        adj_p[2] += -r[1]*(t7-t8)+r[2]*(t3+(q.z*q.z)*Type(2)-Type(1))+r[0]*(t6+q.x*q.z*Type(2));
+        adj_p[0] += adj_ret[1]*(t4+t5)+adj_ret[0]*(t3+(q.x*q.x)*Type(2)-Type(1))-adj_ret[2]*(t6-q.x*q.z*Type(2));
+        adj_p[1] += adj_ret[2]*(t7+t8)-adj_ret[0]*(t4-t5)+adj_ret[1]*(t3+(q.y*q.y)*Type(2)-Type(1));
+        adj_p[2] += -adj_ret[1]*(t7-t8)+adj_ret[2]*(t3+(q.z*q.z)*Type(2)-Type(1))+adj_ret[0]*(t6+q.x*q.z*Type(2));
     }
 }
 
