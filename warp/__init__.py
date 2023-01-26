@@ -36,4 +36,9 @@ from warp.torch import from_torch, to_torch
 from warp.torch import device_from_torch, device_to_torch
 from warp.torch import stream_from_torch, stream_to_torch
 
+from warp.jax import from_jax, to_jax
+from warp.jax import device_from_jax, device_to_jax
+
+from warp.dlpack import from_dlpack, to_dlpack
+
 from . import builtins, render

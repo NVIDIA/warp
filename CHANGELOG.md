@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.6.3] - 2023-01-25
+
+- Add DLPack utilities, see `wp.from_dlpack()`, `wp.to_dlpack()`
+- Add Jax utilities, see `wp.from_jax()`, `wp.to_jax()`, `wp.device_from_jax()`, `wp.device_to_jax()`
+
+
 ## [0.6.2] - 2023-01-19
 
 - Updated `wp.from_torch()` to support more data types
