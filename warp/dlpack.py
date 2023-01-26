@@ -146,7 +146,7 @@ def dtype_from_dlpack(dl_dtype):
     elif dl_dtype == (DLDataTypeCode.kDLComplex, 128):
         raise RuntimeError("Warp does not support complex types")
     else:
-        raise RuntimeError(f"Unknown dlpack datatype {dl_dtype.type_code}")
+        raise RuntimeError(f"Unknown dlpack datatype {dl_dtype}")
 
 
 def device_from_dlpack(dl_device):
@@ -197,20 +197,24 @@ def to_dlpack(wp_array: warp.array):
         ctypes.pythonapi.PyMem_RawMalloc(size)    
     )
 
-    # handle vector types    
+    # handle vector types
     if wp_array.dtype in warp.types.vector_types:
         # vector type, flatten the dimensions into one tuple
-        shape = (*wp_array.shape, *wp_array.dtype._shape_)
-        dtype_strides = warp.types.strides_from_shape(wp_array.dtype._shape_, wp_array.dtype._type_) 
-        strides = (*wp_array.strides, *dtype_strides)
+        target_dtype = warp.float32
+        target_ndim = wp_array.ndim + len(wp_array.dtype._shape_)
+        target_shape = (*wp_array.shape, *wp_array.dtype._shape_)
+        dtype_strides = warp.types.strides_from_shape(wp_array.dtype._shape_, warp.float32)
+        target_strides = (*wp_array.strides, *dtype_strides)
     else:
         # scalar type
-        shape = wp_array.shape
-        strides = wp_array.strides
+        target_dtype = wp_array.dtype
+        target_ndim = wp_array.ndim
+        target_shape = wp_array.shape
+        target_strides = wp_array.strides
 
     # store the shape and stride arrays with the holder to prevent them from getting deallocated
-    holder._shape = shape_to_dlpack(shape)
-    holder._strides = strides_to_dlpack(strides, wp_array.dtype)
+    holder._shape = shape_to_dlpack(target_shape)
+    holder._strides = strides_to_dlpack(target_strides, target_dtype)
 
     if wp_array.pinned:
         dl_device = DLDeviceType.kDLCUDAHost
@@ -220,8 +224,8 @@ def to_dlpack(wp_array: warp.array):
     # set Tensor attributes
     dl_managed_tensor.dl_tensor.data = wp_array.ptr
     dl_managed_tensor.dl_tensor.device = dl_device
-    dl_managed_tensor.dl_tensor.ndim = wp_array.ndim
-    dl_managed_tensor.dl_tensor.dtype = dtype_to_dlpack(wp_array.dtype)
+    dl_managed_tensor.dl_tensor.ndim = target_ndim
+    dl_managed_tensor.dl_tensor.dtype = dtype_to_dlpack(target_dtype)
     dl_managed_tensor.dl_tensor.shape = holder._shape
     dl_managed_tensor.dl_tensor.strides = holder._strides
     dl_managed_tensor.dl_tensor.byte_offset = 0
@@ -242,31 +246,31 @@ def dtype_is_compatible(dl_dtype, wp_dtype):
     if dl_dtype.bits % 8 != 0:
         raise RuntimeError("Data types with less than 8 bits are not supported")
     
-    if dl_dtype.type_code == DLDataTypeCode.kDLFloat:
+    if dl_dtype.type_code.value == DLDataTypeCode.kDLFloat:
         if dl_dtype.bits == 16:
             return wp_dtype == warp.float16
         elif dl_dtype.bits == 32:
             return wp_dtype == warp.float32 or wp_dtype in warp.types.vector_types
         elif dl_dtype.bits == 64:
             return wp_dtype == warp.float64
-    elif dl_dtype.type_code == DLDataTypeCode.kDLInt or dl_dtype.type_code == DLDataTypeCode.kDLUInt:
+    elif dl_dtype.type_code.value == DLDataTypeCode.kDLInt or dl_dtype.type_code.value == DLDataTypeCode.kDLUInt:
         if dl_dtype.bits == 8:
-            return wp_dtype == warp.int8 or warp.uint8
+            return wp_dtype == warp.int8 or wp_dtype == warp.uint8
         elif dl_dtype.bits == 16:
-            return wp_dtype == warp.int16 or warp.uint16
+            return wp_dtype == warp.int16 or wp_dtype == warp.uint16
         elif dl_dtype.bits == 32:
-            return wp_dtype == warp.int32 or warp.uint32
+            return wp_dtype == warp.int32 or wp_dtype == warp.uint32
         elif dl_dtype.bits == 64:
-            return wp_dtype == warp.int64 or warp.uint64
-    elif dl_dtype.type_code == DLDataTypeCode.kDLBfloat:
+            return wp_dtype == warp.int64 or wp_dtype == warp.uint64
+    elif dl_dtype.type_code.value == DLDataTypeCode.kDLBfloat:
         raise RuntimeError("Bfloat data type is not supported")
-    elif dl_dtype.type_code == DLDataTypeCode.kDLComplex:
+    elif dl_dtype.type_code.value == DLDataTypeCode.kDLComplex:
         raise RuntimeError("Complex data types are not supported")
     else:
-        raise RuntimeError(f"Unsupported dlpack dtype {dl_dtype}")
+        raise RuntimeError(f"Unsupported dlpack dtype {(str(dl_dtype.type_code), dl_dtype.bits)}")
 
 
-def from_dlpack(pycapsule, wp_dtype=None) -> warp.array:
+def from_dlpack(pycapsule, dtype=None) -> warp.array:
     """Convert a dlpack tensor into a numpy array without copying.
 
     Parameters
@@ -297,58 +301,48 @@ def from_dlpack(pycapsule, wp_dtype=None) -> warp.array:
 
     shape = tuple(dlt.shape[dim] for dim in range(dlt.ndim))
 
-    # handle multi-lane dtypes as another dimension
-    if dlt.dtype.lanes > 1:
-        shape = (*shape, dlt.dtype.lanes)
-
     itemsize = dlt.dtype.bits // 8
     if dlt.strides:
         strides = tuple(dlt.strides[dim] * itemsize for dim in range(dlt.ndim))
-        if dlt.dtype.lanes > 1:
-            strides = (*strides, itemsize)
     else:
         strides = None
 
-    if wp_dtype is None:
+    # handle multi-lane dtypes as another dimension
+    if dlt.dtype.lanes > 1:
+        shape = (*shape, dlt.dtype.lanes)
+        if strides is not None:
+            strides = (*strides, itemsize)
+
+    if dtype is None:
         # automatically detect dtype
-        wp_dtype = dtype_from_dlpack(dlt.dtype)
+        dtype = dtype_from_dlpack(dlt.dtype)
 
-    elif dtype_is_compatible(dlt.dtype, wp_dtype):
+    elif dtype_is_compatible(dlt.dtype, dtype):
         # handle vector types
-        if wp_dtype in warp.types.vector_types:
-            try:
-                num_dims = len(wp_dtype._shape_)
-                type_dims = wp_dtype._shape_
-                source_dims = shape[-num_dims:]
-                source_strides = stride()[-num_dims:]
-                stride = 1
+        if dtype in warp.types.vector_types:
+            dtype_shape = dtype._shape_
+            dtype_dims = len(dtype._shape_)
+            if dtype_dims > len(shape) or dtype_shape != shape[-dtype_dims:]:
+                raise RuntimeError(f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}")
 
-                for i in range(len(type_dims)):
-                    # ensure the inner dimension size matches
-                    if source_dims[i] != type_dims[i]:
-                        raise RuntimeError()
-                    # ensure the inner strides are contiguous
-                    if source_strides[-i - 1] != stride:
-                        raise RuntimeError()
-                    stride *= type_dims[i]
+            if strides is not None:
+                # ensure the inner strides are contiguous
+                stride = 4
+                for i in range(dtype_dims):
+                    if strides[-i - 1] != stride:
+                        raise RuntimeError(f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous")
+                    stride *= dtype_shape[-i - 1]
+                strides = tuple(strides[:-dtype_dims])
 
-                # get size of underlying data type to compute strides
-                ctype_size = ctypes.sizeof(wp_dtype._type_)
-
-                shape = tuple(shape[:-num_dims])
-                if strides is not None:
-                    strides = tuple(s * ctype_size for s in strides[:-num_dims])
-
-            except:
-                raise RuntimeError(f"Could not convert DLPack tensor with shape {shape}, to Warp array with dtype={wp_dtype}, ensure that trailing dimensions match ({source_dims} != {type_dims}")
+            shape = tuple(shape[:-dtype_dims])
 
     else:
         # incompatible dtype requested
-        raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {wp_dtype}")
+        raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
     
     a = warp.types.array(
         ptr=dlt.data,
-        dtype=wp_dtype,
+        dtype=dtype,
         shape=shape,
         strides=strides,
         copy=False,

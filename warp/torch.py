@@ -102,37 +102,29 @@ def from_torch(t, dtype=None):
     # get size of underlying data type to compute strides
     ctype_size = ctypes.sizeof(dtype._type_)
 
+    shape = tuple(t.shape)
+    strides = tuple(s * ctype_size for s in t.stride())
+
     # if target is a vector or matrix type
     # then check if trailing dimensions match
     # the target type and update the shape
     if hasattr(dtype, "_shape_"):
-        
-        try:
-            num_dims = len(dtype._shape_)
-            type_dims = dtype._shape_
-            source_dims = t.shape[-num_dims:]
-            source_strides = t.stride()[-num_dims:]
-            stride = 1
 
-            for i in range(len(type_dims)):
-                # ensure the inner dimension size matches
-                if source_dims[i] != type_dims[i]:
-                    raise RuntimeError()
-                # ensure the inner strides are contiguous
-                if source_strides[-i - 1] != stride:
-                    raise RuntimeError()
-                stride *= type_dims[i]
+        dtype_shape = dtype._shape_
+        dtype_dims = len(dtype._shape_)
+        if dtype_dims > len(shape) or dtype_shape != shape[-dtype_dims:]:
+            raise RuntimeError(f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}")
 
-            shape = tuple(t.shape[:-num_dims])
-            strides = tuple(s * ctype_size for s in t.stride()[:-num_dims])
+        # ensure the inner strides are contiguous
+        stride = 4
+        for i in range(dtype_dims):
+            if strides[-i - 1] != stride:
+                raise RuntimeError(f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous")
+            stride *= dtype_shape[-i - 1]
 
-        except:
-            raise RuntimeError(f"Could not convert source Torch tensor with shape {t.shape}, to Warp array with dtype={dtype}, ensure that trailing dimensions match ({source_dims} != {type_dims}")
+        shape = tuple(shape[:-dtype_dims])
+        strides = tuple(strides[:-dtype_dims])
     
-    else:
-        shape = tuple(t.shape)
-        strides = tuple(s * ctype_size for s in t.stride())
-
     a = warp.types.array(
         ptr=t.data_ptr(),
         dtype=dtype,
