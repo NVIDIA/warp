@@ -43,8 +43,8 @@ def to_jax(wp_array):
     return jax.dlpack.from_dlpack(warp.to_dlpack(wp_array))
 
 
-def from_jax(jax_array, wp_dtype=None):
+def from_jax(jax_array, dtype=None):
 
     import jax.dlpack
 
-    return warp.from_dlpack(jax.dlpack.to_dlpack(jax_array), wp_dtype=wp_dtype)
+    return warp.from_dlpack(jax.dlpack.to_dlpack(jax_array), dtype=dtype)
