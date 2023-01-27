@@ -109,7 +109,7 @@ void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
 #include "sort.cpp"
 #include "volume.cpp"
 #include "marching.cpp"
-//#include "spline.inl"
+#include "cutlass_gemm.cpp"
 
 
 // stubs for platforms where there is no CUDA
@@ -212,5 +212,10 @@ WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void**
 
 WP_API void cuda_set_context_restore_policy(bool always_restore) {}
 WP_API int cuda_get_context_restore_policy() { return false; }
+
+WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len) {}
+WP_API void array_sum_device(uint64_t a, uint64_t out, int len) {}
+WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive) {}
+WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive) {}
 
 #endif // WP_DISABLE_CUDA
