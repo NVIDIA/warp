@@ -61,17 +61,17 @@ class constant:
 
 #----------------------
 # built-in types
-def vector(length, type):
+def vector(length, dtype):
         
     class vector_t(ctypes.Array):
 
         # ctypes.Array data for length, shape and c type:
         _length_ = 0 if length is Any else length
         _shape_ = (_length_, )
-        _type_ = ctypes.c_float if type in [Scalar,Float] else type._type_
+        _type_ = ctypes.c_float if dtype in [Scalar,Float] else dtype._type_
 
         # warp scalar type:
-        _wp_scalar_type_ = type
+        _wp_scalar_type_ = dtype
         
         def __init__(self, *args):
             if self._wp_scalar_type_ == float16:
@@ -126,16 +126,16 @@ def vector(length, type):
 
     return vector_t
 
-def vec(length=Any, type=Scalar):
-    ret = vector(length=length, type=type)
+def vec(length=Any, dtype=Scalar):
+    ret = vector(length=length, dtype=dtype)
     
     # used in type checking and when writing out c++ code for constructors:
-    ret._wp_type_params_ = [length, type]
+    ret._wp_type_params_ = [length, dtype]
     ret._wp_generic_type_str_ = "vec"
 
     return ret
 
-def matrix(shape, type):
+def matrix(shape, dtype):
         
     assert(len(shape) == 2)
 
@@ -143,10 +143,10 @@ def matrix(shape, type):
 
         _length_ = 0 if shape[0] == Any or shape[1] == Any else shape[0]*shape[1]
         _shape_ = (0,0) if _length_ == 0 else shape
-        _type_ = ctypes.c_float if type in [Scalar,Float] else type._type_
+        _type_ = ctypes.c_float if dtype in [Scalar,Float] else dtype._type_
 
         # warp scalar type:
-        _wp_scalar_type_ = type
+        _wp_scalar_type_ = dtype
 
         def __init__(self, *args):
             if self._wp_scalar_type_ == float16:
@@ -218,11 +218,11 @@ def matrix(shape, type):
 
     return matrix_t
 
-def mat(shape=(Any,Any), type=Scalar):
-    ret = matrix(shape=shape, type=type)
+def mat(shape=(Any,Any), dtype=Scalar):
+    ret = matrix(shape=shape, dtype=dtype)
 
     # used in type checking and when writing out c++ code for constructors:
-    ret._wp_type_params_ = [shape[0], shape[1], type]
+    ret._wp_type_params_ = [shape[0], shape[1], dtype]
     ret._wp_generic_type_str_ = "mat"
 
     return ret
@@ -321,39 +321,39 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
-def quaternion(type=Any):
-    ret = vector(length=4, type=type)
+def quaternion(dtype=Any):
+    ret = vector(length=4, dtype=dtype)
     
     # used in type checking and when writing out c++ code for constructors:
-    ret._wp_type_params_ = [type]
+    ret._wp_type_params_ = [dtype]
     ret._wp_generic_type_str_ = "quaternion"
 
     return ret
 
-class quath(quaternion(type=float16)):
+class quath(quaternion(dtype=float16)):
     pass
 
-class quat(quaternion(type=float32)):
+class quat(quaternion(dtype=float32)):
     pass
 
-class quatf(quaternion(type=float32)):
+class quatf(quaternion(dtype=float32)):
     pass
 
-class quatd(quaternion(type=float64)):
+class quatd(quaternion(dtype=float64)):
     pass
 
-def transform_t(type=Any):
+def transform_t(dtype=Any):
 
-    class transform_class(vector(length=7, type=type)):
+    class transform_class(vector(length=7, dtype=dtype)):
         
-        _wp_type_params_ = [type]
+        _wp_type_params_ = [dtype]
         _wp_generic_type_str_ = "transform_t"
 
         def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
             super().__init__()
 
-            self[0:3] = vector(length=3,type=type)(*p)
-            self[3:7] = quaternion(type=type)(*q)
+            self[0:3] = vector(length=3,dtype=dtype)(*p)
+            self[3:7] = quaternion(dtype=dtype)(*q)
 
         @property 
         def p(self):
@@ -365,140 +365,140 @@ def transform_t(type=Any):
 
     return transform_class
 
-class transformh(transform_t(type=float16)):
+class transformh(transform_t(dtype=float16)):
     pass
 
-class transform(transform_t(type=float32)):
+class transform(transform_t(dtype=float32)):
     pass
 
-class transformf(transform_t(type=float32)):
+class transformf(transform_t(dtype=float32)):
     pass
 
-class transformd(transform_t(type=float64)):
+class transformd(transform_t(dtype=float64)):
     pass
 
-class vec2h(vec(length=2, type=float16)):
+class vec2h(vec(length=2, dtype=float16)):
     pass
 
-class vec3h(vec(length=3, type=float16)):
+class vec3h(vec(length=3, dtype=float16)):
     pass
 
-class vec4h(vec(length=4, type=float16)):
+class vec4h(vec(length=4, dtype=float16)):
     pass
 
-class vec2(vec(length=2, type=float32)):
+class vec2(vec(length=2, dtype=float32)):
     pass
 
-class vec3(vec(length=3, type=float32)):
+class vec3(vec(length=3, dtype=float32)):
     pass
 
-class vec4(vec(length=4, type=float32)):
+class vec4(vec(length=4, dtype=float32)):
     pass
 
-class vec2f(vec(length=2, type=float32)):
+class vec2f(vec(length=2, dtype=float32)):
     pass
 
-class vec3f(vec(length=3, type=float32)):
+class vec3f(vec(length=3, dtype=float32)):
     pass
 
-class vec4f(vec(length=4, type=float32)):
+class vec4f(vec(length=4, dtype=float32)):
     pass
 
-class vec2d(vec(length=2, type=float64)):
+class vec2d(vec(length=2, dtype=float64)):
     pass
 
-class vec3d(vec(length=3, type=float64)):
+class vec3d(vec(length=3, dtype=float64)):
     pass
 
-class vec4d(vec(length=4, type=float64)):
+class vec4d(vec(length=4, dtype=float64)):
     pass
 
-class vec2ub(vec(length=2, type=uint8)):
+class vec2ub(vec(length=2, dtype=uint8)):
     pass
     
-class vec3ub(vec(length=3, type=uint8)):
+class vec3ub(vec(length=3, dtype=uint8)):
     pass
 
-class vec4ub(vec(length=4, type=uint8)):
+class vec4ub(vec(length=4, dtype=uint8)):
     pass
     
-class mat22h(mat(shape=(2,2), type=float16)):
+class mat22h(mat(shape=(2,2), dtype=float16)):
     pass
     
-class mat33h(mat(shape=(3,3), type=float16)):
+class mat33h(mat(shape=(3,3), dtype=float16)):
     pass
 
-class mat44h(mat(shape=(4,4), type=float16)):
+class mat44h(mat(shape=(4,4), dtype=float16)):
     pass
     
-class mat22(mat(shape=(2,2), type=float32)):
+class mat22(mat(shape=(2,2), dtype=float32)):
     pass
     
-class mat33(mat(shape=(3,3), type=float32)):
+class mat33(mat(shape=(3,3), dtype=float32)):
     pass
 
-class mat44(mat(shape=(4,4), type=float32)):
+class mat44(mat(shape=(4,4), dtype=float32)):
     pass
     
-class mat22f(mat(shape=(2,2), type=float32)):
+class mat22f(mat(shape=(2,2), dtype=float32)):
     pass
     
-class mat33f(mat(shape=(3,3), type=float32)):
+class mat33f(mat(shape=(3,3), dtype=float32)):
     pass
 
-class mat44f(mat(shape=(4,4), type=float32)):
+class mat44f(mat(shape=(4,4), dtype=float32)):
     pass
     
-class mat22d(mat(shape=(2,2), type=float64)):
+class mat22d(mat(shape=(2,2), dtype=float64)):
     pass
     
-class mat33d(mat(shape=(3,3), type=float64)):
+class mat33d(mat(shape=(3,3), dtype=float64)):
     pass
 
-class mat44d(mat(shape=(4,4), type=float64)):
+class mat44d(mat(shape=(4,4), dtype=float64)):
     pass
 
 
-def spatial_vector_t(type=Any):
-    ret = vector(length=6, type=type)
+def spatial_vector_t(dtype=Any):
+    ret = vector(length=6, dtype=dtype)
     
     # used in type checking and when writing out c++ code for constructors:
-    ret._wp_type_params_ = [type]
+    ret._wp_type_params_ = [dtype]
     ret._wp_generic_type_str_ = "spatial_vector_t"
 
     return ret
 
-class spatial_vectorh(spatial_vector_t(type=float16)):
+class spatial_vectorh(spatial_vector_t(dtype=float16)):
     pass
 
-class spatial_vector(spatial_vector_t(type=float32)):
+class spatial_vector(spatial_vector_t(dtype=float32)):
     pass
 
-class spatial_vectorf(spatial_vector_t(type=float32)):
+class spatial_vectorf(spatial_vector_t(dtype=float32)):
     pass
 
-class spatial_vectord(spatial_vector_t(type=float64)):
+class spatial_vectord(spatial_vector_t(dtype=float64)):
     pass
 
-def spatial_matrix_t(type=Any):
-    ret = matrix(shape=(6,6), type=type)
+def spatial_matrix_t(dtype=Any):
+    ret = matrix(shape=(6,6), dtype=dtype)
     
     # used in type checking and when writing out c++ code for constructors:
-    ret._wp_type_params_ = [type]
+    ret._wp_type_params_ = [dtype]
     ret._wp_generic_type_str_ = "spatial_matrix_t"
 
     return ret
 
-class spatial_matrixh(spatial_matrix_t(type=float16)):
+class spatial_matrixh(spatial_matrix_t(dtype=float16)):
     pass
 
-class spatial_matrix(spatial_matrix_t(type=float32)):
+class spatial_matrix(spatial_matrix_t(dtype=float32)):
     pass
 
-class spatial_matrixf(spatial_matrix_t(type=float32)):
+class spatial_matrixf(spatial_matrix_t(dtype=float32)):
     pass
 
-class spatial_matrixd(spatial_matrix_t(type=float64)):
+class spatial_matrixd(spatial_matrix_t(dtype=float64)):
     pass
 
 

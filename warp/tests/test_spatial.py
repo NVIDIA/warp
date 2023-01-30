@@ -37,8 +37,8 @@ def test_spatial_vector_constructors(test, device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.vec(length=3,type=wptype)
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    vec3 = wp.vec(length=3, dtype=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
     
     def check_spatial_vector_component_constructor(
         input: wp.array(dtype=wptype),
@@ -119,7 +119,7 @@ def test_spatial_vector_indexing(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
     
     def check_spatial_vector_indexing(
         input: wp.array(dtype=spatial_vector),
@@ -165,7 +165,7 @@ def test_spatial_vector_scalar_multiplication(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
 
     def check_spatial_vector_scalar_mul(
         s: wp.array(dtype=wptype),
@@ -222,7 +222,7 @@ def test_spatial_vector_add_sub(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
 
     def check_spatial_vector_add_sub(
         q: wp.array(dtype=spatial_vector),
@@ -287,7 +287,7 @@ def test_spatial_dot(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
 
     def check_spatial_dot(
         s: wp.array(dtype=spatial_vector),
@@ -326,7 +326,7 @@ def test_spatial_cross(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
 
     def check_spatial_cross(
         s: wp.array(dtype=spatial_vector),
@@ -458,7 +458,7 @@ def test_spatial_top_bottom(test, device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
 
     def check_spatial_top_bottom(
         s: wp.array(dtype=spatial_vector),
@@ -507,9 +507,9 @@ def test_transform_constructors(test, device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.vec(length=3,type=wptype)
-    transform = wp.types.transform_t(type=wptype)
-    quat = wp.quaternion(type=wptype)
+    vec3 = wp.vec(length=3, dtype=wptype)
+    transform = wp.types.transform_t(dtype=wptype)
+    quat = wp.quaternion(dtype=wptype)
     
     def check_transform_constructor(
         input: wp.array(dtype=wptype),
@@ -562,7 +562,7 @@ def test_transform_indexing(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    transform = wp.types.transform_t(type=wptype)
+    transform = wp.types.transform_t(dtype=wptype)
     
     def check_transform_indexing(
         input: wp.array(dtype=transform),
@@ -608,7 +608,7 @@ def test_transform_scalar_multiplication(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    transform = wp.types.transform_t(type=wptype)
+    transform = wp.types.transform_t(dtype=wptype)
 
     def check_transform_scalar_mul(
         s: wp.array(dtype=wptype),
@@ -666,7 +666,7 @@ def test_transform_add_sub(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    transform = wp.types.transform_t(type=wptype)
+    transform = wp.types.transform_t(dtype=wptype)
 
     def check_transform_add_sub(
         q: wp.array(dtype=transform),
@@ -731,7 +731,7 @@ def test_transform_get_trans_rot(test, device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    transform = wp.types.transform_t(type=wptype)
+    transform = wp.types.transform_t(dtype=wptype)
 
     def check_transform_get_trans_rot(
         s: wp.array(dtype=transform),
@@ -782,7 +782,7 @@ def test_transform_multiply(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    transform = wp.types.transform_t(type=wptype)
+    transform = wp.types.transform_t(dtype=wptype)
 
     def check_transform_multiply(
         a: wp.array(dtype=transform),
@@ -869,7 +869,7 @@ def test_transform_inverse(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    transform = wp.types.transform_t(type=wptype)
+    transform = wp.types.transform_t(dtype=wptype)
 
     def check_transform_inverse(
         a: wp.array(dtype=transform),
@@ -942,8 +942,8 @@ def test_transform_point_vector(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    transform = wp.types.transform_t(type=wptype)
-    vec3 = wp.vec(length=3,type=wptype)
+    transform = wp.types.transform_t(dtype=wptype)
+    vec3 = wp.vec(length=3, dtype=wptype)
 
     def check_transform_point_vector(
         t: wp.array(dtype=transform),
@@ -1030,7 +1030,7 @@ def test_spatial_matrix_constructors(test, device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_matrix = wp.types.spatial_matrix_t(type=wptype)
+    spatial_matrix = wp.types.spatial_matrix_t(dtype=wptype)
     
     def check_spatial_matrix_constructor(
         input: wp.array(dtype=wptype),
@@ -1091,7 +1091,7 @@ def test_spatial_matrix_indexing(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_matrix = wp.types.spatial_matrix_t(type=wptype)
+    spatial_matrix = wp.types.spatial_matrix_t(dtype=wptype)
     
     def check_spatial_matrix_indexing(
         input: wp.array(dtype=spatial_matrix),
@@ -1140,7 +1140,7 @@ def test_spatial_matrix_scalar_multiplication(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_matrix = wp.types.spatial_matrix_t(type=wptype)
+    spatial_matrix = wp.types.spatial_matrix_t(dtype=wptype)
 
     def check_spatial_matrix_scalar_mul(
         s: wp.array(dtype=wptype),
@@ -1203,7 +1203,7 @@ def test_spatial_matrix_add_sub(test,device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_matrix = wp.types.spatial_matrix_t(type=wptype)
+    spatial_matrix = wp.types.spatial_matrix_t(dtype=wptype)
 
     def check_spatial_matrix_add_sub(
         q: wp.array(dtype=spatial_matrix),
@@ -1276,8 +1276,8 @@ def test_spatial_matvec_multiplication(test,device,dtype):
     }.get(dtype,0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_matrix = wp.types.spatial_matrix_t(type=wptype)
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    spatial_matrix = wp.types.spatial_matrix_t(dtype=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1332,7 +1332,7 @@ def test_spatial_matmat_multiplication(test,device,dtype):
     }.get(dtype,0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_matrix = wp.types.spatial_matrix_t(type=wptype)
+    spatial_matrix = wp.types.spatial_matrix_t(dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1393,7 +1393,7 @@ def test_spatial_mat_transpose(test,device,dtype):
     }.get(dtype,0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_matrix = wp.types.spatial_matrix_t(type=wptype)
+    spatial_matrix = wp.types.spatial_matrix_t(dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1446,7 +1446,7 @@ def test_spatial_outer_product(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    spatial_vector = wp.types.spatial_vector_t(type=wptype)
+    spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1512,7 +1512,7 @@ def test_spatial_adjoint(test,device,dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat3 = wp.mat(shape=(3,3),type=wptype)
+    mat3 = wp.mat(shape=(3,3), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
