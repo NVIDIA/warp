@@ -616,7 +616,7 @@ def register(parent):
                 if d.is_cuda:
                     torch_compatible_cuda_devices.append(d)
             except Exception as e:
-                print(f"Skipping Torch tests on device '{d}' due to exception: {e}", file=sys.stderr)
+                print(f"Skipping Torch tests on device '{d}' due to exception: {e}")
 
         if torch_compatible_devices:
             add_function_test(TestTorch, "test_from_torch", test_from_torch, devices=torch_compatible_devices)
@@ -639,7 +639,7 @@ def register(parent):
             add_function_test(TestTorch, "test_torch_mgpu_interop", test_torch_mgpu_interop)
 
     except Exception as e:
-        print(f"Skipping Torch tests due to exception: {e}", file=sys.stderr)
+        print(f"Skipping Torch tests due to exception: {e}")
 
     return TestTorch
 

@@ -306,14 +306,14 @@ def register(parent):
                 t += 1
                 torch_compatible_devices.append(d)
             except Exception as e:
-                print(f"Skipping Torch DLPack tests on device '{d}' due to exception: {e}", file=sys.stderr)
+                print(f"Skipping Torch DLPack tests on device '{d}' due to exception: {e}")
 
         if torch_compatible_devices:
             add_function_test(TestDLPack, "test_dlpack_warp_to_torch", test_dlpack_warp_to_torch, devices=torch_compatible_devices)
             add_function_test(TestDLPack, "test_dlpack_torch_to_warp", test_dlpack_torch_to_warp, devices=torch_compatible_devices)
 
     except Exception as e:
-        print(f"Skipping Torch DLPack tests due to exception: {e}", file=sys.stderr)
+        print(f"Skipping Torch DLPack tests due to exception: {e}")
 
     # jax interop via dlpack
     try:
@@ -330,14 +330,14 @@ def register(parent):
                     j += 1
                 jax_compatible_devices.append(d)
             except Exception as e:
-                print(f"Skipping Jax DLPack tests on device '{d}' due to exception: {e}", file=sys.stderr)
+                print(f"Skipping Jax DLPack tests on device '{d}' due to exception: {e}")
 
         if jax_compatible_devices:
             add_function_test(TestDLPack, "test_dlpack_warp_to_jax", test_dlpack_warp_to_jax, devices=jax_compatible_devices)
             add_function_test(TestDLPack, "test_dlpack_jax_to_warp", test_dlpack_jax_to_warp, devices=jax_compatible_devices)
 
     except Exception as e:
-        print(f"Skipping Jax DLPack tests due to exception: {e}", file=sys.stderr)
+        print(f"Skipping Jax DLPack tests due to exception: {e}")
 
     return TestDLPack
 
