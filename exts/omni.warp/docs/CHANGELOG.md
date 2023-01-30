@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.6.3] - 2023-01-31
+
+- Add DLPack utilities, see `wp.from_dlpack()`, `wp.to_dlpack()`
+- Add Jax utilities, see `wp.from_jax()`, `wp.to_jax()`, `wp.device_from_jax()`, `wp.device_to_jax()`
+- Fix for Linux Kit extensions OM-80132, OM-80133
+
 ## [0.6.2] - 2023-01-19
 
 - Updated `wp.from_torch()` to support more data types
