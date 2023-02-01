@@ -8,7 +8,6 @@
 import ctypes 
 import hashlib
 import inspect
-import itertools
 import struct
 import zlib
 import numpy as np
@@ -20,6 +19,9 @@ from typing import Generic
 from typing import List
 
 import warp
+
+Scalar = TypeVar('Scalar')
+Float = TypeVar('Float')
 
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels
@@ -46,7 +48,7 @@ class constant:
         elif isinstance(x, tuple(scalar_types)):
             p = ctypes.pointer(x._type_(x.value))
             constant._hash.update(p.contents)
-        elif isinstance(x, tuple(vector_types)):
+        elif isinstance(x, ctypes.Array):
             constant._hash.update(bytes(x))
         else:
             raise RuntimeError(f"Invalid constant type: {type(x)}")
@@ -59,13 +61,31 @@ class constant:
 
 #----------------------
 # built-in types
-def vector(length, type):
+def vector(length, dtype):
         
     class vector_t(ctypes.Array):
 
-        _length_ = length
-        _shape_ = (length, )
-        _type_ = type
+        # ctypes.Array data for length, shape and c type:
+        _length_ = 0 if length is Any else length
+        _shape_ = (_length_, )
+        _type_ = ctypes.c_float if dtype in [Scalar,Float] else dtype._type_
+
+        # warp scalar type:
+        _wp_scalar_type_ = dtype
+        
+        def __init__(self, *args):
+            if self._wp_scalar_type_ == float16:
+                
+                # special case for float16 type: in this case, data is stored
+                # as uint16 but it's actually half precision floating point
+                # data. This means we need to convert each of the arguments
+                # to uint16s containing half float bits before storing them in
+                # the array:
+
+                from warp.context import runtime
+                super().__init__(*[runtime.core.float_to_half_bits(x) for x in args])
+            else:
+                super().__init__(*args)
         
         def __add__(self, y):
             return warp.add(self, y)
@@ -106,17 +126,42 @@ def vector(length, type):
 
     return vector_t
 
+def vec(length=Any, dtype=Scalar):
+    ret = vector(length=length, dtype=dtype)
+    
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [length, dtype]
+    ret._wp_generic_type_str_ = "vec"
 
-def matrix(shape, type):
+    return ret
+
+def matrix(shape, dtype):
         
     assert(len(shape) == 2)
 
     class matrix_t(ctypes.Array):
 
-        _length_ = shape[0]*shape[1]
-        _shape_ = shape
-        _type_ = type        
-        
+        _length_ = 0 if shape[0] == Any or shape[1] == Any else shape[0]*shape[1]
+        _shape_ = (0,0) if _length_ == 0 else shape
+        _type_ = ctypes.c_float if dtype in [Scalar,Float] else dtype._type_
+
+        # warp scalar type:
+        _wp_scalar_type_ = dtype
+
+        def __init__(self, *args):
+            if self._wp_scalar_type_ == float16:
+                
+                # special case for float16 type: in this case, data is stored
+                # as uint16 but it's actually half precision floating point
+                # data. This means we need to convert each of the arguments
+                # to uint16s containing half float bits before storing them in
+                # the array:
+
+                from warp.context import runtime
+                super().__init__(*[runtime.core.float_to_half_bits(x) for x in args])
+            else:
+                super().__init__(*args)
+
         def __add__(self, y):
             return warp.add(self, y)
 
@@ -147,7 +192,7 @@ def matrix(shape, type):
         def _row(self, r):
             row_start = r*self._shape_[1]
             row_end = row_start + self._shape_[1]
-            row_type = vector(self._shape_[1], self._type_)
+            row_type = vec(self._shape_[1], self._wp_scalar_type_)
             row_val = row_type(*super().__getitem__(slice(row_start,row_end)))
 
             return row_val
@@ -173,50 +218,15 @@ def matrix(shape, type):
 
     return matrix_t
 
+def mat(shape=(Any,Any), dtype=Scalar):
+    ret = matrix(shape=shape, dtype=dtype)
 
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [shape[0], shape[1], dtype]
+    ret._wp_generic_type_str_ = "mat"
 
-class vec2(vector(length=2, type=ctypes.c_float)):
-    pass
-    
-class vec3(vector(length=3, type=ctypes.c_float)):
-    pass
+    return ret
 
-class vec4(vector(length=4, type=ctypes.c_float)):
-    pass
-
-class quat(vector(length=4, type=ctypes.c_float)):
-    pass
-    
-class mat22(matrix(shape=(2,2), type=ctypes.c_float)):
-    pass
-    
-class mat33(matrix(shape=(3,3), type=ctypes.c_float)):
-    pass
-
-class mat44(matrix(shape=(4,4), type=ctypes.c_float)):
-    pass
-
-class spatial_vector(vector(length=6, type=ctypes.c_float)):
-    pass
-
-class spatial_matrix(matrix(shape=(6,6), type=ctypes.c_float)):
-    pass
-
-class transform(vector(length=7, type=ctypes.c_float)):
-    
-    def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
-        super().__init__()
-
-        self[0:3] = vec3(*p)
-        self[3:7] = quat(*q)
-
-    @property 
-    def p(self):
-        return self[0:3]
-
-    @property 
-    def q(self):
-        return self[3:7]
 
 class void:
 
@@ -311,10 +321,201 @@ class uint64:
     def __init__(self, x=0):
         self.value = x
 
+def quaternion(dtype=Any):
+    ret = vector(length=4, dtype=dtype)
+    
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [dtype]
+    ret._wp_generic_type_str_ = "quaternion"
 
-compute_types = [int32, float32]
+    return ret
+
+class quath(quaternion(dtype=float16)):
+    pass
+
+class quat(quaternion(dtype=float32)):
+    pass
+
+class quatf(quaternion(dtype=float32)):
+    pass
+
+class quatd(quaternion(dtype=float64)):
+    pass
+
+def transform_t(dtype=Any):
+
+    class transform_class(vector(length=7, dtype=dtype)):
+        
+        _wp_type_params_ = [dtype]
+        _wp_generic_type_str_ = "transform_t"
+
+        def __init__(self, p=(0.0, 0.0, 0.0), q=(0.0, 0.0, 0.0, 1.0)):
+            super().__init__()
+
+            self[0:3] = vector(length=3,dtype=dtype)(*p)
+            self[3:7] = quaternion(dtype=dtype)(*q)
+
+        @property 
+        def p(self):
+            return self[0:3]
+
+        @property 
+        def q(self):
+            return self[3:7]
+
+    return transform_class
+
+class transformh(transform_t(dtype=float16)):
+    pass
+
+class transform(transform_t(dtype=float32)):
+    pass
+
+class transformf(transform_t(dtype=float32)):
+    pass
+
+class transformd(transform_t(dtype=float64)):
+    pass
+
+class vec2h(vec(length=2, dtype=float16)):
+    pass
+
+class vec3h(vec(length=3, dtype=float16)):
+    pass
+
+class vec4h(vec(length=4, dtype=float16)):
+    pass
+
+class vec2(vec(length=2, dtype=float32)):
+    pass
+
+class vec3(vec(length=3, dtype=float32)):
+    pass
+
+class vec4(vec(length=4, dtype=float32)):
+    pass
+
+class vec2f(vec(length=2, dtype=float32)):
+    pass
+
+class vec3f(vec(length=3, dtype=float32)):
+    pass
+
+class vec4f(vec(length=4, dtype=float32)):
+    pass
+
+class vec2d(vec(length=2, dtype=float64)):
+    pass
+
+class vec3d(vec(length=3, dtype=float64)):
+    pass
+
+class vec4d(vec(length=4, dtype=float64)):
+    pass
+
+class vec2ub(vec(length=2, dtype=uint8)):
+    pass
+    
+class vec3ub(vec(length=3, dtype=uint8)):
+    pass
+
+class vec4ub(vec(length=4, dtype=uint8)):
+    pass
+    
+class mat22h(mat(shape=(2,2), dtype=float16)):
+    pass
+    
+class mat33h(mat(shape=(3,3), dtype=float16)):
+    pass
+
+class mat44h(mat(shape=(4,4), dtype=float16)):
+    pass
+    
+class mat22(mat(shape=(2,2), dtype=float32)):
+    pass
+    
+class mat33(mat(shape=(3,3), dtype=float32)):
+    pass
+
+class mat44(mat(shape=(4,4), dtype=float32)):
+    pass
+    
+class mat22f(mat(shape=(2,2), dtype=float32)):
+    pass
+    
+class mat33f(mat(shape=(3,3), dtype=float32)):
+    pass
+
+class mat44f(mat(shape=(4,4), dtype=float32)):
+    pass
+    
+class mat22d(mat(shape=(2,2), dtype=float64)):
+    pass
+    
+class mat33d(mat(shape=(3,3), dtype=float64)):
+    pass
+
+class mat44d(mat(shape=(4,4), dtype=float64)):
+    pass
+
+
+def spatial_vector_t(dtype=Any):
+    ret = vector(length=6, dtype=dtype)
+    
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [dtype]
+    ret._wp_generic_type_str_ = "spatial_vector_t"
+
+    return ret
+
+class spatial_vectorh(spatial_vector_t(dtype=float16)):
+    pass
+
+class spatial_vector(spatial_vector_t(dtype=float32)):
+    pass
+
+class spatial_vectorf(spatial_vector_t(dtype=float32)):
+    pass
+
+class spatial_vectord(spatial_vector_t(dtype=float64)):
+    pass
+
+def spatial_matrix_t(dtype=Any):
+    ret = matrix(shape=(6,6), dtype=dtype)
+    
+    # used in type checking and when writing out c++ code for constructors:
+    ret._wp_type_params_ = [dtype]
+    ret._wp_generic_type_str_ = "spatial_matrix_t"
+
+    return ret
+
+class spatial_matrixh(spatial_matrix_t(dtype=float16)):
+    pass
+
+class spatial_matrix(spatial_matrix_t(dtype=float32)):
+    pass
+
+class spatial_matrixf(spatial_matrix_t(dtype=float32)):
+    pass
+
+class spatial_matrixd(spatial_matrix_t(dtype=float64)):
+    pass
+
+
 scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64]
-vector_types = [vec2, vec3, vec4, mat22, mat33, mat44, quat, transform, spatial_vector, spatial_matrix]
+float_types = [float16, float32, float64]
+vector_types = [
+    vec2ub, vec2h, vec2f, vec2d, vec2,
+    vec3ub, vec3h, vec3f, vec3d, vec3,
+    vec4ub, vec4h, vec4f, vec4d, vec4,
+    mat22h, mat22f, mat22d, mat22,
+    mat33h, mat33f, mat33d, mat33,
+    mat44h, mat44f, mat44d, mat44,
+    quath, quatf, quatd, quat,
+    transformh, transformf, transformd, transform,
+    spatial_vectorh, spatial_vectorf, spatial_vectord, spatial_vector,
+    spatial_matrixh, spatial_matrixf, spatial_matrixd, spatial_matrix
+]
 
 
 np_dtype_to_warp_type = {
@@ -324,7 +525,6 @@ np_dtype_to_warp_type = {
     np.dtype(np.uint16): uint16,
     np.dtype(np.int32): int32,
     np.dtype(np.int64): int64,
-    np.dtype(np.uint8): uint8,
     np.dtype(np.uint32): uint32,
     np.dtype(np.uint64): uint64,
     np.dtype(np.byte): int8,
@@ -431,7 +631,9 @@ def type_length(dtype):
         return dtype._length_
 
 def type_size_in_bytes(dtype):
-    if (dtype == float or dtype == int or dtype == ctypes.c_float or dtype == ctypes.c_int32):
+    if dtype.__module__ == "ctypes":
+        return ctypes.sizeof(dtype)
+    elif (dtype == float or dtype == int ):
         return 4
     elif hasattr(dtype, "_type_"):
         return getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
@@ -471,8 +673,7 @@ def type_typestr(dtype):
     elif dtype == uint64:
         return "<u8"
     elif issubclass(dtype, ctypes.Array):
-        # vector types all currently float type
-        return "<f4"
+        return type_typestr(dtype._wp_scalar_type_)
     else:
         raise Exception("Unknown ctype")
 
@@ -496,7 +697,7 @@ def type_is_float(t):
     else:
         return False
 
-def types_equal(a, b):
+def types_equal(a, b, match_generic=False):
     
     # convert to canonical types
     if (a == float):
@@ -508,11 +709,32 @@ def types_equal(a, b):
         b = float32
     if (b == int):
         b = int32
+
+    def are_equal(p1,p2):
+    
+        if match_generic:
+            if p1 == Any or p2 == Any:
+                return True
+            if p1 == Scalar and p2 in scalar_types:
+                return True
+            if p2 == Scalar and p1 in scalar_types:
+                return True
+            if p1 == Scalar and p2 == Scalar:
+                return True
+            if p1 == Float and p2 in float_types:
+                return True
+            if p2 == Float and p1 in float_types:
+                return True
+            if p1 == Float and p2 == Float:
+                return True
+        return p1 == p2
         
+    if hasattr(a,"_wp_generic_type_str_") and hasattr(b,"_wp_generic_type_str_") and a._wp_generic_type_str_ == b._wp_generic_type_str_:
+        return all( [are_equal(p1,p2) for p1,p2 in zip(a._wp_type_params_, b._wp_type_params_)] )
     if isinstance(a, array) and isinstance(b, array):
         return True
     else:
-        return a == b
+        return are_equal(a,b)
 
 def strides_from_shape(shape:Tuple, dtype):
 
@@ -723,7 +945,7 @@ class array (Generic[T]):
             self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
 
         # store flat shape (including type shape)
-        if dtype in vector_types:
+        if dtype not in [Any,Scalar,Float] and issubclass(dtype,ctypes.Array):
             # vector type, flatten the dimensions into one tuple
             arr_shape = (*self.shape, *self.dtype._shape_)
             dtype_strides =  strides_from_shape(self.dtype._shape_, self.dtype._type_) 
@@ -851,15 +1073,70 @@ class array (Generic[T]):
 
         if self.device is not None and self.ptr is not None:
 
-            # convert value to array type
-            src_type = type_ctype(self.dtype)
-            src_value = src_type(value)
+            if isinstance(value, ctypes.Array):
 
-            # cast to a 4-byte integer for memset
-            dest_ptr = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int))
-            dest_value = dest_ptr.contents
+                # in this case we're filling the array with a vector or
+                # something similar, eg arr.fill_(wp.vec3(1.0,2.0,3.0)).
 
-            self.device.memset(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
+                # check input type:
+                valueTypeOk = False
+                if issubclass( self.dtype, ctypes.Array ):
+                    valueTypeOk = (self.dtype._length_ == value._length_) and (self.dtype._type_ == value._type_)
+                if not valueTypeOk:
+                    raise RuntimeError(f"wp.array has Array type elements (eg vec, mat etc). Value type must match element type in wp.array.fill_() method")
+
+                src = ctypes.cast(value, ctypes.POINTER(ctypes.c_void_p))
+
+                srcsize = value._length_*ctypes.sizeof(value._type_)
+                dst = ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int))
+                self.device.memtile(dst, src, srcsize, self.size)
+
+            else:
+
+                # In this case we're just filling the array with a scalar,
+                # eg arr.fill_(1.0). If the elements are scalars, we need to
+                # set them all to "value", otherwise we need to set all the
+                # components of all the vector elements to "value":
+                
+                # work out array element type:
+                elem_type = self.dtype._type_ if issubclass( self.dtype, ctypes.Array ) else type_ctype(self.dtype)
+                elem_size = ctypes.sizeof(elem_type)
+
+                # convert value to array type
+                # we need a special case for float16 because it's annoying...
+                if types_equal(self.dtype, float16) or ( hasattr(self.dtype, "_wp_scalar_type_") and types_equal(self.dtype._wp_scalar_type_, float16) ):
+                    # special case for float16:
+                    # If you just do elem_type(value), it'll just convert "value"
+                    # to uint16 then interpret the bits as float16, which will
+                    # mess the data up. Instead, we use float_to_half_bits() to
+                    # convert "value" to a float16 and return its bits in a uint16:
+
+                    from warp.context import runtime
+                    src_value = elem_type(runtime.core.float_to_half_bits( ctypes.c_float(value) ))
+                else:
+                    src_value = elem_type(value)
+
+                # use memset for these special cases because it's quicker (probably...):
+                total_bytes = self.size*type_size_in_bytes(self.dtype)
+                if elem_size in [1,2,4] and (total_bytes % 4 == 0):
+                    # interpret as a 4 byte integer:
+                    dest_value = ctypes.cast(ctypes.pointer(src_value), ctypes.POINTER(ctypes.c_int)).contents
+                    if elem_size == 1:
+                        # need to repeat the bits, otherwise we'll get an array interleaved with zeros:
+                        dest_value.value = dest_value.value & 0x000000ff
+                        dest_value.value = dest_value.value + (dest_value.value << 8) + (dest_value.value << 16) + (dest_value.value << 24)
+                    elif elem_size == 2:
+                        # need to repeat the bits, otherwise we'll get an array interleaved with zeros:
+                        dest_value.value = dest_value.value & 0x0000ffff
+                        dest_value.value = dest_value.value + (dest_value.value << 16)
+
+                    self.device.memset(ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int)), dest_value, ctypes.c_size_t(total_bytes))
+                else:
+
+                    num_elems = self.size * self.dtype._length_ if issubclass( self.dtype, ctypes.Array ) else self.size
+                    dst = ctypes.cast(self.ptr,ctypes.POINTER(ctypes.c_int))
+                    self.device.memtile(dst, ctypes.pointer(src_value), elem_size, num_elems)
+
 
     # equivalent to wrapping src data in an array and copying to self
     def assign(self, src):

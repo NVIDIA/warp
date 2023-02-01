@@ -112,37 +112,37 @@ inline CUDA_CALLABLE float dot_grid_gradient_1d_gradient(uint32 state, int ix, f
 inline CUDA_CALLABLE float dot_grid_gradient_2d(uint32 state, int ix, int iy, float dx, float dy)
 {
     vec2 gradient = random_gradient_2d(state, ix, iy);
-    return (dx*gradient.x + dy*gradient.y);
+    return (dx*gradient[0] + dy*gradient[1]);
 }
 
 inline CUDA_CALLABLE float dot_grid_gradient_2d_gradient(uint32 state, int ix, int iy, float d_dx, float d_dy)
 {
     vec2 gradient = random_gradient_2d(state, ix, iy);
-    return (d_dx*gradient.x + d_dy*gradient.y);
+    return (d_dx*gradient[0] + d_dy*gradient[1]);
 }
 
 inline CUDA_CALLABLE float dot_grid_gradient_3d(uint32 state, int ix, int iy, int iz, float dx, float dy, float dz)
 {
     vec3 gradient = random_gradient_3d(state, ix, iy, iz);
-    return (dx*gradient.x + dy*gradient.y + dz*gradient.z);
+    return (dx*gradient[0] + dy*gradient[1] + dz*gradient[2]);
 }
 
 inline CUDA_CALLABLE float dot_grid_gradient_3d_gradient(uint32 state, int ix, int iy, int iz, float d_dx, float d_dy, float d_dz)
 {
     vec3 gradient = random_gradient_3d(state, ix, iy, iz);
-    return (d_dx*gradient.x + d_dy*gradient.y + d_dz*gradient.z);
+    return (d_dx*gradient[0] + d_dy*gradient[1] + d_dz*gradient[2]);
 }
 
 inline CUDA_CALLABLE float dot_grid_gradient_4d(uint32 state, int ix, int iy, int iz, int it, float dx, float dy, float dz, float dt)
 {
     vec4 gradient = random_gradient_4d(state, ix, iy, iz, it);
-    return (dx*gradient.x + dy*gradient.y + dz*gradient.z + dt*gradient.w);
+    return (dx*gradient[0] + dy*gradient[1] + dz*gradient[2] + dt*gradient[3]);
 }
 
 inline CUDA_CALLABLE float dot_grid_gradient_4d_gradient(uint32 state, int ix, int iy, int iz, int it, float d_dx, float d_dy, float d_dz, float d_dt)
 {
     vec4 gradient = random_gradient_4d(state, ix, iy, iz, it);
-    return (d_dx*gradient.x + d_dy*gradient.y + d_dz*gradient.z + d_dt*gradient.w);    
+    return (d_dx*gradient[0] + d_dy*gradient[1] + d_dz*gradient[2] + d_dt*gradient[3]);    
 }
 
 inline CUDA_CALLABLE float noise_1d(uint32 state, int x0, int x1, float dx)
@@ -581,11 +581,11 @@ inline CUDA_CALLABLE void adj_noise(uint32 state, float x, uint32& adj_state, fl
 
 inline CUDA_CALLABLE float noise(uint32 state, const vec2& xy)
 {
-    float dx = xy.x - floor(xy.x);
-    float dy = xy.y - floor(xy.y);
+    float dx = xy[0] - floor(xy[0]);
+    float dy = xy[1] - floor(xy[1]);
 
-    int x0 = (int)floor(xy.x); 
-    int y0 = (int)floor(xy.y); 
+    int x0 = (int)floor(xy[0]); 
+    int y0 = (int)floor(xy[1]); 
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
@@ -595,30 +595,30 @@ inline CUDA_CALLABLE float noise(uint32 state, const vec2& xy)
 
 inline CUDA_CALLABLE void adj_noise(uint32 state, const vec2& xy, uint32& adj_state, vec2& adj_xy, const float adj_ret)
 {
-    float dx = xy.x - floor(xy.x);
-    float dy = xy.y - floor(xy.y);
+    float dx = xy[0] - floor(xy[0]);
+    float dy = xy[1] - floor(xy[1]);
 
-    int x0 = (int)floor(xy.x); 
-    int y0 = (int)floor(xy.y); 
+    int x0 = (int)floor(xy[0]); 
+    int y0 = (int)floor(xy[1]); 
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
 
     vec2 gradient = noise_2d_gradient(state, x0, y0, x1, y1, dx, dy);
 
-    adj_xy.x += gradient.x * adj_ret;
-    adj_xy.y += gradient.y * adj_ret;
+    adj_xy[0] += gradient[0] * adj_ret;
+    adj_xy[1] += gradient[1] * adj_ret;
 }
 
 inline CUDA_CALLABLE float noise(uint32 state, const vec3& xyz)
 {
-    float dx = xyz.x - floor(xyz.x);
-    float dy = xyz.y - floor(xyz.y);
-    float dz = xyz.z - floor(xyz.z);
+    float dx = xyz[0] - floor(xyz[0]);
+    float dy = xyz[1] - floor(xyz[1]);
+    float dz = xyz[2] - floor(xyz[2]);
 
-    int x0 = (int)floor(xyz.x);
-    int y0 = (int)floor(xyz.y);
-    int z0 = (int)floor(xyz.z);
+    int x0 = (int)floor(xyz[0]);
+    int y0 = (int)floor(xyz[1]);
+    int z0 = (int)floor(xyz[2]);
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
@@ -629,35 +629,35 @@ inline CUDA_CALLABLE float noise(uint32 state, const vec3& xyz)
 
 inline CUDA_CALLABLE void adj_noise(uint32 state, const vec3& xyz, uint32& adj_state, vec3& adj_xyz, const float adj_ret)
 {
-    float dx = xyz.x - floor(xyz.x);
-    float dy = xyz.y - floor(xyz.y);
-    float dz = xyz.z - floor(xyz.z);
+    float dx = xyz[0] - floor(xyz[0]);
+    float dy = xyz[1] - floor(xyz[1]);
+    float dz = xyz[2] - floor(xyz[2]);
 
-    int x0 = (int)floor(xyz.x);
-    int y0 = (int)floor(xyz.y);
-    int z0 = (int)floor(xyz.z);
+    int x0 = (int)floor(xyz[0]);
+    int y0 = (int)floor(xyz[1]);
+    int z0 = (int)floor(xyz[2]);
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
     int z1 = z0 + 1;
 
     vec3 gradient = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
-    adj_xyz.x += gradient.x * adj_ret;
-    adj_xyz.y += gradient.y * adj_ret;
-    adj_xyz.z += gradient.z * adj_ret;
+    adj_xyz[0] += gradient[0] * adj_ret;
+    adj_xyz[1] += gradient[1] * adj_ret;
+    adj_xyz[2] += gradient[2] * adj_ret;
 }
 
 inline CUDA_CALLABLE float noise(uint32 state, const vec4& xyzt)
 {
-    float dx = xyzt.x - floor(xyzt.x);
-    float dy = xyzt.y - floor(xyzt.y);
-    float dz = xyzt.z - floor(xyzt.z);
-    float dt = xyzt.w - floor(xyzt.w);
+    float dx = xyzt[0] - floor(xyzt[0]);
+    float dy = xyzt[1] - floor(xyzt[1]);
+    float dz = xyzt[2] - floor(xyzt[2]);
+    float dt = xyzt[3] - floor(xyzt[3]);
 
-    int x0 = (int)floor(xyzt.x);
-    int y0 = (int)floor(xyzt.y);
-    int z0 = (int)floor(xyzt.z);
-    int t0 = (int)floor(xyzt.w);
+    int x0 = (int)floor(xyzt[0]);
+    int y0 = (int)floor(xyzt[1]);
+    int z0 = (int)floor(xyzt[2]);
+    int t0 = (int)floor(xyzt[3]);
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
@@ -669,15 +669,15 @@ inline CUDA_CALLABLE float noise(uint32 state, const vec4& xyzt)
 
 inline CUDA_CALLABLE void adj_noise(uint32 state, const vec4& xyzt, uint32& adj_state, vec4& adj_xyzt, const float adj_ret)
 {
-    float dx = xyzt.x - floor(xyzt.x);
-    float dy = xyzt.y - floor(xyzt.y);
-    float dz = xyzt.z - floor(xyzt.z);
-    float dt = xyzt.w - floor(xyzt.w);
+    float dx = xyzt[0] - floor(xyzt[0]);
+    float dy = xyzt[1] - floor(xyzt[1]);
+    float dz = xyzt[2] - floor(xyzt[2]);
+    float dt = xyzt[3] - floor(xyzt[3]);
 
-    int x0 = (int)floor(xyzt.x);
-    int y0 = (int)floor(xyzt.y);
-    int z0 = (int)floor(xyzt.z);
-    int t0 = (int)floor(xyzt.w);
+    int x0 = (int)floor(xyzt[0]);
+    int y0 = (int)floor(xyzt[1]);
+    int z0 = (int)floor(xyzt[2]);
+    int t0 = (int)floor(xyzt[3]);
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
@@ -686,10 +686,10 @@ inline CUDA_CALLABLE void adj_noise(uint32 state, const vec4& xyzt, uint32& adj_
 
     vec4 gradient = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
 
-    adj_xyzt.x += gradient.x * adj_ret;
-    adj_xyzt.y += gradient.y * adj_ret;
-    adj_xyzt.z += gradient.z * adj_ret;
-    adj_xyzt.w += gradient.w * adj_ret;
+    adj_xyzt[0] += gradient[0] * adj_ret;
+    adj_xyzt[1] += gradient[1] * adj_ret;
+    adj_xyzt[2] += gradient[2] * adj_ret;
+    adj_xyzt[3] += gradient[3] * adj_ret;
 }
 
 // periodic Perlin noise
@@ -717,11 +717,11 @@ inline CUDA_CALLABLE void adj_pnoise(uint32 state, float x, int px, uint32& adj_
 
 inline CUDA_CALLABLE float pnoise(uint32 state, const vec2& xy, int px, int py)
 {
-    float dx = xy.x - floor(xy.x);
-    float dy = xy.y - floor(xy.y);
+    float dx = xy[0] - floor(xy[0]);
+    float dy = xy[1] - floor(xy[1]);
 
-    int x0 = mod(((int)floor(xy.x)), px); 
-    int y0 = mod(((int)floor(xy.y)), py); 
+    int x0 = mod(((int)floor(xy[0])), px); 
+    int y0 = mod(((int)floor(xy[1])), py); 
 
     int x1 = mod((x0 + 1), px);
     int y1 = mod((y0 + 1), py);
@@ -731,30 +731,30 @@ inline CUDA_CALLABLE float pnoise(uint32 state, const vec2& xy, int px, int py)
 
 inline CUDA_CALLABLE void adj_pnoise(uint32 state, const vec2& xy, int px, int py, uint32& adj_state, vec2& adj_xy, int& adj_px, int& adj_py, const float adj_ret)
 {
-    float dx = xy.x - floor(xy.x);
-    float dy = xy.y - floor(xy.y);
+    float dx = xy[0] - floor(xy[0]);
+    float dy = xy[1] - floor(xy[1]);
 
-    int x0 = mod(((int)floor(xy.x)), px); 
-    int y0 = mod(((int)floor(xy.y)), py); 
+    int x0 = mod(((int)floor(xy[0])), px); 
+    int y0 = mod(((int)floor(xy[1])), py); 
 
     int x1 = mod((x0 + 1), px);
     int y1 = mod((y0 + 1), py);
 
     vec2 gradient = noise_2d_gradient(state, x0, y0, x1, y1, dx, dy);
 
-    adj_xy.x += gradient.x * adj_ret;
-    adj_xy.y += gradient.y * adj_ret;
+    adj_xy[0] += gradient[0] * adj_ret;
+    adj_xy[1] += gradient[1] * adj_ret;
 }
 
 inline CUDA_CALLABLE float pnoise(uint32 state, const vec3& xyz, int px, int py, int pz)
 {
-    float dx = xyz.x - floor(xyz.x);
-    float dy = xyz.y - floor(xyz.y);
-    float dz = xyz.z - floor(xyz.z);
+    float dx = xyz[0] - floor(xyz[0]);
+    float dy = xyz[1] - floor(xyz[1]);
+    float dz = xyz[2] - floor(xyz[2]);
 
-    int x0 = mod(((int)floor(xyz.x)), px); 
-    int y0 = mod(((int)floor(xyz.y)), py); 
-    int z0 = mod(((int)floor(xyz.z)), pz); 
+    int x0 = mod(((int)floor(xyz[0])), px); 
+    int y0 = mod(((int)floor(xyz[1])), py); 
+    int z0 = mod(((int)floor(xyz[2])), pz); 
 
     int x1 = mod((x0 + 1), px);
     int y1 = mod((y0 + 1), py);
@@ -765,35 +765,35 @@ inline CUDA_CALLABLE float pnoise(uint32 state, const vec3& xyz, int px, int py,
 
 inline CUDA_CALLABLE void adj_pnoise(uint32 state, const vec3& xyz, int px, int py, int pz, uint32& adj_state, vec3& adj_xyz, int& adj_px, int& adj_py, int& adj_pz, const float adj_ret)
 {
-    float dx = xyz.x - floor(xyz.x);
-    float dy = xyz.y - floor(xyz.y);
-    float dz = xyz.z - floor(xyz.z);
+    float dx = xyz[0] - floor(xyz[0]);
+    float dy = xyz[1] - floor(xyz[1]);
+    float dz = xyz[2] - floor(xyz[2]);
 
-    int x0 = mod(((int)floor(xyz.x)), px); 
-    int y0 = mod(((int)floor(xyz.y)), py); 
-    int z0 = mod(((int)floor(xyz.z)), pz); 
+    int x0 = mod(((int)floor(xyz[0])), px); 
+    int y0 = mod(((int)floor(xyz[1])), py); 
+    int z0 = mod(((int)floor(xyz[2])), pz); 
 
     int x1 = mod((x0 + 1), px);
     int y1 = mod((y0 + 1), py);
     int z1 = mod((z0 + 1), pz);
 
     vec3 gradient = noise_3d_gradient(state, x0, y0, z0, x1, y1, z1, dx, dy, dz);
-    adj_xyz.x += gradient.x * adj_ret;
-    adj_xyz.y += gradient.y * adj_ret;
-    adj_xyz.z += gradient.z * adj_ret;
+    adj_xyz[0] += gradient[0] * adj_ret;
+    adj_xyz[1] += gradient[1] * adj_ret;
+    adj_xyz[2] += gradient[2] * adj_ret;
 }
 
 inline CUDA_CALLABLE float pnoise(uint32 state, const vec4& xyzt, int px, int py, int pz, int pt)
 {
-    float dx = xyzt.x - floor(xyzt.x);
-    float dy = xyzt.y - floor(xyzt.y);
-    float dz = xyzt.z - floor(xyzt.z);
-    float dt = xyzt.w - floor(xyzt.w);
+    float dx = xyzt[0] - floor(xyzt[0]);
+    float dy = xyzt[1] - floor(xyzt[1]);
+    float dz = xyzt[2] - floor(xyzt[2]);
+    float dt = xyzt[3] - floor(xyzt[3]);
 
-    int x0 = mod(((int)floor(xyzt.x)), px);
-    int y0 = mod(((int)floor(xyzt.y)), py);
-    int z0 = mod(((int)floor(xyzt.z)), pz);
-    int t0 = mod(((int)floor(xyzt.w)), pt);
+    int x0 = mod(((int)floor(xyzt[0])), px);
+    int y0 = mod(((int)floor(xyzt[1])), py);
+    int z0 = mod(((int)floor(xyzt[2])), pz);
+    int t0 = mod(((int)floor(xyzt[3])), pt);
 
     int x1 = mod((x0 + 1), px);
     int y1 = mod((y0 + 1), py);
@@ -805,15 +805,15 @@ inline CUDA_CALLABLE float pnoise(uint32 state, const vec4& xyzt, int px, int py
 
 inline CUDA_CALLABLE void adj_pnoise(uint32 state, const vec4& xyzt, int px, int py, int pz, int pt, uint32& adj_state, vec4& adj_xyzt, int& adj_px, int& adj_py, int& adj_pz, int& adj_pt, const float adj_ret)
 {
-    float dx = xyzt.x - floor(xyzt.x);
-    float dy = xyzt.y - floor(xyzt.y);
-    float dz = xyzt.z - floor(xyzt.z);
-    float dt = xyzt.w - floor(xyzt.w);
+    float dx = xyzt[0] - floor(xyzt[0]);
+    float dy = xyzt[1] - floor(xyzt[1]);
+    float dz = xyzt[2] - floor(xyzt[2]);
+    float dt = xyzt[3] - floor(xyzt[3]);
 
-    int x0 = mod(((int)floor(xyzt.x)), px);
-    int y0 = mod(((int)floor(xyzt.y)), py);
-    int z0 = mod(((int)floor(xyzt.z)), pz);
-    int t0 = mod(((int)floor(xyzt.w)), pt);
+    int x0 = mod(((int)floor(xyzt[0])), px);
+    int y0 = mod(((int)floor(xyzt[1])), py);
+    int z0 = mod(((int)floor(xyzt[2])), pz);
+    int t0 = mod(((int)floor(xyzt[3])), pt);
 
     int x1 = mod((x0 + 1), px);
     int y1 = mod((y0 + 1), py);
@@ -822,39 +822,39 @@ inline CUDA_CALLABLE void adj_pnoise(uint32 state, const vec4& xyzt, int px, int
 
     vec4 gradient = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
 
-    adj_xyzt.x += gradient.x * adj_ret;
-    adj_xyzt.y += gradient.y * adj_ret;
-    adj_xyzt.z += gradient.z * adj_ret;
-    adj_xyzt.w += gradient.w * adj_ret;
+    adj_xyzt[0] += gradient[0] * adj_ret;
+    adj_xyzt[1] += gradient[1] * adj_ret;
+    adj_xyzt[2] += gradient[2] * adj_ret;
+    adj_xyzt[3] += gradient[3] * adj_ret;
 }
 
 // curl noise
 
 inline CUDA_CALLABLE vec2 curlnoise(uint32 state, const vec2& xy)
 { 
-    float dx = xy.x - floor(xy.x);
-    float dy = xy.y - floor(xy.y);
+    float dx = xy[0] - floor(xy[0]);
+    float dy = xy[1] - floor(xy[1]);
 
-    int x0 = (int)floor(xy.x); 
-    int y0 = (int)floor(xy.y); 
+    int x0 = (int)floor(xy[0]); 
+    int y0 = (int)floor(xy[1]); 
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
 
     vec2 grad_field = noise_2d_gradient(state, x0, y0, x1, y1, dx, dy);
-    return vec2(-grad_field.y, grad_field.x);
+    return vec2(-grad_field[1], grad_field[0]);
 }
 inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec2& xy, uint32& adj_state, vec2& adj_xy, const vec2& adj_ret) {}
 
 inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec3& xyz)
 {
-    float dx = xyz.x - floor(xyz.x);
-    float dy = xyz.y - floor(xyz.y);
-    float dz = xyz.z - floor(xyz.z);
+    float dx = xyz[0] - floor(xyz[0]);
+    float dy = xyz[1] - floor(xyz[1]);
+    float dz = xyz[2] - floor(xyz[2]);
 
-    int x0 = (int)floor(xyz.x);
-    int y0 = (int)floor(xyz.y);
-    int z0 = (int)floor(xyz.z);
+    int x0 = (int)floor(xyz[0]);
+    int y0 = (int)floor(xyz[1]);
+    int z0 = (int)floor(xyz[2]);
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
@@ -868,23 +868,23 @@ inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec3& xyz)
 
     
     return vec3(
-        grad_field_3.y - grad_field_2.z,
-        grad_field_1.z - grad_field_3.x,
-        grad_field_2.x - grad_field_1.y);
+        grad_field_3[1] - grad_field_2[2],
+        grad_field_1[2] - grad_field_3[0],
+        grad_field_2[0] - grad_field_1[1]);
 }
 inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec3& xyz, uint32& adj_state, vec3& adj_xyz, const vec3& adj_ret) {}
 
 inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec4& xyzt)
 {
-    float dx = xyzt.x - floor(xyzt.x);
-    float dy = xyzt.y - floor(xyzt.y);
-    float dz = xyzt.z - floor(xyzt.z);
-    float dt = xyzt.w - floor(xyzt.w);
+    float dx = xyzt[0] - floor(xyzt[0]);
+    float dy = xyzt[1] - floor(xyzt[1]);
+    float dz = xyzt[2] - floor(xyzt[2]);
+    float dt = xyzt[3] - floor(xyzt[3]);
 
-    int x0 = (int)floor(xyzt.x);
-    int y0 = (int)floor(xyzt.y);
-    int z0 = (int)floor(xyzt.z);
-    int t0 = (int)floor(xyzt.w);
+    int x0 = (int)floor(xyzt[0]);
+    int y0 = (int)floor(xyzt[1]);
+    int z0 = (int)floor(xyzt[2]);
+    int t0 = (int)floor(xyzt[3]);
 
     int x1 = x0 + 1;
     int y1 = y0 + 1;
@@ -898,9 +898,9 @@ inline CUDA_CALLABLE vec3 curlnoise(uint32 state, const vec4& xyzt)
     vec4 grad_field_3 = noise_4d_gradient(state, x0, y0, z0, t0, x1, y1, z1, t1, dx, dy, dz, dt);
 
     return vec3(
-        grad_field_3.y - grad_field_2.z,
-        grad_field_1.z - grad_field_3.x,
-        grad_field_2.x - grad_field_1.y);
+        grad_field_3[1] - grad_field_2[2],
+        grad_field_1[2] - grad_field_3[0],
+        grad_field_2[0] - grad_field_1[1]);
 }
 inline CUDA_CALLABLE void adj_curlnoise(uint32 state, const vec4& xyzt, uint32& adj_state, vec4& adj_xyzt, const vec3& adj_ret) {}
 

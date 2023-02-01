@@ -119,18 +119,18 @@ CUDA_CALLABLE inline bool intersect_ray_aabb(const vec3& pos, const vec3& rcp_di
 {
 	float l1, l2, lmin, lmax;
 
-    l1 = (lower.x - pos.x) * rcp_dir.x;
-    l2 = (upper.x - pos.x) * rcp_dir.x;
+    l1 = (lower[0] - pos[0]) * rcp_dir[0];
+    l2 = (upper[0] - pos[0]) * rcp_dir[0];
     lmin = min(l1,l2);
     lmax = max(l1,l2);
 
-    l1 = (lower.y - pos.y) * rcp_dir.y;
-    l2 = (upper.y - pos.y) * rcp_dir.y;
+    l1 = (lower[1] - pos[1]) * rcp_dir[1];
+    l2 = (upper[1] - pos[1]) * rcp_dir[1];
     lmin = max(min(l1,l2), lmin);
     lmax = min(max(l1,l2), lmax);
 
-    l1 = (lower.z - pos.z) * rcp_dir.z;
-    l2 = (upper.z - pos.z) * rcp_dir.z;
+    l1 = (lower[2] - pos[2]) * rcp_dir[2];
+    l2 = (upper[2] - pos[2]) * rcp_dir[2];
     lmin = max(min(l1,l2), lmin);
     lmax = min(max(l1,l2), lmax);
 
@@ -246,9 +246,9 @@ CUDA_CALLABLE inline int sign_mask(float x)
 
 CUDA_CALLABLE inline int max_dim(vec3 a)
 {
-	float x = abs(a.x);
-	float y = abs(a.y);
-	float z = abs(a.z);
+	float x = abs(a[0]);
+	float y = abs(a[1]);
+	float z = abs(a[2]);
 
 	return longest_axis(vec3(x, y, z));
 }
