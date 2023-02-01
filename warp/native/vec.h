@@ -10,6 +10,7 @@
 
 #if !defined(__CUDACC__)
 #include <initializer_list>
+#include "string.h"  // memset
 #endif
 
 namespace wp
