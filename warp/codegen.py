@@ -260,6 +260,7 @@ class Adjoint:
 
         # blocks
         adj.blocks = [Block()]
+        adj.loop_blocks = []
 
         # holds current indent level
         adj.prefix = ""
@@ -610,6 +611,7 @@ class Adjoint:
     def begin_for(adj, iter):
 
         cond_block = adj.begin_block()
+        adj.loop_blocks.append(cond_block)
         adj.add_forward(f"for_start_{cond_block.label}:;")
         adj.indent()
 
@@ -628,6 +630,7 @@ class Adjoint:
        
         body_block = adj.end_block()
         cond_block = adj.end_block()
+        adj.loop_blocks.pop()
                 
         ####################
         # forward pass
@@ -674,9 +677,10 @@ class Adjoint:
     # define a while loop
     def begin_while(adj, cond):
 
-        # evaulate condition in it's own block
+        # evaulate condition in its own block
         # so we can control replay
         cond_block = adj.begin_block()
+        adj.loop_blocks.append(cond_block)
         cond_block.body_forward.append(f"while_start_{cond_block.label}:;")
 
         c = adj.eval(cond)
@@ -693,6 +697,7 @@ class Adjoint:
         adj.dedent()     
         body_block = adj.end_block()
         cond_block = adj.end_block()
+        adj.loop_blocks.pop()
 
         ####################
         # forward pass
@@ -1139,6 +1144,9 @@ class Adjoint:
                         adj.symbols[sym] = var1
 
                 adj.end_for(iter)
+
+        elif (isinstance(node, ast.Break)):
+            adj.add_forward(f"goto for_end_{adj.loop_blocks[-1].label};")
 
         elif (isinstance(node, ast.Expr)):
             return adj.eval(node.value)
