@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.7.0] - 2023-01-02
+
+- Add support for arbitrary length / type vector and matrices e.g.: `wp.vec(length=7, dtype=wp.float16)`, see `wp.vec()`, and `wp.mat()`
+
 ## [0.6.3] - 2023-01-31
 
 - Add DLPack utilities, see `wp.from_dlpack()`, `wp.to_dlpack()`
