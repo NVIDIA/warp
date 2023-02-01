@@ -1278,10 +1278,13 @@ def test_cw_division(test,device,dtype):
     s4 = randvals([1,4,4],dtype)
     s5 = randvals([1,5,5],dtype)
 
-    s2[s2 == 0] = 1
-    s3[s3 == 0] = 1
-    s4[s4 == 0] = 1
-    s5[s5 == 0] = 1
+    # set denominators to 1 if their magnitudes are small
+    # to prevent divide by zero, or overflows if we're testing
+    # float16:
+    s2[np.abs(s2) < 1.e-2] = 1
+    s3[np.abs(s3) < 1.e-2] = 1
+    s4[np.abs(s4) < 1.e-2] = 1
+    s5[np.abs(s5) < 1.e-2] = 1
 
     s2 = wp.array(s2, dtype=mat22, requires_grad=True, device=device)
     s3 = wp.array(s3, dtype=mat33, requires_grad=True, device=device)
