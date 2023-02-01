@@ -29,18 +29,20 @@ def increment(data: Data):
 wp.init()
 
 def test_transient_module(test, device):
-    file, file_path = tempfile.mkstemp(suffix=".py", text=True)
-    os.close(file)
+    file, file_path = tempfile.mkstemp(suffix=".py")
 
     try:
-        with open(file_path, "w") as f:
+
+        # Save the embedded code into the temporary file.
+        with os.fdopen(file, "w") as f:
             f.write(CODE)
 
         spec = importlib.util.spec_from_file_location("", file_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+
     finally:
-        os.remove(file_path)
+        os.remove(file_path)    
 
     data = module.Data()
     data.x = wp.array(123, dtype=int)
