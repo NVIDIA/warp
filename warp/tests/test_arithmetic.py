@@ -798,8 +798,10 @@ def test_interp(test, device, dtype):
             outputs[0,i] = wptype(2) * wp.smoothstep(in1[0,i], in2[0,i], in3[0,i])
             outputs[1,i] = wptype(2) * wp.lerp(in1[1,i], in2[1,i], in3[1,i])
 
-    in1 = wp.array(randvals([2,10],dtype), dtype=wptype, requires_grad=True, device=device)
-    in2 = wp.array(randvals([2,10],dtype), dtype=wptype, requires_grad=True, device=device)
+    e0 = randvals([2,10],dtype)
+    e1 = e0 + randvals([2,10],dtype) + 0.1
+    in1 = wp.array(e0, dtype=wptype, requires_grad=True, device=device)
+    in2 = wp.array(e1, dtype=wptype, requires_grad=True, device=device)
     in3 = wp.array(randvals([2,10],dtype), dtype=wptype, requires_grad=True, device=device)
     
     outputs = wp.zeros_like(in1)
