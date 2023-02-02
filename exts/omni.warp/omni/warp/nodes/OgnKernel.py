@@ -31,6 +31,8 @@ from omni.warp.scripts.kernelnode import ATTR_TO_WARP_TYPE
 
 wp.init()
 
+QUIET_DEFAULT = wp.config.quiet
+
 ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
 
@@ -474,7 +476,10 @@ class OgnKernel:
         except Exception:
             db.internal_state.is_valid = False
             db.log_error(traceback.format_exc())
+            wp.config.quiet = True
             return
+        else:
+            wp.config.quiet = QUIET_DEFAULT
 
         # Fire the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED
