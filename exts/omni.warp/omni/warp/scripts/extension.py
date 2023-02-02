@@ -1,11 +1,13 @@
-# Copyright (c) 2022 NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import asyncio
 from contextlib import suppress
+from typing import Sequence
 from .menu import WarpMenu
 from .common import log_info
 from .common import log_error
@@ -14,6 +16,9 @@ import warp as wp
 import os, sys, subprocess
 import webbrowser
 import importlib
+import carb
+import carb.dictionary
+import omni.graph.core as og
 import omni.ext
 import omni.kit.actions.core
 import omni.timeline
@@ -24,15 +29,137 @@ SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__fi
 WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
+KERNEL_NODE_OPT_IN_SETTING = "/app/omni.warp.kernel/opt_in"
+KERNEL_NODE_ENABLE_OPT_IN_SETTING = "/app/omni.warp.kernel/enable_opt_in"
+OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so that nodes have been instantiated
+
 def open_file(filename):
     if sys.platform == "win32":
         os.startfile(filename)
     else:
         subprocess.call(["xdg-open", filename])
 
+def set_all_graphs_enabled(enable: bool) -> None:
+    """Set the enabled state of all OmniGraphs"""
+    graphs = og.get_all_graphs()
+    for graph in graphs:
+        graph.set_disabled(not enable)
+
+def is_kernel_node_check_enabled() -> bool:
+    """Check whether the kernel node opt-in is enabled"""
+    settings = carb.settings.get_settings()
+    if not settings.is_accessible_as(
+        carb.dictionary.ItemType.BOOL,
+        KERNEL_NODE_ENABLE_OPT_IN_SETTING,
+    ):
+        # The enable-setting is not present, we enable the check
+        return True
+
+    if not settings.get(KERNEL_NODE_ENABLE_OPT_IN_SETTING):
+        # The enable-setting is present and False, disable the check
+        return False
+
+    # the enable-setting is present and True, enable the check
+    return True
+
+VERIFY_KERNEL_NODE_LOAD_MSG = """This stage contains Warp kernel nodes.
+
+There is currently no limitation on what code can be executed by this node. This means that graphs that contain these nodes should only be used when the author of the graph is trusted.
+
+Do you want to enable the Warp kernel node functionality for this session?
+"""
+
+def verify_kernel_node_load(nodes: Sequence[og.Node]):
+    """Confirm the user wants to run the nodes for the current session."""
+    from omni.kit.window.popup_dialog import MessageDialog
+
+    def on_cancel(dialog: MessageDialog):
+        settings = carb.settings.get_settings()
+        settings.set(KERNEL_NODE_OPT_IN_SETTING, False)
+        dialog.hide()
+
+    def on_ok(dialog: MessageDialog):
+        settings = carb.settings.get_settings()
+        settings.set(KERNEL_NODE_OPT_IN_SETTING, True)
+        dialog.hide()
+
+
+    dialog = MessageDialog(
+        title="Warning",
+        width=400,
+        message=VERIFY_KERNEL_NODE_LOAD_MSG,
+        ok_handler=on_ok,
+        ok_label="Yes",
+        cancel_handler=on_cancel,
+        cancel_label="No",
+    )
+
+    async def show_async():
+        # wait a few frames to allow the app ui to finish loading
+        await omni.kit.app.get_app().next_update_async()
+        await omni.kit.app.get_app().next_update_async()
+        dialog.show()
+
+    asyncio.ensure_future(show_async())
+
+def check_for_kernel_nodes() -> None:
+    """Check for kernel node instances and confirm user wants to run them."""
+    # If the check is not enabled then we are good
+    if not is_kernel_node_check_enabled():
+        return
+
+    # Check is enabled - see if they already opted-in
+    settings = carb.settings.get_settings()
+    if settings.get(KERNEL_NODE_OPT_IN_SETTING):
+        # The check is enabled, and they opted-in
+        return
+
+    # The check is enabled but they opted out, or haven't been prompted yet
+    try:
+        import omni.kit.window.popup_dialog
+    except ImportError:
+        # Don't prompt in headless mode
+        return
+
+    graphs = og.get_all_graphs()
+    nodes = tuple(
+        n
+        for g in graphs
+        for n in g.get_nodes()
+        if n.get_node_type().get_node_type() == "omni.warp.WarpKernel"
+    )
+
+    if not nodes:
+        # No nodes means we can leave them enabled
+        return
+
+    # Disable them until we get the opt-in via the async dialog
+    set_all_graphs_enabled(False)
+    verify_kernel_node_load(nodes)
+
+def on_attach(*args, **kwargs) -> None:
+    """Called when USD stage is attached"""
+    check_for_kernel_nodes()
+
+def on_kernel_opt_in_setting_change(
+    item: carb.dictionary.Item,
+    change_type: carb.settings.ChangeEventType,
+) -> None:
+    """Update the local cache of the setting value"""
+    if change_type != carb.settings.ChangeEventType.CHANGED:
+        return
+
+    settings = carb.settings.get_settings()
+    if settings.get(KERNEL_NODE_OPT_IN_SETTING):
+        set_all_graphs_enabled(True)
+
 class OmniWarpExtension(omni.ext.IExt):
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stage_subscription = None
+        self._opt_in_setting_sub = None
+
         with suppress(ImportError):
             import omni.kit.app
             app = omni.kit.app.get_app()
@@ -63,6 +190,25 @@ class OmniWarpExtension(omni.ext.IExt):
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
         self._stage_event_sub = omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)
 
+        stage_update = omni.stageupdate.get_stage_update_interface()
+
+        self._stage_subscription = stage_update.create_stage_update_node(
+            "WarpKernelAttach",
+            on_attach_fn=on_attach,
+        )
+        assert self._stage_subscription
+
+        nodes = stage_update.get_stage_update_nodes()
+        stage_update.set_stage_update_node_order(
+            len(nodes) - 1,
+            OMNIGRAPH_STAGEUPDATE_ORDER + 1,
+        )
+        self._opt_in_setting_sub = omni.kit.app.SettingChangeSubscription(
+            KERNEL_NODE_OPT_IN_SETTING,
+            on_kernel_opt_in_setting_change,
+        )
+        assert self._opt_in_setting_sub
+
     def on_shutdown(self):
         log_info("OmniWarpExtension shutdown")
 
@@ -79,6 +225,8 @@ class OmniWarpExtension(omni.ext.IExt):
 
         self._update_event_stream = None
         self._stage_event_sub = None
+        self._stage_subscription = None
+        self._opt_in_setting_sub = None
 
     def _register_actions(self):
 
