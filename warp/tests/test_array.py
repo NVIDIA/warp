@@ -220,6 +220,7 @@ def f2(arr: wp.array2d(dtype=float)):
     slice = arr[0]
     wp.expect_eq(slice.shape[0], 20)
 
+
 @wp.kernel
 def f3(arr: wp.array3d(dtype=float)):
 
@@ -229,6 +230,7 @@ def f3(arr: wp.array3d(dtype=float)):
 
     slice = arr[0,0]
     wp.expect_eq(slice.shape[0], 30)
+
 
 @wp.kernel
 def f4(arr: wp.array4d(dtype=float)):
@@ -258,6 +260,159 @@ def test_shape(test, device):
         wp.launch(f4, dim=1, inputs=[a4], device=device)
 
 
+@wp.kernel
+def sum_array(arr: wp.array(dtype=float), loss: wp.array(dtype=float)):
+    tid = wp.tid()
+    wp.atomic_add(loss, 0, arr[tid])
+
+
+def test_flatten(test, device):
+
+    np_arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype=float)
+    arr = wp.array(np_arr, dtype=float, shape=np_arr.shape, device=device, requires_grad=True)
+    arr_flat = arr.flatten()
+    arr_comp = wp.array(np_arr.flatten(), dtype=float, device=device)
+    assert_array_equal(arr_flat, arr_comp)
+
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=sum_array,
+            dim=len(arr_flat),
+            inputs=[arr_flat, loss],
+            device=device
+        )
+
+    tape.backward(loss=loss)
+    grad = tape.gradients[arr_flat]
+
+    ones = wp.array(np.ones((8,), dtype=float,), dtype=float, device=device)
+    assert_array_equal(grad, ones)
+    test.assertEqual(loss.numpy()[0], 36)
+
+
+def test_reshape(test, device):
+
+    np_arr = np.arange(6, dtype=float)
+    arr = wp.array(np_arr, dtype=float, device=device, requires_grad=True)
+    arr_reshaped = arr.reshape((3, 2))
+    arr_comp = wp.array(np_arr.reshape((3, 2)), dtype=float, device=device)
+    assert_array_equal(arr_reshaped, arr_comp)
+    
+    arr_reshaped = arr_reshaped.reshape(6)
+    assert_array_equal(arr_reshaped, arr)
+
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=sum_array,
+            dim=len(arr_reshaped),
+            inputs=[arr_reshaped, loss],
+            device=device
+        )
+
+    tape.backward(loss=loss)
+    grad = tape.gradients[arr_reshaped]
+
+    ones = wp.array(np.ones((6,), dtype=float,), dtype=float, device=device)
+    assert_array_equal(grad, ones)
+    test.assertEqual(loss.numpy()[0], 15)
+
+
+@wp.kernel
+def compare_stepped_window(x: wp.array2d(dtype=float)):
+
+    wp.expect_eq(x[0,0], 1.0)
+    wp.expect_eq(x[0,1], 2.0)
+    wp.expect_eq(x[1,0], 9.0)
+    wp.expect_eq(x[1,1], 10.0)
+
+
+def test_slicing(test, device):
+
+    np_arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]], dtype=float)
+    arr = wp.array(np_arr, dtype=float, shape=np_arr.shape, device=device, requires_grad=True)
+    
+    slice_a = arr[1,:,:]        # test indexing
+    slice_b = arr[1:2,:,:]      # test slicing
+    slice_c = arr[-1,:,:]       # test negative indexing
+    slice_d = arr[-2:-1,:,:]    # test negative slicing
+    slice_e = arr[-1:3,:,:]     # test mixed slicing
+    slice_e2 = slice_e[0,0,:]   # test 2x slicing
+    slice_f = arr[0:3:2,0,:]    # test step
+
+    assert_array_equal(slice_a, wp.array(np_arr[1,:,:], dtype=float, device=device))
+    assert_array_equal(slice_b, wp.array(np_arr[1:2,:,:], dtype=float, device=device))
+    assert_array_equal(slice_c, wp.array(np_arr[-1,:,:], dtype=float, device=device))
+    assert_array_equal(slice_d, wp.array(np_arr[-2:-1,:,:], dtype=float, device=device))
+    assert_array_equal(slice_e, wp.array(np_arr[-1:3,:,:], dtype=float, device=device))
+    assert_array_equal(slice_e2, wp.array(np_arr[2,0,:], dtype=float, device=device))
+
+    # wp does not support copying from/to non-contiguous arrays
+    # stepped windows must read on the device the original array was created on
+    wp.launch(kernel=compare_stepped_window, dim=1, inputs=[slice_f], device=device)
+    
+    slice_flat = slice_b.flatten()
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=sum_array,
+            dim=len(slice_flat),
+            inputs=[slice_flat, loss],
+            device=device
+        )
+
+    tape.backward(loss=loss)
+    grad = tape.gradients[slice_flat]
+
+    ones = wp.array(np.ones((4,), dtype=float,), dtype=float, device=device)
+    assert_array_equal(grad, ones)
+    test.assertEqual(loss.numpy()[0], 26)
+
+
+def test_astype(test, device):
+
+    np_arr_a = np.arange(0, 10, 1, dtype=float)
+    np_arr_b = np.arange(0, 10, 1, dtype=int)
+    np_arr_c = np.arange(0, 10, 1, dtype=np.int8)
+    np_arr_d = np.arange(0, 10, 1, dtype=np.uint64)
+    
+    arr_a = wp.array(np_arr_a, dtype=float, device=device, requires_grad=True)
+    arr_b = wp.array(np_arr_b, dtype=int, device=device)
+    arr_c = wp.array(np_arr_c, dtype=wp.int8, device=device)
+    arr_d = wp.array(np_arr_d, dtype=wp.uint64, device=device)
+    
+    arr_a = arr_a.astype(dtype=int)
+    assert_array_equal(arr_a, arr_b)
+
+    arr_a = arr_a.astype(dtype=wp.int8)
+    assert_array_equal(arr_a, arr_c)
+
+    arr_a = arr_a.astype(dtype=wp.uint64)
+    assert_array_equal(arr_a, arr_d)
+
+    arr_a = arr_a.astype(dtype=float)
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=sum_array,
+            dim=len(arr_a),
+            inputs=[arr_a, loss],
+            device=device
+        )
+
+    tape.backward(loss=loss)
+    grad = tape.gradients[arr_a]
+
+    ones = wp.array(np.ones((10,), dtype=float,), dtype=float, device=device)
+    assert_array_equal(grad, ones)
+    test.assertEqual(loss.numpy()[0], 45)
+
+    
 def test_fill_zero(test, device):
 
     dim_x = 4
@@ -433,6 +588,11 @@ def register(parent):
         pass
 
     add_function_test(TestArray, "test_shape", test_shape, devices=devices)
+    add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
+    add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
+    add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
+    add_function_test(TestArray, "test_astype", test_astype, devices=devices)
+
     add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
     add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)
     add_function_test(TestArray, "test_3d_array", test_3d, devices=devices)

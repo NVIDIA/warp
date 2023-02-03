@@ -1011,6 +1011,61 @@ class array (Generic[T]):
         else:
             return str(self.to("cpu").numpy())
 
+    def __getitem__(self, key):
+
+        new_shape = []
+        new_strides = []
+        ptr_offset = 0
+        new_dim = 0
+
+        for idx, k in enumerate(key):
+            if isinstance(k, slice):
+                start, stop, step = k.start, k.stop, k.step
+                if start is None:
+                    start = 0
+                if stop is None:
+                    stop = self.shape[idx]
+                if step is None:
+                    step = 1
+                if start < 0:
+                    start = self.shape[idx] + start
+                if stop < 0:
+                    stop = self.shape[idx] + stop
+
+                if start < 0 or start > self.shape[idx] - 1:
+                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+                if stop < 1 or stop > self.shape[idx]:
+                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+                if stop <= start:
+                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+
+                new_shape.append(-((stop - start) // -step))  # ceil division
+                new_strides.append(self.strides[idx] * step)
+                new_dim += 1
+
+            else:  # is int
+                start = k
+                if start < 0:
+                    start = self.shape[idx] + start
+                if start < 0 or start > self.shape[idx] - 1:
+                    raise RuntimeError(f"Invalid indexing in slice: {k}")
+
+            ptr_offset += self.strides[idx] * start
+
+        a = array(dtype=self.dtype,
+                shape=tuple(new_shape),
+                strides=tuple(new_strides),
+                ptr=self.ptr + ptr_offset,
+                capacity=self.capacity,
+                device=self.device,
+                owner=False,
+                ndim=new_dim,
+                requires_grad=self.requires_grad)
+
+        # store back-ref to stop data being destroyed
+        a._ref = self
+        return a   
+
     # construct a C-representation of the array for passing to kernels
     def __ctype__(self):
         a = array_t()
@@ -1167,41 +1222,77 @@ class array (Generic[T]):
             return dest
 
 
-    # def flatten(self):
+    def flatten(self):
 
-    #     a = array(ptr=self.ptr,
-    #               dtype=self.dtype,
-    #               shape=(self.size,),
-    #               device=self.device,
-    #               owner=False,
-    #               ndim=1,
-    #               requires_grad=self.requires_grad)
+        a = array(dtype=self.dtype,
+                  shape=(self.size,),
+                  strides=(type_size_in_bytes(self.dtype),),
+                  ptr=self.ptr,
+                  capacity=self.capacity,
+                  device=self.device,
+                  copy=False,
+                  owner=False,
+                  ndim=1,
+                  requires_grad=self.requires_grad)
 
-    #     # store back-ref to stop data being destroyed
-    #     a._ref = self
-    #     return a        
+        # store back-ref to stop data being destroyed
+        a._ref = self
+        return a
 
-    # def astype(self, dtype):
 
-    #     # return an alias of the array memory with different type information
-    #     src_bytes = self.length*type_length(self.dtype)
-    #     src_capacity = self.capacity*type_length(self.dtype)
+    def reshape(self, shape):
 
-    #     dst_length = src_length/type_length(dtype)
-    #     dst_capacity = src_capacity/type_length(dtype)
+        # convert shape to tuple
+        if shape == None:
+            raise RuntimeError("shape parameter is required.")
+        if isinstance(shape, int):
+            shape = (shape,)
+        elif isinstance(shape, List):
+            shape = tuple(shape)
 
-    #     if ((src_length % type_length(dtype)) > 0):
-    #         raise RuntimeError("Dimensions are incompatible for type cast")
+        if len(shape) > ARRAY_MAX_DIMS:
+            raise RuntimeError(f"Arrays may only have {ARRAY_MAX_DIMS} dimensions maximum, trying to create array with {len(shape)} dims.")
 
-    #     arr = array(
-    #         ptr=self.ptr, 
-    #         dtype=dtype,
-    #         length=int(dst_length),
-    #         capacity=int(dst_capacity),
-    #         device=self.device,
-    #         owner=False)
+        size = 1
+        for d in shape:
+            size *= d
 
-    #     return arr
+        if size != self.size:
+            raise RuntimeError("Reshaped array must have the same total size as the original.")
+
+        a = array(dtype=self.dtype,
+                  shape=shape,
+                  strides=None,
+                  ptr=self.ptr,
+                  capacity=self.capacity,
+                  device=self.device,
+                  copy=False,
+                  owner=False,
+                  ndim=len(shape),
+                  requires_grad=self.requires_grad)
+
+        # store back-ref to stop data being destroyed
+        a._ref = self
+        return a
+
+
+    def astype(self, dtype):
+
+        # allocate a new array
+        arr = self.numpy().astype(dtype=dtype)
+        a = array(data=arr,
+                dtype=dtype,
+                shape=self.shape,
+                strides=None,
+                ptr=None,
+                capacity=None,
+                device=self.device,
+                copy=True,
+                owner=True,
+                ndim=None,
+                requires_grad=self.requires_grad)
+
+        return a
 
 # aliases for arrays with small dimensions
 def array1d(*args, **kwargs):
