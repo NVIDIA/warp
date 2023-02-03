@@ -1379,15 +1379,19 @@ class Adjoint:
     def emit_Return(adj, node):
         cond = adj.cond
 
-        out = adj.eval(node.value)
-        adj.symbols['return'] = out
+        if node.value is not None:
+            out = adj.eval(node.value)
 
-        if out is not None:        # set return type of function
+            # set return type of function
             return_var = out
             if adj.return_var is not None and adj.return_var.ctype() != return_var.ctype():
                 raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {return_var.ctype()}")
             adj.return_var = return_var
+        else:
+            out = None
 
+        adj.symbols['return'] = out
+ 
         adj.add_return(out)
 
         return out
@@ -1441,9 +1445,6 @@ class Adjoint:
 
         if emit_node is not None:
             return emit_node(adj, node)
-
-        elif node is None:
-            return None
         else:
             raise Exception("Error, ast node of type {} not supported".format(type(node)))
 
