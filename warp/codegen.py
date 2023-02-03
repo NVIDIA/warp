@@ -1375,13 +1375,12 @@ class Adjoint:
 
         if node.value is not None:
             out = adj.eval(node.value)
-
-            if adj.return_var is not None and adj.return_var.ctype() != out.ctype():
-                raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {out.ctype()}")            
         else:
             out = None
 
         # set return type of function
+        if adj.return_var is not None and adj.return_var.ctype() != out.ctype():
+            raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {out.ctype()}")
         adj.return_var = out
  
         adj.add_return(out)
