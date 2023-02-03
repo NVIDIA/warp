@@ -740,16 +740,10 @@ class Adjoint:
 
     def emit_FunctionDef(adj, node):
 
-        out = None
         for f in node.body:
-            out = adj.eval(f)
-
-        if 'return' in adj.symbols and adj.symbols['return'] is not None:
-            out = adj.symbols['return']
-        else:
-            out = None
+            adj.eval(f)
             
-        return out
+        return adj.return_var
 
     def emit_If(adj, node):
         
@@ -1382,15 +1376,13 @@ class Adjoint:
         if node.value is not None:
             out = adj.eval(node.value)
 
-            # set return type of function
-            return_var = out
-            if adj.return_var is not None and adj.return_var.ctype() != return_var.ctype():
-                raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {return_var.ctype()}")
-            adj.return_var = return_var
+            if adj.return_var is not None and adj.return_var.ctype() != out.ctype():
+                raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {out.ctype()}")            
         else:
             out = None
 
-        adj.symbols['return'] = out
+        # set return type of function
+        adj.return_var = out
  
         adj.add_return(out)
 
