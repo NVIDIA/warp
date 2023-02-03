@@ -566,7 +566,7 @@ class Adjoint:
 
     def add_return(adj, var):
 
-        if (var == None):
+        if var.ctype() == "void":
             adj.add_forward("return;".format(var), "goto label{};".format(adj.label_count))
         else:
             adj.add_forward("return var_{};".format(var), "goto label{};".format(adj.label_count))
@@ -1376,11 +1376,12 @@ class Adjoint:
         if node.value is not None:
             out = adj.eval(node.value)
         else:
-            out = None
+            out = Var("void", void)
 
         # set return type of function
-        if adj.return_var is not None and adj.return_var.ctype() != out.ctype():
-            raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {out.ctype()}")
+        if adj.return_var is not None:
+            if adj.return_var.ctype() != out.ctype():
+                raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {out.ctype()}")
         adj.return_var = out
  
         adj.add_return(out)
