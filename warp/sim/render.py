@@ -14,12 +14,12 @@ import numpy as np
 
 class SimRenderer(warp.render.UsdRenderer):
     
-    def __init__(self, model: warp.sim.Model, path, scaling=1.0):
+    def __init__(self, model: warp.sim.Model, path, scaling=1.0, fps=60, upaxis="y"):
 
         from pxr import UsdGeom
 
         # create USD stage
-        super().__init__(path, scaling=scaling)
+        super().__init__(path, scaling=scaling, fps=fps, upaxis=upaxis)
 
         self.model = model
         self.body_names = []
@@ -34,16 +34,17 @@ class SimRenderer(warp.render.UsdRenderer):
         # create rigid shape children
         if (self.model.shape_count):
             shape_body = model.shape_body.numpy()
-            shape_geo_src = model.shape_geo_src#.numpy()
-            shape_geo_type = model.shape_geo_type.numpy()
-            shape_geo_scale = model.shape_geo_scale.numpy()
+            shape_geo_src = model.shape_geo_src
+            shape_geo_type = model.geo_params.geo_type.numpy()
+            shape_geo_scale = model.geo_params.scale.numpy()
             shape_transform = model.shape_transform.numpy()
 
             for s in range(model.shape_count):
             
                 parent_path = self.root.GetPath()
-                if shape_body[s] >= 0:
-                    parent_path = parent_path.AppendChild(self.body_names[shape_body[s].item()])
+                body = shape_body[s]
+                if body >= 0:
+                    parent_path = parent_path.AppendChild(self.body_names[body.item()])
 
                 geo_type = shape_geo_type[s]
                 geo_scale = shape_geo_scale[s]
@@ -90,7 +91,31 @@ class SimRenderer(warp.render.UsdRenderer):
                     mesh.GetHeightAttr().Set(float(geo_scale[1] * 2.0))
 
                     # geometry transform w.r.t shape, convert USD geometry to physics engine convention
-                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((0.0, 1.0, 0.0), math.pi * 0.5))
+                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5))
+                    X_bg = warp.utils.transform_multiply(X_bs, X_sg)
+
+                    wp.render._usd_add_xform(mesh)
+                    wp.render._usd_set_xform(mesh, X_bg.p, X_bg.q, (1.0, 1.0, 1.0), 0.0)
+
+                elif (geo_type == warp.sim.GEO_CYLINDER):
+                    mesh = UsdGeom.Cylinder.Define(self.stage, parent_path.AppendChild("cylinder_" + str(s)))
+                    mesh.GetRadiusAttr().Set(float(geo_scale[0]))
+                    mesh.GetHeightAttr().Set(float(geo_scale[1] * 2.0))
+
+                    # geometry transform w.r.t shape, convert USD geometry to physics engine convention
+                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5))
+                    X_bg = warp.utils.transform_multiply(X_bs, X_sg)
+
+                    wp.render._usd_add_xform(mesh)
+                    wp.render._usd_set_xform(mesh, X_bg.p, X_bg.q, (1.0, 1.0, 1.0), 0.0)
+
+                elif (geo_type == warp.sim.GEO_CONE):
+                    mesh = UsdGeom.Cone.Define(self.stage, parent_path.AppendChild("cone_" + str(s)))
+                    mesh.GetRadiusAttr().Set(float(geo_scale[0]))
+                    mesh.GetHeightAttr().Set(float(geo_scale[1] * 2.0))
+
+                    # geometry transform w.r.t shape, convert USD geometry to physics engine convention
+                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5))
                     X_bg = warp.utils.transform_multiply(X_bs, X_sg)
 
                     wp.render._usd_add_xform(mesh)
@@ -191,5 +216,3 @@ class SimRenderer(warp.render.UsdRenderer):
                     X_sb = warp.transform_expand(body_q[b])
 
                     wp.render._usd_set_xform(node, X_sb.p, X_sb.q, (1.0, 1.0, 1.0), self.time)
-
-
