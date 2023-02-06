@@ -155,7 +155,10 @@ class TinyRenderer:
         # create rigid shape children
         if (self.model.shape_count):
             shape_body = model.shape_body.numpy()
-            body_q = model.body_q.numpy()
+            if model.body_count:
+                body_q = model.body_q.numpy()
+            else:
+                body_q = np.zeros((0, 7), dtype=np.float32)
             shape_geo_src = model.shape_geo_src
             shape_geo_type = model.geo_params.geo_type.numpy()
             shape_geo_scale = model.geo_params.scale.numpy()
