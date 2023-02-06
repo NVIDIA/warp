@@ -142,7 +142,9 @@ class Tape:
                 if isinstance(a, wp.codegen.StructInstance):
                     for name in g._struct_.vars:
                         if isinstance(g._struct_.vars[name].type, wp.array):
-                            getattr(g, name).zero_()
+                            arr = getattr(g, name)
+                            if arr is not None:
+                                arr.zero_()
                 else:
                     g.zero_()
 

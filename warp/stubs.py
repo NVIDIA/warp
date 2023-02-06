@@ -1250,13 +1250,6 @@ def round(x: float32) -> float32:
    ...
 
 @overload
-def select(arr: array, arg1: Any, arg2: Any):
-   """
-   Select between two arguments, if arr is null then return ``arg1``, otherwise return ``arg2``
-   """
-   ...
-
-@overload
 def rint(x: float64) -> float64:
    """
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
@@ -4903,6 +4896,13 @@ def tid() -> Tuple[int, int, int, int]:
 def select(cond: bool, arg1: Any, arg2: Any):
    """
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@overload
+def select(arr: array, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if arr is null then return ``arg1``, otherwise return ``arg2``
    """
    ...
 
