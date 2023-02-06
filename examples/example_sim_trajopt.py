@@ -68,9 +68,7 @@ class Environment:
         # add planar joints
         builder = wp.sim.ModelBuilder(gravity=0.0)
         builder.add_articulation()
-        b = builder.add_body(
-                parent=-1,
-                origin=wp.transform())
+        b = builder.add_body(origin=wp.transform())
         s = builder.add_shape_box( 
                 pos=(0.0, 0.0, 0.0),
                 hx=0.5,
@@ -122,6 +120,8 @@ class Environment:
             else:
                 next_state = state
                 next_state.clear_forces()
+
+            wp.sim.collide(self.model, state)
             # apply generalized torques to rigid body here, instead of planar joints
             wp.launch(
                 apply_torque,
@@ -129,7 +129,9 @@ class Environment:
                 inputs=[action, action_index],
                 outputs=[state.body_f],
                 device=action.device)
-            state = self.integrator.simulate(self.model, state, next_state, self.sim_dt, requires_grad=requires_grad)
+            state = self.integrator.simulate(
+                self.model, state, next_state, self.sim_dt,
+                requires_grad=requires_grad)
         return state
 
     def _render(self, state: wp.sim.State):

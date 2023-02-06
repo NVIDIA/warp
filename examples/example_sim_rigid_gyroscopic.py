@@ -13,33 +13,25 @@
 #
 ###########################################################################
 
-import os
-import math
-
-import numpy as np
-
 import warp as wp
 import warp.sim
-import warp.sim.render
 
-wp.init()
+from sim_demo import WarpSimDemonstration, run_demo
 
-
-class Example:
+class Demo(WarpSimDemonstration):
     
-    def __init__(self, stage):
+    sim_name = "example_sim_rigid_gyroscopic"
+    env_offset=(2.0, 0.0, 2.0)
+    tiny_render_settings = dict(scaling=3.0)
+    usd_render_settings = dict(scaling=100.0)
 
-        self.sim_steps = 2000
-        self.sim_dt = 1.0/120.0
-        self.sim_time = 0.0
+    activate_ground_plane = False
+    
+    def create_articulation(self, builder):
 
         self.scale = 0.5
 
-        builder = wp.sim.ModelBuilder()
-
-        builder.add_body(
-            parent=-1,
-            origin=wp.transform_identity())    
+        b = builder.add_body()    
 
         # axis shape
         builder.add_shape_box( 
@@ -48,7 +40,7 @@ class Example:
             hy=0.1*self.scale,
             hz=0.1*self.scale,
             density=100.0,
-            body=0)
+            body=b)
 
         # tip shape
         builder.add_shape_box(
@@ -57,19 +49,12 @@ class Example:
             hy=0.2*self.scale,
             hz=1.0*self.scale,
             density=100.0,
-            body=0)
+            body=b)
 
         # initial spin 
         builder.body_qd[0] = (25.0, 0.01, 0.01, 0.0, 0.0, 0.0)
 
-        self.model = builder.finalize()
-        self.model.gravity[1] = 0.0
-        self.model.ground = False
-
-        self.integrator = wp.sim.SemiImplicitIntegrator()
-        self.state = self.model.state()
-
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
+        builder.gravity = 0.0
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
@@ -87,16 +72,6 @@ class Example:
         self.sim_time += self.sim_dt
 
 
-if __name__ == '__main__':
-    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_gyroscopic.usd")
-
-    example = Example(stage_path)
-
-    for i in range(example.sim_steps):
-        example.update()
-        example.render()
-
-    example.renderer.save()
-
-
+if __name__ == "__main__":
+    run_demo(Demo)
 

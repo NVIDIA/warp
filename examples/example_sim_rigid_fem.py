@@ -58,8 +58,8 @@ class Example:
             k_lambda=20000.0,
             k_damp=0.0)
 
-        builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
-        builder.add_shape_sphere(body=0, radius=0.75, density=100.0)
+        b = builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
+        builder.add_shape_sphere(body=b, radius=0.75, density=100.0)
 
         self.model = builder.finalize()
         self.model.ground = True

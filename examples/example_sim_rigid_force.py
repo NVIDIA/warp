@@ -13,47 +13,37 @@
 #
 ###########################################################################
 
-import os
-import math
-
 import numpy as np
-
 import warp as wp
 import warp.sim
-import warp.sim.render
 
-wp.init()
+from sim_demo import WarpSimDemonstration, run_demo, RenderMode
 
+class Demo(WarpSimDemonstration):
+    sim_name = "example_sim_rigid_force"
+    env_offset=(2.0, 0.0, 2.0)
+    tiny_render_settings = dict(scaling=3.0)
+    usd_render_settings = dict(scaling=100.0)
 
-class Example:
+    render_mode = RenderMode.TINY
 
-    def __init__(self, stage):
+    sim_substeps_euler = 32
+    sim_substeps_xpbd = 5
 
-        self.sim_width = 8
-        self.sim_height = 8
+    num_envs = 100
 
-        self.sim_fps = 60.0
-        self.sim_substeps = 10
-        self.sim_duration = 5.0
-        self.sim_frames = int(self.sim_duration*self.sim_fps)
-        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
-        self.sim_time = 0.0
-        self.sim_render = True
-
-        builder = wp.sim.ModelBuilder()
-
+    
+    def create_articulation(self, builder):
         builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
         builder.add_shape_box(body=0, hx=0.5, hy=0.5, hz=0.5, density=1000.0, ke=2.e+5, kd=1.e+4)
 
-        self.model = builder.finalize()
-        self.model.ground = True
+    def before_simulate(self):
+        # allocate force buffer
+        self.force = wp.array(np.tile([0.0, 0.0, -3000.0, 0.0, 0.0, 0.0], (self.num_envs, 1)), dtype=wp.spatial_vector)
 
-        self.integrator = wp.sim.XPBDIntegrator()
-
-        self.state_0 = self.model.state()
-        self.state_1 = self.model.state()
-
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=40.0)
+    def custom_update(self):
+        # apply force to body at every simulation time step
+        self.state.body_f.assign(self.force)
 
     def update(self):
 
@@ -83,14 +73,5 @@ class Example:
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 
-
-if __name__ == '__main__':
-    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_force.usd")
-
-    example = Example(stage_path)
-
-    for i in range(example.sim_frames):
-        example.update()
-        example.render()
-
-    example.renderer.save()
+if __name__ == "__main__":
+    run_demo(Demo)
