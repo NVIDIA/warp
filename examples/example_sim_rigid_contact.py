@@ -20,27 +20,37 @@ import numpy as np
 
 import warp as wp
 import warp.sim
-import warp.sim.render
 
-wp.init()
+from pxr import Usd, UsdGeom
 
+from sim_demo import WarpSimDemonstration, run_demo
 
-class Example:
+class Demo(WarpSimDemonstration):
+    sim_name = "example_sim_rigid_contact"
+    env_offset=(2.0, 0.0, 2.0)
+    tiny_render_settings = dict(scaling=3.0)
+    usd_render_settings = dict(scaling=100.0)
 
-    def __init__(self, stage):
+    sim_substeps_euler = 32
+    sim_substeps_xpbd = 5
 
-        self.sim_steps = 1000
-        self.sim_dt = 1.0/60.0
-        self.sim_time = 0.0
-        self.sim_substeps = 8
+    xpbd_settings = dict(
+        iterations=2,
+        joint_linear_relaxation=0.7,
+        joint_angular_relaxation=0.5,
+        rigid_contact_relaxation=1.0,
+        rigid_contact_con_weighting=True,
+    )
+
+    num_envs = 1
+
+    def create_articulation(self, builder):
 
         self.num_bodies = 8
-        self.scale = 0.5
+        self.scale = 0.8
         self.ke = 1.e+5
         self.kd = 250.0
         self.kf = 500.0
-
-        builder = wp.sim.ModelBuilder()
 
         # boxes
         for i in range(self.num_bodies):
@@ -78,7 +88,8 @@ class Example:
             s = builder.add_shape_capsule( 
                 pos=(0.0, 0.0, 0.0),
                 radius=0.25*self.scale,
-                half_width=self.scale*0.5,
+                half_height=self.scale*0.5,
+                upaxis=0,
                 body=b,
                 ke=self.ke,
                 kd=self.kd,
@@ -89,7 +100,7 @@ class Example:
             builder.body_qd[i] = (0.0, 2.0, 10.0, 0.0, 0.0, 0.0)
 
         # meshes
-        monkey = self.load_mesh(os.path.join(os.path.dirname(__file__), f"assets/monkey.obj"))
+        bunny = self.load_mesh(os.path.join(os.path.dirname(__file__), "assets/bunny.usd"), "/bunny/bunny")
         for i in range(self.num_bodies):
             
             b = builder.add_body(origin=wp.transform(
@@ -98,7 +109,7 @@ class Example:
 
             s = builder.add_shape_mesh(
                     body=b,
-                    mesh=monkey,
+                    mesh=bunny,
                     pos=(0.0, 0.0, 0.0),
                     scale=(self.scale, self.scale, self.scale),
                     ke=self.ke,
@@ -106,70 +117,16 @@ class Example:
                     kf=self.kf,
                     density=1e3,
                 )
+
+    def load_mesh(self, filename, path):
+        asset_stage = Usd.Stage.Open(filename)
+        mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(path))
+
+        points = np.array(mesh_geom.GetPointsAttr().Get())
+        indices = np.array(mesh_geom.GetFaceVertexIndicesAttr().Get()).flatten()
         
-        self.model = builder.finalize()
-        self.model.ground = True
-
-        self.integrator = wp.sim.XPBDIntegrator()
-        self.state = self.model.state()
-
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=30.0)
-
-    def load_mesh(self, filename, use_meshio=False):
-        if use_meshio:
-            import meshio
-            m = meshio.read(filename)
-            mesh_points = np.array(m.points)
-            mesh_indices = np.array(m.cells[0].data, dtype=np.int32).flatten()
-        else:
-            import openmesh
-            m = openmesh.read_trimesh(filename)
-            mesh_points = np.array(m.points())
-            mesh_indices = np.array(m.face_vertex_indices(), dtype=np.int32).flatten()
-        return wp.sim.Mesh(mesh_points, mesh_indices)
-
-    def update(self):
-
-        with wp.ScopedTimer("simulate", active=False):
-            
-            for i in range(self.sim_substeps):
-                self.state.clear_forces()
-                wp.sim.collide(self.model, self.state)
-                self.state = self.integrator.simulate(self.model, self.state, self.state, self.sim_dt/self.sim_substeps)   
-
-    def render(self, is_live=False):
-
-        with wp.ScopedTimer("render", active=False):
-            time = 0.0 if is_live else self.sim_time
-
-            self.renderer.begin_frame(time)
-            self.renderer.render(self.state)
-            self.renderer.end_frame()
-        
-        self.sim_time += self.sim_dt
+        return wp.sim.Mesh(points, indices)
 
 
-if __name__ == '__main__':
-    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd")
-
-    example = Example(stage_path)
-
-    use_graph = True
-    if use_graph:
-        wp.capture_begin()
-        example.update()
-        graph = wp.capture_end()
-
-    for i in range(example.sim_steps):
-        if use_graph:
-            wp.capture_launch(graph)
-        else:
-            example.update()
-        example.render()
-
-    example.renderer.save()
-
-
-
-
-
+if __name__ == "__main__":
+    run_demo(Demo)
