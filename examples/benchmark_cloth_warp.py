@@ -8,6 +8,7 @@
 import warp as wp
 
 wp.init()
+wp.build.clear_kernel_cache()
 
 
 @wp.kernel

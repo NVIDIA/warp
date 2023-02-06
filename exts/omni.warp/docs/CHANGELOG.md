@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## [0.6.3] - 2023-01-31
+
+- Add DLPack utilities, see `wp.from_dlpack()`, `wp.to_dlpack()`
+- Add Jax utilities, see `wp.from_jax()`, `wp.to_jax()`, `wp.device_from_jax()`, `wp.device_to_jax()`
+- Fix for Linux Kit extensions OM-80132, OM-80133
+
+## [0.6.2] - 2023-01-19
+
+- Updated `wp.from_torch()` to support more data types
+- Updated `wp.from_torch()` to automatically determine the target Warp data type if not specified
+- Updated `wp.from_torch()` to support non-contiguous tensors with arbitrary strides
+- Add CUTLASS integration for dense GEMMs, see `wp.matmul()` and `wp.matmul_batched()` 
+- Add QR and Eigen decompositions for `mat33` types, see `wp.qr3()`, and `wp.eig3()`
+- Add default (zero) constructors for matrix types
+- Skip recompilation when Kernel Node attributes are edited
+- Allow optional attributes for Kernel Node
+- Allow disabling backward pass code-gen on a per-kernel basis, use `@wp.kernel(enable_backward=False)`
+- Replace Python `imp` package with `importlib`
+- Fix for quaterion slerp gradients (`wp.quat_slerp()`)
+
+## [0.6.1] - 2022-12-05
+
+- Fix for non-CUDA builds
+- Fix strides computation in array_t constructor, fixes a bug with accessing mesh indices through mesh.indices[]
+- Disable backward pass code generation for kernel node (4-6x faster compilation)
+- Switch to linbuild for universal Linux binaries (affects TeamCity builds only)
+
 ## [0.6.0] - 2022-11-28
 
 - Add support for CUDA streams, see `wp.Stream`, `wp.get_stream()`, `wp.set_stream()`, `wp.synchronize_stream()`, `wp.ScopedStream`

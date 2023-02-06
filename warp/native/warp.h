@@ -17,6 +17,8 @@ extern "C"
     WP_API int init();
     //WP_API void shutdown();
 
+    WP_API uint16_t float_to_half_bits(float x);
+
     WP_API void* alloc_host(size_t s);
     WP_API void* alloc_pinned(size_t s);
     WP_API void* alloc_device(void* context, size_t s);
@@ -35,6 +37,10 @@ extern "C"
     // all memsets are performed asynchronously
     WP_API void memset_host(void* dest, int value, size_t n);
     WP_API void memset_device(void* context, void* dest, int value, size_t n);
+    
+    // takes srcsize bytes starting at src and repeats them n times at dst (writes srcsize * n bytes in total):
+    WP_API void memtile_host(void* dest, void *src, size_t srcsize, size_t n);
+    WP_API void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t n);
 
 	WP_API uint64_t bvh_create_host(wp::vec3* lowers, wp::vec3* uppers, int num_bounds);
 	WP_API void bvh_destroy_host(uint64_t id);
@@ -64,6 +70,10 @@ extern "C"
     WP_API void hash_grid_destroy_device(uint64_t id);
     WP_API void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* positions, int num_points);
 
+    WP_API bool cutlass_gemm(int compute_capability, int m, int n, int k, const char* datatype,
+                             const void* a, const void* b, const void* c, void* d, float alpha, float beta,
+                             bool allow_tf32x3_arith, int batch_count);
+
     WP_API uint64_t volume_create_host(void* buf, uint64_t size);
     WP_API void volume_get_buffer_info_host(uint64_t id, void** buf, uint64_t* size);
     WP_API void volume_get_tiles_host(uint64_t id, void** buf, uint64_t* size);
@@ -89,6 +99,11 @@ extern "C"
     WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
 
+    WP_API void array_scan_int_host(uint64_t in, uint64_t out, int len, bool inclusive);
+    WP_API void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive);
+
+    WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive);
+    WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive);
     WP_API int cuda_driver_version();   // CUDA driver version
     WP_API int cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
 

@@ -46,8 +46,11 @@ def eval_springs(x,
 
     f = jnp.zeros_like(v)
 
-    f = jax.ops.index_add(f, i, -fs.T, indices_are_sorted=False, unique_indices=False)
-    f = jax.ops.index_add(f, j, fs.T, indices_are_sorted=False, unique_indices=False)
+    # f = jax.ops.index_add(f, i, -fs.T, indices_are_sorted=False, unique_indices=False)
+    # f = jax.ops.index_add(f, j, fs.T, indices_are_sorted=False, unique_indices=False)
+
+    f.at[i].add(-fs.T)
+    f.at[j].add(fs.T)
 
     return f
 

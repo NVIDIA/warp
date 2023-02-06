@@ -220,6 +220,7 @@ def f2(arr: wp.array2d(dtype=float)):
     slice = arr[0]
     wp.expect_eq(slice.shape[0], 20)
 
+
 @wp.kernel
 def f3(arr: wp.array3d(dtype=float)):
 
@@ -229,6 +230,7 @@ def f3(arr: wp.array3d(dtype=float)):
 
     slice = arr[0,0]
     wp.expect_eq(slice.shape[0], 30)
+
 
 @wp.kernel
 def f4(arr: wp.array4d(dtype=float)):
@@ -245,18 +247,337 @@ def f4(arr: wp.array4d(dtype=float)):
 def test_shape(test, device):
     
     with CheckOutput(test):
-        a1 = wp.zeros(dtype=float, shape=10)
-        wp.launch(f1, dim=1, inputs=[a1])
+        a1 = wp.zeros(dtype=float, shape=10, device=device)
+        wp.launch(f1, dim=1, inputs=[a1], device=device)
 
-        a2 = wp.zeros(dtype=float, shape=(10, 20))
-        wp.launch(f2, dim=1, inputs=[a2])
+        a2 = wp.zeros(dtype=float, shape=(10, 20), device=device)
+        wp.launch(f2, dim=1, inputs=[a2], device=device)
 
-        a3 = wp.zeros(dtype=float, shape=(10, 20, 30))
-        wp.launch(f3, dim=1, inputs=[a3])
+        a3 = wp.zeros(dtype=float, shape=(10, 20, 30), device=device)
+        wp.launch(f3, dim=1, inputs=[a3], device=device)
 
-        a4 = wp.zeros(dtype=float, shape=(10, 20, 30, 40))
-        wp.launch(f4, dim=1, inputs=[a4])
+        a4 = wp.zeros(dtype=float, shape=(10, 20, 30, 40), device=device)
+        wp.launch(f4, dim=1, inputs=[a4], device=device)
 
+
+@wp.kernel
+def sum_array(arr: wp.array(dtype=float), loss: wp.array(dtype=float)):
+    tid = wp.tid()
+    wp.atomic_add(loss, 0, arr[tid])
+
+
+def test_flatten(test, device):
+
+    np_arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype=float)
+    arr = wp.array(np_arr, dtype=float, shape=np_arr.shape, device=device, requires_grad=True)
+    arr_flat = arr.flatten()
+    arr_comp = wp.array(np_arr.flatten(), dtype=float, device=device)
+    assert_array_equal(arr_flat, arr_comp)
+
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=sum_array,
+            dim=len(arr_flat),
+            inputs=[arr_flat, loss],
+            device=device
+        )
+
+    tape.backward(loss=loss)
+    grad = tape.gradients[arr_flat]
+
+    ones = wp.array(np.ones((8,), dtype=float,), dtype=float, device=device)
+    assert_array_equal(grad, ones)
+    test.assertEqual(loss.numpy()[0], 36)
+
+
+def test_reshape(test, device):
+
+    np_arr = np.arange(6, dtype=float)
+    arr = wp.array(np_arr, dtype=float, device=device, requires_grad=True)
+    arr_reshaped = arr.reshape((3, 2))
+    arr_comp = wp.array(np_arr.reshape((3, 2)), dtype=float, device=device)
+    assert_array_equal(arr_reshaped, arr_comp)
+    
+    arr_reshaped = arr_reshaped.reshape(6)
+    assert_array_equal(arr_reshaped, arr)
+
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=sum_array,
+            dim=len(arr_reshaped),
+            inputs=[arr_reshaped, loss],
+            device=device
+        )
+
+    tape.backward(loss=loss)
+    grad = tape.gradients[arr_reshaped]
+
+    ones = wp.array(np.ones((6,), dtype=float,), dtype=float, device=device)
+    assert_array_equal(grad, ones)
+    test.assertEqual(loss.numpy()[0], 15)
+
+
+@wp.kernel
+def compare_stepped_window(x: wp.array2d(dtype=float)):
+
+    wp.expect_eq(x[0,0], 1.0)
+    wp.expect_eq(x[0,1], 2.0)
+    wp.expect_eq(x[1,0], 9.0)
+    wp.expect_eq(x[1,1], 10.0)
+
+
+def test_slicing(test, device):
+
+    np_arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]], dtype=float)
+    arr = wp.array(np_arr, dtype=float, shape=np_arr.shape, device=device, requires_grad=True)
+    
+    slice_a = arr[1,:,:]        # test indexing
+    slice_b = arr[1:2,:,:]      # test slicing
+    slice_c = arr[-1,:,:]       # test negative indexing
+    slice_d = arr[-2:-1,:,:]    # test negative slicing
+    slice_e = arr[-1:3,:,:]     # test mixed slicing
+    slice_e2 = slice_e[0,0,:]   # test 2x slicing
+    slice_f = arr[0:3:2,0,:]    # test step
+
+    assert_array_equal(slice_a, wp.array(np_arr[1,:,:], dtype=float, device=device))
+    assert_array_equal(slice_b, wp.array(np_arr[1:2,:,:], dtype=float, device=device))
+    assert_array_equal(slice_c, wp.array(np_arr[-1,:,:], dtype=float, device=device))
+    assert_array_equal(slice_d, wp.array(np_arr[-2:-1,:,:], dtype=float, device=device))
+    assert_array_equal(slice_e, wp.array(np_arr[-1:3,:,:], dtype=float, device=device))
+    assert_array_equal(slice_e2, wp.array(np_arr[2,0,:], dtype=float, device=device))
+
+    # wp does not support copying from/to non-contiguous arrays
+    # stepped windows must read on the device the original array was created on
+    wp.launch(kernel=compare_stepped_window, dim=1, inputs=[slice_f], device=device)
+    
+    slice_flat = slice_b.flatten()
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=sum_array,
+            dim=len(slice_flat),
+            inputs=[slice_flat, loss],
+            device=device
+        )
+
+    tape.backward(loss=loss)
+    grad = tape.gradients[slice_flat]
+
+    ones = wp.array(np.ones((4,), dtype=float,), dtype=float, device=device)
+    assert_array_equal(grad, ones)
+    test.assertEqual(loss.numpy()[0], 26)
+
+
+def test_astype(test, device):
+
+    np_arr_a = np.arange(0, 10, 1, dtype=float)
+    np_arr_b = np.arange(0, 10, 1, dtype=int)
+    np_arr_c = np.arange(0, 10, 1, dtype=np.int8)
+    np_arr_d = np.arange(0, 10, 1, dtype=np.uint64)
+    
+    arr_a = wp.array(np_arr_a, dtype=float, device=device, requires_grad=True)
+    arr_b = wp.array(np_arr_b, dtype=int, device=device)
+    arr_c = wp.array(np_arr_c, dtype=wp.int8, device=device)
+    arr_d = wp.array(np_arr_d, dtype=wp.uint64, device=device)
+    
+    arr_a = arr_a.astype(dtype=int)
+    assert_array_equal(arr_a, arr_b)
+
+    arr_a = arr_a.astype(dtype=wp.int8)
+    assert_array_equal(arr_a, arr_c)
+
+    arr_a = arr_a.astype(dtype=wp.uint64)
+    assert_array_equal(arr_a, arr_d)
+
+    arr_a = arr_a.astype(dtype=float)
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel=sum_array,
+            dim=len(arr_a),
+            inputs=[arr_a, loss],
+            device=device
+        )
+
+    tape.backward(loss=loss)
+    grad = tape.gradients[arr_a]
+
+    ones = wp.array(np.ones((10,), dtype=float,), dtype=float, device=device)
+    assert_array_equal(grad, ones)
+    test.assertEqual(loss.numpy()[0], 45)
+
+    
+def test_fill_zero(test, device):
+
+    dim_x = 4
+
+    # test zeroing:
+    for nptype,wptype in wp.types.np_dtype_to_warp_type.items():
+
+        a1 = wp.zeros(dim_x, dtype=wptype, device=device)
+        a2 = wp.zeros((dim_x,dim_x), dtype=wptype, device=device)
+        a3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wptype, device=device)
+        a4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wptype, device=device)
+
+        a1.fill_(127)
+        a2.fill_(127)
+        a3.fill_(127)
+        a4.fill_(127)
+
+        a1.zero_()
+        a2.zero_()
+        a3.zero_()
+        a4.zero_()
+
+        assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
+        assert_np_equal(a2.numpy(), np.zeros_like(a2.numpy()))
+        assert_np_equal(a3.numpy(), np.zeros_like(a3.numpy()))
+        assert_np_equal(a4.numpy(), np.zeros_like(a4.numpy()))
+
+        # test some vector types too:
+        v1 = wp.zeros(dim_x, dtype=wp.vec(3,wptype), device=device)
+        v2 = wp.zeros((dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+
+        v1.fill_(127)
+        v2.fill_(127)
+        v3.fill_(127)
+        v4.fill_(127)
+
+        v1.zero_()
+        v2.zero_()
+        v3.zero_()
+        v4.zero_()
+        
+        assert_np_equal(v1.numpy(), np.zeros_like(v1.numpy()))
+        assert_np_equal(v2.numpy(), np.zeros_like(v2.numpy()))
+        assert_np_equal(v3.numpy(), np.zeros_like(v3.numpy()))
+        assert_np_equal(v4.numpy(), np.zeros_like(v4.numpy()))
+
+    # test fill with scalar constant:
+    for nptype,wptype in wp.types.np_dtype_to_warp_type.items():
+        
+        a1 = wp.zeros(dim_x, dtype=wptype, device=device)
+        a2 = wp.zeros((dim_x,dim_x), dtype=wptype, device=device)
+        a3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wptype, device=device)
+        a4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wptype, device=device)
+        
+        a1.fill_(127)
+        a2.fill_(127)
+        a3.fill_(127)
+        a4.fill_(127)
+        
+        assert_np_equal(a1.numpy(), 127 * np.ones_like(a1.numpy()))
+        assert_np_equal(a2.numpy(), 127 * np.ones_like(a2.numpy()))
+        assert_np_equal(a3.numpy(), 127 * np.ones_like(a3.numpy()))
+        assert_np_equal(a4.numpy(), 127 * np.ones_like(a4.numpy()))
+        
+        # test some vector types too:
+        v1 = wp.zeros(dim_x, dtype=wp.vec(3,wptype), device=device)
+        v2 = wp.zeros((dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+
+        v1.fill_(127)
+        v2.fill_(127)
+        v3.fill_(127)
+        v4.fill_(127)
+        
+        assert_np_equal(v1.numpy(), 127 * np.ones_like(v1.numpy()))
+        assert_np_equal(v2.numpy(), 127 * np.ones_like(v2.numpy()))
+        assert_np_equal(v3.numpy(), 127 * np.ones_like(v3.numpy()))
+        assert_np_equal(v4.numpy(), 127 * np.ones_like(v4.numpy()))
+    
+    # test fill with vector constant:
+    for nptype,wptype in wp.types.np_dtype_to_warp_type.items():
+        
+        vectype = wp.vec(3,wptype)
+
+        vecvalue = vectype(1,2,3)
+
+        # test some vector types too:
+        v1 = wp.zeros(dim_x, dtype=vectype, device=device)
+        v2 = wp.zeros((dim_x,dim_x), dtype=vectype, device=device)
+        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=vectype, device=device)
+        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=vectype, device=device)
+
+        v1.fill_( vecvalue )
+        v2.fill_( vecvalue )
+        v3.fill_( vecvalue )
+        v4.fill_( vecvalue )
+
+        e1 = np.tile( np.array([1,2,3],dtype=nptype)[None,:], (dim_x,1) )
+        e2 = np.tile( np.array([1,2,3],dtype=nptype)[None,None,:], (dim_x,dim_x,1) )
+        e3 = np.tile( np.array([1,2,3],dtype=nptype)[None,None,None,:], (dim_x,dim_x,dim_x,1) )
+        e4 = np.tile( np.array([1,2,3],dtype=nptype)[None,None,None,None,:], (dim_x,dim_x,dim_x,dim_x,1) )
+        
+        assert_np_equal(v1.numpy(), e1)
+        assert_np_equal(v2.numpy(), e2)
+        assert_np_equal(v3.numpy(), e3)
+        assert_np_equal(v4.numpy(), e4)
+
+    # specific tests for floating point values:
+    for nptype in [ np.dtype(np.float16), np.dtype(np.float32), np.dtype(np.float64) ]:
+
+        wptype = wp.types.np_dtype_to_warp_type[nptype]
+        
+        vectype = wp.vec(3,wptype)
+
+        vecvalue = vectype(1.25,2.5,3.75)
+
+        # test some vector types too:
+        v1 = wp.zeros(dim_x, dtype=vectype, device=device)
+        v2 = wp.zeros((dim_x,dim_x), dtype=vectype, device=device)
+        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=vectype, device=device)
+        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=vectype, device=device)
+
+        v1.fill_( vecvalue )
+        v2.fill_( vecvalue )
+        v3.fill_( vecvalue )
+        v4.fill_( vecvalue )
+
+        e1 = np.tile( np.array([1.25,2.5,3.75],dtype=nptype)[None,:], (dim_x,1) )
+        e2 = np.tile( np.array([1.25,2.5,3.75],dtype=nptype)[None,None,:], (dim_x,dim_x,1) )
+        e3 = np.tile( np.array([1.25,2.5,3.75],dtype=nptype)[None,None,None,:], (dim_x,dim_x,dim_x,1) )
+        e4 = np.tile( np.array([1.25,2.5,3.75],dtype=nptype)[None,None,None,None,:], (dim_x,dim_x,dim_x,dim_x,1) )
+        
+        assert_np_equal(v1.numpy(), e1)
+        assert_np_equal(v2.numpy(), e2)
+        assert_np_equal(v3.numpy(), e3)
+        assert_np_equal(v4.numpy(), e4)
+
+
+    # test fill small arrays with scalar constant:
+    for xdim in [1,2,3,5,6,7]:
+        for nptype,wptype in wp.types.np_dtype_to_warp_type.items():
+            
+            a1 = wp.zeros(xdim, dtype=wptype, device=device)
+            a1.fill_(127)
+            assert_np_equal(a1.numpy(), 127 * np.ones_like(a1.numpy()))
+        
+
+def test_round_trip(test, device):
+
+    dim_x = 4
+
+    for nptype,wptype in wp.types.np_dtype_to_warp_type.items():
+        a_np = np.random.randn(dim_x).astype(nptype)
+        a = wp.array(a_np,device=device)
+        test.assertEqual(a.dtype,wptype)
+
+        assert_np_equal(a.numpy(), a_np)
+
+        v_np = np.random.randn(dim_x,3).astype(nptype)
+        v = wp.array(v_np,dtype=wp.vec(3,wptype),device=device)
+
+        assert_np_equal(v.numpy(), v_np)
 
 
 def register(parent):
@@ -267,6 +588,10 @@ def register(parent):
         pass
 
     add_function_test(TestArray, "test_shape", test_shape, devices=devices)
+    add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
+    add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
+    add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
+    add_function_test(TestArray, "test_astype", test_astype, devices=devices)
 
     add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
     add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)
@@ -274,6 +599,8 @@ def register(parent):
     add_function_test(TestArray, "test_4d_array", test_4d, devices=devices)
     add_function_test(TestArray, "test_4d_array_transposed", test_4d_transposed, devices=devices)
     add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
+    add_function_test(TestArray, "test_fill_zero", test_fill_zero, devices=devices)
+    add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
 
     return TestArray
 

@@ -705,7 +705,7 @@ __hostdev__ inline float Fract(float x)
 }
 __hostdev__ inline double Fract(double x)
 {
-    return x - floor(x);
+    return x - ::floor(x);
 }
 
 __hostdev__ inline int32_t Floor(float x)
@@ -714,7 +714,7 @@ __hostdev__ inline int32_t Floor(float x)
 }
 __hostdev__ inline int32_t Floor(double x)
 {
-    return int32_t(floor(x));
+    return int32_t(::floor(x));
 }
 
 __hostdev__ inline int32_t Ceil(float x)
@@ -723,7 +723,7 @@ __hostdev__ inline int32_t Ceil(float x)
 }
 __hostdev__ inline int32_t Ceil(double x)
 {
-    return int32_t(ceil(x));
+    return int32_t(::ceil(x));
 }
 
 template<typename T>
@@ -798,7 +798,7 @@ __hostdev__ inline float Sqrt(float x)
 }
 __hostdev__ inline double Sqrt(double x)
 {
-    return sqrt(x);
+    return ::sqrt(x);
 }
 //@}
 

@@ -11,8 +11,7 @@ from .common import log_info
 from .common import log_error
 from . import menu_common
 import warp as wp
-import os
-import imp
+import os, sys, subprocess
 import webbrowser
 import importlib
 import omni.ext
@@ -24,6 +23,12 @@ SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__fi
 
 WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
+
+def open_file(filename):
+    if sys.platform == "win32":
+        os.startfile(filename)
+    else:
+        subprocess.call(["xdg-open", filename])
 
 class OmniWarpExtension(omni.ext.IExt):
 
@@ -53,7 +58,7 @@ class OmniWarpExtension(omni.ext.IExt):
                 "Warp"
             )
         except ImportError as e:
-            print(e)
+            print("Warning: sample browser not enabled.")
 
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
         self._stage_event_sub = omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)
@@ -199,7 +204,7 @@ class OmniWarpExtension(omni.ext.IExt):
 
             import_path = os.path.normpath(os.path.join(SCRIPTS_PATH, script_name))
 
-            module = imp.load_source(script_name, import_path)
+            module = importlib.load_source(script_name, import_path)
             self._example = module.Example()
 
             if self._example is None:
@@ -239,10 +244,10 @@ class OmniWarpExtension(omni.ext.IExt):
         omni.kit.window.file.prompt_if_unsaved_stage(new_stage)
 
     def _on_browse_scripts_click(self):
-        os.startfile(SCRIPTS_PATH)
+        open_file(SCRIPTS_PATH)
 
     def _on_browse_scenes_click(self):
-        os.startfile(SCENES_PATH)
+        open_file(SCENES_PATH)
 
     def _on_getting_started_click(self, *_):
         webbrowser.open(WARP_GETTING_STARTED_URL)

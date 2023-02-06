@@ -8,7 +8,7 @@
 import math
 import os
 import sys
-import imp
+import importlib
 import subprocess
 import ctypes
 import _ctypes
@@ -45,6 +45,9 @@ def set_msvc_compiler(msvc_path, sdk_path):
     if "LIB" not in os.environ:
         os.environ["LIB"] = ""
 
+    msvc_path = os.path.abspath(msvc_path)
+    sdk_path = os.path.abspath(sdk_path)
+
     os.environ["INCLUDE"] += os.pathsep + os.path.join(msvc_path, "include")
     os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/winrt")
     os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/um")
@@ -56,7 +59,8 @@ def set_msvc_compiler(msvc_path, sdk_path):
     os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib/um/x64")
 
     os.environ["PATH"] += os.pathsep + os.path.join(msvc_path, "bin/HostX64/x64")
-    
+
+    warp.config.host_compiler = os.path.join(msvc_path, "bin", "HostX64", "x64", "cl.exe")
 
 
 def find_host_compiler():
@@ -83,7 +87,7 @@ def find_host_compiler():
                 if (len(pair) >= 2):
                     os.environ[pair[0]] = pair[1]
                 
-            cl_path = run_cmd("where cl.exe")
+            cl_path = run_cmd("where cl.exe").decode("utf-8").rstrip()
             cl_version = os.environ["VCToolsVersion"].split(".")
 
             # ensure at least VS2017 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
@@ -171,6 +175,8 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
+    cutlass_home = "warp/native/cutlass"
+    cutlass_includes = f'-I"{cutlass_home}/include" -I"{cutlass_home}/tools/util/include"'
 
     import pathlib
     warp_home_path = pathlib.Path(__file__).parent
@@ -277,6 +283,11 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
 
     if os.name == 'nt':
 
+        if not warp.config.host_compiler:
+            raise RuntimeError("Warp build error: Host compiler was not found")
+        
+        host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
+
         cpp_out = cpp_path + ".obj"
 
         if cuda_disabled:
@@ -285,12 +296,12 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
             cuda_includes = f' /I"{cuda_home}/include"'
 
         if (config == "debug"):
-            cpp_flags = f'/MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo /MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (config == "release"):
-            cpp_flags = f'/Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo /Ox /D "NDEBUG" /D "WP_CPU" /D "WP_DISABLE_CUDA={cuda_disabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -305,7 +316,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
 
 
         with ScopedTimer("build", active=warp.config.verbose):
-            cpp_cmd = f'cl.exe {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+            cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
             run_cmd(cpp_cmd)
 
             ld_inputs.append(quote(cpp_out))
@@ -315,10 +326,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -I"{nanovdb_home}" -DNDEBUG -DWP_CUDA -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -I"{nanovdb_home}" -DNDEBUG -DWP_CUDA {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
@@ -326,7 +337,7 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
                 ld_inputs.append("cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = 'link.exe {inputs} {flags} /out:"{dll_path}"'.format(inputs=' '.join(ld_inputs), flags=ld_flags, dll_path=dll_path)
+            link_cmd = f'"{host_linker}" {" ".join(ld_inputs)} {ld_flags} /out:"{dll_path}"'
             run_cmd(link_cmd)
         
     else:
@@ -365,10 +376,10 @@ def build_dll(cpp_path, cu_path, dll_path, config="release", verify_fp=False, fa
             cu_out = cu_path + ".o"
 
             if (config == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_CUDA {cutlass_includes} -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             elif (config == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_CUDA -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_CUDA {cutlass_includes} -I"{native_dir}" -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
