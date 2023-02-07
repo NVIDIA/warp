@@ -75,7 +75,7 @@ class JointAxis:
         target=None,
         target_ke=0.0,
         target_kd=0.0,
-        mode=JOINT_MODE_LIMIT,
+        mode=JOINT_MODE_TARGET_POSITION,
     ):
         self.axis = np.array(wp.normalize(np.array(axis, dtype=np.float32)))
         self.limit_lower = limit_lower
@@ -1268,7 +1268,7 @@ class ModelBuilder:
         target: float = 0.0,
         target_ke: float = 0.0,
         target_kd: float = 0.0,
-        mode: int = JOINT_MODE_LIMIT,
+        mode: int = JOINT_MODE_TARGET_POSITION,
         limit_lower: float = -2*math.pi,
         limit_upper: float = 2*math.pi,
         limit_ke: float = default_joint_limit_ke,
@@ -1328,7 +1328,7 @@ class ModelBuilder:
         target: float = 0.0,
         target_ke: float = 0.0,
         target_kd: float = 0.0,
-        mode: int = JOINT_MODE_LIMIT,
+        mode: int = JOINT_MODE_TARGET_POSITION,
         limit_lower: float = -1e4,
         limit_upper: float = 1e4,
         limit_ke: float = default_joint_limit_ke,
