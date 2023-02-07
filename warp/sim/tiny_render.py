@@ -160,7 +160,7 @@ class TinyRenderer:
             else:
                 body_q = np.zeros((0, 7), dtype=np.float32)
             shape_geo_src = model.shape_geo_src
-            shape_geo_type = model.geo_params.geo_type.numpy()
+            shape_geo_type = model.geo_params.type.numpy()
             shape_geo_scale = model.geo_params.scale.numpy()
             shape_transform = model.shape_transform.numpy()
 

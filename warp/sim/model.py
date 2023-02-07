@@ -16,23 +16,27 @@ import copy
 
 from typing import List, Optional, Tuple, Union
 
+from .inertia import compute_mesh_inertia, compute_shape_mass, transform_inertia
+
+from .inertia import GEO_SPHERE
+from .inertia import GEO_BOX
+from .inertia import GEO_CAPSULE
+from .inertia import GEO_CYLINDER
+from .inertia import GEO_CONE
+from .inertia import GEO_MESH
+from .inertia import GEO_SDF
+from .inertia import GEO_PLANE
+from .inertia import GEO_NONE
+from .inertia import ModelShapeGeometry
+
+from .collide import count_contact_points
+
 from warp.types import Volume
 Vec3 = List[float]
 Vec4 = List[float]
 Quat = List[float]
 Mat33 = List[float]
 Transform = Tuple[Vec3, Quat]
-
-# Shape geometry types
-GEO_SPHERE = wp.constant(0)
-GEO_BOX = wp.constant(1)
-GEO_CAPSULE = wp.constant(2)
-GEO_CYLINDER = wp.constant(3)
-GEO_CONE = wp.constant(4)
-GEO_MESH = wp.constant(5)
-GEO_SDF = wp.constant(6)
-GEO_PLANE = wp.constant(7)
-GEO_NONE = wp.constant(8)
 
 # Types of joints linking rigid bodies
 JOINT_PRISMATIC = wp.constant(0)
@@ -52,21 +56,12 @@ JOINT_MODE_TARGET_VELOCITY = wp.constant(2)
 
 # Material properties pertaining to rigid shape contact dynamics
 @wp.struct
-class ShapeContactMaterial:
+class ModelShapeMaterials:
     ke: wp.array(dtype=float)  # The contact elastic stiffness (only used by Euler integrator)
     kd: wp.array(dtype=float)  # The contact damping stiffness (only used by Euler integrator)
     kf: wp.array(dtype=float)  # The contact friction stiffness (only used by Euler integrator)
     mu: wp.array(dtype=float)  # The coefficient of friction
     restitution: wp.array(dtype=float)  # The coefficient of restitution (only used by XPBD integrator)
-
-# Shape properties of geometry
-@wp.struct
-class GeoProperties:
-    geo_type: wp.array(dtype=wp.int32)  # The type of geometry (GEO_SPHERE, GEO_BOX, etc.)
-    is_solid: wp.array(dtype=wp.uint8)  # Indicates whether the shape is solid or hollow
-    thickness: wp.array(dtype=float)    # The thickness of the shape (used for collision detection, and inertia computation of hollow shapes)
-    source: wp.array(dtype=wp.uint64)   # Pointer to the source geometry (in case of a mesh, zero otherwise)
-    scale: wp.array(dtype=wp.vec3)      # The 3D scale of the shape
 
 # Axis (linear or angular) of a joint that can have bounds and be driven towards a target
 class JointAxis:
@@ -97,233 +92,6 @@ class JointAxis:
         self.target_kd = target_kd
         self.mode = mode
 
-@wp.func
-def triangle_inertia(
-    p: wp.vec3,
-    q: wp.vec3,
-    r: wp.vec3,
-    density: float,
-    com: wp.vec3,
-    # outputs
-    mass: wp.array(dtype=float, ndim=1),
-    inertia: wp.array(dtype=wp.mat33, ndim=1)):
-
-    pcom = p - com
-    qcom = q - com
-    rcom = r - com
-
-    Dm = wp.mat33(pcom[0], qcom[0], rcom[0],
-                  pcom[1], qcom[1], rcom[1],
-                  pcom[2], qcom[2], rcom[2])
-
-    volume = wp.determinant(Dm) / 6.0
-
-    # accumulate mass
-    wp.atomic_add(mass, 0, 4.0 * density * volume)
-
-    alpha = wp.sqrt(5.0) / 5.0
-    mid = (com + p + q + r) / 4. - com
-
-    # displacement of quadrature point from COM
-    d0 = alpha * (p - mid) + mid
-    d1 = alpha * (q - mid) + mid
-    d2 = alpha * (r - mid) + mid
-    d3 = alpha * (com - mid) + mid
-
-    # accumulate inertia
-    identity = wp.mat33(1., 0., 0., 0., 1., 0., 0., 0., 1.)
-    I = wp.dot(d0, d0) * identity - wp.outer(d0, d0)
-    I += wp.dot(d1, d1) * identity - wp.outer(d1, d1)
-    I += wp.dot(d2, d2) * identity - wp.outer(d2, d2)
-    I += wp.dot(d3, d3) * identity - wp.outer(d3, d3)
-
-    wp.atomic_add(inertia, 0, density * volume * I)
-
-
-# Calculates the mass and inertia of a solid mesh
-@wp.kernel
-def compute_solid_mesh_inertia(
-    # inputs
-    com: wp.vec3,
-    alpha: float,
-    weight: float,
-    indices: wp.array(dtype=int, ndim=1),
-    vertices: wp.array(dtype=wp.vec3, ndim=1),
-    quads: wp.array(dtype=wp.vec3, ndim=2),
-    # outputs
-    mass: wp.array(dtype=float, ndim=1),
-    inertia: wp.array(dtype=wp.mat33, ndim=1),
-    volume: wp.array(dtype=float, ndim=1)):
-
-    i = wp.tid()
-
-    p = vertices[indices[i * 3 + 0]]
-    q = vertices[indices[i * 3 + 1]]
-    r = vertices[indices[i * 3 + 2]]
-
-    mid = (com + p + q + r) / 4.
-
-    pcom = p - com
-    qcom = q - com
-    rcom = r - com
-
-    Dm = wp.mat33(pcom[0], qcom[0], rcom[0],
-                  pcom[1], qcom[1], rcom[1],
-                  pcom[2], qcom[2], rcom[2])
-
-    vol = wp.determinant(Dm) / 6.0
-    wp.atomic_add(volume, 0, vol)
-
-    # quadrature points lie on the line between the
-    # centroid and each vertex of the tetrahedron
-    quads[i, 0] = alpha * (p - mid) + mid
-    quads[i, 1] = alpha * (q - mid) + mid
-    quads[i, 2] = alpha * (r - mid) + mid
-    quads[i, 3] = alpha * (com - mid) + mid
-    
-    identity = wp.mat33(1., 0., 0., 0., 1., 0., 0., 0., 1.)
-    for j in range(4):
-        # displacement of quadrature point from COM
-        d = quads[i,j] - com
-
-        # accumulate mass
-        wp.atomic_add(mass, 0, weight * vol)
-
-        # accumulate inertia
-        I = weight * vol * (wp.dot(d, d) * identity - wp.outer(d, d))
-        wp.atomic_add(inertia, 0, I)
-
-
-# Calculates the mass and inertia of a hollow mesh
-@wp.kernel
-def compute_hollow_mesh_inertia(
-    # inputs
-    com: wp.vec3,
-    density: float,
-    indices: wp.array(dtype=int, ndim=1),
-    vertices: wp.array(dtype=wp.vec3, ndim=1),
-    thickness: wp.array(dtype=float, ndim=1),
-    # outputs
-    mass: wp.array(dtype=float, ndim=1),
-    inertia: wp.array(dtype=wp.mat33, ndim=1),
-    volume: wp.array(dtype=float, ndim=1)):
-    
-    tid = wp.tid()
-    i = indices[tid * 3 + 0]
-    j = indices[tid * 3 + 1]
-    k = indices[tid * 3 + 2]
-
-    vi = vertices[i]
-    vj = vertices[j]
-    vk = vertices[k]
-
-    normal = wp.normalize(wp.cross(vj - vi, vk - vi))
-    ti = normal * (thickness[i] * 0.5)
-    tj = normal * (thickness[j] * 0.5)
-    tk = normal * (thickness[k] * 0.5)
-
-    # wedge vertices
-    vi0 = vi - ti
-    vi1 = vi + ti
-    vj0 = vj - tj
-    vj1 = vj + tj
-    vk0 = vk - tk
-    vk1 = vk + tk
-
-    triangle_inertia(vi0, vj0, vk0, density, com, mass, inertia)
-    triangle_inertia(vj0, vk1, vk0, density, com, mass, inertia)
-    triangle_inertia(vj0, vj1, vk1, density, com, mass, inertia)
-    triangle_inertia(vj0, vi1, vj1, density, com, mass, inertia)
-    triangle_inertia(vj0, vi0, vi1, density, com, mass, inertia)
-    triangle_inertia(vj1, vi1, vk1, density, com, mass, inertia)
-    triangle_inertia(vi1, vi0, vk0, density, com, mass, inertia)
-    triangle_inertia(vi1, vk0, vk1, density, com, mass, inertia)
-
-    # compute volume
-    a = wp.length(wp.cross(vj - vi, vk - vi)) * 0.5
-    vol = a * (thickness[i] + thickness[j] + thickness[k]) / 3.0
-    wp.atomic_add(volume, 0, vol)
-
-
-@wp.kernel
-def count_contact_points(
-    contact_pairs: wp.array(dtype=int, ndim=2),
-    geo: GeoProperties,
-    # outputs
-    contact_count: wp.array(dtype=int),
-):
-    tid = wp.tid()
-    shape_a = contact_pairs[tid, 0]
-    shape_b = contact_pairs[tid, 1]
-
-    if shape_b == -1:
-        actual_type_a = geo.geo_type[shape_a]
-        # ground plane
-        actual_type_b = wp.sim.GEO_PLANE
-    else:
-        type_a = geo.geo_type[shape_a]
-        type_b = geo.geo_type[shape_b]
-        # unique ordering of shape pairs
-        if type_a < type_b:
-            actual_shape_a = shape_a
-            actual_shape_b = shape_b
-            actual_type_a = type_a
-            actual_type_b = type_b
-        else:
-            actual_shape_a = shape_b
-            actual_shape_b = shape_a
-            actual_type_a = type_b
-            actual_type_b = type_a
-
-    # determine how many contact points need to be evaluated
-    num_contacts = 0
-    if actual_type_a == wp.sim.GEO_SPHERE:
-        num_contacts = 1
-    elif actual_type_a == wp.sim.GEO_CAPSULE:
-        if actual_type_b == wp.sim.GEO_PLANE:
-            if geo.scale[actual_shape_b][0] == 0.0 and geo.scale[actual_shape_b][1] == 0.0:
-                num_contacts = 2  # vertex-based collision for infinite plane
-            else:
-                num_contacts = 2 + 4  # vertex-based collision + plane edges
-        elif actual_type_b == wp.sim.GEO_MESH:
-            num_contacts_a = 2
-            mesh_b = wp.mesh_get(geo.source[actual_shape_b])
-            num_contacts_b = mesh_b.points.shape[0]
-            num_contacts = num_contacts_a + num_contacts_b
-        else:
-            num_contacts = 2
-    elif actual_type_a == wp.sim.GEO_BOX:
-        if actual_type_b == wp.sim.GEO_BOX:
-            num_contacts = 24
-        elif actual_type_b == wp.sim.GEO_MESH:
-            num_contacts_a = 8
-            mesh_b = wp.mesh_get(geo.source[actual_shape_b])
-            num_contacts_b = mesh_b.points.shape[0]
-            num_contacts = num_contacts_a + num_contacts_b
-        elif actual_type_b == wp.sim.GEO_PLANE:
-            if geo.scale[actual_shape_b][0] == 0.0 and geo.scale[actual_shape_b][1] == 0.0:
-                num_contacts = 8  # vertex-based collision
-            else:
-                num_contacts = 8 + 4  # vertex-based collision + plane edges
-        else:
-            num_contacts = 8
-    elif actual_type_a == wp.sim.GEO_MESH:
-        mesh_a = wp.mesh_get(geo.source[actual_shape_a])
-        num_contacts_a = mesh_a.points.shape[0]
-        if actual_type_b == wp.sim.GEO_MESH:
-            mesh_b = wp.mesh_get(geo.source[actual_shape_b])
-            num_contacts_b = mesh_b.points.shape[0]
-        else:
-            num_contacts_b = 0
-        num_contacts = num_contacts_a + num_contacts_b
-    elif actual_type_a == wp.sim.GEO_PLANE:
-        return  # no plane-plane contacts
-    else:
-        print("count_contact_points: unsupported geometry type")
-        print(actual_type_a)
-        print(actual_type_b)
-
-    wp.atomic_add(contact_count, 0, num_contacts)
 
 class Mesh:
     """Describes a triangle collision mesh for simulation
@@ -356,7 +124,7 @@ class Mesh:
         self.is_solid = is_solid
 
         if compute_inertia:
-            self.mass, self.com, self.I, _ = ModelBuilder.compute_mesh_inertia(1.0, vertices, indices, is_solid=is_solid)
+            self.mass, self.com, self.I, _ = compute_mesh_inertia(1.0, vertices, indices, is_solid=is_solid)
         else:
             self.I = np.eye(3, dtype=np.float32)
             self.mass = 1.0
@@ -435,7 +203,7 @@ class Model:
 
     Attributes:
         requires_grad (float): Indicates whether the model was finalized with gradient computation enabled
-        num_envs (int): Number of articulation environments that were added to the ModelBuilder via `add_rigid_articulation`
+        num_envs (int): Number of articulation environments that were added to the ModelBuilder via `add_builder`
 
         particle_q (wp.array): Particle positions, shape [particle_count, 3], float
         particle_qd (wp.array): Particle velocities, shape [particle_count, 3], float
@@ -453,8 +221,8 @@ class Model:
         shape_transform (wp.array): Rigid shape transforms, shape [shape_count, 7], float
         shape_body (wp.array): Rigid shape body index, shape [shape_count], int
         body_shapes (dict): Mapping from body index to list of attached shape indices
-        shape_materials (ShapeContactMaterial): Rigid shape contact materials, shape [shape_count], float
-        shape_geo_params (GeoProperties): Shape geometry properties (geo type, scale, thickness, etc.), shape [shape_count, 3], float
+        shape_materials (ModelShapeMaterials): Rigid shape contact materials, shape [shape_count], float
+        shape_geo_params (ModelShapeGeometry): Shape geometry properties (geo type, scale, thickness, etc.), shape [shape_count, 3], float
         shape_geo_src (list): List of `wp.Mesh` instances used for rendering of mesh geometry
 
         shape_collision_group (list): Collision group of each shape, shape [shape_count], int
@@ -541,8 +309,8 @@ class Model:
 
         ground (bool): Whether the ground plane and ground contacts are enabled
         ground_plane (wp.array): Ground plane 3D normal and offset, shape [4], float
-        upvector (np.ndarray): Up vector, shape [3], float
-        upaxis (int): Up axis, 0 for x, 1 for y, 2 for z
+        up_vector (np.ndarray): Up vector of the world, shape [3], float
+        up_axis (int): Up axis, 0 for x, 1 for y, 2 for z
         gravity (np.ndarray): Gravity vector, shape [3], float
 
         particle_count (int): Total number of particles in the system
@@ -588,8 +356,8 @@ class Model:
         self.shape_transform = None
         self.shape_body = None
         self.body_shapes = {}
-        self.shape_materials = ShapeContactMaterial()
-        self.geo_params = GeoProperties()
+        self.shape_materials = ModelShapeMaterials()
+        self.geo_params = ModelShapeGeometry()
         self.shape_geo_src = None
 
         self.shape_collision_group = None
@@ -675,8 +443,8 @@ class Model:
         # toggles ground contact for all shapes
         self.ground = True
         self.ground_plane = None
-        self.upvector = np.array((0.0, 1.0, 0.0))
-        self.upaxis = 1
+        self.up_vector = np.array((0.0, 1.0, 0.0))
+        self.up_axis = 1
         self.gravity = np.array((0.0, -9.81, 0.0))
 
         self.particle_count = 0
@@ -714,9 +482,7 @@ class Model:
         s.particle_f = None
 
         s.body_q = None
-        s.body_q_prev = None
         s.body_qd = None
-        s.body_qd_prev = None
         s.body_f = None
         s.body_deltas = None
 
@@ -733,9 +499,7 @@ class Model:
         # articulations
         if (self.body_count):
             s.body_q = wp.clone(self.body_q)
-            s.body_q_prev = wp.clone(self.body_q)
             s.body_qd = wp.clone(self.body_qd)
-            s.body_qd_prev = wp.clone(self.body_qd)
             s.body_f = wp.zeros_like(self.body_qd)
 
             s.body_deltas = wp.zeros(
@@ -745,9 +509,7 @@ class Model:
                 requires_grad=requires_grad)
 
             s.body_q.requires_grad = requires_grad
-            s.body_q_prev.requires_grad = requires_grad
             s.body_qd.requires_grad = requires_grad
-            s.body_qd_prev.requires_grad = requires_grad
             s.body_f.requires_grad = requires_grad
 
         return s
@@ -957,7 +719,7 @@ class ModelBuilder:
     # Default geo settings
     default_geo_thickness = 1e-5
     
-    def __init__(self, upvector=(0.0, 1.0, 0.0), gravity=-9.80665):
+    def __init__(self, up_vector=(0.0, 1.0, 0.0), gravity=-9.80665):
         self.num_envs = 0
 
         # particles
@@ -1083,14 +845,14 @@ class ModelBuilder:
         self.joint_coord_count = 0
         self.joint_axis_total_count = 0
 
-        self.upvector = upvector
-        self.upaxis = np.argmax(np.abs(upvector))
+        self.up_vector = up_vector
+        self.up_axis = np.argmax(np.abs(up_vector))
         self.gravity = gravity
         # indicates whether a ground plane has been created
         self._ground_created = False
         # constructor parameters for ground plane shape
         self._ground_params = dict(
-            plane=(*upvector, 0.0),
+            plane=(*up_vector, 0.0),
             width=0.0,
             length=0.0,
             ke=self.default_shape_ke,
@@ -1167,7 +929,7 @@ class ModelBuilder:
     def add_articulation(self):
         self.articulation_start.append(self.joint_count)
     
-    def add_rigid_articulation(self, articulation, xform=None, update_num_env_count=True, separate_collision_group=True):
+    def add_builder(self, articulation, xform=None, update_num_env_count=True, separate_collision_group=True):
         """Copies a rigid articulation from `articulation`, another `ModelBuilder`.
         
         Args:
@@ -1295,7 +1057,7 @@ class ModelBuilder:
         self.joint_coord_count += articulation.joint_coord_count
         self.joint_axis_total_count += articulation.joint_axis_total_count
 
-        self.upvector = articulation.upvector
+        self.up_vector = articulation.up_vector
         self.gravity = articulation.gravity
 
         if update_num_env_count:
@@ -2038,7 +1800,7 @@ class ModelBuilder:
                           rot: Quat=(0.0, 0.0, 0.0, 1.0),
                           radius: float=1.0,
                           half_height: float=0.5,
-                          upaxis: int=1,
+                          up_axis: int=1,
                           density: float=default_shape_density,
                           ke: float=default_shape_ke,
                           kd: float=default_shape_kd,
@@ -2055,7 +1817,7 @@ class ModelBuilder:
             rot: The rotation of the shape with respect to the parent frame
             radius: The radius of the capsule
             half_height: The half length of the center cylinder along the up axis
-            upaxis: The axis along which the capsule is aligned (0=x, 1=y, 2=z)
+            up_axis: The axis along which the capsule is aligned (0=x, 1=y, 2=z)
             density: The density of the shape
             ke: The contact elastic stiffness
             kd: The contact damping stiffness
@@ -2069,9 +1831,9 @@ class ModelBuilder:
 
         q = rot
         sqh = math.sqrt(0.5)
-        if upaxis == 0:
+        if up_axis == 0:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
-        elif upaxis == 2:
+        elif up_axis == 2:
             q = wp.mul(rot, wp.quat(sqh, sqh, 0.0, 0.0))
         return self._add_shape(body, pos, q, GEO_CAPSULE, (radius, half_height, 0.0, 0.0), None, density, ke, kd, kf, mu, restitution, thickness + radius, is_solid)
     
@@ -2081,7 +1843,7 @@ class ModelBuilder:
                            rot: Quat=(0.0, 0.0, 0.0, 1.0),
                            radius: float=1.0,
                            half_height: float=0.5,
-                           upaxis: int=1,
+                           up_axis: int=1,
                            density: float=default_shape_density,
                            ke: float=default_shape_ke,
                            kd: float=default_shape_kd,
@@ -2098,7 +1860,7 @@ class ModelBuilder:
             rot: The rotation of the shape with respect to the parent frame
             radius: The radius of the cylinder
             half_height: The half length of the cylinder along the up axis
-            upaxis: The axis along which the cylinder is aligned (0=x, 1=y, 2=z)
+            up_axis: The axis along which the cylinder is aligned (0=x, 1=y, 2=z)
             density: The density of the shape
             ke: The contact elastic stiffness
             kd: The contact damping stiffness
@@ -2112,9 +1874,9 @@ class ModelBuilder:
 
         q = rot
         sqh = math.sqrt(0.5)
-        if upaxis == 0:
+        if up_axis == 0:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
-        elif upaxis == 2:
+        elif up_axis == 2:
             q = wp.mul(rot, wp.quat(sqh, sqh, 0.0, 0.0))
         return self._add_shape(body, pos, q, GEO_CYLINDER, (radius, half_height, 0.0, 0.0), None, density, ke, kd, kf, mu, restitution, thickness, is_solid)
     
@@ -2124,7 +1886,7 @@ class ModelBuilder:
                            rot: Quat=(0.0, 0.0, 0.0, 1.0),
                            radius: float=1.0,
                            half_height: float=0.5,
-                           upaxis: int=1,
+                           up_axis: int=1,
                            density: float=default_shape_density,
                            ke: float=default_shape_ke,
                            kd: float=default_shape_kd,
@@ -2141,7 +1903,7 @@ class ModelBuilder:
             rot: The rotation of the shape with respect to the parent frame
             radius: The radius of the cone
             half_height: The half length of the cone along the up axis
-            upaxis: The axis along which the cone is aligned (0=x, 1=y, 2=z)
+            up_axis: The axis along which the cone is aligned (0=x, 1=y, 2=z)
             density: The density of the shape
             ke: The contact elastic stiffness
             kd: The contact damping stiffness
@@ -2155,9 +1917,9 @@ class ModelBuilder:
 
         q = rot
         sqh = math.sqrt(0.5)
-        if upaxis == 0:
+        if up_axis == 0:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
-        elif upaxis == 2:
+        elif up_axis == 2:
             q = wp.mul(rot, wp.quat(sqh, sqh, 0.0, 0.0))
         return self._add_shape(body, pos, q, GEO_CONE, (radius, half_height, 0.0, 0.0), None, density, ke, kd, kf, mu, restitution, thickness, is_solid)
 
@@ -2254,7 +2016,7 @@ class ModelBuilder:
             has_ground_collision = False
         self.shape_ground_collision.append(has_ground_collision)
 
-        (m, c, I) = self._compute_shape_mass(type, scale, src, density, is_solid, thickness)
+        (m, c, I) = compute_shape_mass(type, scale, src, density, is_solid, thickness)
 
         self._update_body_mass(body, m, I, np.array(pos) + c, np.array(rot))
         return shape
@@ -3006,297 +2768,6 @@ class ModelBuilder:
                 self.add_triangle(v[0], v[1], v[2], tri_ke, tri_ka, tri_kd, tri_drag, tri_lift)
             except np.linalg.LinAlgError:
                 continue
-
-    @staticmethod
-    def compute_sphere_inertia(density: float, r: float) -> tuple:
-        """Helper to compute mass and inertia of a solid sphere
-
-        Args:
-            density: The sphere density
-            r: The sphere radius
-
-        Returns:
-
-            A tuple of (mass, inertia) with inertia specified around the origin
-        """
-
-        v = 4.0 / 3.0 * math.pi * r * r * r
-
-        m = density * v
-        Ia = 2.0 / 5.0 * m * r * r
-
-        I = np.array([[Ia, 0.0, 0.0], [0.0, Ia, 0.0], [0.0, 0.0, Ia]])
-
-        return (m, np.zeros(3), I)
-
-    @staticmethod
-    def compute_capsule_inertia(density: float, r: float, h: float) -> tuple:
-        """Helper to compute mass and inertia of a solid capsule extending along the y-axis
-
-        Args:
-            density: The capsule density
-            r: The capsule radius
-            h: The capsule height (full height of the interior cylinder)
-
-        Returns:
-
-            A tuple of (mass, inertia) with inertia specified around the origin
-        """
-
-        ms = density * (4.0 / 3.0) * math.pi * r * r * r
-        mc = density * math.pi * r * r * h
-
-        # total mass
-        m = ms + mc
-
-        # adapted from ODE
-        Ia = mc * (0.25 * r * r + (1.0 / 12.0) * h * h) + ms * (0.4 * r * r + 0.375 * r * h + 0.25 * h * h)
-        Ib = (mc * 0.5 + ms * 0.4) * r * r
-
-        I = np.array([[Ia, 0.0, 0.0], [0.0, Ib, 0.0], [0.0, 0.0, Ia]])
-
-        return (m, np.zeros(3), I)
-
-    @staticmethod
-    def compute_cylinder_inertia(density: float, r: float, h: float) -> tuple:
-        """Helper to compute mass and inertia of a solid cylinder extending along the y-axis
-
-        Args:
-            density: The cylinder density
-            r: The cylinder radius
-            h: The cylinder height (extent along the y-axis)
-
-        Returns:
-
-            A tuple of (mass, inertia) with inertia specified around the origin
-        """
-
-        m = density * math.pi * r * r * h
-
-        Ia = 1/12 * m * (3 * r * r + h * h)
-        Ib = 1/2 * m * r * r
-
-        I = np.array([[Ia, 0.0, 0.0], [0.0, Ib, 0.0], [0.0, 0.0, Ia]])
-
-        return (m, np.zeros(3), I)
-
-    @staticmethod
-    def compute_cone_inertia(density: float, r: float, h: float) -> tuple:
-        """Helper to compute mass and inertia of a solid cone extending along the y-axis
-
-        Args:
-            density: The cone density
-            r: The cone radius
-            h: The cone height (extent along the y-axis)
-
-        Returns:
-
-            A tuple of (mass, inertia) with inertia specified around the origin
-        """
-
-        m = density * math.pi * r * r * h / 3.0
-
-        Ia = 1/20 * m * (3 * r * r + 2 * h * h)
-        Ib = 3/10 * m * r * r
-
-        I = np.array([[Ia, 0.0, 0.0], [0.0, Ib, 0.0], [0.0, 0.0, Ia]])
-
-        return (m, np.zeros(3), I)
-
-    @staticmethod
-    def compute_box_inertia(density: float, w: float, h: float, d: float) -> tuple:
-        """Helper to compute mass and inertia of a solid box
-
-        Args:
-            density: The box density
-            w: The box width along the x-axis
-            h: The box height along the y-axis
-            d: The box depth along the z-axis
-
-        Returns:
-
-            A tuple of (mass, inertia) with inertia specified around the origin
-        """
-
-        v = w * h * d
-        m = density * v
-
-        Ia = 1.0 / 12.0 * m * (h * h + d * d)
-        Ib = 1.0 / 12.0 * m * (w * w + d * d)
-        Ic = 1.0 / 12.0 * m * (w * w + h * h)
-
-        I = np.array([[Ia, 0.0, 0.0], [0.0, Ib, 0.0], [0.0, 0.0, Ic]])
-
-        return (m, np.zeros(3), I)
-
-    @staticmethod
-    def compute_mesh_inertia(density: float, vertices: list, indices: list, is_solid: bool = True, thickness: Union[List[float], float] = 0.001) -> tuple:
-        com = np.mean(vertices, 0)
-
-        num_tris = len(indices) // 3
-
-        # compute signed inertia for each tetrahedron
-        # formed with the interior point, using an order-2
-        # quadrature: https://www.sciencedirect.com/science/article/pii/S0377042712001604#br000040
-
-        weight = 0.25
-        alpha = math.sqrt(5.0) / 5.0
-
-        I = np.zeros((3, 3))
-        mass = 0.0
-
-        for i in range(num_tris):
-
-            p = np.array(vertices[indices[i * 3 + 0]])
-            q = np.array(vertices[indices[i * 3 + 1]])
-            r = np.array(vertices[indices[i * 3 + 2]])
-
-            mid = (com + p + q + r) / 4.0
-
-            pcom = p - com
-            qcom = q - com
-            rcom = r - com
-
-            Dm = np.matrix((pcom, qcom, rcom)).T
-            volume = np.linalg.det(Dm) / 6.0
-            if volume == 0.0:
-                continue
-
-            # quadrature points lie on the line between the
-            # centroid and each vertex of the tetrahedron
-            quads = (mid + (p - mid) * alpha, mid + (q - mid) * alpha, mid + (r - mid) * alpha, mid + (com - mid) * alpha)
-
-            for j in range(4):
-
-                # displacement of quadrature point from COM
-                d = quads[j] - com
-
-                I += weight * volume * (np.dot(d, d) * np.eye(3, 3) - np.outer(d, d))
-                mass += weight * volume
-
-        return (mass * density, np.zeros(3), I * density, 0.0)
-        
-        
-        """Computes mass and 3x3 inertia matrix for a mesh."""
-        com = np.mean(vertices, 0)
-        com_warp = wp.vec3(com[0], com[1], com[2])
-
-        num_tris = len(indices) // 3
-
-        # compute signed inertia for each tetrahedron
-        # formed with the interior point, using an order-2
-        # quadrature: https://www.sciencedirect.com/science/article/pii/S0377042712001604#br000040
-
-        # Allocating for mass and inertia.
-        I_warp = wp.zeros(1, dtype=wp.mat33)
-        mass_warp = wp.zeros(1, dtype=float)
-        vol_warp = wp.zeros(1, dtype=float)
-
-        # Quadrature points
-        quads_warp = wp.zeros(shape=(num_tris, 4), dtype=wp.vec3)
-
-        if is_solid:
-            weight = 0.25
-            alpha = math.sqrt(5.0) / 5.0
-            wp.launch(kernel=compute_solid_mesh_inertia,
-                        dim=num_tris,
-                        inputs=[
-                            com_warp,
-                            alpha,
-                            weight,
-                            wp.array(indices, dtype=int),
-                            wp.array(vertices, dtype=wp.vec3),
-                            quads_warp
-                            ],
-                        outputs=[
-                            mass_warp,
-                            I_warp,
-                            vol_warp])
-        else:
-            weight = 0.25 * density
-            if isinstance(thickness, float):
-                thickness = [thickness] * len(vertices)
-            wp.launch(kernel=compute_hollow_mesh_inertia,
-                        dim=num_tris,
-                        inputs=[
-                            com_warp,
-                            weight,
-                            wp.array(indices, dtype=int),
-                            wp.array(vertices, dtype=wp.vec3),
-                            wp.array(thickness, dtype=float),
-                            ],
-                        outputs=[
-                            mass_warp,
-                            I_warp,
-                            vol_warp])
-
-        # Extract mass and inertia and save to class attributes.
-        mass = mass_warp.numpy()[0] * density
-        I = I_warp.numpy()[0] * density
-        volume = vol_warp.numpy()[0]
-        return mass, com, I, volume
-
-    def _compute_shape_mass(self, type, scale, src, density, is_solid, thickness):
-      
-        if density == 0.0 or type == GEO_PLANE:     # zero density means fixed
-            return 0.0, np.zeros(3), np.zeros((3, 3))
-
-        if (type == GEO_SPHERE):
-            solid = self.compute_sphere_inertia(density, scale[0])
-            if is_solid:
-                return solid
-            else:
-                hollow = self.compute_sphere_inertia(density, scale[0] - thickness)
-                return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-        elif (type == GEO_BOX):
-            w, h, d = np.array(scale[:3]) * 2.0
-            solid = self.compute_box_inertia(density, w, h, d)
-            if is_solid:
-                return solid
-            else:
-                hollow = self.compute_box_inertia(density, w - thickness, h - thickness, d - thickness)
-                return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-        elif (type == GEO_CAPSULE):
-            r, h = scale[0], scale[1] * 2.0
-            solid = self.compute_capsule_inertia(density, r, h)
-            if is_solid:
-                return solid
-            else:
-                hollow = self.compute_capsule_inertia(density, r - thickness, h - 2.0 * thickness)
-                return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-        elif (type == GEO_CYLINDER):
-            r, h = scale[0], scale[1] * 2.0
-            solid = self.compute_cylinder_inertia(density, r, h)
-            if is_solid:
-                return solid
-            else:
-                hollow = self.compute_cylinder_inertia(density, r - thickness, h - 2.0 * thickness)
-                return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-        elif (type == GEO_CONE):
-            r, h = scale[0], scale[1] * 2.0
-            solid = self.compute_cone_inertia(density, r, h)
-            if is_solid:
-                return solid
-            else:
-                hollow = self.compute_cone_inertia(density, r - thickness, h - 2.0 * thickness)
-                return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-        elif (type == GEO_MESH):
-            if src.mass > 0.0:
-                s = scale[0]
-                return (density * src.mass * s * s * s, src.com, density * src.I * s * s * s * s * s)
-            else:
-                # fall back to computing inertia from mesh geometry
-                vertices = np.array(src.vertices) * np.array(scale[:3])
-                m, c, I, vol = self.compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
-                return m, c, I
-        raise ValueError("Unsupported shape type: {}".format(type))
-
-    def _transform_inertia(self, m, I, p, q):
-        R = np.array(wp.quat_to_matrix(q)).reshape(3,3)
-
-        # Steiner's theorem
-        return R @ I @ R.T + m * (np.dot(p, p) * np.eye(3) - np.outer(p, p))
-
     
     # incrementally updates rigid body mass with additional mass and inertia expressed at a local to the body
     def _update_body_mass(self, i, m, I, p, q):
@@ -3316,7 +2787,7 @@ class ModelBuilder:
         com_offset = new_com - self.body_com[i]
         shape_offset = new_com - p
 
-        new_inertia = self._transform_inertia(self.body_mass[i], self.body_inertia[i], com_offset, wp.quat_identity()) + self._transform_inertia(
+        new_inertia = transform_inertia(self.body_mass[i], self.body_inertia[i], com_offset, wp.quat_identity()) + transform_inertia(
             m, I, shape_offset, q)
 
         self.body_mass[i] = new_mass
@@ -3343,10 +2814,10 @@ class ModelBuilder:
                          restitution: float=default_shape_restitution):
         """
         Creates a ground plane for the world. If the normal is not specified,
-        the upvector of the ModelBuilder is used.
+        the up_vector of the ModelBuilder is used.
         """
         if normal is None:
-            normal = self.upvector
+            normal = self.up_vector
         self._ground_params = dict(
             plane=(*normal, offset),
             width=0.0,
@@ -3435,7 +2906,7 @@ class ModelBuilder:
                     # add null pointer
                     geo_sources.append(0)
 
-            m.geo_params.geo_type = wp.array(self.shape_geo_type, dtype=wp.int32)
+            m.geo_params.type = wp.array(self.shape_geo_type, dtype=wp.int32)
             m.geo_params.source = wp.array(geo_sources, dtype=wp.uint64)
             m.geo_params.scale = wp.array(self.shape_geo_scale, dtype=wp.vec3, requires_grad=requires_grad)
             m.geo_params.is_solid = wp.array(self.shape_geo_is_solid, dtype=wp.uint8)
@@ -3595,7 +3066,7 @@ class ModelBuilder:
 
             # enable ground plane
             m.ground_plane = wp.array(self._ground_params["plane"], dtype=wp.float32, requires_grad=requires_grad)
-            m.gravity = np.array(self.upvector) * self.gravity
+            m.gravity = np.array(self.up_vector) * self.gravity
 
             m.enable_tri_collisions = False
 

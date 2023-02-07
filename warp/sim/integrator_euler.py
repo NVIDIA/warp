@@ -12,7 +12,8 @@ models + state forward in time.
 
 import warp as wp
 
-from .model import ShapeContactMaterial, GeoProperties
+from .model import ModelShapeMaterials
+from .inertia import ModelShapeGeometry
 
 from .optimizer import Optimizer
 from .particles import eval_particle_forces
@@ -821,7 +822,7 @@ def eval_soft_contacts(
     body_qd: wp.array(dtype=wp.spatial_vector),
     body_com: wp.array(dtype=wp.vec3),
     shape_body: wp.array(dtype=int),
-    shape_materials: ShapeContactMaterial,
+    shape_materials: ModelShapeMaterials,
     particle_ke: float,
     particle_kd: float,
     particle_kf: float,
@@ -925,8 +926,8 @@ def eval_rigid_contacts(
     body_q: wp.array(dtype=wp.transform),
     body_qd: wp.array(dtype=wp.spatial_vector),
     body_com: wp.array(dtype=wp.vec3),
-    shape_materials: ShapeContactMaterial,
-    geo: GeoProperties,
+    shape_materials: ModelShapeMaterials,
+    geo: ModelShapeGeometry,
     contact_count: wp.array(dtype=int),
     contact_body0: wp.array(dtype=int),
     contact_body1: wp.array(dtype=int),

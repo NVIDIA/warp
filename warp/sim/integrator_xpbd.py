@@ -6,24 +6,25 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp as wp
-from .model import ShapeContactMaterial
+from .model import ModelShapeMaterials
 from .utils import velocity_at_point
 from .integrator_euler import integrate_bodies, integrate_particles
 
 
 @wp.kernel
-def solve_contacts(particle_x: wp.array(dtype=wp.vec3),
-                   particle_v: wp.array(dtype=wp.vec3),
-                   invmass: wp.array(dtype=float),
-                   ke: float,
-                   kd: float,
-                   kf: float,
-                   mu: float,
-                   offset: float,
-                   ground: wp.array(dtype=float),
-                   dt: float,
-                   relaxation: float,
-                   delta: wp.array(dtype=wp.vec3)):
+def solve_particle_ground_contacts(
+    particle_x: wp.array(dtype=wp.vec3),
+    particle_v: wp.array(dtype=wp.vec3),
+    invmass: wp.array(dtype=float),
+    ke: float,
+    kd: float,
+    kf: float,
+    mu: float,
+    offset: float,
+    ground: wp.array(dtype=float),
+    dt: float,
+    relaxation: float,
+    delta: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
     wi = invmass[tid]
@@ -100,7 +101,7 @@ def solve_soft_contacts(
     body_m_inv: wp.array(dtype=float),
     body_I_inv: wp.array(dtype=wp.mat33),
     shape_body: wp.array(dtype=int),
-    shape_materials: ShapeContactMaterial,
+    shape_materials: ModelShapeMaterials,
     particle_mu: float,
     particle_ka: float,
     contact_count: wp.array(dtype=int),
@@ -1174,7 +1175,7 @@ def solve_body_contact_positions(
     contact_thickness: wp.array(dtype=float),
     contact_shape0: wp.array(dtype=int),
     contact_shape1: wp.array(dtype=int),
-    shape_materials: ShapeContactMaterial,
+    shape_materials: ModelShapeMaterials,
     relaxation: float,
     dt: float,
     contact_torsional_friction: float,
@@ -1415,7 +1416,7 @@ def apply_rigid_restitution(
     contact_normal: wp.array(dtype=wp.vec3),
     contact_shape0: wp.array(dtype=int),
     contact_shape1: wp.array(dtype=int),
-    shape_materials: ShapeContactMaterial,
+    shape_materials: ModelShapeMaterials,
     active_contact_distance: wp.array(dtype=float),
     active_contact_point0: wp.array(dtype=wp.vec3),
     active_contact_point1: wp.array(dtype=wp.vec3),
@@ -1622,14 +1623,6 @@ class XPBDIntegrator:
                           device=model.device)
 
             if (model.body_count):
-                if requires_grad:
-                    state_out.body_q_prev = wp.clone(state_in.body_q)
-                    if (self.enable_restitution):
-                        state_out.body_qd_prev = wp.clone(state_in.body_qd)
-                else:
-                    state_out.body_q_prev.assign(state_in.body_q)
-                    if (self.enable_restitution):
-                        state_out.body_qd_prev.assign(state_in.body_qd)
 
                 if (model.joint_count):
                     wp.launch(
@@ -1705,7 +1698,7 @@ class XPBDIntegrator:
 
                     # particle ground contact
                     if (model.ground):
-                        wp.launch(kernel=solve_contacts,
+                        wp.launch(kernel=solve_particle_ground_contacts,
                                 dim=model.particle_count,
                                 inputs=[
                                     particle_q,
@@ -2004,7 +1997,7 @@ class XPBDIntegrator:
                         dim=model.body_count,
                         inputs=[
                             state_out.body_q,
-                            state_out.body_q_prev,
+                            state_in.body_q,
                             model.body_com,
                             dt
                         ],
@@ -2055,8 +2048,8 @@ class XPBDIntegrator:
                             inputs=[
                                 state_out.body_q,
                                 state_out.body_qd,
-                                state_out.body_q_prev,
-                                state_out.body_qd_prev,
+                                state_in.body_q,
+                                state_in.body_qd,
                                 model.body_com,
                                 model.body_inv_mass,
                                 model.body_inv_inertia,

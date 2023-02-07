@@ -10,7 +10,8 @@ Collision handling functions and kernels.
 """
 
 import warp as wp
-from .model import GeoProperties
+from .inertia import ModelShapeGeometry
+
 
 @wp.func
 def triangle_closest_point_barycentric(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
@@ -59,15 +60,18 @@ def triangle_closest_point_barycentric(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp
 
     return wp.vec3(1.0 - v - w, v, w)
 
+
 @wp.func
 def sphere_sdf(center: wp.vec3, radius: float, p: wp.vec3):
 
     return wp.length(p-center) - radius
 
+
 @wp.func
 def sphere_sdf_grad(center: wp.vec3, radius: float, p: wp.vec3):
 
     return wp.normalize(p-center)
+
 
 @wp.func
 def box_sdf(upper: wp.vec3, p: wp.vec3):
@@ -112,6 +116,7 @@ def box_sdf_grad(upper: wp.vec3, p: wp.vec3):
     # z projection    
     return wp.vec3(0.0, 0.0, sz)
 
+
 @wp.func
 def capsule_sdf(radius: float, half_height: float, p: wp.vec3):
 
@@ -122,6 +127,7 @@ def capsule_sdf(radius: float, half_height: float, p: wp.vec3):
         return wp.length(wp.vec3(p[0], p[1] + half_height, p[2])) - radius
 
     return wp.length(wp.vec3(p[0], 0.0, p[2])) - radius
+
 
 @wp.func
 def capsule_sdf_grad(radius: float, half_height: float, p: wp.vec3):
@@ -134,11 +140,13 @@ def capsule_sdf_grad(radius: float, half_height: float, p: wp.vec3):
         
     return wp.normalize(wp.vec3(p[0], 0.0, p[2]))
 
+
 @wp.func
 def cylinder_sdf(radius: float, half_height: float, p: wp.vec3):
     dx = wp.length(wp.vec3(p[0], 0.0, p[2])) - radius
     dy = wp.abs(p[1]) - half_height
     return wp.min(wp.max(dx, dy), 0.0) + wp.length(wp.vec2(wp.max(dx, 0.0), wp.max(dy, 0.0)))
+
 
 @wp.func
 def cylinder_sdf_grad(radius: float, half_height: float, p: wp.vec3):
@@ -149,11 +157,13 @@ def cylinder_sdf_grad(radius: float, half_height: float, p: wp.vec3):
     else:
         return wp.vec3(0.0, wp.sign(p[1]), 0.0)
 
+
 @wp.func
 def cone_sdf(radius: float, half_height: float, p: wp.vec3):
     dx = wp.length(wp.vec3(p[0], 0.0, p[2])) - radius * (p[1] + half_height) / (2.0 * half_height)
     dy = wp.abs(p[1]) - half_height
     return wp.min(wp.max(dx, dy), 0.0) + wp.length(wp.vec2(wp.max(dx, 0.0), wp.max(dy, 0.0)))
+
 
 @wp.func
 def cone_sdf_grad(radius: float, half_height: float, p: wp.vec3):
@@ -164,6 +174,7 @@ def cone_sdf_grad(radius: float, half_height: float, p: wp.vec3):
     else:
         return wp.normalize(wp.vec3(p[0], 0.0, p[2])) + wp.vec3(0.0, radius / (2.0 * half_height), 0.0)
 
+
 @wp.func
 def plane_sdf(width: float, length: float, p: wp.vec3):
     # SDF for a quad in the xz plane
@@ -172,6 +183,7 @@ def plane_sdf(width: float, length: float, p: wp.vec3):
         return wp.max(d, wp.abs(p[1]))
     else:
         return p[1]
+
 
 @wp.func
 def closest_point_plane(width: float, length: float, point: wp.vec3) -> wp.vec3:
@@ -186,6 +198,7 @@ def closest_point_plane(width: float, length: float, point: wp.vec3) -> wp.vec3:
         z = point[2]
     return wp.vec3(x, 0.0, z)
 
+
 @wp.func
 def closest_point_line_segment(a: wp.vec3, b: wp.vec3, point: wp.vec3) -> wp.vec3:
     ab = b - a
@@ -193,6 +206,7 @@ def closest_point_line_segment(a: wp.vec3, b: wp.vec3, point: wp.vec3) -> wp.vec
     t = wp.dot(ap, ab) / wp.dot(ab, ab)
     t = wp.clamp(t, 0.0, 1.0)
     return a + t * ab
+
 
 @wp.func
 def closest_point_box(upper: wp.vec3, point: wp.vec3) -> wp.vec3:
@@ -214,6 +228,7 @@ def closest_point_box(upper: wp.vec3, point: wp.vec3) -> wp.vec3:
             z = wp.sign(point[2]) * upper[2]
     return wp.vec3(x, y, z)
 
+
 @wp.func
 def get_box_vertex(point_id: int, upper: wp.vec3):
     # get the vertex of the box given its ID (0-7)
@@ -221,6 +236,7 @@ def get_box_vertex(point_id: int, upper: wp.vec3):
     sign_y = float((point_id // 2) % 2) * 2.0 - 1.0
     sign_z = float((point_id // 4) % 2) * 2.0 - 1.0
     return wp.vec3(sign_x * upper[0], sign_y * upper[1], sign_z * upper[2])
+
 
 @wp.func
 def get_box_edge(edge_id: int, upper: wp.vec3):
@@ -254,6 +270,7 @@ def get_plane_edge(edge_id: int, plane_width: float, plane_length: float):
         p1x = -p0x
         p1z = p0z
     return wp.spatial_vector(wp.vec3(p0x, 0.0, p0z), wp.vec3(p1x, 0.0, p1z))
+
 
 @wp.func
 def closest_edge_coordinate_box(upper: wp.vec3, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int) -> float:
@@ -293,6 +310,7 @@ def closest_edge_coordinate_box(upper: wp.vec3, edge_a: wp.vec3, edge_b: wp.vec3
         return 0.5 * (a + d)
     return 0.5 * (c + b)
 
+
 @wp.func
 def closest_edge_coordinate_plane(plane_width: float, plane_length: float, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int,):
     # find point on edge closest to plane, return its barycentric edge coordinate
@@ -330,6 +348,7 @@ def closest_edge_coordinate_plane(plane_width: float, plane_length: float, edge_
     if yc < yd:
         return 0.5 * (a + d)
     return 0.5 * (c + b)
+
 
 @wp.func
 def closest_edge_coordinate_capsule(radius: float, half_height: float, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int) -> float:
@@ -370,6 +389,7 @@ def closest_edge_coordinate_capsule(radius: float, half_height: float, edge_a: w
     else:
         return 0.5 * (c + b)
 
+
 @wp.func
 def mesh_sdf(mesh: wp.uint64, point: wp.vec3, max_dist: float):
     face_index = int(0)
@@ -382,6 +402,7 @@ def mesh_sdf(mesh: wp.uint64, point: wp.vec3, max_dist: float):
         return wp.length(point - closest) * sign
     return max_dist
 
+
 @wp.func
 def closest_point_mesh(mesh: wp.uint64, point: wp.vec3, max_dist: float):
     face_index = int(0)
@@ -393,6 +414,7 @@ def closest_point_mesh(mesh: wp.uint64, point: wp.vec3, max_dist: float):
         return wp.mesh_eval_position(mesh, face_index, face_u, face_v)
     # return arbitrary point from mesh
     return wp.mesh_eval_position(mesh, 0, 0.0, 0.0)
+
 
 @wp.func
 def closest_edge_coordinate_mesh(mesh: wp.uint64, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int, max_dist: float) -> float:
@@ -432,13 +454,14 @@ def closest_edge_coordinate_mesh(mesh: wp.uint64, edge_a: wp.vec3, edge_b: wp.ve
         return 0.5 * (a + d)
     return 0.5 * (c + b)
 
+
 @wp.kernel
 def create_soft_contacts(
     particle_x: wp.array(dtype=wp.vec3), 
     body_X_wb: wp.array(dtype=wp.transform),
     shape_X_bs: wp.array(dtype=wp.transform),
     shape_body: wp.array(dtype=int),
-    geo: GeoProperties,
+    geo: ModelShapeGeometry,
     margin: float,
     # outputs
     soft_contact_count: wp.array(dtype=int),
@@ -467,7 +490,7 @@ def create_soft_contacts(
     x_local = wp.transform_point(X_sw, px)
 
     # geo description
-    geo_type = geo.geo_type[shape_index]
+    geo_type = geo.type[shape_index]
     geo_scale = geo.scale[shape_index]
 
     # evaluate shape sdf
@@ -553,13 +576,95 @@ def volume_grad(volume: wp.uint64,
 
     return wp.normalize(wp.vec3(dx, dy, dz))
 
+
+@wp.kernel
+def count_contact_points(
+    contact_pairs: wp.array(dtype=int, ndim=2),
+    geo: ModelShapeGeometry,
+    # outputs
+    contact_count: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    shape_a = contact_pairs[tid, 0]
+    shape_b = contact_pairs[tid, 1]
+
+    if shape_b == -1:
+        actual_type_a = geo.type[shape_a]
+        # ground plane
+        actual_type_b = wp.sim.GEO_PLANE
+    else:
+        type_a = geo.type[shape_a]
+        type_b = geo.type[shape_b]
+        # unique ordering of shape pairs
+        if type_a < type_b:
+            actual_shape_a = shape_a
+            actual_shape_b = shape_b
+            actual_type_a = type_a
+            actual_type_b = type_b
+        else:
+            actual_shape_a = shape_b
+            actual_shape_b = shape_a
+            actual_type_a = type_b
+            actual_type_b = type_a
+
+    # determine how many contact points need to be evaluated
+    num_contacts = 0
+    if actual_type_a == wp.sim.GEO_SPHERE:
+        num_contacts = 1
+    elif actual_type_a == wp.sim.GEO_CAPSULE:
+        if actual_type_b == wp.sim.GEO_PLANE:
+            if geo.scale[actual_shape_b][0] == 0.0 and geo.scale[actual_shape_b][1] == 0.0:
+                num_contacts = 2  # vertex-based collision for infinite plane
+            else:
+                num_contacts = 2 + 4  # vertex-based collision + plane edges
+        elif actual_type_b == wp.sim.GEO_MESH:
+            num_contacts_a = 2
+            mesh_b = wp.mesh_get(geo.source[actual_shape_b])
+            num_contacts_b = mesh_b.points.shape[0]
+            num_contacts = num_contacts_a + num_contacts_b
+        else:
+            num_contacts = 2
+    elif actual_type_a == wp.sim.GEO_BOX:
+        if actual_type_b == wp.sim.GEO_BOX:
+            num_contacts = 24
+        elif actual_type_b == wp.sim.GEO_MESH:
+            num_contacts_a = 8
+            mesh_b = wp.mesh_get(geo.source[actual_shape_b])
+            num_contacts_b = mesh_b.points.shape[0]
+            num_contacts = num_contacts_a + num_contacts_b
+        elif actual_type_b == wp.sim.GEO_PLANE:
+            if geo.scale[actual_shape_b][0] == 0.0 and geo.scale[actual_shape_b][1] == 0.0:
+                num_contacts = 8  # vertex-based collision
+            else:
+                num_contacts = 8 + 4  # vertex-based collision + plane edges
+        else:
+            num_contacts = 8
+    elif actual_type_a == wp.sim.GEO_MESH:
+        mesh_a = wp.mesh_get(geo.source[actual_shape_a])
+        num_contacts_a = mesh_a.points.shape[0]
+        if actual_type_b == wp.sim.GEO_MESH:
+            mesh_b = wp.mesh_get(geo.source[actual_shape_b])
+            num_contacts_b = mesh_b.points.shape[0]
+        else:
+            num_contacts_b = 0
+        num_contacts = num_contacts_a + num_contacts_b
+    elif actual_type_a == wp.sim.GEO_PLANE:
+        return  # no plane-plane contacts
+    else:
+        print("count_contact_points: unsupported geometry type")
+        print(actual_type_a)
+        print(actual_type_b)
+
+    wp.atomic_add(contact_count, 0, num_contacts)
+
+
 @wp.kernel
 def broadphase_collision_pairs(
     contact_pairs: wp.array(dtype=int, ndim=2),
     body_q: wp.array(dtype=wp.transform),
     shape_X_bs: wp.array(dtype=wp.transform),
     shape_body: wp.array(dtype=int),
-    geo: GeoProperties,
+    geo: ModelShapeGeometry,
     collision_radius: wp.array(dtype=float),
     rigid_contact_max: int,
     rigid_contact_margin: float,
@@ -584,8 +689,8 @@ def broadphase_collision_pairs(
     else:
         X_ws_b = wp.transform_multiply(body_q[rigid_b], shape_X_bs[shape_b])
 
-    type_a = geo.geo_type[shape_a]
-    type_b = geo.geo_type[shape_b]
+    type_a = geo.type[shape_a]
+    type_b = geo.type[shape_b]
     # unique ordering of shape pairs
     if type_a < type_b:
         actual_shape_a = shape_a
@@ -746,7 +851,7 @@ def handle_contact_pairs(
     body_q: wp.array(dtype=wp.transform),
     shape_X_bs: wp.array(dtype=wp.transform),
     shape_body: wp.array(dtype=int),
-    geo: GeoProperties,
+    geo: ModelShapeGeometry,
     rigid_contact_margin: float,
     body_com: wp.array(dtype=wp.vec3),
     contact_shape0: wp.array(dtype=int),    
@@ -782,7 +887,7 @@ def handle_contact_pairs(
     X_ws_a = wp.transform_multiply(X_wb_a, X_bs_a)
     X_sw_a = wp.transform_inverse(X_ws_a)
     X_bw_a = wp.transform_inverse(X_wb_a)
-    geo_type_a = geo.geo_type[shape_a]
+    geo_type_a = geo.type[shape_a]
     geo_scale_a = geo.scale[shape_a]
     thickness_a = geo.thickness[shape_a]
     is_solid_a = geo.is_solid[shape_a]
@@ -795,7 +900,7 @@ def handle_contact_pairs(
     X_ws_b = wp.transform_multiply(X_wb_b, X_bs_b)
     X_sw_b = wp.transform_inverse(X_ws_b)
     X_bw_b = wp.transform_inverse(X_wb_b)
-    geo_type_b = geo.geo_type[shape_b]
+    geo_type_b = geo.type[shape_b]
     geo_scale_b = geo.scale[shape_b]
     thickness_b = geo.thickness[shape_b]
     is_solid_b = geo.is_solid[shape_b]
@@ -1182,6 +1287,7 @@ def handle_contact_pairs(
         contact_shape0[tid] = -1
         contact_shape1[tid] = -1
 
+
 def collide(model, state, edge_sdf_iter: int = 5):
     """
     Generates contact points for the particles and rigid bodies in the model,
@@ -1297,4 +1403,3 @@ def collide(model, state, edge_sdf_iter: int = 5):
                 model.rigid_contact_thickness,
             ],
             device=model.device)
-    
