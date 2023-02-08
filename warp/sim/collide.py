@@ -1137,8 +1137,8 @@ def handle_contact_pairs(
             p_b_body = closest_point_plane(geo_scale_b[0], geo_scale_b[1], query_b)
             p_b_world = wp.transform_point(X_ws_b, p_b_body)
             diff = p_a_world - p_b_world
-            # normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
-            normal = wp.normalize(diff)
+            normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
+            # normal = wp.normalize(diff)
             distance = wp.dot(diff, normal)
         else:
             # contact between capsule A and edges of finite plane B
@@ -1268,11 +1268,6 @@ def handle_contact_pairs(
         print("Unsupported geometry pair in collision handling")
         return
 
-    if distance < -rigid_contact_margin:
-        # skip extreme penetration depths, this is likely not a valid contact
-        contact_shape0[tid] = -1
-        contact_shape1[tid] = -1
-        return
     thickness = thickness_a + thickness_b
     d = distance - thickness
     if (d < rigid_contact_margin):
@@ -1312,7 +1307,7 @@ def collide(model, state, edge_sdf_iter: int = 5):
                 state.body_q,
                 model.shape_transform,
                 model.shape_body,
-                model.geo_params,
+                model.shape_geo,
                 model.soft_contact_margin,
             ],
             outputs = [
@@ -1338,7 +1333,7 @@ def collide(model, state, edge_sdf_iter: int = 5):
                 state.body_q,
                 model.shape_transform,
                 model.shape_body,
-                model.geo_params,
+                model.shape_geo,
                 model.shape_collision_radius,
                 model.rigid_contact_max,
                 model.rigid_contact_margin,
@@ -1361,7 +1356,7 @@ def collide(model, state, edge_sdf_iter: int = 5):
                 state.body_q,
                 model.shape_transform,
                 model.shape_body,
-                model.geo_params,
+                model.shape_geo,
                 model.shape_collision_radius,
                 model.rigid_contact_max,
                 model.rigid_contact_margin,
@@ -1383,7 +1378,7 @@ def collide(model, state, edge_sdf_iter: int = 5):
                 state.body_q,
                 model.shape_transform,
                 model.shape_body,
-                model.geo_params,
+                model.shape_geo,
                 model.rigid_contact_margin,
                 model.body_com,
                 model.rigid_contact_shape0,
