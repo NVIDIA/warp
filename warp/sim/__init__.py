@@ -47,4 +47,3 @@ from . articulation import eval_fk, eval_ik
 from . import_mjcf import parse_mjcf
 from . import_urdf import parse_urdf
 from . import_snu import parse_snu
-from . import_usd import parse_usd
