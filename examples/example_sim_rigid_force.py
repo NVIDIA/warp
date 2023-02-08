@@ -13,37 +13,40 @@
 #
 ###########################################################################
 
-import numpy as np
+import os
+
 import warp as wp
 import warp.sim
+import warp.sim.render
 
-from sim_demo import WarpSimDemonstration, run_demo, RenderMode
+wp.init()
 
-class Demo(WarpSimDemonstration):
-    sim_name = "example_sim_rigid_force"
-    env_offset=(2.0, 0.0, 2.0)
-    tiny_render_settings = dict(scaling=3.0)
-    usd_render_settings = dict(scaling=100.0)
 
-    render_mode = RenderMode.TINY
+class Example:
 
-    sim_substeps_euler = 32
-    sim_substeps_xpbd = 5
+    def __init__(self, stage):
 
-    num_envs = 100
+        self.sim_fps = 60.0
+        self.sim_substeps = 5
+        self.sim_duration = 5.0
+        self.sim_frames = int(self.sim_duration*self.sim_fps)
+        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_time = 0.0
 
-    
-    def create_articulation(self, builder):
-        builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
-        builder.add_shape_box(body=0, hx=0.5, hy=0.5, hz=0.5, density=1000.0, ke=2.e+5, kd=1.e+4)
+        builder = wp.sim.ModelBuilder()
 
-    def before_simulate(self):
-        # allocate force buffer
-        self.force = wp.array(np.tile([0.0, 0.0, -3000.0, 0.0, 0.0, 0.0], (self.num_envs, 1)), dtype=wp.spatial_vector)
+        b = builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
+        builder.add_shape_box(body=b, hx=0.5, hy=0.5, hz=0.5, density=1000.0)
 
-    def custom_update(self):
-        # apply force to body at every simulation time step
-        self.state.body_f.assign(self.force)
+        self.model = builder.finalize()
+        self.model.ground = True
+
+        self.integrator = wp.sim.XPBDIntegrator()
+
+        self.state_0 = self.model.state()
+        self.state_1 = self.model.state()
+
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
 
     def update(self):
 
@@ -73,5 +76,14 @@ class Demo(WarpSimDemonstration):
             self.renderer.render(self.state_0)
             self.renderer.end_frame()
 
-if __name__ == "__main__":
-    run_demo(Demo)
+
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_force.usd")
+
+    example = Example(stage_path)
+
+    for i in range(example.sim_frames):
+        example.update()
+        example.render()
+
+    example.renderer.save()

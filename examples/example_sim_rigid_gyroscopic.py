@@ -13,23 +13,28 @@
 #
 ###########################################################################
 
+import os
+import math
+
+import numpy as np
 import warp as wp
 import warp.sim
+import warp.sim.render
 
-from sim_demo import WarpSimDemonstration, run_demo
+wp.init()
 
-class Demo(WarpSimDemonstration):
+
+class Example:
     
-    sim_name = "example_sim_rigid_gyroscopic"
-    env_offset=(2.0, 0.0, 2.0)
-    tiny_render_settings = dict(scaling=3.0)
-    usd_render_settings = dict(scaling=100.0)
+    def __init__(self, stage):
 
-    activate_ground_plane = False
-    
-    def create_articulation(self, builder):
+        self.sim_steps = 2000
+        self.sim_dt = 1.0/120.0
+        self.sim_time = 0.0
 
         self.scale = 0.5
+
+        builder = wp.sim.ModelBuilder()
 
         b = builder.add_body()    
 
@@ -55,6 +60,13 @@ class Demo(WarpSimDemonstration):
         builder.body_qd[0] = (25.0, 0.01, 0.01, 0.0, 0.0, 0.0)
 
         builder.gravity = 0.0
+        self.model = builder.finalize()
+        self.model.ground = False
+
+        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.state = self.model.state()
+
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
@@ -72,6 +84,13 @@ class Demo(WarpSimDemonstration):
         self.sim_time += self.sim_dt
 
 
-if __name__ == "__main__":
-    run_demo(Demo)
+if __name__ == '__main__':
+    stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_gyroscopic.usd")
 
+    example = Example(stage_path)
+
+    for i in range(example.sim_steps):
+        example.update()
+        example.render()
+
+    example.renderer.save()

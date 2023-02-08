@@ -20,9 +20,9 @@ import math
 import warp as wp
 import warp.sim
 
-from sim_demo import WarpSimDemonstration, run_demo, IntegratorType
+from environment import Environment, run_env, IntegratorType
 
-class Demo(WarpSimDemonstration):
+class Demo(Environment):
     sim_name = "example_sim_ant"
     env_offset=(2.5, 0.0, 2.5)
     tiny_render_settings = dict(scaling=3.0)
@@ -34,7 +34,7 @@ class Demo(WarpSimDemonstration):
     joint_attach_ke: float = 100000.0
     joint_attach_kd: float = 10.0
 
-    use_graph_capture = False
+    use_graph_capture = True
 
     def create_articulation(self, builder):
         wp.sim.parse_mjcf(
@@ -54,4 +54,4 @@ class Demo(WarpSimDemonstration):
         builder.joint_q[:7] = [0.0, 0.7, 0.0, *wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)]
 
 if __name__ == "__main__":
-    run_demo(Demo)
+    run_env(Demo)

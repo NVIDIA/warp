@@ -20,16 +20,12 @@ import numpy as np
 
 import warp as wp
 
-# wp.config.verify_cuda = True
-# wp.config.verify_fp = True
 import warp.sim
 import warp.sim.render
 
 from pxr import Usd, UsdGeom
 
 wp.init()
-
-# wp.set_device('cpu')
 
 
 class Example:

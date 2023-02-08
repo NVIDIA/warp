@@ -73,7 +73,7 @@ class Robot:
 
         self.target_origin = []
         for i in range(num_envs):
-            builder.add_rigid_articulation(
+            builder.add_builder(
                 articulation_builder,
                 xform=wp.transform(np.array(
                     (i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5))
