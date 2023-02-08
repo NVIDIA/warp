@@ -35,8 +35,8 @@ class SimRenderer(warp.render.UsdRenderer):
         if (self.model.shape_count):
             shape_body = model.shape_body.numpy()
             shape_geo_src = model.shape_geo_src
-            shape_geo_type = model.geo_params.type.numpy()
-            shape_geo_scale = model.geo_params.scale.numpy()
+            shape_geo_type = model.shape_geo.type.numpy()
+            shape_geo_scale = model.shape_geo.scale.numpy()
             shape_transform = model.shape_transform.numpy()
 
             for s in range(model.shape_count):
