@@ -182,3 +182,18 @@ def transform_inertia(t: wp.transform, I: wp.spatial_matrix):
     T = wp.spatial_adjoint(R, S)
 
     return wp.mul(wp.mul(wp.transpose(T), I), T)
+
+
+@wp.func
+def vec_min(a: wp.vec3, b: wp.vec3):
+    return wp.vec3(wp.min(a[0], b[0]), wp.min(a[1], b[1]), wp.min(a[2], b[2]))
+
+
+@wp.func
+def vec_max(a: wp.vec3, b: wp.vec3):
+    return wp.vec3(wp.max(a[0], b[0]), wp.max(a[1], b[1]), wp.max(a[2], b[2]))
+
+
+@wp.func
+def vec_abs(a: wp.vec3):
+    return wp.vec3(wp.abs(a[0]), wp.abs(a[1]), wp.abs(a[2]))

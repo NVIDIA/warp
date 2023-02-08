@@ -222,7 +222,7 @@ class Model:
         shape_body (wp.array): Rigid shape body index, shape [shape_count], int
         body_shapes (dict): Mapping from body index to list of attached shape indices
         shape_materials (ModelShapeMaterials): Rigid shape contact materials, shape [shape_count], float
-        shape_geo_params (ModelShapeGeometry): Shape geometry properties (geo type, scale, thickness, etc.), shape [shape_count, 3], float
+        shape_shape_geo (ModelShapeGeometry): Shape geometry properties (geo type, scale, thickness, etc.), shape [shape_count, 3], float
         shape_geo_src (list): List of `wp.Mesh` instances used for rendering of mesh geometry
 
         shape_collision_group (list): Collision group of each shape, shape [shape_count], int
@@ -284,10 +284,10 @@ class Model:
         joint_enabled (wp.array): Joint enabled, shape [joint_count], int
         joint_limit_lower (wp.array): Joint lower position limits, shape [joint_count], float
         joint_limit_upper (wp.array): Joint upper position limits, shape [joint_count], float
+        joint_limit_ke (wp.array): Joint position limit stiffness (used by SemiImplicitIntegrator), shape [joint_count], float
+        joint_limit_kd (wp.array): Joint position limit damping (used by SemiImplicitIntegrator), shape [joint_count], float
         joint_twist_lower (wp.array): Joint lower twist limit, shape [joint_count], float
         joint_twist_upper (wp.array): Joint upper twist limit, shape [joint_count], float
-        joint_pos_limit (wp.array): Maximal linear joint limits (used by XPBDIntegrator), shape [joint_count, 3], float
-        joint_ang_limit (wp.array): Maximal angular joint limits (used by XPBDIntegrator), shape [joint_count, 3], float
         joint_q_start (wp.array): Start index of the first position coordinate per joint, shape [joint_count], int
         joint_qd_start (wp.array): Start index of the first velocity coordinate per joint, shape [joint_count], int
         joint_name (list): Joint names, shape [joint_count], str
@@ -357,7 +357,7 @@ class Model:
         self.shape_body = None
         self.body_shapes = {}
         self.shape_materials = ModelShapeMaterials()
-        self.geo_params = ModelShapeGeometry()
+        self.shape_geo = ModelShapeGeometry()
         self.shape_geo_src = None
 
         self.shape_collision_group = None
@@ -418,10 +418,10 @@ class Model:
         self.joint_enabled = None
         self.joint_limit_lower = None
         self.joint_limit_upper = None
+        self.joint_limit_ke = None
+        self.joint_limit_kd = None
         self.joint_twist_lower = None
         self.joint_twist_upper = None
-        self.joint_pos_limit = None
-        self.joint_ang_limit = None
         self.joint_q_start = None
         self.joint_name = None
 
@@ -563,7 +563,7 @@ class Model:
             dim=self.shape_contact_pair_count,
             inputs=[
                 self.shape_contact_pairs,
-                self.geo_params,
+                self.shape_geo,
             ],
             outputs=[
                 contact_count
@@ -576,7 +576,7 @@ class Model:
             dim=self.shape_ground_contact_pair_count,
             inputs=[
                 self.shape_ground_contact_pairs,
-                self.geo_params,
+                self.shape_geo,
             ],
             outputs=[
                 contact_count
@@ -823,10 +823,6 @@ class ModelBuilder:
         self.joint_limit_ke = []
         self.joint_limit_kd = []
         self.joint_act = []
-        self.joint_lower_pos_limits = []
-        self.joint_upper_pos_limits = []
-        self.joint_lower_ang_limits = []
-        self.joint_upper_ang_limits = []
 
         self.joint_twist_lower = []
         self.joint_twist_upper = []
@@ -1025,10 +1021,6 @@ class ModelBuilder:
             "joint_limit_upper",
             "joint_limit_ke",
             "joint_limit_kd",
-            "joint_upper_pos_limits",
-            "joint_lower_pos_limits",
-            "joint_upper_ang_limits",
-            "joint_lower_ang_limits",
             "joint_target",
             "joint_target_ke",
             "joint_target_kd",
@@ -1132,15 +1124,6 @@ class ModelBuilder:
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
-        def quat_dof_limit(limit: float) -> float:
-            # axis-angle space
-            return limit
-            # # quaternion space
-            # if wp.abs(limit) > 2*np.pi:
-            #     return limit
-            # else:
-            #     return wp.sin(0.5 * limit)
-
         self.joint_type.append(joint_type.val)
         self.joint_parent.append(parent)
         if child not in self.joint_parents:
@@ -1159,52 +1142,26 @@ class ModelBuilder:
         self.joint_angular_compliance.append(angular_compliance)
         self.joint_enabled.append(enabled)
 
-        if len(linear_axes) == 0:
-            joint_lower_pos_limits = np.zeros(3)
-            joint_upper_pos_limits = np.zeros(3)
-        else:
-            joint_lower_pos_limits = np.ones(3) * 1e4
-            joint_upper_pos_limits = np.ones(3) * -1e4
-            for dim in linear_axes:
-                lo = dim.axis * dim.limit_lower
-                up = dim.axis * dim.limit_upper
-                lo, up = np.minimum(lo, up), np.maximum(lo, up)
-                joint_lower_pos_limits = np.minimum(joint_lower_pos_limits, lo)
-                joint_upper_pos_limits = np.maximum(joint_upper_pos_limits, up)
-                self.joint_axis.append(dim.axis)
-                self.joint_axis_mode.append(dim.mode.val)
-                self.joint_target.append(dim.target)
-                self.joint_target_ke.append(dim.target_ke)
-                self.joint_target_kd.append(dim.target_kd)
-                self.joint_limit_ke.append(dim.limit_ke)
-                self.joint_limit_kd.append(dim.limit_kd)
-                self.joint_limit_lower.append(dim.limit_lower)
-                self.joint_limit_upper.append(dim.limit_upper)
-        if len(angular_axes) == 0:
-            joint_lower_ang_limits = np.zeros(3)
-            joint_upper_ang_limits = np.zeros(3)
-        else:
-            joint_lower_ang_limits = np.ones(3) * 2*np.pi
-            joint_upper_ang_limits = np.ones(3) * -2*np.pi
-            for dim in angular_axes:
-                lo = dim.axis * quat_dof_limit(dim.limit_lower)
-                up = dim.axis * quat_dof_limit(dim.limit_upper)
-                lo, up = np.minimum(lo, up), np.maximum(lo, up)
-                joint_lower_ang_limits = np.minimum(joint_lower_ang_limits, lo)
-                joint_upper_ang_limits = np.maximum(joint_upper_ang_limits, up)
-                self.joint_axis.append(dim.axis)
-                self.joint_axis_mode.append(dim.mode.val)
-                self.joint_target.append(dim.target)
-                self.joint_target_ke.append(dim.target_ke)
-                self.joint_target_kd.append(dim.target_kd)
-                self.joint_limit_ke.append(dim.limit_ke)
-                self.joint_limit_kd.append(dim.limit_kd)
-                self.joint_limit_lower.append(dim.limit_lower)
-                self.joint_limit_upper.append(dim.limit_upper)
-        self.joint_lower_pos_limits.append(joint_lower_pos_limits)
-        self.joint_upper_pos_limits.append(joint_upper_pos_limits)
-        self.joint_lower_ang_limits.append(joint_lower_ang_limits)
-        self.joint_upper_ang_limits.append(joint_upper_ang_limits)
+        for dim in linear_axes:
+            self.joint_axis.append(dim.axis)
+            self.joint_axis_mode.append(dim.mode.val)
+            self.joint_target.append(dim.target)
+            self.joint_target_ke.append(dim.target_ke)
+            self.joint_target_kd.append(dim.target_kd)
+            self.joint_limit_ke.append(dim.limit_ke)
+            self.joint_limit_kd.append(dim.limit_kd)
+            self.joint_limit_lower.append(dim.limit_lower)
+            self.joint_limit_upper.append(dim.limit_upper)
+        for dim in angular_axes:
+            self.joint_axis.append(dim.axis)
+            self.joint_axis_mode.append(dim.mode.val)
+            self.joint_target.append(dim.target)
+            self.joint_target_ke.append(dim.target_ke)
+            self.joint_target_kd.append(dim.target_kd)
+            self.joint_limit_ke.append(dim.limit_ke)
+            self.joint_limit_kd.append(dim.limit_kd)
+            self.joint_limit_lower.append(dim.limit_lower)
+            self.joint_limit_upper.append(dim.limit_upper)
 
         if (joint_type == JOINT_PRISMATIC):
             dof_count = 1
@@ -1232,7 +1189,8 @@ class ModelBuilder:
             dof_count = 0
             coord_count = 0
         elif (joint_type == JOINT_D6):
-            dof_count = coord_count = len(linear_axes) + len(angular_axes)
+            dof_count = len(linear_axes) + len(angular_axes)
+            coord_count = dof_count
        
         for i in range(coord_count):
             self.joint_q.append(0.0)
@@ -1307,7 +1265,7 @@ class ModelBuilder:
             axis=axis,
             limit_lower=limit_lower, limit_upper=limit_upper,
             target=target, target_ke=target_ke, target_kd=target_kd, mode=mode,
-            limit_ke=limit_ke, limit_kd=limit_kd
+            limit_ke=limit_ke, limit_kd=limit_kd,
         )
         return self.add_joint(
             JOINT_REVOLUTE, parent, child,
@@ -2906,11 +2864,11 @@ class ModelBuilder:
                     # add null pointer
                     geo_sources.append(0)
 
-            m.geo_params.type = wp.array(self.shape_geo_type, dtype=wp.int32)
-            m.geo_params.source = wp.array(geo_sources, dtype=wp.uint64)
-            m.geo_params.scale = wp.array(self.shape_geo_scale, dtype=wp.vec3, requires_grad=requires_grad)
-            m.geo_params.is_solid = wp.array(self.shape_geo_is_solid, dtype=wp.uint8)
-            m.geo_params.thickness = wp.array(self.shape_geo_thickness, dtype=wp.float32, requires_grad=requires_grad)
+            m.shape_geo.type = wp.array(self.shape_geo_type, dtype=wp.int32)
+            m.shape_geo.source = wp.array(geo_sources, dtype=wp.uint64)
+            m.shape_geo.scale = wp.array(self.shape_geo_scale, dtype=wp.vec3, requires_grad=requires_grad)
+            m.shape_geo.is_solid = wp.array(self.shape_geo_is_solid, dtype=wp.uint8)
+            m.shape_geo.thickness = wp.array(self.shape_geo_thickness, dtype=wp.float32, requires_grad=requires_grad)
             m.shape_geo_src = self.shape_geo_src  # used for rendering
 
             m.shape_materials.ke = wp.array(self.shape_material_ke, dtype=wp.float32, requires_grad=requires_grad)
@@ -3002,7 +2960,7 @@ class ModelBuilder:
             m.joint_target = wp.array(self.joint_target, dtype=wp.float32, requires_grad=requires_grad)
             m.joint_target_ke = wp.array(self.joint_target_ke, dtype=wp.float32, requires_grad=requires_grad)
             m.joint_target_kd = wp.array(self.joint_target_kd, dtype=wp.float32, requires_grad=requires_grad)
-            m.joint_axis_mode = wp.array(self.joint_axis_mode, dtype=wp.int32)
+            m.joint_axis_mode = wp.array(self.joint_axis_mode, dtype=wp.uint8)
             m.joint_act = wp.array(self.joint_act, dtype=wp.float32, requires_grad=requires_grad)
 
             m.joint_limit_lower = wp.array(self.joint_limit_lower, dtype=wp.float32, requires_grad=requires_grad)
@@ -3012,9 +2970,6 @@ class ModelBuilder:
             m.joint_linear_compliance = wp.array(self.joint_linear_compliance, dtype=wp.float32, requires_grad=requires_grad)
             m.joint_angular_compliance = wp.array(self.joint_angular_compliance, dtype=wp.float32, requires_grad=requires_grad)
             m.joint_enabled = wp.array(self.joint_enabled, dtype=wp.int32)
-
-            m.joint_pos_limit = wp.array(np.hstack((self.joint_upper_pos_limits, self.joint_lower_pos_limits)), dtype=wp.spatial_vector, requires_grad=requires_grad)
-            m.joint_ang_limit = wp.array(np.hstack((self.joint_upper_ang_limits, self.joint_lower_ang_limits)), dtype=wp.spatial_vector, requires_grad=requires_grad)
 
             # 'close' the start index arrays with a sentinel value
             joint_q_start = copy.copy(self.joint_q_start)

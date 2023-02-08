@@ -6,8 +6,8 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp as wp
-from .model import ModelShapeMaterials
-from .utils import velocity_at_point
+from .model import ModelShapeMaterials, JOINT_MODE_TARGET_POSITION, JOINT_MODE_TARGET_VELOCITY, JOINT_MODE_LIMIT
+from .utils import velocity_at_point, vec_min, vec_max, vec_abs
 from .integrator_euler import integrate_bodies, integrate_particles
 
 
@@ -627,7 +627,7 @@ def apply_joint_torques(
     elif (type == wp.sim.JOINT_D6):
 
         # unroll for loop to ensure joint actions remain differentiable
-        # (since differentiating through a for loop that updates a local variable is not supported)
+        # (since differentiating through a dynamic for loop that updates a local variable is not supported)
 
         if lin_axis_count > 0:
             axis = joint_axis[axis_start+0]
@@ -669,6 +669,46 @@ def apply_joint_torques(
         wp.atomic_add(body_f, id_p, wp.spatial_vector(t_total + wp.cross(r_p, f_total), f_total)) 
     wp.atomic_sub(body_f, id_c, wp.spatial_vector(t_total + wp.cross(r_c, f_total), f_total))
 
+
+@wp.func
+def update_joint_axis_mode(mode: wp.uint8, axis: wp.vec3, input_axis_mode: wp.vec3ub):
+    # update the 3D axis mode flags given the axis vector and mode of this axis
+    mode_x = wp.max(wp.uint8(wp.nonzero(axis[0])) * mode, input_axis_mode[0])
+    mode_y = wp.max(wp.uint8(wp.nonzero(axis[1])) * mode, input_axis_mode[1])
+    mode_z = wp.max(wp.uint8(wp.nonzero(axis[2])) * mode, input_axis_mode[2])
+    return wp.vec3ub(mode_x, mode_y, mode_z)
+
+
+@wp.func
+def update_joint_axis_limits(axis: wp.vec3, limit_lower: float, limit_upper: float, input_limits: wp.spatial_vector):
+    # update the 3D linear/angular limits (spatial_vector [lower, upper]) given the axis vector and limits
+    lo_temp = axis * limit_lower
+    up_temp = axis * limit_upper
+    lo = vec_min(lo_temp, up_temp)
+    up = vec_max(lo_temp, up_temp)
+    input_lower = wp.spatial_top(input_limits)
+    input_upper = wp.spatial_bottom(input_limits)
+    lower = vec_min(input_lower, lo)
+    upper = vec_max(input_upper, up)
+    return wp.spatial_vector(lower, upper)
+
+
+@wp.func
+def update_joint_axis_target_ke_kd(axis: wp.vec3, target: float, target_ke: float, target_kd: float, input_target_ke_kd: wp.mat33):
+    # update the 3D linear/angular target, target_ke, and target_kd (mat33 [target, ke, kd]) given the axis vector and target, target_ke, target_kd
+    axis_target = input_target_ke_kd[0]
+    axis_ke = input_target_ke_kd[1]
+    axis_kd = input_target_ke_kd[2]
+    stiffness = axis * target_ke
+    axis_target += stiffness * target  # weighted target (to be normalized later by sum of target_ke)
+    axis_ke += vec_abs(stiffness)
+    axis_kd += vec_abs(axis * target_kd)
+    return wp.mat33(
+        axis_target[0], axis_target[1], axis_target[2],
+        axis_ke[0], axis_ke[1], axis_ke[2],
+        axis_kd[0], axis_kd[1], axis_kd[2])
+
+
 @wp.kernel
 def solve_body_joints(body_q: wp.array(dtype=wp.transform),
                       body_qd: wp.array(dtype=wp.spatial_vector),
@@ -681,12 +721,11 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
                       joint_child: wp.array(dtype=int),
                       joint_X_p: wp.array(dtype=wp.transform),
                       joint_X_c: wp.array(dtype=wp.transform),
-                      joint_limit_kd: wp.array(dtype=float),
-                      joint_pos_limits: wp.array(dtype=wp.spatial_vector),
-                      joint_ang_limits: wp.array(dtype=wp.spatial_vector),
+                      joint_limit_lower: wp.array(dtype=float),
+                      joint_limit_upper: wp.array(dtype=float),
                       joint_axis_start: wp.array(dtype=int),
                       joint_axis_dim: wp.array(dtype=int, ndim=2),
-                      joint_axis_mode: wp.array(dtype=int),
+                      joint_axis_mode: wp.array(dtype=wp.uint8),
                       joint_axis: wp.array(dtype=wp.vec3),
                       joint_target: wp.array(dtype=float),
                       joint_target_ke: wp.array(dtype=float),
@@ -760,13 +799,6 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
     lin_axis_count = joint_axis_dim[tid,0]
     ang_axis_count = joint_axis_dim[tid,1]
 
-    pos_limits = joint_pos_limits[tid]
-    lower_pos_limits = wp.spatial_bottom(pos_limits)
-    upper_pos_limits = wp.spatial_top(pos_limits)
-
-    lower_pos_limits = wp.transform_vector(X_pj, lower_pos_limits)
-    upper_pos_limits = wp.transform_vector(X_pj, upper_pos_limits)
-
     world_com_p = wp.transform_point(pose_p, com_p)
     world_com_c = wp.transform_point(pose_c, com_c)
 
@@ -774,8 +806,8 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
     if (type == wp.sim.JOINT_DISTANCE):
         r_p = wp.transform_get_translation(X_wp) - world_com_p
         r_c = wp.transform_get_translation(X_wc) - world_com_c
-        lower = lower_pos_limits[0]
-        upper = upper_pos_limits[0]
+        lower = joint_limit_lower[axis_start]
+        upper = joint_limit_upper[axis_start]
         if lower < 0.0 and upper < 0.0:
             # no limits
             return
@@ -815,40 +847,68 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
 
     else:
 
+        # compute joint target, stiffness, damping
+        ke_sum = float(0.0)
+        axis_limits = wp.spatial_vector(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        axis_mode = wp.vec3ub(wp.uint8(0), wp.uint8(0), wp.uint8(0))
+        axis_target_ke_kd = wp.mat33(0.0)
+        # avoid a for loop here since local variables would need to be modified which is not yet differentiable
+        if lin_axis_count > 0:
+            axis = joint_axis[axis_start]
+            lo_temp = axis * joint_limit_lower[axis_start]
+            up_temp = axis * joint_limit_upper[axis_start]
+            axis_limits = wp.spatial_vector(vec_min(lo_temp, up_temp), vec_max(lo_temp, up_temp))
+            mode = joint_axis_mode[axis_start]
+            if mode != JOINT_MODE_LIMIT:  # position or velocity target
+                ke = joint_target_ke[axis_start]
+                kd = joint_target_kd[axis_start]
+                target = joint_target[axis_start]
+                axis_mode = update_joint_axis_mode(mode, axis, axis_mode)
+                axis_target_ke_kd = update_joint_axis_target_ke_kd(axis, target, ke, kd, axis_target_ke_kd)
+                ke_sum += ke
+        if lin_axis_count > 1:
+            axis_idx = axis_start + 1
+            axis = joint_axis[axis_idx]
+            lower = joint_limit_lower[axis_idx]
+            upper = joint_limit_upper[axis_idx]
+            axis_limits = update_joint_axis_limits(axis, lower, upper, axis_limits)
+            mode = joint_axis_mode[axis_idx]
+            if mode != JOINT_MODE_LIMIT:  # position or velocity target
+                ke = joint_target_ke[axis_idx]
+                kd = joint_target_kd[axis_idx]
+                target = joint_target[axis_idx]
+                axis_mode = update_joint_axis_mode(mode, axis, axis_mode)
+                axis_target_ke_kd = update_joint_axis_target_ke_kd(axis, target, ke, kd, axis_target_ke_kd)
+                ke_sum += ke
+        if lin_axis_count > 2:
+            axis_idx = axis_start + 2
+            axis = joint_axis[axis_idx]
+            lower = joint_limit_lower[axis_idx]
+            upper = joint_limit_upper[axis_idx]
+            axis_limits = update_joint_axis_limits(axis, lower, upper, axis_limits)
+            mode = joint_axis_mode[axis_idx]
+            if mode != JOINT_MODE_LIMIT:  # position or velocity target
+                ke = joint_target_ke[axis_idx]
+                kd = joint_target_kd[axis_idx]
+                target = joint_target[axis_idx]
+                axis_mode = update_joint_axis_mode(mode, axis, axis_mode)
+                axis_target_ke_kd = update_joint_axis_target_ke_kd(axis, target, ke, kd, axis_target_ke_kd)
+                ke_sum += ke
+
+        axis_target = axis_target_ke_kd[0]
+        axis_stiffness = axis_target_ke_kd[1]
+        axis_damping = axis_target_ke_kd[2]
+        if ke_sum > 0.0:
+            axis_target /= ke_sum
+        axis_limits_lower = wp.spatial_top(axis_limits)
+        axis_limits_upper = wp.spatial_bottom(axis_limits)
+
         frame_p = wp.quat_to_matrix(wp.transform_get_rotation(X_wp))
         # note that x_c appearing in both is correct
         r_p = x_c - world_com_p
         r_c = x_c - wp.transform_point(pose_c, com_c)
 
-        # compute joint target, stiffness, damping
-        axis_target = wp.vec3(0.0)
-        axis_stiffness = wp.vec3(0.0)
-        axis_damping = wp.vec3(0.0)
-        mode_x = float(0.0)
-        mode_y = float(0.0)
-        mode_z = float(0.0)
-        ke_sum = float(0.0)
-        for i in range(lin_axis_count):
-            mode = float(joint_axis_mode[axis_start + i])
-            axis = joint_axis[axis_start + i]
-            if mode != 0.0:  # position or velocity target
-                # compute average target, stiffness, damping
-                ke = joint_target_ke[axis_start + i]
-                axis_target += axis * joint_target[axis_start + i] * ke
-                axis_stiffness += axis * ke
-                axis_damping += axis * joint_target_kd[axis_start + i]
-                mode_x = wp.max(wp.nonzero(axis[0]) * mode, mode_x)
-                mode_y = wp.max(wp.nonzero(axis[1]) * mode, mode_y)
-                mode_z = wp.max(wp.nonzero(axis[2]) * mode, mode_z)
-                ke_sum += ke
-            # else: # joint limit mode
-            #     # consider joint limit damping
-            #     axis_damping += axis * joint_limit_kd[axis_start + i]
-
-        axis_mode = wp.vec3(mode_x, mode_y, mode_z)
-        if ke_sum > 0.0:
-            axis_target /= ke_sum
-
+        # for loop will be unrolled, so we can modify local variables
         for dim in range(3):
             e = rel_p[dim]
             mode = axis_mode[dim]
@@ -864,22 +924,9 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
             err = 0.0
             compliance = linear_compliance
             damping = 0.0
-            if mode == 1.0:
-                # position target
-                err = e - axis_target[dim]
-                if wp.abs(axis_stiffness[dim]) > 0.0:
-                    compliance = 1.0 / wp.abs(axis_stiffness[dim])
-                damping = wp.abs(axis_damping[dim])
-            elif mode == 2.0:
-                # velocity target
-                err = (derr - axis_target[dim])*dt
-                if wp.abs(axis_stiffness[dim]) > 0.0:
-                    compliance = 1.0 / wp.abs(axis_stiffness[dim])
-                damping = wp.abs(axis_damping[dim])
-            
-            # consider joint limits irrespective of mode
-            lower = lower_pos_limits[dim]
-            upper = upper_pos_limits[dim]
+            # consider joint limits irrespective of axis mode
+            lower = axis_limits_lower[dim]
+            upper = axis_limits_upper[dim]
             if e < lower:
                 err = e - lower
                 compliance = linear_compliance
@@ -888,6 +935,18 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
                 err = e - upper
                 compliance = linear_compliance
                 damping = 0.0
+            else:
+                target = wp.clamp(axis_target[dim], lower, upper)
+                if mode == JOINT_MODE_TARGET_POSITION:
+                    if axis_stiffness[dim] > 0.0:
+                        err = e - target
+                        compliance = 1.0 / axis_stiffness[dim]
+                    damping = axis_damping[dim]
+                elif mode == JOINT_MODE_TARGET_VELOCITY:
+                    if axis_stiffness[dim] > 0.0:
+                        err = (derr - target)*dt
+                        compliance = 1.0 / axis_stiffness[dim]
+                    damping = axis_damping[dim]
 
             if wp.abs(err) > 1e-9:
                 lambda_in = 0.0
@@ -955,39 +1014,62 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
         grad_z = wp.vec3(grad_0[2], grad_1[2], grad_2[2])
         grad_w = wp.vec3(grad_0[3], grad_1[3], grad_2[3])
 
-        ang_limits = joint_ang_limits[tid]
-        lower_ang_limits = wp.spatial_bottom(ang_limits)
-        upper_ang_limits = wp.spatial_top(ang_limits)
-
         # compute joint target, stiffness, damping
-        axis_target = wp.vec3(0.0)
-        axis_stiffness = wp.vec3(0.0)
-        axis_damping = wp.vec3(0.0)
-        mode_x = float(0.0)
-        mode_y = float(0.0)
-        mode_z = float(0.0)
-        axis_start += lin_axis_count
         ke_sum = float(0.0)
-        for i in range(ang_axis_count):
-            mode = float(joint_axis_mode[axis_start + i])
-            axis = joint_axis[axis_start + i]
-            if mode != 0.0:  # position or velocity target
-                # compute average target, stiffness, damping
-                ke = joint_target_ke[axis_start + i]
-                target = joint_target[axis_start + i]
-                axis_target += axis * target * ke
-                axis_stiffness += axis * ke
-                axis_damping += axis * joint_target_kd[axis_start + i]
-                mode_x = wp.max(wp.nonzero(axis[0]) * mode, mode_x)
-                mode_y = wp.max(wp.nonzero(axis[1]) * mode, mode_y)
-                mode_z = wp.max(wp.nonzero(axis[2]) * mode, mode_z)
+        axis_limits = wp.spatial_vector(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        axis_mode = wp.vec3ub(wp.uint8(0), wp.uint8(0), wp.uint8(0))
+        axis_target_ke_kd = wp.mat33(0.0)
+        # avoid a for loop here since local variables would need to be modified which is not yet differentiable
+        if ang_axis_count > 0:
+            axis_idx = axis_start + lin_axis_count
+            axis = joint_axis[axis_idx]
+            lo_temp = axis * joint_limit_lower[axis_idx]
+            up_temp = axis * joint_limit_upper[axis_idx]
+            axis_limits = wp.spatial_vector(vec_min(lo_temp, up_temp), vec_max(lo_temp, up_temp))
+            mode = joint_axis_mode[axis_idx]
+            if mode != JOINT_MODE_LIMIT:  # position or velocity target
+                ke = joint_target_ke[axis_idx]
+                kd = joint_target_kd[axis_idx]
+                target = joint_target[axis_idx]
+                axis_mode = update_joint_axis_mode(mode, axis, axis_mode)
+                axis_target_ke_kd = update_joint_axis_target_ke_kd(axis, target, ke, kd, axis_target_ke_kd)
                 ke_sum += ke
-            # else: # joint limit mode
-            #     # consider joint limit damping
-            #     axis_damping += axis * joint_limit_kd[axis_start + i]
-        axis_mode = wp.vec3(mode_x, mode_y, mode_z)
+        if ang_axis_count > 1:
+            axis_idx = axis_start + lin_axis_count + 1
+            axis = joint_axis[axis_idx]
+            lower = joint_limit_lower[axis_idx]
+            upper = joint_limit_upper[axis_idx]
+            axis_limits = update_joint_axis_limits(axis, lower, upper, axis_limits)
+            mode = joint_axis_mode[axis_idx]
+            if mode != JOINT_MODE_LIMIT:  # position or velocity target
+                ke = joint_target_ke[axis_idx]
+                kd = joint_target_kd[axis_idx]
+                target = joint_target[axis_idx]
+                axis_mode = update_joint_axis_mode(mode, axis, axis_mode)
+                axis_target_ke_kd = update_joint_axis_target_ke_kd(axis, target, ke, kd, axis_target_ke_kd)
+                ke_sum += ke
+        if ang_axis_count > 2:
+            axis_idx = axis_start + lin_axis_count + 2
+            axis = joint_axis[axis_idx]
+            lower = joint_limit_lower[axis_idx]
+            upper = joint_limit_upper[axis_idx]
+            axis_limits = update_joint_axis_limits(axis, lower, upper, axis_limits)
+            mode = joint_axis_mode[axis_idx]
+            if mode != JOINT_MODE_LIMIT:  # position or velocity target
+                ke = joint_target_ke[axis_idx]
+                kd = joint_target_kd[axis_idx]
+                target = joint_target[axis_idx]
+                axis_mode = update_joint_axis_mode(mode, axis, axis_mode)
+                axis_target_ke_kd = update_joint_axis_target_ke_kd(axis, target, ke, kd, axis_target_ke_kd)
+                ke_sum += ke
+
+        axis_target = axis_target_ke_kd[0]
+        axis_stiffness = axis_target_ke_kd[1]
+        axis_damping = axis_target_ke_kd[2]
         if ke_sum > 0.0:
             axis_target /= ke_sum
+        axis_limits_lower = wp.spatial_top(axis_limits)
+        axis_limits_upper = wp.spatial_bottom(axis_limits)
 
         for dim in range(3):
             e = errs[dim]
@@ -1005,22 +1087,10 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
             err = 0.0
             compliance = angular_compliance
             damping = 0.0
-            if mode == 1.0:
-                # position target
-                err = e - axis_target[dim]
-                if wp.abs(axis_stiffness[dim]) > 0.0:
-                    compliance = 1.0 / wp.abs(axis_stiffness[dim])
-                damping = wp.abs(axis_damping[dim])
-            elif mode == 2.0:
-                # velocity target
-                err = (derr - axis_target[dim])*dt
-                if wp.abs(axis_stiffness[dim]) > 0.0:
-                    compliance = 1.0 / wp.abs(axis_stiffness[dim])
-                damping = wp.abs(axis_damping[dim])
             
             # consider joint limits irrespective of mode
-            lower = lower_ang_limits[dim]
-            upper = upper_ang_limits[dim]
+            lower = axis_limits_lower[dim]
+            upper = axis_limits_upper[dim]
             if e < lower:
                 err = e - lower
                 compliance = angular_compliance
@@ -1029,14 +1099,25 @@ def solve_body_joints(body_q: wp.array(dtype=wp.transform),
                 err = e - upper
                 compliance = angular_compliance
                 damping = 0.0
+            else:
+                target = wp.clamp(axis_target[dim], lower, upper)
+                if mode == JOINT_MODE_TARGET_POSITION:
+                    if axis_stiffness[dim] > 0.0:
+                        err = e - target
+                        compliance = 1.0 / axis_stiffness[dim]
+                    damping = axis_damping[dim]
+                elif mode == JOINT_MODE_TARGET_VELOCITY:
+                    if axis_stiffness[dim] > 0.0:
+                        err = (derr - target)*dt
+                        compliance = 1.0 / axis_stiffness[dim]
+                    damping = axis_damping[dim]
 
-            if wp.abs(err) > 1e-9:
-                d_lambda = compute_angular_correction(
-                    err, derr, pose_p, pose_c, I_inv_p, I_inv_c,
-                    angular_p, angular_c, 0.0, compliance, damping, dt) * angular_relaxation
-                # update deltas
-                ang_delta_p += angular_p * d_lambda
-                ang_delta_c += angular_c * d_lambda
+            d_lambda = compute_angular_correction(
+                err, derr, pose_p, pose_c, I_inv_p, I_inv_c,
+                angular_p, angular_c, 0.0, compliance, damping, dt) * angular_relaxation
+            # update deltas
+            ang_delta_p += angular_p * d_lambda
+            ang_delta_c += angular_c * d_lambda
 
     if (id_p >= 0):
         wp.atomic_add(deltas, id_p, wp.spatial_vector(ang_delta_p, lin_delta_p))
@@ -1829,9 +1910,8 @@ class XPBDIntegrator:
                                 model.joint_child,
                                 model.joint_X_p,
                                 model.joint_X_c,
-                                model.joint_limit_kd,
-                                model.joint_pos_limit,
-                                model.joint_ang_limit,
+                                model.joint_limit_lower,
+                                model.joint_limit_upper,
                                 model.joint_axis_start,
                                 model.joint_axis_dim,
                                 model.joint_axis_mode,
