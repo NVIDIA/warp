@@ -135,9 +135,9 @@ def compute_hollow_mesh_inertia(
     vk = vertices[k]
 
     normal = -wp.normalize(wp.cross(vj - vi, vk - vi))
-    ti = normal * (thickness[i] * 0.5)
-    tj = normal * (thickness[j] * 0.5)
-    tk = normal * (thickness[k] * 0.5)
+    ti = normal * thickness[i]
+    tj = normal * thickness[j]
+    tk = normal * thickness[k]
 
     # wedge vertices
     vi0 = vi - ti
