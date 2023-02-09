@@ -143,7 +143,7 @@ class Mesh:
             return self.mesh.id
 
     def __hash__(self):
-        return hash((tuple(np.array(self.vertices).flatten()), tuple(np.array(self.indices).flatten())))
+        return hash((tuple(np.array(self.vertices).flatten()), tuple(np.array(self.indices).flatten()), self.is_solid))
 
 
 class State:
@@ -1790,9 +1790,9 @@ class ModelBuilder:
         q = rot
         sqh = math.sqrt(0.5)
         if up_axis == 0:
-            q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
+            q = wp.mul(rot, wp.quat(0.0, 0.0, -sqh, sqh))
         elif up_axis == 2:
-            q = wp.mul(rot, wp.quat(sqh, sqh, 0.0, 0.0))
+            q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
         return self._add_shape(body, pos, q, GEO_CAPSULE, (radius, half_height, 0.0, 0.0), None, density, ke, kd, kf, mu, restitution, thickness + radius, is_solid)
     
     def add_shape_cylinder(self,
@@ -1833,9 +1833,9 @@ class ModelBuilder:
         q = rot
         sqh = math.sqrt(0.5)
         if up_axis == 0:
-            q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
+            q = wp.mul(rot, wp.quat(0.0, 0.0, -sqh, sqh))
         elif up_axis == 2:
-            q = wp.mul(rot, wp.quat(sqh, sqh, 0.0, 0.0))
+            q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
         return self._add_shape(body, pos, q, GEO_CYLINDER, (radius, half_height, 0.0, 0.0), None, density, ke, kd, kf, mu, restitution, thickness, is_solid)
     
     def add_shape_cone(self,
@@ -1876,9 +1876,9 @@ class ModelBuilder:
         q = rot
         sqh = math.sqrt(0.5)
         if up_axis == 0:
-            q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
+            q = wp.mul(rot, wp.quat(0.0, 0.0, -sqh, sqh))
         elif up_axis == 2:
-            q = wp.mul(rot, wp.quat(sqh, sqh, 0.0, 0.0))
+            q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
         return self._add_shape(body, pos, q, GEO_CONE, (radius, half_height, 0.0, 0.0), None, density, ke, kd, kf, mu, restitution, thickness, is_solid)
 
     def add_shape_mesh(self,

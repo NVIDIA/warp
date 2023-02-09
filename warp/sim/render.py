@@ -91,7 +91,7 @@ class SimRenderer(warp.render.UsdRenderer):
                     mesh.GetHeightAttr().Set(float(geo_scale[1] * 2.0))
 
                     # geometry transform w.r.t shape, convert USD geometry to physics engine convention
-                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5))
+                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5))
                     X_bg = warp.utils.transform_multiply(X_bs, X_sg)
 
                     wp.render._usd_add_xform(mesh)
@@ -103,7 +103,7 @@ class SimRenderer(warp.render.UsdRenderer):
                     mesh.GetHeightAttr().Set(float(geo_scale[1] * 2.0))
 
                     # geometry transform w.r.t shape, convert USD geometry to physics engine convention
-                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5))
+                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5))
                     X_bg = warp.utils.transform_multiply(X_bs, X_sg)
 
                     wp.render._usd_add_xform(mesh)
@@ -115,7 +115,7 @@ class SimRenderer(warp.render.UsdRenderer):
                     mesh.GetHeightAttr().Set(float(geo_scale[1] * 2.0))
 
                     # geometry transform w.r.t shape, convert USD geometry to physics engine convention
-                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), math.pi * 0.5))
+                    X_sg = warp.transform((0.0, 0.0, 0.0), warp.utils.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5))
                     X_bg = warp.utils.transform_multiply(X_bs, X_sg)
 
                     wp.render._usd_add_xform(mesh)
