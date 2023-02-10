@@ -566,7 +566,7 @@ class Adjoint:
 
     def add_return(adj, var):
 
-        if (var == None):
+        if var.ctype() == "void":
             adj.add_forward("return;".format(var), "goto label{};".format(adj.label_count))
         else:
             adj.add_forward("return var_{};".format(var), "goto label{};".format(adj.label_count))
@@ -740,16 +740,8 @@ class Adjoint:
 
     def emit_FunctionDef(adj, node):
 
-        out = None
         for f in node.body:
-            out = adj.eval(f)
-
-        if 'return' in adj.symbols and adj.symbols['return'] is not None:
-            out = adj.symbols['return']
-        else:
-            out = None
-            
-        return out
+            adj.eval(f)
 
     def emit_If(adj, node):
         
@@ -810,9 +802,6 @@ class Adjoint:
                 out = adj.add_call(warp.context.builtin_functions["select"], [cond, var2, var1])
                 adj.symbols[sym] = out
 
-
-        return None
-
     def emit_Compare(adj, node):
 
         # node.left, node.ops (list of ops), node.comparators (things to compare to)
@@ -822,9 +811,7 @@ class Adjoint:
         comps = [adj.eval(comp) for comp in node.comparators]
         op_strings = [builtin_operators[type(op)] for op in node.ops]
 
-        out = adj.add_comp(op_strings, left, comps)
-
-        return out
+        return adj.add_comp(op_strings, left, comps)
 
     def emit_BoolOp(adj, node):
 
@@ -838,12 +825,11 @@ class Adjoint:
         else:
             raise KeyError("Op {} is not supported".format(op))
 
-        out = adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
-        return out
+        return adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
 
     def emit_Name(adj, node):
 
-       # lookup symbol, if it has already been assigned to a variable then return the existing mapping
+        # lookup symbol, if it has already been assigned to a variable then return the existing mapping
         if node.id in adj.symbols:
             return adj.symbols[node.id]
 
@@ -905,9 +891,7 @@ class Adjoint:
                 raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({struct.type})")
 
             # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-            out = Var(attr_name, attr_type)
-
-            return out
+            return Var(attr_name, attr_type)
         else:
 
             # try and resolve to either a wp.constant
@@ -929,9 +913,7 @@ class Adjoint:
                     raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
 
                 # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-                out = Var(attr_name, attr_type)
-                
-                return out
+                return Var(attr_name, attr_type)
             else:
                 raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
 
@@ -955,13 +937,11 @@ class Adjoint:
     def emit_NameConstant(adj, node):
 
         if node.value == True:
-            out = adj.add_constant(True)
+            return adj.add_constant(True)
         elif node.value == False:
-            out = adj.add_constant(False)
+            return adj.add_constant(False)
         elif node.value == None:
             raise TypeError("None type unsupported")
-
-        return out
 
     def emit_Constant(adj, node):
 
@@ -982,8 +962,7 @@ class Adjoint:
         name = builtin_operators[type(node.op)]
         func = warp.context.builtin_functions[name]
 
-        out = adj.add_call(func, [left, right])
-        return out
+        return adj.add_call(func, [left, right])
 
     def emit_UnaryOp(adj, node):
 
@@ -993,8 +972,7 @@ class Adjoint:
         name = builtin_operators[type(node.op)]
         func = warp.context.builtin_functions[name]
 
-        out = adj.add_call(func, [arg])
-        return out
+        return adj.add_call(func, [arg])
 
     def emit_While(adj, node):
 
@@ -1343,7 +1321,7 @@ class Adjoint:
             else:
                 raise RuntimeError("Can only subscript assign array types")
 
-            return None
+            return var
 
         elif (isinstance(node.targets[0], ast.Name)):
 
@@ -1379,18 +1357,18 @@ class Adjoint:
     def emit_Return(adj, node):
         cond = adj.cond
 
-        out = adj.eval(node.value)
-        adj.symbols['return'] = out
+        if node.value is not None:
+            var = adj.eval(node.value)
+        else:
+            var = Var("void", void)
 
-        if out is not None:        # set return type of function
-            return_var = out
-            if adj.return_var is not None and adj.return_var.ctype() != return_var.ctype():
-                raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {return_var.ctype()}")
-            adj.return_var = return_var
-
-        adj.add_return(out)
-
-        return out
+        # set return type of function
+        if adj.return_var is not None:
+            if adj.return_var.ctype() != var.ctype():
+                raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {var.ctype()}")
+        adj.return_var = var
+ 
+        adj.add_return(var)
 
     def emit_AugAssign(adj, node):
         
@@ -1441,9 +1419,6 @@ class Adjoint:
 
         if emit_node is not None:
             return emit_node(adj, node)
-
-        elif node is None:
-            return None
         else:
             raise Exception("Error, ast node of type {} not supported".format(type(node)))
 

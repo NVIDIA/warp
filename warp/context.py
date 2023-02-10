@@ -579,6 +579,10 @@ class ModuleBuilder:
     def build_kernel(self, kernel):
         kernel.adj.build(self)
 
+        if kernel.adj.return_var is not None:
+            if kernel.adj.return_var.ctype() != "void":
+                raise TypeError(f"Error, kernels can't have return values, got: {kernel.adj.return_var}")
+
     def build_function(self, func):
 
         if func in self.functions:
