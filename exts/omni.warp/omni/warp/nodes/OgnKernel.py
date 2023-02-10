@@ -1,3 +1,10 @@
+# Copyright (c) 2023 NVIDIA CORPORATION.  All rights reserved.
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
 """Warp kernel exposed as an Omni Graph node."""
 
 import hashlib
@@ -23,6 +30,8 @@ from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
 from omni.warp.scripts.kernelnode import ATTR_TO_WARP_TYPE
 
 wp.init()
+
+QUIET_DEFAULT = wp.config.quiet
 
 ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
@@ -132,7 +141,7 @@ def load_code_as_module(code: str, name: str) -> Any:
 class InternalState:
     """Internal state for the node."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._attrs = None
         self._code_provider = None
         self._code_str = None
@@ -191,7 +200,7 @@ class InternalState:
 
         return False
 
-    def initialize(self, db: OgnKernelDatabase) -> None:
+    def initialize(self, db: OgnKernelDatabase) -> bool:
         """Initialize the internal state if needed."""
         # Cache the node attribute values relevant to this internal state.
         # They're the ones used to check whether this state is outdated or not.
@@ -217,13 +226,15 @@ class InternalState:
 
         # Validate the module's contents.
         if not hasattr(kernel_module, "compute"):
-            raise RuntimeError(
+            db.log_error(
                 "The code must define a kernel function named 'compute'."
             )
+            return False
         if not isinstance(kernel_module.compute, wp.context.Kernel):
-            raise RuntimeError(
+            db.log_error(
                 "The 'compute' function must be decorated with '@wp.kernel'."
             )
+            return False
 
         # Retrieves the type annotations for warp's kernel in/out structures.
         kernel_annotations = {
@@ -252,11 +263,12 @@ class InternalState:
             if not isinstance(v, wp.array)
         )
         if invalid_attrs:
-            raise RuntimeError(
+            db.log_error(
                 "Output attributes are required to be arrays but "
                 "the following attributes are not: {}."
                 .format(", ".join(invalid_attrs))
             )
+            return False
 
         # Configure warp to only compute the forward pass.
         wp.set_module_options({"enable_backward": False}, module=kernel_module)
@@ -264,6 +276,8 @@ class InternalState:
         # Store the public members.
         self.kernel_module = kernel_module
         self.kernel_annotations = kernel_annotations
+
+        return True
 
 #   Compute
 # ------------------------------------------------------------------------------
@@ -382,7 +396,9 @@ def compute(db: OgnKernelDatabase) -> None:
     # Ensure that our internal state is correctly initialized.
     timeline =  omni.timeline.get_timeline_interface()
     if db.internal_state.is_outdated(db, timeline.is_stopped()):
-        db.internal_state.initialize(db)
+        if not db.internal_state.initialize(db):
+            return
+
         db.internal_state.is_valid = True
 
     # Exit early if there are no outputs.
@@ -432,9 +448,6 @@ def compute(db: OgnKernelDatabase) -> None:
         device,
     )
 
-    # Fire the execution for the downstream nodes.
-    db.outputs.execOut = og.ExecutionAttributeState.ENABLED
-
 #   Node Entry Point
 # ------------------------------------------------------------------------------
 
@@ -446,7 +459,7 @@ class OgnKernel:
         return InternalState()
 
     @staticmethod
-    def initialize(graph_context, node):
+    def initialize(graph_context: og.GraphContext, node: og.Node) -> None:
         # Populate the devices tokens.
         attr = og.Controller.attribute("inputs:device", node)
         if attr.get_metadata(og.MetadataKeys.ALLOWED_TOKENS) is None:
@@ -457,10 +470,16 @@ class OgnKernel:
             )
 
     @staticmethod
-    def compute(db) -> None:
+    def compute(db: OgnKernelDatabase) -> None:
         try:
             compute(db)
         except Exception:
             db.internal_state.is_valid = False
             db.log_error(traceback.format_exc())
+            wp.config.quiet = True
             return
+        else:
+            wp.config.quiet = QUIET_DEFAULT
+
+        # Fire the execution for the downstream nodes.
+        db.outputs.execOut = og.ExecutionAttributeState.ENABLED

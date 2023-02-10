@@ -4,8 +4,6 @@ __all__ = [
     "from_omni_graph",
 ]
 
-import ctypes
-
 import warp as wp
 
 from .scripts.extension import OmniWarpExtension
