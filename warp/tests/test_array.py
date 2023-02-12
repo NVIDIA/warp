@@ -373,44 +373,26 @@ def test_slicing(test, device):
     test.assertEqual(loss.numpy()[0], 26)
 
 
-def test_astype(test, device):
+def test_view(test, device):
 
-    np_arr_a = np.arange(0, 10, 1, dtype=float)
-    np_arr_b = np.arange(0, 10, 1, dtype=int)
-    np_arr_c = np.arange(0, 10, 1, dtype=np.int8)
-    np_arr_d = np.arange(0, 10, 1, dtype=np.uint64)
+    np_arr_a = np.arange(1, 10, 1, dtype=np.uint32)
+    np_arr_b = np.arange(1, 10, 1, dtype=np.float32)
+    np_arr_c = np.arange(1, 10, 1, dtype=np.uint16)
+    np_arr_d = np.arange(1, 10, 1, dtype=np.float16)
+    np_arr_e = np.ones((4, 4), dtype=np.float32)
+
+    wp_arr_a = wp.array(np_arr_a, dtype=wp.uint32, device=device)
+    wp_arr_b = wp.array(np_arr_b, dtype=wp.float32, device=device)
+    wp_arr_c = wp.array(np_arr_a, dtype=wp.uint16, device=device)
+    wp_arr_d = wp.array(np_arr_b, dtype=wp.float16, device=device)
+    wp_arr_e = wp.array(np_arr_e, dtype=wp.vec4, device=device)
+    wp_arr_f = wp.array(np_arr_e, dtype=wp.quat, device=device)
     
-    arr_a = wp.array(np_arr_a, dtype=float, device=device, requires_grad=True)
-    arr_b = wp.array(np_arr_b, dtype=int, device=device)
-    arr_c = wp.array(np_arr_c, dtype=wp.int8, device=device)
-    arr_d = wp.array(np_arr_d, dtype=wp.uint64, device=device)
-    
-    arr_a = arr_a.astype(dtype=int)
-    assert_array_equal(arr_a, arr_b)
-
-    arr_a = arr_a.astype(dtype=wp.int8)
-    assert_array_equal(arr_a, arr_c)
-
-    arr_a = arr_a.astype(dtype=wp.uint64)
-    assert_array_equal(arr_a, arr_d)
-
-    arr_a = arr_a.astype(dtype=float)
-    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
-    tape = wp.Tape()
-    with tape:
-        wp.launch(
-            kernel=sum_array,
-            dim=len(arr_a),
-            inputs=[arr_a, loss],
-            device=device
-        )
-
-    tape.backward(loss=loss)
-    grad = tape.gradients[arr_a]
-
-    ones = wp.array(np.ones((10,), dtype=float,), dtype=float, device=device)
-    assert_array_equal(grad, ones)
-    test.assertEqual(loss.numpy()[0], 45)
+    assert np.array_equal(np_arr_a.view(dtype=np.float32), wp_arr_a.view(dtype=wp.float32).numpy())
+    assert np.array_equal(np_arr_b.view(dtype=np.uint32), wp_arr_b.view(dtype=wp.uint32).numpy())
+    assert np.array_equal(np_arr_c.view(dtype=np.float16), wp_arr_c.view(dtype=wp.float16).numpy())
+    assert np.array_equal(np_arr_d.view(dtype=np.uint16), wp_arr_d.view(dtype=wp.uint16).numpy())
+    assert_array_equal(wp_arr_e.view(dtype=wp.quat), wp_arr_f)
 
     
 def test_fill_zero(test, device):
@@ -591,7 +573,7 @@ def register(parent):
     add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
     add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
     add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
-    add_function_test(TestArray, "test_astype", test_astype, devices=devices)
+    add_function_test(TestArray, "test_view", test_view, devices=devices)
 
     add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
     add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)

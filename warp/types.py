@@ -1276,23 +1276,27 @@ class array (Generic[T]):
         return a
 
 
-    def astype(self, dtype):
+    def view(self, dtype):
 
-        # allocate a new array
-        arr = self.numpy().astype(dtype=dtype)
-        a = array(data=arr,
-                dtype=dtype,
-                shape=self.shape,
-                strides=None,
-                ptr=None,
-                capacity=None,
-                device=self.device,
-                copy=True,
-                owner=True,
-                ndim=None,
-                requires_grad=self.requires_grad)
+        if type_size_in_bytes(dtype) != type_size_in_bytes(self.dtype):
+            raise RuntimeError("cannot reinterpret cast dtypes of unequal byte size")
+        else:
+            # return an alias of the array memory with different type information
+            a = array(data=None,
+                    dtype=dtype,
+                    shape=self.shape,
+                    strides=self.strides,
+                    ptr=self.ptr,
+                    capacity=self.capacity,
+                    device=self.device,
+                    copy=False,
+                    owner=False,
+                    ndim=self.ndim,
+                    requires_grad=self.requires_grad)
 
-        return a
+            a._ref = self
+            return a
+
 
 # aliases for arrays with small dimensions
 def array1d(*args, **kwargs):
