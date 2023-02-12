@@ -18,7 +18,6 @@ def _usd_add_xform(prim):
     r = prim.AddOrientOp()
     s = prim.AddScaleOp()
 
-
 def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
     from pxr import UsdGeom, Gf
