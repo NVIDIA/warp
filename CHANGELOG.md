@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.7.0] - 2023-02-13
+
+- Add support for arbitrary length / type vector and matrices e.g.: `wp.vec(length=7, dtype=wp.float16)`, see `wp.vec()`, and `wp.mat()`
+- Add support for `array.flatten()`, `array.reshape()`, and `array.view()` with NumPy semantics
+- Add support for slicing `wp.array` types in Python
+- Add `wp.from_ptr()` helper to construct arrays from an existing allocation
+- Add support for `break` statements in ranged-for and while loops (backward pass support currently not implemented)
+- Add built-in mathematic constants, see `wp.pi`, `wp.e`, `wp.log2e`, etc
+- Add built-in conversion between degrees and radians, see `wp.degrees()`, `wp.radians()`
+- Add security pop-up for Kernel Node 
+- Improve error handling for kernel return values
+
+## [0.6.3] - 2023-01-31
+
+- Add DLPack utilities, see `wp.from_dlpack()`, `wp.to_dlpack()`
+- Add Jax utilities, see `wp.from_jax()`, `wp.to_jax()`, `wp.device_from_jax()`, `wp.device_to_jax()`
+- Fix for Linux Kit extensions OM-80132, OM-80133
+
 ## [0.6.2] - 2023-01-19
 
 - Updated `wp.from_torch()` to support more data types
@@ -8,6 +26,7 @@
 - Add CUTLASS integration for dense GEMMs, see `wp.matmul()` and `wp.matmul_batched()` 
 - Add QR and Eigen decompositions for `mat33` types, see `wp.qr3()`, and `wp.eig3()`
 - Add default (zero) constructors for matrix types
+- Add a flag to suppress all output except errors and warnings (set `wp.config.quiet = True`)
 - Skip recompilation when Kernel Node attributes are edited
 - Allow optional attributes for Kernel Node
 - Allow disabling backward pass code-gen on a per-kernel basis, use `@wp.kernel(enable_backward=False)`

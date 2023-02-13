@@ -7,7 +7,7 @@
 
 import os
 
-version = "0.6.2"
+version = "0.7.0"
 
 cuda_path = None        # path to local CUDA toolchain, if None at init time warp will attempt to find the SDK using CUDA_PATH env var
 
@@ -16,7 +16,8 @@ verify_cuda = False     # if true will check CUDA errors after each kernel launc
 print_launches = False  # if true will print out launch information
 
 mode = "release"
-verbose = False
+verbose = False         # print extra informative messages
+quiet = False           # suppress all output except errors and warnings
 
 host_compiler = None    # user can specify host compiler here, otherwise will attempt to find one automatically
 

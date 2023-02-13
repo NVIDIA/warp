@@ -75,7 +75,7 @@ def test_dynamic_for_inplace(n: int):
     for i in range(0, n):
         a += 1.0
 
-    wp.expect_eq(n, 10)
+    wp.expect_eq(a, float(n))
 
 
 @wp.kernel
@@ -188,6 +188,18 @@ def test_while(n: int):
 
     wp.expect_eq(i, n)
 
+@wp.kernel
+def test_break(n: int):
+
+    a = int(0)
+    
+    for i in range(0, n):
+        if a == 5:
+            break
+
+        a += 1
+
+    wp.expect_eq(a, 5)
 
 lower = wp.constant(-3)
 upper = wp.constant(3)
@@ -227,7 +239,7 @@ def test_unresolved_func(test, device):
     from warp.tests.test_unresolved_func import unresolved_func_kernel
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
-    with test.assertRaisesRegexp(RuntimeError, "Could not find function wp.missing_func"):
+    with test.assertRaisesRegex(RuntimeError, "Could not find function wp.missing_func"):
         wp.launch(unresolved_func_kernel, dim=1, inputs=[], device=device)
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
@@ -242,7 +254,7 @@ def test_unresolved_symbol(test, device):
     from warp.tests.test_unresolved_symbol import unresolved_symbol_kernel
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
-    with test.assertRaisesRegexp(KeyError, "Referencing undefined symbol: missing_symbol"):
+    with test.assertRaisesRegex(KeyError, "Referencing undefined symbol: missing_symbol"):
         wp.launch(unresolved_symbol_kernel, dim=1, inputs=[], device=device)
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
@@ -280,6 +292,8 @@ def register(parent):
 
     add_kernel_test(TestCodeGen, name="test_while_zero", kernel=test_while, dim=1, inputs=[0], devices=devices)
     add_kernel_test(TestCodeGen, name="test_while_positive", kernel=test_while, dim=1, inputs=[16], devices=devices)
+
+    add_kernel_test(TestCodeGen, name="test_break", kernel=test_break, dim=1, inputs=[10], devices=devices)
 
     add_function_test(TestCodeGen, func=test_unresolved_func, name="test_unresolved_func", devices=devices)
     add_function_test(TestCodeGen, func=test_unresolved_symbol, name="test_unresolved_symbol", devices=devices)

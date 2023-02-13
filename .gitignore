@@ -22,3 +22,4 @@ examples/assets/.thumbs
 /warp_lang.egg-info
 exts/omni.warp/omni/warp/ogn/tests/usd
 build/lib/
+.venv/

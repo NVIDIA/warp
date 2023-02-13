@@ -7,6 +7,7 @@
 
 import unittest
 from unittest import runner
+import os
 
 import warp as wp
 import warp.tests.test_codegen
@@ -48,6 +49,12 @@ import warp.tests.test_torch
 import warp.tests.test_pinned
 import warp.tests.test_matmul
 import warp.tests.test_options
+import warp.tests.test_dlpack
+import warp.tests.test_vec
+import warp.tests.test_mat
+import warp.tests.test_arithmetic
+import warp.tests.test_spatial
+import warp.tests.test_math
 
 
 def register_tests(parent):
@@ -93,13 +100,83 @@ def register_tests(parent):
     tests.append(warp.tests.test_pinned.register(parent))
     tests.append(warp.tests.test_matmul.register(parent))
     tests.append(warp.tests.test_options.register(parent))
+    tests.append(warp.tests.test_dlpack.register(parent))
+    tests.append(warp.tests.test_vec.register(parent))
+    tests.append(warp.tests.test_mat.register(parent))
+    tests.append(warp.tests.test_arithmetic.register(parent))
+    tests.append(warp.tests.test_spatial.register(parent))
+    tests.append(warp.tests.test_math.register(parent))
 
     return tests
+
+
+class TeamCityTestResult(unittest.TextTestResult):
+    """This class will report each test result to TeamCity"""
+
+    def __init__(self, stream, descriptions, verbosity):
+        super(TeamCityTestResult, self).__init__(stream, descriptions, verbosity)
+
+    def addSuccess(self, test):
+        super(TeamCityTestResult, self).addSuccess(test)
+        self.reportSuccess(test)
+
+    def addError(self, test, err):
+        super(TeamCityTestResult, self).addError(test, err)
+        self.reportFailure(test)
+
+    def addFailure(self, test, err):
+        super(TeamCityTestResult, self).addFailure(test, err)
+        self.reportFailure(test)
+
+    def addSkip(self, test, reason):
+        super(TeamCityTestResult, self).addSkip(test, reason)
+
+    def addExpectedFailure(self, test, err):
+        super(TeamCityTestResult, self).addExpectedFailure(test, err)
+        self.reportSuccess(test)
+
+    def addUnexpectedSuccess(self, test):
+        super(TeamCityTestResult, self).addUnexpectedSuccess(test)
+        self.reportFailure(test)
+
+    def reportSuccess(self, test):
+        test_id = test.id()
+        print(f"##teamcity[testStarted name='{test_id}']")
+        print(f"##teamcity[testFinished name='{test_id}']")
+
+    def reportFailure(self, test):
+        test_id = test.id()
+        print(f"##teamcity[testStarted name='{test_id}']")
+        print(f"##teamcity[testFailed name='{test_id}']")
+        print(f"##teamcity[testFinished name='{test_id}']")
+
+
+class TeamCityTestRunner(unittest.TextTestRunner):
+    """Test runner that will report test results to TeamCity if running in TeamCity"""
+
+    def __init__(self, **kwargs):
+        self.running_in_teamcity = os.environ.get("TEAMCITY_VERSION") is not None
+        if self.running_in_teamcity:
+            kwargs["resultclass"] = TeamCityTestResult
+        super(TeamCityTestRunner, self).__init__(**kwargs)
+
+    def run(self, test, name):
+        if self.running_in_teamcity:
+            print(f"##teamcity[testSuiteStarted name='{name}']")
+
+        result = super(TeamCityTestRunner, self).run(test)
+
+        if self.running_in_teamcity:
+            print(f"##teamcity[testSuiteFinished name='{name}']")
+            if not result.wasSuccessful():
+                print(f"##teamcity[buildStatus status='FAILURE']")
+
+        return result
+
 
 def run():
 
     test_suite = unittest.TestSuite()
-    result = unittest.TestResult()
 
     tests = register_tests(unittest.TestCase)
 
@@ -112,8 +189,8 @@ def run():
     # load all modules
     wp.force_load()
 
-    runner = unittest.TextTestRunner(verbosity=2, failfast=False)
-    ret = not runner.run(test_suite).wasSuccessful()
+    runner = TeamCityTestRunner(verbosity=2, failfast=False)
+    ret = not runner.run(test_suite, "WarpTests").wasSuccessful()
     return ret
 
 

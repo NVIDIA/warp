@@ -148,6 +148,14 @@ class Struct:
                 StructInstance.__init__(inst, self)
         return NewStructInstance()
 
+def compute_type_str(generictype,typeparams):
+    def param2str(p):
+        if isinstance(p,int):
+            return str(p)
+        return p.__name__
+
+    return f"{generictype}<{','.join(map(param2str,typeparams))}>"
+            
 class Var:
     def __init__(self, label, type, requires_grad=False, constant=None):
 
@@ -167,9 +175,15 @@ class Var:
 
     def ctype(self):
         if (isinstance(self.type, array)):
-            return f"array_t<{str(self.type.dtype.__name__)}>"
-        if (isinstance(self.type, Struct)):
+            if hasattr(self.type.dtype,"_wp_generic_type_str_"):
+                typestr = compute_type_str( self.type.dtype._wp_generic_type_str_, self.type.dtype._wp_type_params_ )
+            else:
+                typestr = str(self.type.dtype.__name__)
+            return f"array_t<{typestr}>"
+        elif (isinstance(self.type, Struct)):
             return make_full_qualified_name(self.type.cls)
+        elif hasattr(self.type,"_wp_generic_type_str_"):
+            return compute_type_str( self.type._wp_generic_type_str_, self.type._wp_type_params_ )
         else:
             return str(self.type.__name__)
 
@@ -246,6 +260,7 @@ class Adjoint:
 
         # blocks
         adj.blocks = [Block()]
+        adj.loop_blocks = []
 
         # holds current indent level
         adj.prefix = ""
@@ -390,7 +405,7 @@ class Adjoint:
 
         return output
 
-    def add_call(adj, func, inputs, min_outputs=None):
+    def add_call(adj, func, inputs, min_outputs=None, templates=[]):
 
         # if func is overloaded then perform overload resolution here
         # we validate argument types before they go to generated native code
@@ -420,7 +435,7 @@ class Adjoint:
                         continue
 
                     # otherwise check arg type matches input variable type
-                    if not types_equal(a, inputs[i].type):
+                    if not types_equal(a, inputs[i].type, match_generic=True):
                         match = False
                         break
 
@@ -428,7 +443,7 @@ class Adjoint:
             if min_outputs:
 
                 try:
-                    value_type = f.value_func(inputs)
+                    value_type = f.value_func(inputs,templates)
                     if len(value_type) != min_outputs:
                         match = False
                         continue
@@ -464,18 +479,25 @@ class Adjoint:
         else:
             func = resolved_func
 
-
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             adj.builder.build_function(func)
 
         # evaluate the function type based on inputs
-        value_type = func.value_func(inputs)
+        value_type = func.value_func(inputs,templates)
+
+        funcname = func.key
+        if templates:
+            funcname = compute_type_str( func.key, templates )
 
         # handle expression (zero output), e.g.: void do_something();
+        initializer_list = func.initializer_list_func(inputs, templates)
         if (value_type == None):
 
-            forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
+            if initializer_list:
+                forward_call = func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs))
+            else:
+                forward_call = func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs))
             
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="//" + forward_call)
@@ -483,7 +505,10 @@ class Adjoint:
                 adj.add_forward(forward_call)
 
             if (len(inputs)):
-                reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs))
+                if initializer_list:
+                    reverse_call = func.namespace + "{}({}, {{{}}});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("&adj_", inputs))
+                else:
+                    reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs))
                 adj.add_reverse(reverse_call)
 
             return None
@@ -492,12 +517,19 @@ class Adjoint:
         elif (isinstance(value_type, list)):
 
             output = [adj.add_var(v) for v in value_type]
-            forward_call = func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs+output))
+            if initializer_list:
+                forward_call = func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs+output))
+            else:
+                forward_call = func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs+output))
             adj.add_forward(forward_call)
 
             if (len(inputs)):
-                reverse_call = func.namespace + "{}({}, {}, {});".format(
-                    "adj_" + func.key, adj.format_args("var_", inputs+output), adj.format_args("adj_", inputs), adj.format_args("adj_", output))
+                if initializer_list:
+                    reverse_call = func.namespace + "{}({{{}}}, {{{}}}, {});".format(
+                        "adj_" + func.key, adj.format_args("var_", inputs+output), adj.format_args("&adj_", inputs), adj.format_args("adj_", output))
+                else:
+                    reverse_call = func.namespace + "{}({}, {}, {});".format(
+                        "adj_" + func.key, adj.format_args("var_", inputs+output), adj.format_args("adj_", inputs), adj.format_args("adj_", output))
                 adj.add_reverse(reverse_call)
 
             if len(output) == 1:
@@ -508,9 +540,12 @@ class Adjoint:
         # handle simple function (one output)
         else:
 
-            output = adj.add_var(func.value_func(inputs))
+            output = adj.add_var(func.value_func(inputs,templates))
 
-            forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(func.key, adj.format_args("var_", inputs))
+            if initializer_list:
+                forward_call = "var_{} = ".format(output) + func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs))
+            else:
+                forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs))
 
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="//" + forward_call)
@@ -518,15 +553,20 @@ class Adjoint:
                 adj.add_forward(forward_call)
             
             if (len(inputs)):
-                reverse_call = func.namespace + "{}({}, {}, {});".format(
-                    "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs), adj.format_args("adj_", [output]))
+
+                if initializer_list:
+                    reverse_call = func.namespace + "{}({{{}}}, {{{}}}, {});".format(
+                        "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("&adj_", inputs), adj.format_args("adj_", [output]))
+                else:
+                    reverse_call = func.namespace + "{}({}, {}, {});".format(
+                        "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs), adj.format_args("adj_", [output]))
                 adj.add_reverse(reverse_call)
 
             return output
 
     def add_return(adj, var):
 
-        if (var == None):
+        if var.ctype() == "void":
             adj.add_forward("return;".format(var), "goto label{};".format(adj.label_count))
         else:
             adj.add_forward("return var_{};".format(var), "goto label{};".format(adj.label_count))
@@ -571,6 +611,7 @@ class Adjoint:
     def begin_for(adj, iter):
 
         cond_block = adj.begin_block()
+        adj.loop_blocks.append(cond_block)
         adj.add_forward(f"for_start_{cond_block.label}:;")
         adj.indent()
 
@@ -589,6 +630,7 @@ class Adjoint:
        
         body_block = adj.end_block()
         cond_block = adj.end_block()
+        adj.loop_blocks.pop()
                 
         ####################
         # forward pass
@@ -617,7 +659,7 @@ class Adjoint:
 
         # zero adjoints
         for i in body_block.vars:
-             reverse.append(adj.prefix + f"\tadj_{i} = 0;")
+             reverse.append(adj.prefix + f"\tadj_{i} = {i.ctype()}(0);")
 
         # replay
         for i in body_block.body_replay:
@@ -635,9 +677,10 @@ class Adjoint:
     # define a while loop
     def begin_while(adj, cond):
 
-        # evaulate condition in it's own block
+        # evaulate condition in its own block
         # so we can control replay
         cond_block = adj.begin_block()
+        adj.loop_blocks.append(cond_block)
         cond_block.body_forward.append(f"while_start_{cond_block.label}:;")
 
         c = adj.eval(cond)
@@ -654,6 +697,7 @@ class Adjoint:
         adj.dedent()     
         body_block = adj.end_block()
         cond_block = adj.end_block()
+        adj.loop_blocks.pop()
 
         ####################
         # forward pass
@@ -678,7 +722,7 @@ class Adjoint:
 
         # zero adjoints of local vars
         for i in body_block.vars:
-             reverse.append(f"adj_{i} = 0;")
+             reverse.append(f"adj_{i} = {i.ctype()}(0);")
 
         # replay
         for i in body_block.body_replay:
@@ -694,251 +738,378 @@ class Adjoint:
         # output
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
 
+    def emit_FunctionDef(adj, node):
 
-    def eval(adj, node):
+        for f in node.body:
+            adj.eval(f)
 
-        if hasattr(node, "lineno"):
-            adj.set_lineno(node.lineno-1)
-
-        # top level entry point for a function
-        if (isinstance(node, ast.FunctionDef)):
-
-            out = None
-            for f in node.body:
-                out = adj.eval(f)
-
-            if 'return' in adj.symbols and adj.symbols['return'] is not None:
-                out = adj.symbols['return']
-            else:
-                out = None
-                
-            return out
-
-        # if statement
-        elif (isinstance(node, ast.If)):
-
-            if len(node.body) == 0:
-                return None
-
-            # eval condition
-            cond = adj.eval(node.test)
-
-            # save symbol map
-            symbols_prev = adj.symbols.copy()
-
-            # eval body
-            adj.begin_if(cond)
-
-            for stmt in node.body:
-                adj.eval(stmt)
-
-            adj.end_if(cond)
-
-            # detect existing symbols with conflicting definitions (variables assigned inside the branch)
-            # and resolve with a phi (select) function
-            for items in symbols_prev.items():
-
-                sym = items[0]
-                var1 = items[1]
-                var2 = adj.symbols[sym]
-
-                if var1 != var2:
-                    # insert a phi function that selects var1, var2 based on cond
-                    out = adj.add_call(warp.context.builtin_functions["select"], [cond, var1, var2])
-                    adj.symbols[sym] = out
-
-
-            symbols_prev = adj.symbols.copy()
-
-            # evaluate 'else' statement as if (!cond)
-            if (len(node.orelse) > 0):
-
-                adj.begin_else(cond)
-            
-                for stmt in node.orelse:
-                    adj.eval(stmt)
-                
-                adj.end_else(cond)
-
-            # detect existing symbols with conflicting definitions (variables assigned inside the else)
-            # and resolve with a phi (select) function
-            for items in symbols_prev.items():
-
-                sym = items[0]
-                var1 = items[1]
-                var2 = adj.symbols[sym]
-
-                if var1 != var2:
-                    # insert a phi function that selects var1, var2 based on cond
-                    # note the reversed order of vars since we want to use !cond as our select
-                    out = adj.add_call(warp.context.builtin_functions["select"], [cond, var2, var1])
-                    adj.symbols[sym] = out
-
-
+    def emit_If(adj, node):
+        
+        if len(node.body) == 0:
             return None
 
-        elif (isinstance(node, ast.Compare)):
-            # node.left, node.ops (list of ops), node.comparators (things to compare to)
-            # e.g. (left ops[0] node.comparators[0]) ops[1] node.comparators[1]
+        # eval condition
+        cond = adj.eval(node.test)
 
-            left = adj.eval(node.left)
-            comps = [adj.eval(comp) for comp in node.comparators]
-            op_strings = [builtin_operators[type(op)] for op in node.ops]
+        # save symbol map
+        symbols_prev = adj.symbols.copy()
 
-            out = adj.add_comp(op_strings, left, comps)
+        # eval body
+        adj.begin_if(cond)
 
-            return out
+        for stmt in node.body:
+            adj.eval(stmt)
 
-        elif (isinstance(node, ast.BoolOp)):
-            # op, expr list values
+        adj.end_if(cond)
 
-            op = node.op
-            if isinstance(op, ast.And):
-                func = "&&"
-            elif isinstance(op, ast.Or):
-                func = "||"
+        # detect existing symbols with conflicting definitions (variables assigned inside the branch)
+        # and resolve with a phi (select) function
+        for items in symbols_prev.items():
+
+            sym = items[0]
+            var1 = items[1]
+            var2 = adj.symbols[sym]
+
+            if var1 != var2:
+                # insert a phi function that selects var1, var2 based on cond
+                out = adj.add_call(warp.context.builtin_functions["select"], [cond, var1, var2])
+                adj.symbols[sym] = out
+
+
+        symbols_prev = adj.symbols.copy()
+
+        # evaluate 'else' statement as if (!cond)
+        if (len(node.orelse) > 0):
+
+            adj.begin_else(cond)
+        
+            for stmt in node.orelse:
+                adj.eval(stmt)
+            
+            adj.end_else(cond)
+
+        # detect existing symbols with conflicting definitions (variables assigned inside the else)
+        # and resolve with a phi (select) function
+        for items in symbols_prev.items():
+
+            sym = items[0]
+            var1 = items[1]
+            var2 = adj.symbols[sym]
+
+            if var1 != var2:
+                # insert a phi function that selects var1, var2 based on cond
+                # note the reversed order of vars since we want to use !cond as our select
+                out = adj.add_call(warp.context.builtin_functions["select"], [cond, var2, var1])
+                adj.symbols[sym] = out
+
+    def emit_Compare(adj, node):
+
+        # node.left, node.ops (list of ops), node.comparators (things to compare to)
+        # e.g. (left ops[0] node.comparators[0]) ops[1] node.comparators[1]
+
+        left = adj.eval(node.left)
+        comps = [adj.eval(comp) for comp in node.comparators]
+        op_strings = [builtin_operators[type(op)] for op in node.ops]
+
+        return adj.add_comp(op_strings, left, comps)
+
+    def emit_BoolOp(adj, node):
+
+        # op, expr list values
+
+        op = node.op
+        if isinstance(op, ast.And):
+            func = "&&"
+        elif isinstance(op, ast.Or):
+            func = "||"
+        else:
+            raise KeyError("Op {} is not supported".format(op))
+
+        return adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
+
+    def emit_Name(adj, node):
+
+        # lookup symbol, if it has already been assigned to a variable then return the existing mapping
+        if node.id in adj.symbols:
+            return adj.symbols[node.id]
+
+        # try and resolve the name using the functions globals context (used to lookup constants + functions)
+        elif node.id in adj.func.__globals__:
+            obj = adj.func.__globals__[node.id]
+            
+            if isinstance(obj, warp.constant):
+                # evaluate constant
+                out = adj.add_constant(obj.val)
+                adj.symbols[node.id] = out
+                return out
+
+            elif isinstance(obj, warp.context.Function):
+                # pass back ref. to function (will be converted to name during function call)
+                return obj
+
             else:
-                raise KeyError("Op {} is not supported".format(op))
+                raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
+            
+        else:
+            raise KeyError("Referencing undefined symbol: " + str(node.id))
 
-            out = adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
-            return out
+    def emit_Attribute(adj, node):
 
-        elif (isinstance(node, ast.Name)):
-            # lookup symbol, if it has already been assigned to a variable then return the existing mapping
-            if node.id in adj.symbols:
-                return adj.symbols[node.id]
-
-            # try and resolve the name using the functions globals context (used to lookup constants + functions)
-            elif node.id in adj.func.__globals__:
-                obj = adj.func.__globals__[node.id]
-                
-                if isinstance(obj, warp.constant):
-                    # evaluate constant
-                    out = adj.add_constant(obj.val)
-                    adj.symbols[node.id] = out
-                    return out
-
-                elif isinstance(obj, warp.context.Function):
-                    # pass back ref. to function (will be converted to name during function call)
-                    return obj
-
-                else:
-                    raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
-                
+        def attribute_to_str(node):
+            if isinstance(node, ast.Name):
+                return node.id
+            elif isinstance(node, ast.Attribute):
+                return attribute_to_str(node.value) + "." + node.attr
             else:
-                raise KeyError("Referencing undefined symbol: " + str(node.id))
+                raise RuntimeError(f"Failed to parse attribute")
 
-        elif (isinstance(node, ast.Attribute)):
-            def attribute_to_str(node):
-                if isinstance(node, ast.Name):
-                    return node.id
-                elif isinstance(node, ast.Attribute):
-                    return attribute_to_str(node.value) + "." + node.attr
-                else:
-                    raise RuntimeError(f"Failed to parse attribute")
-
-            def attribute_to_val(node, context):
-                if isinstance(node, ast.Name):
-                    if node.id in context:
-                        return context[node.id]
+        def attribute_to_val(node, context):
+            if isinstance(node, ast.Name):
+                if node.id in context:
+                    return context[node.id]
+                return None
+            elif isinstance(node, ast.Attribute):
+                val = attribute_to_val(node.value, context)
+                if val is None:
                     return None
-                elif isinstance(node, ast.Attribute):
-                    val = attribute_to_val(node.value, context)
-                    if val is None:
-                        return None
-                    return getattr(val, node.attr)
-                else:
-                    raise RuntimeError(f"Failed to parse attribute")
+                return getattr(val, node.attr)
+            else:
+                raise RuntimeError(f"Failed to parse attribute")
 
-            key = attribute_to_str(node)
+        key = attribute_to_str(node)
 
-            if key in adj.symbols:
-                return adj.symbols[key]
-            elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
-                
-                struct = adj.symbols[node.value.id]
+        if key in adj.symbols:
+            return adj.symbols[key]
+        elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
+            
+            struct = adj.symbols[node.value.id]
+            
+            try:
+                attr_name = struct.label + "." + node.attr
+                attr_type = struct.type.vars[node.attr].type
+            except:
+                raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({struct.type})")
+
+            # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+            return Var(attr_name, attr_type)
+        else:
+
+            # try and resolve to either a wp.constant
+            # or a wp.func object
+            obj = attribute_to_val(node, adj.func.__globals__)
+            
+            if isinstance(obj, warp.constant):
+                out = adj.add_constant(obj.val)
+                adj.symbols[key] = out          # if referencing a constant
+                return out
+            elif isinstance(node.value, ast.Attribute):
+                # resolve nested attribute
+                val = adj.eval(node.value)
                 
                 try:
-                    attr_name = struct.label + "." + node.attr
-                    attr_type = struct.type.vars[node.attr].type
+                    attr_name = val.label + "." + node.attr
+                    attr_type = val.type.vars[node.attr].type
                 except:
-                    raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({struct.type})")
+                    raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
 
                 # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-                out = Var(attr_name, attr_type)
-
-                return out
+                return Var(attr_name, attr_type)
             else:
+                raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
 
-                # try and resolve to either a wp.constant
-                # or a wp.func object
-                obj = attribute_to_val(node, adj.func.__globals__)
-                
-                if isinstance(obj, warp.constant):
-                    out = adj.add_constant(obj.val)
-                    adj.symbols[key] = out          # if referencing a constant
-                    return out
-                elif isinstance(node.value, ast.Attribute):
-                    # resolve nested attribute
-                    val = adj.eval(node.value)
-                    
-                    try:
-                        attr_name = val.label + "." + node.attr
-                        attr_type = val.type.vars[node.attr].type
-                    except:
-                        raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
+    def emit_String(adj, node):
+        
+        # string constant
+        return adj.add_constant(node.s)
 
-                    # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-                    out = Var(attr_name, attr_type)
-                    
-                    return out
-                else:
-                    raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
+    def emit_Num(adj, node):
 
+        # lookup constant, if it has already been assigned then return existing var
+        key = (node.n, type(node.n))
 
-        elif (isinstance(node, ast.Str)):
+        if (key in adj.symbols):
+            return adj.symbols[key]
+        else:
+            out = adj.add_constant(node.n)
+            adj.symbols[key] = out
+            return out
 
-            # string constant
-            return adj.add_constant(node.s)
+    def emit_NameConstant(adj, node):
 
+        if node.value == True:
+            return adj.add_constant(True)
+        elif node.value == False:
+            return adj.add_constant(False)
+        elif node.value == None:
+            raise TypeError("None type unsupported")
+
+    def emit_Constant(adj, node):
+
+        if (isinstance(node, ast.Str)):
+            return adj.emit_String(node)
         elif (isinstance(node, ast.Num)):
+            return adj.emit_Num(node)
+        else:
+            assert(isinstance(node, ast.NameConstant))
+            return adj.emit_NameConstant(node)
 
-            # lookup constant, if it has already been assigned then return existing var
-            key = (node.n, type(node.n))
+    def emit_BinOp(adj, node):
 
-            if (key in adj.symbols):
-                return adj.symbols[key]
+       # evaluate binary operator arguments
+        left = adj.eval(node.left)
+        right = adj.eval(node.right)
+
+        name = builtin_operators[type(node.op)]
+        func = warp.context.builtin_functions[name]
+
+        return adj.add_call(func, [left, right])
+
+    def emit_UnaryOp(adj, node):
+
+        # evaluate unary op arguments
+        arg = adj.eval(node.operand)
+
+        name = builtin_operators[type(node.op)]
+        func = warp.context.builtin_functions[name]
+
+        return adj.add_call(func, [arg])
+
+    def emit_While(adj, node):
+
+        adj.begin_while(node.test)
+
+        symbols_prev = adj.symbols.copy()
+
+        # eval body
+        for s in node.body:
+            adj.eval(s)
+
+        # detect symbols with conflicting definitions (assigned inside the for loop)
+        for items in symbols_prev.items():
+
+            sym = items[0]
+            var1 = items[1]
+            var2 = adj.symbols[sym]
+
+            if var1 != var2:
+
+                if (warp.config.verbose):
+                    print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
+
+                if (var1.constant is not None):
+                    raise Exception("Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
+                
+                # overwrite the old variable value (violates SSA)
+                adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
+
+                # reset the symbol to point to the original variable
+                adj.symbols[sym] = var1
+
+        
+        adj.end_while()
+        
+    def emit_For(adj, node):
+
+        def is_num(a):
+
+            # simple constant
+            if isinstance(a, ast.Num):
+                return True
+            # expression of form -constant
+            elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
+                    return True
             else:
-                out = adj.add_constant(node.n)
-                adj.symbols[key] = out
-                return out
+                # try and resolve the expression to an object
+                # e.g.: wp.constant in the globals scope
+                obj, path = adj.resolve_path(a)
+                if isinstance(obj, warp.constant):
+                    return True
+                else:
+                    return False
 
 
-        elif (isinstance(node, ast.BinOp)):
-            # evaluate binary operator arguments
-            left = adj.eval(node.left)
-            right = adj.eval(node.right)
+        def eval_num(a):
+            if isinstance(a, ast.Num):
+                return a.n
+            elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
+                return -a.operand.n
+            else:
+                # try and resolve the expression to an object
+                # e.g.: wp.constant in the globals scope
+                obj, path = adj.resolve_path(a)
+                if isinstance(obj, warp.constant):
+                    return obj.val
+                else:
+                    return False
 
-            name = builtin_operators[type(node.op)]
-            func = warp.context.builtin_functions[name]
 
-            out = adj.add_call(func, [left, right])
-            return out
+        # try and unroll simple range() statements that use constant args
+        unrolled = False
 
-        elif (isinstance(node, ast.UnaryOp)):
-            # evaluate unary op arguments
-            arg = adj.eval(node.operand)
+        if isinstance(node.iter, ast.Call) and node.iter.func.id == "range":
+            
+            is_constant = True
+            for a in node.iter.args:
 
-            name = builtin_operators[type(node.op)]
-            func = warp.context.builtin_functions[name]
+                # if all range() arguments are numeric constants we will unroll
+                # note that this only handles trivial constants, it will not unroll
+                # constant compile-time expressions e.g.: range(0, 3*2)
+                if not is_num(a):
+                    is_constant = False
+                    break
 
-            out = adj.add_call(func, [arg])
-            return out
+            if (is_constant):
 
-        elif (isinstance(node, ast.While)):
+                # range(end)
+                if len(node.iter.args) == 1:
+                    start = 0
+                    end = eval_num(node.iter.args[0])
+                    step = 1
 
-            adj.begin_while(node.test)
+                # range(start, end)
+                elif len(node.iter.args) == 2:
+                    start = eval_num(node.iter.args[0])
+                    end = eval_num(node.iter.args[1])
+                    step = 1
 
+                # range(start, end, step)
+                elif len(node.iter.args) == 3:
+                    start = eval_num(node.iter.args[0])
+                    end = eval_num(node.iter.args[1])
+                    step = eval_num(node.iter.args[2])
+
+                # test if we're above max unroll count
+                max_iters = abs(end-start)//abs(step)
+                max_unroll = adj.builder.options["max_unroll"]
+
+                if max_iters > max_unroll:
+
+                    if (warp.config.verbose):
+                        print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
+                else:
+
+                    # unroll
+                    for i in range(start, end, step):
+
+                        var_iter = adj.add_constant(i)
+                        adj.symbols[node.target.id] = var_iter
+
+                        # eval body
+                        for s in node.body:
+                            adj.eval(s)
+
+                    unrolled = True
+        
+        
+        # couldn't unroll so generate a dynamic loop
+        if not unrolled:
+
+            # evaluate the Iterable
+            iter = adj.eval(node.iter)
+
+            adj.symbols[node.target.id] = adj.begin_for(iter)
+
+            # for loops should be side-effect free, here we store a copy
             symbols_prev = adj.symbols.copy()
 
             # eval body
@@ -966,364 +1137,288 @@ class Adjoint:
                     # reset the symbol to point to the original variable
                     adj.symbols[sym] = var1
 
+            adj.end_for(iter)
+
+    def emit_Break(adj, node):
+    
+        adj.add_forward(f"goto for_end_{adj.loop_blocks[-1].label};")
+
+    def emit_Expr(adj, node):
+    
+        return adj.eval(node.value)
+
+    def emit_Call(adj, node):
+
+        name = None
             
-            adj.end_while()
+        # try and lookup function in globals by
+        # resolving path (e.g.: module.submodule.attr) 
+        func, path = adj.resolve_path(node.func)
+        templates = []
 
+        if isinstance(func, warp.context.Function) == False:
 
-        elif (isinstance(node, ast.For)):
+            if len(path) == 0:
+                raise RuntimeError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
 
-            def is_num(a):
+            # try and lookup function in builtins, this allows users to avoid 
+            # using "wp." prefix, and also handles type constructors
+            # e.g.: wp.vec3 which aren't explicitly function objects
+            attr = path[-1]
+            caller = func
+            func = None
+            if attr in warp.context.builtin_functions:
+                func = warp.context.builtin_functions[attr]
+            elif hasattr(caller,"_wp_generic_type_str_"):
 
-                # simple constant
-                if isinstance(a, ast.Num):
-                    return True
-                # expression of form -constant
-                elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
-                     return True
-                else:
-                    # try and resolve the expression to an object
-                    # e.g.: wp.constant in the globals scope
-                    obj, path = adj.resolve_path(a)
-                    if isinstance(obj, warp.constant):
-                        return True
-                    else:
-                        return False
-
-
-            def eval_num(a):
-                if isinstance(a, ast.Num):
-                    return a.n
-                elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
-                    return -a.operand.n
-                else:
-                    # try and resolve the expression to an object
-                    # e.g.: wp.constant in the globals scope
-                    obj, path = adj.resolve_path(a)
-                    if isinstance(obj, warp.constant):
-                        return obj.val
-                    else:
-                        return False
-
-
-            # try and unroll simple range() statements that use constant args
-            unrolled = False
-
-            if isinstance(node.iter, ast.Call) and node.iter.func.id == "range":
+                # This is a constructor for an object with a generic type,
+                # so we're going to need the template information stored in
+                # the class to actually figure out what the c++ template arguments
+                # are:
                 
-                is_constant = True
-                for a in node.iter.args:
+                templates = caller._wp_type_params_
+                func = warp.context.builtin_functions.get(caller._wp_generic_type_str_)
 
-                    # if all range() arguments are numeric constants we will unroll
-                    # note that this only handles trivial constants, it will not unroll
-                    # constant compile-time expressions e.g.: range(0, 3*2)
-                    if not is_num(a):
-                        is_constant = False
-                        break
+            if func is None and caller.__class__.__name__ in warp.context.builtin_functions:
 
-                if (is_constant):
+                # This can be necessary if you've aliased a type before defining the
+                # kernel then used it inside the kernel, eg
+                    
+                # wptype = wp.float64
+                # @wp.kernel
+                # def mykernel( ... )
+                #   ...
+                #   a = wptype(2)
+                
+                # The attr variable we used to try and look up the builtin for wptype
+                # is just "wptype", which isn't in the builtins, so we try and look
+                # it up based on wptype's class name instead:
+                
+                func = warp.context.builtin_functions.get(caller.__class__.__name__)
 
-                    # range(end)
-                    if len(node.iter.args) == 1:
-                        start = 0
-                        end = eval_num(node.iter.args[0])
-                        step = 1
+            if func is None:
+                raise RuntimeError(f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel.")
 
-                    # range(start, end)
-                    elif len(node.iter.args) == 2:
-                        start = eval_num(node.iter.args[0])
-                        end = eval_num(node.iter.args[1])
-                        step = 1
+        args = []
 
-                    # range(start, end, step)
-                    elif len(node.iter.args) == 3:
-                        start = eval_num(node.iter.args[0])
-                        end = eval_num(node.iter.args[1])
-                        step = eval_num(node.iter.args[2])
+        # eval all arguments
+        for arg in node.args:
+            var = adj.eval(arg)
+            args.append(var)
 
-                    # test if we're above max unroll count
-                    max_iters = abs(end-start)//abs(step)
-                    max_unroll = adj.builder.options["max_unroll"]
+        # get expected return count, e.g.: for multi-assignment
+        min_outputs = None
+        if hasattr(node, "expects"):
+            min_outputs = node.expects
 
-                    if max_iters > max_unroll:
+        # add var with value type from the function
+        out = adj.add_call(func, args, min_outputs, templates=templates)
+        return out
 
-                        if (warp.config.verbose):
-                            print(f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop.")
-                    else:
+    def emit_Index(adj, node):
+        # the ast.Index node appears in 3.7 versions
+        # when performing array slices, e.g.: x = arr[i]
+        # but in version 3.8 and higher it does not appear
+        return adj.eval(node.value)
 
-                        # unroll
-                        for i in range(start, end, step):
+    def emit_Subscript(adj, node):
 
-                            var_iter = adj.add_constant(i)
-                            adj.symbols[node.target.id] = var_iter
+        target = adj.eval(node.value)
 
-                            # eval body
-                            for s in node.body:
-                                adj.eval(s)
+        indices = []
 
-                        unrolled = True
-            
-            
-            # couldn't unroll so generate a dynamic loop
-            if not unrolled:
-
-                # evaluate the Iterable
-                iter = adj.eval(node.iter)
-
-                adj.symbols[node.target.id] = adj.begin_for(iter)
-
-                # for loops should be side-effect free, here we store a copy
-                symbols_prev = adj.symbols.copy()
-
-                # eval body
-                for s in node.body:
-                    adj.eval(s)
-
-                # detect symbols with conflicting definitions (assigned inside the for loop)
-                for items in symbols_prev.items():
-
-                    sym = items[0]
-                    var1 = items[1]
-                    var2 = adj.symbols[sym]
-
-                    if var1 != var2:
-
-                        if (warp.config.verbose):
-                            print("Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(sym))
-
-                        if (var1.constant is not None):
-                            raise Exception("Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(sym))
-                        
-                        # overwrite the old variable value (violates SSA)
-                        adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
-
-                        # reset the symbol to point to the original variable
-                        adj.symbols[sym] = var1
-
-                adj.end_for(iter)
-
-        elif (isinstance(node, ast.Expr)):
-            return adj.eval(node.value)
-
-        elif (isinstance(node, ast.Call)):
-
-            name = None
-            
-            # try and lookup function in globals by
-            # resolving path (e.g.: module.submodule.attr) 
-            func, path = adj.resolve_path(node.func)
-
-            if isinstance(func, warp.context.Function) == False:
-
-                if len(path) == 0:
-                    raise RuntimeError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
-
-                # try and lookup function in builtins, this allows users to avoid 
-                # using "wp." prefix, and also handles type constructors
-                # e.g.: wp.vec3 which aren't explicitly function objects
-                attr = path[-1]
-                if attr in warp.context.builtin_functions:
-                    func = warp.context.builtin_functions[attr]
-                else:
-                    raise RuntimeError(f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel.")
-
-            args = []
-
-            # eval all arguments
-            for arg in node.args:
+        if isinstance(node.slice, ast.Tuple):
+            # handles the x[i,j] case (Python 3.8.x upward)
+            for arg in node.slice.elts:
                 var = adj.eval(arg)
-                args.append(var)
+                indices.append(var)
 
-            # get expected return count, e.g.: for multi-assignment
-            min_outputs = None
-            if hasattr(node, "expects"):
-                min_outputs = node.expects
+        elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
+            # handles the x[i,j] case (Python 3.7.x)
+            for arg in node.slice.value.elts:
+                var = adj.eval(arg)
+                indices.append(var)
+        else:
+            # simple expression, e.g.: x[i]
+            var = adj.eval(node.slice)
+            indices.append(var)
 
-            # add var with value type from the function
-            out = adj.add_call(func, args, min_outputs)
+        if isinstance(target.type, array):
+            
+            if len(indices) == target.type.ndim:
+                # handles array loads (where each dimension has an index specified)
+                out = adj.add_call(warp.context.builtin_functions["load"], [target, *indices])
+            else:
+                # handles array views (fewer indices than dimensions)
+                out = adj.add_call(warp.context.builtin_functions["view"], [target, *indices])
+
+        else:
+            # handles non-array type indexing, e.g: vec3, mat33, etc
+            out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
+
+        return out
+
+    def emit_Assign(adj, node):
+
+        # handle the case where we are assigning multiple output variables
+        if (isinstance(node.targets[0], ast.Tuple)):
+
+            # record the expected number of outputs on the node
+            # we do this so we can decide which function to
+            # call based on the number of expected outputs
+            if isinstance(node.value, ast.Call):
+                node.value.expects = len(node.targets[0].elts)
+
+            # evaluate values
+            out = adj.eval(node.value)
+
+            names = []
+            for v in node.targets[0].elts:
+                if (isinstance(v, ast.Name)):
+                    names.append(v.id)
+                else:
+                    raise RuntimeError("Multiple return functions can only assign to simple variables, e.g.: x, y = func()")
+
+            if len(names) != len(out):
+                raise RuntimeError("Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {}, got {})".format(len(out), len(names)))
+            
+            for name, rhs in zip(names, out):
+                if (name in adj.symbols):
+                    if not types_equal(rhs.type, adj.symbols[name].type):
+                        raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
+
+                adj.symbols[name] = rhs
+
             return out
 
-        elif (isinstance(node, ast.Index)):
-            # the ast.Index node appears in 3.7 versions
-            # when performing array slices, e.g.: x = arr[i]
-            # but in version 3.8 and higher it does not appear
-            return adj.eval(node.value)
+        # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
+        elif (isinstance(node.targets[0], ast.Subscript)):
+            
+            target = adj.eval(node.targets[0].value)
+            value = adj.eval(node.value)
 
-        elif (isinstance(node, ast.Subscript)):
-
-            target = adj.eval(node.value)
-
+            slice = node.targets[0].slice
             indices = []
 
-            if isinstance(node.slice, ast.Tuple):
-                # handles the x[i,j] case (Python 3.8.x upward)
-                for arg in node.slice.elts:
+            if isinstance(slice, ast.Tuple):
+                # handles the x[i, j] case (Python 3.8.x upward)
+                for arg in slice.elts:
                     var = adj.eval(arg)
                     indices.append(var)
 
-            elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-                # handles the x[i,j] case (Python 3.7.x)
-                for arg in node.slice.value.elts:
+            elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
+                # handles the x[i, j] case (Python 3.7.x)
+                for arg in slice.value.elts:
                     var = adj.eval(arg)
                     indices.append(var)
             else:
                 # simple expression, e.g.: x[i]
-                var = adj.eval(node.slice)
+                var = adj.eval(slice)
                 indices.append(var)
 
-            if isinstance(target.type, array):
-                
-                if len(indices) == target.type.ndim:
-                    # handles array loads (where each dimension has an index specified)
-                    out = adj.add_call(warp.context.builtin_functions["load"], [target, *indices])
-                else:
-                    # handles array views (fewer indices than dimensions)
-                    out = adj.add_call(warp.context.builtin_functions["view"], [target, *indices])
-
+            if (isinstance(target.type, array)):
+                adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
             else:
-                # handles non-array type indexing, e.g: vec3, mat33, etc
-                out = adj.add_call(warp.context.builtin_functions["index"], [target, *indices])
+                raise RuntimeError("Can only subscript assign array types")
 
-            return out
+            return var
 
-        elif (isinstance(node, ast.Assign)):
+        elif (isinstance(node.targets[0], ast.Name)):
 
-            # handle the case where we are assigning multiple output variables
-            if (isinstance(node.targets[0], ast.Tuple)):
+            # symbol name
+            name = node.targets[0].id
 
-                # record the expected number of outputs on the node
-                # we do this so we can decide which function to
-                # call based on the number of expected outputs
-                if isinstance(node.value, ast.Call):
-                    node.value.expects = len(node.targets[0].elts)
+            # evaluate rhs
+            rhs = adj.eval(node.value)
 
-                # evaluate values
-                out = adj.eval(node.value)
-
-                names = []
-                for v in node.targets[0].elts:
-                    if (isinstance(v, ast.Name)):
-                        names.append(v.id)
-                    else:
-                        raise RuntimeError("Multiple return functions can only assign to simple variables, e.g.: x, y = func()")
-
-                if len(names) != len(out):
-                    raise RuntimeError("Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {}, got {})".format(len(out), len(names)))
-                
-                for name, rhs in zip(names, out):
-                    if (name in adj.symbols):
-                        if not types_equal(rhs.type, adj.symbols[name].type):
-                            raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
-
-                    adj.symbols[name] = rhs
-
-                return out
-
-            # handles the case where we are assigning to an array index (e.g.: arr[i] = 2.0)
-            elif (isinstance(node.targets[0], ast.Subscript)):
-                
-                target = adj.eval(node.targets[0].value)
-                value = adj.eval(node.value)
-
-                slice = node.targets[0].slice
-                indices = []
-
-                if isinstance(slice, ast.Tuple):
-                    # handles the x[i, j] case (Python 3.8.x upward)
-                    for arg in slice.elts:
-                        var = adj.eval(arg)
-                        indices.append(var)
-
-                elif isinstance(slice, ast.Index) and isinstance(slice.value, ast.Tuple):
-                    # handles the x[i, j] case (Python 3.7.x)
-                    for arg in slice.value.elts:
-                        var = adj.eval(arg)
-                        indices.append(var)
-                else:
-                    # simple expression, e.g.: x[i]
-                    var = adj.eval(slice)
-                    indices.append(var)
-
-                if (isinstance(target.type, array)):
-                    adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
-                else:
-                    raise RuntimeError("Can only subscript assign array types")
-
-                return None
-
-            elif (isinstance(node.targets[0], ast.Name)):
-
-                # symbol name
-                name = node.targets[0].id
-
-                # evaluate rhs
-                rhs = adj.eval(node.value)
-
-                # check type matches if symbol already defined
-                if (name in adj.symbols):
-                
-                    if (rhs.type != adj.symbols[name].type):
-                        raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
-
-                # handle simple assignment case (a = b), where we generate a value copy rather than reference
-                if isinstance(node.value, ast.Name):
-                    out = adj.add_var(rhs.type)
-                    adj.add_call(warp.context.builtin_functions["copy"], [out, rhs])
-                else:
-                    out = rhs
-
-                # update symbol map (assumes lhs is a Name node)
-                adj.symbols[name] = out
-                return out
-
-            elif (isinstance(node.targets[0], ast.Attribute)):
-                raise RuntimeError("Error, assignment to member variables is not currently support (structs are immutable)")
-
-            else:
-                raise RuntimeError("Error, unsupported assignment statement.")
-
-        elif (isinstance(node, ast.Return)):
-            cond = adj.cond
-
-            out = adj.eval(node.value)
-            adj.symbols['return'] = out
-
-            if out is not None:        # set return type of function
-                return_var = out
-                if adj.return_var is not None and adj.return_var.ctype() != return_var.ctype():
-                    raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {return_var.ctype()}")
-                adj.return_var = return_var
-
-            adj.add_return(out)
-
-            return out
-
-        elif (isinstance(node, ast.AugAssign)):
+            # check type matches if symbol already defined
+            if (name in adj.symbols):
             
-            # convert inplace operations (+=, -=, etc) to ssa form, e.g.: c = a + b
-            left = adj.eval(node.target)
-            right = adj.eval(node.value)
+                if not types_equal(rhs.type, adj.symbols[name].type):
+                    raise TypeError("Error, assigning to existing symbol {} ({}) with different type ({})".format(name, adj.symbols[name].type, rhs.type))
 
-            # lookup
-            name = builtin_operators[type(node.op)]
-            func = warp.context.builtin_functions[name]
+            # handle simple assignment case (a = b), where we generate a value copy rather than reference
+            if isinstance(node.value, ast.Name):
+                out = adj.add_var(rhs.type)
+                adj.add_call(warp.context.builtin_functions["copy"], [out, rhs])
+            else:
+                out = rhs
 
-            out = adj.add_call(func, [left, right])
-
-            # update symbol map
-            adj.symbols[node.target.id] = out
-
-        elif (isinstance(node, ast.NameConstant)):
-            if node.value == True:
-                out = adj.add_constant(True)
-            elif node.value == False:
-                out = adj.add_constant(False)
-            elif node.value == None:
-                raise TypeError("None type unsupported")
-
+            # update symbol map (assumes lhs is a Name node)
+            adj.symbols[name] = out
             return out
 
-        elif node is None:
-            return None
+        elif (isinstance(node.targets[0], ast.Attribute)):
+            raise RuntimeError("Error, assignment to member variables is not currently support (structs are immutable)")
+
+        else:
+            raise RuntimeError("Error, unsupported assignment statement.")
+
+    def emit_Return(adj, node):
+        cond = adj.cond
+
+        if node.value is not None:
+            var = adj.eval(node.value)
+        else:
+            var = Var("void", void)
+
+        # set return type of function
+        if adj.return_var is not None:
+            if adj.return_var.ctype() != var.ctype():
+                raise TypeError(f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {var.ctype()}")
+        adj.return_var = var
+ 
+        adj.add_return(var)
+
+    def emit_AugAssign(adj, node):
+        
+        # convert inplace operations (+=, -=, etc) to ssa form, e.g.: c = a + b
+        left = adj.eval(node.target)
+        right = adj.eval(node.value)
+
+        # lookup
+        name = builtin_operators[type(node.op)]
+        func = warp.context.builtin_functions[name]
+
+        out = adj.add_call(func, [left, right])
+
+        # update symbol map
+        adj.symbols[node.target.id] = out
+
+    def eval(adj, node):
+
+        if hasattr(node, "lineno"):
+            adj.set_lineno(node.lineno-1)
+
+        node_visitors = {
+            ast.FunctionDef:  Adjoint.emit_FunctionDef,
+            ast.If:           Adjoint.emit_If,
+            ast.Compare:      Adjoint.emit_Compare,
+            ast.BoolOp:       Adjoint.emit_BoolOp,
+            ast.Name:         Adjoint.emit_Name,
+            ast.Attribute:    Adjoint.emit_Attribute,
+            ast.Str:          Adjoint.emit_String,  # Deprecated in 3.8; use Constant
+            ast.Num:          Adjoint.emit_Num,     # Deprecated in 3.8; use Constant
+            ast.NameConstant: Adjoint.emit_NameConstant,  # Deprecated in 3.8; use Constant
+            ast.Constant:     Adjoint.emit_Constant,
+            ast.BinOp:        Adjoint.emit_BinOp,
+            ast.UnaryOp:      Adjoint.emit_UnaryOp,
+            ast.While:        Adjoint.emit_While,
+            ast.For:          Adjoint.emit_For,
+            ast.Break:        Adjoint.emit_Break,
+            ast.Expr:         Adjoint.emit_Expr,
+            ast.Call:         Adjoint.emit_Call,
+            ast.Index:        Adjoint.emit_Index,  # Deprecated in 3.8; Use the index value directly instead.
+            ast.Subscript:    Adjoint.emit_Subscript,
+            ast.Assign:       Adjoint.emit_Assign,
+            ast.Return:       Adjoint.emit_Return,
+            ast.AugAssign:    Adjoint.emit_AugAssign,
+        }
+
+        emit_node = node_visitors.get(type(node))
+
+        if emit_node is not None:
+            return emit_node(adj, node)
         else:
             raise Exception("Error, ast node of type {} not supported".format(type(node)))
 
@@ -1350,9 +1445,36 @@ class Adjoint:
 
         # try and evaluate object path
         try:
-            func = eval(".".join(path), adj.func.__globals__)
+
+            # Look up the closure info and append it to adj.func.__globals__
+            # in case you want to define a kernel inside a function and refer
+            # to varibles you've declared inside that function:
+            
+            capturedvars = dict(zip(adj.func.__code__.co_freevars,[ c.cell_contents() for c in (adj.func.__closure__ or []) ]))
+            vars_dict = {**adj.func.__globals__, **capturedvars}
+            func = eval(".".join(path), vars_dict)
             return func, path
-        except Exception as e:
+        except:
+            pass
+        
+        # I added this so people can eg do this kind of thing
+        # in a kernel:
+
+        # v = vec3(0.0,0.2,0.4)
+
+        # vec3 is now an alias and is not in warp.context.builtin_functions.
+        # This means it can't be directly looked up in Adjoint.add_call, and
+        # needs to be looked up by digging some information out of the
+        # python object it actually came from.
+
+        # Before this fix, resolve_path was returning None, as the
+        # "vec3" symbol is not available. In this situation I'm assuming
+        # it's a member of the warp module and trying to look it up:
+        try:
+            evalstr = ".".join(["warp"] + path)
+            func = eval(evalstr, {"warp":warp})
+            return func, path
+        except:
             return None, path
         
 
@@ -1679,7 +1801,7 @@ def codegen_func_reverse(adj, func_type='kernel', device='cpu'):
     s += "    // dual vars\n"
 
     for var in adj.variables:
-        s += "    " + var.ctype() + " adj_" + str(var.label) + " = 0;\n"
+        s += "    " + var.ctype() + " adj_" + str(var.label) + "(0);\n"
 
     if device == 'cpu':
         s += codegen_func_reverse_body(adj, device=device, indent=4)

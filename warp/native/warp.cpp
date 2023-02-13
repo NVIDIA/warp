@@ -25,6 +25,12 @@ extern "C"
 
 int cuda_init();
 
+
+uint16_t float_to_half_bits(float x)
+{
+    return wp::half(x).u;
+}
+
 int init()
 {
 #if !WP_DISABLE_CUDA
@@ -65,6 +71,15 @@ void memset_host(void* dest, int value, size_t n)
         const int num_words = n/4;
         for (int i=0; i < num_words; ++i)
             ((int*)dest)[i] = value;
+    }
+}
+
+void memtile_host(void* dest, void *src, size_t srcsize, size_t n)
+{
+    for( size_t i=0; i < n; ++i )
+    {
+        memcpy(dest,src,srcsize);
+        dest = (char*)dest + srcsize;
     }
 }
 
@@ -109,7 +124,7 @@ void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
 #include "sort.cpp"
 #include "volume.cpp"
 #include "marching.cpp"
-//#include "spline.inl"
+#include "cutlass_gemm.cpp"
 
 
 // stubs for platforms where there is no CUDA
@@ -156,6 +171,10 @@ void memcpy_peer(void* context, void* dest, void* src, size_t n)
 }
 
 void memset_device(void* context, void* dest, int value, size_t n)
+{
+}
+
+void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t n)
 {
 }
 
@@ -212,5 +231,10 @@ WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void**
 
 WP_API void cuda_set_context_restore_policy(bool always_restore) {}
 WP_API int cuda_get_context_restore_policy() { return false; }
+
+WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len) {}
+WP_API void array_sum_device(uint64_t a, uint64_t out, int len) {}
+WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive) {}
+WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive) {}
 
 #endif // WP_DISABLE_CUDA
