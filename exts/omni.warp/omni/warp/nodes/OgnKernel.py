@@ -292,7 +292,6 @@ def cast_array_to_warp_type(
         return wp.array(
             value,
             dtype=warp_annotation.dtype,
-            device=device,
             owner=False,
         )
 
@@ -370,17 +369,8 @@ def write_output_attrs(
 #   Compute
 # ------------------------------------------------------------------------------
 
-def compute(db: OgnKernelDatabase) -> None:
+def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     """Evaluates the kernel."""
-    try:
-        device = wp.get_device(db.inputs.device)
-    except Exception:
-        # Fallback to a default device.
-        # This can happen due to a scene being authored on a device
-        # (e.g.: `cuda:1`) that is not available to another user opening
-        # that same scene.
-        device = wp.get_device("cuda:0")
-
     if device.is_cpu:
         on_gpu = False
     elif device.is_cuda:
@@ -432,13 +422,12 @@ def compute(db: OgnKernelDatabase) -> None:
             )
 
     # Launch the kernel.
-    with wp.ScopedDevice(device):
-        wp.launch(
-            db.internal_state.kernel_module.compute,
-            dim=db.inputs.dim,
-            inputs=[inputs],
-            outputs=[outputs],
-        )
+    wp.launch(
+        db.internal_state.kernel_module.compute,
+        dim=db.inputs.dim,
+        inputs=[inputs],
+        outputs=[outputs],
+    )
 
     # Write the output values to the node's attributes.
     write_output_attrs(
@@ -472,7 +461,17 @@ class OgnKernel:
     @staticmethod
     def compute(db: OgnKernelDatabase) -> None:
         try:
-            compute(db)
+            device = wp.get_device(db.inputs.device)
+        except Exception:
+            # Fallback to a default device.
+            # This can happen due to a scene being authored on a device
+            # (e.g.: `cuda:1`) that is not available to another user opening
+            # that same scene.
+            device = wp.get_device("cuda:0")
+
+        try:
+            with wp.ScopedDevice(device):
+                compute(db, device)
         except Exception:
             db.internal_state.is_valid = False
             db.log_error(traceback.format_exc())
