@@ -303,6 +303,18 @@ def cast_array_to_warp_type(
 
     assert False, "Unexpected device '{}'.".format(device.alias)
 
+def are_array_annotations_equal(
+    annotation_1: Any,
+    annotation_2: Any,
+) -> bool:
+    """Checks whether two array annotations are equal."""
+    assert isinstance(annotation_1, wp.array)
+    assert isinstance(annotation_2, wp.array)
+    return (
+        annotation_1.dtype == annotation_2.dtype
+        and annotation_1.ndim == annotation_2.ndim
+    )
+
 def get_kernel_args(
     db: OgnKernelDatabase,
     module: Any,
@@ -328,7 +340,11 @@ def get_kernel_args(
         assert isinstance(warp_annotation, wp.array)
 
         # Retrieve the size of the array to allocate.
-        if annotations[ATTR_PORT_TYPE_INPUT].get(name) == warp_annotation:
+        ref_annotation = annotations[ATTR_PORT_TYPE_INPUT].get(name)
+        if (
+            isinstance(ref_annotation, wp.array)
+            and are_array_annotations_equal(warp_annotation, ref_annotation)
+        ):
             # If there's an existing input with the same name and type,
             # we allocate a new array matching the input's length.
             size = len(getattr(inputs, name))
