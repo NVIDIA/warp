@@ -33,7 +33,7 @@ uint16_t float_to_half_bits(float x)
 
 int init()
 {
-#if !WP_DISABLE_CUDA
+#if WP_ENABLE_CUDA
     // note: it's safe to proceed even if CUDA initialization failed
     cuda_init();
 #endif
@@ -128,7 +128,7 @@ void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
 
 
 // stubs for platforms where there is no CUDA
-#if WP_DISABLE_CUDA
+#if !WP_ENABLE_CUDA
 
 int cuda_init() { return -1; }
 
@@ -237,4 +237,4 @@ WP_API void array_sum_device(uint64_t a, uint64_t out, int len) {}
 WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive) {}
 WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive) {}
 
-#endif // WP_DISABLE_CUDA
+#endif // !WP_ENABLE_CUDA

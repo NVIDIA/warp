@@ -78,10 +78,10 @@ try:
                         cpp_path=os.path.join(build_path, "native/warp.cpp"), 
                         cu_path=None, 
                         dll_path=dll_path,
-                        config=warp.config.mode,
+                        mode=warp.config.mode,
                         verify_fp=warp.config.verify_fp,
                         fast_math=args.fast_math,
-                        force=True)
+                        use_cache=False)
 
     else:
 
@@ -89,10 +89,10 @@ try:
                         cpp_path=os.path.join(build_path, "native/warp.cpp"), 
                         cu_path=os.path.join(build_path, "native/warp.cu"), 
                         dll_path=dll_path,
-                        config=warp.config.mode,
+                        mode=warp.config.mode,
                         verify_fp=warp.config.verify_fp,
                         fast_math=args.fast_math,
-                        force=True)
+                        use_cache=False)
                     
 except Exception as e:
 

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#if !WP_DISABLE_CUDA
+#if WP_ENABLE_CUDA
 
 #include <cudaTypedefs.h>
 #include <cuda_runtime_api.h>
@@ -156,7 +156,7 @@ public:
     }
 };
 
-#endif // !WP_DISABLE_CUDA
+#endif // WP_ENABLE_CUDA
 
 // Pass this value to device functions as the `context` parameter to bypass unnecessary context management.
 // This works in conjuntion with ContextGuards, which do nothing if the given context is NULL.
