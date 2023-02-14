@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.7.2] - 2023-02-15
+
+- Reduce test time for vec/math types
+- Clean-up CUDA disabled build pipeline
+- Remove extension.gen.toml to make Kit packages Python version independent
+- Handle additional cases for array indexing inside Python
+
 ## [0.7.1] - 2023-02-14
 
 - Disabling some slow tests for Kit
