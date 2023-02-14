@@ -372,6 +372,12 @@ def test_slicing(test, device):
     assert_array_equal(grad, ones)
     test.assertEqual(loss.numpy()[0], 26)
 
+    index_a = arr[1]
+    index_b = arr[2, 1]
+
+    assert_array_equal(index_a, wp.array(np_arr[1], dtype=float, device=device))
+    assert_array_equal(index_b, wp.array(np_arr[2, 1], dtype=float, device=device))
+
 
 def test_view(test, device):
 

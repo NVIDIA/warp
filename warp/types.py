@@ -1016,7 +1016,28 @@ class array (Generic[T]):
         new_shape = []
         new_strides = []
         ptr_offset = 0
-        new_dim = 0
+        new_dim = self.ndim
+
+        if isinstance(key, int):
+            if self.ndim == 1:
+                raise RuntimeError("Item indexing is not supported on wp.array objects")
+            new_key = [key]
+            for i in range (1, self.ndim):
+                new_key.append(slice(None, None, None))
+            key = tuple(new_key)
+
+        elif isinstance(key, Tuple):
+            contains_slice = False
+            for k in key:
+                if isinstance(k, slice):
+                    contains_slice = True
+            if len(key) == self.ndim and not contains_slice:
+                raise RuntimeError("Item indexing is not supported on wp.array objects")
+            if not contains_slice:
+                new_key = list(key)
+                for i in range (len(new_key), self.ndim):
+                    new_key.append(slice(None, None, None))
+                key = new_key
 
         for idx, k in enumerate(key):
             if isinstance(k, slice):
@@ -1033,15 +1054,14 @@ class array (Generic[T]):
                     stop = self.shape[idx] + stop
 
                 if start < 0 or start > self.shape[idx] - 1:
-                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+                    raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
                 if stop < 1 or stop > self.shape[idx]:
-                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+                    raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
                 if stop <= start:
-                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+                    raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
 
                 new_shape.append(-((stop - start) // -step))  # ceil division
                 new_strides.append(self.strides[idx] * step)
-                new_dim += 1
 
             else:  # is int
                 start = k
@@ -1049,6 +1069,7 @@ class array (Generic[T]):
                     start = self.shape[idx] + start
                 if start < 0 or start > self.shape[idx] - 1:
                     raise RuntimeError(f"Invalid indexing in slice: {k}")
+                new_dim -= 1
 
             ptr_offset += self.strides[idx] * start
 
