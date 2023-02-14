@@ -920,7 +920,7 @@ class Module:
 
                     # build DLL
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_dll(cpp_path, None, dll_path, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
                     # load the DLL
                     self.dll = warp.build.load_dll(dll_path)
@@ -2123,8 +2123,8 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                             raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array, but passed value has type {type(a)}.")
                         
                         # check subtype
-                        if (a.dtype != arg_type.dtype):
-                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={a.dtype}.")
+                        if not warp.types.types_equal(a.dtype, arg_type.dtype):
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dtype={type_str(arg_type.dtype)} but passed array has dtype={type_str(a.dtype)}.")
 
                         # check dimensions
                         if (a.ndim != arg_type.ndim):
@@ -2502,6 +2502,8 @@ def type_str(t):
         return "Tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
         return f"array[{type_str(t.dtype)}]"
+    elif hasattr(t,"_wp_generic_type_str_"):
+        return t._wp_generic_type_str_ + str(t._wp_type_params_)
     else:
         return t.__name__
 

@@ -264,7 +264,7 @@ void hash_grid_update_device(uint64_t id, float cell_width, const wp::vec3* poin
     }
 }
 
-#if WP_DISABLE_CUDA
+#if !WP_ENABLE_CUDA
 
 namespace wp
 {
@@ -276,4 +276,4 @@ void hash_grid_rebuild_device(const HashGrid& grid, const wp::vec3* points, int 
 
 } // namespace wp
 
-#endif // WP_DISABLE_CUDA
+#endif // !WP_ENABLE_CUDA
