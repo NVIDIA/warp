@@ -297,18 +297,28 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
         else:
             cuda_includes = ""
 
+        # nvrtc_static.lib is built with /MT and _ITERATOR_DEBUG_LEVEL=0 so if we link it in we must match these options
+        if cuda_enabled or mode != "debug":
+            runtime = "/MT"
+            iter_dbg = "_ITERATOR_DEBUG_LEVEL=0"
+            debug = "NDEBUG"
+        else:
+            runtime = "/MTd"
+            iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
+            debug = "_DEBUG"
+
         if (mode == "debug"):
-            cpp_flags = f'/nologo /MTd /Zi /Od /D "_DEBUG" /D "WP_CPU" /D "WP_ENABLE_CUDA={cuda_enabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "WP_ENABLE_CUDA={cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (mode == "release"):
-            cpp_flags = f'/nologo /Ox /D "NDEBUG" /D "WP_CPU" /D "WP_ENABLE_CUDA={cuda_enabled}" /D "_ITERATOR_DEBUG_LEVEL=0" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "WP_ENABLE_CUDA={cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/dll'
             ld_inputs = []
 
         else:
-            raise RuntimeError("Unrecognized build configuration (debug, release), got: {}".format(mode))
+            raise RuntimeError(f"Unrecognized build configuration (debug, release), got: {mode}")
 
         if verify_fp:
             cpp_flags += ' /D "WP_VERIFY_FP"'
@@ -328,7 +338,7 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
             cu_out = cu_path + ".o"
 
             if (mode == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MTd,/Zi,/Od -g -G -O0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA -DWP_ENABLE_CUDA=1 {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA -DWP_ENABLE_CUDA=1 {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             elif (mode == "release"):
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -I"{nanovdb_home}" -DNDEBUG -DWP_CUDA -DWP_ENABLE_CUDA=1 {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
@@ -336,7 +346,7 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append("cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:{}/lib/x64".format(quote(cuda_home)))
+                ld_inputs.append(f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"')
 
         with ScopedTimer("link", active=warp.config.verbose):
             link_cmd = f'"{host_linker}" {" ".join(ld_inputs)} {ld_flags} /out:"{dll_path}"'
