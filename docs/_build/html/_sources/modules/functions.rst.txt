@@ -68,37 +68,7 @@ Vector Types
 
 Scalar Math
 ---------------
-.. function:: min(x: float64, y: float64) -> float64
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: float16, y: float16) -> float16
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: int64, y: int64) -> int64
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: uint32, y: uint32) -> uint32
-
-   Return the minimum of two scalars.
-
-
 .. function:: min(x: int32, y: int32) -> int32
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: uint64, y: uint64) -> uint64
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: int16, y: int16) -> int16
 
    Return the minimum of two scalars.
 
@@ -108,7 +78,37 @@ Scalar Math
    Return the minimum of two scalars.
 
 
+.. function:: min(x: float64, y: float64) -> float64
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: int16, y: int16) -> int16
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: uint32, y: uint32) -> uint32
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: float16, y: float16) -> float16
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: uint64, y: uint64) -> uint64
+
+   Return the minimum of two scalars.
+
+
 .. function:: min(x: uint16, y: uint16) -> uint16
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: int64, y: int64) -> int64
 
    Return the minimum of two scalars.
 
@@ -126,6 +126,21 @@ Scalar Math
 .. function:: min(x: Scalar, y: Scalar) -> Scalar
 
    Return the minimum of two scalars.
+
+
+.. function:: min(x: vec2h, y: vec2h) -> vec2h
+
+   Return the element wise minimum of two vectors.
+
+
+.. function:: min(x: vec3h, y: vec3h) -> vec3h
+
+   Return the element wise minimum of two vectors.
+
+
+.. function:: min(x: vec4h, y: vec4h) -> vec4h
+
+   Return the element wise minimum of two vectors.
 
 
 .. function:: min(x: vec2d, y: vec2d) -> vec2d
@@ -154,21 +169,6 @@ Scalar Math
 
 
 .. function:: min(x: vec4ub, y: vec4ub) -> vec4ub
-
-   Return the element wise minimum of two vectors.
-
-
-.. function:: min(x: vec2h, y: vec2h) -> vec2h
-
-   Return the element wise minimum of two vectors.
-
-
-.. function:: min(x: vec3h, y: vec3h) -> vec3h
-
-   Return the element wise minimum of two vectors.
-
-
-.. function:: min(x: vec4h, y: vec4h) -> vec4h
 
    Return the element wise minimum of two vectors.
 
@@ -238,37 +238,7 @@ Scalar Math
    Return the element wise minimum of two vectors.
 
 
-.. function:: max(x: float64, y: float64) -> float64
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: float16, y: float16) -> float16
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: int64, y: int64) -> int64
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: uint32, y: uint32) -> uint32
-
-   Return the maximum of two scalars.
-
-
 .. function:: max(x: int32, y: int32) -> int32
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: uint64, y: uint64) -> uint64
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: int16, y: int16) -> int16
 
    Return the maximum of two scalars.
 
@@ -278,7 +248,37 @@ Scalar Math
    Return the maximum of two scalars.
 
 
+.. function:: max(x: float64, y: float64) -> float64
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: int16, y: int16) -> int16
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: uint32, y: uint32) -> uint32
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: float16, y: float16) -> float16
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: uint64, y: uint64) -> uint64
+
+   Return the maximum of two scalars.
+
+
 .. function:: max(x: uint16, y: uint16) -> uint16
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: int64, y: int64) -> int64
 
    Return the maximum of two scalars.
 
@@ -296,6 +296,21 @@ Scalar Math
 .. function:: max(x: Scalar, y: Scalar) -> Scalar
 
    Return the maximum of two scalars.
+
+
+.. function:: max(x: vec2h, y: vec2h) -> vec2h
+
+   Return the element wise maximum of two vectors.
+
+
+.. function:: max(x: vec3h, y: vec3h) -> vec3h
+
+   Return the element wise maximum of two vectors.
+
+
+.. function:: max(x: vec4h, y: vec4h) -> vec4h
+
+   Return the element wise maximum of two vectors.
 
 
 .. function:: max(x: vec2d, y: vec2d) -> vec2d
@@ -324,21 +339,6 @@ Scalar Math
 
 
 .. function:: max(x: vec4ub, y: vec4ub) -> vec4ub
-
-   Return the element wise maximum of two vectors.
-
-
-.. function:: max(x: vec2h, y: vec2h) -> vec2h
-
-   Return the element wise maximum of two vectors.
-
-
-.. function:: max(x: vec3h, y: vec3h) -> vec3h
-
-   Return the element wise maximum of two vectors.
-
-
-.. function:: max(x: vec4h, y: vec4h) -> vec4h
 
    Return the element wise maximum of two vectors.
 
@@ -408,37 +408,7 @@ Scalar Math
    Return the element wise maximum of two vectors.
 
 
-.. function:: clamp(x: float64, a: float64, b: float64) -> float64
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: float16, a: float16, b: float16) -> float16
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: int64, a: int64, b: int64) -> int64
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: uint32, a: uint32, b: uint32) -> uint32
-
-   Clamp the value of x to the range [a, b].
-
-
 .. function:: clamp(x: int32, a: int32, b: int32) -> int32
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: uint64, a: uint64, b: uint64) -> uint64
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: int16, a: int16, b: int16) -> int16
 
    Clamp the value of x to the range [a, b].
 
@@ -448,7 +418,37 @@ Scalar Math
    Clamp the value of x to the range [a, b].
 
 
+.. function:: clamp(x: float64, a: float64, b: float64) -> float64
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: int16, a: int16, b: int16) -> int16
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: uint32, a: uint32, b: uint32) -> uint32
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: float16, a: float16, b: float16) -> float16
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: uint64, a: uint64, b: uint64) -> uint64
+
+   Clamp the value of x to the range [a, b].
+
+
 .. function:: clamp(x: uint16, a: uint16, b: uint16) -> uint16
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: int64, a: int64, b: int64) -> int64
 
    Clamp the value of x to the range [a, b].
 
@@ -468,37 +468,7 @@ Scalar Math
    Clamp the value of x to the range [a, b].
 
 
-.. function:: abs(x: float64) -> float64
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: float16) -> float16
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: int64) -> int64
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: uint32) -> uint32
-
-   Return the absolute value of x.
-
-
 .. function:: abs(x: int32) -> int32
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: uint64) -> uint64
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: int16) -> int16
 
    Return the absolute value of x.
 
@@ -508,7 +478,37 @@ Scalar Math
    Return the absolute value of x.
 
 
+.. function:: abs(x: float64) -> float64
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: int16) -> int16
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: uint32) -> uint32
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: float16) -> float16
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: uint64) -> uint64
+
+   Return the absolute value of x.
+
+
 .. function:: abs(x: uint16) -> uint16
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: int64) -> int64
 
    Return the absolute value of x.
 
@@ -528,37 +528,7 @@ Scalar Math
    Return the absolute value of x.
 
 
-.. function:: sign(x: float64) -> float64
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: float16) -> float16
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: int64) -> int64
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: uint32) -> uint32
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
 .. function:: sign(x: int32) -> int32
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: uint64) -> uint64
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: int16) -> int16
 
    Return -1 if x < 0, return 1 otherwise.
 
@@ -568,7 +538,37 @@ Scalar Math
    Return -1 if x < 0, return 1 otherwise.
 
 
+.. function:: sign(x: float64) -> float64
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: int16) -> int16
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: uint32) -> uint32
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: float16) -> float16
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: uint64) -> uint64
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
 .. function:: sign(x: uint16) -> uint16
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: int64) -> int64
 
    Return -1 if x < 0, return 1 otherwise.
 
@@ -588,37 +588,7 @@ Scalar Math
    Return -1 if x < 0, return 1 otherwise.
 
 
-.. function:: step(x: float64) -> float64
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: float16) -> float16
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: int64) -> int64
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: uint32) -> uint32
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
 .. function:: step(x: int32) -> int32
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: uint64) -> uint64
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: int16) -> int16
 
    Return 1.0 if x < 0.0, return 0.0 otherwise.
 
@@ -628,7 +598,37 @@ Scalar Math
    Return 1.0 if x < 0.0, return 0.0 otherwise.
 
 
+.. function:: step(x: float64) -> float64
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: int16) -> int16
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: uint32) -> uint32
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: float16) -> float16
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: uint64) -> uint64
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
 .. function:: step(x: uint16) -> uint16
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: int64) -> int64
 
    Return 1.0 if x < 0.0, return 0.0 otherwise.
 
@@ -648,37 +648,7 @@ Scalar Math
    Return 1.0 if x < 0.0, return 0.0 otherwise.
 
 
-.. function:: nonzero(x: float64) -> float64
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: float16) -> float16
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: int64) -> int64
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: uint32) -> uint32
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
 .. function:: nonzero(x: int32) -> int32
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: uint64) -> uint64
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: int16) -> int16
 
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
@@ -688,7 +658,37 @@ Scalar Math
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
 
+.. function:: nonzero(x: float64) -> float64
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: int16) -> int16
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: uint32) -> uint32
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: float16) -> float16
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: uint64) -> uint64
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
 .. function:: nonzero(x: uint16) -> uint16
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: int64) -> int64
 
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
@@ -708,12 +708,12 @@ Scalar Math
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
 
-.. function:: sin(x: float64) -> float64
+.. function:: sin(x: float16) -> float16
 
    Return the sine of x in radians.
 
 
-.. function:: sin(x: float16) -> float16
+.. function:: sin(x: float64) -> float64
 
    Return the sine of x in radians.
 
@@ -728,12 +728,12 @@ Scalar Math
    Return the sine of x in radians.
 
 
-.. function:: cos(x: float64) -> float64
+.. function:: cos(x: float16) -> float16
 
    Return the cosine of x in radians.
 
 
-.. function:: cos(x: float16) -> float16
+.. function:: cos(x: float64) -> float64
 
    Return the cosine of x in radians.
 
@@ -748,12 +748,12 @@ Scalar Math
    Return the cosine of x in radians.
 
 
-.. function:: acos(x: float64) -> float64
+.. function:: acos(x: float16) -> float16
 
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: acos(x: float16) -> float16
+.. function:: acos(x: float64) -> float64
 
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
@@ -768,12 +768,12 @@ Scalar Math
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: asin(x: float64) -> float64
+.. function:: asin(x: float16) -> float16
 
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: asin(x: float16) -> float16
+.. function:: asin(x: float64) -> float64
 
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
@@ -788,12 +788,12 @@ Scalar Math
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: sqrt(x: float64) -> float64
+.. function:: sqrt(x: float16) -> float16
 
    Return the sqrt of x, where x is positive.
 
 
-.. function:: sqrt(x: float16) -> float16
+.. function:: sqrt(x: float64) -> float64
 
    Return the sqrt of x, where x is positive.
 
@@ -808,12 +808,12 @@ Scalar Math
    Return the sqrt of x, where x is positive.
 
 
-.. function:: tan(x: float64) -> float64
+.. function:: tan(x: float16) -> float16
 
    Return tangent of x in radians.
 
 
-.. function:: tan(x: float16) -> float16
+.. function:: tan(x: float64) -> float64
 
    Return tangent of x in radians.
 
@@ -828,12 +828,12 @@ Scalar Math
    Return tangent of x in radians.
 
 
-.. function:: atan(x: float64) -> float64
+.. function:: atan(x: float16) -> float16
 
    Return arctan of x.
 
 
-.. function:: atan(x: float16) -> float16
+.. function:: atan(x: float64) -> float64
 
    Return arctan of x.
 
@@ -848,12 +848,12 @@ Scalar Math
    Return arctan of x.
 
 
-.. function:: atan2(y: float64, x: float64) -> float64
+.. function:: atan2(y: float16, x: float16) -> float16
 
    Return atan2 of x.
 
 
-.. function:: atan2(y: float16, x: float16) -> float16
+.. function:: atan2(y: float64, x: float64) -> float64
 
    Return atan2 of x.
 
@@ -868,12 +868,12 @@ Scalar Math
    Return atan2 of x.
 
 
-.. function:: sinh(x: float64) -> float64
+.. function:: sinh(x: float16) -> float16
 
    Return the sinh of x.
 
 
-.. function:: sinh(x: float16) -> float16
+.. function:: sinh(x: float64) -> float64
 
    Return the sinh of x.
 
@@ -888,12 +888,12 @@ Scalar Math
    Return the sinh of x.
 
 
-.. function:: cosh(x: float64) -> float64
+.. function:: cosh(x: float16) -> float16
 
    Return the cosh of x.
 
 
-.. function:: cosh(x: float16) -> float16
+.. function:: cosh(x: float64) -> float64
 
    Return the cosh of x.
 
@@ -908,12 +908,12 @@ Scalar Math
    Return the cosh of x.
 
 
-.. function:: tanh(x: float64) -> float64
+.. function:: tanh(x: float16) -> float16
 
    Return the tanh of x.
 
 
-.. function:: tanh(x: float16) -> float16
+.. function:: tanh(x: float64) -> float64
 
    Return the tanh of x.
 
@@ -938,12 +938,12 @@ Scalar Math
    Convert degrees into radians.
 
 
-.. function:: log(x: float64) -> float64
+.. function:: log(x: float16) -> float16
 
    Return the natural log (base-e) of x, where x is positive.
 
 
-.. function:: log(x: float16) -> float16
+.. function:: log(x: float64) -> float64
 
    Return the natural log (base-e) of x, where x is positive.
 
@@ -958,12 +958,12 @@ Scalar Math
    Return the natural log (base-e) of x, where x is positive.
 
 
-.. function:: log2(x: float64) -> float64
+.. function:: log2(x: float16) -> float16
 
    Return the natural log (base-2) of x, where x is positive.
 
 
-.. function:: log2(x: float16) -> float16
+.. function:: log2(x: float64) -> float64
 
    Return the natural log (base-2) of x, where x is positive.
 
@@ -978,12 +978,12 @@ Scalar Math
    Return the natural log (base-2) of x, where x is positive.
 
 
-.. function:: log10(x: float64) -> float64
+.. function:: log10(x: float16) -> float16
 
    Return the natural log (base-10) of x, where x is positive.
 
 
-.. function:: log10(x: float16) -> float16
+.. function:: log10(x: float64) -> float64
 
    Return the natural log (base-10) of x, where x is positive.
 
@@ -998,12 +998,12 @@ Scalar Math
    Return the natural log (base-10) of x, where x is positive.
 
 
-.. function:: exp(x: float64) -> float64
+.. function:: exp(x: float16) -> float16
 
    Return base-e exponential, e^x.
 
 
-.. function:: exp(x: float16) -> float16
+.. function:: exp(x: float64) -> float64
 
    Return base-e exponential, e^x.
 
@@ -1018,12 +1018,12 @@ Scalar Math
    Return base-e exponential, e^x.
 
 
-.. function:: pow(x: float64, y: float64) -> float64
+.. function:: pow(x: float16, y: float16) -> float16
 
    Return the result of x raised to power of y.
 
 
-.. function:: pow(x: float16, y: float16) -> float16
+.. function:: pow(x: float64, y: float64) -> float64
 
    Return the result of x raised to power of y.
 
@@ -1038,14 +1038,14 @@ Scalar Math
    Return the result of x raised to power of y.
 
 
-.. function:: round(x: float64) -> float64
+.. function:: round(x: float16) -> float16
 
    Calculate the nearest integer value, rounding halfway cases away from zero.
 This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
 Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
 
 
-.. function:: round(x: float16) -> float16
+.. function:: round(x: float64) -> float64
 
    Calculate the nearest integer value, rounding halfway cases away from zero.
 This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
@@ -1066,14 +1066,14 @@ This is the most intuitive form of rounding in the colloquial sense, but can be 
 Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
 
 
-.. function:: rint(x: float64) -> float64
+.. function:: rint(x: float16) -> float16
 
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
 It is generally faster than ``warp.round()``.
 Equivalent to ``numpy.rint()``.
 
 
-.. function:: rint(x: float16) -> float16
+.. function:: rint(x: float64) -> float64
 
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
 It is generally faster than ``warp.round()``.
@@ -1094,7 +1094,7 @@ It is generally faster than ``warp.round()``.
 Equivalent to ``numpy.rint()``.
 
 
-.. function:: trunc(x: float64) -> float64
+.. function:: trunc(x: float16) -> float16
 
    Calculate the nearest integer that is closer to zero than x.
 In other words, it discards the fractional part of x.
@@ -1102,7 +1102,7 @@ It is similar to casting ``float(int(x))``, but preserves the negative sign when
 Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 
-.. function:: trunc(x: float16) -> float16
+.. function:: trunc(x: float64) -> float64
 
    Calculate the nearest integer that is closer to zero than x.
 In other words, it discards the fractional part of x.
@@ -1126,12 +1126,12 @@ It is similar to casting ``float(int(x))``, but preserves the negative sign when
 Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 
-.. function:: floor(x: float64) -> float64
+.. function:: floor(x: float16) -> float16
 
    Calculate the largest integer that is less than or equal to x.
 
 
-.. function:: floor(x: float16) -> float16
+.. function:: floor(x: float64) -> float64
 
    Calculate the largest integer that is less than or equal to x.
 
@@ -1146,12 +1146,12 @@ Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
    Calculate the largest integer that is less than or equal to x.
 
 
-.. function:: ceil(x: float64) -> float64
+.. function:: ceil(x: float16) -> float16
 
    Calculate the smallest integer that is greater than or equal to x.
 
 
-.. function:: ceil(x: float16) -> float16
+.. function:: ceil(x: float64) -> float64
 
    Calculate the smallest integer that is greater than or equal to x.
 
@@ -1170,6 +1170,21 @@ Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 Vector Math
 ---------------
+.. function:: dot(x: vec2h, y: vec2h) -> float16
+
+   Compute the dot product between two vectors.
+
+
+.. function:: dot(x: vec3h, y: vec3h) -> float16
+
+   Compute the dot product between two vectors.
+
+
+.. function:: dot(x: vec4h, y: vec4h) -> float16
+
+   Compute the dot product between two vectors.
+
+
 .. function:: dot(x: vec2d, y: vec2d) -> float64
 
    Compute the dot product between two vectors.
@@ -1196,21 +1211,6 @@ Vector Math
 
 
 .. function:: dot(x: vec4ub, y: vec4ub) -> uint8
-
-   Compute the dot product between two vectors.
-
-
-.. function:: dot(x: vec2h, y: vec2h) -> float16
-
-   Compute the dot product between two vectors.
-
-
-.. function:: dot(x: vec3h, y: vec3h) -> float16
-
-   Compute the dot product between two vectors.
-
-
-.. function:: dot(x: vec4h, y: vec4h) -> float16
 
    Compute the dot product between two vectors.
 
@@ -1280,12 +1280,12 @@ Vector Math
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: quatd, y: quatd) -> float64
+.. function:: dot(x: quath, y: quath) -> float16
 
    Compute the dot product between two quaternions.
 
 
-.. function:: dot(x: quath, y: quath) -> float16
+.. function:: dot(x: quatd, y: quatd) -> float64
 
    Compute the dot product between two quaternions.
 
@@ -1315,21 +1315,6 @@ Vector Math
    Compute the dot product between two quaternions.
 
 
-.. function:: ddot(x: mat22d, y: mat22d) -> float64
-
-   Compute the double dot product between two matrices.
-
-
-.. function:: ddot(x: mat33d, y: mat33d) -> float64
-
-   Compute the double dot product between two matrices.
-
-
-.. function:: ddot(x: mat44d, y: mat44d) -> float64
-
-   Compute the double dot product between two matrices.
-
-
 .. function:: ddot(x: mat22h, y: mat22h) -> float16
 
    Compute the double dot product between two matrices.
@@ -1341,6 +1326,21 @@ Vector Math
 
 
 .. function:: ddot(x: mat44h, y: mat44h) -> float16
+
+   Compute the double dot product between two matrices.
+
+
+.. function:: ddot(x: mat22d, y: mat22d) -> float64
+
+   Compute the double dot product between two matrices.
+
+
+.. function:: ddot(x: mat33d, y: mat33d) -> float64
+
+   Compute the double dot product between two matrices.
+
+
+.. function:: ddot(x: mat44d, y: mat44d) -> float64
 
    Compute the double dot product between two matrices.
 
@@ -1410,21 +1410,6 @@ Vector Math
    Compute the double dot product between two matrices.
 
 
-.. function:: outer(x: vec2d, y: vec2d) -> mat22d
-
-   Compute the outer product x*y^T for two vec2 objects.
-
-
-.. function:: outer(x: vec3d, y: vec3d) -> mat33d
-
-   Compute the outer product x*y^T for two vec2 objects.
-
-
-.. function:: outer(x: vec4d, y: vec4d) -> mat44d
-
-   Compute the outer product x*y^T for two vec2 objects.
-
-
 .. function:: outer(x: vec2h, y: vec2h) -> mat22h
 
    Compute the outer product x*y^T for two vec2 objects.
@@ -1436,6 +1421,21 @@ Vector Math
 
 
 .. function:: outer(x: vec4h, y: vec4h) -> mat44h
+
+   Compute the outer product x*y^T for two vec2 objects.
+
+
+.. function:: outer(x: vec2d, y: vec2d) -> mat22d
+
+   Compute the outer product x*y^T for two vec2 objects.
+
+
+.. function:: outer(x: vec3d, y: vec3d) -> mat33d
+
+   Compute the outer product x*y^T for two vec2 objects.
+
+
+.. function:: outer(x: vec4d, y: vec4d) -> mat44d
 
    Compute the outer product x*y^T for two vec2 objects.
 
@@ -1505,12 +1505,12 @@ Vector Math
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: spatial_vectord, y: spatial_vectord) -> spatial_matrixd
+.. function:: outer(x: spatial_vectorh, y: spatial_vectorh) -> spatial_matrixh
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
-.. function:: outer(x: spatial_vectorh, y: spatial_vectorh) -> spatial_matrixh
+.. function:: outer(x: spatial_vectord, y: spatial_vectord) -> spatial_matrixd
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
@@ -1540,17 +1540,17 @@ Vector Math
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
+.. function:: cross(x: vec3h, y: vec3h) -> vec3h
+
+   Compute the cross product of two 3d vectors.
+
+
 .. function:: cross(x: vec3d, y: vec3d) -> vec3d
 
    Compute the cross product of two 3d vectors.
 
 
 .. function:: cross(x: vec3ub, y: vec3ub) -> vec3ub
-
-   Compute the cross product of two 3d vectors.
-
-
-.. function:: cross(x: vec3h, y: vec3h) -> vec3h
 
    Compute the cross product of two 3d vectors.
 
@@ -1580,12 +1580,12 @@ Vector Math
    Compute the cross product of two 3d vectors.
 
 
-.. function:: skew(x: vec3d) -> mat33d
+.. function:: skew(x: vec3h) -> mat33h
 
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: skew(x: vec3h) -> mat33h
+.. function:: skew(x: vec3d) -> mat33d
 
    Compute the skew symmetric matrix for a 3d vector.
 
@@ -1605,21 +1605,6 @@ Vector Math
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: length(x: vec2d) -> float64
-
-   Compute the length of a vector.
-
-
-.. function:: length(x: vec3d) -> float64
-
-   Compute the length of a vector.
-
-
-.. function:: length(x: vec4d) -> float64
-
-   Compute the length of a vector.
-
-
 .. function:: length(x: vec2h) -> float16
 
    Compute the length of a vector.
@@ -1631,6 +1616,21 @@ Vector Math
 
 
 .. function:: length(x: vec4h) -> float16
+
+   Compute the length of a vector.
+
+
+.. function:: length(x: vec2d) -> float64
+
+   Compute the length of a vector.
+
+
+.. function:: length(x: vec3d) -> float64
+
+   Compute the length of a vector.
+
+
+.. function:: length(x: vec4d) -> float64
 
    Compute the length of a vector.
 
@@ -1670,12 +1670,12 @@ Vector Math
    Compute the length of a vector.
 
 
-.. function:: length(x: quatd) -> float64
+.. function:: length(x: quath) -> float16
 
    Compute the length of a quaternion.
 
 
-.. function:: length(x: quath) -> float16
+.. function:: length(x: quatd) -> float64
 
    Compute the length of a quaternion.
 
@@ -1693,6 +1693,21 @@ Vector Math
 .. function:: length(x: vector_t) -> Scalar
 
    Compute the length of a quaternion.
+
+
+.. function:: length_sq(x: vec2h) -> float16
+
+   Compute the squared length of a 2d vector.
+
+
+.. function:: length_sq(x: vec3h) -> float16
+
+   Compute the squared length of a 2d vector.
+
+
+.. function:: length_sq(x: vec4h) -> float16
+
+   Compute the squared length of a 2d vector.
 
 
 .. function:: length_sq(x: vec2d) -> float64
@@ -1721,21 +1736,6 @@ Vector Math
 
 
 .. function:: length_sq(x: vec4ub) -> uint8
-
-   Compute the squared length of a 2d vector.
-
-
-.. function:: length_sq(x: vec2h) -> float16
-
-   Compute the squared length of a 2d vector.
-
-
-.. function:: length_sq(x: vec3h) -> float16
-
-   Compute the squared length of a 2d vector.
-
-
-.. function:: length_sq(x: vec4h) -> float16
 
    Compute the squared length of a 2d vector.
 
@@ -1775,12 +1775,12 @@ Vector Math
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: quatd) -> float64
+.. function:: length_sq(x: quath) -> float16
 
    Compute the squared length of a quaternion.
 
 
-.. function:: length_sq(x: quath) -> float16
+.. function:: length_sq(x: quatd) -> float64
 
    Compute the squared length of a quaternion.
 
@@ -1800,21 +1800,6 @@ Vector Math
    Compute the squared length of a quaternion.
 
 
-.. function:: normalize(x: vec2d) -> vec2d
-
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-
-
-.. function:: normalize(x: vec3d) -> vec3d
-
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-
-
-.. function:: normalize(x: vec4d) -> vec4d
-
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-
-
 .. function:: normalize(x: vec2h) -> vec2h
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
@@ -1826,6 +1811,21 @@ Vector Math
 
 
 .. function:: normalize(x: vec4h) -> vec4h
+
+   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+
+
+.. function:: normalize(x: vec2d) -> vec2d
+
+   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+
+
+.. function:: normalize(x: vec3d) -> vec3d
+
+   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+
+
+.. function:: normalize(x: vec4d) -> vec4d
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
@@ -1865,12 +1865,12 @@ Vector Math
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: quatd) -> quatd
+.. function:: normalize(x: quath) -> quath
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: normalize(x: quath) -> quath
+.. function:: normalize(x: quatd) -> quatd
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
@@ -1890,21 +1890,6 @@ Vector Math
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: transpose(m: mat22d) -> mat22d
-
-   Return the transpose of the matrix m
-
-
-.. function:: transpose(m: mat33d) -> mat33d
-
-   Return the transpose of the matrix m
-
-
-.. function:: transpose(m: mat44d) -> mat44d
-
-   Return the transpose of the matrix m
-
-
 .. function:: transpose(m: mat22h) -> mat22h
 
    Return the transpose of the matrix m
@@ -1916,6 +1901,21 @@ Vector Math
 
 
 .. function:: transpose(m: mat44h) -> mat44h
+
+   Return the transpose of the matrix m
+
+
+.. function:: transpose(m: mat22d) -> mat22d
+
+   Return the transpose of the matrix m
+
+
+.. function:: transpose(m: mat33d) -> mat33d
+
+   Return the transpose of the matrix m
+
+
+.. function:: transpose(m: mat44d) -> mat44d
 
    Return the transpose of the matrix m
 
@@ -1955,12 +1955,12 @@ Vector Math
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: spatial_matrixd) -> spatial_matrixd
+.. function:: transpose(m: spatial_matrixh) -> spatial_matrixh
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: spatial_matrixh) -> spatial_matrixh
+.. function:: transpose(m: spatial_matrixd) -> spatial_matrixd
 
    Return the transpose of the matrix m
 
@@ -1980,21 +1980,6 @@ Vector Math
    Return the transpose of the matrix m
 
 
-.. function:: inverse(m: mat22d) -> mat22d
-
-   Return the inverse of the matrix m
-
-
-.. function:: inverse(m: mat33d) -> mat33d
-
-   Return the inverse of the matrix m
-
-
-.. function:: inverse(m: mat44d) -> mat44d
-
-   Return the inverse of the matrix m
-
-
 .. function:: inverse(m: mat22h) -> mat22h
 
    Return the inverse of the matrix m
@@ -2006,6 +1991,21 @@ Vector Math
 
 
 .. function:: inverse(m: mat44h) -> mat44h
+
+   Return the inverse of the matrix m
+
+
+.. function:: inverse(m: mat22d) -> mat22d
+
+   Return the inverse of the matrix m
+
+
+.. function:: inverse(m: mat33d) -> mat33d
+
+   Return the inverse of the matrix m
+
+
+.. function:: inverse(m: mat44d) -> mat44d
 
    Return the inverse of the matrix m
 
@@ -2045,21 +2045,6 @@ Vector Math
    Return the inverse of the matrix m
 
 
-.. function:: determinant(m: mat22d) -> float64
-
-   Return the determinant of the matrix m
-
-
-.. function:: determinant(m: mat33d) -> float64
-
-   Return the determinant of the matrix m
-
-
-.. function:: determinant(m: mat44d) -> float64
-
-   Return the determinant of the matrix m
-
-
 .. function:: determinant(m: mat22h) -> float16
 
    Return the determinant of the matrix m
@@ -2071,6 +2056,21 @@ Vector Math
 
 
 .. function:: determinant(m: mat44h) -> float16
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat22d) -> float64
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat33d) -> float64
+
+   Return the determinant of the matrix m
+
+
+.. function:: determinant(m: mat44d) -> float64
 
    Return the determinant of the matrix m
 
@@ -2110,21 +2110,6 @@ Vector Math
    Return the determinant of the matrix m
 
 
-.. function:: trace(m: mat22d) -> float64
-
-   Return the trace of the matrix m
-
-
-.. function:: trace(m: mat33d) -> float64
-
-   Return the trace of the matrix m
-
-
-.. function:: trace(m: mat44d) -> float64
-
-   Return the trace of the matrix m
-
-
 .. function:: trace(m: mat22h) -> float16
 
    Return the trace of the matrix m
@@ -2136,6 +2121,21 @@ Vector Math
 
 
 .. function:: trace(m: mat44h) -> float16
+
+   Return the trace of the matrix m
+
+
+.. function:: trace(m: mat22d) -> float64
+
+   Return the trace of the matrix m
+
+
+.. function:: trace(m: mat33d) -> float64
+
+   Return the trace of the matrix m
+
+
+.. function:: trace(m: mat44d) -> float64
 
    Return the trace of the matrix m
 
@@ -2175,21 +2175,6 @@ Vector Math
    Return the trace of the matrix m
 
 
-.. function:: diag(d: vec2d) -> mat22d
-
-   Returns a matrix with the components of the vector d on the diagonal
-
-
-.. function:: diag(d: vec3d) -> mat33d
-
-   Returns a matrix with the components of the vector d on the diagonal
-
-
-.. function:: diag(d: vec4d) -> mat44d
-
-   Returns a matrix with the components of the vector d on the diagonal
-
-
 .. function:: diag(d: vec2h) -> mat22h
 
    Returns a matrix with the components of the vector d on the diagonal
@@ -2201,6 +2186,21 @@ Vector Math
 
 
 .. function:: diag(d: vec4h) -> mat44h
+
+   Returns a matrix with the components of the vector d on the diagonal
+
+
+.. function:: diag(d: vec2d) -> mat22d
+
+   Returns a matrix with the components of the vector d on the diagonal
+
+
+.. function:: diag(d: vec3d) -> mat33d
+
+   Returns a matrix with the components of the vector d on the diagonal
+
+
+.. function:: diag(d: vec4d) -> mat44d
 
    Returns a matrix with the components of the vector d on the diagonal
 
@@ -2240,6 +2240,21 @@ Vector Math
    Returns a matrix with the components of the vector d on the diagonal
 
 
+.. function:: cw_mul(x: vec2h, y: vec2h) -> vec2h
+
+   Component wise multiply of two 2d vectors.
+
+
+.. function:: cw_mul(x: vec3h, y: vec3h) -> vec3h
+
+   Component wise multiply of two 2d vectors.
+
+
+.. function:: cw_mul(x: vec4h, y: vec4h) -> vec4h
+
+   Component wise multiply of two 2d vectors.
+
+
 .. function:: cw_mul(x: vec2d, y: vec2d) -> vec2d
 
    Component wise multiply of two 2d vectors.
@@ -2266,21 +2281,6 @@ Vector Math
 
 
 .. function:: cw_mul(x: vec4ub, y: vec4ub) -> vec4ub
-
-   Component wise multiply of two 2d vectors.
-
-
-.. function:: cw_mul(x: vec2h, y: vec2h) -> vec2h
-
-   Component wise multiply of two 2d vectors.
-
-
-.. function:: cw_mul(x: vec3h, y: vec3h) -> vec3h
-
-   Component wise multiply of two 2d vectors.
-
-
-.. function:: cw_mul(x: vec4h, y: vec4h) -> vec4h
 
    Component wise multiply of two 2d vectors.
 
@@ -2350,21 +2350,6 @@ Vector Math
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat22d, y: mat22d) -> mat22d
-
-   Component wise multiply of two 2d vectors.
-
-
-.. function:: cw_mul(x: mat33d, y: mat33d) -> mat33d
-
-   Component wise multiply of two 2d vectors.
-
-
-.. function:: cw_mul(x: mat44d, y: mat44d) -> mat44d
-
-   Component wise multiply of two 2d vectors.
-
-
 .. function:: cw_mul(x: mat22h, y: mat22h) -> mat22h
 
    Component wise multiply of two 2d vectors.
@@ -2376,6 +2361,21 @@ Vector Math
 
 
 .. function:: cw_mul(x: mat44h, y: mat44h) -> mat44h
+
+   Component wise multiply of two 2d vectors.
+
+
+.. function:: cw_mul(x: mat22d, y: mat22d) -> mat22d
+
+   Component wise multiply of two 2d vectors.
+
+
+.. function:: cw_mul(x: mat33d, y: mat33d) -> mat33d
+
+   Component wise multiply of two 2d vectors.
+
+
+.. function:: cw_mul(x: mat44d, y: mat44d) -> mat44d
 
    Component wise multiply of two 2d vectors.
 
@@ -2445,6 +2445,21 @@ Vector Math
    Component wise multiply of two 2d vectors.
 
 
+.. function:: cw_div(x: vec2h, y: vec2h) -> vec2h
+
+   Component wise division of two 2d vectors.
+
+
+.. function:: cw_div(x: vec3h, y: vec3h) -> vec3h
+
+   Component wise division of two 2d vectors.
+
+
+.. function:: cw_div(x: vec4h, y: vec4h) -> vec4h
+
+   Component wise division of two 2d vectors.
+
+
 .. function:: cw_div(x: vec2d, y: vec2d) -> vec2d
 
    Component wise division of two 2d vectors.
@@ -2471,21 +2486,6 @@ Vector Math
 
 
 .. function:: cw_div(x: vec4ub, y: vec4ub) -> vec4ub
-
-   Component wise division of two 2d vectors.
-
-
-.. function:: cw_div(x: vec2h, y: vec2h) -> vec2h
-
-   Component wise division of two 2d vectors.
-
-
-.. function:: cw_div(x: vec3h, y: vec3h) -> vec3h
-
-   Component wise division of two 2d vectors.
-
-
-.. function:: cw_div(x: vec4h, y: vec4h) -> vec4h
 
    Component wise division of two 2d vectors.
 
@@ -2555,21 +2555,6 @@ Vector Math
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat22d, y: mat22d) -> mat22d
-
-   Component wise division of two 2d vectors.
-
-
-.. function:: cw_div(x: mat33d, y: mat33d) -> mat33d
-
-   Component wise division of two 2d vectors.
-
-
-.. function:: cw_div(x: mat44d, y: mat44d) -> mat44d
-
-   Component wise division of two 2d vectors.
-
-
 .. function:: cw_div(x: mat22h, y: mat22h) -> mat22h
 
    Component wise division of two 2d vectors.
@@ -2581,6 +2566,21 @@ Vector Math
 
 
 .. function:: cw_div(x: mat44h, y: mat44h) -> mat44h
+
+   Component wise division of two 2d vectors.
+
+
+.. function:: cw_div(x: mat22d, y: mat22d) -> mat22d
+
+   Component wise division of two 2d vectors.
+
+
+.. function:: cw_div(x: mat33d, y: mat33d) -> mat33d
+
+   Component wise division of two 2d vectors.
+
+
+.. function:: cw_div(x: mat44d, y: mat44d) -> mat44d
 
    Component wise division of two 2d vectors.
 
@@ -2685,13 +2685,13 @@ Vector Math
    Construct a matrix from components or column vectors.
 
 
-.. function:: svd3(A: mat33d, U: mat33d, sigma: vec3d, V: mat33d) -> None
+.. function:: svd3(A: mat33h, U: mat33h, sigma: vec3h, V: mat33h) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33h, U: mat33h, sigma: vec3h, V: mat33h) -> None
+.. function:: svd3(A: mat33d, U: mat33d, sigma: vec3d, V: mat33d) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
@@ -2799,12 +2799,12 @@ Vector Math
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: qr3(A: mat33d, Q: mat33d, R: mat33d) -> None
+.. function:: qr3(A: mat33h, Q: mat33h, R: mat33h) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33h, Q: mat33h, R: mat33h) -> None
+.. function:: qr3(A: mat33d, Q: mat33d, R: mat33d) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
@@ -2854,12 +2854,12 @@ Vector Math
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: eig3(A: mat33d, Q: mat33d, d: vec3d) -> None
+.. function:: eig3(A: mat33h, Q: mat33h, d: vec3h) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33h, Q: mat33h, d: vec3h) -> None
+.. function:: eig3(A: mat33d, Q: mat33d, d: vec3d) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
@@ -2934,12 +2934,12 @@ Quaternion Math
    Construct a float32 identity quaternion with zero imaginary part and real part of 1.0
 
 
-.. function:: quat_from_axis_angle(axis: vec3d, angle: float64) -> quatd
+.. function:: quat_from_axis_angle(axis: vec3h, angle: float16) -> quath
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_from_axis_angle(axis: vec3h, angle: float16) -> quath
+.. function:: quat_from_axis_angle(axis: vec3d, angle: float64) -> quatd
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
@@ -2959,12 +2959,12 @@ Quaternion Math
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_to_axis_angle(q: quatd, axis: vec3d, angle: float64) -> None
+.. function:: quat_to_axis_angle(q: quath, axis: vec3h, angle: float16) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_to_axis_angle(q: quath, axis: vec3h, angle: float16) -> None
+.. function:: quat_to_axis_angle(q: quatd, axis: vec3d, angle: float64) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
@@ -2994,12 +2994,12 @@ Quaternion Math
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_from_matrix(m: mat33d) -> quatd
+.. function:: quat_from_matrix(m: mat33h) -> quath
 
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_from_matrix(m: mat33h) -> quath
+.. function:: quat_from_matrix(m: mat33d) -> quatd
 
    Construct a quaternion from a 3x3 matrix.
 
@@ -3019,12 +3019,12 @@ Quaternion Math
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_rpy(roll: float64, pitch: float64, yaw: float64) -> quatd
+.. function:: quat_rpy(roll: float16, pitch: float16, yaw: float16) -> quath
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. function:: quat_rpy(roll: float16, pitch: float16, yaw: float16) -> quath
+.. function:: quat_rpy(roll: float64, pitch: float64, yaw: float64) -> quatd
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
@@ -3039,12 +3039,12 @@ Quaternion Math
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. function:: quat_inverse(q: quatd) -> quatd
+.. function:: quat_inverse(q: quath) -> quath
 
    Compute quaternion conjugate.
 
 
-.. function:: quat_inverse(q: quath) -> quath
+.. function:: quat_inverse(q: quatd) -> quatd
 
    Compute quaternion conjugate.
 
@@ -3064,12 +3064,12 @@ Quaternion Math
    Compute quaternion conjugate.
 
 
-.. function:: quat_rotate(q: quatd, p: vec3d) -> vec3d
+.. function:: quat_rotate(q: quath, p: vec3h) -> vec3h
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate(q: quath, p: vec3h) -> vec3h
+.. function:: quat_rotate(q: quatd, p: vec3d) -> vec3d
 
    Rotate a vector by a quaternion.
 
@@ -3099,12 +3099,12 @@ Quaternion Math
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate_inv(q: quatd, p: vec3d) -> vec3d
+.. function:: quat_rotate_inv(q: quath, p: vec3h) -> vec3h
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_rotate_inv(q: quath, p: vec3h) -> vec3h
+.. function:: quat_rotate_inv(q: quatd, p: vec3d) -> vec3d
 
    Rotate a vector the inverse of a quaternion.
 
@@ -3134,12 +3134,12 @@ Quaternion Math
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_slerp(q0: quatd, q1: quatd, t: float64) -> quatd
+.. function:: quat_slerp(q0: quath, q1: quath, t: float16) -> quath
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_slerp(q0: quath, q1: quath, t: float16) -> quath
+.. function:: quat_slerp(q0: quatd, q1: quatd, t: float64) -> quatd
 
    Linearly interpolate between two quaternions.
 
@@ -3169,12 +3169,12 @@ Quaternion Math
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_to_matrix(q: quatd) -> mat33d
+.. function:: quat_to_matrix(q: quath) -> mat33h
 
    Convert a quaternion to a 3x3 rotation matrix.
 
 
-.. function:: quat_to_matrix(q: quath) -> mat33h
+.. function:: quat_to_matrix(q: quatd) -> mat33d
 
    Convert a quaternion to a 3x3 rotation matrix.
 
@@ -3208,12 +3208,12 @@ Transformations
    Construct a float32 identity transform with zero translation and identity rotation.
 
 
-.. function:: transform_get_translation(t: transformd) -> vec3d
+.. function:: transform_get_translation(t: transformh) -> vec3h
 
    Return the translational part of a transform.
 
 
-.. function:: transform_get_translation(t: transformh) -> vec3h
+.. function:: transform_get_translation(t: transformd) -> vec3d
 
    Return the translational part of a transform.
 
@@ -3233,12 +3233,12 @@ Transformations
    Return the translational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transformd) -> quatd
+.. function:: transform_get_rotation(t: transformh) -> quath
 
    Return the rotational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transformh) -> quath
+.. function:: transform_get_rotation(t: transformd) -> quatd
 
    Return the rotational part of a transform.
 
@@ -3258,12 +3258,12 @@ Transformations
    Return the rotational part of a transform.
 
 
-.. function:: transform_multiply(a: transformd, b: transformd) -> transformd
+.. function:: transform_multiply(a: transformh, b: transformh) -> transformh
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_multiply(a: transformh, b: transformh) -> transformh
+.. function:: transform_multiply(a: transformd, b: transformd) -> transformd
 
    Multiply two rigid body transformations together.
 
@@ -3293,12 +3293,12 @@ Transformations
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_point(t: transformd, p: vec3d) -> vec3d
+.. function:: transform_point(t: transformh, p: vec3h) -> vec3h
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(t: transformh, p: vec3h) -> vec3h
+.. function:: transform_point(t: transformd, p: vec3d) -> vec3d
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
@@ -3328,14 +3328,14 @@ Transformations
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(m: mat44d, p: vec3d) -> vec3d
+.. function:: transform_point(m: mat44h, p: vec3h) -> vec3h
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_point(m: mat44h, p: vec3h) -> vec3h
+.. function:: transform_point(m: mat44d, p: vec3d) -> vec3d
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -3377,12 +3377,12 @@ Transformations
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(t: transformd, v: vec3d) -> vec3d
+.. function:: transform_vector(t: transformh, v: vec3h) -> vec3h
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(t: transformh, v: vec3h) -> vec3h
+.. function:: transform_vector(t: transformd, v: vec3d) -> vec3d
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
@@ -3412,14 +3412,14 @@ Transformations
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(m: mat44d, v: vec3d) -> vec3d
+.. function:: transform_vector(m: mat44h, v: vec3h) -> vec3h
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(m: mat44h, v: vec3h) -> vec3h
+.. function:: transform_vector(m: mat44d, v: vec3d) -> vec3d
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -3461,12 +3461,12 @@ Transformations
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_inverse(t: transformd) -> transformd
+.. function:: transform_inverse(t: transformh) -> transformh
 
    Compute the inverse of the transform.
 
 
-.. function:: transform_inverse(t: transformh) -> transformh
+.. function:: transform_inverse(t: transformd) -> transformd
 
    Compute the inverse of the transform.
 
@@ -3525,12 +3525,12 @@ Spatial Math
    Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.
 
 
-.. function:: spatial_dot(a: spatial_vectord, b: spatial_vectord) -> float64
+.. function:: spatial_dot(a: spatial_vectorh, b: spatial_vectorh) -> float16
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_dot(a: spatial_vectorh, b: spatial_vectorh) -> float16
+.. function:: spatial_dot(a: spatial_vectord, b: spatial_vectord) -> float64
 
    Compute the dot product of two 6d screw vectors.
 
@@ -3560,12 +3560,12 @@ Spatial Math
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord
+.. function:: spatial_cross(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh
+.. function:: spatial_cross(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord
 
    Compute the cross-product of two 6d screw vectors.
 
@@ -3595,12 +3595,12 @@ Spatial Math
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord
+.. function:: spatial_cross_dual(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh
+.. function:: spatial_cross_dual(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord
 
    Compute the dual cross-product of two 6d screw vectors.
 
@@ -3630,12 +3630,12 @@ Spatial Math
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_top(a: spatial_vectord) -> vec3d
+.. function:: spatial_top(a: spatial_vectorh) -> vec3h
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_top(a: spatial_vectorh) -> vec3h
+.. function:: spatial_top(a: spatial_vectord) -> vec3d
 
    Return the top (first) part of a 6d screw vector.
 
@@ -3655,12 +3655,12 @@ Spatial Math
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: spatial_vectord) -> vec3d
+.. function:: spatial_bottom(a: spatial_vectorh) -> vec3h
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: spatial_vectorh) -> vec3h
+.. function:: spatial_bottom(a: spatial_vectord) -> vec3d
 
    Return the bottom (second) part of a 6d screw vector.
 
@@ -3915,6 +3915,21 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
+.. function:: expect_eq(arg1: vec2h, arg2: vec2h) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: vec3h, arg2: vec3h) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: vec4h, arg2: vec4h) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
 .. function:: expect_eq(arg1: vec2d, arg2: vec2d) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -3941,21 +3956,6 @@ Utility
 
 
 .. function:: expect_eq(arg1: vec4ub, arg2: vec4ub) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec2h, arg2: vec2h) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec3h, arg2: vec3h) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: vec4h, arg2: vec4h) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
@@ -4025,21 +4025,6 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat22d, arg2: mat22d) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: mat33d, arg2: mat33d) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: mat44d, arg2: mat44d) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
 .. function:: expect_eq(arg1: mat22h, arg2: mat22h) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -4051,6 +4036,21 @@ Utility
 
 
 .. function:: expect_eq(arg1: mat44h, arg2: mat44h) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat22d, arg2: mat22d) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat33d, arg2: mat33d) -> None
+
+   Prints an error to stdout if arg1 and arg2 are not equal
+
+
+.. function:: expect_eq(arg1: mat44d, arg2: mat44d) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
@@ -4120,6 +4120,21 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
+.. function:: expect_neq(arg1: vec2h, arg2: vec2h) -> None
+
+   Prints an error to stdout if arg1 and arg2 are equal
+
+
+.. function:: expect_neq(arg1: vec3h, arg2: vec3h) -> None
+
+   Prints an error to stdout if arg1 and arg2 are equal
+
+
+.. function:: expect_neq(arg1: vec4h, arg2: vec4h) -> None
+
+   Prints an error to stdout if arg1 and arg2 are equal
+
+
 .. function:: expect_neq(arg1: vec2d, arg2: vec2d) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
@@ -4146,21 +4161,6 @@ Utility
 
 
 .. function:: expect_neq(arg1: vec4ub, arg2: vec4ub) -> None
-
-   Prints an error to stdout if arg1 and arg2 are equal
-
-
-.. function:: expect_neq(arg1: vec2h, arg2: vec2h) -> None
-
-   Prints an error to stdout if arg1 and arg2 are equal
-
-
-.. function:: expect_neq(arg1: vec3h, arg2: vec3h) -> None
-
-   Prints an error to stdout if arg1 and arg2 are equal
-
-
-.. function:: expect_neq(arg1: vec4h, arg2: vec4h) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
@@ -4230,21 +4230,6 @@ Utility
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat22d, arg2: mat22d) -> None
-
-   Prints an error to stdout if arg1 and arg2 are equal
-
-
-.. function:: expect_neq(arg1: mat33d, arg2: mat33d) -> None
-
-   Prints an error to stdout if arg1 and arg2 are equal
-
-
-.. function:: expect_neq(arg1: mat44d, arg2: mat44d) -> None
-
-   Prints an error to stdout if arg1 and arg2 are equal
-
-
 .. function:: expect_neq(arg1: mat22h, arg2: mat22h) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
@@ -4256,6 +4241,21 @@ Utility
 
 
 .. function:: expect_neq(arg1: mat44h, arg2: mat44h) -> None
+
+   Prints an error to stdout if arg1 and arg2 are equal
+
+
+.. function:: expect_neq(arg1: mat22d, arg2: mat22d) -> None
+
+   Prints an error to stdout if arg1 and arg2 are equal
+
+
+.. function:: expect_neq(arg1: mat33d, arg2: mat33d) -> None
+
+   Prints an error to stdout if arg1 and arg2 are equal
+
+
+.. function:: expect_neq(arg1: mat44d, arg2: mat44d) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
@@ -4325,12 +4325,12 @@ Utility
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: lerp(a: float64, b: float64, t: float64) -> float64
+.. function:: lerp(a: float16, b: float16, t: float16) -> float16
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: float16, b: float16, t: float16) -> float16
+.. function:: lerp(a: float64, b: float64, t: float64) -> float64
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
@@ -4545,12 +4545,12 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: smoothstep(edge0: float64, edge1: float64, x: float64) -> float64
+.. function:: smoothstep(edge0: float16, edge1: float16, x: float16) -> float16
 
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
 
 
-.. function:: smoothstep(edge0: float16, edge1: float16, x: float16) -> float16
+.. function:: smoothstep(edge0: float64, edge1: float64, x: float64) -> float64
 
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
 
@@ -4565,12 +4565,12 @@ Utility
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
 
 
-.. function:: expect_near(arg1: float64, arg2: float64, tolerance: float64) -> None
+.. function:: expect_near(arg1: float16, arg2: float16, tolerance: float16) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
 
-.. function:: expect_near(arg1: float16, arg2: float16, tolerance: float16) -> None
+.. function:: expect_near(arg1: float64, arg2: float64, tolerance: float64) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
@@ -4954,37 +4954,7 @@ Random
 
 Other
 ---------------
-.. function:: lower_bound(arr: array[Scalar], value: float64) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: float16) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: int64) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: uint32) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
 .. function:: lower_bound(arr: array[Scalar], value: int32) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: uint64) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: int16) -> int
 
    Search a sorted array for the closest element greater than or equal to value.
 
@@ -4994,7 +4964,37 @@ Other
    Search a sorted array for the closest element greater than or equal to value.
 
 
+.. function:: lower_bound(arr: array[Scalar], value: float64) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: int16) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: uint32) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: float16) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: uint64) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
 .. function:: lower_bound(arr: array[Scalar], value: uint16) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: int64) -> int
 
    Search a sorted array for the closest element greater than or equal to value.
 
@@ -5018,31 +5018,31 @@ Other
 
 Operators
 ---------------
-.. function:: add(x: float64, y: float64) -> float64
-
-
-.. function:: add(x: float16, y: float16) -> float16
-
-
-.. function:: add(x: int64, y: int64) -> int64
-
-
-.. function:: add(x: uint32, y: uint32) -> uint32
-
-
 .. function:: add(x: int32, y: int32) -> int32
-
-
-.. function:: add(x: uint64, y: uint64) -> uint64
-
-
-.. function:: add(x: int16, y: int16) -> int16
 
 
 .. function:: add(x: int8, y: int8) -> int8
 
 
+.. function:: add(x: float64, y: float64) -> float64
+
+
+.. function:: add(x: int16, y: int16) -> int16
+
+
+.. function:: add(x: uint32, y: uint32) -> uint32
+
+
+.. function:: add(x: float16, y: float16) -> float16
+
+
+.. function:: add(x: uint64, y: uint64) -> uint64
+
+
 .. function:: add(x: uint16, y: uint16) -> uint16
+
+
+.. function:: add(x: int64, y: int64) -> int64
 
 
 .. function:: add(x: uint8, y: uint8) -> uint8
@@ -5052,6 +5052,15 @@ Operators
 
 
 .. function:: add(x: Scalar, y: Scalar) -> Scalar
+
+
+.. function:: add(x: vec2h, y: vec2h) -> vec2h
+
+
+.. function:: add(x: vec3h, y: vec3h) -> vec3h
+
+
+.. function:: add(x: vec4h, y: vec4h) -> vec4h
 
 
 .. function:: add(x: vec2d, y: vec2d) -> vec2d
@@ -5070,15 +5079,6 @@ Operators
 
 
 .. function:: add(x: vec4ub, y: vec4ub) -> vec4ub
-
-
-.. function:: add(x: vec2h, y: vec2h) -> vec2h
-
-
-.. function:: add(x: vec3h, y: vec3h) -> vec3h
-
-
-.. function:: add(x: vec4h, y: vec4h) -> vec4h
 
 
 .. function:: add(x: vec2f, y: vec2f) -> vec2f
@@ -5120,10 +5120,10 @@ Operators
 .. function:: add(x: vector_t, y: vector_t) -> vector_t
 
 
-.. function:: add(x: quatd, y: quatd) -> quatd
-
-
 .. function:: add(x: quath, y: quath) -> quath
+
+
+.. function:: add(x: quatd, y: quatd) -> quatd
 
 
 .. function:: add(x: quatf, y: quatf) -> quatf
@@ -5141,15 +5141,6 @@ Operators
 .. function:: add(x: vector_t, y: vector_t) -> vector_t
 
 
-.. function:: add(x: mat22d, y: mat22d) -> mat22d
-
-
-.. function:: add(x: mat33d, y: mat33d) -> mat33d
-
-
-.. function:: add(x: mat44d, y: mat44d) -> mat44d
-
-
 .. function:: add(x: mat22h, y: mat22h) -> mat22h
 
 
@@ -5157,6 +5148,15 @@ Operators
 
 
 .. function:: add(x: mat44h, y: mat44h) -> mat44h
+
+
+.. function:: add(x: mat22d, y: mat22d) -> mat22d
+
+
+.. function:: add(x: mat33d, y: mat33d) -> mat33d
+
+
+.. function:: add(x: mat44d, y: mat44d) -> mat44d
 
 
 .. function:: add(x: mat22f, y: mat22f) -> mat22f
@@ -5198,10 +5198,10 @@ Operators
 .. function:: add(x: matrix_t, y: matrix_t) -> matrix_t
 
 
-.. function:: add(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord
-
-
 .. function:: add(x: spatial_vectorh, y: spatial_vectorh) -> spatial_vectorh
+
+
+.. function:: add(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord
 
 
 .. function:: add(x: spatial_vectorf, y: spatial_vectorf) -> spatial_vectorf
@@ -5219,10 +5219,10 @@ Operators
 .. function:: add(x: vector_t, y: vector_t) -> vector_t
 
 
-.. function:: add(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
-
-
 .. function:: add(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh
+
+
+.. function:: add(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
 
 
 .. function:: add(x: spatial_matrixf, y: spatial_matrixf) -> spatial_matrixf
@@ -5240,10 +5240,10 @@ Operators
 .. function:: add(x: matrix_t, y: matrix_t) -> matrix_t
 
 
-.. function:: add(x: transformd, y: transformd) -> transformd
-
-
 .. function:: add(x: transformh, y: transformh) -> transformh
+
+
+.. function:: add(x: transformd, y: transformd) -> transformd
 
 
 .. function:: add(x: transformf, y: transformf) -> transformf
@@ -5261,31 +5261,31 @@ Operators
 .. function:: add(x: transform_class, y: transform_class) -> transform_class
 
 
-.. function:: sub(x: float64, y: float64) -> float64
-
-
-.. function:: sub(x: float16, y: float16) -> float16
-
-
-.. function:: sub(x: int64, y: int64) -> int64
-
-
-.. function:: sub(x: uint32, y: uint32) -> uint32
-
-
 .. function:: sub(x: int32, y: int32) -> int32
-
-
-.. function:: sub(x: uint64, y: uint64) -> uint64
-
-
-.. function:: sub(x: int16, y: int16) -> int16
 
 
 .. function:: sub(x: int8, y: int8) -> int8
 
 
+.. function:: sub(x: float64, y: float64) -> float64
+
+
+.. function:: sub(x: int16, y: int16) -> int16
+
+
+.. function:: sub(x: uint32, y: uint32) -> uint32
+
+
+.. function:: sub(x: float16, y: float16) -> float16
+
+
+.. function:: sub(x: uint64, y: uint64) -> uint64
+
+
 .. function:: sub(x: uint16, y: uint16) -> uint16
+
+
+.. function:: sub(x: int64, y: int64) -> int64
 
 
 .. function:: sub(x: uint8, y: uint8) -> uint8
@@ -5295,6 +5295,15 @@ Operators
 
 
 .. function:: sub(x: Scalar, y: Scalar) -> Scalar
+
+
+.. function:: sub(x: vec2h, y: vec2h) -> vec2h
+
+
+.. function:: sub(x: vec3h, y: vec3h) -> vec3h
+
+
+.. function:: sub(x: vec4h, y: vec4h) -> vec4h
 
 
 .. function:: sub(x: vec2d, y: vec2d) -> vec2d
@@ -5313,15 +5322,6 @@ Operators
 
 
 .. function:: sub(x: vec4ub, y: vec4ub) -> vec4ub
-
-
-.. function:: sub(x: vec2h, y: vec2h) -> vec2h
-
-
-.. function:: sub(x: vec3h, y: vec3h) -> vec3h
-
-
-.. function:: sub(x: vec4h, y: vec4h) -> vec4h
 
 
 .. function:: sub(x: vec2f, y: vec2f) -> vec2f
@@ -5363,15 +5363,6 @@ Operators
 .. function:: sub(x: vector_t, y: vector_t) -> vector_t
 
 
-.. function:: sub(x: mat22d, y: mat22d) -> mat22d
-
-
-.. function:: sub(x: mat33d, y: mat33d) -> mat33d
-
-
-.. function:: sub(x: mat44d, y: mat44d) -> mat44d
-
-
 .. function:: sub(x: mat22h, y: mat22h) -> mat22h
 
 
@@ -5379,6 +5370,15 @@ Operators
 
 
 .. function:: sub(x: mat44h, y: mat44h) -> mat44h
+
+
+.. function:: sub(x: mat22d, y: mat22d) -> mat22d
+
+
+.. function:: sub(x: mat33d, y: mat33d) -> mat33d
+
+
+.. function:: sub(x: mat44d, y: mat44d) -> mat44d
 
 
 .. function:: sub(x: mat22f, y: mat22f) -> mat22f
@@ -5420,10 +5420,10 @@ Operators
 .. function:: sub(x: matrix_t, y: matrix_t) -> matrix_t
 
 
-.. function:: sub(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord
-
-
 .. function:: sub(x: spatial_vectorh, y: spatial_vectorh) -> spatial_vectorh
+
+
+.. function:: sub(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord
 
 
 .. function:: sub(x: spatial_vectorf, y: spatial_vectorf) -> spatial_vectorf
@@ -5441,10 +5441,10 @@ Operators
 .. function:: sub(x: vector_t, y: vector_t) -> vector_t
 
 
-.. function:: sub(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
-
-
 .. function:: sub(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh
+
+
+.. function:: sub(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
 
 
 .. function:: sub(x: spatial_matrixf, y: spatial_matrixf) -> spatial_matrixf
@@ -5462,10 +5462,10 @@ Operators
 .. function:: sub(x: matrix_t, y: matrix_t) -> matrix_t
 
 
-.. function:: sub(x: quatd, y: quatd) -> quatd
-
-
 .. function:: sub(x: quath, y: quath) -> quath
+
+
+.. function:: sub(x: quatd, y: quatd) -> quatd
 
 
 .. function:: sub(x: quatf, y: quatf) -> quatf
@@ -5483,10 +5483,10 @@ Operators
 .. function:: sub(x: vector_t, y: vector_t) -> vector_t
 
 
-.. function:: sub(x: transformd, y: transformd) -> transformd
-
-
 .. function:: sub(x: transformh, y: transformh) -> transformh
+
+
+.. function:: sub(x: transformd, y: transformd) -> transformd
 
 
 .. function:: sub(x: transformf, y: transformf) -> transformf
@@ -5504,31 +5504,31 @@ Operators
 .. function:: sub(x: transform_class, y: transform_class) -> transform_class
 
 
-.. function:: mul(x: float64, y: float64) -> float64
-
-
-.. function:: mul(x: float16, y: float16) -> float16
-
-
-.. function:: mul(x: int64, y: int64) -> int64
-
-
-.. function:: mul(x: uint32, y: uint32) -> uint32
-
-
 .. function:: mul(x: int32, y: int32) -> int32
-
-
-.. function:: mul(x: uint64, y: uint64) -> uint64
-
-
-.. function:: mul(x: int16, y: int16) -> int16
 
 
 .. function:: mul(x: int8, y: int8) -> int8
 
 
+.. function:: mul(x: float64, y: float64) -> float64
+
+
+.. function:: mul(x: int16, y: int16) -> int16
+
+
+.. function:: mul(x: uint32, y: uint32) -> uint32
+
+
+.. function:: mul(x: float16, y: float16) -> float16
+
+
+.. function:: mul(x: uint64, y: uint64) -> uint64
+
+
 .. function:: mul(x: uint16, y: uint16) -> uint16
+
+
+.. function:: mul(x: int64, y: int64) -> int64
 
 
 .. function:: mul(x: uint8, y: uint8) -> uint8
@@ -5538,6 +5538,15 @@ Operators
 
 
 .. function:: mul(x: Scalar, y: Scalar) -> Scalar
+
+
+.. function:: mul(x: vec2h, y: float16) -> vec2h
+
+
+.. function:: mul(x: vec3h, y: float16) -> vec3h
+
+
+.. function:: mul(x: vec4h, y: float16) -> vec4h
 
 
 .. function:: mul(x: vec2d, y: float64) -> vec2d
@@ -5556,15 +5565,6 @@ Operators
 
 
 .. function:: mul(x: vec4ub, y: uint8) -> vec4ub
-
-
-.. function:: mul(x: vec2h, y: float16) -> vec2h
-
-
-.. function:: mul(x: vec3h, y: float16) -> vec3h
-
-
-.. function:: mul(x: vec4h, y: float16) -> vec4h
 
 
 .. function:: mul(x: vec2f, y: float32) -> vec2f
@@ -5588,6 +5588,15 @@ Operators
 .. function:: mul(x: vector_t, y: Scalar) -> vector_t
 
 
+.. function:: mul(x: float16, y: vec2h) -> vec2h
+
+
+.. function:: mul(x: float16, y: vec3h) -> vec3h
+
+
+.. function:: mul(x: float16, y: vec4h) -> vec4h
+
+
 .. function:: mul(x: float64, y: vec2d) -> vec2d
 
 
@@ -5604,15 +5613,6 @@ Operators
 
 
 .. function:: mul(x: uint8, y: vec4ub) -> vec4ub
-
-
-.. function:: mul(x: float16, y: vec2h) -> vec2h
-
-
-.. function:: mul(x: float16, y: vec3h) -> vec3h
-
-
-.. function:: mul(x: float16, y: vec4h) -> vec4h
 
 
 .. function:: mul(x: float32, y: vec2f) -> vec2f
@@ -5636,10 +5636,10 @@ Operators
 .. function:: mul(x: Scalar, y: vector_t) -> vector_t
 
 
-.. function:: mul(x: quatd, y: float64) -> quatd
-
-
 .. function:: mul(x: quath, y: float16) -> quath
+
+
+.. function:: mul(x: quatd, y: float64) -> quatd
 
 
 .. function:: mul(x: quatf, y: float32) -> quatf
@@ -5651,10 +5651,10 @@ Operators
 .. function:: mul(x: vector_t, y: Scalar) -> vector_t
 
 
-.. function:: mul(x: float64, y: quatd) -> quatd
-
-
 .. function:: mul(x: float16, y: quath) -> quath
+
+
+.. function:: mul(x: float64, y: quatd) -> quatd
 
 
 .. function:: mul(x: float32, y: quatf) -> quatf
@@ -5666,10 +5666,10 @@ Operators
 .. function:: mul(x: Scalar, y: vector_t) -> vector_t
 
 
-.. function:: mul(x: quatd, y: quatd) -> quatd
-
-
 .. function:: mul(x: quath, y: quath) -> quath
+
+
+.. function:: mul(x: quatd, y: quatd) -> quatd
 
 
 .. function:: mul(x: quatf, y: quatf) -> quatf
@@ -5687,15 +5687,6 @@ Operators
 .. function:: mul(x: vector_t, y: vector_t) -> vector_t
 
 
-.. function:: mul(x: float64, y: mat22d) -> mat22d
-
-
-.. function:: mul(x: float64, y: mat33d) -> mat33d
-
-
-.. function:: mul(x: float64, y: mat44d) -> mat44d
-
-
 .. function:: mul(x: float16, y: mat22h) -> mat22h
 
 
@@ -5703,6 +5694,15 @@ Operators
 
 
 .. function:: mul(x: float16, y: mat44h) -> mat44h
+
+
+.. function:: mul(x: float64, y: mat22d) -> mat22d
+
+
+.. function:: mul(x: float64, y: mat33d) -> mat33d
+
+
+.. function:: mul(x: float64, y: mat44d) -> mat44d
 
 
 .. function:: mul(x: float32, y: mat22f) -> mat22f
@@ -5726,15 +5726,6 @@ Operators
 .. function:: mul(x: Scalar, y: matrix_t) -> matrix_t
 
 
-.. function:: mul(x: mat22d, y: float64) -> mat22d
-
-
-.. function:: mul(x: mat33d, y: float64) -> mat33d
-
-
-.. function:: mul(x: mat44d, y: float64) -> mat44d
-
-
 .. function:: mul(x: mat22h, y: float16) -> mat22h
 
 
@@ -5742,6 +5733,15 @@ Operators
 
 
 .. function:: mul(x: mat44h, y: float16) -> mat44h
+
+
+.. function:: mul(x: mat22d, y: float64) -> mat22d
+
+
+.. function:: mul(x: mat33d, y: float64) -> mat33d
+
+
+.. function:: mul(x: mat44d, y: float64) -> mat44d
 
 
 .. function:: mul(x: mat22f, y: float32) -> mat22f
@@ -5765,15 +5765,6 @@ Operators
 .. function:: mul(x: matrix_t, y: Scalar) -> matrix_t
 
 
-.. function:: mul(x: mat22d, y: vec2d) -> vec2d
-
-
-.. function:: mul(x: mat33d, y: vec3d) -> vec3d
-
-
-.. function:: mul(x: mat44d, y: vec4d) -> vec4d
-
-
 .. function:: mul(x: mat22h, y: vec2h) -> vec2h
 
 
@@ -5781,6 +5772,15 @@ Operators
 
 
 .. function:: mul(x: mat44h, y: vec4h) -> vec4h
+
+
+.. function:: mul(x: mat22d, y: vec2d) -> vec2d
+
+
+.. function:: mul(x: mat33d, y: vec3d) -> vec3d
+
+
+.. function:: mul(x: mat44d, y: vec4d) -> vec4d
 
 
 .. function:: mul(x: mat22f, y: vec2f) -> vec2f
@@ -5822,15 +5822,6 @@ Operators
 .. function:: mul(x: matrix_t, y: vector_t) -> vector_t
 
 
-.. function:: mul(x: mat22d, y: mat22d) -> mat22d
-
-
-.. function:: mul(x: mat33d, y: mat33d) -> mat33d
-
-
-.. function:: mul(x: mat44d, y: mat44d) -> mat44d
-
-
 .. function:: mul(x: mat22h, y: mat22h) -> mat22h
 
 
@@ -5838,6 +5829,15 @@ Operators
 
 
 .. function:: mul(x: mat44h, y: mat44h) -> mat44h
+
+
+.. function:: mul(x: mat22d, y: mat22d) -> mat22d
+
+
+.. function:: mul(x: mat33d, y: mat33d) -> mat33d
+
+
+.. function:: mul(x: mat44d, y: mat44d) -> mat44d
 
 
 .. function:: mul(x: mat22f, y: mat22f) -> mat22f
@@ -5879,10 +5879,10 @@ Operators
 .. function:: mul(x: matrix_t, y: matrix_t)
 
 
-.. function:: mul(x: spatial_vectord, y: float64) -> spatial_vectord
-
-
 .. function:: mul(x: spatial_vectorh, y: float16) -> spatial_vectorh
+
+
+.. function:: mul(x: spatial_vectord, y: float64) -> spatial_vectord
 
 
 .. function:: mul(x: spatial_vectorf, y: float32) -> spatial_vectorf
@@ -5894,10 +5894,10 @@ Operators
 .. function:: mul(x: vector_t, y: Scalar) -> vector_t
 
 
-.. function:: mul(x: float64, y: spatial_vectord) -> spatial_vectord
-
-
 .. function:: mul(x: float16, y: spatial_vectorh) -> spatial_vectorh
+
+
+.. function:: mul(x: float64, y: spatial_vectord) -> spatial_vectord
 
 
 .. function:: mul(x: float32, y: spatial_vectorf) -> spatial_vectorf
@@ -5909,10 +5909,10 @@ Operators
 .. function:: mul(x: Scalar, y: vector_t) -> vector_t
 
 
-.. function:: mul(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
-
-
 .. function:: mul(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh
+
+
+.. function:: mul(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
 
 
 .. function:: mul(x: spatial_matrixf, y: spatial_matrixf) -> spatial_matrixf
@@ -5930,10 +5930,10 @@ Operators
 .. function:: mul(x: matrix_t, y: matrix_t) -> matrix_t
 
 
-.. function:: mul(x: spatial_matrixd, y: spatial_vectord) -> spatial_vectord
-
-
 .. function:: mul(x: spatial_matrixh, y: spatial_vectorh) -> spatial_vectorh
+
+
+.. function:: mul(x: spatial_matrixd, y: spatial_vectord) -> spatial_vectord
 
 
 .. function:: mul(x: spatial_matrixf, y: spatial_vectorf) -> spatial_vectorf
@@ -5951,10 +5951,10 @@ Operators
 .. function:: mul(x: matrix_t, y: vector_t) -> vector_t
 
 
-.. function:: mul(x: spatial_matrixd, y: float64) -> spatial_matrixd
-
-
 .. function:: mul(x: spatial_matrixh, y: float16) -> spatial_matrixh
+
+
+.. function:: mul(x: spatial_matrixd, y: float64) -> spatial_matrixd
 
 
 .. function:: mul(x: spatial_matrixf, y: float32) -> spatial_matrixf
@@ -5966,10 +5966,10 @@ Operators
 .. function:: mul(x: matrix_t, y: Scalar) -> matrix_t
 
 
-.. function:: mul(x: float64, y: spatial_matrixd) -> spatial_matrixd
-
-
 .. function:: mul(x: float16, y: spatial_matrixh) -> spatial_matrixh
+
+
+.. function:: mul(x: float64, y: spatial_matrixd) -> spatial_matrixd
 
 
 .. function:: mul(x: float32, y: spatial_matrixf) -> spatial_matrixf
@@ -5981,10 +5981,10 @@ Operators
 .. function:: mul(x: Scalar, y: matrix_t) -> matrix_t
 
 
-.. function:: mul(x: transformd, y: transformd) -> transformd
-
-
 .. function:: mul(x: transformh, y: transformh) -> transformh
+
+
+.. function:: mul(x: transformd, y: transformd) -> transformd
 
 
 .. function:: mul(x: transformf, y: transformf) -> transformf
@@ -6002,10 +6002,10 @@ Operators
 .. function:: mul(x: transform_class, y: transform_class) -> transform_class
 
 
-.. function:: mul(x: float64, y: transformd) -> transformd
-
-
 .. function:: mul(x: float16, y: transformh) -> transformh
+
+
+.. function:: mul(x: float64, y: transformd) -> transformd
 
 
 .. function:: mul(x: float32, y: transformf) -> transformf
@@ -6017,10 +6017,10 @@ Operators
 .. function:: mul(x: Scalar, y: transform_class) -> transform_class
 
 
-.. function:: mul(x: transformd, y: float64) -> transformd
-
-
 .. function:: mul(x: transformh, y: float16) -> transformh
+
+
+.. function:: mul(x: transformd, y: float64) -> transformd
 
 
 .. function:: mul(x: transformf, y: float32) -> transformf
@@ -6032,31 +6032,31 @@ Operators
 .. function:: mul(x: transform_class, y: Scalar) -> transform_class
 
 
-.. function:: mod(x: float64, y: float64) -> float64
-
-
-.. function:: mod(x: float16, y: float16) -> float16
-
-
-.. function:: mod(x: int64, y: int64) -> int64
-
-
-.. function:: mod(x: uint32, y: uint32) -> uint32
-
-
 .. function:: mod(x: int32, y: int32) -> int32
-
-
-.. function:: mod(x: uint64, y: uint64) -> uint64
-
-
-.. function:: mod(x: int16, y: int16) -> int16
 
 
 .. function:: mod(x: int8, y: int8) -> int8
 
 
+.. function:: mod(x: float64, y: float64) -> float64
+
+
+.. function:: mod(x: int16, y: int16) -> int16
+
+
+.. function:: mod(x: uint32, y: uint32) -> uint32
+
+
+.. function:: mod(x: float16, y: float16) -> float16
+
+
+.. function:: mod(x: uint64, y: uint64) -> uint64
+
+
 .. function:: mod(x: uint16, y: uint16) -> uint16
+
+
+.. function:: mod(x: int64, y: int64) -> int64
 
 
 .. function:: mod(x: uint8, y: uint8) -> uint8
@@ -6068,31 +6068,31 @@ Operators
 .. function:: mod(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: div(x: float64, y: float64) -> float64
-
-
-.. function:: div(x: float16, y: float16) -> float16
-
-
-.. function:: div(x: int64, y: int64) -> int64
-
-
-.. function:: div(x: uint32, y: uint32) -> uint32
-
-
 .. function:: div(x: int32, y: int32) -> int32
-
-
-.. function:: div(x: uint64, y: uint64) -> uint64
-
-
-.. function:: div(x: int16, y: int16) -> int16
 
 
 .. function:: div(x: int8, y: int8) -> int8
 
 
+.. function:: div(x: float64, y: float64) -> float64
+
+
+.. function:: div(x: int16, y: int16) -> int16
+
+
+.. function:: div(x: uint32, y: uint32) -> uint32
+
+
+.. function:: div(x: float16, y: float16) -> float16
+
+
+.. function:: div(x: uint64, y: uint64) -> uint64
+
+
 .. function:: div(x: uint16, y: uint16) -> uint16
+
+
+.. function:: div(x: int64, y: int64) -> int64
 
 
 .. function:: div(x: uint8, y: uint8) -> uint8
@@ -6102,6 +6102,15 @@ Operators
 
 
 .. function:: div(x: Scalar, y: Scalar) -> Scalar
+
+
+.. function:: div(x: vec2h, y: float16) -> vec2h
+
+
+.. function:: div(x: vec3h, y: float16) -> vec3h
+
+
+.. function:: div(x: vec4h, y: float16) -> vec4h
 
 
 .. function:: div(x: vec2d, y: float64) -> vec2d
@@ -6120,15 +6129,6 @@ Operators
 
 
 .. function:: div(x: vec4ub, y: uint8) -> vec4ub
-
-
-.. function:: div(x: vec2h, y: float16) -> vec2h
-
-
-.. function:: div(x: vec3h, y: float16) -> vec3h
-
-
-.. function:: div(x: vec4h, y: float16) -> vec4h
 
 
 .. function:: div(x: vec2f, y: float32) -> vec2f
@@ -6152,15 +6152,6 @@ Operators
 .. function:: div(x: vector_t, y: Scalar) -> vector_t
 
 
-.. function:: div(x: mat22d, y: float64) -> mat22d
-
-
-.. function:: div(x: mat33d, y: float64) -> mat33d
-
-
-.. function:: div(x: mat44d, y: float64) -> mat44d
-
-
 .. function:: div(x: mat22h, y: float16) -> mat22h
 
 
@@ -6168,6 +6159,15 @@ Operators
 
 
 .. function:: div(x: mat44h, y: float16) -> mat44h
+
+
+.. function:: div(x: mat22d, y: float64) -> mat22d
+
+
+.. function:: div(x: mat33d, y: float64) -> mat33d
+
+
+.. function:: div(x: mat44d, y: float64) -> mat44d
 
 
 .. function:: div(x: mat22f, y: float32) -> mat22f
@@ -6191,10 +6191,10 @@ Operators
 .. function:: div(x: matrix_t, y: Scalar) -> matrix_t
 
 
-.. function:: div(x: quatd, y: float64) -> quatd
-
-
 .. function:: div(x: quath, y: float16) -> quath
+
+
+.. function:: div(x: quatd, y: float64) -> quatd
 
 
 .. function:: div(x: quatf, y: float32) -> quatf
@@ -6206,31 +6206,31 @@ Operators
 .. function:: div(x: vector_t, y: Scalar) -> vector_t
 
 
-.. function:: floordiv(x: float64, y: float64) -> float64
-
-
-.. function:: floordiv(x: float16, y: float16) -> float16
-
-
-.. function:: floordiv(x: int64, y: int64) -> int64
-
-
-.. function:: floordiv(x: uint32, y: uint32) -> uint32
-
-
 .. function:: floordiv(x: int32, y: int32) -> int32
-
-
-.. function:: floordiv(x: uint64, y: uint64) -> uint64
-
-
-.. function:: floordiv(x: int16, y: int16) -> int16
 
 
 .. function:: floordiv(x: int8, y: int8) -> int8
 
 
+.. function:: floordiv(x: float64, y: float64) -> float64
+
+
+.. function:: floordiv(x: int16, y: int16) -> int16
+
+
+.. function:: floordiv(x: uint32, y: uint32) -> uint32
+
+
+.. function:: floordiv(x: float16, y: float16) -> float16
+
+
+.. function:: floordiv(x: uint64, y: uint64) -> uint64
+
+
 .. function:: floordiv(x: uint16, y: uint16) -> uint16
+
+
+.. function:: floordiv(x: int64, y: int64) -> int64
 
 
 .. function:: floordiv(x: uint8, y: uint8) -> uint8
@@ -6242,31 +6242,31 @@ Operators
 .. function:: floordiv(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: neg(x: float64) -> float64
-
-
-.. function:: neg(x: float16) -> float16
-
-
-.. function:: neg(x: int64) -> int64
-
-
-.. function:: neg(x: uint32) -> uint32
-
-
 .. function:: neg(x: int32) -> int32
-
-
-.. function:: neg(x: uint64) -> uint64
-
-
-.. function:: neg(x: int16) -> int16
 
 
 .. function:: neg(x: int8) -> int8
 
 
+.. function:: neg(x: float64) -> float64
+
+
+.. function:: neg(x: int16) -> int16
+
+
+.. function:: neg(x: uint32) -> uint32
+
+
+.. function:: neg(x: float16) -> float16
+
+
+.. function:: neg(x: uint64) -> uint64
+
+
 .. function:: neg(x: uint16) -> uint16
+
+
+.. function:: neg(x: int64) -> int64
 
 
 .. function:: neg(x: uint8) -> uint8
@@ -6276,6 +6276,15 @@ Operators
 
 
 .. function:: neg(x: Scalar) -> Scalar
+
+
+.. function:: neg(x: vec2h) -> vec2h
+
+
+.. function:: neg(x: vec3h) -> vec3h
+
+
+.. function:: neg(x: vec4h) -> vec4h
 
 
 .. function:: neg(x: vec2d) -> vec2d
@@ -6294,15 +6303,6 @@ Operators
 
 
 .. function:: neg(x: vec4ub) -> vec4ub
-
-
-.. function:: neg(x: vec2h) -> vec2h
-
-
-.. function:: neg(x: vec3h) -> vec3h
-
-
-.. function:: neg(x: vec4h) -> vec4h
 
 
 .. function:: neg(x: vec2f) -> vec2f
@@ -6326,10 +6326,10 @@ Operators
 .. function:: neg(x: vector_t) -> vector_t
 
 
-.. function:: neg(x: quatd) -> quatd
-
-
 .. function:: neg(x: quath) -> quath
+
+
+.. function:: neg(x: quatd) -> quatd
 
 
 .. function:: neg(x: quatf) -> quatf
@@ -6341,15 +6341,6 @@ Operators
 .. function:: neg(x: vector_t) -> vector_t
 
 
-.. function:: neg(x: mat22d) -> mat22d
-
-
-.. function:: neg(x: mat33d) -> mat33d
-
-
-.. function:: neg(x: mat44d) -> mat44d
-
-
 .. function:: neg(x: mat22h) -> mat22h
 
 
@@ -6357,6 +6348,15 @@ Operators
 
 
 .. function:: neg(x: mat44h) -> mat44h
+
+
+.. function:: neg(x: mat22d) -> mat22d
+
+
+.. function:: neg(x: mat33d) -> mat33d
+
+
+.. function:: neg(x: mat44d) -> mat44d
 
 
 .. function:: neg(x: mat22f) -> mat22f

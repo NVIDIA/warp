@@ -56,49 +56,7 @@ from . import builtins, render
 
 
 @overload
-def min(x: float64, y: float64) -> float64:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: float16, y: float16) -> float16:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: int64, y: int64) -> int64:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: uint32, y: uint32) -> uint32:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
 def min(x: int32, y: int32) -> int32:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: uint64, y: uint64) -> uint64:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: int16, y: int16) -> int16:
    """
    Return the minimum of two scalars.
    """
@@ -112,7 +70,49 @@ def min(x: int8, y: int8) -> int8:
    ...
 
 @overload
+def min(x: float64, y: float64) -> float64:
+   """
+   Return the minimum of two scalars.
+   """
+   ...
+
+@overload
+def min(x: int16, y: int16) -> int16:
+   """
+   Return the minimum of two scalars.
+   """
+   ...
+
+@overload
+def min(x: uint32, y: uint32) -> uint32:
+   """
+   Return the minimum of two scalars.
+   """
+   ...
+
+@overload
+def min(x: float16, y: float16) -> float16:
+   """
+   Return the minimum of two scalars.
+   """
+   ...
+
+@overload
+def min(x: uint64, y: uint64) -> uint64:
+   """
+   Return the minimum of two scalars.
+   """
+   ...
+
+@overload
 def min(x: uint16, y: uint16) -> uint16:
+   """
+   Return the minimum of two scalars.
+   """
+   ...
+
+@overload
+def min(x: int64, y: int64) -> int64:
    """
    Return the minimum of two scalars.
    """
@@ -129,6 +129,27 @@ def min(x: uint8, y: uint8) -> uint8:
 def min(x: float32, y: float32) -> float32:
    """
    Return the minimum of two scalars.
+   """
+   ...
+
+@overload
+def min(x: vec2h, y: vec2h) -> vec2h:
+   """
+   Return the element wise minimum of two vectors.
+   """
+   ...
+
+@overload
+def min(x: vec3h, y: vec3h) -> vec3h:
+   """
+   Return the element wise minimum of two vectors.
+   """
+   ...
+
+@overload
+def min(x: vec4h, y: vec4h) -> vec4h:
+   """
+   Return the element wise minimum of two vectors.
    """
    ...
 
@@ -169,27 +190,6 @@ def min(x: vec3ub, y: vec3ub) -> vec3ub:
 
 @overload
 def min(x: vec4ub, y: vec4ub) -> vec4ub:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec2h, y: vec2h) -> vec2h:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec3h, y: vec3h) -> vec3h:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec4h, y: vec4h) -> vec4h:
    """
    Return the element wise minimum of two vectors.
    """
@@ -280,49 +280,7 @@ def min(x: vec4, y: vec4) -> vec4f:
    ...
 
 @overload
-def max(x: float64, y: float64) -> float64:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: float16, y: float16) -> float16:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: int64, y: int64) -> int64:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: uint32, y: uint32) -> uint32:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
 def max(x: int32, y: int32) -> int32:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: uint64, y: uint64) -> uint64:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: int16, y: int16) -> int16:
    """
    Return the maximum of two scalars.
    """
@@ -336,7 +294,49 @@ def max(x: int8, y: int8) -> int8:
    ...
 
 @overload
+def max(x: float64, y: float64) -> float64:
+   """
+   Return the maximum of two scalars.
+   """
+   ...
+
+@overload
+def max(x: int16, y: int16) -> int16:
+   """
+   Return the maximum of two scalars.
+   """
+   ...
+
+@overload
+def max(x: uint32, y: uint32) -> uint32:
+   """
+   Return the maximum of two scalars.
+   """
+   ...
+
+@overload
+def max(x: float16, y: float16) -> float16:
+   """
+   Return the maximum of two scalars.
+   """
+   ...
+
+@overload
+def max(x: uint64, y: uint64) -> uint64:
+   """
+   Return the maximum of two scalars.
+   """
+   ...
+
+@overload
 def max(x: uint16, y: uint16) -> uint16:
+   """
+   Return the maximum of two scalars.
+   """
+   ...
+
+@overload
+def max(x: int64, y: int64) -> int64:
    """
    Return the maximum of two scalars.
    """
@@ -353,6 +353,27 @@ def max(x: uint8, y: uint8) -> uint8:
 def max(x: float32, y: float32) -> float32:
    """
    Return the maximum of two scalars.
+   """
+   ...
+
+@overload
+def max(x: vec2h, y: vec2h) -> vec2h:
+   """
+   Return the element wise maximum of two vectors.
+   """
+   ...
+
+@overload
+def max(x: vec3h, y: vec3h) -> vec3h:
+   """
+   Return the element wise maximum of two vectors.
+   """
+   ...
+
+@overload
+def max(x: vec4h, y: vec4h) -> vec4h:
+   """
+   Return the element wise maximum of two vectors.
    """
    ...
 
@@ -393,27 +414,6 @@ def max(x: vec3ub, y: vec3ub) -> vec3ub:
 
 @overload
 def max(x: vec4ub, y: vec4ub) -> vec4ub:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec2h, y: vec2h) -> vec2h:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec3h, y: vec3h) -> vec3h:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec4h, y: vec4h) -> vec4h:
    """
    Return the element wise maximum of two vectors.
    """
@@ -504,49 +504,7 @@ def max(x: vec4, y: vec4) -> vec4f:
    ...
 
 @overload
-def clamp(x: float64, a: float64, b: float64) -> float64:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: float16, a: float16, b: float16) -> float16:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: int64, a: int64, b: int64) -> int64:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: uint32, a: uint32, b: uint32) -> uint32:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
 def clamp(x: int32, a: int32, b: int32) -> int32:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: uint64, a: uint64, b: uint64) -> uint64:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: int16, a: int16, b: int16) -> int16:
    """
    Clamp the value of x to the range [a, b].
    """
@@ -560,7 +518,49 @@ def clamp(x: int8, a: int8, b: int8) -> int8:
    ...
 
 @overload
+def clamp(x: float64, a: float64, b: float64) -> float64:
+   """
+   Clamp the value of x to the range [a, b].
+   """
+   ...
+
+@overload
+def clamp(x: int16, a: int16, b: int16) -> int16:
+   """
+   Clamp the value of x to the range [a, b].
+   """
+   ...
+
+@overload
+def clamp(x: uint32, a: uint32, b: uint32) -> uint32:
+   """
+   Clamp the value of x to the range [a, b].
+   """
+   ...
+
+@overload
+def clamp(x: float16, a: float16, b: float16) -> float16:
+   """
+   Clamp the value of x to the range [a, b].
+   """
+   ...
+
+@overload
+def clamp(x: uint64, a: uint64, b: uint64) -> uint64:
+   """
+   Clamp the value of x to the range [a, b].
+   """
+   ...
+
+@overload
 def clamp(x: uint16, a: uint16, b: uint16) -> uint16:
+   """
+   Clamp the value of x to the range [a, b].
+   """
+   ...
+
+@overload
+def clamp(x: int64, a: int64, b: int64) -> int64:
    """
    Clamp the value of x to the range [a, b].
    """
@@ -581,49 +581,7 @@ def clamp(x: float32, a: float32, b: float32) -> float32:
    ...
 
 @overload
-def abs(x: float64) -> float64:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: float16) -> float16:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: int64) -> int64:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: uint32) -> uint32:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
 def abs(x: int32) -> int32:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: uint64) -> uint64:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: int16) -> int16:
    """
    Return the absolute value of x.
    """
@@ -637,7 +595,49 @@ def abs(x: int8) -> int8:
    ...
 
 @overload
+def abs(x: float64) -> float64:
+   """
+   Return the absolute value of x.
+   """
+   ...
+
+@overload
+def abs(x: int16) -> int16:
+   """
+   Return the absolute value of x.
+   """
+   ...
+
+@overload
+def abs(x: uint32) -> uint32:
+   """
+   Return the absolute value of x.
+   """
+   ...
+
+@overload
+def abs(x: float16) -> float16:
+   """
+   Return the absolute value of x.
+   """
+   ...
+
+@overload
+def abs(x: uint64) -> uint64:
+   """
+   Return the absolute value of x.
+   """
+   ...
+
+@overload
 def abs(x: uint16) -> uint16:
+   """
+   Return the absolute value of x.
+   """
+   ...
+
+@overload
+def abs(x: int64) -> int64:
    """
    Return the absolute value of x.
    """
@@ -658,49 +658,7 @@ def abs(x: float32) -> float32:
    ...
 
 @overload
-def sign(x: float64) -> float64:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: float16) -> float16:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: int64) -> int64:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: uint32) -> uint32:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
 def sign(x: int32) -> int32:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: uint64) -> uint64:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: int16) -> int16:
    """
    Return -1 if x < 0, return 1 otherwise.
    """
@@ -714,7 +672,49 @@ def sign(x: int8) -> int8:
    ...
 
 @overload
+def sign(x: float64) -> float64:
+   """
+   Return -1 if x < 0, return 1 otherwise.
+   """
+   ...
+
+@overload
+def sign(x: int16) -> int16:
+   """
+   Return -1 if x < 0, return 1 otherwise.
+   """
+   ...
+
+@overload
+def sign(x: uint32) -> uint32:
+   """
+   Return -1 if x < 0, return 1 otherwise.
+   """
+   ...
+
+@overload
+def sign(x: float16) -> float16:
+   """
+   Return -1 if x < 0, return 1 otherwise.
+   """
+   ...
+
+@overload
+def sign(x: uint64) -> uint64:
+   """
+   Return -1 if x < 0, return 1 otherwise.
+   """
+   ...
+
+@overload
 def sign(x: uint16) -> uint16:
+   """
+   Return -1 if x < 0, return 1 otherwise.
+   """
+   ...
+
+@overload
+def sign(x: int64) -> int64:
    """
    Return -1 if x < 0, return 1 otherwise.
    """
@@ -735,49 +735,7 @@ def sign(x: float32) -> float32:
    ...
 
 @overload
-def step(x: float64) -> float64:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: float16) -> float16:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: int64) -> int64:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: uint32) -> uint32:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
 def step(x: int32) -> int32:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: uint64) -> uint64:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: int16) -> int16:
    """
    Return 1.0 if x < 0.0, return 0.0 otherwise.
    """
@@ -791,7 +749,49 @@ def step(x: int8) -> int8:
    ...
 
 @overload
+def step(x: float64) -> float64:
+   """
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def step(x: int16) -> int16:
+   """
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def step(x: uint32) -> uint32:
+   """
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def step(x: float16) -> float16:
+   """
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def step(x: uint64) -> uint64:
+   """
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+   """
+   ...
+
+@overload
 def step(x: uint16) -> uint16:
+   """
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def step(x: int64) -> int64:
    """
    Return 1.0 if x < 0.0, return 0.0 otherwise.
    """
@@ -812,49 +812,7 @@ def step(x: float32) -> float32:
    ...
 
 @overload
-def nonzero(x: float64) -> float64:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: float16) -> float16:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: int64) -> int64:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: uint32) -> uint32:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
 def nonzero(x: int32) -> int32:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: uint64) -> uint64:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: int16) -> int16:
    """
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
    """
@@ -868,7 +826,49 @@ def nonzero(x: int8) -> int8:
    ...
 
 @overload
+def nonzero(x: float64) -> float64:
+   """
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def nonzero(x: int16) -> int16:
+   """
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def nonzero(x: uint32) -> uint32:
+   """
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def nonzero(x: float16) -> float16:
+   """
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def nonzero(x: uint64) -> uint64:
+   """
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+   """
+   ...
+
+@overload
 def nonzero(x: uint16) -> uint16:
+   """
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+   """
+   ...
+
+@overload
+def nonzero(x: int64) -> int64:
    """
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
    """
@@ -889,14 +889,14 @@ def nonzero(x: float32) -> float32:
    ...
 
 @overload
-def sin(x: float64) -> float64:
+def sin(x: float16) -> float16:
    """
    Return the sine of x in radians.
    """
    ...
 
 @overload
-def sin(x: float16) -> float16:
+def sin(x: float64) -> float64:
    """
    Return the sine of x in radians.
    """
@@ -910,14 +910,14 @@ def sin(x: float32) -> float32:
    ...
 
 @overload
-def cos(x: float64) -> float64:
+def cos(x: float16) -> float16:
    """
    Return the cosine of x in radians.
    """
    ...
 
 @overload
-def cos(x: float16) -> float16:
+def cos(x: float64) -> float64:
    """
    Return the cosine of x in radians.
    """
@@ -931,14 +931,14 @@ def cos(x: float32) -> float32:
    ...
 
 @overload
-def acos(x: float64) -> float64:
+def acos(x: float16) -> float16:
    """
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
    """
    ...
 
 @overload
-def acos(x: float16) -> float16:
+def acos(x: float64) -> float64:
    """
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
    """
@@ -952,14 +952,14 @@ def acos(x: float32) -> float32:
    ...
 
 @overload
-def asin(x: float64) -> float64:
+def asin(x: float16) -> float16:
    """
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
    """
    ...
 
 @overload
-def asin(x: float16) -> float16:
+def asin(x: float64) -> float64:
    """
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
    """
@@ -973,14 +973,14 @@ def asin(x: float32) -> float32:
    ...
 
 @overload
-def sqrt(x: float64) -> float64:
+def sqrt(x: float16) -> float16:
    """
    Return the sqrt of x, where x is positive.
    """
    ...
 
 @overload
-def sqrt(x: float16) -> float16:
+def sqrt(x: float64) -> float64:
    """
    Return the sqrt of x, where x is positive.
    """
@@ -994,14 +994,14 @@ def sqrt(x: float32) -> float32:
    ...
 
 @overload
-def tan(x: float64) -> float64:
+def tan(x: float16) -> float16:
    """
    Return tangent of x in radians.
    """
    ...
 
 @overload
-def tan(x: float16) -> float16:
+def tan(x: float64) -> float64:
    """
    Return tangent of x in radians.
    """
@@ -1015,14 +1015,14 @@ def tan(x: float32) -> float32:
    ...
 
 @overload
-def atan(x: float64) -> float64:
+def atan(x: float16) -> float16:
    """
    Return arctan of x.
    """
    ...
 
 @overload
-def atan(x: float16) -> float16:
+def atan(x: float64) -> float64:
    """
    Return arctan of x.
    """
@@ -1036,14 +1036,14 @@ def atan(x: float32) -> float32:
    ...
 
 @overload
-def atan2(y: float64, x: float64) -> float64:
+def atan2(y: float16, x: float16) -> float16:
    """
    Return atan2 of x.
    """
    ...
 
 @overload
-def atan2(y: float16, x: float16) -> float16:
+def atan2(y: float64, x: float64) -> float64:
    """
    Return atan2 of x.
    """
@@ -1057,14 +1057,14 @@ def atan2(y: float32, x: float32) -> float32:
    ...
 
 @overload
-def sinh(x: float64) -> float64:
+def sinh(x: float16) -> float16:
    """
    Return the sinh of x.
    """
    ...
 
 @overload
-def sinh(x: float16) -> float16:
+def sinh(x: float64) -> float64:
    """
    Return the sinh of x.
    """
@@ -1078,14 +1078,14 @@ def sinh(x: float32) -> float32:
    ...
 
 @overload
-def cosh(x: float64) -> float64:
+def cosh(x: float16) -> float16:
    """
    Return the cosh of x.
    """
    ...
 
 @overload
-def cosh(x: float16) -> float16:
+def cosh(x: float64) -> float64:
    """
    Return the cosh of x.
    """
@@ -1099,14 +1099,14 @@ def cosh(x: float32) -> float32:
    ...
 
 @overload
-def tanh(x: float64) -> float64:
+def tanh(x: float16) -> float16:
    """
    Return the tanh of x.
    """
    ...
 
 @overload
-def tanh(x: float16) -> float16:
+def tanh(x: float64) -> float64:
    """
    Return the tanh of x.
    """
@@ -1134,14 +1134,14 @@ def radians(x: float32) -> float:
    ...
 
 @overload
-def log(x: float64) -> float64:
+def log(x: float16) -> float16:
    """
    Return the natural log (base-e) of x, where x is positive.
    """
    ...
 
 @overload
-def log(x: float16) -> float16:
+def log(x: float64) -> float64:
    """
    Return the natural log (base-e) of x, where x is positive.
    """
@@ -1155,14 +1155,14 @@ def log(x: float32) -> float32:
    ...
 
 @overload
-def log2(x: float64) -> float64:
+def log2(x: float16) -> float16:
    """
    Return the natural log (base-2) of x, where x is positive.
    """
    ...
 
 @overload
-def log2(x: float16) -> float16:
+def log2(x: float64) -> float64:
    """
    Return the natural log (base-2) of x, where x is positive.
    """
@@ -1176,14 +1176,14 @@ def log2(x: float32) -> float32:
    ...
 
 @overload
-def log10(x: float64) -> float64:
+def log10(x: float16) -> float16:
    """
    Return the natural log (base-10) of x, where x is positive.
    """
    ...
 
 @overload
-def log10(x: float16) -> float16:
+def log10(x: float64) -> float64:
    """
    Return the natural log (base-10) of x, where x is positive.
    """
@@ -1197,14 +1197,14 @@ def log10(x: float32) -> float32:
    ...
 
 @overload
-def exp(x: float64) -> float64:
+def exp(x: float16) -> float16:
    """
    Return base-e exponential, e^x.
    """
    ...
 
 @overload
-def exp(x: float16) -> float16:
+def exp(x: float64) -> float64:
    """
    Return base-e exponential, e^x.
    """
@@ -1218,14 +1218,14 @@ def exp(x: float32) -> float32:
    ...
 
 @overload
-def pow(x: float64, y: float64) -> float64:
+def pow(x: float16, y: float16) -> float16:
    """
    Return the result of x raised to power of y.
    """
    ...
 
 @overload
-def pow(x: float16, y: float16) -> float16:
+def pow(x: float64, y: float64) -> float64:
    """
    Return the result of x raised to power of y.
    """
@@ -1239,7 +1239,7 @@ def pow(x: float32, y: float32) -> float32:
    ...
 
 @overload
-def round(x: float64) -> float64:
+def round(x: float16) -> float16:
    """
    Calculate the nearest integer value, rounding halfway cases away from zero.
    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
@@ -1248,7 +1248,7 @@ def round(x: float64) -> float64:
    ...
 
 @overload
-def round(x: float16) -> float16:
+def round(x: float64) -> float64:
    """
    Calculate the nearest integer value, rounding halfway cases away from zero.
    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
@@ -1266,7 +1266,7 @@ def round(x: float32) -> float32:
    ...
 
 @overload
-def rint(x: float64) -> float64:
+def rint(x: float16) -> float16:
    """
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
    It is generally faster than ``warp.round()``.
@@ -1275,7 +1275,7 @@ def rint(x: float64) -> float64:
    ...
 
 @overload
-def rint(x: float16) -> float16:
+def rint(x: float64) -> float64:
    """
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
    It is generally faster than ``warp.round()``.
@@ -1293,7 +1293,7 @@ def rint(x: float32) -> float32:
    ...
 
 @overload
-def trunc(x: float64) -> float64:
+def trunc(x: float16) -> float16:
    """
    Calculate the nearest integer that is closer to zero than x.
    In other words, it discards the fractional part of x.
@@ -1303,7 +1303,7 @@ def trunc(x: float64) -> float64:
    ...
 
 @overload
-def trunc(x: float16) -> float16:
+def trunc(x: float64) -> float64:
    """
    Calculate the nearest integer that is closer to zero than x.
    In other words, it discards the fractional part of x.
@@ -1323,14 +1323,14 @@ def trunc(x: float32) -> float32:
    ...
 
 @overload
-def floor(x: float64) -> float64:
+def floor(x: float16) -> float16:
    """
    Calculate the largest integer that is less than or equal to x.
    """
    ...
 
 @overload
-def floor(x: float16) -> float16:
+def floor(x: float64) -> float64:
    """
    Calculate the largest integer that is less than or equal to x.
    """
@@ -1344,14 +1344,14 @@ def floor(x: float32) -> float32:
    ...
 
 @overload
-def ceil(x: float64) -> float64:
+def ceil(x: float16) -> float16:
    """
    Calculate the smallest integer that is greater than or equal to x.
    """
    ...
 
 @overload
-def ceil(x: float16) -> float16:
+def ceil(x: float64) -> float64:
    """
    Calculate the smallest integer that is greater than or equal to x.
    """
@@ -1361,6 +1361,27 @@ def ceil(x: float16) -> float16:
 def ceil(x: float32) -> float32:
    """
    Calculate the smallest integer that is greater than or equal to x.
+   """
+   ...
+
+@overload
+def dot(x: vec2h, y: vec2h) -> float16:
+   """
+   Compute the dot product between two vectors.
+   """
+   ...
+
+@overload
+def dot(x: vec3h, y: vec3h) -> float16:
+   """
+   Compute the dot product between two vectors.
+   """
+   ...
+
+@overload
+def dot(x: vec4h, y: vec4h) -> float16:
+   """
+   Compute the dot product between two vectors.
    """
    ...
 
@@ -1401,27 +1422,6 @@ def dot(x: vec3ub, y: vec3ub) -> uint8:
 
 @overload
 def dot(x: vec4ub, y: vec4ub) -> uint8:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec2h, y: vec2h) -> float16:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec3h, y: vec3h) -> float16:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec4h, y: vec4h) -> float16:
    """
    Compute the dot product between two vectors.
    """
@@ -1512,14 +1512,14 @@ def dot(x: vec4, y: vec4) -> float32:
    ...
 
 @overload
-def dot(x: quatd, y: quatd) -> float64:
+def dot(x: quath, y: quath) -> float16:
    """
    Compute the dot product between two quaternions.
    """
    ...
 
 @overload
-def dot(x: quath, y: quath) -> float16:
+def dot(x: quatd, y: quatd) -> float64:
    """
    Compute the dot product between two quaternions.
    """
@@ -1554,27 +1554,6 @@ def dot(x: quat, y: quat) -> float32:
    ...
 
 @overload
-def ddot(x: mat22d, y: mat22d) -> float64:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat33d, y: mat33d) -> float64:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat44d, y: mat44d) -> float64:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
 def ddot(x: mat22h, y: mat22h) -> float16:
    """
    Compute the double dot product between two matrices.
@@ -1590,6 +1569,27 @@ def ddot(x: mat33h, y: mat33h) -> float16:
 
 @overload
 def ddot(x: mat44h, y: mat44h) -> float16:
+   """
+   Compute the double dot product between two matrices.
+   """
+   ...
+
+@overload
+def ddot(x: mat22d, y: mat22d) -> float64:
+   """
+   Compute the double dot product between two matrices.
+   """
+   ...
+
+@overload
+def ddot(x: mat33d, y: mat33d) -> float64:
+   """
+   Compute the double dot product between two matrices.
+   """
+   ...
+
+@overload
+def ddot(x: mat44d, y: mat44d) -> float64:
    """
    Compute the double dot product between two matrices.
    """
@@ -1680,27 +1680,6 @@ def ddot(x: mat44, y: mat44) -> float32:
    ...
 
 @overload
-def outer(x: vec2d, y: vec2d) -> mat22d:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec3d, y: vec3d) -> mat33d:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec4d, y: vec4d) -> mat44d:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
 def outer(x: vec2h, y: vec2h) -> mat22h:
    """
    Compute the outer product x*y^T for two vec2 objects.
@@ -1716,6 +1695,27 @@ def outer(x: vec3h, y: vec3h) -> mat33h:
 
 @overload
 def outer(x: vec4h, y: vec4h) -> mat44h:
+   """
+   Compute the outer product x*y^T for two vec2 objects.
+   """
+   ...
+
+@overload
+def outer(x: vec2d, y: vec2d) -> mat22d:
+   """
+   Compute the outer product x*y^T for two vec2 objects.
+   """
+   ...
+
+@overload
+def outer(x: vec3d, y: vec3d) -> mat33d:
+   """
+   Compute the outer product x*y^T for two vec2 objects.
+   """
+   ...
+
+@overload
+def outer(x: vec4d, y: vec4d) -> mat44d:
    """
    Compute the outer product x*y^T for two vec2 objects.
    """
@@ -1806,14 +1806,14 @@ def outer(x: vec4, y: vec4) -> mat44f:
    ...
 
 @overload
-def outer(x: spatial_vectord, y: spatial_vectord) -> spatial_matrixd:
+def outer(x: spatial_vectorh, y: spatial_vectorh) -> spatial_matrixh:
    """
    Compute the outer product x*y^T for two spatial_vector objects.
    """
    ...
 
 @overload
-def outer(x: spatial_vectorh, y: spatial_vectorh) -> spatial_matrixh:
+def outer(x: spatial_vectord, y: spatial_vectord) -> spatial_matrixd:
    """
    Compute the outer product x*y^T for two spatial_vector objects.
    """
@@ -1848,6 +1848,13 @@ def outer(x: spatial_vector, y: spatial_vector) -> spatial_matrixf:
    ...
 
 @overload
+def cross(x: vec3h, y: vec3h) -> vec3h:
+   """
+   Compute the cross product of two 3d vectors.
+   """
+   ...
+
+@overload
 def cross(x: vec3d, y: vec3d) -> vec3d:
    """
    Compute the cross product of two 3d vectors.
@@ -1856,13 +1863,6 @@ def cross(x: vec3d, y: vec3d) -> vec3d:
 
 @overload
 def cross(x: vec3ub, y: vec3ub) -> vec3ub:
-   """
-   Compute the cross product of two 3d vectors.
-   """
-   ...
-
-@overload
-def cross(x: vec3h, y: vec3h) -> vec3h:
    """
    Compute the cross product of two 3d vectors.
    """
@@ -1897,14 +1897,14 @@ def cross(x: vec3, y: vec3) -> vec3f:
    ...
 
 @overload
-def skew(x: vec3d) -> mat33d:
+def skew(x: vec3h) -> mat33h:
    """
    Compute the skew symmetric matrix for a 3d vector.
    """
    ...
 
 @overload
-def skew(x: vec3h) -> mat33h:
+def skew(x: vec3d) -> mat33d:
    """
    Compute the skew symmetric matrix for a 3d vector.
    """
@@ -1925,27 +1925,6 @@ def skew(x: vec3) -> mat33f:
    ...
 
 @overload
-def length(x: vec2d) -> float64:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec3d) -> float64:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec4d) -> float64:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
 def length(x: vec2h) -> float16:
    """
    Compute the length of a vector.
@@ -1961,6 +1940,27 @@ def length(x: vec3h) -> float16:
 
 @overload
 def length(x: vec4h) -> float16:
+   """
+   Compute the length of a vector.
+   """
+   ...
+
+@overload
+def length(x: vec2d) -> float64:
+   """
+   Compute the length of a vector.
+   """
+   ...
+
+@overload
+def length(x: vec3d) -> float64:
+   """
+   Compute the length of a vector.
+   """
+   ...
+
+@overload
+def length(x: vec4d) -> float64:
    """
    Compute the length of a vector.
    """
@@ -2009,14 +2009,14 @@ def length(x: vec4) -> float32:
    ...
 
 @overload
-def length(x: quatd) -> float64:
+def length(x: quath) -> float16:
    """
    Compute the length of a quaternion.
    """
    ...
 
 @overload
-def length(x: quath) -> float16:
+def length(x: quatd) -> float64:
    """
    Compute the length of a quaternion.
    """
@@ -2033,6 +2033,27 @@ def length(x: quatf) -> float32:
 def length(x: quat) -> float32:
    """
    Compute the length of a quaternion.
+   """
+   ...
+
+@overload
+def length_sq(x: vec2h) -> float16:
+   """
+   Compute the squared length of a 2d vector.
+   """
+   ...
+
+@overload
+def length_sq(x: vec3h) -> float16:
+   """
+   Compute the squared length of a 2d vector.
+   """
+   ...
+
+@overload
+def length_sq(x: vec4h) -> float16:
+   """
+   Compute the squared length of a 2d vector.
    """
    ...
 
@@ -2073,27 +2094,6 @@ def length_sq(x: vec3ub) -> uint8:
 
 @overload
 def length_sq(x: vec4ub) -> uint8:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec2h) -> float16:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec3h) -> float16:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec4h) -> float16:
    """
    Compute the squared length of a 2d vector.
    """
@@ -2142,14 +2142,14 @@ def length_sq(x: vec4) -> float32:
    ...
 
 @overload
-def length_sq(x: quatd) -> float64:
+def length_sq(x: quath) -> float16:
    """
    Compute the squared length of a quaternion.
    """
    ...
 
 @overload
-def length_sq(x: quath) -> float16:
+def length_sq(x: quatd) -> float64:
    """
    Compute the squared length of a quaternion.
    """
@@ -2170,27 +2170,6 @@ def length_sq(x: quat) -> float32:
    ...
 
 @overload
-def normalize(x: vec2d) -> vec2d:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec3d) -> vec3d:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec4d) -> vec4d:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
 def normalize(x: vec2h) -> vec2h:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
@@ -2206,6 +2185,27 @@ def normalize(x: vec3h) -> vec3h:
 
 @overload
 def normalize(x: vec4h) -> vec4h:
+   """
+   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+   """
+   ...
+
+@overload
+def normalize(x: vec2d) -> vec2d:
+   """
+   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+   """
+   ...
+
+@overload
+def normalize(x: vec3d) -> vec3d:
+   """
+   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
+   """
+   ...
+
+@overload
+def normalize(x: vec4d) -> vec4d:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
    """
@@ -2254,14 +2254,14 @@ def normalize(x: vec4) -> vec4f:
    ...
 
 @overload
-def normalize(x: quatd) -> quatd:
+def normalize(x: quath) -> quath:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
    """
    ...
 
 @overload
-def normalize(x: quath) -> quath:
+def normalize(x: quatd) -> quatd:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
    """
@@ -2282,27 +2282,6 @@ def normalize(x: quat) -> quatf:
    ...
 
 @overload
-def transpose(m: mat22d) -> mat22d:
-   """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: mat33d) -> mat33d:
-   """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: mat44d) -> mat44d:
-   """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
 def transpose(m: mat22h) -> mat22h:
    """
    Return the transpose of the matrix m
@@ -2318,6 +2297,27 @@ def transpose(m: mat33h) -> mat33h:
 
 @overload
 def transpose(m: mat44h) -> mat44h:
+   """
+   Return the transpose of the matrix m
+   """
+   ...
+
+@overload
+def transpose(m: mat22d) -> mat22d:
+   """
+   Return the transpose of the matrix m
+   """
+   ...
+
+@overload
+def transpose(m: mat33d) -> mat33d:
+   """
+   Return the transpose of the matrix m
+   """
+   ...
+
+@overload
+def transpose(m: mat44d) -> mat44d:
    """
    Return the transpose of the matrix m
    """
@@ -2366,14 +2366,14 @@ def transpose(m: mat44) -> mat44f:
    ...
 
 @overload
-def transpose(m: spatial_matrixd) -> spatial_matrixd:
+def transpose(m: spatial_matrixh) -> spatial_matrixh:
    """
    Return the transpose of the matrix m
    """
    ...
 
 @overload
-def transpose(m: spatial_matrixh) -> spatial_matrixh:
+def transpose(m: spatial_matrixd) -> spatial_matrixd:
    """
    Return the transpose of the matrix m
    """
@@ -2394,27 +2394,6 @@ def transpose(m: spatial_matrix) -> spatial_matrixf:
    ...
 
 @overload
-def inverse(m: mat22d) -> mat22d:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat33d) -> mat33d:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat44d) -> mat44d:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
 def inverse(m: mat22h) -> mat22h:
    """
    Return the inverse of the matrix m
@@ -2430,6 +2409,27 @@ def inverse(m: mat33h) -> mat33h:
 
 @overload
 def inverse(m: mat44h) -> mat44h:
+   """
+   Return the inverse of the matrix m
+   """
+   ...
+
+@overload
+def inverse(m: mat22d) -> mat22d:
+   """
+   Return the inverse of the matrix m
+   """
+   ...
+
+@overload
+def inverse(m: mat33d) -> mat33d:
+   """
+   Return the inverse of the matrix m
+   """
+   ...
+
+@overload
+def inverse(m: mat44d) -> mat44d:
    """
    Return the inverse of the matrix m
    """
@@ -2478,27 +2478,6 @@ def inverse(m: mat44) -> mat44f:
    ...
 
 @overload
-def determinant(m: mat22d) -> float64:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat33d) -> float64:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat44d) -> float64:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
 def determinant(m: mat22h) -> float16:
    """
    Return the determinant of the matrix m
@@ -2514,6 +2493,27 @@ def determinant(m: mat33h) -> float16:
 
 @overload
 def determinant(m: mat44h) -> float16:
+   """
+   Return the determinant of the matrix m
+   """
+   ...
+
+@overload
+def determinant(m: mat22d) -> float64:
+   """
+   Return the determinant of the matrix m
+   """
+   ...
+
+@overload
+def determinant(m: mat33d) -> float64:
+   """
+   Return the determinant of the matrix m
+   """
+   ...
+
+@overload
+def determinant(m: mat44d) -> float64:
    """
    Return the determinant of the matrix m
    """
@@ -2562,27 +2562,6 @@ def determinant(m: mat44) -> float32:
    ...
 
 @overload
-def trace(m: mat22d) -> float64:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat33d) -> float64:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat44d) -> float64:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
 def trace(m: mat22h) -> float16:
    """
    Return the trace of the matrix m
@@ -2598,6 +2577,27 @@ def trace(m: mat33h) -> float16:
 
 @overload
 def trace(m: mat44h) -> float16:
+   """
+   Return the trace of the matrix m
+   """
+   ...
+
+@overload
+def trace(m: mat22d) -> float64:
+   """
+   Return the trace of the matrix m
+   """
+   ...
+
+@overload
+def trace(m: mat33d) -> float64:
+   """
+   Return the trace of the matrix m
+   """
+   ...
+
+@overload
+def trace(m: mat44d) -> float64:
    """
    Return the trace of the matrix m
    """
@@ -2646,27 +2646,6 @@ def trace(m: mat44) -> float32:
    ...
 
 @overload
-def diag(d: vec2d) -> mat22d:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec3d) -> mat33d:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec4d) -> mat44d:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
 def diag(d: vec2h) -> mat22h:
    """
    Returns a matrix with the components of the vector d on the diagonal
@@ -2682,6 +2661,27 @@ def diag(d: vec3h) -> mat33h:
 
 @overload
 def diag(d: vec4h) -> mat44h:
+   """
+   Returns a matrix with the components of the vector d on the diagonal
+   """
+   ...
+
+@overload
+def diag(d: vec2d) -> mat22d:
+   """
+   Returns a matrix with the components of the vector d on the diagonal
+   """
+   ...
+
+@overload
+def diag(d: vec3d) -> mat33d:
+   """
+   Returns a matrix with the components of the vector d on the diagonal
+   """
+   ...
+
+@overload
+def diag(d: vec4d) -> mat44d:
    """
    Returns a matrix with the components of the vector d on the diagonal
    """
@@ -2730,6 +2730,27 @@ def diag(d: vec4) -> mat44f:
    ...
 
 @overload
+def cw_mul(x: vec2h, y: vec2h) -> vec2h:
+   """
+   Component wise multiply of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_mul(x: vec3h, y: vec3h) -> vec3h:
+   """
+   Component wise multiply of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_mul(x: vec4h, y: vec4h) -> vec4h:
+   """
+   Component wise multiply of two 2d vectors.
+   """
+   ...
+
+@overload
 def cw_mul(x: vec2d, y: vec2d) -> vec2d:
    """
    Component wise multiply of two 2d vectors.
@@ -2766,27 +2787,6 @@ def cw_mul(x: vec3ub, y: vec3ub) -> vec3ub:
 
 @overload
 def cw_mul(x: vec4ub, y: vec4ub) -> vec4ub:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec2h, y: vec2h) -> vec2h:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec3h, y: vec3h) -> vec3h:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec4h, y: vec4h) -> vec4h:
    """
    Component wise multiply of two 2d vectors.
    """
@@ -2877,27 +2877,6 @@ def cw_mul(x: vec4, y: vec4) -> vec4f:
    ...
 
 @overload
-def cw_mul(x: mat22d, y: mat22d) -> mat22d:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat33d, y: mat33d) -> mat33d:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat44d, y: mat44d) -> mat44d:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
 def cw_mul(x: mat22h, y: mat22h) -> mat22h:
    """
    Component wise multiply of two 2d vectors.
@@ -2913,6 +2892,27 @@ def cw_mul(x: mat33h, y: mat33h) -> mat33h:
 
 @overload
 def cw_mul(x: mat44h, y: mat44h) -> mat44h:
+   """
+   Component wise multiply of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_mul(x: mat22d, y: mat22d) -> mat22d:
+   """
+   Component wise multiply of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_mul(x: mat33d, y: mat33d) -> mat33d:
+   """
+   Component wise multiply of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_mul(x: mat44d, y: mat44d) -> mat44d:
    """
    Component wise multiply of two 2d vectors.
    """
@@ -3003,6 +3003,27 @@ def cw_mul(x: mat44, y: mat44) -> mat44f:
    ...
 
 @overload
+def cw_div(x: vec2h, y: vec2h) -> vec2h:
+   """
+   Component wise division of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_div(x: vec3h, y: vec3h) -> vec3h:
+   """
+   Component wise division of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_div(x: vec4h, y: vec4h) -> vec4h:
+   """
+   Component wise division of two 2d vectors.
+   """
+   ...
+
+@overload
 def cw_div(x: vec2d, y: vec2d) -> vec2d:
    """
    Component wise division of two 2d vectors.
@@ -3039,27 +3060,6 @@ def cw_div(x: vec3ub, y: vec3ub) -> vec3ub:
 
 @overload
 def cw_div(x: vec4ub, y: vec4ub) -> vec4ub:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec2h, y: vec2h) -> vec2h:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec3h, y: vec3h) -> vec3h:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec4h, y: vec4h) -> vec4h:
    """
    Component wise division of two 2d vectors.
    """
@@ -3150,27 +3150,6 @@ def cw_div(x: vec4, y: vec4) -> vec4f:
    ...
 
 @overload
-def cw_div(x: mat22d, y: mat22d) -> mat22d:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat33d, y: mat33d) -> mat33d:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat44d, y: mat44d) -> mat44d:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
 def cw_div(x: mat22h, y: mat22h) -> mat22h:
    """
    Component wise division of two 2d vectors.
@@ -3186,6 +3165,27 @@ def cw_div(x: mat33h, y: mat33h) -> mat33h:
 
 @overload
 def cw_div(x: mat44h, y: mat44h) -> mat44h:
+   """
+   Component wise division of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_div(x: mat22d, y: mat22d) -> mat22d:
+   """
+   Component wise division of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_div(x: mat33d, y: mat33d) -> mat33d:
+   """
+   Component wise division of two 2d vectors.
+   """
+   ...
+
+@overload
+def cw_div(x: mat44d, y: mat44d) -> mat44d:
    """
    Component wise division of two 2d vectors.
    """
@@ -3276,7 +3276,7 @@ def cw_div(x: mat44, y: mat44) -> mat44f:
    ...
 
 @overload
-def svd3(A: mat33d, U: mat33d, sigma: vec3d, V: mat33d):
+def svd3(A: mat33h, U: mat33h, sigma: vec3h, V: mat33h):
    """
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
       while the left and right basis vectors are returned in U and V.
@@ -3284,7 +3284,7 @@ def svd3(A: mat33d, U: mat33d, sigma: vec3d, V: mat33d):
    ...
 
 @overload
-def svd3(A: mat33h, U: mat33h, sigma: vec3h, V: mat33h):
+def svd3(A: mat33d, U: mat33d, sigma: vec3d, V: mat33d):
    """
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
       while the left and right basis vectors are returned in U and V.
@@ -3420,14 +3420,14 @@ def svd3(A: mat33, U: mat33, sigma: vec3, V: mat33):
    ...
 
 @overload
-def qr3(A: mat33d, Q: mat33d, R: mat33d):
+def qr3(A: mat33h, Q: mat33h, R: mat33h):
    """
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
    """
    ...
 
 @overload
-def qr3(A: mat33h, Q: mat33h, R: mat33h):
+def qr3(A: mat33d, Q: mat33d, R: mat33d):
    """
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
    """
@@ -3490,14 +3490,14 @@ def qr3(A: mat33, Q: mat33, R: mat33):
    ...
 
 @overload
-def eig3(A: mat33d, Q: mat33d, d: vec3d):
+def eig3(A: mat33h, Q: mat33h, d: vec3h):
    """
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
    """
    ...
 
 @overload
-def eig3(A: mat33h, Q: mat33h, d: vec3h):
+def eig3(A: mat33d, Q: mat33d, d: vec3d):
    """
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
    """
@@ -3567,14 +3567,14 @@ def quat_identity() -> quat:
    ...
 
 @overload
-def quat_from_axis_angle(axis: vec3d, angle: float64) -> quatd:
+def quat_from_axis_angle(axis: vec3h, angle: float16) -> quath:
    """
    Construct a quaternion representing a rotation of angle radians around the given axis.
    """
    ...
 
 @overload
-def quat_from_axis_angle(axis: vec3h, angle: float16) -> quath:
+def quat_from_axis_angle(axis: vec3d, angle: float64) -> quatd:
    """
    Construct a quaternion representing a rotation of angle radians around the given axis.
    """
@@ -3595,14 +3595,14 @@ def quat_from_axis_angle(axis: vec3, angle: float32) -> quatf:
    ...
 
 @overload
-def quat_to_axis_angle(q: quatd, axis: vec3d, angle: float64):
+def quat_to_axis_angle(q: quath, axis: vec3h, angle: float16):
    """
    Extract the rotation axis and angle radians a quaternion represents.
    """
    ...
 
 @overload
-def quat_to_axis_angle(q: quath, axis: vec3h, angle: float16):
+def quat_to_axis_angle(q: quatd, axis: vec3d, angle: float64):
    """
    Extract the rotation axis and angle radians a quaternion represents.
    """
@@ -3637,14 +3637,14 @@ def quat_to_axis_angle(q: quat, axis: vec3, angle: float32):
    ...
 
 @overload
-def quat_from_matrix(m: mat33d) -> quatd:
+def quat_from_matrix(m: mat33h) -> quath:
    """
    Construct a quaternion from a 3x3 matrix.
    """
    ...
 
 @overload
-def quat_from_matrix(m: mat33h) -> quath:
+def quat_from_matrix(m: mat33d) -> quatd:
    """
    Construct a quaternion from a 3x3 matrix.
    """
@@ -3665,14 +3665,14 @@ def quat_from_matrix(m: mat33) -> quatf:
    ...
 
 @overload
-def quat_rpy(roll: float64, pitch: float64, yaw: float64) -> quatd:
+def quat_rpy(roll: float16, pitch: float16, yaw: float16) -> quath:
    """
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
    """
    ...
 
 @overload
-def quat_rpy(roll: float16, pitch: float16, yaw: float16) -> quath:
+def quat_rpy(roll: float64, pitch: float64, yaw: float64) -> quatd:
    """
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
    """
@@ -3686,14 +3686,14 @@ def quat_rpy(roll: float32, pitch: float32, yaw: float32) -> quatf:
    ...
 
 @overload
-def quat_inverse(q: quatd) -> quatd:
+def quat_inverse(q: quath) -> quath:
    """
    Compute quaternion conjugate.
    """
    ...
 
 @overload
-def quat_inverse(q: quath) -> quath:
+def quat_inverse(q: quatd) -> quatd:
    """
    Compute quaternion conjugate.
    """
@@ -3714,14 +3714,14 @@ def quat_inverse(q: quat) -> quatf:
    ...
 
 @overload
-def quat_rotate(q: quatd, p: vec3d) -> vec3d:
+def quat_rotate(q: quath, p: vec3h) -> vec3h:
    """
    Rotate a vector by a quaternion.
    """
    ...
 
 @overload
-def quat_rotate(q: quath, p: vec3h) -> vec3h:
+def quat_rotate(q: quatd, p: vec3d) -> vec3d:
    """
    Rotate a vector by a quaternion.
    """
@@ -3756,14 +3756,14 @@ def quat_rotate(q: quat, p: vec3) -> vec3f:
    ...
 
 @overload
-def quat_rotate_inv(q: quatd, p: vec3d) -> vec3d:
+def quat_rotate_inv(q: quath, p: vec3h) -> vec3h:
    """
    Rotate a vector the inverse of a quaternion.
    """
    ...
 
 @overload
-def quat_rotate_inv(q: quath, p: vec3h) -> vec3h:
+def quat_rotate_inv(q: quatd, p: vec3d) -> vec3d:
    """
    Rotate a vector the inverse of a quaternion.
    """
@@ -3798,14 +3798,14 @@ def quat_rotate_inv(q: quat, p: vec3) -> vec3f:
    ...
 
 @overload
-def quat_slerp(q0: quatd, q1: quatd, t: float64) -> quatd:
+def quat_slerp(q0: quath, q1: quath, t: float16) -> quath:
    """
    Linearly interpolate between two quaternions.
    """
    ...
 
 @overload
-def quat_slerp(q0: quath, q1: quath, t: float16) -> quath:
+def quat_slerp(q0: quatd, q1: quatd, t: float64) -> quatd:
    """
    Linearly interpolate between two quaternions.
    """
@@ -3840,14 +3840,14 @@ def quat_slerp(q0: quat, q1: quat, t: float32) -> quatf:
    ...
 
 @overload
-def quat_to_matrix(q: quatd) -> mat33d:
+def quat_to_matrix(q: quath) -> mat33h:
    """
    Convert a quaternion to a 3x3 rotation matrix.
    """
    ...
 
 @overload
-def quat_to_matrix(q: quath) -> mat33h:
+def quat_to_matrix(q: quatd) -> mat33d:
    """
    Convert a quaternion to a 3x3 rotation matrix.
    """
@@ -3875,14 +3875,14 @@ def transform_identity() -> transform:
    ...
 
 @overload
-def transform_get_translation(t: transformd) -> vec3d:
+def transform_get_translation(t: transformh) -> vec3h:
    """
    Return the translational part of a transform.
    """
    ...
 
 @overload
-def transform_get_translation(t: transformh) -> vec3h:
+def transform_get_translation(t: transformd) -> vec3d:
    """
    Return the translational part of a transform.
    """
@@ -3903,14 +3903,14 @@ def transform_get_translation(t: transform) -> vec3f:
    ...
 
 @overload
-def transform_get_rotation(t: transformd) -> quatd:
+def transform_get_rotation(t: transformh) -> quath:
    """
    Return the rotational part of a transform.
    """
    ...
 
 @overload
-def transform_get_rotation(t: transformh) -> quath:
+def transform_get_rotation(t: transformd) -> quatd:
    """
    Return the rotational part of a transform.
    """
@@ -3931,14 +3931,14 @@ def transform_get_rotation(t: transform) -> quatf:
    ...
 
 @overload
-def transform_multiply(a: transformd, b: transformd) -> transformd:
+def transform_multiply(a: transformh, b: transformh) -> transformh:
    """
    Multiply two rigid body transformations together.
    """
    ...
 
 @overload
-def transform_multiply(a: transformh, b: transformh) -> transformh:
+def transform_multiply(a: transformd, b: transformd) -> transformd:
    """
    Multiply two rigid body transformations together.
    """
@@ -3973,14 +3973,14 @@ def transform_multiply(a: transform, b: transform) -> transformf:
    ...
 
 @overload
-def transform_point(t: transformd, p: vec3d) -> vec3d:
+def transform_point(t: transformh, p: vec3h) -> vec3h:
    """
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
    """
    ...
 
 @overload
-def transform_point(t: transformh, p: vec3h) -> vec3h:
+def transform_point(t: transformd, p: vec3d) -> vec3d:
    """
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
    """
@@ -4015,7 +4015,7 @@ def transform_point(t: transform, p: vec3) -> vec3f:
    ...
 
 @overload
-def transform_point(m: mat44d, p: vec3d) -> vec3d:
+def transform_point(m: mat44h, p: vec3h) -> vec3h:
    """
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -4024,7 +4024,7 @@ def transform_point(m: mat44d, p: vec3d) -> vec3d:
    ...
 
 @overload
-def transform_point(m: mat44h, p: vec3h) -> vec3h:
+def transform_point(m: mat44d, p: vec3d) -> vec3d:
    """
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -4069,14 +4069,14 @@ def transform_point(m: mat44, p: vec3) -> vec3f:
    ...
 
 @overload
-def transform_vector(t: transformd, v: vec3d) -> vec3d:
+def transform_vector(t: transformh, v: vec3h) -> vec3h:
    """
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
    """
    ...
 
 @overload
-def transform_vector(t: transformh, v: vec3h) -> vec3h:
+def transform_vector(t: transformd, v: vec3d) -> vec3d:
    """
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
    """
@@ -4111,7 +4111,7 @@ def transform_vector(t: transform, v: vec3) -> vec3f:
    ...
 
 @overload
-def transform_vector(m: mat44d, v: vec3d) -> vec3d:
+def transform_vector(m: mat44h, v: vec3h) -> vec3h:
    """
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -4120,7 +4120,7 @@ def transform_vector(m: mat44d, v: vec3d) -> vec3d:
    ...
 
 @overload
-def transform_vector(m: mat44h, v: vec3h) -> vec3h:
+def transform_vector(m: mat44d, v: vec3d) -> vec3d:
    """
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -4165,14 +4165,14 @@ def transform_vector(m: mat44, v: vec3) -> vec3f:
    ...
 
 @overload
-def transform_inverse(t: transformd) -> transformd:
+def transform_inverse(t: transformh) -> transformh:
    """
    Compute the inverse of the transform.
    """
    ...
 
 @overload
-def transform_inverse(t: transformh) -> transformh:
+def transform_inverse(t: transformd) -> transformd:
    """
    Compute the inverse of the transform.
    """
@@ -4193,14 +4193,14 @@ def transform_inverse(t: transform) -> transformf:
    ...
 
 @overload
-def spatial_dot(a: spatial_vectord, b: spatial_vectord) -> float64:
+def spatial_dot(a: spatial_vectorh, b: spatial_vectorh) -> float16:
    """
    Compute the dot product of two 6d screw vectors.
    """
    ...
 
 @overload
-def spatial_dot(a: spatial_vectorh, b: spatial_vectorh) -> float16:
+def spatial_dot(a: spatial_vectord, b: spatial_vectord) -> float64:
    """
    Compute the dot product of two 6d screw vectors.
    """
@@ -4235,14 +4235,14 @@ def spatial_dot(a: spatial_vector, b: spatial_vector) -> float32:
    ...
 
 @overload
-def spatial_cross(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord:
+def spatial_cross(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh:
    """
    Compute the cross-product of two 6d screw vectors.
    """
    ...
 
 @overload
-def spatial_cross(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh:
+def spatial_cross(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord:
    """
    Compute the cross-product of two 6d screw vectors.
    """
@@ -4277,14 +4277,14 @@ def spatial_cross(a: spatial_vector, b: spatial_vector) -> spatial_vectorf:
    ...
 
 @overload
-def spatial_cross_dual(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord:
+def spatial_cross_dual(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh:
    """
    Compute the dual cross-product of two 6d screw vectors.
    """
    ...
 
 @overload
-def spatial_cross_dual(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh:
+def spatial_cross_dual(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord:
    """
    Compute the dual cross-product of two 6d screw vectors.
    """
@@ -4319,14 +4319,14 @@ def spatial_cross_dual(a: spatial_vector, b: spatial_vector) -> spatial_vectorf:
    ...
 
 @overload
-def spatial_top(a: spatial_vectord) -> vec3d:
+def spatial_top(a: spatial_vectorh) -> vec3h:
    """
    Return the top (first) part of a 6d screw vector.
    """
    ...
 
 @overload
-def spatial_top(a: spatial_vectorh) -> vec3h:
+def spatial_top(a: spatial_vectord) -> vec3d:
    """
    Return the top (first) part of a 6d screw vector.
    """
@@ -4347,14 +4347,14 @@ def spatial_top(a: spatial_vector) -> vec3f:
    ...
 
 @overload
-def spatial_bottom(a: spatial_vectord) -> vec3d:
+def spatial_bottom(a: spatial_vectorh) -> vec3h:
    """
    Return the bottom (second) part of a 6d screw vector.
    """
    ...
 
 @overload
-def spatial_bottom(a: spatial_vectorh) -> vec3h:
+def spatial_bottom(a: spatial_vectord) -> vec3d:
    """
    Return the bottom (second) part of a 6d screw vector.
    """
@@ -5161,6 +5161,27 @@ def expect_eq(arg1: transform, arg2: transform):
    ...
 
 @overload
+def expect_eq(arg1: vec2h, arg2: vec2h):
+   """
+   Prints an error to stdout if arg1 and arg2 are not equal
+   """
+   ...
+
+@overload
+def expect_eq(arg1: vec3h, arg2: vec3h):
+   """
+   Prints an error to stdout if arg1 and arg2 are not equal
+   """
+   ...
+
+@overload
+def expect_eq(arg1: vec4h, arg2: vec4h):
+   """
+   Prints an error to stdout if arg1 and arg2 are not equal
+   """
+   ...
+
+@overload
 def expect_eq(arg1: vec2d, arg2: vec2d):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -5197,27 +5218,6 @@ def expect_eq(arg1: vec3ub, arg2: vec3ub):
 
 @overload
 def expect_eq(arg1: vec4ub, arg2: vec4ub):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec2h, arg2: vec2h):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec3h, arg2: vec3h):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec4h, arg2: vec4h):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
    """
@@ -5308,27 +5308,6 @@ def expect_eq(arg1: vec4, arg2: vec4):
    ...
 
 @overload
-def expect_eq(arg1: mat22d, arg2: mat22d):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat33d, arg2: mat33d):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat44d, arg2: mat44d):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
 def expect_eq(arg1: mat22h, arg2: mat22h):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
@@ -5344,6 +5323,27 @@ def expect_eq(arg1: mat33h, arg2: mat33h):
 
 @overload
 def expect_eq(arg1: mat44h, arg2: mat44h):
+   """
+   Prints an error to stdout if arg1 and arg2 are not equal
+   """
+   ...
+
+@overload
+def expect_eq(arg1: mat22d, arg2: mat22d):
+   """
+   Prints an error to stdout if arg1 and arg2 are not equal
+   """
+   ...
+
+@overload
+def expect_eq(arg1: mat33d, arg2: mat33d):
+   """
+   Prints an error to stdout if arg1 and arg2 are not equal
+   """
+   ...
+
+@overload
+def expect_eq(arg1: mat44d, arg2: mat44d):
    """
    Prints an error to stdout if arg1 and arg2 are not equal
    """
@@ -5434,6 +5434,27 @@ def expect_eq(arg1: mat44, arg2: mat44):
    ...
 
 @overload
+def expect_neq(arg1: vec2h, arg2: vec2h):
+   """
+   Prints an error to stdout if arg1 and arg2 are equal
+   """
+   ...
+
+@overload
+def expect_neq(arg1: vec3h, arg2: vec3h):
+   """
+   Prints an error to stdout if arg1 and arg2 are equal
+   """
+   ...
+
+@overload
+def expect_neq(arg1: vec4h, arg2: vec4h):
+   """
+   Prints an error to stdout if arg1 and arg2 are equal
+   """
+   ...
+
+@overload
 def expect_neq(arg1: vec2d, arg2: vec2d):
    """
    Prints an error to stdout if arg1 and arg2 are equal
@@ -5470,27 +5491,6 @@ def expect_neq(arg1: vec3ub, arg2: vec3ub):
 
 @overload
 def expect_neq(arg1: vec4ub, arg2: vec4ub):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec2h, arg2: vec2h):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec3h, arg2: vec3h):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec4h, arg2: vec4h):
    """
    Prints an error to stdout if arg1 and arg2 are equal
    """
@@ -5581,27 +5581,6 @@ def expect_neq(arg1: vec4, arg2: vec4):
    ...
 
 @overload
-def expect_neq(arg1: mat22d, arg2: mat22d):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat33d, arg2: mat33d):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat44d, arg2: mat44d):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
 def expect_neq(arg1: mat22h, arg2: mat22h):
    """
    Prints an error to stdout if arg1 and arg2 are equal
@@ -5617,6 +5596,27 @@ def expect_neq(arg1: mat33h, arg2: mat33h):
 
 @overload
 def expect_neq(arg1: mat44h, arg2: mat44h):
+   """
+   Prints an error to stdout if arg1 and arg2 are equal
+   """
+   ...
+
+@overload
+def expect_neq(arg1: mat22d, arg2: mat22d):
+   """
+   Prints an error to stdout if arg1 and arg2 are equal
+   """
+   ...
+
+@overload
+def expect_neq(arg1: mat33d, arg2: mat33d):
+   """
+   Prints an error to stdout if arg1 and arg2 are equal
+   """
+   ...
+
+@overload
+def expect_neq(arg1: mat44d, arg2: mat44d):
    """
    Prints an error to stdout if arg1 and arg2 are equal
    """
@@ -5707,14 +5707,14 @@ def expect_neq(arg1: mat44, arg2: mat44):
    ...
 
 @overload
-def lerp(a: float64, b: float64, t: float64) -> float64:
+def lerp(a: float16, b: float16, t: float16) -> float16:
    """
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """
    ...
 
 @overload
-def lerp(a: float16, b: float16, t: float16) -> float16:
+def lerp(a: float64, b: float64, t: float64) -> float64:
    """
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """
@@ -6008,14 +6008,14 @@ def lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix:
    ...
 
 @overload
-def smoothstep(edge0: float64, edge1: float64, x: float64) -> float64:
+def smoothstep(edge0: float16, edge1: float16, x: float16) -> float16:
    """
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
    """
    ...
 
 @overload
-def smoothstep(edge0: float16, edge1: float16, x: float16) -> float16:
+def smoothstep(edge0: float64, edge1: float64, x: float64) -> float64:
    """
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
    """
@@ -6029,14 +6029,14 @@ def smoothstep(edge0: float32, edge1: float32, x: float32) -> float32:
    ...
 
 @overload
-def expect_near(arg1: float64, arg2: float64, tolerance: float64):
+def expect_near(arg1: float16, arg2: float16, tolerance: float16):
    """
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
    """
    ...
 
 @overload
-def expect_near(arg1: float16, arg2: float16, tolerance: float16):
+def expect_near(arg1: float64, arg2: float64, tolerance: float64):
    """
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
    """
@@ -6057,49 +6057,7 @@ def expect_near(arg1: vec3, arg2: vec3, tolerance: float32):
    ...
 
 @overload
-def lower_bound(arr: array[Scalar], value: float64) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: float16) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: int64) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: uint32) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
 def lower_bound(arr: array[Scalar], value: int32) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: uint64) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: int16) -> int:
    """
    Search a sorted array for the closest element greater than or equal to value.
    """
@@ -6113,7 +6071,49 @@ def lower_bound(arr: array[Scalar], value: int8) -> int:
    ...
 
 @overload
+def lower_bound(arr: array[Scalar], value: float64) -> int:
+   """
+   Search a sorted array for the closest element greater than or equal to value.
+   """
+   ...
+
+@overload
+def lower_bound(arr: array[Scalar], value: int16) -> int:
+   """
+   Search a sorted array for the closest element greater than or equal to value.
+   """
+   ...
+
+@overload
+def lower_bound(arr: array[Scalar], value: uint32) -> int:
+   """
+   Search a sorted array for the closest element greater than or equal to value.
+   """
+   ...
+
+@overload
+def lower_bound(arr: array[Scalar], value: float16) -> int:
+   """
+   Search a sorted array for the closest element greater than or equal to value.
+   """
+   ...
+
+@overload
+def lower_bound(arr: array[Scalar], value: uint64) -> int:
+   """
+   Search a sorted array for the closest element greater than or equal to value.
+   """
+   ...
+
+@overload
 def lower_bound(arr: array[Scalar], value: uint16) -> int:
+   """
+   Search a sorted array for the closest element greater than or equal to value.
+   """
+   ...
+
+@overload
+def lower_bound(arr: array[Scalar], value: int64) -> int:
    """
    Search a sorted array for the closest element greater than or equal to value.
    """
@@ -6134,49 +6134,7 @@ def lower_bound(arr: array[Scalar], value: float32) -> int:
    ...
 
 @overload
-def add(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
 def add(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: int16, y: int16) -> int16:
    """
 
    """
@@ -6190,7 +6148,49 @@ def add(x: int8, y: int8) -> int8:
    ...
 
 @overload
+def add(x: float64, y: float64) -> float64:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: int16, y: int16) -> int16:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: uint32, y: uint32) -> uint32:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: float16, y: float16) -> float16:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: uint64, y: uint64) -> uint64:
+   """
+
+   """
+   ...
+
+@overload
 def add(x: uint16, y: uint16) -> uint16:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: int64, y: int64) -> int64:
    """
 
    """
@@ -6205,6 +6205,27 @@ def add(x: uint8, y: uint8) -> uint8:
 
 @overload
 def add(x: float32, y: float32) -> float32:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: vec2h, y: vec2h) -> vec2h:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: vec3h, y: vec3h) -> vec3h:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: vec4h, y: vec4h) -> vec4h:
    """
 
    """
@@ -6247,27 +6268,6 @@ def add(x: vec3ub, y: vec3ub) -> vec3ub:
 
 @overload
 def add(x: vec4ub, y: vec4ub) -> vec4ub:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec2h, y: vec2h) -> vec2h:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec3h, y: vec3h) -> vec3h:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec4h, y: vec4h) -> vec4h:
    """
 
    """
@@ -6358,14 +6358,14 @@ def add(x: vec4, y: vec4) -> vec4f:
    ...
 
 @overload
-def add(x: quatd, y: quatd) -> quatd:
+def add(x: quath, y: quath) -> quath:
    """
 
    """
    ...
 
 @overload
-def add(x: quath, y: quath) -> quath:
+def add(x: quatd, y: quatd) -> quatd:
    """
 
    """
@@ -6400,27 +6400,6 @@ def add(x: quat, y: quat) -> quatf:
    ...
 
 @overload
-def add(x: mat22d, y: mat22d) -> mat22d:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat33d, y: mat33d) -> mat33d:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat44d, y: mat44d) -> mat44d:
-   """
-
-   """
-   ...
-
-@overload
 def add(x: mat22h, y: mat22h) -> mat22h:
    """
 
@@ -6436,6 +6415,27 @@ def add(x: mat33h, y: mat33h) -> mat33h:
 
 @overload
 def add(x: mat44h, y: mat44h) -> mat44h:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: mat22d, y: mat22d) -> mat22d:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: mat33d, y: mat33d) -> mat33d:
+   """
+
+   """
+   ...
+
+@overload
+def add(x: mat44d, y: mat44d) -> mat44d:
    """
 
    """
@@ -6526,14 +6526,14 @@ def add(x: mat44, y: mat44) -> mat44f:
    ...
 
 @overload
-def add(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord:
+def add(x: spatial_vectorh, y: spatial_vectorh) -> spatial_vectorh:
    """
 
    """
    ...
 
 @overload
-def add(x: spatial_vectorh, y: spatial_vectorh) -> spatial_vectorh:
+def add(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord:
    """
 
    """
@@ -6568,14 +6568,14 @@ def add(x: spatial_vector, y: spatial_vector) -> spatial_vectorf:
    ...
 
 @overload
-def add(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd:
+def add(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh:
    """
 
    """
    ...
 
 @overload
-def add(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh:
+def add(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd:
    """
 
    """
@@ -6610,14 +6610,14 @@ def add(x: spatial_matrix, y: spatial_matrix) -> spatial_matrixf:
    ...
 
 @overload
-def add(x: transformd, y: transformd) -> transformd:
+def add(x: transformh, y: transformh) -> transformh:
    """
 
    """
    ...
 
 @overload
-def add(x: transformh, y: transformh) -> transformh:
+def add(x: transformd, y: transformd) -> transformd:
    """
 
    """
@@ -6652,49 +6652,7 @@ def add(x: transform, y: transform) -> transformf:
    ...
 
 @overload
-def sub(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
 def sub(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: int16, y: int16) -> int16:
    """
 
    """
@@ -6708,7 +6666,49 @@ def sub(x: int8, y: int8) -> int8:
    ...
 
 @overload
+def sub(x: float64, y: float64) -> float64:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: int16, y: int16) -> int16:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: uint32, y: uint32) -> uint32:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: float16, y: float16) -> float16:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: uint64, y: uint64) -> uint64:
+   """
+
+   """
+   ...
+
+@overload
 def sub(x: uint16, y: uint16) -> uint16:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: int64, y: int64) -> int64:
    """
 
    """
@@ -6723,6 +6723,27 @@ def sub(x: uint8, y: uint8) -> uint8:
 
 @overload
 def sub(x: float32, y: float32) -> float32:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: vec2h, y: vec2h) -> vec2h:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: vec3h, y: vec3h) -> vec3h:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: vec4h, y: vec4h) -> vec4h:
    """
 
    """
@@ -6765,27 +6786,6 @@ def sub(x: vec3ub, y: vec3ub) -> vec3ub:
 
 @overload
 def sub(x: vec4ub, y: vec4ub) -> vec4ub:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec2h, y: vec2h) -> vec2h:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec3h, y: vec3h) -> vec3h:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec4h, y: vec4h) -> vec4h:
    """
 
    """
@@ -6876,27 +6876,6 @@ def sub(x: vec4, y: vec4) -> vec4f:
    ...
 
 @overload
-def sub(x: mat22d, y: mat22d) -> mat22d:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat33d, y: mat33d) -> mat33d:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat44d, y: mat44d) -> mat44d:
-   """
-
-   """
-   ...
-
-@overload
 def sub(x: mat22h, y: mat22h) -> mat22h:
    """
 
@@ -6912,6 +6891,27 @@ def sub(x: mat33h, y: mat33h) -> mat33h:
 
 @overload
 def sub(x: mat44h, y: mat44h) -> mat44h:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: mat22d, y: mat22d) -> mat22d:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: mat33d, y: mat33d) -> mat33d:
+   """
+
+   """
+   ...
+
+@overload
+def sub(x: mat44d, y: mat44d) -> mat44d:
    """
 
    """
@@ -7002,14 +7002,14 @@ def sub(x: mat44, y: mat44) -> mat44f:
    ...
 
 @overload
-def sub(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord:
+def sub(x: spatial_vectorh, y: spatial_vectorh) -> spatial_vectorh:
    """
 
    """
    ...
 
 @overload
-def sub(x: spatial_vectorh, y: spatial_vectorh) -> spatial_vectorh:
+def sub(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord:
    """
 
    """
@@ -7044,14 +7044,14 @@ def sub(x: spatial_vector, y: spatial_vector) -> spatial_vectorf:
    ...
 
 @overload
-def sub(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd:
+def sub(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh:
    """
 
    """
    ...
 
 @overload
-def sub(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh:
+def sub(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd:
    """
 
    """
@@ -7086,14 +7086,14 @@ def sub(x: spatial_matrix, y: spatial_matrix) -> spatial_matrixf:
    ...
 
 @overload
-def sub(x: quatd, y: quatd) -> quatd:
+def sub(x: quath, y: quath) -> quath:
    """
 
    """
    ...
 
 @overload
-def sub(x: quath, y: quath) -> quath:
+def sub(x: quatd, y: quatd) -> quatd:
    """
 
    """
@@ -7128,14 +7128,14 @@ def sub(x: quat, y: quat) -> quatf:
    ...
 
 @overload
-def sub(x: transformd, y: transformd) -> transformd:
+def sub(x: transformh, y: transformh) -> transformh:
    """
 
    """
    ...
 
 @overload
-def sub(x: transformh, y: transformh) -> transformh:
+def sub(x: transformd, y: transformd) -> transformd:
    """
 
    """
@@ -7170,49 +7170,7 @@ def sub(x: transform, y: transform) -> transformf:
    ...
 
 @overload
-def mul(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
 def mul(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: int16, y: int16) -> int16:
    """
 
    """
@@ -7226,7 +7184,49 @@ def mul(x: int8, y: int8) -> int8:
    ...
 
 @overload
+def mul(x: float64, y: float64) -> float64:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: int16, y: int16) -> int16:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: uint32, y: uint32) -> uint32:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float16, y: float16) -> float16:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: uint64, y: uint64) -> uint64:
+   """
+
+   """
+   ...
+
+@overload
 def mul(x: uint16, y: uint16) -> uint16:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: int64, y: int64) -> int64:
    """
 
    """
@@ -7241,6 +7241,27 @@ def mul(x: uint8, y: uint8) -> uint8:
 
 @overload
 def mul(x: float32, y: float32) -> float32:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: vec2h, y: float16) -> vec2h:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: vec3h, y: float16) -> vec3h:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: vec4h, y: float16) -> vec4h:
    """
 
    """
@@ -7289,27 +7310,6 @@ def mul(x: vec4ub, y: uint8) -> vec4ub:
    ...
 
 @overload
-def mul(x: vec2h, y: float16) -> vec2h:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec3h, y: float16) -> vec3h:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec4h, y: float16) -> vec4h:
-   """
-
-   """
-   ...
-
-@overload
 def mul(x: vec2f, y: float32) -> vec2f:
    """
 
@@ -7346,6 +7346,27 @@ def mul(x: vec4f, y: float32) -> vec4f:
 
 @overload
 def mul(x: vec4, y: float32) -> vec4f:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float16, y: vec2h) -> vec2h:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float16, y: vec3h) -> vec3h:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float16, y: vec4h) -> vec4h:
    """
 
    """
@@ -7394,27 +7415,6 @@ def mul(x: uint8, y: vec4ub) -> vec4ub:
    ...
 
 @overload
-def mul(x: float16, y: vec2h) -> vec2h:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: vec3h) -> vec3h:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: vec4h) -> vec4h:
-   """
-
-   """
-   ...
-
-@overload
 def mul(x: float32, y: vec2f) -> vec2f:
    """
 
@@ -7457,14 +7457,14 @@ def mul(x: float32, y: vec4) -> vec4f:
    ...
 
 @overload
-def mul(x: quatd, y: float64) -> quatd:
+def mul(x: quath, y: float16) -> quath:
    """
 
    """
    ...
 
 @overload
-def mul(x: quath, y: float16) -> quath:
+def mul(x: quatd, y: float64) -> quatd:
    """
 
    """
@@ -7485,14 +7485,14 @@ def mul(x: quat, y: float32) -> quatf:
    ...
 
 @overload
-def mul(x: float64, y: quatd) -> quatd:
+def mul(x: float16, y: quath) -> quath:
    """
 
    """
    ...
 
 @overload
-def mul(x: float16, y: quath) -> quath:
+def mul(x: float64, y: quatd) -> quatd:
    """
 
    """
@@ -7513,14 +7513,14 @@ def mul(x: float32, y: quat) -> quatf:
    ...
 
 @overload
-def mul(x: quatd, y: quatd) -> quatd:
+def mul(x: quath, y: quath) -> quath:
    """
 
    """
    ...
 
 @overload
-def mul(x: quath, y: quath) -> quath:
+def mul(x: quatd, y: quatd) -> quatd:
    """
 
    """
@@ -7555,27 +7555,6 @@ def mul(x: quat, y: quat) -> quatf:
    ...
 
 @overload
-def mul(x: float64, y: mat22d) -> mat22d:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: mat33d) -> mat33d:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: mat44d) -> mat44d:
-   """
-
-   """
-   ...
-
-@overload
 def mul(x: float16, y: mat22h) -> mat22h:
    """
 
@@ -7591,6 +7570,27 @@ def mul(x: float16, y: mat33h) -> mat33h:
 
 @overload
 def mul(x: float16, y: mat44h) -> mat44h:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float64, y: mat22d) -> mat22d:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float64, y: mat33d) -> mat33d:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: float64, y: mat44d) -> mat44d:
    """
 
    """
@@ -7639,27 +7639,6 @@ def mul(x: float32, y: mat44) -> mat44f:
    ...
 
 @overload
-def mul(x: mat22d, y: float64) -> mat22d:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat33d, y: float64) -> mat33d:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat44d, y: float64) -> mat44d:
-   """
-
-   """
-   ...
-
-@overload
 def mul(x: mat22h, y: float16) -> mat22h:
    """
 
@@ -7675,6 +7654,27 @@ def mul(x: mat33h, y: float16) -> mat33h:
 
 @overload
 def mul(x: mat44h, y: float16) -> mat44h:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat22d, y: float64) -> mat22d:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat33d, y: float64) -> mat33d:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat44d, y: float64) -> mat44d:
    """
 
    """
@@ -7723,27 +7723,6 @@ def mul(x: mat44, y: float32) -> mat44f:
    ...
 
 @overload
-def mul(x: mat22d, y: vec2d) -> vec2d:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat33d, y: vec3d) -> vec3d:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat44d, y: vec4d) -> vec4d:
-   """
-
-   """
-   ...
-
-@overload
 def mul(x: mat22h, y: vec2h) -> vec2h:
    """
 
@@ -7759,6 +7738,27 @@ def mul(x: mat33h, y: vec3h) -> vec3h:
 
 @overload
 def mul(x: mat44h, y: vec4h) -> vec4h:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat22d, y: vec2d) -> vec2d:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat33d, y: vec3d) -> vec3d:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat44d, y: vec4d) -> vec4d:
    """
 
    """
@@ -7849,27 +7849,6 @@ def mul(x: mat44, y: vec4) -> vec4f:
    ...
 
 @overload
-def mul(x: mat22d, y: mat22d) -> mat22d:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat33d, y: mat33d) -> mat33d:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat44d, y: mat44d) -> mat44d:
-   """
-
-   """
-   ...
-
-@overload
 def mul(x: mat22h, y: mat22h) -> mat22h:
    """
 
@@ -7885,6 +7864,27 @@ def mul(x: mat33h, y: mat33h) -> mat33h:
 
 @overload
 def mul(x: mat44h, y: mat44h) -> mat44h:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat22d, y: mat22d) -> mat22d:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat33d, y: mat33d) -> mat33d:
+   """
+
+   """
+   ...
+
+@overload
+def mul(x: mat44d, y: mat44d) -> mat44d:
    """
 
    """
@@ -7975,14 +7975,14 @@ def mul(x: mat44, y: mat44) -> mat44f:
    ...
 
 @overload
-def mul(x: spatial_vectord, y: float64) -> spatial_vectord:
+def mul(x: spatial_vectorh, y: float16) -> spatial_vectorh:
    """
 
    """
    ...
 
 @overload
-def mul(x: spatial_vectorh, y: float16) -> spatial_vectorh:
+def mul(x: spatial_vectord, y: float64) -> spatial_vectord:
    """
 
    """
@@ -8003,14 +8003,14 @@ def mul(x: spatial_vector, y: float32) -> spatial_vectorf:
    ...
 
 @overload
-def mul(x: float64, y: spatial_vectord) -> spatial_vectord:
+def mul(x: float16, y: spatial_vectorh) -> spatial_vectorh:
    """
 
    """
    ...
 
 @overload
-def mul(x: float16, y: spatial_vectorh) -> spatial_vectorh:
+def mul(x: float64, y: spatial_vectord) -> spatial_vectord:
    """
 
    """
@@ -8031,14 +8031,14 @@ def mul(x: float32, y: spatial_vector) -> spatial_vectorf:
    ...
 
 @overload
-def mul(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd:
+def mul(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh:
    """
 
    """
    ...
 
 @overload
-def mul(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh:
+def mul(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd:
    """
 
    """
@@ -8073,14 +8073,14 @@ def mul(x: spatial_matrix, y: spatial_matrix) -> spatial_matrixf:
    ...
 
 @overload
-def mul(x: spatial_matrixd, y: spatial_vectord) -> spatial_vectord:
+def mul(x: spatial_matrixh, y: spatial_vectorh) -> spatial_vectorh:
    """
 
    """
    ...
 
 @overload
-def mul(x: spatial_matrixh, y: spatial_vectorh) -> spatial_vectorh:
+def mul(x: spatial_matrixd, y: spatial_vectord) -> spatial_vectord:
    """
 
    """
@@ -8115,14 +8115,14 @@ def mul(x: spatial_matrix, y: spatial_vector) -> spatial_vectorf:
    ...
 
 @overload
-def mul(x: spatial_matrixd, y: float64) -> spatial_matrixd:
+def mul(x: spatial_matrixh, y: float16) -> spatial_matrixh:
    """
 
    """
    ...
 
 @overload
-def mul(x: spatial_matrixh, y: float16) -> spatial_matrixh:
+def mul(x: spatial_matrixd, y: float64) -> spatial_matrixd:
    """
 
    """
@@ -8143,14 +8143,14 @@ def mul(x: spatial_matrix, y: float32) -> spatial_matrixf:
    ...
 
 @overload
-def mul(x: float64, y: spatial_matrixd) -> spatial_matrixd:
+def mul(x: float16, y: spatial_matrixh) -> spatial_matrixh:
    """
 
    """
    ...
 
 @overload
-def mul(x: float16, y: spatial_matrixh) -> spatial_matrixh:
+def mul(x: float64, y: spatial_matrixd) -> spatial_matrixd:
    """
 
    """
@@ -8171,14 +8171,14 @@ def mul(x: float32, y: spatial_matrix) -> spatial_matrixf:
    ...
 
 @overload
-def mul(x: transformd, y: transformd) -> transformd:
+def mul(x: transformh, y: transformh) -> transformh:
    """
 
    """
    ...
 
 @overload
-def mul(x: transformh, y: transformh) -> transformh:
+def mul(x: transformd, y: transformd) -> transformd:
    """
 
    """
@@ -8213,14 +8213,14 @@ def mul(x: transform, y: transform) -> transformf:
    ...
 
 @overload
-def mul(x: float64, y: transformd) -> transformd:
+def mul(x: float16, y: transformh) -> transformh:
    """
 
    """
    ...
 
 @overload
-def mul(x: float16, y: transformh) -> transformh:
+def mul(x: float64, y: transformd) -> transformd:
    """
 
    """
@@ -8241,14 +8241,14 @@ def mul(x: float32, y: transform) -> transformf:
    ...
 
 @overload
-def mul(x: transformd, y: float64) -> transformd:
+def mul(x: transformh, y: float16) -> transformh:
    """
 
    """
    ...
 
 @overload
-def mul(x: transformh, y: float16) -> transformh:
+def mul(x: transformd, y: float64) -> transformd:
    """
 
    """
@@ -8269,49 +8269,7 @@ def mul(x: transform, y: float32) -> transformf:
    ...
 
 @overload
-def mod(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
 def mod(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: int16, y: int16) -> int16:
    """
 
    """
@@ -8325,7 +8283,49 @@ def mod(x: int8, y: int8) -> int8:
    ...
 
 @overload
+def mod(x: float64, y: float64) -> float64:
+   """
+
+   """
+   ...
+
+@overload
+def mod(x: int16, y: int16) -> int16:
+   """
+
+   """
+   ...
+
+@overload
+def mod(x: uint32, y: uint32) -> uint32:
+   """
+
+   """
+   ...
+
+@overload
+def mod(x: float16, y: float16) -> float16:
+   """
+
+   """
+   ...
+
+@overload
+def mod(x: uint64, y: uint64) -> uint64:
+   """
+
+   """
+   ...
+
+@overload
 def mod(x: uint16, y: uint16) -> uint16:
+   """
+
+   """
+   ...
+
+@overload
+def mod(x: int64, y: int64) -> int64:
    """
 
    """
@@ -8346,49 +8346,7 @@ def mod(x: float32, y: float32) -> float32:
    ...
 
 @overload
-def div(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
 def div(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: int16, y: int16) -> int16:
    """
 
    """
@@ -8402,7 +8360,49 @@ def div(x: int8, y: int8) -> int8:
    ...
 
 @overload
+def div(x: float64, y: float64) -> float64:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: int16, y: int16) -> int16:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: uint32, y: uint32) -> uint32:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: float16, y: float16) -> float16:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: uint64, y: uint64) -> uint64:
+   """
+
+   """
+   ...
+
+@overload
 def div(x: uint16, y: uint16) -> uint16:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: int64, y: int64) -> int64:
    """
 
    """
@@ -8417,6 +8417,27 @@ def div(x: uint8, y: uint8) -> uint8:
 
 @overload
 def div(x: float32, y: float32) -> float32:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: vec2h, y: float16) -> vec2h:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: vec3h, y: float16) -> vec3h:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: vec4h, y: float16) -> vec4h:
    """
 
    """
@@ -8465,27 +8486,6 @@ def div(x: vec4ub, y: uint8) -> vec4ub:
    ...
 
 @overload
-def div(x: vec2h, y: float16) -> vec2h:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec3h, y: float16) -> vec3h:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec4h, y: float16) -> vec4h:
-   """
-
-   """
-   ...
-
-@overload
 def div(x: vec2f, y: float32) -> vec2f:
    """
 
@@ -8528,27 +8528,6 @@ def div(x: vec4, y: float32) -> vec4f:
    ...
 
 @overload
-def div(x: mat22d, y: float64) -> mat22d:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat33d, y: float64) -> mat33d:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat44d, y: float64) -> mat44d:
-   """
-
-   """
-   ...
-
-@overload
 def div(x: mat22h, y: float16) -> mat22h:
    """
 
@@ -8564,6 +8543,27 @@ def div(x: mat33h, y: float16) -> mat33h:
 
 @overload
 def div(x: mat44h, y: float16) -> mat44h:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: mat22d, y: float64) -> mat22d:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: mat33d, y: float64) -> mat33d:
+   """
+
+   """
+   ...
+
+@overload
+def div(x: mat44d, y: float64) -> mat44d:
    """
 
    """
@@ -8612,14 +8612,14 @@ def div(x: mat44, y: float32) -> mat44f:
    ...
 
 @overload
-def div(x: quatd, y: float64) -> quatd:
+def div(x: quath, y: float16) -> quath:
    """
 
    """
    ...
 
 @overload
-def div(x: quath, y: float16) -> quath:
+def div(x: quatd, y: float64) -> quatd:
    """
 
    """
@@ -8640,49 +8640,7 @@ def div(x: quat, y: float32) -> quatf:
    ...
 
 @overload
-def floordiv(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
 def floordiv(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: int16, y: int16) -> int16:
    """
 
    """
@@ -8696,7 +8654,49 @@ def floordiv(x: int8, y: int8) -> int8:
    ...
 
 @overload
+def floordiv(x: float64, y: float64) -> float64:
+   """
+
+   """
+   ...
+
+@overload
+def floordiv(x: int16, y: int16) -> int16:
+   """
+
+   """
+   ...
+
+@overload
+def floordiv(x: uint32, y: uint32) -> uint32:
+   """
+
+   """
+   ...
+
+@overload
+def floordiv(x: float16, y: float16) -> float16:
+   """
+
+   """
+   ...
+
+@overload
+def floordiv(x: uint64, y: uint64) -> uint64:
+   """
+
+   """
+   ...
+
+@overload
 def floordiv(x: uint16, y: uint16) -> uint16:
+   """
+
+   """
+   ...
+
+@overload
+def floordiv(x: int64, y: int64) -> int64:
    """
 
    """
@@ -8717,49 +8717,7 @@ def floordiv(x: float32, y: float32) -> float32:
    ...
 
 @overload
-def neg(x: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
 def neg(x: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: int16) -> int16:
    """
 
    """
@@ -8773,7 +8731,49 @@ def neg(x: int8) -> int8:
    ...
 
 @overload
+def neg(x: float64) -> float64:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: int16) -> int16:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: uint32) -> uint32:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: float16) -> float16:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: uint64) -> uint64:
+   """
+
+   """
+   ...
+
+@overload
 def neg(x: uint16) -> uint16:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: int64) -> int64:
    """
 
    """
@@ -8788,6 +8788,27 @@ def neg(x: uint8) -> uint8:
 
 @overload
 def neg(x: float32) -> float32:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: vec2h) -> vec2h:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: vec3h) -> vec3h:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: vec4h) -> vec4h:
    """
 
    """
@@ -8836,27 +8857,6 @@ def neg(x: vec4ub) -> vec4ub:
    ...
 
 @overload
-def neg(x: vec2h) -> vec2h:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: vec3h) -> vec3h:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: vec4h) -> vec4h:
-   """
-
-   """
-   ...
-
-@overload
 def neg(x: vec2f) -> vec2f:
    """
 
@@ -8899,14 +8899,14 @@ def neg(x: vec4) -> vec4f:
    ...
 
 @overload
-def neg(x: quatd) -> quatd:
+def neg(x: quath) -> quath:
    """
 
    """
    ...
 
 @overload
-def neg(x: quath) -> quath:
+def neg(x: quatd) -> quatd:
    """
 
    """
@@ -8921,27 +8921,6 @@ def neg(x: quatf) -> quatf:
 
 @overload
 def neg(x: quat) -> quatf:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: mat22d) -> mat22d:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: mat33d) -> mat33d:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: mat44d) -> mat44d:
    """
 
    """
@@ -8963,6 +8942,27 @@ def neg(x: mat33h) -> mat33h:
 
 @overload
 def neg(x: mat44h) -> mat44h:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: mat22d) -> mat22d:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: mat33d) -> mat33d:
+   """
+
+   """
+   ...
+
+@overload
+def neg(x: mat44d) -> mat44d:
    """
 
    """

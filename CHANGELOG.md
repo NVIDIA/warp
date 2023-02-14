@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [0.7.1] - 2023-02-14
+
+- Disabling some slow tests for Kit
+- Make unit tests run on first GPU only by default
+
 ## [0.7.0] - 2023-02-13
 
 - Add support for arbitrary length / type vector and matrices e.g.: `wp.vec(length=7, dtype=wp.float16)`, see `wp.vec()`, and `wp.mat()`
