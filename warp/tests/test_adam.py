@@ -136,7 +136,7 @@ def test_adam_solve_two_inputs(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestArray(parent):
         pass

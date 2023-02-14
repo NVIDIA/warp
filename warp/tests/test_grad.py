@@ -423,7 +423,7 @@ def test_3d_math_grad(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestGrad(parent):
         pass

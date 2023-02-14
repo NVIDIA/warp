@@ -33,7 +33,7 @@ def test_import_func():
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestImport(parent):
         pass

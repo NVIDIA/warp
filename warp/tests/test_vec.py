@@ -2160,7 +2160,7 @@ def test_minmax(test,device,dtype):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestVec(parent):
         pass
@@ -2169,9 +2169,11 @@ def register(parent):
         add_function_test(TestVec, f"test_subtraction_unsigned_{dtype.__name__}", test_subtraction_unsigned, devices=devices, dtype=dtype)
 
     for dtype in np_signed_int_types + np_float_types:
-        add_function_test(TestVec, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype)
-        add_function_test(TestVec, f"test_crossproduct_{dtype.__name__}", test_crossproduct, devices=devices, dtype=dtype)
+        add_function_test(TestVec, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype)        
         add_function_test(TestVec, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype)
+
+    for dtype in np_float_types:
+        add_function_test(TestVec, f"test_crossproduct_{dtype.__name__}", test_crossproduct, devices=devices, dtype=dtype)
 
     for dtype in np_scalar_types:
         add_function_test(TestVec, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)

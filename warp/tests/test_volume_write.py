@@ -142,10 +142,11 @@ def test_volume_tile_readback_v(volume: wp.uint64,
         kk = tk + r % 8
         values[tid*512 + r] = wp.volume_lookup_v(volume, ii, jj, kk)
 
-devices = wp.get_devices()
 rng = np.random.default_rng(101215)
 
 def register(parent):
+
+    devices = get_test_devices()
 
     class TestVolumes(parent):
 

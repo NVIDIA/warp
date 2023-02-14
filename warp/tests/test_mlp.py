@@ -267,7 +267,7 @@ def profile_mlp_warp(device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestMLP(parent):
         pass

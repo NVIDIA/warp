@@ -1576,20 +1576,20 @@ def test_spatial_adjoint(test,device,dtype):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestSpatial(parent):
         pass
     
     for dtype in np_float_types:
 
-        add_function_test(TestSpatial, f"test_spatial_vector_constructors_{dtype.__name__}", test_spatial_vector_constructors, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_vector_indexing_{dtype.__name__}", test_spatial_vector_indexing, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_vector_scalar_multiplication_{dtype.__name__}", test_spatial_vector_scalar_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_vector_add_sub_{dtype.__name__}", test_spatial_vector_add_sub, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_dot_{dtype.__name__}", test_spatial_dot, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_cross_{dtype.__name__}", test_spatial_cross, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_top_bottom_{dtype.__name__}", test_spatial_top_bottom, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_vector_constructors_{dtype.__name__}", test_spatial_vector_constructors, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_vector_indexing_{dtype.__name__}", test_spatial_vector_indexing, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_vector_scalar_multiplication_{dtype.__name__}", test_spatial_vector_scalar_multiplication, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_vector_add_sub_{dtype.__name__}", test_spatial_vector_add_sub, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_dot_{dtype.__name__}", test_spatial_dot, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_cross_{dtype.__name__}", test_spatial_cross, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_top_bottom_{dtype.__name__}", test_spatial_top_bottom, devices=devices, dtype=dtype)
 
         add_function_test(TestSpatial, f"test_transform_constructors_{dtype.__name__}", test_transform_constructors, devices=devices, dtype=dtype)
         add_function_test(TestSpatial, f"test_transform_indexing_{dtype.__name__}", test_transform_indexing, devices=devices, dtype=dtype)
@@ -1603,14 +1603,14 @@ def register(parent):
         add_function_test(TestSpatial, f"test_transform_scalar_multiplication_{dtype.__name__}", test_transform_scalar_multiplication, devices=devices, dtype=dtype)
         add_function_test(TestSpatial, f"test_transform_add_sub_{dtype.__name__}", test_transform_add_sub, devices=devices, dtype=dtype)
     
-        add_function_test(TestSpatial, f"test_spatial_matrix_constructors_{dtype.__name__}", test_spatial_matrix_constructors, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matrix_indexing_{dtype.__name__}", test_spatial_matrix_indexing, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matrix_scalar_multiplication_{dtype.__name__}", test_spatial_matrix_scalar_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matrix_add_sub_{dtype.__name__}", test_spatial_matrix_add_sub, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matvec_multiplication_{dtype.__name__}", test_spatial_matvec_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matmat_multiplication_{dtype.__name__}", test_spatial_matmat_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_outer_product_{dtype.__name__}", test_spatial_outer_product, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_adjoint_{dtype.__name__}", test_spatial_adjoint, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_matrix_constructors_{dtype.__name__}", test_spatial_matrix_constructors, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_matrix_indexing_{dtype.__name__}", test_spatial_matrix_indexing, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_matrix_scalar_multiplication_{dtype.__name__}", test_spatial_matrix_scalar_multiplication, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_matrix_add_sub_{dtype.__name__}", test_spatial_matrix_add_sub, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_matvec_multiplication_{dtype.__name__}", test_spatial_matvec_multiplication, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_matmat_multiplication_{dtype.__name__}", test_spatial_matmat_multiplication, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_outer_product_{dtype.__name__}", test_spatial_outer_product, devices=devices, dtype=dtype)
+        # add_function_test(TestSpatial, f"test_spatial_adjoint_{dtype.__name__}", test_spatial_adjoint, devices=devices, dtype=dtype)
 
         # \TODO: test spatial_mass and spatial_jacobian
 

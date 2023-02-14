@@ -69,9 +69,9 @@ def test_f64(test, device):
 
 
 def register(parent):
-
+    
     # Implementation currently only available on GPU
-    devices = [d for d in wp.get_devices() if 'cuda' in d.alias]
+    devices = [d for d in get_test_devices() if 'cuda' in d.alias]
 
     class TestMatmul(parent):
         pass

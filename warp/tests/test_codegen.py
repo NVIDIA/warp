@@ -268,7 +268,7 @@ def register(parent):
     class TestCodeGen(parent):
         pass
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     add_kernel_test(TestCodeGen, name="test_inplace", kernel=test_inplace, dim=1, devices=devices)
     add_kernel_test(TestCodeGen, name="test_rename", kernel=test_rename, dim=1, devices=devices)

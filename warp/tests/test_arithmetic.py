@@ -976,7 +976,7 @@ def test_clamp(test, device, dtype):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestArithmetic(parent):
         pass

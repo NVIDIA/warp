@@ -131,7 +131,7 @@ def test_hashgrid_query(test, device):
         
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestHashGrid(parent):
         pass

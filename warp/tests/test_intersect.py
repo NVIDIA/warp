@@ -39,7 +39,7 @@ def test_intersect_tri(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestIntersect(parent):
         pass

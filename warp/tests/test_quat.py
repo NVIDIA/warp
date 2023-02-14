@@ -1506,7 +1506,7 @@ def test_quat_from_matrix(test, device, dtype):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestQuat(parent):
         pass

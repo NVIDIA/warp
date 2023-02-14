@@ -177,7 +177,7 @@ class TeamCityTestRunner(unittest.TextTestRunner):
 def run():
 
     test_suite = unittest.TestSuite()
-
+    
     tests = register_tests(unittest.TestCase)
 
     for test in tests:
@@ -189,7 +189,7 @@ def run():
     # load all modules
     wp.force_load()
 
-    runner = TeamCityTestRunner(verbosity=2, failfast=False)
+    runner = TeamCityTestRunner(verbosity=2, failfast=True)
     ret = not runner.run(test_suite, "WarpTests").wasSuccessful()
     return ret
 

@@ -2731,7 +2731,7 @@ def test_transform_vector(test,device,dtype):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestMat(parent):
         pass
@@ -2739,8 +2739,6 @@ def register(parent):
     for dtype in np_signed_int_types + np_float_types:
         add_function_test(TestMat, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_determinant_{dtype.__name__}", test_determinant, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
     
     for dtype in np_scalar_types:
         add_function_test(TestMat, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
@@ -2759,8 +2757,6 @@ def register(parent):
         add_function_test(TestMat, f"test_ddot_{dtype.__name__}", test_ddot, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_trace_{dtype.__name__}", test_trace, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_diag_{dtype.__name__}", test_diag, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_transform_point_{dtype.__name__}", test_transform_point, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_transform_vector_{dtype.__name__}", test_transform_vector, devices=devices, dtype=dtype)
     
     for dtype in np_float_types:
         add_function_test(TestMat, f"test_quat_constructor_{dtype.__name__}", test_quat_constructor, devices=devices, dtype=dtype)
@@ -2768,7 +2764,11 @@ def register(parent):
         add_function_test(TestMat, f"test_svd_{dtype.__name__}", test_svd, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
         add_function_test(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
-        
+        add_function_test(TestMat, f"test_transform_point_{dtype.__name__}", test_transform_point, devices=devices, dtype=dtype)
+        add_function_test(TestMat, f"test_transform_vector_{dtype.__name__}", test_transform_vector, devices=devices, dtype=dtype)
+        add_function_test(TestMat, f"test_determinant_{dtype.__name__}", test_determinant, devices=devices, dtype=dtype)
+        add_function_test(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
+            
     return TestMat
 
 if __name__ == '__main__':

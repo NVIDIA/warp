@@ -250,7 +250,7 @@ def test_mesh_query_ray_edge(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestMeshQueryRay(parent):
         pass

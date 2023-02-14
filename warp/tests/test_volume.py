@@ -275,58 +275,60 @@ def test_volume_store_i(volume: wp.uint64,
     values[tid] = wp.volume_lookup_i(volume, i, j, k)
 
 
-devices = wp.get_devices()
-rng = np.random.default_rng(101215)
-
-# Note about the test grids:
-# test_grid and test_int32_grid
-#   active region: [-10,10]^3
-#   values: v[i,j,k] = i * j * k
-#   voxel size: 0.25
-#
-# test_vec_grid
-#   active region: [-10,10]^3
-#   values: v[i,j,k] = (i + 2*j + 3*k, 4*i + 5*j + 6*k, 7*i + 8*j + 9*k)
-#   voxel size: 0.25
-#
-# torus
-#   index to world transformation:
-#      [0.1, 0, 0, 0]
-#      [0, 0, 0.1, 0]
-#      [0, 0.1, 0, 0]
-#      [1, 2, 3, 1]
-#   (-90 degrees rotation along X)
-#   voxel size: 0.1
-volume_paths = {
-    "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
-    "int32": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int32_grid.nvdb")),
-    "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb")),
-    "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb")),
-    "float_write": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
-}
-
-test_volume_tiles = np.array([[i, j, k] for i in range(-2, 2)
-                              for j in range(-2, 2)
-                              for k in range(-2, 2)],
-                             dtype=np.int32) * 8
-
-
-volumes = {}
-points = {}
-points_jittered = {}
-for value_type, path in volume_paths.items():
-    volumes[value_type] = {}
-    volume_data = open(path, "rb").read()
-    for device in devices:
-        try:
-            volume = wp.Volume.load_from_nvdb(volume_data, device)
-        except RuntimeError as e:
-            raise RuntimeError(f"Failed to load volume from \"{path}\" to {device} memory:\n{e}")
-
-        volumes[value_type][device.alias] = volume
 
         
 def register(parent):
+
+    devices = get_test_devices()
+    rng = np.random.default_rng(101215)
+
+    # Note about the test grids:
+    # test_grid and test_int32_grid
+    #   active region: [-10,10]^3
+    #   values: v[i,j,k] = i * j * k
+    #   voxel size: 0.25
+    #
+    # test_vec_grid
+    #   active region: [-10,10]^3
+    #   values: v[i,j,k] = (i + 2*j + 3*k, 4*i + 5*j + 6*k, 7*i + 8*j + 9*k)
+    #   voxel size: 0.25
+    #
+    # torus
+    #   index to world transformation:
+    #      [0.1, 0, 0, 0]
+    #      [0, 0, 0.1, 0]
+    #      [0, 0.1, 0, 0]
+    #      [1, 2, 3, 1]
+    #   (-90 degrees rotation along X)
+    #   voxel size: 0.1
+    volume_paths = {
+        "float": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
+        "int32": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_int32_grid.nvdb")),
+        "vec3f": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_vec_grid.nvdb")),
+        "torus": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/torus.nvdb")),
+        "float_write": os.path.abspath(os.path.join(os.path.dirname(__file__), "assets/test_grid.nvdb")),
+    }
+
+    test_volume_tiles = np.array([[i, j, k] for i in range(-2, 2)
+                                for j in range(-2, 2)
+                                for k in range(-2, 2)],
+                                dtype=np.int32) * 8
+
+
+    volumes = {}
+    points = {}
+    points_jittered = {}
+    for value_type, path in volume_paths.items():
+        volumes[value_type] = {}
+        volume_data = open(path, "rb").read()
+        for device in devices:
+            try:
+                volume = wp.Volume.load_from_nvdb(volume_data, device)
+            except RuntimeError as e:
+                raise RuntimeError(f"Failed to load volume from \"{path}\" to {device} memory:\n{e}")
+
+            volumes[value_type][device.alias] = volume
+
     axis = np.linspace(-1, 1, 3)
     point_grid = np.array([[x, y, z] for x in axis for y in axis for z in axis], dtype=np.float32)
 

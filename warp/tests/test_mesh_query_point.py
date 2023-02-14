@@ -370,7 +370,7 @@ def test_adj_mesh_query_point(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestMeshQuery(parent):
         pass

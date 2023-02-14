@@ -12,6 +12,40 @@ import sys
 import numpy as np
 import warp as wp
 
+
+def get_test_devices(mode="basic"):
+    
+    devices = []
+
+    # only run on CPU and first GPU device
+    if mode == "basic":
+        if wp.is_cpu_available():
+            devices.append(wp.get_device("cpu"))
+        if wp.is_cuda_available():
+            devices.append(wp.get_device("cuda:0"))
+    
+    # run on CPU and all unique GPU arches
+    elif mode == "unique":
+
+        if wp.is_cpu_available():
+            devices.append(wp.get_device("cpu"))
+
+        cuda_devices = wp.get_cuda_devices()
+        
+        unique_cuda_devices = {}
+        for d in cuda_devices:
+            if d.arch not in unique_cuda_devices:
+                unique_cuda_devices[d.arch] = d
+
+        devices.extend(list(unique_cuda_devices.values()))
+
+    # run on all devices
+    elif mode == "all":
+        devices = wp.get_devices()
+
+    return devices
+
+
 # redirects and captures all stdout output (including from C-libs)
 class StdOutCapture:
 
@@ -54,7 +88,7 @@ class CheckOutput:
         self.test = test
 
     def __enter__(self):
-        wp.force_load()
+        #wp.force_load()
 
         self.capture = StdOutCapture()
         self.capture.begin()
@@ -162,7 +196,7 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
 
     # device is required for kernel tests, so use all devices if none were given
     if devices is None:
-        devices = wp.get_devices()
+        devices = get_test_devices()
 
     # register test func with class for the given devices
     for d in devices:
