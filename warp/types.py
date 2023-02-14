@@ -1021,23 +1021,21 @@ class array (Generic[T]):
         if isinstance(key, int):
             if self.ndim == 1:
                 raise RuntimeError("Item indexing is not supported on wp.array objects")
-            new_key = [key]
-            for i in range (1, self.ndim):
-                new_key.append(slice(None, None, None))
-            key = tuple(new_key)
-
+            key = [key]
         elif isinstance(key, Tuple):
             contains_slice = False
             for k in key:
                 if isinstance(k, slice):
                     contains_slice = True
-            if len(key) == self.ndim and not contains_slice:
+            if not contains_slice and len(key) == self.ndim:
                 raise RuntimeError("Item indexing is not supported on wp.array objects")
-            if not contains_slice:
-                new_key = list(key)
-                for i in range (len(new_key), self.ndim):
-                    new_key.append(slice(None, None, None))
-                key = new_key
+
+        new_key = []
+        for i in range(0, len(key)):
+            new_key.append(key[i])
+        for i in range(len(key), self.ndim):
+            new_key.append(slice(None, None, None))
+        key = tuple(new_key)
 
         for idx, k in enumerate(key):
             if isinstance(k, slice):

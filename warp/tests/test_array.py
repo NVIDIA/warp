@@ -322,12 +322,23 @@ def test_reshape(test, device):
 
 
 @wp.kernel
-def compare_stepped_window(x: wp.array2d(dtype=float)):
+def compare_stepped_window_a(x: wp.array2d(dtype=float)):
 
     wp.expect_eq(x[0,0], 1.0)
     wp.expect_eq(x[0,1], 2.0)
     wp.expect_eq(x[1,0], 9.0)
     wp.expect_eq(x[1,1], 10.0)
+
+
+@wp.kernel
+def compare_stepped_window_b(x: wp.array2d(dtype=float)):
+
+    wp.expect_eq(x[0,0], 3.0)
+    wp.expect_eq(x[0,1], 4.0)
+    wp.expect_eq(x[1,0], 7.0)
+    wp.expect_eq(x[1,1], 8.0)
+    wp.expect_eq(x[2,0], 11.0)
+    wp.expect_eq(x[2,1], 12.0)
 
 
 def test_slicing(test, device):
@@ -352,7 +363,7 @@ def test_slicing(test, device):
 
     # wp does not support copying from/to non-contiguous arrays
     # stepped windows must read on the device the original array was created on
-    wp.launch(kernel=compare_stepped_window, dim=1, inputs=[slice_f], device=device)
+    wp.launch(kernel=compare_stepped_window_a, dim=1, inputs=[slice_f], device=device)
     
     slice_flat = slice_b.flatten()
     loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
@@ -374,9 +385,13 @@ def test_slicing(test, device):
 
     index_a = arr[1]
     index_b = arr[2, 1]
+    index_c = arr[1,:]
+    index_d = arr[:,1]
 
     assert_array_equal(index_a, wp.array(np_arr[1], dtype=float, device=device))
     assert_array_equal(index_b, wp.array(np_arr[2, 1], dtype=float, device=device))
+    assert_array_equal(index_c, wp.array(np_arr[1, :], dtype=float, device=device))
+    wp.launch(kernel=compare_stepped_window_b, dim=1, inputs=[index_d], device=device)
 
 
 def test_view(test, device):
