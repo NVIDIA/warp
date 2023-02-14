@@ -920,7 +920,7 @@ class Module:
 
                     # build DLL
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(cpp_path, None, dll_path, config=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_dll(cpp_path, None, dll_path, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
                     # load the DLL
                     self.dll = warp.build.load_dll(dll_path)

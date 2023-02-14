@@ -9,7 +9,7 @@
 #include "builtin.h"
 
 // stubs for platforms where there is no CUDA
-#if WP_DISABLE_CUDA
+#if !WP_ENABLE_CUDA
 
 extern "C"
 {
@@ -29,4 +29,4 @@ bool cutlass_gemm(
 
 } // extern "C"
 
-#endif // WP_DISABLE_CUDA
+#endif // !WP_ENABLE_CUDA
