@@ -8,10 +8,13 @@ wp.init()
 
 np_float_types = [np.float32, np.float64, np.float16]
 
+kernel_cache = dict()
 def getkernel(func,suffix=""):
-    
-    module = wp.get_module(func.__name__ + "_" + suffix)
-    return wp.Kernel(func=func, key=func.__name__ + "_" + suffix, module=module)
+    module = wp.get_module(func.__module__)
+    key = func.__name__ + "_" + suffix
+    if key not in kernel_cache:
+        kernel_cache[key] = wp.Kernel(func=func, key=key, module=module)
+    return kernel_cache[key]
 
 def get_select_kernel(dtype):
     
@@ -24,10 +27,14 @@ def get_select_kernel(dtype):
     
     return getkernel(output_select_kernel_fn,suffix=dtype.__name__)
 
+def add_function_test_register_kernel(cls, name, func, devices=None, **kwargs):
+    func( None, None, **kwargs, register_kernels=True )
+    add_function_test(cls, name, func, devices=None, **kwargs)
+
 ############################################################
 
 
-def test_spatial_vector_constructors(test, device, dtype):
+def test_spatial_vector_constructors(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -54,26 +61,6 @@ def test_spatial_vector_constructors(test, device, dtype):
         out[4] = wptype(2) * result[4]
         out[5] = wptype(2) * result[5]
 
-    input = wp.array(np.random.randn(6).astype(dtype), requires_grad=True, device=device)
-    output = wp.zeros_like(input)
-    kernel = getkernel(check_spatial_vector_component_constructor,suffix=dtype.__name__)
-    wp.launch(kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
-    
-    assert_np_equal(output.numpy(), 2 * input.numpy(), tol=tol)
-    
-    output_select_kernel = get_select_kernel(wptype)
-    for i in range(len(input)):
-        cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-        tape = wp.Tape()
-        with tape:
-            wp.launch(kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
-            wp.launch(output_select_kernel, dim=1, inputs=[ output,i ], outputs=[cmp], device=device)
-        tape.backward(loss=cmp)
-        expectedgrads = np.zeros(len(input))
-        expectedgrads[i] = 2
-        assert_np_equal(tape.gradients[input].numpy(), expectedgrads)
-        tape.zero()
-
     def check_spatial_vector_vector_constructor(
         input: wp.array(dtype=wptype),
         out: wp.array(dtype=wptype),
@@ -87,15 +74,20 @@ def test_spatial_vector_constructors(test, device, dtype):
         out[3] = wptype(2) * result[3]
         out[4] = wptype(2) * result[4]
         out[5] = wptype(2) * result[5]
+    
+    kernel = getkernel(check_spatial_vector_component_constructor,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+    vec_kernel = getkernel(check_spatial_vector_vector_constructor,suffix=dtype.__name__)
 
+    if register_kernels:
+        return
+    
     input = wp.array(np.random.randn(6).astype(dtype), requires_grad=True, device=device)
     output = wp.zeros_like(input)
-    kernel = getkernel(check_spatial_vector_vector_constructor,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
-        
+    
     assert_np_equal(output.numpy(), 2 * input.numpy(), tol=tol)
     
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(len(input)):
         cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         tape = wp.Tape()
@@ -109,7 +101,26 @@ def test_spatial_vector_constructors(test, device, dtype):
         tape.zero()
 
 
-def test_spatial_vector_indexing(test,device, dtype):
+    input = wp.array(np.random.randn(6).astype(dtype), requires_grad=True, device=device)
+    output = wp.zeros_like(input)
+    wp.launch(vec_kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
+        
+    assert_np_equal(output.numpy(), 2 * input.numpy(), tol=tol)
+    
+    for i in range(len(input)):
+        cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
+            wp.launch(output_select_kernel, dim=1, inputs=[ output,i ], outputs=[cmp], device=device)
+        tape.backward(loss=cmp)
+        expectedgrads = np.zeros(len(input))
+        expectedgrads[i] = 2
+        assert_np_equal(tape.gradients[input].numpy(), expectedgrads)
+        tape.zero()
+
+
+def test_spatial_vector_indexing(test,device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -134,6 +145,11 @@ def test_spatial_vector_indexing(test,device, dtype):
             idx = idx + 1
 
     kernel = getkernel(check_spatial_vector_indexing,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+    
+    if register_kernels:
+        return
+    
     input = wp.array(np.random.randn(1,6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     outcmps = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
 
@@ -142,7 +158,6 @@ def test_spatial_vector_indexing(test,device, dtype):
     assert_np_equal(outcmps.numpy(), 2 * input.numpy().ravel(),tol=tol)
     
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(6):
         tape = wp.Tape()
         with tape:
@@ -155,7 +170,7 @@ def test_spatial_vector_indexing(test,device, dtype):
         tape.zero()
 
 
-def test_spatial_vector_scalar_multiplication(test,device, dtype):
+def test_spatial_vector_scalar_multiplication(test,device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -181,19 +196,23 @@ def test_spatial_vector_scalar_multiplication(test,device, dtype):
             outcmps_l[i] = wptype(2) * lresult[i]
             outcmps_r[i] = wptype(2) * rresult[i]
     
+    kernel = getkernel(check_spatial_vector_scalar_mul,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     s = wp.array(np.random.randn(1).astype(dtype), requires_grad=True, device=device)
     q = wp.array(np.random.randn(1,6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     
     outcmps_l = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
     outcmps_r = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_spatial_vector_scalar_mul,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s,q], outputs=[outcmps_l,outcmps_r,], device=device)
 
     assert_np_equal(outcmps_l.numpy(), 2 * s.numpy()[0] * q.numpy(), tol=tol)
     assert_np_equal(outcmps_r.numpy(), 2 * s.numpy()[0] * q.numpy(), tol=tol)
 
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     for i in range(6):
 
@@ -211,7 +230,7 @@ def test_spatial_vector_scalar_multiplication(test,device, dtype):
             tape.zero()
 
 
-def test_spatial_vector_add_sub(test,device, dtype):
+def test_spatial_vector_add_sub(test,device, dtype, register_kernels=False):
 
     np.random.seed(123)
 
@@ -236,19 +255,22 @@ def test_spatial_vector_add_sub(test,device, dtype):
             outputs_add[i] = wptype(2) * addresult[i]
             outputs_sub[i] = wptype(2) * subresult[i]
     
+    kernel = getkernel(check_spatial_vector_add_sub,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+    if register_kernels:
+        return
+    
     q = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     v = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     
     outputs_add = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
     outputs_sub = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
 
-    kernel = getkernel(check_spatial_vector_add_sub,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[q,v,], outputs=[outputs_add,outputs_sub], device=device)
 
     assert_np_equal(outputs_add.numpy(), 2 * (q.numpy() + v.numpy()), tol=tol)
     assert_np_equal(outputs_sub.numpy(), 2 * (q.numpy() - v.numpy()), tol=tol)
 
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     for i in range(6):
 
@@ -277,7 +299,7 @@ def test_spatial_vector_add_sub(test,device, dtype):
         tape.zero()
 
 
-def test_spatial_dot(test,device, dtype):
+def test_spatial_dot(test,device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -296,13 +318,17 @@ def test_spatial_dot(test,device, dtype):
     ):
         dot[0] = wptype(2) * wp.spatial_dot(v[0],s[0])
 
+    kernel = getkernel(check_spatial_dot,suffix=dtype.__name__)
+    if register_kernels:
+        return
+    
     s = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     v = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     dot = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     
     tape = wp.Tape()
     with tape:
-        wp.launch(getkernel(check_spatial_dot,suffix=dtype.__name__), dim=1, inputs=[s,v,], outputs=[dot], device=device)
+        wp.launch(kernel, dim=1, inputs=[s,v,], outputs=[dot], device=device)
 
     assert_np_equal(dot.numpy()[0], 2.0 * (v.numpy() * s.numpy()).sum(), tol=tol)
     
@@ -316,7 +342,7 @@ def test_spatial_dot(test,device, dtype):
     assert_np_equal(vgrads,expected_grads, tol=tol)
     
 
-def test_spatial_cross(test,device,dtype):
+def test_spatial_cross(test,device,dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -362,6 +388,12 @@ def test_spatial_cross(test,device,dtype):
             outputs_wcrossv[i] = wcrossv[i]
             outputs_vcrossv[i] = vcrossv[i]
 
+    kernel = getkernel(check_spatial_cross,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     s = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     v = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     outputs = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
@@ -371,7 +403,6 @@ def test_spatial_cross(test,device,dtype):
     outputs_wcrossv = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
     outputs_vcrossv = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_spatial_cross,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s,v,], outputs=[outputs,outputs_dual,outputs_wcrossw, outputs_vcrossw, outputs_wcrossv, outputs_vcrossv], device=device)
     
     sw = s.numpy()[0,:3]
@@ -390,7 +421,6 @@ def test_spatial_cross(test,device,dtype):
     assert_np_equal(outputs_dual.numpy()[:3], 2 * (wcrossw + vcrossv), tol=tol)
     assert_np_equal(outputs_dual.numpy()[3:], 2 * wcrossv, tol=tol)
 
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(3):
         cmp_w = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         cmp_v = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -448,7 +478,7 @@ def test_spatial_cross(test,device,dtype):
         assert_np_equal(dcmp_v_dual_dv, 2 * dcmp_wcrossv_dv, tol=tol)
 
 
-def test_spatial_top_bottom(test, device, dtype):
+def test_spatial_top_bottom(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -475,15 +505,19 @@ def test_spatial_top_bottom(test, device, dtype):
         outputs[4] = wptype(2) * bottom[1]
         outputs[5] = wptype(2) * bottom[2]
 
+    kernel = getkernel(check_spatial_top_bottom,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     s = wp.array(np.random.randn(6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     outputs = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_spatial_top_bottom,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s,], outputs=[outputs], device=device)
 
     assert_np_equal(outputs.numpy(), 2.0 * s.numpy(), tol=tol)
     
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(6):
         cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         tape = wp.Tape()
@@ -497,7 +531,7 @@ def test_spatial_top_bottom(test, device, dtype):
         tape.zero()
 
 
-def test_transform_constructors(test, device, dtype):
+def test_transform_constructors(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -525,20 +559,24 @@ def test_transform_constructors(test, device, dtype):
         out[4] = wptype(2) * result[4]
         out[5] = wptype(2) * result[5]
         out[6] = wptype(2) * result[6]
+    
+    kernel = getkernel(check_transform_constructor,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
 
+    if register_kernels:
+        return
+    
     p = np.random.randn(3).astype(dtype)
     q = np.random.randn(4).astype(dtype)
     q /= np.linalg.norm(q)
 
     input = wp.array(np.concatenate((p,q)), requires_grad=True, device=device)
     output = wp.zeros_like(input)
-    kernel = getkernel(check_transform_constructor,suffix=dtype.__name__)
 
     wp.launch(kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
     
     assert_np_equal(output.numpy(), 2 * input.numpy(), tol=tol)
     
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(len(input)):
         cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         tape = wp.Tape()
@@ -552,7 +590,7 @@ def test_transform_constructors(test, device, dtype):
         tape.zero()
 
 
-def test_transform_indexing(test,device, dtype):
+def test_transform_indexing(test,device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -577,15 +615,18 @@ def test_transform_indexing(test,device, dtype):
             idx = idx + 1
 
     kernel = getkernel(check_transform_indexing,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     input = wp.array(np.random.randn(1,7).astype(dtype), dtype=transform, requires_grad=True, device=device)
     outcmps = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[input], outputs=[outcmps], device=device)
 
     assert_np_equal(outcmps.numpy(), 2 * input.numpy().ravel(),tol=tol)
-    idx = 0
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(7):
         tape = wp.Tape()
         with tape:
@@ -598,7 +639,7 @@ def test_transform_indexing(test,device, dtype):
         tape.zero()
 
 
-def test_transform_scalar_multiplication(test,device, dtype):
+def test_transform_scalar_multiplication(test,device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -624,19 +665,23 @@ def test_transform_scalar_multiplication(test,device, dtype):
             outcmps_l[i] = wptype(2) * lresult[i]
             outcmps_r[i] = wptype(2) * rresult[i]
     
+    kernel = getkernel(check_transform_scalar_mul,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     s = wp.array(np.random.randn(1).astype(dtype), requires_grad=True, device=device)
     q = wp.array(np.random.randn(1,7).astype(dtype), dtype=transform, requires_grad=True, device=device)
     
     outcmps_l = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     outcmps_r = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_transform_scalar_mul,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s,q], outputs=[outcmps_l,outcmps_r,], device=device)
 
     assert_np_equal(outcmps_l.numpy(), 2 * s.numpy()[0] * q.numpy(), tol=tol)
     assert_np_equal(outcmps_r.numpy(), 2 * s.numpy()[0] * q.numpy(), tol=tol)
 
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     for i in range(7):
 
@@ -655,7 +700,7 @@ def test_transform_scalar_multiplication(test,device, dtype):
 
 
 
-def test_transform_add_sub(test,device, dtype):
+def test_transform_add_sub(test,device, dtype, register_kernels=False):
 
     np.random.seed(123)
 
@@ -680,19 +725,23 @@ def test_transform_add_sub(test,device, dtype):
             outputs_add[i] = wptype(2) * addresult[i]
             outputs_sub[i] = wptype(2) * subresult[i]
     
+    kernel = getkernel(check_transform_add_sub,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     q = wp.array(np.random.randn(7).astype(dtype), dtype=transform, requires_grad=True, device=device)
     v = wp.array(np.random.randn(7).astype(dtype), dtype=transform, requires_grad=True, device=device)
     
     outputs_add = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     outputs_sub = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
 
-    kernel = getkernel(check_transform_add_sub,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[q,v,], outputs=[outputs_add,outputs_sub], device=device)
 
     assert_np_equal(outputs_add.numpy(), 2 * (q.numpy() + v.numpy()), tol=tol)
     assert_np_equal(outputs_sub.numpy(), 2 * (q.numpy() - v.numpy()), tol=tol)
 
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     for i in range(7):
 
@@ -721,7 +770,7 @@ def test_transform_add_sub(test,device, dtype):
         tape.zero()
 
 
-def test_transform_get_trans_rot(test, device, dtype):
+def test_transform_get_trans_rot(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -749,15 +798,19 @@ def test_transform_get_trans_rot(test, device, dtype):
         outputs[5] = wptype(2) * q[2]
         outputs[6] = wptype(2) * q[3]
 
+    kernel = getkernel(check_transform_get_trans_rot,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     s = wp.array(np.random.randn(7).astype(dtype), dtype=transform, requires_grad=True, device=device)
     outputs = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_transform_get_trans_rot,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s,], outputs=[outputs], device=device)
 
     assert_np_equal(outputs.numpy(), 2.0 * s.numpy(), tol=tol)
     
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(7):
         cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         tape = wp.Tape()
@@ -772,7 +825,7 @@ def test_transform_get_trans_rot(test, device, dtype):
 
 
 
-def test_transform_multiply(test,device,dtype):
+def test_transform_multiply(test,device,dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -811,6 +864,12 @@ def test_transform_multiply(test,device,dtype):
             outputs_fn[i] = wptype(2) * result_fn[i]
             outputs_manual[i] = wptype(2) * result_manual[i]
 
+    kernel = getkernel(check_transform_multiply,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     q = np.random.randn(7)
     s = np.random.randn(7)
     q[3:] /= np.linalg.norm(q[3:])
@@ -822,13 +881,11 @@ def test_transform_multiply(test,device,dtype):
     outputs_fn = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     outputs_manual = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_transform_multiply,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[q,s,], outputs=[outputs,outputs_fn,outputs_manual], device=device)
 
     assert_np_equal(outputs.numpy(), outputs_fn.numpy(), tol=tol)
     assert_np_equal(outputs.numpy(), outputs_manual.numpy(), tol=tol)
 
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(7):
         cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         cmp_fn = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -859,7 +916,7 @@ def test_transform_multiply(test,device,dtype):
         assert_np_equal(sgrads, sgrads_manual,tol=tol)
 
 
-def test_transform_inverse(test,device,dtype):
+def test_transform_inverse(test,device,dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -893,6 +950,12 @@ def test_transform_inverse(test,device,dtype):
             outputs_shouldbeidentity[i] = wptype(2) * idt[i]
             outputs_manual[i] = wptype(2) * result_manual[i]
 
+    kernel = getkernel(check_transform_inverse,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     q = np.random.randn(7)
     s = np.random.randn(7)
     q[3:] /= np.linalg.norm(q[3:])
@@ -903,7 +966,6 @@ def test_transform_inverse(test,device,dtype):
     outputs_shouldbeidentity = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     outputs_manual = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_transform_inverse,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[q,], outputs=[outputs,outputs_shouldbeidentity,outputs_manual], device=device)
 
     # check inverse:
@@ -912,7 +974,6 @@ def test_transform_inverse(test,device,dtype):
     # same as manual result:
     assert_np_equal(outputs.numpy(), outputs_manual.numpy(), tol=tol)
     
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(7):
         cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         cmp_manual = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -932,7 +993,7 @@ def test_transform_inverse(test,device,dtype):
         assert_np_equal(qgrads, qgrads_manual,tol=tol)
 
 
-def test_transform_point_vector(test,device,dtype):
+def test_transform_point_vector(test,device,dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -965,6 +1026,12 @@ def test_transform_point_vector(test,device,dtype):
             outputs_vec[i] = wptype(2) * result_vec[i]
             outputs_vec_manual[i] = wptype(2) * result_vec_manual[i]
 
+    kernel = getkernel(check_transform_point_vector,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     q = np.random.randn(7)
     q[3:] /= np.linalg.norm(q[3:])
 
@@ -975,14 +1042,12 @@ def test_transform_point_vector(test,device,dtype):
     outputs_vec = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
     outputs_vec_manual = wp.zeros(3, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_transform_point_vector,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[t,v], outputs=[outputs_pt,outputs_pt_manual,outputs_vec,outputs_vec_manual], device=device)
 
     # same as manual results:
     assert_np_equal(outputs_pt.numpy(), outputs_pt_manual.numpy(), tol=tol)
     assert_np_equal(outputs_vec.numpy(), outputs_vec_manual.numpy(), tol=tol)
     
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(3):
         cmp_pt = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         cmp_pt_manual = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -1020,7 +1085,7 @@ def test_transform_point_vector(test,device,dtype):
         assert_np_equal(vgrads_vec, vgrads_vec_manual,tol=tol)
 
 
-def test_spatial_matrix_constructors(test, device, dtype):
+def test_spatial_matrix_constructors(test, device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -1058,16 +1123,20 @@ def test_spatial_matrix_constructors(test, device, dtype):
                 out[idx] = result1[i,j]
                 idx = idx + 1
 
+    kernel = getkernel(check_spatial_matrix_constructor,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     input = wp.array(np.random.randn(6*6).astype(dtype), requires_grad=True, device=device)
     output = wp.zeros(2*6*6, dtype=wptype, requires_grad=True, device=device)
-    kernel = getkernel(check_spatial_matrix_constructor,suffix=dtype.__name__)
 
     wp.launch(kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
     
     assert_np_equal(output.numpy()[:6*6], 2 * input.numpy(), tol=tol)
     assert_np_equal(output.numpy()[6*6:], np.zeros_like(input.numpy()), tol=tol)
     
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(len(input)):
         cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
         tape = wp.Tape()
@@ -1081,7 +1150,7 @@ def test_spatial_matrix_constructors(test, device, dtype):
         tape.zero()
         break
 
-def test_spatial_matrix_indexing(test,device, dtype):
+def test_spatial_matrix_indexing(test,device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -1107,6 +1176,11 @@ def test_spatial_matrix_indexing(test,device, dtype):
                 idx = idx + 1
 
     kernel = getkernel(check_spatial_matrix_indexing,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     input = wp.array(np.random.randn(1,6,6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
     outcmps = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
 
@@ -1115,7 +1189,6 @@ def test_spatial_matrix_indexing(test,device, dtype):
     assert_np_equal(outcmps.numpy(), 2 * input.numpy().ravel(),tol=tol)
     idx = 0
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-    output_select_kernel = get_select_kernel(wptype)
     for i in range(6):
         for j in range(6):
             tape = wp.Tape()
@@ -1130,7 +1203,7 @@ def test_spatial_matrix_indexing(test,device, dtype):
             idx = idx + 1
 
 
-def test_spatial_matrix_scalar_multiplication(test,device, dtype):
+def test_spatial_matrix_scalar_multiplication(test,device, dtype, register_kernels=False):
     np.random.seed(123)
 
     tol = {
@@ -1159,19 +1232,23 @@ def test_spatial_matrix_scalar_multiplication(test,device, dtype):
                 outcmps_r[idx] = wptype(2) * rresult[i,j]
                 idx = idx + 1
     
+    kernel = getkernel(check_spatial_matrix_scalar_mul,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+    
     s = wp.array(np.random.randn(1).astype(dtype), requires_grad=True, device=device)
     q = wp.array(np.random.randn(1,6,6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
     
     outcmps_l = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
     outcmps_r = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_spatial_matrix_scalar_mul,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s,q], outputs=[outcmps_l,outcmps_r,], device=device)
 
     assert_np_equal(outcmps_l.numpy(), 2 * s.numpy()[0] * q.numpy(), tol=tol)
     assert_np_equal(outcmps_r.numpy(), 2 * s.numpy()[0] * q.numpy(), tol=tol)
 
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     idx = 0
     for i in range(6):
@@ -1192,7 +1269,7 @@ def test_spatial_matrix_scalar_multiplication(test,device, dtype):
             idx = idx + 1
 
 
-def test_spatial_matrix_add_sub(test,device, dtype):
+def test_spatial_matrix_add_sub(test,device, dtype, register_kernels=False):
 
     np.random.seed(123)
 
@@ -1219,6 +1296,12 @@ def test_spatial_matrix_add_sub(test,device, dtype):
                 outputs_add[idx] = wptype(2) * addresult[i,j]
                 outputs_sub[idx] = wptype(2) * subresult[i,j]
                 idx = idx + 1
+                
+    kernel = getkernel(check_spatial_matrix_add_sub,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+    
+    if register_kernels:
+        return
     
     q = wp.array(np.random.randn(1,6,6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
     v = wp.array(np.random.randn(1,6,6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
@@ -1226,13 +1309,11 @@ def test_spatial_matrix_add_sub(test,device, dtype):
     outputs_add = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
     outputs_sub = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
 
-    kernel = getkernel(check_spatial_matrix_add_sub,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[q,v,], outputs=[outputs_add,outputs_sub], device=device)
 
     assert_np_equal(outputs_add.numpy(), 2 * (q.numpy() + v.numpy()), tol=tol)
     assert_np_equal(outputs_sub.numpy(), 2 * (q.numpy() - v.numpy()), tol=tol)
 
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     idx = 0
     for i in range(6):
@@ -1265,7 +1346,7 @@ def test_spatial_matrix_add_sub(test,device, dtype):
             idx = idx + 1
 
 
-def test_spatial_matvec_multiplication(test,device,dtype):
+def test_spatial_matvec_multiplication(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1294,8 +1375,11 @@ def test_spatial_matvec_multiplication(test,device,dtype):
             outcomponents[idx] = wptype(2) * result[i]
             idx = idx + 1
         
-        
     kernel = getkernel(check_spatial_mat_vec_mul,suffix=dtype.__name__)
+        
+    if register_kernels:
+        return
+    
     v = wp.array(np.random.randn(1,6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     m = wp.array(np.random.randn(1,6,6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
     outcomponents = wp.zeros(6, dtype=wptype, requires_grad=True, device=device)
@@ -1321,7 +1405,7 @@ def test_spatial_matvec_multiplication(test,device,dtype):
         tape.zero()
 
 
-def test_spatial_matmat_multiplication(test,device,dtype):
+def test_spatial_matmat_multiplication(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1351,6 +1435,10 @@ def test_spatial_matmat_multiplication(test,device,dtype):
                 idx = idx + 1
 
     kernel = getkernel(check_mat_mat_mul,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     v = wp.array(np.random.randn(1,6,6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
     m = wp.array(np.random.randn(1,6,6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
     outcomponents = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
@@ -1382,7 +1470,7 @@ def test_spatial_matmat_multiplication(test,device,dtype):
             idx = idx + 1
 
 
-def test_spatial_mat_transpose(test,device,dtype):
+def test_spatial_mat_transpose(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1412,6 +1500,10 @@ def test_spatial_mat_transpose(test,device,dtype):
                 idx = idx + 1
 
     kernel = getkernel(check_spatial_mat_transpose,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     m = wp.array(np.random.randn(1,6,6).astype(dtype), dtype=spatial_matrix, requires_grad=True, device=device)
     outcomponents = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
     
@@ -1435,7 +1527,7 @@ def test_spatial_mat_transpose(test,device,dtype):
             idx = idx + 1
 
 
-def test_spatial_outer_product(test,device,dtype):
+def test_spatial_outer_product(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1466,6 +1558,10 @@ def test_spatial_outer_product(test,device,dtype):
                 idx = idx + 1
 
     kernel = getkernel(check_spatial_outer_product,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     s = wp.array(np.random.randn(1,6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     v = wp.array(np.random.randn(1,6).astype(dtype), dtype=spatial_vector, requires_grad=True, device=device)
     outcomponents = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
@@ -1501,7 +1597,7 @@ def test_spatial_outer_product(test,device,dtype):
             idx = idx + 1
 
 
-def test_spatial_adjoint(test,device,dtype):
+def test_spatial_adjoint(test,device,dtype, register_kernels=False):
 
     np.random.seed(123)
 
@@ -1530,8 +1626,12 @@ def test_spatial_adjoint(test,device,dtype):
             for j in range(6):
                 outcomponents[idx] = mresult[i,j]
                 idx = idx + 1
-
+    
     kernel = getkernel(check_spatial_adjoint,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     R = wp.array(np.random.randn(1,3,3).astype(dtype), dtype=mat3, requires_grad=True, device=device)
     S = wp.array(np.random.randn(1,3,3).astype(dtype), dtype=mat3, requires_grad=True, device=device)
     outcomponents = wp.zeros(6*6, dtype=wptype, requires_grad=True, device=device)
@@ -1576,41 +1676,42 @@ def test_spatial_adjoint(test,device,dtype):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestSpatial(parent):
         pass
     
     for dtype in np_float_types:
 
-        add_function_test(TestSpatial, f"test_spatial_vector_constructors_{dtype.__name__}", test_spatial_vector_constructors, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_vector_indexing_{dtype.__name__}", test_spatial_vector_indexing, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_vector_scalar_multiplication_{dtype.__name__}", test_spatial_vector_scalar_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_vector_add_sub_{dtype.__name__}", test_spatial_vector_add_sub, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_dot_{dtype.__name__}", test_spatial_dot, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_cross_{dtype.__name__}", test_spatial_cross, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_top_bottom_{dtype.__name__}", test_spatial_top_bottom, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_vector_constructors_{dtype.__name__}", test_spatial_vector_constructors, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_vector_indexing_{dtype.__name__}", test_spatial_vector_indexing, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_vector_scalar_multiplication_{dtype.__name__}", test_spatial_vector_scalar_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_vector_add_sub_{dtype.__name__}", test_spatial_vector_add_sub, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_dot_{dtype.__name__}", test_spatial_dot, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_cross_{dtype.__name__}", test_spatial_cross, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_top_bottom_{dtype.__name__}", test_spatial_top_bottom, devices=devices, dtype=dtype)
 
-        add_function_test(TestSpatial, f"test_transform_constructors_{dtype.__name__}", test_transform_constructors, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_transform_indexing_{dtype.__name__}", test_transform_indexing, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_transform_get_trans_rot_{dtype.__name__}", test_transform_get_trans_rot, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_transform_multiply_{dtype.__name__}", test_transform_multiply, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_transform_inverse_{dtype.__name__}", test_transform_inverse, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_transform_point_vector_{dtype.__name__}", test_transform_point_vector, devices=devices, dtype=dtype)
+
+        add_function_test_register_kernel(TestSpatial, f"test_transform_constructors_{dtype.__name__}", test_transform_constructors, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_indexing_{dtype.__name__}", test_transform_indexing, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_get_trans_rot_{dtype.__name__}", test_transform_get_trans_rot, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_multiply_{dtype.__name__}", test_transform_multiply, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_inverse_{dtype.__name__}", test_transform_inverse, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_point_vector_{dtype.__name__}", test_transform_point_vector, devices=devices, dtype=dtype)
 
         # are these two valid? They don't seem to be doing things you'd want to do,
         # maybe they should be removed
-        add_function_test(TestSpatial, f"test_transform_scalar_multiplication_{dtype.__name__}", test_transform_scalar_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_transform_add_sub_{dtype.__name__}", test_transform_add_sub, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_scalar_multiplication_{dtype.__name__}", test_transform_scalar_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_add_sub_{dtype.__name__}", test_transform_add_sub, devices=devices, dtype=dtype)
     
-        add_function_test(TestSpatial, f"test_spatial_matrix_constructors_{dtype.__name__}", test_spatial_matrix_constructors, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matrix_indexing_{dtype.__name__}", test_spatial_matrix_indexing, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matrix_scalar_multiplication_{dtype.__name__}", test_spatial_matrix_scalar_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matrix_add_sub_{dtype.__name__}", test_spatial_matrix_add_sub, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matvec_multiplication_{dtype.__name__}", test_spatial_matvec_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_matmat_multiplication_{dtype.__name__}", test_spatial_matmat_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_outer_product_{dtype.__name__}", test_spatial_outer_product, devices=devices, dtype=dtype)
-        add_function_test(TestSpatial, f"test_spatial_adjoint_{dtype.__name__}", test_spatial_adjoint, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_matrix_constructors_{dtype.__name__}", test_spatial_matrix_constructors, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_matrix_indexing_{dtype.__name__}", test_spatial_matrix_indexing, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_matrix_scalar_multiplication_{dtype.__name__}", test_spatial_matrix_scalar_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_matrix_add_sub_{dtype.__name__}", test_spatial_matrix_add_sub, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_matvec_multiplication_{dtype.__name__}", test_spatial_matvec_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_matmat_multiplication_{dtype.__name__}", test_spatial_matmat_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_outer_product_{dtype.__name__}", test_spatial_outer_product, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_spatial_adjoint_{dtype.__name__}", test_spatial_adjoint, devices=devices, dtype=dtype)
 
         # \TODO: test spatial_mass and spatial_jacobian
 

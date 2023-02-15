@@ -8,9 +8,10 @@ import warp as wp
 
 from warp.tests.test_all import register_tests
 
-exclude = ["TestReload"]
+exclude = ["TestReload", "TestMat", "TestVec", "TestGrad", "TestMLP", "TestMatmul"]
 
 # build test cases using Kit async test base class
+
 tests = register_tests(omni.kit.test.AsyncTestCaseFailOnLogError)
 
 # test classes must be stored as local variables to be recognized

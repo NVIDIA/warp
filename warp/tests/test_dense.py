@@ -32,7 +32,7 @@ def eval_dense_solve(n: int, A: wp.array(dtype=float), L: wp.array(dtype=float),
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestDense(parent):
         pass

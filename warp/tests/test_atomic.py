@@ -84,7 +84,7 @@ test_atomic_mat44 = make_atomic_test(wp.mat44)
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestAtomic(parent):
         pass

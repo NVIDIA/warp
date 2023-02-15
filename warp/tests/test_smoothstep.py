@@ -158,7 +158,8 @@ def test_smoothstep(test, device):
                 )
 
 def register(parent):
-    devices = wp.get_devices()
+    
+    devices = get_test_devices()
 
     class TestSmoothstep(parent):
         pass

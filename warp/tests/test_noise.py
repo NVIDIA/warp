@@ -249,7 +249,7 @@ def test_adj_noise(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestNoise(parent):
         pass

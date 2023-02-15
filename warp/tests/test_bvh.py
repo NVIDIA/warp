@@ -131,7 +131,7 @@ def test_bvh_query_ray(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestBvh(parent):
         pass

@@ -640,7 +640,7 @@ void bvh_destroy_device(uint64_t id)
 }
 
 // stubs for non-CUDA platforms
-#if WP_DISABLE_CUDA
+#if !WP_ENABLE_CUDA
 
 void bvh_refit_device(uint64_t id)
 {
@@ -648,4 +648,4 @@ void bvh_refit_device(uint64_t id)
 
 
 
-#endif // WP_DISABLE_CUDA
+#endif // !WP_ENABLE_CUDA

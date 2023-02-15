@@ -555,7 +555,7 @@ def test_transform_matrix():
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestCTypes(parent):
         pass

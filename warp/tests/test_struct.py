@@ -146,7 +146,9 @@ def test_empty(input: Empty):
 
 
 def register(parent):
-    devices = wp.get_devices()
+    
+    devices = get_test_devices()
+    
     class TestStruct(parent):
         pass
 

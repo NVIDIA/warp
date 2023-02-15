@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.7.2] - 2023-02-15
+
+- Reduce test time for vec/math types
+- Clean-up CUDA disabled build pipeline
+- Remove extension.gen.toml to make Kit packages Python version independent
+- Handle additional cases for array indexing inside Python
+
+## [0.7.1] - 2023-02-14
+
+- Disabling some slow tests for Kit
+- Make unit tests run on first GPU only by default
+
 ## [0.7.0] - 2023-02-13
 
 - Add support for arbitrary length / type vector and matrices e.g.: `wp.vec(length=7, dtype=wp.float16)`, see `wp.vec()`, and `wp.mat()`

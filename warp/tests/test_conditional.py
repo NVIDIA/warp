@@ -117,7 +117,7 @@ def test_boolean_literal():
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestConditional(parent):
         pass

@@ -210,7 +210,7 @@ void volume_destroy_device(uint64_t id)
 }
 
 
-#if !WP_DISABLE_CUDA
+#if WP_ENABLE_CUDA
 uint64_t volume_f_from_tiles_device(void* context, void* points, int num_points, float voxel_size, float bg_value, float tx, float ty, float tz, bool points_in_world_space)
 {
     nanovdb::FloatGrid* grid;

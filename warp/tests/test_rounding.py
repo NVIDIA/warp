@@ -129,7 +129,9 @@ def register(parent):
     class TestRounding(parent):
         pass
 
-    add_function_test(TestRounding, "test_rounding", test_rounding, devices=wp.get_devices())
+    devices = get_test_devices()
+
+    add_function_test(TestRounding, "test_rounding", test_rounding, devices=devices)
 
     return TestRounding
 

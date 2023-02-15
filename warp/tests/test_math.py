@@ -81,7 +81,7 @@ def test_scalar_math(test, device):
         )
 
 def register(parent):
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestMath(parent):
         pass

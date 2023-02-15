@@ -44,10 +44,13 @@ def randvals(shape,dtype):
         return np.random.randint(1,3,size=shape,dtype=dtype)
     return np.random.randint(1,5,size=shape,dtype=dtype)
 
+kernel_cache = dict()
 def getkernel(func,suffix=""):
-    
-    module = wp.get_module(func.__name__ + "_" + suffix)
-    return wp.Kernel(func=func, key=func.__name__ + "_" + suffix, module=module)
+    module = wp.get_module(func.__module__)
+    key = func.__name__ + "_" + suffix
+    if key not in kernel_cache:
+        kernel_cache[key] = wp.Kernel(func=func, key=key, module=module)
+    return kernel_cache[key]
 
 def get_select_kernel(dtype):
     
@@ -59,6 +62,12 @@ def get_select_kernel(dtype):
         out[0] = input[index]
     
     return getkernel(output_select_kernel_fn,suffix=dtype.__name__)
+
+
+def add_function_test_register_kernel(cls, name, func, devices=None, **kwargs):
+    func( None, None, **kwargs, register_kernels=True )
+    add_function_test(cls, name, func, devices=None, **kwargs)
+
 
 def test_arrays(test, device,dtype):
 
@@ -102,7 +111,7 @@ def test_arrays(test, device,dtype):
     assert_np_equal(v3.numpy(), v3_np, tol=1.e-6)
     assert_np_equal(v4.numpy(), v4_np, tol=1.e-6)
 
-def test_constructors(test, device,dtype):
+def test_constructors(test, device,dtype, register_kernels=False):
 
     np.random.seed(123)
 
@@ -155,29 +164,6 @@ def test_constructors(test, device,dtype):
                 outcomponents[idx] = m5result[i,j]
                 idx = idx + 1
 
-    input = wp.array(randvals([1],dtype), requires_grad=True, device=device)
-    val = input.numpy()[0]
-    kernel = getkernel(check_scalar_mat_constructor,suffix=dtype.__name__)
-    outcomponents = wp.zeros(2*2 + 3*3 + 4*4 + 5*5, dtype=wptype, requires_grad=True, device=device)
-    out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
-
-    wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
-
-    assert_np_equal(outcomponents.numpy()[:4], 2 * val * np.ones(2*2), tol=tol)
-    assert_np_equal(outcomponents.numpy()[4:13], 2 * val * np.ones(3*3), tol=tol)
-    assert_np_equal(outcomponents.numpy()[13:29], 2 * val * np.ones(4*4), tol=tol)
-    assert_np_equal(outcomponents.numpy()[29:54], 2 * val * np.ones(5*5), tol=tol)
-
-    if dtype in np_float_types:
-        for idx in range(len(outcomponents)):
-            tape = wp.Tape()
-            with tape:
-                wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
-                wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
-            tape.backward(loss=out)
-            test.assertEqual(tape.gradients[input].numpy()[0],2)
-            tape.zero()
-    
     def check_component_mat_constructor(
         input: wp.array(dtype=wptype),
         outcomponents: wp.array(dtype=wptype),
@@ -226,24 +212,6 @@ def test_constructors(test, device,dtype):
             for j in range(5):
                 outcomponents[idx] = m5result[i,j]
                 idx = idx + 1
-
-    input = wp.array(randvals([2*2 + 3*3 + 4*4 + 5*5],dtype), requires_grad=True, device=device)
-    kernel = getkernel(check_component_mat_constructor,suffix=dtype.__name__)
-
-    wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
-    assert_np_equal( 2 * input.numpy(), outcomponents.numpy(), tol=10*tol )
-
-    if dtype in np_float_types:
-        for idx in range(len(outcomponents)):
-            tape = wp.Tape()
-            with tape:
-                wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
-                wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
-            tape.backward(loss=out)
-            expectedgrads = np.zeros(len(input))
-            expectedgrads[idx] = 2
-            assert_np_equal( tape.gradients[input].numpy(),expectedgrads)
-            tape.zero()
 
     def check_vector_mat_constructor(
         input: wp.array(dtype=wptype),
@@ -294,10 +262,24 @@ def test_constructors(test, device,dtype):
                 outcomponents[idx] = m5result[i,j]
                 idx = idx + 1
     
-    kernel = getkernel(check_vector_mat_constructor,suffix=dtype.__name__)
+    kernel = getkernel(check_scalar_mat_constructor,suffix=dtype.__name__)
+    compkernel = getkernel(check_component_mat_constructor,suffix=dtype.__name__)
+    veckernel = getkernel(check_vector_mat_constructor,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    input = wp.array(randvals([1],dtype), requires_grad=True, device=device)
+    val = input.numpy()[0]
+    outcomponents = wp.zeros(2*2 + 3*3 + 4*4 + 5*5, dtype=wptype, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
-    assert_np_equal( 2 * input.numpy(), outcomponents.numpy(), tol=10*tol )
+
+    assert_np_equal(outcomponents.numpy()[:4], 2 * val * np.ones(2*2), tol=tol)
+    assert_np_equal(outcomponents.numpy()[4:13], 2 * val * np.ones(3*3), tol=tol)
+    assert_np_equal(outcomponents.numpy()[13:29], 2 * val * np.ones(4*4), tol=tol)
+    assert_np_equal(outcomponents.numpy()[29:54], 2 * val * np.ones(5*5), tol=tol)
 
     if dtype in np_float_types:
         for idx in range(len(outcomponents)):
@@ -306,13 +288,43 @@ def test_constructors(test, device,dtype):
                 wp.launch(kernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
                 wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
             tape.backward(loss=out)
+            test.assertEqual(tape.gradients[input].numpy()[0],2)
+            tape.zero()
+    
+    input = wp.array(randvals([2*2 + 3*3 + 4*4 + 5*5],dtype), requires_grad=True, device=device)
+
+    wp.launch(compkernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
+    assert_np_equal( 2 * input.numpy(), outcomponents.numpy(), tol=10*tol )
+
+    if dtype in np_float_types:
+        for idx in range(len(outcomponents)):
+            tape = wp.Tape()
+            with tape:
+                wp.launch(compkernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
+            tape.backward(loss=out)
+            expectedgrads = np.zeros(len(input))
+            expectedgrads[idx] = 2
+            assert_np_equal( tape.gradients[input].numpy(),expectedgrads)
+            tape.zero()
+
+    wp.launch(veckernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
+    assert_np_equal( 2 * input.numpy(), outcomponents.numpy(), tol=10*tol )
+
+    if dtype in np_float_types:
+        for idx in range(len(outcomponents)):
+            tape = wp.Tape()
+            with tape:
+                wp.launch(veckernel, dim=1, inputs=[ input ], outputs=[outcomponents], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[ outcomponents,idx ], outputs=[out], device=device)
+            tape.backward(loss=out)
             expectedgrads = np.zeros(len(input))
             expectedgrads[idx] = 2
             assert_np_equal( tape.gradients[input].numpy(),expectedgrads)
             tape.zero()
     
 
-def test_quat_constructor(test,device,dtype):
+def test_quat_constructor(test,device,dtype, register_kernels=False):
 
     np.random.seed(123)
     
@@ -358,7 +370,10 @@ def test_quat_constructor(test,device,dtype):
                 outcomponents_alt[idx] = m_alt[i,j]
                 idx = idx + 1
 
-    kernel = getkernel(check_mat_quat_constructor)
+    kernel = getkernel(check_mat_quat_constructor,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
 
     # translation:
     p = wp.array(np.random.randn(1,3).astype(dtype), dtype=vec3, requires_grad=True, device=device)
@@ -407,7 +422,7 @@ def test_quat_constructor(test,device,dtype):
 
             idx = idx + 1
 
-def test_indexing(test,device,dtype):
+def test_indexing(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
     
@@ -457,6 +472,10 @@ def test_indexing(test,device,dtype):
 
 
     kernel = getkernel(check_mat_indexing,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     m2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     m3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     m4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -489,7 +508,7 @@ def test_indexing(test,device,dtype):
 
     
 
-def test_equality(test,device,dtype):
+def test_equality(test,device,dtype, register_kernels=False):
     
 
     np.random.seed(123)
@@ -585,10 +604,14 @@ def test_equality(test,device,dtype):
         )
 
     kernel = getkernel(check_mat_equality,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+
     wp.launch(kernel, dim=1, inputs=[], outputs=[], device=device)
 
 
-def test_negation(test,device,dtype):
+def test_negation(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
     
@@ -642,6 +665,10 @@ def test_negation(test,device,dtype):
                 idx = idx + 1
 
     kernel = getkernel(check_mat_negation,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     m2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     m3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     m4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -673,7 +700,7 @@ def test_negation(test,device,dtype):
                     idx = idx + 1
 
 
-def test_transpose(test,device,dtype):
+def test_transpose(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -736,6 +763,10 @@ def test_transpose(test,device,dtype):
                 idx = idx + 1
 
     kernel = getkernel(check_mat_transpose,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     m2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     m3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     m4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -769,7 +800,7 @@ def test_transpose(test,device,dtype):
                     idx = idx + 1
 
 
-def test_scalar_multiplication(test,device,dtype):
+def test_scalar_multiplication(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -833,6 +864,10 @@ def test_scalar_multiplication(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_scalar_mul,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     s = wp.array(randvals([1],dtype), requires_grad=True, device=device)
     m2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     m3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
@@ -888,7 +923,7 @@ def test_scalar_multiplication(test,device,dtype):
                     idx = idx + 1
 
 
-def test_matvec_multiplication(test,device,dtype):
+def test_matvec_multiplication(test,device,dtype, register_kernels=False):
     
 
     np.random.seed(123)
@@ -956,6 +991,10 @@ def test_matvec_multiplication(test,device,dtype):
             idx = idx + 1
         
     kernel = getkernel(check_mat_vec_mul,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     v2 = wp.array(randvals([1,2],dtype), dtype=vec2, requires_grad=True, device=device)
     v3 = wp.array(randvals([1,3],dtype), dtype=vec3, requires_grad=True, device=device)
     v4 = wp.array(randvals([1,4],dtype), dtype=vec4, requires_grad=True, device=device)
@@ -998,7 +1037,7 @@ def test_matvec_multiplication(test,device,dtype):
                 idx = idx + 1
 
 
-def test_matmat_multiplication(test,device,dtype):
+def test_matmat_multiplication(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1070,6 +1109,10 @@ def test_matmat_multiplication(test,device,dtype):
                 idx = idx + 1
         
     kernel = getkernel(check_mat_mat_mul,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     v2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     v3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     v4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -1118,7 +1161,7 @@ def test_matmat_multiplication(test,device,dtype):
                     idx = idx + 1
 
 
-def test_cw_multiplication(test,device,dtype):
+def test_cw_multiplication(test,device,dtype, register_kernels=False):
     
 
     np.random.seed(123)
@@ -1132,7 +1175,6 @@ def test_cw_multiplication(test,device,dtype):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     mat22 = wp.mat(shape=(2,2), dtype=wptype)
     mat33 = wp.mat(shape=(3,3), dtype=wptype)
-    mat32 = wp.mat(shape=(3,2), dtype=wptype)
     mat44 = wp.mat(shape=(4,4), dtype=wptype)
     mat55 = wp.mat(shape=(5,5), dtype=wptype)
     
@@ -1177,6 +1219,11 @@ def test_cw_multiplication(test,device,dtype):
                 outcomponents[idx] = v5result[i,j]
                 idx = idx + 1
     
+    kernel = getkernel(check_mat_cw_mul,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     s2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     s3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     s4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -1187,7 +1234,6 @@ def test_cw_multiplication(test,device,dtype):
     v5 = wp.array(randvals([1,5,5],dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2*2 + 3*3 + 4*4 + 5*5, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_mat_cw_mul,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[outcomponents], device=device)
 
     assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() * s2.numpy()).reshape(-1), tol=50*tol)
@@ -1217,7 +1263,7 @@ def test_cw_multiplication(test,device,dtype):
                     idx = idx + 1
 
 
-def test_cw_division(test,device,dtype):
+def test_cw_division(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1273,6 +1319,11 @@ def test_cw_division(test,device,dtype):
                 outcomponents[idx] = v5result[i,j]
                 idx = idx + 1
     
+    kernel = getkernel(check_mat_cw_div,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     s2 = randvals([1,2,2],dtype)
     s3 = randvals([1,3,3],dtype)
     s4 = randvals([1,4,4],dtype)
@@ -1297,7 +1348,6 @@ def test_cw_division(test,device,dtype):
     v5 = wp.array(randvals([1,5,5],dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2*2 + 3*3 + 4*4 + 5*5, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_mat_cw_div,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[outcomponents], device=device)
 
     if dtype in np_float_types:
@@ -1338,7 +1388,7 @@ def test_cw_division(test,device,dtype):
                     idx = idx + 1
 
 
-def test_outer_product(test,device,dtype):
+def test_outer_product(test,device,dtype, register_kernels=False):
     
 
     np.random.seed(123)
@@ -1403,6 +1453,10 @@ def test_outer_product(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_outer_product,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     s2 = wp.array(randvals([1,2],dtype), dtype=vec2, requires_grad=True, device=device)
     s3 = wp.array(randvals([1,3],dtype), dtype=vec3, requires_grad=True, device=device)
     s4 = wp.array(randvals([1,4],dtype), dtype=vec4, requires_grad=True, device=device)
@@ -1451,7 +1505,7 @@ def test_outer_product(test,device,dtype):
                     idx = idx + 1
 
 
-def test_scalar_division(test,device,dtype):
+def test_scalar_division(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1505,6 +1559,10 @@ def test_scalar_division(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_scalar_div,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     s = wp.array(randvals([1],dtype), requires_grad=True, device=device)
     m2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     m3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
@@ -1546,7 +1604,7 @@ def test_scalar_division(test,device,dtype):
 
                     idx = idx + 1
     
-def test_addition(test,device,dtype):
+def test_addition(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1601,6 +1659,11 @@ def test_addition(test,device,dtype):
                 outcomponents[idx] = wptype(2) * v5result[i,j]
                 idx = idx + 1
     
+    kernel = getkernel(check_mat_add,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     s2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     s3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     s4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -1611,7 +1674,6 @@ def test_addition(test,device,dtype):
     v5 = wp.array(randvals([1,5,5],dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2*2 + 3*3 + 4*4 + 5*5, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_mat_add,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[outcomponents], device=device)
 
     assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() + s2.numpy()).reshape(-1), tol=tol)
@@ -1641,7 +1703,7 @@ def test_addition(test,device,dtype):
                     idx = idx + 1
 
 
-def test_subtraction(test,device,dtype):
+def test_subtraction(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1696,6 +1758,11 @@ def test_subtraction(test,device,dtype):
                 outcomponents[idx] = wptype(2) * v5result[i,j]
                 idx = idx + 1
     
+    kernel = getkernel(check_mat_sub,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     s2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     s3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     s4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -1706,7 +1773,6 @@ def test_subtraction(test,device,dtype):
     v5 = wp.array(randvals([1,5,5],dtype), dtype=mat55, requires_grad=True, device=device)
     outcomponents = wp.zeros(2*2 + 3*3 + 4*4 + 5*5, dtype=wptype, requires_grad=True, device=device)
     
-    kernel = getkernel(check_mat_sub,suffix=dtype.__name__)
     wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[outcomponents], device=device)
 
     assert_np_equal(outcomponents.numpy()[:4], 2 * (v2.numpy() - s2.numpy() ).reshape(-1), tol=tol)
@@ -1736,7 +1802,7 @@ def test_subtraction(test,device,dtype):
                     idx = idx + 1
 
 
-def test_ddot(test,device,dtype):
+def test_ddot(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1772,6 +1838,11 @@ def test_ddot(test,device,dtype):
         dot4[0] = wptype(2) * wp.ddot(v4[0],s4[0])
         dot5[0] = wptype(2) * wp.ddot(v5[0],s5[0])
 
+    kernel = getkernel(check_mat_dot,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     s2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     s3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     s4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -1785,7 +1856,6 @@ def test_ddot(test,device,dtype):
     dot4 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     dot5 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
 
-    kernel = getkernel(check_mat_dot,suffix=dtype.__name__)
     tape = wp.Tape()
     with tape:
         wp.launch(kernel, dim=1, inputs=[s2,s3,s4,s5,v2,v3,v4,v5,], outputs=[dot2,dot3,dot4,dot5], device=device)
@@ -1841,7 +1911,7 @@ def test_ddot(test,device,dtype):
         tape.zero()
 
 
-def test_determinant(test,device,dtype):
+def test_determinant(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1856,7 +1926,6 @@ def test_determinant(test,device,dtype):
     mat33 = wp.mat(shape=(3,3), dtype=wptype)
     mat44 = wp.mat(shape=(4,4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(wptype)
     def check_mat_det(
         v2: wp.array(dtype=mat22),
         v3: wp.array(dtype=mat33),
@@ -1870,6 +1939,10 @@ def test_determinant(test,device,dtype):
         det3[0] = wptype(2) * wp.determinant(v3[0])
         det4[0] = wptype(2) * wp.determinant(v4[0])
     
+    kernel = getkernel(check_mat_det,suffix=dtype.__name__)
+    if register_kernels:
+        return
+    
     v2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     v3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     v4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -1877,7 +1950,6 @@ def test_determinant(test,device,dtype):
     det3 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     det4 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
 
-    kernel = getkernel(check_mat_det,suffix=dtype.__name__)
     tape = wp.Tape()
     with tape:
         wp.launch(kernel, dim=1, inputs=[v2,v3,v4,], outputs=[det2,det3,det4,], device=device)
@@ -1943,7 +2015,7 @@ def test_determinant(test,device,dtype):
                 assert_np_equal((dplus-dminus)/(2.0*dx*dplus),v4grads[i,j]/dplus,tol=fdtol)
 
 
-def test_trace(test,device,dtype):
+def test_trace(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -1975,6 +2047,11 @@ def test_trace(test,device,dtype):
         tr4[0] = wptype(2) * wp.trace(v4[0])
         tr5[0] = wptype(2) * wp.trace(v5[0])
     
+    kernel = getkernel(check_mat_trace,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     v2 = wp.array(randvals([1,2,2],dtype), dtype=mat22, requires_grad=True, device=device)
     v3 = wp.array(randvals([1,3,3],dtype), dtype=mat33, requires_grad=True, device=device)
     v4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
@@ -1984,7 +2061,6 @@ def test_trace(test,device,dtype):
     tr4 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     tr5 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
 
-    kernel = getkernel(check_mat_trace,suffix=dtype.__name__)
     tape = wp.Tape()
     with tape:
         wp.launch(kernel, dim=1, inputs=[v2,v3,v4,v5,], outputs=[tr2,tr3,tr4,tr5,], device=device)
@@ -2016,7 +2092,7 @@ def test_trace(test,device,dtype):
         tape.zero()
     
 
-def test_diag(test,device,dtype):
+def test_diag(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -2045,6 +2121,10 @@ def test_diag(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_diag,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     s5 = wp.array(randvals([1,5],dtype), dtype=vec5, requires_grad=True, device=device)
     outcomponents = wp.zeros(5*5, dtype=wptype, requires_grad=True, device=device)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -2072,7 +2152,7 @@ def test_diag(test,device,dtype):
                 idx = idx + 1
 
 
-def test_inverse(test,device,dtype):
+def test_inverse(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -2117,6 +2197,10 @@ def test_inverse(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_inverse,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+    
     m2 = wp.array( 2 * (randvals([1,2,2],dtype) + 0.2 * np.eye(2)), dtype=mat22, requires_grad=True, device=device)
     m3 = wp.array( 2 * (randvals([1,3,3],dtype) + 0.2 * np.eye(3)), dtype=mat33, requires_grad=True, device=device)
     m4 = wp.array( 2 * (randvals([1,4,4],dtype) + 0.2 * np.eye(4)), dtype=mat44, requires_grad=True, device=device)
@@ -2233,7 +2317,7 @@ def test_inverse(test,device,dtype):
         tape.zero()
 
 
-def test_svd(test,device,dtype):
+def test_svd(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -2281,6 +2365,12 @@ def test_svd(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_svd,suffix=dtype.__name__)
+    
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+
     m3 = wp.array(randvals([1,3,3],dtype) + np.eye(3), dtype=mat33, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(2*3*3 + 3, dtype=wptype, requires_grad=True, device=device)
@@ -2302,7 +2392,6 @@ def test_svd(test,device,dtype):
         return
 
     # check gradients:
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     idx = 0
     for idx in range(3*3+3+3*3):
@@ -2334,7 +2423,7 @@ def test_svd(test,device,dtype):
                 assert_np_equal((plusval - minusval) / (2*dx),m3grads[ii,jj],tol=fdtol)
 
 
-def test_qr(test,device,dtype):
+def test_qr(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -2374,6 +2463,11 @@ def test_qr(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_qr,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+    
+    if register_kernels:
+        return
+    
     m3 = wp.array(0.5 * (randvals([1,3,3],dtype) + np.eye(3)), dtype=mat33, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(2*3*3, dtype=wptype, requires_grad=True, device=device)
@@ -2399,7 +2493,6 @@ def test_qr(test,device,dtype):
         return
 
     # check gradients:
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     idx = 0
     for idx in range(len(outcomponents)):
@@ -2430,7 +2523,7 @@ def test_qr(test,device,dtype):
 
                 assert_np_equal((plusval - minusval) / (2*dx),m3grads[ii,jj],tol=fdtol)
 
-def test_eig(test,device,dtype):
+def test_eig(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -2470,6 +2563,11 @@ def test_eig(test,device,dtype):
             idx = idx + 1
     
     kernel = getkernel(check_mat_eig,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+    
+    if register_kernels:
+        return
+    
     m3_np = randvals([1,3,3],dtype) + np.eye(3,dtype=dtype)
     m3 = wp.array(m3_np, dtype=mat33, requires_grad=True, device=device)
 
@@ -2495,7 +2593,6 @@ def test_eig(test,device,dtype):
         return
 
     # check gradients:
-    output_select_kernel = get_select_kernel(wptype)
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     idx = 0
     for idx in range(len(outcomponents)):
@@ -2526,7 +2623,7 @@ def test_eig(test,device,dtype):
 
                 assert_np_equal((plusval - minusval) / (2*dx),m3grads[ii,jj],tol=fdtol)
 
-def test_skew(test,device,dtype):
+def test_skew(test,device,dtype, register_kernels=False):
     
 
     np.random.seed(123)
@@ -2556,6 +2653,10 @@ def test_skew(test,device,dtype):
                 idx = idx + 1
     
     kernel = getkernel(check_mat_skew,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     v3 = wp.array(randvals([1,3],dtype), dtype=vec3, requires_grad=True, device=device)
 
     outcomponents = wp.zeros(3*3, dtype=wptype, requires_grad=True, device=device)
@@ -2612,7 +2713,7 @@ def test_skew(test,device,dtype):
                 idx = idx + 1
 
 
-def test_transform_point(test,device,dtype):
+def test_transform_point(test,device,dtype, register_kernels=False):
 
     np.random.seed(123)
 
@@ -2641,6 +2742,10 @@ def test_transform_point(test,device,dtype):
         outcomponents[2] = presult[2]
     
     kernel = getkernel(check_mat_transform_point,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     v3 = wp.array(randvals([1,3],dtype), dtype=vec3, requires_grad=True, device=device)
     m4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
 
@@ -2671,7 +2776,7 @@ def test_transform_point(test,device,dtype):
             tape.zero()
 
 
-def test_transform_vector(test,device,dtype):
+def test_transform_vector(test,device,dtype, register_kernels=False):
     
     np.random.seed(123)
 
@@ -2700,6 +2805,10 @@ def test_transform_vector(test,device,dtype):
         outcomponents[2] = presult[2]
     
     kernel = getkernel(check_mat_transform_vector,suffix=dtype.__name__)
+    
+    if register_kernels:
+        return
+    
     v3 = wp.array(randvals([1,3],dtype), dtype=vec3, requires_grad=True, device=device)
     m4 = wp.array(randvals([1,4,4],dtype), dtype=mat44, requires_grad=True, device=device)
 
@@ -2731,44 +2840,44 @@ def test_transform_vector(test,device,dtype):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestMat(parent):
         pass
 
     for dtype in np_signed_int_types + np_float_types:
-        add_function_test(TestMat, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_determinant_{dtype.__name__}", test_determinant, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
-    
+        add_function_test_register_kernel(TestMat, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_subtraction_{dtype.__name__}", test_subtraction, devices=devices, dtype=dtype)
+   
     for dtype in np_scalar_types:
         add_function_test(TestMat, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_indexing_{dtype.__name__}", test_indexing, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_equality_{dtype.__name__}", test_equality, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_scalar_multiplication_{dtype.__name__}", test_scalar_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_matvec_multiplication_{dtype.__name__}", test_matvec_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_matmat_multiplication_{dtype.__name__}", test_matmat_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_cw_multiplication_{dtype.__name__}", test_cw_multiplication, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_cw_division_{dtype.__name__}", test_cw_division, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_outer_product_{dtype.__name__}", test_outer_product, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_transpose_{dtype.__name__}", test_transpose, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_scalar_division_{dtype.__name__}", test_scalar_division, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_ddot_{dtype.__name__}", test_ddot, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_trace_{dtype.__name__}", test_trace, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_diag_{dtype.__name__}", test_diag, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_transform_point_{dtype.__name__}", test_transform_point, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_transform_vector_{dtype.__name__}", test_transform_vector, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_indexing_{dtype.__name__}", test_indexing, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_equality_{dtype.__name__}", test_equality, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_scalar_multiplication_{dtype.__name__}", test_scalar_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_matvec_multiplication_{dtype.__name__}", test_matvec_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_matmat_multiplication_{dtype.__name__}", test_matmat_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_cw_multiplication_{dtype.__name__}", test_cw_multiplication, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_cw_division_{dtype.__name__}", test_cw_division, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_outer_product_{dtype.__name__}", test_outer_product, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_transpose_{dtype.__name__}", test_transpose, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_scalar_division_{dtype.__name__}", test_scalar_division, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_ddot_{dtype.__name__}", test_ddot, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_trace_{dtype.__name__}", test_trace, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_diag_{dtype.__name__}", test_diag, devices=devices, dtype=dtype)
     
     for dtype in np_float_types:
-        add_function_test(TestMat, f"test_quat_constructor_{dtype.__name__}", test_quat_constructor, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_inverse_{dtype.__name__}", test_inverse, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_svd_{dtype.__name__}", test_svd, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
-        add_function_test(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
-        
+        add_function_test_register_kernel(TestMat, f"test_quat_constructor_{dtype.__name__}", test_quat_constructor, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_inverse_{dtype.__name__}", test_inverse, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_svd_{dtype.__name__}", test_svd, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_qr_{dtype.__name__}", test_qr, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_eig_{dtype.__name__}", test_eig, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_transform_point_{dtype.__name__}", test_transform_point, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_transform_vector_{dtype.__name__}", test_transform_vector, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_determinant_{dtype.__name__}", test_determinant, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
+      
     return TestMat
 
 if __name__ == '__main__':

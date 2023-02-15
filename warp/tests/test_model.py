@@ -13,8 +13,6 @@ import numpy as np
 
 wp.init()
 
-devices = wp.get_devices()
-
 def register(parent):
 
     class TestModel(parent):
