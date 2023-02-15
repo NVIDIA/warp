@@ -387,15 +387,8 @@ def write_output_attrs(
 
 def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     """Evaluates the kernel."""
-    if device.is_cpu:
-        on_gpu = False
-    elif device.is_cuda:
-        on_gpu = True
-    else:
-        assert False, "Unexpected device '{}'.".format(device.alias)
-
     db.set_dynamic_attribute_memory_location(
-        on_gpu=on_gpu,
+        on_gpu=device.is_cuda,
         gpu_ptr_kind=og.PtrToPtrKind.CPU,
     )
 
