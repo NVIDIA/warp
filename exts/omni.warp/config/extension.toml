@@ -49,3 +49,4 @@ pyCoverageOmit = [
     "warp/render.py"
 ]
 pyCoverageThreshold = 40
+timeout = 900
