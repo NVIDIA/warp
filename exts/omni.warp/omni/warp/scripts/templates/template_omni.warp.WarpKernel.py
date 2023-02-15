@@ -19,7 +19,10 @@ from omni.kit.property.usd.custom_layout_helper import (
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
-from omni.warp.scripts.kernelnode import SUPPORTED_ATTR_TYPES
+from omni.warp.scripts.kernelnode import (
+    MAX_DIMENSIONS,
+    SUPPORTED_ATTR_TYPES,
+)
 from omni.warp.scripts.props.codefile import get_code_file_prop_builder
 from omni.warp.scripts.props.codestr import get_code_str_prop_builder
 from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
@@ -42,6 +45,11 @@ class CustomLayout:
         self.compute_node_widget = compute_node_widget
         self.node_prim_path = self.compute_node_widget._payload[-1]
         self.node = og.Controller.node(self.node_prim_path)
+
+        self.dim_count_attr = og.Controller.attribute(
+            "inputs:dimCount",
+            self.node,
+        )
         self.code_provider_attr = og.Controller.attribute(
             "inputs:codeProvider",
             self.node,
@@ -52,6 +60,9 @@ class CustomLayout:
         )
         self.node.register_on_disconnected_callback(
             self._handle_node_attr_disconnected
+        )
+        self.dim_count_attr.register_value_changed_callback(
+            self._handle_dim_count_value_changed
         )
         self.code_provider_attr.register_value_changed_callback(
             self._handle_code_provider_value_changed
@@ -76,6 +87,12 @@ class CustomLayout:
         if attr_to.get_name() == "inputs:codeStr":
             # Redraw the UI to update the view/edit code button label.
             self.refresh()
+
+    def _handle_dim_count_value_changed(self, attr: og.Attribute) -> None:
+        """Callback for the dimension count attribute value having changed."""
+        # Redraw the UI to display a different set of attributes depending on
+        # the dimension count value.
+        self.refresh()
 
     def _handle_code_provider_value_changed(self, attr: og.Attribute) -> None:
         """Callback for the code provider attribute value having changed."""
@@ -110,12 +127,27 @@ class CustomLayout:
                         display_name=prop.metadata["customData"]["uiName"],
                     )
 
-                prop = find_prop(props, "inputs:dim")
+                prop = find_prop(props, "inputs:dimCount")
                 if prop is not None:
                     CustomLayoutProperty(
                         prop.prop_name,
                         display_name=prop.metadata["customData"]["uiName"],
                     )
+
+                dim_count = min(
+                    max(
+                        og.Controller.get(self.dim_count_attr),
+                        0,
+                    ),
+                    MAX_DIMENSIONS,
+                )
+                for i in range(dim_count):
+                    prop = find_prop(props, "inputs:dim{}".format(i + 1))
+                    if prop is not None:
+                        CustomLayoutProperty(
+                            prop.prop_name,
+                            display_name=prop.metadata["customData"]["uiName"],
+                        )
 
                 prop = find_prop(props, "inputs:codeProvider")
                 if prop is not None:

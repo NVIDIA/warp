@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+MAX_DIMENSIONS = 4
+
 SUPPORTED_ATTR_TYPES = (
     "bool", "bool[]",
     "color3f", "color3f[]",

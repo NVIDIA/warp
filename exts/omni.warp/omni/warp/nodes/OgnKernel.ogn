@@ -1,6 +1,6 @@
 {
     "WarpKernel": {
-        "version": 1,
+        "version": 2,
         "description": "Runs a single warp Kernel.",
         "language": "Python",
         "uiName": "Warp Kernel",
@@ -16,11 +16,51 @@
                 "uiName": "Device",
                 "default": "cuda:0"
             },
-            "dim": {
+            "dimCount": {
                 "type": "int",
-                "description": "Number of threads to launch for the kernel.",
-                "uiName": "Dimension",
-                "default": 1
+                "description": "Number of kernel dimensions.",
+                "uiName": "Dim Count",
+                "default": 1,
+                "metadata": {
+                    "minimum": 1,
+                    "maximum": 4
+                }
+            },
+            "dim1": {
+                "type": "int",
+                "description": "Size of the first kernel dimension.",
+                "uiName": "Dim 1",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim2": {
+                "type": "int",
+                "description": "Size of the second kernel dimension.",
+                "uiName": "Dim 2",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim3": {
+                "type": "int",
+                "description": "Size of the third kernel dimension.",
+                "uiName": "Dim 3",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
+            },
+            "dim4": {
+                "type": "int",
+                "description": "Size of the fourth kernel dimension.",
+                "uiName": "Dim 4",
+                "default": 1,
+                "metadata": {
+                    "minimum": 0
+                }
             },
             "codeProvider": {
                 "type": "token",

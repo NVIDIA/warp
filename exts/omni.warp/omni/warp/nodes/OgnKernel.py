@@ -7,8 +7,10 @@
 
 """Warp kernel exposed as an Omni Graph node."""
 
+import functools
 import hashlib
 import importlib.util
+import operator
 import os
 import tempfile
 import traceback
@@ -27,7 +29,10 @@ import omni.graph.core as og
 import omni.timeline
 
 from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
-from omni.warp.scripts.kernelnode import ATTR_TO_WARP_TYPE
+from omni.warp.scripts.kernelnode import (
+    ATTR_TO_WARP_TYPE,
+    MAX_DIMENSIONS,
+)
 
 wp.init()
 
@@ -143,6 +148,7 @@ class InternalState:
 
     def __init__(self) -> None:
         self._attrs = None
+        self._dim_count = None
         self._code_provider = None
         self._code_str = None
         self._code_file = None
@@ -175,6 +181,9 @@ class InternalState:
             if self._attrs != db.node.get_attributes():
                 return True
 
+        if self._dim_count != db.inputs.dimCount:
+            return True
+
         if self._code_provider != db.inputs.codeProvider:
             return True
 
@@ -205,6 +214,7 @@ class InternalState:
         # Cache the node attribute values relevant to this internal state.
         # They're the ones used to check whether this state is outdated or not.
         self._attrs = db.node.get_attributes()
+        self._dim_count = db.inputs.dimCount
         self._code_provider = db.inputs.codeProvider
         self._code_str = db.inputs.codeStr
         self._code_file = db.inputs.codeFile
@@ -319,6 +329,7 @@ def get_kernel_args(
     db: OgnKernelDatabase,
     module: Any,
     annotations: Mapping[og.AttributePortType, Sequence[Tuple[str, Any]]],
+    dims: Sequence[int],
     device: wp.context.Device,
 ) -> Tuple[Any, Any]:
     """Retrieves the in/out argument values to pass to the kernel."""
@@ -349,8 +360,8 @@ def get_kernel_args(
             # we allocate a new array matching the input's length.
             size = len(getattr(inputs, name))
         else:
-            # Fallback to allocate an array matching the kernel's dimension.
-            size = db.inputs.dim
+            # Fallback to allocate an array matching the kernel's dimensions.
+            size = functools.reduce(operator.mul, dims)
 
         # Allocate the array.
         setattr(db.outputs, "{}_size".format(name), size)
@@ -404,11 +415,21 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     if not db.internal_state.kernel_annotations[ATTR_PORT_TYPE_OUTPUT]:
         return
 
+    # Retrieve the number of dimensions.
+    dim_count = min(max(db.inputs.dimCount, 1), MAX_DIMENSIONS)
+
+    # Retrieve the shape of the dimensions to launch the kernel with.
+    dims = tuple(
+        max(getattr(db.inputs, "dim{}".format(i + 1)), 0)
+        for i in range(dim_count)
+    )
+
     # Retrieve the inputs and outputs argument values to pass to the kernel.
     inputs, outputs = get_kernel_args(
         db,
         db.internal_state.kernel_module,
         db.internal_state.kernel_annotations,
+        dims,
         device,
     )
 
@@ -433,7 +454,7 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     # Launch the kernel.
     wp.launch(
         db.internal_state.kernel_module.compute,
-        dim=db.inputs.dim,
+        dim=dims,
         inputs=[inputs],
         outputs=[outputs],
     )
