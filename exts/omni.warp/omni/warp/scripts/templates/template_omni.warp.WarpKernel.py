@@ -54,6 +54,10 @@ class CustomLayout:
             "inputs:codeProvider",
             self.node,
         )
+        self.user_attrs_event_attr = og.Controller.attribute(
+            "state:userAttrsEvent",
+            self.node,
+        )
 
         self.node.register_on_connected_callback(
             self._handle_node_attr_connected

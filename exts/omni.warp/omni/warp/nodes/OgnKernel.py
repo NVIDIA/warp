@@ -32,6 +32,7 @@ from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
 from omni.warp.scripts.kernelnode import (
     ATTR_TO_WARP_TYPE,
     MAX_DIMENSIONS,
+    UserAttributesEvent,
 )
 
 wp.init()
@@ -147,7 +148,6 @@ class InternalState:
     """Internal state for the node."""
 
     def __init__(self) -> None:
-        self._attrs = None
         self._dim_count = None
         self._code_provider = None
         self._code_str = None
@@ -170,15 +170,16 @@ class InternalState:
             # when attributes are removed, since adding new attributes is not
             # a breaking change.
             if (
-                self._attrs is None
-                or not set(self._attrs).issubset(db.node.get_attributes())
+                self.kernel_module is None
+                or self.kernel_annotations is None
+                or UserAttributesEvent.REMOVED & db.state.userAttrsEvent
             ):
                 return True
         else:
             # If something previously went wrong, we always recompile the kernel
             # when attributes are edited, in case it might fix code that
             # errored out due to referencing a non-existing attribute.
-            if self._attrs != db.node.get_attributes():
+            if db.state.userAttrsEvent != UserAttributesEvent.NONE:
                 return True
 
         if self._dim_count != db.inputs.dimCount:
@@ -213,14 +214,13 @@ class InternalState:
         """Initialize the internal state and recompile the kernel."""
         # Cache the node attribute values relevant to this internal state.
         # They're the ones used to check whether this state is outdated or not.
-        self._attrs = db.node.get_attributes()
         self._dim_count = db.inputs.dimCount
         self._code_provider = db.inputs.codeProvider
         self._code_str = db.inputs.codeStr
         self._code_file = db.inputs.codeFile
 
         # Retrieve the dynamic user attributes defined on the node.
-        attrs = tuple(x for x in self._attrs if x.is_dynamic())
+        attrs = tuple(x for x in db.node.get_attributes() if x.is_dynamic())
 
         # Retrieve the kernel code to evaluate.
         header_code = generate_header_code(attrs)
@@ -505,6 +505,9 @@ class OgnKernel:
             return
         else:
             wp.config.quiet = QUIET_DEFAULT
+
+        # Reset the user attributes event since it has now been processed.
+        db.state.userAttrsEvent = UserAttributesEvent.NONE
 
         # Fire the execution for the downstream nodes.
         db.outputs.execOut = og.ExecutionAttributeState.ENABLED

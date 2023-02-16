@@ -5,6 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+from enum import IntFlag
+
 MAX_DIMENSIONS = 4
 
 SUPPORTED_ATTR_TYPES = (
@@ -80,3 +82,10 @@ ATTR_TO_WARP_TYPE = {
 }
 
 assert sorted(ATTR_TO_WARP_TYPE.keys()) == sorted(SUPPORTED_ATTR_TYPES)
+
+class UserAttributesEvent(IntFlag):
+    """User attributes event."""
+
+    NONE    = 0
+    CREATED = 1 << 0
+    REMOVED = 1 << 1

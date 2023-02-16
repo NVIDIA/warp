@@ -17,6 +17,7 @@ from typing import (
 import omni.graph.core as og
 import omni.ui as ui
 
+from omni.warp.scripts.kernelnode import UserAttributesEvent
 from omni.warp.scripts.widgets.attributeeditor import AttributeEditor
 
 _BUTTON_WIDTH = 100
@@ -46,6 +47,13 @@ def _get_attribute_creation_handler(state: _State) -> Callable:
             )
 
         attr.is_optional_for_compute = optional
+
+        # Inform the node that a new attribute was created.
+        og.Controller.set(
+            state.layout.user_attrs_event_attr,
+            UserAttributesEvent.CREATED,
+        )
+
         state.layout.refresh()
 
     return fn
@@ -55,6 +63,12 @@ def _get_attribute_removal_handler(state: _State) -> Callable:
     def fn(attr):
         if not og.Controller.remove_attribute(attr):
             return
+
+        # Inform the node that an existing attribute was removed.
+        og.Controller.set(
+            state.layout.user_attrs_event_attr,
+            UserAttributesEvent.REMOVED,
+        )
 
         state.layout.refresh()
 
