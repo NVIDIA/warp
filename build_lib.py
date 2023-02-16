@@ -147,15 +147,23 @@ try:
 
         clang_dll_path = os.path.join(build_path, f"bin/clang.{dll_ext()}")
 
+        libpath = os.path.join(llvm_install_path, "lib")
+        for (_, _, libs) in os.walk(libpath):
+            break  # just the top level contains .lib files
+
+        libs.append("Version.lib")
+        libs.append(f'/LIBPATH:"{libpath}"')
+
         warp.build.build_dll(
                         dll_path=clang_dll_path,
                         cpp_paths=clang_cpp_paths,
                         cu_path=None,
+                        libs=libs,
                         mode=warp.config.mode,
                         verify_fp=warp.config.verify_fp,
                         fast_math=args.fast_math,
                         use_cache=False)
-        
+
     # build warp.dll
     cpp_sources = [
         "native/warp.cpp",
