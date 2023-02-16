@@ -160,7 +160,7 @@ def load_cuda(input_path, device):
 def quote(path):
     return "\"" + path + "\""
 
-def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast_math=False, use_cache=True):
+def build_dll(cpp_paths, cu_path, dll_path, mode="release", verify_fp=False, fast_math=False, use_cache=True):
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
@@ -189,7 +189,7 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
 
                     cache_valid = False
 
-            if (cpp_path):
+            for cpp_path in cpp_paths:
                 cpp_time = os.path.getmtime(cpp_path)
                 if (cpp_time > dll_time):
                     
@@ -272,8 +272,6 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
         
         host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
 
-        cpp_out = cpp_path + ".obj"
-
         cuda_includes = f' /I"{cuda_home}/include"' if cu_path else ""
 
         # nvrtc_static.lib is built with /MT and _ITERATOR_DEBUG_LEVEL=0 so if we link it in we must match these options
@@ -307,10 +305,11 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
 
 
         with ScopedTimer("build", active=warp.config.verbose):
-            cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
-            run_cmd(cpp_cmd)
-
-            ld_inputs.append(quote(cpp_out))
+            for cpp_path in cpp_paths:
+                cpp_out = cpp_path + ".obj"
+                cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+                run_cmd(cpp_cmd)
+                ld_inputs.append(quote(cpp_out))
 
         if cu_path:
 
@@ -333,8 +332,6 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
         
     else:
 
-        cpp_out = cpp_path + ".o"
-
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
 
         if (mode == "debug"):
@@ -354,10 +351,11 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
             cpp_flags += ' -ffast-math'
 
         with ScopedTimer("build", active=warp.config.verbose):
-            build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
-            run_cmd(build_cmd)
-
-            ld_inputs.append(quote(cpp_out))
+            for cpp_path in cpp_paths:
+                cpp_out = cpp_path + ".o"
+                build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
+                run_cmd(build_cmd)
+                ld_inputs.append(quote(cpp_out))
 
         if cu_path:
 

@@ -72,12 +72,17 @@ if os.name == 'nt':
 
 try:
 
-    if sys.platform == "win32":
-        dll_path = os.path.join(build_path, "bin/warp.dll")
-    elif sys.platform == "darwin":
-        dll_path = os.path.join(build_path, "bin/warp.dylib")
-    else:
-        dll_path = os.path.join(build_path, "bin/warp.so")
+    cpp_sources = [
+        "native/warp.cpp",
+        "native/cuda_util.cpp",
+        "native/mesh.cpp",
+        "native/hashgrid.cpp",
+        "native/sort.cpp",
+        "native/volume.cpp",
+        "native/marching.cpp",
+        "native/cutlass_gemm.cpp",
+    ]
+    warp_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 
     if (warp.config.cuda_path is None):
         print("Warning: CUDA toolchain not found, building without CUDA support")
@@ -85,8 +90,15 @@ try:
     else:
         warp_cu_path = os.path.join(build_path, "native/warp.cu")
 
+    if sys.platform == "win32":
+        dll_path = os.path.join(build_path, "bin/warp.dll")
+    elif sys.platform == "darwin":
+        dll_path = os.path.join(build_path, "bin/warp.dylib")
+    else:
+        dll_path = os.path.join(build_path, "bin/warp.so")
+
     warp.build.build_dll(
-                    cpp_path=os.path.join(build_path, "native/warp.cpp"), 
+                    cpp_paths=warp_cpp_paths,
                     cu_path=warp_cu_path, 
                     dll_path=dll_path,
                     mode=warp.config.mode,
