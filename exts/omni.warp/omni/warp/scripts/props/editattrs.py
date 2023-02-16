@@ -129,7 +129,7 @@ def get_edit_attrs_prop_builder(
                 "Remove -",
                 width=_BUTTON_WIDTH,
                 clicked_fn=_get_remove_btn_clicked_handler(state),
-                tooltip="Opens an UI to edit the node's attributes",
+                tooltip="Opens a menu to remove an existing node attribute",
             )
 
     return fn

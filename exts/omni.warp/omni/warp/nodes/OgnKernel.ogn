@@ -1,7 +1,7 @@
 {
     "WarpKernel": {
         "version": 2,
-        "description": "Runs a single warp Kernel.",
+        "description": "Runs a single Warp kernel.",
         "language": "Python",
         "uiName": "Warp Kernel",
         "exclude": ["usd"],

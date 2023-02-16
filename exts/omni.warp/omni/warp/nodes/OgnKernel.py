@@ -5,7 +5,7 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""Warp kernel exposed as an Omni Graph node."""
+"""Warp kernel exposed as an OmniGraph node."""
 
 import functools
 import hashlib
@@ -41,7 +41,7 @@ QUIET_DEFAULT = wp.config.quiet
 ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
 
-CODE_HEADER_TEMPLATE = """import warp as wp
+HEADER_CODE_TEMPLATE = """import warp as wp
 
 @wp.struct
 class Inputs:
@@ -65,7 +65,7 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
 
     return getattr(obj, "__annotations__", {})
 
-def generate_code_header(attrs: Sequence[og.Attribute]) -> str:
+def generate_header_code(attrs: Sequence[og.Attribute]) -> str:
     """Generates the code header based on the node's attributes."""
     # Convert all the inputs/outputs attributes into warp members.
     params = {}
@@ -92,7 +92,7 @@ def generate_code_header(attrs: Sequence[og.Attribute]) -> str:
     }
 
     # Return the template code populated with the members.
-    return CODE_HEADER_TEMPLATE.format(
+    return HEADER_CODE_TEMPLATE.format(
         inputs=members.get(ATTR_PORT_TYPE_INPUT, ""),
         outputs=members.get(ATTR_PORT_TYPE_OUTPUT, ""),
     )
@@ -159,15 +159,15 @@ class InternalState:
 
         self.is_valid = False
 
-    def is_outdated(
+    def needs_initialization(
         self,
         db: OgnKernelDatabase,
         check_file_modified_time: bool,
     ) -> bool:
-        """Checks if the internal state is outdated."""
+        """Checks if the internal state needs to be (re)initialized."""
         if self.is_valid:
             # If everything is in order, we only need to recompile the kernel
-            # when attributes were removed, since adding new attributes is not
+            # when attributes are removed, since adding new attributes is not
             # a breaking change.
             if (
                 self._attrs is None
@@ -210,7 +210,7 @@ class InternalState:
         return False
 
     def initialize(self, db: OgnKernelDatabase) -> bool:
-        """Initialize the internal state if needed."""
+        """Initialize the internal state and recompile the kernel."""
         # Cache the node attribute values relevant to this internal state.
         # They're the ones used to check whether this state is outdated or not.
         self._attrs = db.node.get_attributes()
@@ -223,9 +223,9 @@ class InternalState:
         attrs = tuple(x for x in self._attrs if x.is_dynamic())
 
         # Retrieve the kernel code to evaluate.
-        code_header = generate_code_header(attrs)
+        header_code = generate_header_code(attrs)
         user_code = get_user_code(db)
-        code = "{}\n{}".format(code_header, user_code)
+        code = "{}\n{}".format(header_code, user_code)
 
         # Create a Python module made of the kernel code.
         # We try to keep its name unique to ensure that it's not clashing with
@@ -393,11 +393,8 @@ def write_output_attrs(
         value = getattr(outputs, name)
         setattr(db.outputs, name, value)
 
-#   Compute
-# ------------------------------------------------------------------------------
-
 def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
-    """Evaluates the kernel."""
+    """Evaluates the node."""
     db.set_dynamic_attribute_memory_location(
         on_gpu=device.is_cuda,
         gpu_ptr_kind=og.PtrToPtrKind.CPU,
@@ -405,7 +402,7 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
 
     # Ensure that our internal state is correctly initialized.
     timeline =  omni.timeline.get_timeline_interface()
-    if db.internal_state.is_outdated(db, timeline.is_stopped()):
+    if db.internal_state.needs_initialization(db, timeline.is_stopped()):
         if not db.internal_state.initialize(db):
             return
 
@@ -437,8 +434,8 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     # as being optional.
     # Note that adding a new non-optional array attribute might still cause
     # the compute to succeed since the kernel recompilation is delayed until
-    # `InternalState.is_outdated()` requests it, meaning that the new attribute
-    # won't show up as a kernel annotation just yet.
+    # `InternalState.needs_initialization()` requests it, meaning that the new
+    # attribute won't show up as a kernel annotation just yet.
     for attr_name in db.internal_state.kernel_annotations[ATTR_PORT_TYPE_INPUT]:
         value = getattr(inputs, attr_name)
         if not isinstance(value, wp.array):
@@ -484,7 +481,6 @@ class OgnKernel:
         if attr.get_metadata(og.MetadataKeys.ALLOWED_TOKENS) is None:
             attr.set_metadata(
                 og.MetadataKeys.ALLOWED_TOKENS,
-                #",".join(x.alias for x in wp.get_devices()),
                 ",".join(["cpu", "cuda:0"])
             )
 

@@ -15,35 +15,33 @@ _DIALOG_TITLE = "Attribute Creator"
 _DIALOG_WIDTH = 400
 _DIALOG_HEIGHT = 0
 _DIALOG_PADDING = 15
-_BUTTON_WIDTH = 100
-_WIDGET_PADDING = 5
 
 _FIELD_WIDTH = ui.Percent(60)
 
 class AttributeEditor:
     """Editor to add/remove node attributes."""
 
-    def __init__(self, data_types, create_attr_callback):
-        self.supported_data_types = data_types
-        self.filtered_data_types = data_types
+    def __init__(self, types, create_attr_callback):
+        self.supported_types = types
+        self.filtered_types = types
         self.create_attr_callback = create_attr_callback
         self.dialog = None
-        self.data_type_frame = None
+        self.type_frame = None
         self.name_field = None
         self.input_port_btn = None
         self.output_port_btn = None
-        self.selected_data_type_btn = None
+        self.selected_type_btn = None
         self.optional_frame = None
         self.optional_checkbox = None
         self.error_msg_label = None
         self._build()
 
-    def _handle_data_type_clicked(self, btn):
-        if self.selected_data_type_btn is not None:
-            self.selected_data_type_btn.checked = False
+    def _handle_type_clicked(self, btn):
+        if self.selected_type_btn is not None:
+            self.selected_type_btn.checked = False
 
-        self.selected_data_type_btn = btn
-        self.selected_data_type_btn.checked = True
+        self.selected_type_btn = btn
+        self.selected_type_btn.checked = True
 
     def _handle_input_port_btn_clicked(self):
         self.optional_frame.enabled = True
@@ -53,16 +51,16 @@ class AttributeEditor:
 
     def _handle_search(self, text):
         if text is None:
-            self.filtered_data_types = self.supported_data_types
+            self.filtered_types = self.supported_types
         else:
             text = text[0]
-            self.filtered_data_types = tuple(
-                x for x in self.supported_data_types
+            self.filtered_types = tuple(
+                x for x in self.supported_types
                 if text in x
             )
 
-        self._build_data_type_frame()
-        self.selected_data_type_btn = None
+        self._build_type_frame()
+        self.selected_type_btn = None
 
     def _handle_ok_btn_clicked(self):
         name = self.name_field.model.get_value_as_string()
@@ -77,7 +75,7 @@ class AttributeEditor:
             )
             return
 
-        if self.selected_data_type_btn is None:
+        if self.selected_type_btn is None:
             self.error_msg_label.text = (
                 "Error: You must select a type for the new attribute!"
             )
@@ -91,10 +89,10 @@ class AttributeEditor:
             self.error_msg_label.text = "Error: You must select a port type!"
             return
 
-        data_type_name = self.selected_data_type_btn.text
+        type_name = self.selected_type_btn.text
         if (
             port_type == og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
-            and not data_type_name.endswith("[]")
+            and not type_name.endswith("[]")
         ):
             self.error_msg_label.text = (
                 "Error: Output attributes are required to be arrays!"
@@ -107,7 +105,7 @@ class AttributeEditor:
         )
 
         try:
-            self.create_attr_callback(name, port_type, data_type_name, optional)
+            self.create_attr_callback(name, port_type, type_name, optional)
         except Exception as e:
             self.error_msg_label.text = str(e)
             return
@@ -117,15 +115,15 @@ class AttributeEditor:
     def _handle_cancel_btn_clicked(self):
         self.dialog.visible = False
 
-    def _build_data_type_frame(self):
-        self.data_type_frame.clear()
-        with self.data_type_frame:
+    def _build_type_frame(self):
+        self.type_frame.clear()
+        with self.type_frame:
             with ui.VStack():
-                for data_type in self.filtered_data_types:
-                    btn = ui.Button(data_type)
+                for type in self.filtered_types:
+                    btn = ui.Button(type)
                     btn.set_clicked_fn(
                         partial(
-                            self._handle_data_type_clicked,
+                            self._handle_type_clicked,
                             btn,
                         ),
                     )
@@ -174,14 +172,14 @@ class AttributeEditor:
                             subscribe_edit_changed=True,
                         )
 
-                        self.data_type_frame = ui.ScrollingFrame(
+                        self.type_frame = ui.ScrollingFrame(
                             height=150,
                             horizontal_scrollbar_policy=(
                                 ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_OFF
                             ),
                             style_type_name_override="TreeView"
                         )
-                        self._build_data_type_frame()
+                        self._build_type_frame()
 
                 # Optional flag.
                 self.optional_frame = ui.HStack(height=0)
