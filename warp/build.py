@@ -77,10 +77,10 @@ def find_host_compiler():
             if not os.path.exists(vswhere_path):
                 return ""
 
-            vs_path = run_cmd('"{}" -latest -property installationPath'.format(vswhere_path)).decode().rstrip()
+            vs_path = run_cmd(f'"{vswhere_path}" -latest -property installationPath').decode().rstrip()
             vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
 
-            output = run_cmd('"{}" && set'.format(vsvars_path)).decode()
+            output = run_cmd(f'"{vsvars_path}" && set').decode()
             
             for line in output.splitlines():
                 pair = line.split("=", 1)
@@ -113,17 +113,6 @@ def find_host_compiler():
             return run_cmd("which g++").decode()
         except:
             return ""
-
-
-
-
-
-# See PyTorch for reference on how to find nvcc.exe more robustly, https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
-def find_cuda():
-    
-    # Guess #1
-    cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
-    return cuda_home
     
 
 def get_cuda_toolkit_version(cuda_home):
@@ -183,16 +172,6 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
     warp_home = warp_home_path.resolve()
     nanovdb_home = (warp_home_path.parent / "_build/host-deps/nanovdb/include")
     
-    # is the library being built with CUDA enabled?
-    if cuda_home is None or cuda_home == "":
-        cuda_enabled = 0
-    else:
-        cuda_enabled = 1
-
-    if (cu_path != None and not cuda_enabled):
-        print("CUDA toolchain not found, skipping CUDA build")
-        cu_path = None
-    
     if use_cache:
 
         if (os.path.exists(dll_path) == True):
@@ -222,7 +201,7 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
             if (cache_valid):
                 
                 if (warp.config.verbose):
-                    print("Skipping build of {} since outputs newer than inputs".format(dll_path))
+                    print(f"Skipping build of {dll_path} since outputs newer than inputs")
                 
                 return True
 
@@ -231,11 +210,11 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
 
     # output stale, rebuild
     if (warp.config.verbose):
-        print("Building {}".format(dll_path))
+        print(f"Building {dll_path}")
 
     native_dir = os.path.join(warp_home, "native")
 
-    if cuda_enabled:
+    if cu_path:
         # check CUDA Toolkit version
         min_ctk_version = (11, 5)
         ctk_version = get_cuda_toolkit_version(cuda_home) or min_ctk_version
@@ -283,6 +262,9 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
         if fast_math:
             nvcc_opts.append("--use_fast_math")
 
+    # is the library being built with CUDA enabled?
+    cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_path is not None) else "WP_ENABLE_CUDA=0"
+
     if os.name == 'nt':
 
         if not warp.config.host_compiler:
@@ -292,13 +274,10 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
 
         cpp_out = cpp_path + ".obj"
 
-        if cuda_enabled:
-            cuda_includes = f' /I"{cuda_home}/include"'
-        else:
-            cuda_includes = ""
+        cuda_includes = f' /I"{cuda_home}/include"' if cu_path else ""
 
         # nvrtc_static.lib is built with /MT and _ITERATOR_DEBUG_LEVEL=0 so if we link it in we must match these options
-        if cuda_enabled or mode != "debug":
+        if cu_path or mode != "debug":
             runtime = "/MT"
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=0"
             debug = "NDEBUG"
@@ -308,12 +287,12 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
             debug = "_DEBUG"
 
         if (mode == "debug"):
-            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "WP_ENABLE_CUDA={cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/DEBUG /dll'
             ld_inputs = []
 
         elif (mode == "release"):
-            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "WP_ENABLE_CUDA={cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             ld_flags = '/dll'
             ld_inputs = []
 
@@ -356,18 +335,15 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
 
         cpp_out = cpp_path + ".o"
 
-        if cuda_enabled:
-            cuda_includes = f' -I"{cuda_home}/include"'
-        else:
-            cuda_includes = ""
+        cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
 
         if (mode == "debug"):
-            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -DWP_ENABLE_CUDA={cuda_enabled} -fPIC -fvisibility=hidden --std=c++11 -fkeep-inline-functions -I"{native_dir}" {cuda_includes}'
+            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -D{cuda_enabled} -fPIC -fvisibility=hidden --std=c++11 -fkeep-inline-functions -I"{native_dir}" {cuda_includes}'
             ld_flags = "-D_DEBUG"
             ld_inputs = []
 
         if (mode == "release"):
-            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -DWP_ENABLE_CUDA={cuda_enabled} -fPIC -fvisibility=hidden --std=c++11 -I"{native_dir}" {cuda_includes}'
+            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -D{cuda_enabled} -fPIC -fvisibility=hidden --std=c++11 -I"{native_dir}" {cuda_includes}'
             ld_flags = "-DNDEBUG"
             ld_inputs = []
 
@@ -397,7 +373,7 @@ def build_dll(cpp_path, cu_path, dll_path, mode="release", verify_fp=False, fast
                 run_cmd(cuda_cmd)
 
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append('-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lpthread -ldl -lrt'.format(cuda_home=cuda_home))
+                ld_inputs.append(f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lpthread -ldl -lrt')
 
         if sys.platform == 'darwin':
             opt_no_undefined = "-Wl,-undefined,error"
@@ -419,7 +395,7 @@ def load_dll(dll_path):
         else:
             dll = ctypes.CDLL(dll_path)
     except OSError:
-        raise RuntimeError("Failed to load the shared library '{}'".format(dll_path))
+        raise RuntimeError(f"Failed to load the shared library '{dll_path}'")
     return dll
 
 def unload_dll(dll):
