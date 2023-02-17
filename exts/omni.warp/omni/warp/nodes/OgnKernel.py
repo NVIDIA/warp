@@ -32,7 +32,9 @@ from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
 from omni.warp.scripts.kernelnode import (
     ATTR_TO_WARP_TYPE,
     MAX_DIMENSIONS,
+    UserAttributeDesc,
     UserAttributesEvent,
+    deserialize_user_attribute_descs,
 )
 
 wp.init()
@@ -66,7 +68,10 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
 
     return getattr(obj, "__annotations__", {})
 
-def generate_header_code(attrs: Sequence[og.Attribute]) -> str:
+def generate_header_code(
+    attrs: Sequence[og.Attribute],
+    attr_descs: Mapping[str, UserAttributeDesc],
+) -> str:
     """Generates the code header based on the node's attributes."""
     # Convert all the inputs/outputs attributes into warp members.
     params = {}
@@ -222,8 +227,11 @@ class InternalState:
         # Retrieve the dynamic user attributes defined on the node.
         attrs = tuple(x for x in db.node.get_attributes() if x.is_dynamic())
 
+        # Retrieve any user attribute descriptions available.
+        attr_descs = deserialize_user_attribute_descs(db.state.userAttrDescs)
+
         # Retrieve the kernel code to evaluate.
-        header_code = generate_header_code(attrs)
+        header_code = generate_header_code(attrs, attr_descs)
         user_code = get_user_code(db)
         code = "{}\n{}".format(header_code, user_code)
 

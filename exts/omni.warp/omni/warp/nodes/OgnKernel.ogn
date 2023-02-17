@@ -102,6 +102,11 @@
             }
         },
         "state": {
+            "userAttrDescs": {
+                "type": "string",
+                "description": "Internal: user attribute descriptions.",
+                "default": "{}"
+            },
             "userAttrsEvent": {
                 "type": "int",
                 "description": "Internal: user attributes event.",

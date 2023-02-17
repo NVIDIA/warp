@@ -54,6 +54,10 @@ class CustomLayout:
             "inputs:codeProvider",
             self.node,
         )
+        self.user_attr_descs_attr = og.Controller.attribute(
+            "state:userAttrDescs",
+            self.node,
+        )
         self.user_attrs_event_attr = og.Controller.attribute(
             "state:userAttrsEvent",
             self.node,

@@ -11,6 +11,8 @@ import omni.graph.core as og
 from omni.kit.widget.searchfield import SearchField
 import omni.ui as ui
 
+from omni.warp.scripts.kernelnode import UserAttributeDesc
+
 _DIALOG_TITLE = "Attribute Creator"
 _DIALOG_WIDTH = 400
 _DIALOG_HEIGHT = 0
@@ -99,13 +101,18 @@ class AttributeEditor:
             )
             return
 
-        optional = (
-            self.input_port_btn.checked
-            and self.optional_checkbox.model.get_value_as_bool()
+        attr_desc = UserAttributeDesc(
+            port_type=port_type,
+            base_name=name,
+            type_name=type_name,
+            optional=(
+                self.input_port_btn.checked
+                and self.optional_checkbox.model.get_value_as_bool()
+            ),
         )
 
         try:
-            self.create_attr_callback(name, port_type, type_name, optional)
+            self.create_attr_callback(attr_desc)
         except Exception as e:
             self.error_msg_label.text = str(e)
             return

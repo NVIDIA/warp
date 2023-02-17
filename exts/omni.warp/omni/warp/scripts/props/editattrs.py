@@ -17,7 +17,13 @@ from typing import (
 import omni.graph.core as og
 import omni.ui as ui
 
-from omni.warp.scripts.kernelnode import UserAttributesEvent
+from omni.warp.scripts.attributes import join_attr_name
+from omni.warp.scripts.kernelnode import (
+    UserAttributeDesc,
+    UserAttributesEvent,
+    deserialize_user_attribute_descs,
+    serialize_user_attribute_descs,
+)
 from omni.warp.scripts.widgets.attributeeditor import AttributeEditor
 
 _BUTTON_WIDTH = 100
@@ -30,23 +36,48 @@ class _State:
         self.dialog = None
         self.remove_attr_menu = None
 
+def _add_user_attribute_desc(state: _State, desc: UserAttributeDesc) -> None:
+    data = og.Controller.get(state.layout.user_attr_descs_attr)
+    descs = deserialize_user_attribute_descs(data)
+
+    descs[desc.name] = desc
+
+    data = serialize_user_attribute_descs(descs)
+    og.Controller.set(state.layout.user_attr_descs_attr, data)
+
+def _remove_user_attribute_desc(
+    state: _State,
+    port_type: og.AttributePortType,
+    base_name: str,
+) -> None:
+    data = og.Controller.get(state.layout.user_attr_descs_attr)
+    descs = deserialize_user_attribute_descs(data)
+
+    name = join_attr_name(port_type, base_name)
+    descs.pop(name, None)
+
+    data = serialize_user_attribute_descs(descs)
+    og.Controller.set(state.layout.user_attr_descs_attr, data)
+
 def _get_attribute_creation_handler(state: _State) -> Callable:
 
-    def fn(name, port_type, data_type_name, optional):
-        type_name = og.AttributeType.type_from_sdf_type_name(data_type_name)
-        attr_name = "{}:{}".format(og.get_port_type_namespace(port_type), name)
+    def fn(attr_desc: UserAttributeDesc):
         attr = og.Controller.create_attribute(
             state.layout.node,
-            attr_name,
-            type_name,
-            port_type,
+            attr_desc.base_name,
+            attr_desc.type,
+            attr_desc.port_type,
         )
         if attr is None:
             raise RuntimeError(
-                "Failed to create the attribute '{}'.".format(attr_name)
+                "Failed to create the attribute '{}'."
+                .format(attr_desc.name)
             )
 
-        attr.is_optional_for_compute = optional
+        attr.is_optional_for_compute = attr_desc.optional
+
+        # Store the new attribute's description within the node's state.
+        _add_user_attribute_desc(state, attr_desc)
 
         # Inform the node that a new attribute was created.
         og.Controller.set(
@@ -61,8 +92,14 @@ def _get_attribute_creation_handler(state: _State) -> Callable:
 def _get_attribute_removal_handler(state: _State) -> Callable:
 
     def fn(attr):
+        port_type = attr.get_port_type()
+        name = attr.get_name()
+
         if not og.Controller.remove_attribute(attr):
             return
+
+        # Remove that attribute's description from the node's state.
+        _remove_user_attribute_desc(state, port_type, name)
 
         # Inform the node that an existing attribute was removed.
         og.Controller.set(
