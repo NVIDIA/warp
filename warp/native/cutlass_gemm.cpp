@@ -21,6 +21,7 @@ bool cutlass_gemm(
                   const char* datatype_str,
                   const void* a, const void* b, const void* c, void* d,
                   float alpha, float beta,
+                  bool row_major_a, bool row_major_b,
                   bool allow_tf32x3_arith,
                   int batch_count)
 {
