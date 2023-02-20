@@ -1111,7 +1111,7 @@ __device__ inline void set_launch_bounds(const launch_bounds_t& b)
 static launch_bounds_t s_launchBounds;
 static int s_threadIdx;
 
-void set_launch_bounds(const launch_bounds_t& b)
+inline void set_launch_bounds(const launch_bounds_t& b)
 {
     s_launchBounds = b;
 }
