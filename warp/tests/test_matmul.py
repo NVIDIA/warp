@@ -21,28 +21,53 @@ class GemmTestbedRunner:
             B = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(k, n))), dtype=self.dtype)
             C = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(m, n))), dtype=self.dtype)
             D = wp.array2d(np.zeros((m, n)), dtype=self.dtype)
+            adj_A = wp.array2d(np.zeros((m, k)), dtype=self.dtype)
+            adj_B = wp.array2d(np.zeros((k, n)), dtype=self.dtype)
+            adj_C = wp.array2d(np.zeros((m, n)), dtype=self.dtype)
+            adj_D = wp.array2d(np.ones((m, n)), dtype=self.dtype)
         else:
             A = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, m, k))), dtype=self.dtype)
             B = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, k, n))), dtype=self.dtype)
             C = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, m, n))), dtype=self.dtype)
             D = wp.array2d(np.zeros((batch_count, m, n)), dtype=self.dtype)
-        return A, B, C, D
+            adj_A = wp.array2d(np.zeros((batch_count, m, k)), dtype=self.dtype)
+            adj_B = wp.array2d(np.zeros((batch_count, k, n)), dtype=self.dtype)
+            adj_C = wp.array2d(np.zeros((batch_count, m, n)), dtype=self.dtype)
+            adj_D = wp.array2d(np.ones((batch_count, m, n)), dtype=self.dtype)
+        return A, B, C, D, adj_A, adj_B, adj_C, adj_D
 
     def run_and_verify(self, m, n, k, batch_count, alpha, beta):
-        A, B, C, D = self.alloc(m, n, k, batch_count)
+        A, B, C, D, adj_A, adj_B, adj_C, adj_D = self.alloc(m, n, k, batch_count)
         if batch_count == 1:
             wp.matmul(A, B, C, D, alpha, beta)
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C.numpy()
             assert np.array_equal(D_np, D.numpy())
+
+            wp.adj_matmul(A, B, C, adj_D, alpha, beta, adj_A, adj_B, adj_C)
+            adj_A_np = alpha * np.matmul(adj_D.numpy(),B.numpy().transpose())
+            adj_B_np = alpha * (A.numpy().transpose() @ adj_D.numpy())
+            adj_C_np = beta * adj_D.numpy()
+            
+            assert np.array_equal(adj_A_np, adj_A.numpy())
+            assert np.array_equal(adj_B_np, adj_B.numpy())
+            assert np.array_equal(adj_C_np, adj_C.numpy())
         else:
             wp.batched_matmul(A, B, C, D, alpha, beta)
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
             assert np.array_equal(D_np, D.numpy())
 
+            wp.adj_batched_matmul(A, B, C, adj_D, alpha, beta, adj_A, adj_B, adj_C)
+            adj_A_np = alpha * np.matmul(adj_D.numpy(), B.numpy().transpose((0, 2, 1)))
+            adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), adj_D.numpy())
+            adj_C_np = beta * adj_D.numpy()
+            assert np.array_equal(adj_A_np, adj_A.numpy())
+            assert np.array_equal(adj_B_np, adj_B.numpy())
+            assert np.array_equal(adj_C_np, adj_C.numpy())
+
     def run(self):
-        Ms = [128, 512, 1024]
-        Ns = [128, 512, 1024]
-        Ks = [128, 512, 1024]
+        Ms = [64, 128, 512]
+        Ns = [64, 128, 512]
+        Ks = [64, 128, 512]
         batch_counts = [1, 4]
         betas = [0., 1.]
         alpha = 1.
