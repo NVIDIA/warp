@@ -17,11 +17,13 @@ from typing import Tuple
 from typing import TypeVar
 from typing import Generic
 from typing import List
+from typing import Callable
 
 import warp
 
 Scalar = TypeVar('Scalar')
 Float = TypeVar('Float')
+Int = TypeVar('Int')
 
 class constant:
     """Class to declare compile-time constants accessible from Warp kernels
@@ -502,8 +504,9 @@ class spatial_matrixd(spatial_matrix_t(dtype=float64)):
     pass
 
 
-scalar_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64]
+int_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64]
 float_types = [float16, float32, float64]
+scalar_types = int_types + float_types
 vector_types = [
     vec2ub, vec2h, vec2f, vec2d, vec2,
     vec3ub, vec3h, vec3f, vec3d, vec3,
@@ -2208,5 +2211,182 @@ class MarchingCubes:
         self.indices.size = num_tris.value*3
 
 
+def is_generic_type(t):
+    if t in [Any, Scalar, Float, Int, array]:
+        return True
+    elif isinstance(t, warp.array):
+        return t.dtype is None or is_generic_type(t.dtype) or not isinstance(t.ndim, int)
+    elif hasattr(t, "_wp_scalar_type_"):
+        # vector/matrix type, check if dtype is generic
+        if is_generic_type(t._wp_scalar_type_):
+            return True
+        # check if any dimension is generic
+        for d in t._shape_:
+            if d == 0:
+                return True
+    else:
+        return False
 
 
+def is_concrete_subtype(arg_type, ref_type):
+
+    # canonicalize types
+    arg_type = type_to_warp(arg_type)
+    ref_type = type_to_warp(ref_type)
+
+    # arg type must be concrete
+    if is_generic_type(arg_type):
+        return False
+
+    # if reference type is not generic, the types must be equal
+    if not is_generic_type(ref_type):
+        return types_equal(arg_type, ref_type)
+
+    # reference type is generic, check that the argument type matches
+    if ref_type == Any:
+        return True
+    elif ref_type == Scalar:
+        return arg_type in scalar_types
+    elif ref_type == Float:
+        return arg_type in float_types
+    elif ref_type == Int:
+        return arg_type in int_types
+    elif hasattr(ref_type, "_wp_scalar_type_"):
+        # vector/matrix type
+        if not hasattr(arg_type, "_wp_scalar_type_"):
+            return False
+        if not is_concrete_subtype(arg_type._wp_scalar_type_, ref_type._wp_scalar_type_):
+            return False
+        ndim = len(ref_type._shape_)
+        if len(arg_type._shape_) != ndim:
+            return False
+        # for any non-generic dimensions, make sure they match
+        for i in range(ndim):
+            if ref_type._shape_[i] != 0 and arg_type._shape_[i] != ref_type._shape_[i]:
+                return False
+    elif ref_type == warp.array:
+        # ensure the argument type is a non-generic array with valid dtype and dimensionality
+        if not isinstance(arg_type, warp.array):
+            return False
+        if is_generic_type(arg_type.dtype):
+            return False
+        if not isinstance(arg_type.ndim, int) or arg_type.ndim < 1:
+            return False
+    elif isinstance(ref_type, warp.array):
+        # ensure the argument type is a non-generic array with matching dtype and dimensionality
+        if not isinstance(arg_type, warp.array):
+            return False
+        if not is_concrete_subtype(arg_type.dtype, ref_type.dtype):
+            return False
+        if isinstance(ref_type.ndim, int):
+            # if reference type has concrete ndim, make sure the argument matches
+            if arg_type.ndim != ref_type.ndim:
+                return False
+        elif not isinstance(arg_type.ndim, int) or arg_type.ndim < 1:
+            return False
+
+    return True
+
+
+simple_type_codes = {
+    int: "i4",
+    float: "f4",
+    bool: "b",
+    str: "s",    # accepted by print()
+
+    int8: "i1",
+    int16: "i2",
+    int32: "i4",
+    int64: "i8",
+
+    uint8: "u1",
+    uint16: "u2",
+    uint32: "u4",
+    uint64: "u8",
+
+    float16: "f2",
+    float32: "f4",
+    float64: "f8",
+
+    shape_t: "Sh",
+    range_t: "Rg",
+    launch_bounds_t: "LB",
+
+    hash_grid_query_t: "HGQ",
+    mesh_query_aabb_t: "MQA",
+    bvh_query_t: "BVHQ",
+}
+
+
+def get_type_code(arg_type):
+
+    if isinstance(arg_type, type):
+        if issubclass(arg_type, ctypes.Array) and hasattr(arg_type, "_wp_scalar_type_"):
+            # vector/matrix type
+            dtype_code = get_type_code(arg_type._wp_scalar_type_)
+            # check for "special" vector/matrix subtypes
+            if hasattr(arg_type, "_wp_generic_type_str_"):
+                type_str = arg_type._wp_generic_type_str_
+                if type_str == "quaternion":
+                    return f"Q{dtype_code}"
+                elif type_str == "transform_t":
+                    return f"T{dtype_code}"
+                elif type_str == "spatial_vector_t":
+                    return f"SV{dtype_code}"
+                elif type_str == "spatial_matrix_t":
+                    return f"SM{dtype_code}"
+            # generic vector/matrix
+            ndim = len(arg_type._shape_)
+            if ndim == 1:
+                return f"V{arg_type._shape_[0]}{dtype_code}"
+            elif ndim == 2:
+                return f"M{arg_type._shape_[0]}{arg_type._shape_[1]}{dtype_code}"
+            else:
+                raise TypeError("Invalid vector/matrix dimensionality")
+        elif arg_type == Any or arg_type == type(None):
+            # special case for generics (note: as of Python 3.11, Any is a type)
+            return "?"
+        else:
+            # simple type
+            type_code = simple_type_codes.get(arg_type)
+            if type_code is not None:
+                return type_code
+            else:
+                raise TypeError(f"Unrecognized type '{arg_type}'")
+    elif isinstance(arg_type, array):
+        return f"A{arg_type.ndim}{get_type_code(arg_type.dtype)}"
+    elif isinstance(arg_type, warp.codegen.Struct):
+        return warp.codegen.make_full_qualified_name(arg_type.cls)
+    elif arg_type == Any or arg_type == None:
+        # special case for generics (note: prior to Python 3.11, Any is not a type)
+        return "?"
+    elif isinstance(arg_type, Callable):
+        # TODO: elaborate on Callable type?
+        return "C"
+    else:
+        raise TypeError(f"Unrecognized type '{arg_type}'")
+
+
+def get_signature(arg_types, func_name=None, arg_names=None):
+
+    type_codes = []
+    for i, arg_type in enumerate(arg_types):
+        try:
+            type_codes.append(get_type_code(arg_type))
+        except Exception as e:
+            if arg_names is not None:
+                arg_str = f"'{arg_names[i]}'"
+            else:
+                arg_str = str(i + 1)
+            if func_name is not None:
+                func_str = f" of function {func_name}"
+            else:
+                func_str = ""
+            raise RuntimeError(f"Failed to determine type code for argument {arg_str}{func_str}: {e}")
+
+    return "_".join(type_codes)
+
+
+def is_generic_signature(sig):
+
+    return "?" in sig

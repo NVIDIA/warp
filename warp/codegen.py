@@ -206,9 +206,10 @@ class Block:
 class Adjoint:
 
     # Source code transformer, this class takes a Python function and
-    # generates forward and backward SSA forms of the function instructions
-
-    def __init__(adj, func):
+    # generates forward and backward SSA forms of the function instructions.
+    # Specifying overload_annotations allows overloading the same function with different types of arguments. 
+    # If overload_annotations is None, the argument types will be determined from the function source annotations.
+    def __init__(adj, func, overload_annotations=None):
 
         adj.func = func
         
@@ -232,8 +233,22 @@ class Adjoint:
 
         adj.fun_name = adj.tree.body[0].name
 
+        argspec = inspect.getfullargspec(func)
+
+        # ensure all arguments are annotated
+        if overload_annotations is None:
+            # use source-level argument annotations
+            if len(argspec.annotations) < len(argspec.args):
+                raise RuntimeError(f"Incomplete argument annotations on function {adj.fun_name}")
+            adj.arg_types = argspec.annotations
+        else:
+            # use overload argument annotations
+            for arg_name in argspec.args:
+                if arg_name not in overload_annotations:
+                    raise RuntimeError(f"Incomplete overload annotations for function {adj.fun_name}")
+            adj.arg_types = overload_annotations.copy()
+
         # parse argument types
-        adj.arg_types = typing.get_type_hints(func)
         adj.args = []
 
         for name, type in adj.arg_types.items():
@@ -411,53 +426,61 @@ class Adjoint:
         # we validate argument types before they go to generated native code
         resolved_func = None
 
-        for f in func.overloads:
-            match = True
+        # TODO: unify how we handle builtins and user-defined functions here?
+        if func.is_builtin():
+            for f in func.overloads:
+                match = True
 
-            # skip type checking for variadic functions
-            if not f.variadic:
+                # skip type checking for variadic functions
+                if not f.variadic:
 
-                # check argument counts match (todo: default arguments?)
-                if len(f.input_types) != len(inputs):
-                    match = False
-                    continue
-
-                # check argument types equal
-                for i, a in enumerate(f.input_types.values()):
-                    
-                    # if arg type registered as Any, treat as 
-                    # template allowing any type to match
-                    if a == Any:
-                        continue
-
-                    # handle function refs as a special case
-                    if a == Callable and type(inputs[i]) is warp.context.Function:
-                        continue
-
-                    # otherwise check arg type matches input variable type
-                    if not types_equal(a, inputs[i].type, match_generic=True):
-                        match = False
-                        break
-
-            # check output dimensions match expectations
-            if min_outputs:
-
-                try:
-                    value_type = f.value_func(inputs,templates)
-                    if len(value_type) != min_outputs:
+                    # check argument counts match (todo: default arguments?)
+                    if len(f.input_types) != len(inputs):
                         match = False
                         continue
-                except Exception as e:
-                    
-                    # value func may fail if the user has given 
-                    # incorrect args, so we need to catch this
-                    match = False
-                    continue
 
-            # found a match, use it
-            if (match):
-                resolved_func = f
-                break
+                    # check argument types equal
+                    for i, a in enumerate(f.input_types.values()):
+                        
+                        # if arg type registered as Any, treat as 
+                        # template allowing any type to match
+                        if a == Any:
+                            continue
+
+                        # handle function refs as a special case
+                        if a == Callable and type(inputs[i]) is warp.context.Function:
+                            continue
+
+                        # otherwise check arg type matches input variable type
+                        if not types_equal(a, inputs[i].type, match_generic=True):
+                            match = False
+                            break
+
+                # check output dimensions match expectations
+                if min_outputs:
+
+                    try:
+                        value_type = f.value_func(inputs,templates)
+                        if len(value_type) != min_outputs:
+                            match = False
+                            continue
+                    except Exception as e:
+                        
+                        # value func may fail if the user has given 
+                        # incorrect args, so we need to catch this
+                        match = False
+                        continue
+
+                # found a match, use it
+                if (match):
+                    resolved_func = f
+                    break
+
+        else:
+            # user-defined function
+
+            arg_types = [a.type for a in inputs]
+            resolved_func = func.get_overload(arg_types)
 
         if resolved_func == None:
             
@@ -1897,8 +1920,7 @@ def codegen_kernel(kernel, device, options):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-
-    s = template.format(name=kernel.key,
+    s = template.format(name=kernel.get_mangled_name(),
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
                         forward_body=forward_body,
@@ -1934,7 +1956,7 @@ def codegen_module(kernel, device='cpu'):
     else:
         raise ValueError("Device {} is not supported".format(device))
 
-    s = template.format(name=kernel.key,
+    s = template.format(name=kernel.get_mangled_name(),
                         forward_args=indent(forward_args),
                         reverse_args=indent(reverse_args),
                         forward_params=indent(forward_params, 3),
