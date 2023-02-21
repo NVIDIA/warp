@@ -2327,7 +2327,10 @@ simple_type_codes = {
 def get_type_code(arg_type):
 
     if isinstance(arg_type, type):
-        if issubclass(arg_type, ctypes.Array) and hasattr(arg_type, "_wp_scalar_type_"):
+        if arg_type == array:
+            # array with generic dimensionality and dtype
+            return "a??"
+        elif hasattr(arg_type, "_wp_scalar_type_"):
             # vector/matrix type
             dtype_code = get_type_code(arg_type._wp_scalar_type_)
             # check for "special" vector/matrix subtypes
@@ -2344,9 +2347,12 @@ def get_type_code(arg_type):
             # generic vector/matrix
             ndim = len(arg_type._shape_)
             if ndim == 1:
-                return f"v{arg_type._shape_[0]}{dtype_code}"
+                dim_code = "?" if arg_type._shape_[0] == 0 else str(arg_type._shape_[0])
+                return f"v{dim_code}{dtype_code}"
             elif ndim == 2:
-                return f"m{arg_type._shape_[0]}{arg_type._shape_[1]}{dtype_code}"
+                dim_code0 = "?" if arg_type._shape_[0] == 0 else str(arg_type._shape_[0])
+                dim_code1 = "?" if arg_type._shape_[1] == 0 else str(arg_type._shape_[1])
+                return f"m{dim_code0}{dim_code1}{dtype_code}"
             else:
                 raise TypeError("Invalid vector/matrix dimensionality")
         elif arg_type == Any or arg_type == type(None):
