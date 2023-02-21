@@ -77,7 +77,7 @@ class Function:
             # user-defined function
 
             # generic and concrete overload lookups by type signature
-            self.user_generics = {}
+            self.user_templates = {}
             self.user_overloads = {}
 
             # user defined (Python) function
@@ -298,9 +298,9 @@ class Function:
             
             # check if generic
             if warp.types.is_generic_signature(sig):
-                if sig in self.user_generics:
+                if sig in self.user_templates:
                     raise RuntimeError(f"Duplicate generic function overload {self.key} with arguments {f.input_types.values()}")
-                self.user_generics[sig] = f
+                self.user_templates[sig] = f
             else:
                 if sig in self.user_overloads:
                     raise RuntimeError(f"Duplicate function overload {self.key} with arguments {f.input_types.values()}")
@@ -317,17 +317,17 @@ class Function:
         if f is not None:
             return f
         else:
-            for f in self.user_generics.values():
+            for f in self.user_templates.values():
                 
                 if len(f.input_types) != len(arg_types):
                     continue
                 
-                # try to match the given types to the function's parameter types
-                expected_types = list(f.input_types.values())
+                # try to match the given types to the function template types
+                template_types = list(f.input_types.values())
                 args_matched = True
 
                 for i in range(len(arg_types)):
-                    if not warp.types.type_matches(arg_types[i], expected_types[i]):
+                    if not warp.types.type_matches_template(arg_types[i], template_types[i]):
                         args_matched = False
                         break
 
@@ -371,7 +371,7 @@ class Kernel:
         # check if generic
         self.is_generic = False
         for arg_type in self.adj.arg_types.values():
-            if warp.types.is_generic_type(arg_type):
+            if warp.types.type_is_generic(arg_type):
                 self.is_generic = True
                 break
 
@@ -390,9 +390,9 @@ class Kernel:
 
     def infer_argument_types(self, args):
 
-        expected_types = list(self.adj.arg_types.values())
+        template_types = list(self.adj.arg_types.values())
 
-        if len(args) != len(expected_types):
+        if len(args) != len(template_types):
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
         arg_names = list(self.adj.arg_types.keys())
@@ -420,8 +420,8 @@ class Kernel:
             #     arg_types.append(arg_type)
             elif arg is None:
                 # allow passing None for arrays
-                if isinstance(expected_types[i], warp.array) or expected_types[i] == warp.array:
-                    arg_types.append(expected_types[i])
+                if isinstance(template_types[i], warp.array) or template_types[i] == warp.array:
+                    arg_types.append(template_types[i])
                 else:
                     raise TypeError(f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got None")
             else:
@@ -437,15 +437,15 @@ class Kernel:
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
         arg_names = list(self.adj.arg_types.keys())
-        expected_types = list(self.adj.arg_types.values())
+        template_types = list(self.adj.arg_types.values())
 
         # make sure all argument types are concrete and match the kernel parameters
         for i in range(len(arg_types)):
-            if not warp.types.type_matches(arg_types[i], expected_types[i]):
-                if warp.types.is_generic_type(arg_types[i]):
+            if not warp.types.type_matches_template(arg_types[i], template_types[i]):
+                if warp.types.type_is_generic(arg_types[i]):
                     raise TypeError(f"Kernel {self.key} argument '{arg_names[i]}' cannot be generic, got {arg_types[i]}")
                 else:
-                    raise TypeError(f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {expected_types[i]}, got {arg_types[i]}")
+                    raise TypeError(f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {template_types[i]}, got {arg_types[i]}")
 
         # get a type signature from the given argument types
         sig = warp.types.get_signature(arg_types, func_name=self.key)
