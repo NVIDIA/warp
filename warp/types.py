@@ -2292,7 +2292,7 @@ simple_type_codes = {
     int: "i4",
     float: "f4",
     bool: "b",
-    str: "s",    # accepted by print()
+    str: "str",    # accepted by print()
 
     int8: "i1",
     int16: "i2",
@@ -2308,13 +2308,13 @@ simple_type_codes = {
     float32: "f4",
     float64: "f8",
 
-    shape_t: "Sh",
-    range_t: "Rg",
-    launch_bounds_t: "LB",
+    shape_t: "sh",
+    range_t: "rg",
+    launch_bounds_t: "lb",
 
-    hash_grid_query_t: "HGQ",
-    mesh_query_aabb_t: "MQA",
-    bvh_query_t: "BVHQ",
+    hash_grid_query_t: "hgq",
+    mesh_query_aabb_t: "mqa",
+    bvh_query_t: "bvhq",
 }
 
 
@@ -2328,19 +2328,19 @@ def get_type_code(arg_type):
             if hasattr(arg_type, "_wp_generic_type_str_"):
                 type_str = arg_type._wp_generic_type_str_
                 if type_str == "quaternion":
-                    return f"Q{dtype_code}"
+                    return f"q{dtype_code}"
                 elif type_str == "transform_t":
-                    return f"T{dtype_code}"
+                    return f"t{dtype_code}"
                 elif type_str == "spatial_vector_t":
-                    return f"SV{dtype_code}"
+                    return f"sv{dtype_code}"
                 elif type_str == "spatial_matrix_t":
-                    return f"SM{dtype_code}"
+                    return f"sm{dtype_code}"
             # generic vector/matrix
             ndim = len(arg_type._shape_)
             if ndim == 1:
-                return f"V{arg_type._shape_[0]}{dtype_code}"
+                return f"v{arg_type._shape_[0]}{dtype_code}"
             elif ndim == 2:
-                return f"M{arg_type._shape_[0]}{arg_type._shape_[1]}{dtype_code}"
+                return f"m{arg_type._shape_[0]}{arg_type._shape_[1]}{dtype_code}"
             else:
                 raise TypeError("Invalid vector/matrix dimensionality")
         elif arg_type == Any or arg_type == type(None):
@@ -2354,15 +2354,24 @@ def get_type_code(arg_type):
             else:
                 raise TypeError(f"Unrecognized type '{arg_type}'")
     elif isinstance(arg_type, array):
-        return f"A{arg_type.ndim}{get_type_code(arg_type.dtype)}"
+        return f"a{arg_type.ndim}{get_type_code(arg_type.dtype)}"
     elif isinstance(arg_type, warp.codegen.Struct):
         return warp.codegen.make_full_qualified_name(arg_type.cls)
     elif arg_type == Any or arg_type == None:
         # special case for generics (note: prior to Python 3.11, Any is not a type)
         return "?"
+    elif arg_type == Float:
+        # generic float
+        return "f?"
+    elif arg_type == Int:
+        # generic int
+        return "i?"
+    elif arg_type == Scalar:
+        # generic scalar type
+        return "s?"
     elif isinstance(arg_type, Callable):
         # TODO: elaborate on Callable type?
-        return "C"
+        return "c"
     else:
         raise TypeError(f"Unrecognized type '{arg_type}'")
 
