@@ -2228,43 +2228,49 @@ def is_generic_type(t):
         return False
 
 
-def is_concrete_subtype(arg_type, ref_type):
+def type_matches(arg_type, expected_type):
+    """Check if an argument type matches the expected type.
+
+    This function is used to test whether the arguments passed to a generic @wp.kernel or @wp.func
+    match the type annotations (expected types).  The expected type can be generic, but the
+    argument type must be concrete.
+    """
 
     # canonicalize types
     arg_type = type_to_warp(arg_type)
-    ref_type = type_to_warp(ref_type)
+    expected_type = type_to_warp(expected_type)
 
     # arg type must be concrete
     if is_generic_type(arg_type):
         return False
 
-    # if reference type is not generic, the types must be equal
-    if not is_generic_type(ref_type):
-        return types_equal(arg_type, ref_type)
+    # if expected type is not generic, the argument type must match exactly
+    if not is_generic_type(expected_type):
+        return types_equal(arg_type, expected_type)
 
-    # reference type is generic, check that the argument type matches
-    if ref_type == Any:
+    # expected type is generic, check that the argument type matches
+    if expected_type == Any:
         return True
-    elif ref_type == Scalar:
+    elif expected_type == Scalar:
         return arg_type in scalar_types
-    elif ref_type == Float:
+    elif expected_type == Float:
         return arg_type in float_types
-    elif ref_type == Int:
+    elif expected_type == Int:
         return arg_type in int_types
-    elif hasattr(ref_type, "_wp_scalar_type_"):
+    elif hasattr(expected_type, "_wp_scalar_type_"):
         # vector/matrix type
         if not hasattr(arg_type, "_wp_scalar_type_"):
             return False
-        if not is_concrete_subtype(arg_type._wp_scalar_type_, ref_type._wp_scalar_type_):
+        if not type_matches(arg_type._wp_scalar_type_, expected_type._wp_scalar_type_):
             return False
-        ndim = len(ref_type._shape_)
+        ndim = len(expected_type._shape_)
         if len(arg_type._shape_) != ndim:
             return False
         # for any non-generic dimensions, make sure they match
         for i in range(ndim):
-            if ref_type._shape_[i] != 0 and arg_type._shape_[i] != ref_type._shape_[i]:
+            if expected_type._shape_[i] != 0 and arg_type._shape_[i] != expected_type._shape_[i]:
                 return False
-    elif ref_type == warp.array:
+    elif expected_type == warp.array:
         # ensure the argument type is a non-generic array with valid dtype and dimensionality
         if not isinstance(arg_type, warp.array):
             return False
@@ -2272,15 +2278,15 @@ def is_concrete_subtype(arg_type, ref_type):
             return False
         if not isinstance(arg_type.ndim, int) or arg_type.ndim < 1:
             return False
-    elif isinstance(ref_type, warp.array):
+    elif isinstance(expected_type, warp.array):
         # ensure the argument type is a non-generic array with matching dtype and dimensionality
         if not isinstance(arg_type, warp.array):
             return False
-        if not is_concrete_subtype(arg_type.dtype, ref_type.dtype):
+        if not type_matches(arg_type.dtype, expected_type.dtype):
             return False
-        if isinstance(ref_type.ndim, int):
-            # if reference type has concrete ndim, make sure the argument matches
-            if arg_type.ndim != ref_type.ndim:
+        if isinstance(expected_type.ndim, int):
+            # if expected type has concrete ndim, make sure the argument matches
+            if arg_type.ndim != expected_type.ndim:
                 return False
         elif not isinstance(arg_type.ndim, int) or arg_type.ndim < 1:
             return False

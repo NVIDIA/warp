@@ -323,11 +323,11 @@ class Function:
                     continue
                 
                 # try to match the given types to the function's parameter types
-                ref_types = list(f.input_types.values())
+                expected_types = list(f.input_types.values())
                 args_matched = True
 
                 for i in range(len(arg_types)):
-                    if not warp.types.is_concrete_subtype(arg_types[i], ref_types[i]):
+                    if not warp.types.type_matches(arg_types[i], expected_types[i]):
                         args_matched = False
                         break
 
@@ -390,9 +390,9 @@ class Kernel:
 
     def infer_argument_types(self, args):
 
-        ref_types = list(self.adj.arg_types.values())
+        expected_types = list(self.adj.arg_types.values())
 
-        if len(args) != len(ref_types):
+        if len(args) != len(expected_types):
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
         arg_names = list(self.adj.arg_types.keys())
@@ -420,8 +420,8 @@ class Kernel:
             #     arg_types.append(arg_type)
             elif arg is None:
                 # allow passing None for arrays
-                if isinstance(ref_types[i], warp.array) or ref_types[i] == warp.array:
-                    arg_types.append(ref_types[i])
+                if isinstance(expected_types[i], warp.array) or expected_types[i] == warp.array:
+                    arg_types.append(expected_types[i])
                 else:
                     raise TypeError(f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got None")
             else:
@@ -437,15 +437,15 @@ class Kernel:
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
         arg_names = list(self.adj.arg_types.keys())
-        ref_types = list(self.adj.arg_types.values())
+        expected_types = list(self.adj.arg_types.values())
 
         # make sure all argument types are concrete and match the kernel parameters
         for i in range(len(arg_types)):
-            if not warp.types.is_concrete_subtype(arg_types[i], ref_types[i]):
+            if not warp.types.type_matches(arg_types[i], expected_types[i]):
                 if warp.types.is_generic_type(arg_types[i]):
                     raise TypeError(f"Kernel {self.key} argument '{arg_names[i]}' cannot be generic, got {arg_types[i]}")
                 else:
-                    raise TypeError(f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {ref_types[i]}, got {arg_types[i]}")
+                    raise TypeError(f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {expected_types[i]}, got {arg_types[i]}")
 
         # get a type signature from the given argument types
         sig = warp.types.get_signature(arg_types, func_name=self.key)
