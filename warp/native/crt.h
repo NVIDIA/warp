@@ -16,6 +16,7 @@
 #include <math.h>
 #include <assert.h>
 #include <float.h>
+#include <string.h>
 
 #else
 
