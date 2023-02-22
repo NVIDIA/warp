@@ -1,7 +1,6 @@
 import warp as wp
 import warp.sim
 import warp.sim.render
-import warp.sim.tiny_render
 
 import argparse
 import os
@@ -27,10 +26,51 @@ class IntegratorType(Enum):
     def __str__(self):
         return self.value
 
+
+
+def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), upaxis="y"):
+    # compute positional offsets per environment
+    nonzeros = np.nonzero(env_offset)[0]
+    num_dim = nonzeros.shape[0]
+    if num_dim > 0:
+        side_length = int(np.ceil(num_envs**(1.0/num_dim)))
+        env_offsets = []
+    else:
+        env_offsets = np.zeros((num_envs, 3))
+    if num_dim == 1:
+        for i in range(num_envs):
+            env_offsets.append(i*env_offset)
+    elif num_dim == 2:
+        for i in range(num_envs):
+            d0 = i // side_length
+            d1 = i % side_length
+            offset = np.zeros(3)
+            offset[nonzeros[0]] = d0 * env_offset[nonzeros[0]]
+            offset[nonzeros[1]] = d1 * env_offset[nonzeros[1]]
+            env_offsets.append(offset)
+    elif num_dim == 3:
+        for i in range(num_envs):
+            d0 = i // (side_length*side_length)
+            d1 = (i // side_length) % side_length
+            d2 = i % side_length
+            offset = np.zeros(3)
+            offset[0] = d0 * env_offset[0]
+            offset[1] = d1 * env_offset[1]
+            offset[2] = d2 * env_offset[2]
+            env_offsets.append(offset)
+    env_offsets = np.array(env_offsets)
+    min_offsets = np.min(env_offsets, axis=0)
+    correction = min_offsets + (np.max(env_offsets, axis=0) - min_offsets) / 2.0
+    if isinstance(upaxis, str):
+        upaxis = "xyz".index(upaxis.lower())
+    correction[upaxis] = 0.0  # ensure the envs are not shifted below the ground plane
+    env_offsets -= correction
+    return env_offsets
+
 class Environment:
     sim_name: str = "Environment"
 
-    frame_dt = 1.0 / (60.0)
+    frame_dt = 1.0 / 60.0
 
     episode_duration = 5.0      # seconds
     episode_frames = int(episode_duration/frame_dt)
@@ -122,14 +162,10 @@ class Environment:
         try:
             articulation_builder = wp.sim.ModelBuilder()
             self.create_articulation(articulation_builder)
-            env_offsets = wp.sim.tiny_render.compute_env_offsets(
+            env_offsets = compute_env_offsets(
                 self.num_envs, self.env_offset, self.up_axis)
             for i in range(self.num_envs):
-                if self.render_mode == RenderMode.TINY:
-                    # no need to offset, TinyRenderer will do it
-                    xform = wp.transform_identity()
-                else:
-                    xform = wp.transform(env_offsets[i], wp.quat_identity())
+                xform = wp.transform(env_offsets[i], wp.quat_identity())
                 builder.add_builder(articulation_builder, xform, separate_collision_group=self.separate_collision_group_per_env)
             self.bodies_per_env = len(articulation_builder.body_q)
         except NotImplementedError:
@@ -159,15 +195,14 @@ class Environment:
         if self.profile:
             self.render_mode = RenderMode.NONE
         if self.render_mode == RenderMode.TINY:
-            self.renderer = wp.sim.tiny_render.TinyRenderer(
+            self.renderer = wp.sim.render.SimRendererTiny(
                 self.model,
                 self.sim_name,
                 upaxis=self.up_axis,
-                env_offset=self.env_offset,
                 **self.tiny_render_settings)
         elif self.render_mode == RenderMode.USD:
             filename = os.path.join(os.path.dirname(__file__), "outputs", self.sim_name + ".usd")
-            self.renderer = wp.sim.render.SimRenderer(
+            self.renderer = wp.sim.render.SimRendererUsd(
                 self.model,
                 filename,
                 upaxis=self.up_axis,
@@ -231,11 +266,10 @@ class Environment:
                 self.state_0)
 
         self.before_simulate()
+        self.update()
 
         if (self.renderer is not None):
-            self.renderer.begin_frame(self.render_time)
-            self.renderer.render(self.state_0)
-            self.renderer.end_frame()
+            self.render()
 
             if self.render_mode == RenderMode.TINY:
                 self.renderer.paused = True
@@ -250,20 +284,20 @@ class Environment:
             self.update()
                     
             graph = wp.capture_end()
-        else:
-            if self.plot_body_coords:
-                q_history = []
-                q_history.append(self.state_0.body_q.numpy().copy())
-                qd_history = []
-                qd_history.append(self.state_0.body_qd.numpy().copy())
-                delta_history = []
-                delta_history.append(self.state_0.body_deltas.numpy().copy())
-                num_con_history = []
-                num_con_history.append(self.model.rigid_contact_inv_weight.numpy().copy())
-            if self.plot_joint_coords:
-                joint_q_history = []
-                joint_q = wp.zeros_like(self.model.joint_q)
-                joint_qd = wp.zeros_like(self.model.joint_qd)
+            
+        if self.plot_body_coords:
+            q_history = []
+            q_history.append(self.state_0.body_q.numpy().copy())
+            qd_history = []
+            qd_history.append(self.state_0.body_qd.numpy().copy())
+            delta_history = []
+            delta_history.append(self.state_0.body_deltas.numpy().copy())
+            num_con_history = []
+            num_con_history.append(self.model.rigid_contact_inv_weight.numpy().copy())
+        if self.plot_joint_coords:
+            joint_q_history = []
+            joint_q = wp.zeros_like(self.model.joint_q)
+            joint_qd = wp.zeros_like(self.model.joint_qd)
 
 
         # simulate 
