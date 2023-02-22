@@ -8,10 +8,7 @@
 
 #pragma once
 
-#if !defined(__CUDACC__)
-#include <initializer_list>
-#include "string.h"  // memset
-#endif
+#include "initializer_array.h"
 
 namespace wp
 {
@@ -19,12 +16,9 @@ namespace wp
 template<unsigned Length, typename Type>
 struct vec
 {
-    Type c[Length];
+    Type c[Length] = {};
 
-    inline CUDA_CALLABLE vec()
-    {
-        memset(c, 0, Length * sizeof(Type));
-    }
+    inline vec() = default;
     
     inline CUDA_CALLABLE vec(Type s)
     {
@@ -64,14 +58,11 @@ struct vec
         c[3]=w;
     }
     
-    inline CUDA_CALLABLE vec(std::initializer_list<Type> l)
+    inline CUDA_CALLABLE vec(initializer_array<Length, Type> l)
     {
-        assert(l.size() == Length);
-        auto src = l.begin();
-        auto end = l.end();
-        for( auto dst = c ;src != end;++src,++dst )
+        for( unsigned i=0; i < Length; ++i )
         {
-            *dst = *src;
+            c[i] = l[i];
         }
     }
 
@@ -467,14 +458,13 @@ inline CUDA_CALLABLE void adj_expect_near(const vec<Length, Type>& actual, const
     // nop
 }
 
-// adjoint for the initializer_list constructor:
+// adjoint for the initializer_array constructor:
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_vec(std::initializer_list<Type> cmps, std::initializer_list<Type*> adj_cmps, const vec<Length, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_vec(initializer_array<Length, Type> cmps, initializer_array<Length, Type*> adj_cmps, const vec<Length, Type>& adj_ret)
 {
-    auto it = adj_cmps.begin();
-    for(unsigned i=0; i < Length; ++i,++it)
+    for(unsigned i=0; i < Length; ++i)
     {
-        *(*it) += adj_ret[i];
+        *adj_cmps[i] += adj_ret[i];
     }
 }
 
