@@ -51,6 +51,8 @@ add_builtin("atan2", input_types={"y": Float, "x": Float}, value_func=sametype_v
 add_builtin("sinh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the sinh of x.", group="Scalar Math")
 add_builtin("cosh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the cosh of x.", group="Scalar Math")
 add_builtin("tanh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the tanh of x.", group="Scalar Math")
+add_builtin("degrees", input_types={"x": float}, value_type=float, doc="Convert radians into degrees.", group="Scalar Math")
+add_builtin("radians", input_types={"x": float}, value_type=float, doc="Convert degrees into radians.", group="Scalar Math")
 
 add_builtin("log", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
 add_builtin("log2", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the natural log (base-2) of x, where x is positive.", group="Scalar Math")

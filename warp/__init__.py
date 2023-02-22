@@ -23,7 +23,7 @@ from warp.types import spatial_vector, spatial_vectorh, spatial_vectorf, spatial
 from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial_matrixd
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
-from warp.types import matmul, batched_matmul, from_ptr
+from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, from_ptr
 
 from warp.context import init, func, kernel, struct
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
@@ -50,5 +50,7 @@ from warp.jax import from_jax, to_jax
 from warp.jax import device_from_jax, device_to_jax
 
 from warp.dlpack import from_dlpack, to_dlpack
+
+from warp.constants import *
 
 from . import builtins, render

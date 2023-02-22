@@ -20,19 +20,19 @@ namespace wp {
 
 template <typename Gemm>
 struct Allocation {
-  // Allocations holding input and output tensors
-  cutlass::DeviceAllocation<typename Gemm::ElementA> ptr_A;
-  cutlass::DeviceAllocation<typename Gemm::ElementB> ptr_B;
-  cutlass::DeviceAllocation<typename Gemm::ElementC> ptr_C;
-  cutlass::DeviceAllocation<typename Gemm::ElementC> ptr_D;
+    // Allocations holding input and output tensors
+    cutlass::DeviceAllocation<typename Gemm::ElementA> ptr_A;
+    cutlass::DeviceAllocation<typename Gemm::ElementB> ptr_B;
+    cutlass::DeviceAllocation<typename Gemm::ElementC> ptr_C;
+    cutlass::DeviceAllocation<typename Gemm::ElementC> ptr_D;
 
-  // Leading dimensions
-  int64_t lda;
-  int64_t ldb;
-  int64_t ldc;
-  int64_t ldd;
+    // Leading dimensions
+    int64_t lda;
+    int64_t ldb;
+    int64_t ldc;
+    int64_t ldd;
 
-  Allocation(int m, int n, int k, int batch_count, const void* a, const void* b, const void* c, void* d) {
+    Allocation(int m, int n, int k, int batch_count, const void* a, const void* b, const void* c, void* d) {
     ptr_A.reset(m * k * batch_count);
     ptr_B.reset(k * n * batch_count);
     ptr_C.reset(m * n * batch_count);
@@ -43,11 +43,11 @@ struct Allocation {
     ptr_C.copy_from_host((typename Gemm::ElementC*)c);
     ptr_D.copy_from_host((typename Gemm::ElementC*)d);
 
-    lda = k;
-    ldb = n;
+    lda = Gemm::LayoutA::packed({m, k}).stride(0);
+    ldb = Gemm::LayoutB::packed({k, n}).stride(0);
     ldc = n;
     ldd = n;
-  }
+    }
 };
 
 
@@ -107,18 +107,20 @@ bool run_gemm(int m, int n, int k, int batch_count, const void* a, const void* b
 
 template <
     int ComputeCapability,
-    typename Element_
+    typename Element_,
+    typename LayoutA,
+    typename LayoutB
 >
 struct DefaultGemmConfig;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Partial specialization for SM80 F64 Tensor Cores
-template <>
-struct DefaultGemmConfig<80, double> {
+template <typename LayoutA, typename LayoutB>
+struct DefaultGemmConfig<80, double, LayoutA, LayoutB> {
     using Gemm = cutlass::gemm::device::GemmUniversal<
-        double, cutlass::layout::RowMajor,                              // ElementA and LayoutA
-        double, cutlass::layout::RowMajor,                              // ElementB and LayoutB
+        double, LayoutA,                                                // ElementA and LayoutA
+        double, LayoutB,                                                // ElementB and LayoutB
         double, cutlass::layout::RowMajor,                              // ElementC and LayoutC
         double,                                                         // ElementAccumulator
         cutlass::arch::OpClassTensorOp,                                 // Operation type
@@ -137,11 +139,11 @@ struct DefaultGemmConfig<80, double> {
 };
 
 // Partial specialization for SM80 F32 Tensor Cores
-template <>
-struct DefaultGemmConfig<80, float> {
+template <typename LayoutA, typename LayoutB>
+struct DefaultGemmConfig<80, float, LayoutA, LayoutB> {
     using Gemm = cutlass::gemm::device::GemmUniversal<
-        float, cutlass::layout::RowMajor,                               // ElementA and LayoutA
-        float, cutlass::layout::RowMajor,                               // ElementB and LayoutB
+        float, LayoutA,                                                 // ElementA and LayoutA
+        float, LayoutB,                                                 // ElementB and LayoutB
         float, cutlass::layout::RowMajor,                               // ElementC and LayoutC
         float,                                                          // ElementAccumulator
         cutlass::arch::OpClassTensorOp,                                 // Operation type
@@ -162,11 +164,11 @@ struct DefaultGemmConfig<80, float> {
 };
 
 // Partial specialization for SM80 F16 Tensor Cores
-template <>
-struct DefaultGemmConfig<80, cutlass::half_t> {
+template <typename LayoutA, typename LayoutB>
+struct DefaultGemmConfig<80, cutlass::half_t, LayoutA, LayoutB> {
     using Gemm = cutlass::gemm::device::GemmUniversal<
-        cutlass::half_t, cutlass::layout::RowMajor,                     // ElementA and LayoutA
-        cutlass::half_t, cutlass::layout::RowMajor,                     // ElementB and LayoutB
+        cutlass::half_t, LayoutA,                                       // ElementA and LayoutA
+        cutlass::half_t, LayoutB,                                       // ElementB and LayoutB
         cutlass::half_t, cutlass::layout::RowMajor,                     // ElementC and LayoutC
         cutlass::half_t,                                                // ElementAccumulator
         cutlass::arch::OpClassTensorOp,                                 // Operation type
@@ -187,11 +189,11 @@ struct DefaultGemmConfig<80, cutlass::half_t> {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Partial specialization for SM75 F16 Tensor Cores
-template <>
-struct DefaultGemmConfig<75, cutlass::half_t> {
+template <typename LayoutA, typename LayoutB>
+struct DefaultGemmConfig<75, cutlass::half_t, LayoutA, LayoutB> {
     using Gemm = cutlass::gemm::device::GemmUniversal<
-        cutlass::half_t, cutlass::layout::RowMajor,                     // ElementA and LayoutA
-        cutlass::half_t, cutlass::layout::RowMajor,                     // ElementB and LayoutB
+        cutlass::half_t, LayoutA,                                       // ElementA and LayoutA
+        cutlass::half_t, LayoutB,                                       // ElementB and LayoutB
         cutlass::half_t, cutlass::layout::RowMajor,                     // ElementC and LayoutC
         cutlass::half_t,                                                // ElementAccumulator
         cutlass::arch::OpClassTensorOp,                                 // Operation type
@@ -212,11 +214,11 @@ struct DefaultGemmConfig<75, cutlass::half_t> {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Partial specialization for SM70 F16 Tensor Cores
-template <>
-struct DefaultGemmConfig<70, cutlass::half_t> {
+template <typename LayoutA, typename LayoutB>
+struct DefaultGemmConfig<70, cutlass::half_t, LayoutA, LayoutB> {
     using Gemm = cutlass::gemm::device::GemmUniversal<
-        cutlass::half_t, cutlass::layout::RowMajor,                     // ElementA and LayoutA
-        cutlass::half_t, cutlass::layout::RowMajor,                     // ElementB and LayoutB
+        cutlass::half_t, LayoutA,                                       // ElementA and LayoutA
+        cutlass::half_t, LayoutB,                                       // ElementB and LayoutB
         cutlass::half_t, cutlass::layout::RowMajor,                     // ElementC and LayoutC
         cutlass::half_t,                                                // ElementAccumulator
         cutlass::arch::OpClassTensorOp,                                 // Operation type
@@ -237,11 +239,11 @@ struct DefaultGemmConfig<70, cutlass::half_t> {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Partial specialization for SM50 SIMT
-template <typename Element>
-struct DefaultGemmConfig<50, Element> {
+template <typename Element, typename LayoutA, typename LayoutB>
+struct DefaultGemmConfig<50, Element, LayoutA, LayoutB> {
     using Gemm = cutlass::gemm::device::GemmUniversal<
-        Element, cutlass::layout::RowMajor,                             // ElementA and LayoutA
-        Element, cutlass::layout::RowMajor,                             // ElementB and LayoutB
+        Element, LayoutA,                                               // ElementA and LayoutA
+        Element, LayoutB,                                               // ElementB and LayoutB
         Element, cutlass::layout::RowMajor,                             // ElementC and LayoutC
         Element,                                                        // ElementAccumulator
         cutlass::arch::OpClassSimt,                                     // Operation type
@@ -270,45 +272,134 @@ bool cutlass_gemm(
                   const char* datatype_str,
                   const void* a, const void* b, const void* c, void* d,
                   float alpha, float beta,
+                  bool row_major_a, bool row_major_b,
                   bool allow_tf32x3_arith,
                   int batch_count) {
 
     std::string datatype(datatype_str);
 
-    // Specializations for using Tensor Cores
+    // Specializations for using Tensor Cores and A/B RowMajor/ColumnMajor designations
     if (compute_capability == 80) {
         if (datatype == F64_STR) {
-            using Gemm = DefaultGemmConfig<80, double>::Gemm;
-            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            if (row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<80, double, cutlass::layout::RowMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (!row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<80, double, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<80, double, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (!row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<80, double, cutlass::layout::ColumnMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            }
         } else if (datatype == F32_STR && allow_tf32x3_arith) {
-            using Gemm = DefaultGemmConfig<80, float>::Gemm;
-            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            if (row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<80, float, cutlass::layout::RowMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (!row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<80, float, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<80, float, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (!row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<80, float, cutlass::layout::ColumnMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            }
         } else if (datatype == F16_STR) {
-            using Gemm = DefaultGemmConfig<80, cutlass::half_t>::Gemm;
-            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            if (row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<80, cutlass::half_t, cutlass::layout::RowMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (!row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<80, cutlass::half_t, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<80, cutlass::half_t, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (!row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<80, cutlass::half_t, cutlass::layout::ColumnMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            }
         }
     } else if (compute_capability == 75) {
         if (datatype == F16_STR) {
-            using Gemm = DefaultGemmConfig<75, cutlass::half_t>::Gemm;
-            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            if (row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<75, cutlass::half_t, cutlass::layout::RowMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);    
+            } else if (!row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<75, cutlass::half_t, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);    
+            } else if (row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<75, cutlass::half_t, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);    
+            } else if (!row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<75, cutlass::half_t, cutlass::layout::ColumnMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);    
+            }
         }
     } else if (compute_capability == 70) {
         if (datatype == F16_STR) {
-            using Gemm = DefaultGemmConfig<70, cutlass::half_t>::Gemm;
-            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            if (row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<70, cutlass::half_t, cutlass::layout::RowMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (!row_major_a && row_major_b) {
+                using Gemm = DefaultGemmConfig<70, cutlass::half_t, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<70, cutlass::half_t, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            } else if (!row_major_a && !row_major_b) {
+                using Gemm = DefaultGemmConfig<70, cutlass::half_t, cutlass::layout::ColumnMajor, cutlass::layout::ColumnMajor>::Gemm;
+                return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+            }
         }
     }
 
     // No Tensor Core capability available. Run a SIMT kernel
     if (datatype == F64_STR) {
-        using Gemm = DefaultGemmConfig<50, double>::Gemm;
-        return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        if (row_major_a && row_major_b) {
+            using Gemm = DefaultGemmConfig<50, double, cutlass::layout::RowMajor, cutlass::layout::RowMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (!row_major_a && row_major_b) {
+            using Gemm = DefaultGemmConfig<50, double, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (row_major_a && !row_major_b) {
+            using Gemm = DefaultGemmConfig<50, double, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (!row_major_a && !row_major_b) {
+            using Gemm = DefaultGemmConfig<50, double, cutlass::layout::ColumnMajor, cutlass::layout::ColumnMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        }
     } else if (datatype == F32_STR) {
-        using Gemm = DefaultGemmConfig<50, float>::Gemm;
-        return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        if (row_major_a && row_major_b) {
+            using Gemm = DefaultGemmConfig<50, float, cutlass::layout::RowMajor, cutlass::layout::RowMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (!row_major_a && row_major_b) {
+            using Gemm = DefaultGemmConfig<50, float, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (row_major_a && !row_major_b) {
+            using Gemm = DefaultGemmConfig<50, float, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (!row_major_a && !row_major_b) {
+            using Gemm = DefaultGemmConfig<50, float, cutlass::layout::ColumnMajor, cutlass::layout::ColumnMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        }
     } else if (datatype == F16_STR) {
-        using Gemm = DefaultGemmConfig<50, cutlass::half_t>::Gemm;
-        return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        if (row_major_a && row_major_b) {
+            using Gemm = DefaultGemmConfig<50, cutlass::half_t, cutlass::layout::RowMajor, cutlass::layout::RowMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (!row_major_a && row_major_b) {
+            using Gemm = DefaultGemmConfig<50, cutlass::half_t, cutlass::layout::ColumnMajor, cutlass::layout::RowMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (row_major_a && !row_major_b) {
+            using Gemm = DefaultGemmConfig<50, cutlass::half_t, cutlass::layout::RowMajor, cutlass::layout::ColumnMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        } else if (!row_major_a && !row_major_b) {
+            using Gemm = DefaultGemmConfig<50, cutlass::half_t, cutlass::layout::ColumnMajor, cutlass::layout::ColumnMajor>::Gemm;
+            return run_gemm<Gemm>(m, n, k, batch_count, a, b, c, d, alpha, beta);
+        }
     }
 
     std::cerr << "Data type " << datatype << " is not currently supported." << std::endl;

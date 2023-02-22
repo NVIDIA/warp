@@ -1,8 +1,28 @@
 # CHANGELOG
 
-## [0.7.0] - 2023-01-02
+## [0.7.2] - 2023-02-15
+
+- Reduce test time for vec/math types
+- Clean-up CUDA disabled build pipeline
+- Remove extension.gen.toml to make Kit packages Python version independent
+- Handle additional cases for array indexing inside Python
+
+## [0.7.1] - 2023-02-14
+
+- Disabling some slow tests for Kit
+- Make unit tests run on first GPU only by default
+
+## [0.7.0] - 2023-02-13
 
 - Add support for arbitrary length / type vector and matrices e.g.: `wp.vec(length=7, dtype=wp.float16)`, see `wp.vec()`, and `wp.mat()`
+- Add support for `array.flatten()`, `array.reshape()`, and `array.view()` with NumPy semantics
+- Add support for slicing `wp.array` types in Python
+- Add `wp.from_ptr()` helper to construct arrays from an existing allocation
+- Add support for `break` statements in ranged-for and while loops (backward pass support currently not implemented)
+- Add built-in mathematic constants, see `wp.pi`, `wp.e`, `wp.log2e`, etc
+- Add built-in conversion between degrees and radians, see `wp.degrees()`, `wp.radians()`
+- Add security pop-up for Kernel Node 
+- Improve error handling for kernel return values
 
 ## [0.6.3] - 2023-01-31
 

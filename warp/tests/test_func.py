@@ -104,7 +104,7 @@ def test_func_export(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestFunc(parent):
         pass

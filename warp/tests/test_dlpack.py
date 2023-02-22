@@ -287,7 +287,7 @@ def register(parent):
     class TestDLPack(parent):
         pass
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     add_function_test(TestDLPack, "test_dlpack_warp_to_warp", test_dlpack_warp_to_warp, devices=devices)
     add_function_test(TestDLPack, "test_dlpack_dtypes_and_shapes", test_dlpack_dtypes_and_shapes, devices=devices)
@@ -299,8 +299,9 @@ def register(parent):
 
         # check which Warp devices work with Torch
         # CUDA devices may fail if Torch was not compiled with CUDA support
+        test_devices = get_test_devices()
         torch_compatible_devices = []
-        for d in wp.get_devices():
+        for d in test_devices:
             try:
                 t = torch.arange(10, device=wp.device_to_torch(d))
                 t += 1
@@ -322,8 +323,9 @@ def register(parent):
 
         # check which Warp devices work with Jax
         # CUDA devices may fail if Jax cannot find a CUDA Toolkit
+        test_devices = get_test_devices()
         jax_compatible_devices = []
-        for d in wp.get_devices():
+        for d in test_devices:
             try:
                 with jax.default_device(wp.device_to_jax(d)):
                     j = jax.numpy.arange(10, dtype=jax.numpy.float32)

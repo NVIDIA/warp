@@ -206,7 +206,7 @@ def test_mesh_query_aabb_count_nonoverlap(test, device):
 
 def register(parent):
         
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestMeshQueryAABBMethods(parent):
         pass

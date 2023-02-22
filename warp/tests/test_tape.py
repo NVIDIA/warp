@@ -131,7 +131,7 @@ def test_tape_dot_product(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestTape(parent):
         pass

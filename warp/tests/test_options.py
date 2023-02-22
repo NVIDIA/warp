@@ -86,7 +86,8 @@ def test_options_4(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
 def register(parent):
-    devices = wp.get_devices()
+    
+    devices = get_test_devices()
 
     class TestOptions(parent):
         pass

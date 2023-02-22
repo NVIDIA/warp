@@ -606,9 +606,11 @@ def register(parent):
 
         # check which Warp devices work with Torch
         # CUDA devices may fail if Torch was not compiled with CUDA support
+        test_devices = get_test_devices()
         torch_compatible_devices = []
         torch_compatible_cuda_devices = []
-        for d in wp.get_devices():
+        
+        for d in test_devices:
             try:
                 t = torch.arange(10, device=wp.device_to_torch(d))
                 t += 1

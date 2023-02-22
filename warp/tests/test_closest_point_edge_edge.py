@@ -164,7 +164,7 @@ def test_edge_edge_perpendicular_s0_t1(test, device):
 
 def register(parent):
         
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestClosestPointEdgeEdgeMethods(parent):
         pass

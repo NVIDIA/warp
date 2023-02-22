@@ -32,6 +32,15 @@ warp.config.mode = args.mode
 warp.config.verify_fp = args.verify_fp
 warp.config.fast_math = args.fast_math
 
+
+# See PyTorch for reference on how to find nvcc.exe more robustly, https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
+def find_cuda():
+    
+    # Guess #1
+    cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
+    return cuda_home
+
+
 # setup CUDA paths
 if sys.platform == 'darwin':
 
@@ -42,7 +51,7 @@ else:
     if args.cuda_path:
         warp.config.cuda_path = args.cuda_path
     else:
-        warp.config.cuda_path = warp.build.find_cuda()
+        warp.config.cuda_path = find_cuda()
 
 
 # setup MSVC and WinSDK paths
@@ -63,6 +72,24 @@ if os.name == 'nt':
 
 try:
 
+    cpp_sources = [
+        "native/warp.cpp",
+        "native/cuda_util.cpp",
+        "native/mesh.cpp",
+        "native/hashgrid.cpp",
+        "native/sort.cpp",
+        "native/volume.cpp",
+        "native/marching.cpp",
+        "native/cutlass_gemm.cpp",
+    ]
+    warp_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
+
+    if (warp.config.cuda_path is None):
+        print("Warning: CUDA toolchain not found, building without CUDA support")
+        warp_cu_path = None
+    else:
+        warp_cu_path = os.path.join(build_path, "native/warp.cu")
+
     if sys.platform == "win32":
         dll_path = os.path.join(build_path, "bin/warp.dll")
     elif sys.platform == "darwin":
@@ -70,29 +97,14 @@ try:
     else:
         dll_path = os.path.join(build_path, "bin/warp.so")
 
-    # no CUDA toolchain found
-    if (warp.config.cuda_path == None):
-        print("Warning: building without CUDA support")
-
-        warp.build.build_dll(
-                        cpp_path=os.path.join(build_path, "native/warp.cpp"), 
-                        cu_path=None, 
-                        dll_path=dll_path,
-                        config=warp.config.mode,
-                        verify_fp=warp.config.verify_fp,
-                        fast_math=args.fast_math,
-                        force=True)
-
-    else:
-
-        warp.build.build_dll(
-                        cpp_path=os.path.join(build_path, "native/warp.cpp"), 
-                        cu_path=os.path.join(build_path, "native/warp.cu"), 
-                        dll_path=dll_path,
-                        config=warp.config.mode,
-                        verify_fp=warp.config.verify_fp,
-                        fast_math=args.fast_math,
-                        force=True)
+    warp.build.build_dll(
+                    cpp_paths=warp_cpp_paths,
+                    cu_path=warp_cu_path, 
+                    dll_path=dll_path,
+                    mode=warp.config.mode,
+                    verify_fp=warp.config.verify_fp,
+                    fast_math=args.fast_math,
+                    use_cache=False)
                     
 except Exception as e:
 

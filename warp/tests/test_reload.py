@@ -206,7 +206,7 @@ def test_reload_references(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestReload(parent):
         pass

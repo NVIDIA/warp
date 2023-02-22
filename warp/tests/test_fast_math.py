@@ -40,7 +40,7 @@ def register(parent):
     class TestFastMath(parent):
         pass
     
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     add_function_test(TestFastMath, "test_fast_math", test_fast_math, devices=devices)
 

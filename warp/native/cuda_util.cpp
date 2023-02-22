@@ -6,7 +6,7 @@
  * license agreement from NVIDIA CORPORATION is strictly prohibited.
  */
 
-#if !WP_DISABLE_CUDA
+#if WP_ENABLE_CUDA
 
 #include "cuda_util.h"
 
@@ -378,4 +378,4 @@ CUresult cuMemcpyPeerAsync_f(CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr
 }
 
 
-#endif // !WP_DISABLE_CUDA
+#endif // WP_ENABLE_CUDA

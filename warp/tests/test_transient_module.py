@@ -55,7 +55,8 @@ def test_transient_module(test, device):
     assert_np_equal(data.x.numpy(), np.array([124]))
 
 def register(parent):
-    devices = wp.get_devices()
+
+    devices = get_test_devices()
 
     class TestTransientModule(parent):
         pass

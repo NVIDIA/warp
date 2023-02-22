@@ -1016,7 +1016,26 @@ class array (Generic[T]):
         new_shape = []
         new_strides = []
         ptr_offset = 0
-        new_dim = 0
+        new_dim = self.ndim
+
+        if isinstance(key, int):
+            if self.ndim == 1:
+                raise RuntimeError("Item indexing is not supported on wp.array objects")
+            key = [key]
+        elif isinstance(key, Tuple):
+            contains_slice = False
+            for k in key:
+                if isinstance(k, slice):
+                    contains_slice = True
+            if not contains_slice and len(key) == self.ndim:
+                raise RuntimeError("Item indexing is not supported on wp.array objects")
+
+        new_key = []
+        for i in range(0, len(key)):
+            new_key.append(key[i])
+        for i in range(len(key), self.ndim):
+            new_key.append(slice(None, None, None))
+        key = tuple(new_key)
 
         for idx, k in enumerate(key):
             if isinstance(k, slice):
@@ -1033,15 +1052,14 @@ class array (Generic[T]):
                     stop = self.shape[idx] + stop
 
                 if start < 0 or start > self.shape[idx] - 1:
-                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+                    raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
                 if stop < 1 or stop > self.shape[idx]:
-                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+                    raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
                 if stop <= start:
-                    raise RuntimeError(f"Invalid indexing in slice: {k.start}:{k.stop}:{k.step}")
+                    raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
 
                 new_shape.append(-((stop - start) // -step))  # ceil division
                 new_strides.append(self.strides[idx] * step)
-                new_dim += 1
 
             else:  # is int
                 start = k
@@ -1049,6 +1067,7 @@ class array (Generic[T]):
                     start = self.shape[idx] + start
                 if start < 0 or start > self.shape[idx] - 1:
                     raise RuntimeError(f"Invalid indexing in slice: {k}")
+                new_dim -= 1
 
             ptr_offset += self.strides[idx] * start
 
@@ -1224,6 +1243,9 @@ class array (Generic[T]):
 
     def flatten(self):
 
+        if not self.is_contiguous:
+            raise RuntimeError(f"Flattening non-continuguous arrays is unsupported.")
+
         a = array(dtype=self.dtype,
                   shape=(self.size,),
                   strides=(type_size_in_bytes(self.dtype),),
@@ -1241,6 +1263,9 @@ class array (Generic[T]):
 
 
     def reshape(self, shape):
+
+        if not self.is_contiguous:
+            raise RuntimeError(f"Reshaping non-continuguous arrays is unsupported.")
 
         # convert shape to tuple
         if shape == None:
@@ -1276,22 +1301,65 @@ class array (Generic[T]):
         return a
 
 
-    def astype(self, dtype):
+    def view(self, dtype):
 
-        # allocate a new array
-        arr = self.numpy().astype(dtype=dtype)
-        a = array(data=arr,
-                dtype=dtype,
-                shape=self.shape,
-                strides=None,
-                ptr=None,
-                capacity=None,
+        if type_size_in_bytes(dtype) != type_size_in_bytes(self.dtype):
+            raise RuntimeError("cannot reinterpret cast dtypes of unequal byte size")
+        else:
+            # return an alias of the array memory with different type information
+            a = array(data=None,
+                    dtype=dtype,
+                    shape=self.shape,
+                    strides=self.strides,
+                    ptr=self.ptr,
+                    capacity=self.capacity,
+                    device=self.device,
+                    copy=False,
+                    owner=False,
+                    ndim=self.ndim,
+                    requires_grad=self.requires_grad)
+
+            a._ref = self
+            return a
+
+
+
+    # note: transpose operation will return an array with a non-contiguous access pattern
+    def transpose(self, axes=None):
+
+        # noop if 1d array
+        if len(self.shape) == 1:
+            return self
+
+        if axes == None:
+            # reverse the order of the axes
+            axes = range(self.ndim)[::-1]
+
+        if len(axes) != len(self.shape):
+            raise RuntimeError("Length of parameter axes must be equal in length to array shape")
+        shape = []
+        strides = []
+        for a in axes:
+            if not isinstance(a, int):
+                raise RuntimeError(f"axis index {a} is not of type int")
+            if a >= len(self.shape):
+                raise RuntimeError(f"axis index {a} must be smaller than the number of axes in array")
+            shape.append(self.shape[a])
+            strides.append(self.strides[a])
+
+        a = array(data=None,
+                dtype=self.dtype,
+                shape=tuple(shape),
+                strides=tuple(strides),
+                ptr=self.ptr,
+                capacity=self.capacity,
                 device=self.device,
-                copy=True,
-                owner=True,
-                ndim=None,
+                copy=False,
+                owner=False,
+                ndim=self.ndim,
                 requires_grad=self.requires_grad)
 
+        a._ref = self
         return a
 
 # aliases for arrays with small dimensions
@@ -1768,11 +1836,94 @@ def matmul(a: array2d, b: array2d, c: array2d, d: array2d, alpha: float = 1., be
                               ctypes.c_void_p(c.ptr),
                               ctypes.c_void_p(d.ptr),
                               alpha, beta,
+                              True, True,
                               allow_tf32x3_arith,
                               1)
     if not ret:
         raise RuntimeError("Matmul failed.")
 
+def adj_matmul(
+    a: array2d, b: array2d, c: array2d, adj_d: array2d, alpha: float, beta: float, 
+    adj_a: array2d, adj_b: array2d, adj_c: array2d, 
+    allow_tf32x3_arith: bool = False, device = None):
+    """ Computes the adjoint of a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
+        note: the adjoint of parameter alpha is not included but can be computed as `adj_alpha = np.sum(np.concatenate(np.multiply(a @ b, adj_d)))`.
+        note: the adjoint of parameter beta is not included but can be computed as `adj_beta = np.sum(np.concatenate(np.multiply(c, adj_d)))`.
+
+    Args:
+        a (array2d): two-dimensional array containing matrix A
+        b (array2d): two-dimensional array containing matrix B
+        c (array2d): two-dimensional array containing matrix C
+        adj_d (array2d): two-dimensional array containing the adjoint of matrix D
+        alpha (float): parameter alpha of GEMM
+        beta (float): parameter beta of GEMM
+        adj_a (array2d): two-dimensional array to which the adjoint of matrix A is written
+        adj_b (array2d): two-dimensional array to which the adjoint of matrix B is written
+        adj_c (array2d): two-dimensional array to which the adjoint of matrix C is written
+        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
+                                   while using Tensor Cores
+    """
+    from warp.context import runtime
+    device = runtime.get_device(device)
+    cc = device.arch
+
+    if adj_d.dtype != a.dtype or adj_d.dtype != b.dtype or adj_d.dtype != c.dtype or adj_d.dtype != adj_a.dtype or adj_d.dtype != adj_b.dtype or adj_d.dtype != adj_c.dtype:
+        raise RuntimeError("wp.adj_matmul currently only supports operation between {A, B, C, adj_D, adj_A, adj_B, adj_C} matrices of the same type.")
+
+    m = a.shape[0]
+    n = b.shape[1]
+    k = a.shape[1]
+    if a.shape != (m, k) or b.shape != (k, n) or c.shape != (m, n) or adj_d.shape != (m, n) or adj_a.shape != (m, k) or adj_b.shape != (k, n) or adj_c.shape != (m, n):
+        raise RuntimeError("Invalid shapes for matrices: A = {} B = {} C = {} adj_D = {} adj_A = {} adj_B = {} adj_C = {}".format(
+            a.shape, b.shape, c.shape, adj_d.shape, adj_a.shape, adj_b.shape, adj_c.shape))
+
+    # adj_a
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              m, k, n,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(adj_d.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(adj_a.ptr),
+                              alpha, 0.0,
+                              True, False,
+                              allow_tf32x3_arith,
+                              1)
+    if not ret:
+        raise RuntimeError("adj_matmul failed.")
+
+    # adj_b
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              k, n, m,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(adj_d.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(adj_b.ptr),
+                              alpha, 0.0,
+                              False, True,
+                              allow_tf32x3_arith,
+                              1)
+    if not ret:
+        raise RuntimeError("adj_matmul failed.")
+
+    # adj_c
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              m, n, k,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(adj_d.ptr),
+                              ctypes.c_void_p(adj_c.ptr),
+                              0.0, beta,
+                              True, True,
+                              allow_tf32x3_arith,
+                              1)
+    if not ret:
+        raise RuntimeError("adj_matmul failed.")
 
 def batched_matmul(a: array3d, b: array3d, c: array3d, d: array3d, alpha: float = 1., beta: float = 0., allow_tf32x3_arith: bool = False, device=None):
     """ Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
@@ -1810,10 +1961,93 @@ def batched_matmul(a: array3d, b: array3d, c: array3d, d: array3d, alpha: float 
                               ctypes.c_void_p(c.ptr),
                               ctypes.c_void_p(d.ptr),
                               alpha, beta,
+                              True, True,
                               allow_tf32x3_arith,
                               batch_count)
     if not ret:
         raise RuntimeError("Batched matmul failed.")
+
+def adj_batched_matmul(
+    a: array3d, b: array3d, c: array3d, adj_d: array3d, alpha: float, beta: float,
+    adj_a: array3d, adj_b: array3d, adj_c: array3d,
+    allow_tf32x3_arith: bool = False, device=None):
+    """ Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
+
+    Args:
+        a (array3d): three-dimensional array containing A matrices. Overall array dimension is {batch_count, M, K}
+        b (array3d): three-dimensional array containing B matrices. Overall array dimension is {batch_count, K, N}
+        c (array3d): three-dimensional array containing C matrices. Overall array dimension is {batch_count, M, N}
+        adj_d (array3d): three-dimensional array containing adjoints of D matrices. Overall array dimension is {batch_count, M, N}
+        alpha (float): parameter alpha of GEMM
+        beta (float): parameter beta of GEMM
+        adj_a (array3d): three-dimensional array to which the adjoints of A matrices are written. Overall array dimension is {batch_count, M, K}
+        adj_b (array3d): three-dimensional array to which the adjoints of B matrices are written. Overall array dimension is {batch_count, K, N}
+        adj_c (array3d): three-dimensional array to which the adjoints of C matrices are written. Overall array dimension is {batch_count, M, N}
+        allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
+                                   while using Tensor Cores
+    """
+    from warp.context import runtime
+    device = runtime.get_device(device)
+    cc = device.arch
+
+    if adj_d.dtype != a.dtype or adj_d.dtype != b.dtype or adj_d.dtype != c.dtype or adj_d.dtype != adj_a.dtype or adj_d.dtype != adj_b.dtype or adj_d.dtype != adj_c.dtype:
+        raise RuntimeError("wp.adj_batched_matmul currently only supports operation between {A, B, C, adj_D, adj_A, adj_B, adj_C} matrices of the same type.")
+
+    m = a.shape[1]
+    n = b.shape[2]
+    k = a.shape[2]
+    batch_count = a.shape[0]
+    if b.shape != (batch_count, k, n) or c.shape != (batch_count, m, n) or adj_d.shape != (batch_count, m, n) or adj_a.shape != (batch_count, m, k) or adj_b.shape != (batch_count, k, n) or adj_c.shape != (batch_count, m, n):
+        raise RuntimeError("Invalid shapes for matrices: A = {} B = {} C = {} adj_D = {} adj_A = {} adj_B = {} adj_C = {}".format(
+            a.shape, b.shape, c.shape, adj_d.shape, adj_a.shape, adj_b.shape, adj_c.shape))
+
+    # adj_a
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              m, k, n,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(adj_d.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(adj_a.ptr),
+                              alpha, 0.0,
+                              True, False,
+                              allow_tf32x3_arith,
+                              batch_count)
+    if not ret:
+        raise RuntimeError("adj_matmul failed.")
+
+    # adj_b
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              k, n, m,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(adj_d.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(adj_b.ptr),
+                              alpha, 0.0,
+                              False, True,
+                              allow_tf32x3_arith,
+                              batch_count)
+    if not ret:
+        raise RuntimeError("adj_matmul failed.")
+
+    # adj_c
+    ret = runtime.core.cutlass_gemm(
+                              cc,
+                              m, n, k,
+                              type_typestr(a.dtype).encode(),
+                              ctypes.c_void_p(a.ptr),
+                              ctypes.c_void_p(b.ptr),
+                              ctypes.c_void_p(adj_d.ptr),
+                              ctypes.c_void_p(adj_c.ptr),
+                              0.0, beta,
+                              True, True,
+                              allow_tf32x3_arith,
+                              batch_count)
+    if not ret:
+        raise RuntimeError("adj_matmul failed.")
 
 class HashGrid:
 

@@ -322,12 +322,23 @@ def test_reshape(test, device):
 
 
 @wp.kernel
-def compare_stepped_window(x: wp.array2d(dtype=float)):
+def compare_stepped_window_a(x: wp.array2d(dtype=float)):
 
     wp.expect_eq(x[0,0], 1.0)
     wp.expect_eq(x[0,1], 2.0)
     wp.expect_eq(x[1,0], 9.0)
     wp.expect_eq(x[1,1], 10.0)
+
+
+@wp.kernel
+def compare_stepped_window_b(x: wp.array2d(dtype=float)):
+
+    wp.expect_eq(x[0,0], 3.0)
+    wp.expect_eq(x[0,1], 4.0)
+    wp.expect_eq(x[1,0], 7.0)
+    wp.expect_eq(x[1,1], 8.0)
+    wp.expect_eq(x[2,0], 11.0)
+    wp.expect_eq(x[2,1], 12.0)
 
 
 def test_slicing(test, device):
@@ -352,7 +363,7 @@ def test_slicing(test, device):
 
     # wp does not support copying from/to non-contiguous arrays
     # stepped windows must read on the device the original array was created on
-    wp.launch(kernel=compare_stepped_window, dim=1, inputs=[slice_f], device=device)
+    wp.launch(kernel=compare_stepped_window_a, dim=1, inputs=[slice_f], device=device)
     
     slice_flat = slice_b.flatten()
     loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
@@ -372,47 +383,94 @@ def test_slicing(test, device):
     assert_array_equal(grad, ones)
     test.assertEqual(loss.numpy()[0], 26)
 
+    index_a = arr[1]
+    index_b = arr[2, 1]
+    index_c = arr[1,:]
+    index_d = arr[:,1]
 
-def test_astype(test, device):
+    assert_array_equal(index_a, wp.array(np_arr[1], dtype=float, device=device))
+    assert_array_equal(index_b, wp.array(np_arr[2, 1], dtype=float, device=device))
+    assert_array_equal(index_c, wp.array(np_arr[1, :], dtype=float, device=device))
+    wp.launch(kernel=compare_stepped_window_b, dim=1, inputs=[index_d], device=device)
 
-    np_arr_a = np.arange(0, 10, 1, dtype=float)
-    np_arr_b = np.arange(0, 10, 1, dtype=int)
-    np_arr_c = np.arange(0, 10, 1, dtype=np.int8)
-    np_arr_d = np.arange(0, 10, 1, dtype=np.uint64)
+
+def test_view(test, device):
+
+    np_arr_a = np.arange(1, 10, 1, dtype=np.uint32)
+    np_arr_b = np.arange(1, 10, 1, dtype=np.float32)
+    np_arr_c = np.arange(1, 10, 1, dtype=np.uint16)
+    np_arr_d = np.arange(1, 10, 1, dtype=np.float16)
+    np_arr_e = np.ones((4, 4), dtype=np.float32)
+
+    wp_arr_a = wp.array(np_arr_a, dtype=wp.uint32, device=device)
+    wp_arr_b = wp.array(np_arr_b, dtype=wp.float32, device=device)
+    wp_arr_c = wp.array(np_arr_a, dtype=wp.uint16, device=device)
+    wp_arr_d = wp.array(np_arr_b, dtype=wp.float16, device=device)
+    wp_arr_e = wp.array(np_arr_e, dtype=wp.vec4, device=device)
+    wp_arr_f = wp.array(np_arr_e, dtype=wp.quat, device=device)
     
-    arr_a = wp.array(np_arr_a, dtype=float, device=device, requires_grad=True)
-    arr_b = wp.array(np_arr_b, dtype=int, device=device)
-    arr_c = wp.array(np_arr_c, dtype=wp.int8, device=device)
-    arr_d = wp.array(np_arr_d, dtype=wp.uint64, device=device)
+    assert np.array_equal(np_arr_a.view(dtype=np.float32), wp_arr_a.view(dtype=wp.float32).numpy())
+    assert np.array_equal(np_arr_b.view(dtype=np.uint32), wp_arr_b.view(dtype=wp.uint32).numpy())
+    assert np.array_equal(np_arr_c.view(dtype=np.float16), wp_arr_c.view(dtype=wp.float16).numpy())
+    assert np.array_equal(np_arr_d.view(dtype=np.uint16), wp_arr_d.view(dtype=wp.uint16).numpy())
+    assert_array_equal(wp_arr_e.view(dtype=wp.quat), wp_arr_f)
+
+
+@wp.kernel
+def compare_2darrays(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), z: wp.array2d(dtype=int)):
+    i,j = wp.tid()
+
+    if x[i,j] == y[i,j]:
+        z[i,j] = 1
+
+
+@wp.kernel
+def compare_3darrays(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float), z: wp.array3d(dtype=int)):
+    i,j,k = wp.tid()
+
+    if x[i,j,k] == y[i,j,k]:
+        z[i,j,k] = 1
+
+
+def test_transpose(test, device):
     
-    arr_a = arr_a.astype(dtype=int)
-    assert_array_equal(arr_a, arr_b)
+    # test default transpose in non-square 2d case
+    # wp does not support copying from/to non-contiguous arrays so check in kernel
+    np_arr = np.array([[1, 2], [3, 4], [5, 6]], dtype=float)
+    arr = wp.array(np_arr, dtype=float, device=device)
+    arr_transpose = arr.transpose()
+    arr_compare = wp.array(np_arr.transpose(), dtype=float, device=device)
+    check = wp.zeros(shape=(2, 3), dtype=int, device=device)
 
-    arr_a = arr_a.astype(dtype=wp.int8)
-    assert_array_equal(arr_a, arr_c)
+    wp.launch(compare_2darrays, dim=(2, 3), inputs=[arr_transpose, arr_compare, check], device=device)
+    assert np.array_equal(check.numpy(), np.ones((2, 3), dtype=int))
 
-    arr_a = arr_a.astype(dtype=wp.uint64)
-    assert_array_equal(arr_a, arr_d)
+    # test transpose in square 3d case
+    # wp does not support copying from/to non-contiguous arrays so check in kernel
+    np_arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]], dtype=float)
+    arr = wp.array3d(np_arr, dtype=float, shape=np_arr.shape, device=device, requires_grad=True)
+    arr_transpose = arr.transpose((0, 2, 1))
+    arr_compare = wp.array3d(np_arr.transpose((0, 2, 1)), dtype=float, device=device)
+    check = wp.zeros(shape=(3, 2, 2), dtype=int, device=device)
 
-    arr_a = arr_a.astype(dtype=float)
-    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
-    tape = wp.Tape()
-    with tape:
-        wp.launch(
-            kernel=sum_array,
-            dim=len(arr_a),
-            inputs=[arr_a, loss],
-            device=device
-        )
+    wp.launch(compare_3darrays, dim=(3, 2, 2), inputs=[arr_transpose, arr_compare, check], device=device)
+    assert np.array_equal(check.numpy(), np.ones((3, 2, 2), dtype=int))
 
-    tape.backward(loss=loss)
-    grad = tape.gradients[arr_a]
+    # test transpose in square 3d case without axes supplied
+    arr_transpose = arr.transpose()
+    arr_compare = wp.array3d(np_arr.transpose(), dtype=float, device=device)
+    check = wp.zeros(shape=(2, 2, 3), dtype=int, device=device)
 
-    ones = wp.array(np.ones((10,), dtype=float,), dtype=float, device=device)
-    assert_array_equal(grad, ones)
-    test.assertEqual(loss.numpy()[0], 45)
+    wp.launch(compare_3darrays, dim=(2, 2, 3), inputs=[arr_transpose, arr_compare, check], device=device)
+    assert np.array_equal(check.numpy(), np.ones((2, 2, 3), dtype=int))
 
-    
+    # test transpose in 1d case (should be noop)
+    np_arr = np.array([1, 2, 3], dtype=float)
+    arr = wp.array(np_arr, dtype=float, device=device)
+
+    assert np.array_equal(np_arr.transpose(), arr.transpose().numpy())
+
+
 def test_fill_zero(test, device):
 
     dim_x = 4
@@ -582,7 +640,7 @@ def test_round_trip(test, device):
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestArray(parent):
         pass
@@ -591,7 +649,8 @@ def register(parent):
     add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
     add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
     add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
-    add_function_test(TestArray, "test_astype", test_astype, devices=devices)
+    add_function_test(TestArray, "test_transpose", test_transpose, devices=devices)
+    add_function_test(TestArray, "test_view", test_view, devices=devices)
 
     add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
     add_function_test(TestArray, "test_2d_array", test_2d, devices=devices)

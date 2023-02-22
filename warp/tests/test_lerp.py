@@ -244,7 +244,7 @@ def test_lerp(test, device):
                 )
 
 def register(parent):
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestLerp(parent):
         pass

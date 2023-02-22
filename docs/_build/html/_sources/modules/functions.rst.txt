@@ -68,52 +68,7 @@ Vector Types
 
 Scalar Math
 ---------------
-.. function:: min(x: int8, y: int8) -> int8
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: uint64, y: uint64) -> uint64
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: uint16, y: uint16) -> uint16
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: float64, y: float64) -> float64
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: int32, y: int32) -> int32
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: int64, y: int64) -> int64
-
-   Return the minimum of two scalars.
-
-
 .. function:: min(x: uint32, y: uint32) -> uint32
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: float32, y: float32) -> float32
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: uint8, y: uint8) -> uint8
-
-   Return the minimum of two scalars.
-
-
-.. function:: min(x: float16, y: float16) -> float16
 
    Return the minimum of two scalars.
 
@@ -123,167 +78,167 @@ Scalar Math
    Return the minimum of two scalars.
 
 
+.. function:: min(x: float64, y: float64) -> float64
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: int8, y: int8) -> int8
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: float16, y: float16) -> float16
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: uint16, y: uint16) -> uint16
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: int32, y: int32) -> int32
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: uint64, y: uint64) -> uint64
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: float32, y: float32) -> float32
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: int64, y: int64) -> int64
+
+   Return the minimum of two scalars.
+
+
+.. function:: min(x: uint8, y: uint8) -> uint8
+
+   Return the minimum of two scalars.
+
+
 .. function:: min(x: Scalar, y: Scalar) -> Scalar
 
    Return the minimum of two scalars.
 
 
-.. function:: min(x: vec2d, y: vec2d) -> vec2d
+.. function:: min(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec3d, y: vec3d) -> vec3d
+.. function:: min(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec4d, y: vec4d) -> vec4d
+.. function:: min(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec2ub, y: vec2ub) -> vec2ub
+.. function:: min(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec3ub, y: vec3ub) -> vec3ub
+.. function:: min(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec4ub, y: vec4ub) -> vec4ub
+.. function:: min(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec2h, y: vec2h) -> vec2h
+.. function:: min(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec3h, y: vec3h) -> vec3h
+.. function:: min(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec4h, y: vec4h) -> vec4h
+.. function:: min(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec2f, y: vec2f) -> vec2f
+.. function:: min(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec2f, y: vec2) -> vec2f
+.. function:: min(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec2, y: vec2f) -> vec2f
+.. function:: min(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec2, y: vec2) -> vec2f
+.. function:: min(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec3f, y: vec3f) -> vec3f
+.. function:: min(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec3f, y: vec3) -> vec3f
+.. function:: min(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec3, y: vec3f) -> vec3f
+.. function:: min(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec3, y: vec3) -> vec3f
+.. function:: min(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec4f, y: vec4f) -> vec4f
+.. function:: min(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec4f, y: vec4) -> vec4f
+.. function:: min(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec4, y: vec4f) -> vec4f
+.. function:: min(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vec4, y: vec4) -> vec4f
+.. function:: min(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
    Return the element wise minimum of two vectors.
 
 
-.. function:: min(x: vector_t, y: vector_t) -> vector_t
+.. function:: min(x: vec[typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
    Return the element wise minimum of two vectors.
-
-
-.. function:: max(x: int8, y: int8) -> int8
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: uint64, y: uint64) -> uint64
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: uint16, y: uint16) -> uint16
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: float64, y: float64) -> float64
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: int32, y: int32) -> int32
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: int64, y: int64) -> int64
-
-   Return the maximum of two scalars.
 
 
 .. function:: max(x: uint32, y: uint32) -> uint32
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: float32, y: float32) -> float32
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: uint8, y: uint8) -> uint8
-
-   Return the maximum of two scalars.
-
-
-.. function:: max(x: float16, y: float16) -> float16
 
    Return the maximum of two scalars.
 
@@ -293,167 +248,167 @@ Scalar Math
    Return the maximum of two scalars.
 
 
+.. function:: max(x: float64, y: float64) -> float64
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: int8, y: int8) -> int8
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: float16, y: float16) -> float16
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: uint16, y: uint16) -> uint16
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: int32, y: int32) -> int32
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: uint64, y: uint64) -> uint64
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: float32, y: float32) -> float32
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: int64, y: int64) -> int64
+
+   Return the maximum of two scalars.
+
+
+.. function:: max(x: uint8, y: uint8) -> uint8
+
+   Return the maximum of two scalars.
+
+
 .. function:: max(x: Scalar, y: Scalar) -> Scalar
 
    Return the maximum of two scalars.
 
 
-.. function:: max(x: vec2d, y: vec2d) -> vec2d
+.. function:: max(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec3d, y: vec3d) -> vec3d
+.. function:: max(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec4d, y: vec4d) -> vec4d
+.. function:: max(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec2ub, y: vec2ub) -> vec2ub
+.. function:: max(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec3ub, y: vec3ub) -> vec3ub
+.. function:: max(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec4ub, y: vec4ub) -> vec4ub
+.. function:: max(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec2h, y: vec2h) -> vec2h
+.. function:: max(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec3h, y: vec3h) -> vec3h
+.. function:: max(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec4h, y: vec4h) -> vec4h
+.. function:: max(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec2f, y: vec2f) -> vec2f
+.. function:: max(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec2f, y: vec2) -> vec2f
+.. function:: max(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec2, y: vec2f) -> vec2f
+.. function:: max(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec2, y: vec2) -> vec2f
+.. function:: max(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec3f, y: vec3f) -> vec3f
+.. function:: max(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec3f, y: vec3) -> vec3f
+.. function:: max(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec3, y: vec3f) -> vec3f
+.. function:: max(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec3, y: vec3) -> vec3f
+.. function:: max(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec4f, y: vec4f) -> vec4f
+.. function:: max(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec4f, y: vec4) -> vec4f
+.. function:: max(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec4, y: vec4f) -> vec4f
+.. function:: max(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vec4, y: vec4) -> vec4f
+.. function:: max(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
    Return the element wise maximum of two vectors.
 
 
-.. function:: max(x: vector_t, y: vector_t) -> vector_t
+.. function:: max(x: vec[typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
    Return the element wise maximum of two vectors.
-
-
-.. function:: clamp(x: int8, a: int8, b: int8) -> int8
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: uint64, a: uint64, b: uint64) -> uint64
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: uint16, a: uint16, b: uint16) -> uint16
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: float64, a: float64, b: float64) -> float64
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: int32, a: int32, b: int32) -> int32
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: int64, a: int64, b: int64) -> int64
-
-   Clamp the value of x to the range [a, b].
 
 
 .. function:: clamp(x: uint32, a: uint32, b: uint32) -> uint32
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: float32, a: float32, b: float32) -> float32
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: uint8, a: uint8, b: uint8) -> uint8
-
-   Clamp the value of x to the range [a, b].
-
-
-.. function:: clamp(x: float16, a: float16, b: float16) -> float16
 
    Clamp the value of x to the range [a, b].
 
@@ -463,57 +418,57 @@ Scalar Math
    Clamp the value of x to the range [a, b].
 
 
+.. function:: clamp(x: float64, a: float64, b: float64) -> float64
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: int8, a: int8, b: int8) -> int8
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: float16, a: float16, b: float16) -> float16
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: uint16, a: uint16, b: uint16) -> uint16
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: int32, a: int32, b: int32) -> int32
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: uint64, a: uint64, b: uint64) -> uint64
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: float32, a: float32, b: float32) -> float32
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: int64, a: int64, b: int64) -> int64
+
+   Clamp the value of x to the range [a, b].
+
+
+.. function:: clamp(x: uint8, a: uint8, b: uint8) -> uint8
+
+   Clamp the value of x to the range [a, b].
+
+
 .. function:: clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar
 
    Clamp the value of x to the range [a, b].
 
 
-.. function:: abs(x: int8) -> int8
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: uint64) -> uint64
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: uint16) -> uint16
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: float64) -> float64
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: int32) -> int32
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: int64) -> int64
-
-   Return the absolute value of x.
-
-
 .. function:: abs(x: uint32) -> uint32
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: float32) -> float32
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: uint8) -> uint8
-
-   Return the absolute value of x.
-
-
-.. function:: abs(x: float16) -> float16
 
    Return the absolute value of x.
 
@@ -523,57 +478,57 @@ Scalar Math
    Return the absolute value of x.
 
 
+.. function:: abs(x: float64) -> float64
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: int8) -> int8
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: float16) -> float16
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: uint16) -> uint16
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: int32) -> int32
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: uint64) -> uint64
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: float32) -> float32
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: int64) -> int64
+
+   Return the absolute value of x.
+
+
+.. function:: abs(x: uint8) -> uint8
+
+   Return the absolute value of x.
+
+
 .. function:: abs(x: Scalar) -> Scalar
 
    Return the absolute value of x.
 
 
-.. function:: sign(x: int8) -> int8
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: uint64) -> uint64
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: uint16) -> uint16
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: float64) -> float64
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: int32) -> int32
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: int64) -> int64
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
 .. function:: sign(x: uint32) -> uint32
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: float32) -> float32
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: uint8) -> uint8
-
-   Return -1 if x < 0, return 1 otherwise.
-
-
-.. function:: sign(x: float16) -> float16
 
    Return -1 if x < 0, return 1 otherwise.
 
@@ -583,57 +538,57 @@ Scalar Math
    Return -1 if x < 0, return 1 otherwise.
 
 
+.. function:: sign(x: float64) -> float64
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: int8) -> int8
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: float16) -> float16
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: uint16) -> uint16
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: int32) -> int32
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: uint64) -> uint64
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: float32) -> float32
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: int64) -> int64
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
+.. function:: sign(x: uint8) -> uint8
+
+   Return -1 if x < 0, return 1 otherwise.
+
+
 .. function:: sign(x: Scalar) -> Scalar
 
    Return -1 if x < 0, return 1 otherwise.
 
 
-.. function:: step(x: int8) -> int8
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: uint64) -> uint64
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: uint16) -> uint16
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: float64) -> float64
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: int32) -> int32
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: int64) -> int64
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
 .. function:: step(x: uint32) -> uint32
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: float32) -> float32
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: uint8) -> uint8
-
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-
-
-.. function:: step(x: float16) -> float16
 
    Return 1.0 if x < 0.0, return 0.0 otherwise.
 
@@ -643,22 +598,62 @@ Scalar Math
    Return 1.0 if x < 0.0, return 0.0 otherwise.
 
 
+.. function:: step(x: float64) -> float64
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: int8) -> int8
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: float16) -> float16
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: uint16) -> uint16
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: int32) -> int32
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: uint64) -> uint64
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: float32) -> float32
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: int64) -> int64
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
+.. function:: step(x: uint8) -> uint8
+
+   Return 1.0 if x < 0.0, return 0.0 otherwise.
+
+
 .. function:: step(x: Scalar) -> Scalar
 
    Return 1.0 if x < 0.0, return 0.0 otherwise.
 
 
-.. function:: nonzero(x: int8) -> int8
+.. function:: nonzero(x: uint32) -> uint32
 
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
 
-.. function:: nonzero(x: uint64) -> uint64
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: uint16) -> uint16
+.. function:: nonzero(x: int16) -> int16
 
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
@@ -668,27 +663,7 @@ Scalar Math
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
 
-.. function:: nonzero(x: int32) -> int32
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: int64) -> int64
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: uint32) -> uint32
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: float32) -> float32
-
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-
-
-.. function:: nonzero(x: uint8) -> uint8
+.. function:: nonzero(x: int8) -> int8
 
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
@@ -698,7 +673,32 @@ Scalar Math
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
 
-.. function:: nonzero(x: int16) -> int16
+.. function:: nonzero(x: uint16) -> uint16
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: int32) -> int32
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: uint64) -> uint64
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: float32) -> float32
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: int64) -> int64
+
+   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
+
+
+.. function:: nonzero(x: uint8) -> uint8
 
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
 
@@ -713,12 +713,12 @@ Scalar Math
    Return the sine of x in radians.
 
 
-.. function:: sin(x: float16) -> float16
+.. function:: sin(x: float32) -> float32
 
    Return the sine of x in radians.
 
 
-.. function:: sin(x: float32) -> float32
+.. function:: sin(x: float16) -> float16
 
    Return the sine of x in radians.
 
@@ -733,12 +733,12 @@ Scalar Math
    Return the cosine of x in radians.
 
 
-.. function:: cos(x: float16) -> float16
+.. function:: cos(x: float32) -> float32
 
    Return the cosine of x in radians.
 
 
-.. function:: cos(x: float32) -> float32
+.. function:: cos(x: float16) -> float16
 
    Return the cosine of x in radians.
 
@@ -753,12 +753,12 @@ Scalar Math
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: acos(x: float16) -> float16
+.. function:: acos(x: float32) -> float32
 
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: acos(x: float32) -> float32
+.. function:: acos(x: float16) -> float16
 
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
@@ -773,12 +773,12 @@ Scalar Math
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: asin(x: float16) -> float16
+.. function:: asin(x: float32) -> float32
 
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
 
-.. function:: asin(x: float32) -> float32
+.. function:: asin(x: float16) -> float16
 
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
 
@@ -793,12 +793,12 @@ Scalar Math
    Return the sqrt of x, where x is positive.
 
 
-.. function:: sqrt(x: float16) -> float16
+.. function:: sqrt(x: float32) -> float32
 
    Return the sqrt of x, where x is positive.
 
 
-.. function:: sqrt(x: float32) -> float32
+.. function:: sqrt(x: float16) -> float16
 
    Return the sqrt of x, where x is positive.
 
@@ -813,12 +813,12 @@ Scalar Math
    Return tangent of x in radians.
 
 
-.. function:: tan(x: float16) -> float16
+.. function:: tan(x: float32) -> float32
 
    Return tangent of x in radians.
 
 
-.. function:: tan(x: float32) -> float32
+.. function:: tan(x: float16) -> float16
 
    Return tangent of x in radians.
 
@@ -833,12 +833,12 @@ Scalar Math
    Return arctan of x.
 
 
-.. function:: atan(x: float16) -> float16
+.. function:: atan(x: float32) -> float32
 
    Return arctan of x.
 
 
-.. function:: atan(x: float32) -> float32
+.. function:: atan(x: float16) -> float16
 
    Return arctan of x.
 
@@ -853,12 +853,12 @@ Scalar Math
    Return atan2 of x.
 
 
-.. function:: atan2(y: float16, x: float16) -> float16
+.. function:: atan2(y: float32, x: float32) -> float32
 
    Return atan2 of x.
 
 
-.. function:: atan2(y: float32, x: float32) -> float32
+.. function:: atan2(y: float16, x: float16) -> float16
 
    Return atan2 of x.
 
@@ -873,12 +873,12 @@ Scalar Math
    Return the sinh of x.
 
 
-.. function:: sinh(x: float16) -> float16
+.. function:: sinh(x: float32) -> float32
 
    Return the sinh of x.
 
 
-.. function:: sinh(x: float32) -> float32
+.. function:: sinh(x: float16) -> float16
 
    Return the sinh of x.
 
@@ -893,12 +893,12 @@ Scalar Math
    Return the cosh of x.
 
 
-.. function:: cosh(x: float16) -> float16
+.. function:: cosh(x: float32) -> float32
 
    Return the cosh of x.
 
 
-.. function:: cosh(x: float32) -> float32
+.. function:: cosh(x: float16) -> float16
 
    Return the cosh of x.
 
@@ -913,12 +913,12 @@ Scalar Math
    Return the tanh of x.
 
 
-.. function:: tanh(x: float16) -> float16
+.. function:: tanh(x: float32) -> float32
 
    Return the tanh of x.
 
 
-.. function:: tanh(x: float32) -> float32
+.. function:: tanh(x: float16) -> float16
 
    Return the tanh of x.
 
@@ -928,17 +928,27 @@ Scalar Math
    Return the tanh of x.
 
 
+.. function:: degrees(x: float32) -> float
+
+   Convert radians into degrees.
+
+
+.. function:: radians(x: float32) -> float
+
+   Convert degrees into radians.
+
+
 .. function:: log(x: float64) -> float64
 
    Return the natural log (base-e) of x, where x is positive.
 
 
-.. function:: log(x: float16) -> float16
+.. function:: log(x: float32) -> float32
 
    Return the natural log (base-e) of x, where x is positive.
 
 
-.. function:: log(x: float32) -> float32
+.. function:: log(x: float16) -> float16
 
    Return the natural log (base-e) of x, where x is positive.
 
@@ -953,12 +963,12 @@ Scalar Math
    Return the natural log (base-2) of x, where x is positive.
 
 
-.. function:: log2(x: float16) -> float16
+.. function:: log2(x: float32) -> float32
 
    Return the natural log (base-2) of x, where x is positive.
 
 
-.. function:: log2(x: float32) -> float32
+.. function:: log2(x: float16) -> float16
 
    Return the natural log (base-2) of x, where x is positive.
 
@@ -973,12 +983,12 @@ Scalar Math
    Return the natural log (base-10) of x, where x is positive.
 
 
-.. function:: log10(x: float16) -> float16
+.. function:: log10(x: float32) -> float32
 
    Return the natural log (base-10) of x, where x is positive.
 
 
-.. function:: log10(x: float32) -> float32
+.. function:: log10(x: float16) -> float16
 
    Return the natural log (base-10) of x, where x is positive.
 
@@ -993,12 +1003,12 @@ Scalar Math
    Return base-e exponential, e^x.
 
 
-.. function:: exp(x: float16) -> float16
+.. function:: exp(x: float32) -> float32
 
    Return base-e exponential, e^x.
 
 
-.. function:: exp(x: float32) -> float32
+.. function:: exp(x: float16) -> float16
 
    Return base-e exponential, e^x.
 
@@ -1013,12 +1023,12 @@ Scalar Math
    Return the result of x raised to power of y.
 
 
-.. function:: pow(x: float16, y: float16) -> float16
+.. function:: pow(x: float32, y: float32) -> float32
 
    Return the result of x raised to power of y.
 
 
-.. function:: pow(x: float32, y: float32) -> float32
+.. function:: pow(x: float16, y: float16) -> float16
 
    Return the result of x raised to power of y.
 
@@ -1035,14 +1045,14 @@ This is the most intuitive form of rounding in the colloquial sense, but can be 
 Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
 
 
-.. function:: round(x: float16) -> float16
+.. function:: round(x: float32) -> float32
 
    Calculate the nearest integer value, rounding halfway cases away from zero.
 This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
 Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
 
 
-.. function:: round(x: float32) -> float32
+.. function:: round(x: float16) -> float16
 
    Calculate the nearest integer value, rounding halfway cases away from zero.
 This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
@@ -1063,14 +1073,14 @@ It is generally faster than ``warp.round()``.
 Equivalent to ``numpy.rint()``.
 
 
-.. function:: rint(x: float16) -> float16
+.. function:: rint(x: float32) -> float32
 
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
 It is generally faster than ``warp.round()``.
 Equivalent to ``numpy.rint()``.
 
 
-.. function:: rint(x: float32) -> float32
+.. function:: rint(x: float16) -> float16
 
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
 It is generally faster than ``warp.round()``.
@@ -1092,7 +1102,7 @@ It is similar to casting ``float(int(x))``, but preserves the negative sign when
 Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 
-.. function:: trunc(x: float16) -> float16
+.. function:: trunc(x: float32) -> float32
 
    Calculate the nearest integer that is closer to zero than x.
 In other words, it discards the fractional part of x.
@@ -1100,7 +1110,7 @@ It is similar to casting ``float(int(x))``, but preserves the negative sign when
 Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 
-.. function:: trunc(x: float32) -> float32
+.. function:: trunc(x: float16) -> float16
 
    Calculate the nearest integer that is closer to zero than x.
 In other words, it discards the fractional part of x.
@@ -1121,12 +1131,12 @@ Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
    Calculate the largest integer that is less than or equal to x.
 
 
-.. function:: floor(x: float16) -> float16
+.. function:: floor(x: float32) -> float32
 
    Calculate the largest integer that is less than or equal to x.
 
 
-.. function:: floor(x: float32) -> float32
+.. function:: floor(x: float16) -> float16
 
    Calculate the largest integer that is less than or equal to x.
 
@@ -1141,12 +1151,12 @@ Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
    Calculate the smallest integer that is greater than or equal to x.
 
 
-.. function:: ceil(x: float16) -> float16
+.. function:: ceil(x: float32) -> float32
 
    Calculate the smallest integer that is greater than or equal to x.
 
 
-.. function:: ceil(x: float32) -> float32
+.. function:: ceil(x: float16) -> float16
 
    Calculate the smallest integer that is greater than or equal to x.
 
@@ -1160,1741 +1170,1741 @@ Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 Vector Math
 ---------------
-.. function:: dot(x: vec2d, y: vec2d) -> float64
+.. function:: dot(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> float64
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec3d, y: vec3d) -> float64
+.. function:: dot(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> float64
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec4d, y: vec4d) -> float64
+.. function:: dot(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> float64
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec2ub, y: vec2ub) -> uint8
+.. function:: dot(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec3ub, y: vec3ub) -> uint8
+.. function:: dot(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec4ub, y: vec4ub) -> uint8
+.. function:: dot(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec2h, y: vec2h) -> float16
+.. function:: dot(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec3h, y: vec3h) -> float16
+.. function:: dot(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec4h, y: vec4h) -> float16
+.. function:: dot(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec2f, y: vec2f) -> float32
+.. function:: dot(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec2f, y: vec2) -> float32
+.. function:: dot(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec2, y: vec2f) -> float32
+.. function:: dot(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec2, y: vec2) -> float32
+.. function:: dot(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec3f, y: vec3f) -> float32
+.. function:: dot(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec3f, y: vec3) -> float32
+.. function:: dot(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec3, y: vec3f) -> float32
+.. function:: dot(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> uint8
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec3, y: vec3) -> float32
+.. function:: dot(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> uint8
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec4f, y: vec4f) -> float32
+.. function:: dot(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> uint8
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec4f, y: vec4) -> float32
+.. function:: dot(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> float16
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec4, y: vec4f) -> float32
+.. function:: dot(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> float16
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec4, y: vec4) -> float32
+.. function:: dot(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> float16
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vector_t, y: vector_t) -> Scalar
+.. function:: dot(x: vec[typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> Scalar
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: quatd, y: quatd) -> float64
+.. function:: dot(x: quaternion[<class 'warp.types.float64'>], y: quaternion[<class 'warp.types.float64'>]) -> float64
 
    Compute the dot product between two quaternions.
 
 
-.. function:: dot(x: quath, y: quath) -> float16
+.. function:: dot(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two quaternions.
 
 
-.. function:: dot(x: quatf, y: quatf) -> float32
+.. function:: dot(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two quaternions.
 
 
-.. function:: dot(x: quatf, y: quat) -> float32
+.. function:: dot(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two quaternions.
 
 
-.. function:: dot(x: quat, y: quatf) -> float32
+.. function:: dot(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> float32
 
    Compute the dot product between two quaternions.
 
 
-.. function:: dot(x: quat, y: quat) -> float32
+.. function:: dot(x: quaternion[<class 'warp.types.float16'>], y: quaternion[<class 'warp.types.float16'>]) -> float16
 
    Compute the dot product between two quaternions.
 
 
-.. function:: dot(x: vector_t, y: vector_t) -> Scalar
+.. function:: dot(x: quaternion[~Float], y: quaternion[~Float]) -> Scalar
 
    Compute the dot product between two quaternions.
 
 
-.. function:: ddot(x: mat22d, y: mat22d) -> float64
+.. function:: ddot(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> float64
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat33d, y: mat33d) -> float64
+.. function:: ddot(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> float64
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat44d, y: mat44d) -> float64
+.. function:: ddot(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> float64
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat22h, y: mat22h) -> float16
+.. function:: ddot(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat33h, y: mat33h) -> float16
+.. function:: ddot(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat44h, y: mat44h) -> float16
+.. function:: ddot(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat22f, y: mat22f) -> float32
+.. function:: ddot(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat22f, y: mat22) -> float32
+.. function:: ddot(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat22, y: mat22f) -> float32
+.. function:: ddot(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat22, y: mat22) -> float32
+.. function:: ddot(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat33f, y: mat33f) -> float32
+.. function:: ddot(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat33f, y: mat33) -> float32
+.. function:: ddot(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat33, y: mat33f) -> float32
+.. function:: ddot(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat33, y: mat33) -> float32
+.. function:: ddot(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat44f, y: mat44f) -> float32
+.. function:: ddot(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> float32
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat44f, y: mat44) -> float32
+.. function:: ddot(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> float16
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat44, y: mat44f) -> float32
+.. function:: ddot(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> float16
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: mat44, y: mat44) -> float32
+.. function:: ddot(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> float16
 
    Compute the double dot product between two matrices.
 
 
-.. function:: ddot(x: matrix_t, y: matrix_t) -> Scalar
+.. function:: ddot(x: mat[typing.Any, typing.Any, ~Scalar], y: mat[typing.Any, typing.Any, ~Scalar]) -> Scalar
 
    Compute the double dot product between two matrices.
 
 
-.. function:: outer(x: vec2d, y: vec2d) -> mat22d
+.. function:: outer(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec3d, y: vec3d) -> mat33d
+.. function:: outer(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec4d, y: vec4d) -> mat44d
+.. function:: outer(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec2h, y: vec2h) -> mat22h
+.. function:: outer(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec3h, y: vec3h) -> mat33h
+.. function:: outer(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec4h, y: vec4h) -> mat44h
+.. function:: outer(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec2f, y: vec2f) -> mat22f
+.. function:: outer(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec2f, y: vec2) -> mat22f
+.. function:: outer(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec2, y: vec2f) -> mat22f
+.. function:: outer(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec2, y: vec2) -> mat22f
+.. function:: outer(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec3f, y: vec3f) -> mat33f
+.. function:: outer(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec3f, y: vec3) -> mat33f
+.. function:: outer(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec3, y: vec3f) -> mat33f
+.. function:: outer(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec3, y: vec3) -> mat33f
+.. function:: outer(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec4f, y: vec4f) -> mat44f
+.. function:: outer(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec4f, y: vec4) -> mat44f
+.. function:: outer(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec4, y: vec4f) -> mat44f
+.. function:: outer(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vec4, y: vec4) -> mat44f
+.. function:: outer(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: vector_t, y: vector_t) -> matrix_t
+.. function:: outer(x: vec[typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> mat[typing.Any, typing.Any, ~Scalar]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: outer(x: spatial_vectord, y: spatial_vectord) -> spatial_matrixd
+.. function:: outer(x: spatial_vector_t[<class 'warp.types.float64'>], y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
-.. function:: outer(x: spatial_vectorh, y: spatial_vectorh) -> spatial_matrixh
+.. function:: outer(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
-.. function:: outer(x: spatial_vectorf, y: spatial_vectorf) -> spatial_matrixf
+.. function:: outer(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
-.. function:: outer(x: spatial_vectorf, y: spatial_vector) -> spatial_matrixf
+.. function:: outer(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
-.. function:: outer(x: spatial_vector, y: spatial_vectorf) -> spatial_matrixf
+.. function:: outer(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
-.. function:: outer(x: spatial_vector, y: spatial_vector) -> spatial_matrixf
+.. function:: outer(x: spatial_vector_t[<class 'warp.types.float16'>], y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
-.. function:: outer(x: vector_t, y: vector_t) -> matrix_t
+.. function:: outer(x: spatial_vector_t[~Float], y: spatial_vector_t[~Float]) -> spatial_matrix_t[~Float]
 
    Compute the outer product x*y^T for two spatial_vector objects.
 
 
-.. function:: cross(x: vec3d, y: vec3d) -> vec3d
+.. function:: cross(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: cross(x: vec3ub, y: vec3ub) -> vec3ub
+.. function:: cross(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: cross(x: vec3h, y: vec3h) -> vec3h
+.. function:: cross(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: cross(x: vec3f, y: vec3f) -> vec3f
+.. function:: cross(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: cross(x: vec3f, y: vec3) -> vec3f
+.. function:: cross(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: cross(x: vec3, y: vec3f) -> vec3f
+.. function:: cross(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: cross(x: vec3, y: vec3) -> vec3f
+.. function:: cross(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: cross(x: vector_t, y: vector_t) -> vector_t
+.. function:: cross(x: vec[3, ~Scalar], y: vec[3, ~Scalar]) -> vec[3, ~Scalar]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: skew(x: vec3d) -> mat33d
+.. function:: skew(x: vec[3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: skew(x: vec3h) -> mat33h
+.. function:: skew(x: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: skew(x: vec3f) -> mat33f
+.. function:: skew(x: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: skew(x: vec3) -> mat33f
+.. function:: skew(x: vec[3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: skew(x: vector_t)
+.. function:: skew(x: vec[3, ~Scalar])
 
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: length(x: vec2d) -> float64
+.. function:: length(x: vec[2, <class 'warp.types.float64'>]) -> float64
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec3d) -> float64
+.. function:: length(x: vec[3, <class 'warp.types.float64'>]) -> float64
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec4d) -> float64
+.. function:: length(x: vec[4, <class 'warp.types.float64'>]) -> float64
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec2h) -> float16
+.. function:: length(x: vec[2, <class 'warp.types.float32'>]) -> float32
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec3h) -> float16
+.. function:: length(x: vec[2, <class 'warp.types.float32'>]) -> float32
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec4h) -> float16
+.. function:: length(x: vec[3, <class 'warp.types.float32'>]) -> float32
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec2f) -> float32
+.. function:: length(x: vec[3, <class 'warp.types.float32'>]) -> float32
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec2) -> float32
+.. function:: length(x: vec[4, <class 'warp.types.float32'>]) -> float32
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec3f) -> float32
+.. function:: length(x: vec[4, <class 'warp.types.float32'>]) -> float32
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec3) -> float32
+.. function:: length(x: vec[2, <class 'warp.types.float16'>]) -> float16
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec4f) -> float32
+.. function:: length(x: vec[3, <class 'warp.types.float16'>]) -> float16
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec4) -> float32
+.. function:: length(x: vec[4, <class 'warp.types.float16'>]) -> float16
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vector_t) -> Scalar
+.. function:: length(x: vec[typing.Any, ~Float]) -> Scalar
 
    Compute the length of a vector.
 
 
-.. function:: length(x: quatd) -> float64
+.. function:: length(x: quaternion[<class 'warp.types.float64'>]) -> float64
 
    Compute the length of a quaternion.
 
 
-.. function:: length(x: quath) -> float16
+.. function:: length(x: quaternion[<class 'warp.types.float32'>]) -> float32
 
    Compute the length of a quaternion.
 
 
-.. function:: length(x: quatf) -> float32
+.. function:: length(x: quaternion[<class 'warp.types.float32'>]) -> float32
 
    Compute the length of a quaternion.
 
 
-.. function:: length(x: quat) -> float32
+.. function:: length(x: quaternion[<class 'warp.types.float16'>]) -> float16
 
    Compute the length of a quaternion.
 
 
-.. function:: length(x: vector_t) -> Scalar
+.. function:: length(x: quaternion[~Float]) -> Scalar
 
    Compute the length of a quaternion.
 
 
-.. function:: length_sq(x: vec2d) -> float64
+.. function:: length_sq(x: vec[2, <class 'warp.types.float64'>]) -> float64
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec3d) -> float64
+.. function:: length_sq(x: vec[3, <class 'warp.types.float64'>]) -> float64
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec4d) -> float64
+.. function:: length_sq(x: vec[4, <class 'warp.types.float64'>]) -> float64
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec2ub) -> uint8
+.. function:: length_sq(x: vec[2, <class 'warp.types.float32'>]) -> float32
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec3ub) -> uint8
+.. function:: length_sq(x: vec[2, <class 'warp.types.float32'>]) -> float32
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec4ub) -> uint8
+.. function:: length_sq(x: vec[3, <class 'warp.types.float32'>]) -> float32
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec2h) -> float16
+.. function:: length_sq(x: vec[3, <class 'warp.types.float32'>]) -> float32
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec3h) -> float16
+.. function:: length_sq(x: vec[4, <class 'warp.types.float32'>]) -> float32
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec4h) -> float16
+.. function:: length_sq(x: vec[4, <class 'warp.types.float32'>]) -> float32
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec2f) -> float32
+.. function:: length_sq(x: vec[2, <class 'warp.types.uint8'>]) -> uint8
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec2) -> float32
+.. function:: length_sq(x: vec[3, <class 'warp.types.uint8'>]) -> uint8
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec3f) -> float32
+.. function:: length_sq(x: vec[4, <class 'warp.types.uint8'>]) -> uint8
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec3) -> float32
+.. function:: length_sq(x: vec[2, <class 'warp.types.float16'>]) -> float16
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec4f) -> float32
+.. function:: length_sq(x: vec[3, <class 'warp.types.float16'>]) -> float16
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec4) -> float32
+.. function:: length_sq(x: vec[4, <class 'warp.types.float16'>]) -> float16
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vector_t) -> Scalar
+.. function:: length_sq(x: vec[typing.Any, ~Scalar]) -> Scalar
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: quatd) -> float64
+.. function:: length_sq(x: quaternion[<class 'warp.types.float64'>]) -> float64
 
    Compute the squared length of a quaternion.
 
 
-.. function:: length_sq(x: quath) -> float16
+.. function:: length_sq(x: quaternion[<class 'warp.types.float32'>]) -> float32
 
    Compute the squared length of a quaternion.
 
 
-.. function:: length_sq(x: quatf) -> float32
+.. function:: length_sq(x: quaternion[<class 'warp.types.float32'>]) -> float32
 
    Compute the squared length of a quaternion.
 
 
-.. function:: length_sq(x: quat) -> float32
+.. function:: length_sq(x: quaternion[<class 'warp.types.float16'>]) -> float16
 
    Compute the squared length of a quaternion.
 
 
-.. function:: length_sq(x: vector_t) -> Scalar
+.. function:: length_sq(x: quaternion[~Scalar]) -> Scalar
 
    Compute the squared length of a quaternion.
 
 
-.. function:: normalize(x: vec2d) -> vec2d
+.. function:: normalize(x: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec3d) -> vec3d
+.. function:: normalize(x: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec4d) -> vec4d
+.. function:: normalize(x: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec2h) -> vec2h
+.. function:: normalize(x: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec3h) -> vec3h
+.. function:: normalize(x: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec4h) -> vec4h
+.. function:: normalize(x: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec2f) -> vec2f
+.. function:: normalize(x: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec2) -> vec2f
+.. function:: normalize(x: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec3f) -> vec3f
+.. function:: normalize(x: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec3) -> vec3f
+.. function:: normalize(x: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec4f) -> vec4f
+.. function:: normalize(x: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec4) -> vec4f
+.. function:: normalize(x: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vector_t) -> vector_t
+.. function:: normalize(x: vec[typing.Any, ~Float]) -> vec[typing.Any, ~Scalar]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: quatd) -> quatd
+.. function:: normalize(x: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: normalize(x: quath) -> quath
+.. function:: normalize(x: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: normalize(x: quatf) -> quatf
+.. function:: normalize(x: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: normalize(x: quat) -> quatf
+.. function:: normalize(x: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: normalize(x: vector_t) -> vector_t
+.. function:: normalize(x: quaternion[~Float]) -> quaternion[~Scalar]
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: transpose(m: mat22d) -> mat22d
+.. function:: transpose(m: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat33d) -> mat33d
+.. function:: transpose(m: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat44d) -> mat44d
+.. function:: transpose(m: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat22h) -> mat22h
+.. function:: transpose(m: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat33h) -> mat33h
+.. function:: transpose(m: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat44h) -> mat44h
+.. function:: transpose(m: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat22f) -> mat22f
+.. function:: transpose(m: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat22) -> mat22f
+.. function:: transpose(m: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat33f) -> mat33f
+.. function:: transpose(m: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat33) -> mat33f
+.. function:: transpose(m: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat44f) -> mat44f
+.. function:: transpose(m: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: mat44) -> mat44f
+.. function:: transpose(m: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: matrix_t)
+.. function:: transpose(m: mat[typing.Any, typing.Any, ~Scalar])
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: spatial_matrixd) -> spatial_matrixd
+.. function:: transpose(m: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: spatial_matrixh) -> spatial_matrixh
+.. function:: transpose(m: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: spatial_matrixf) -> spatial_matrixf
+.. function:: transpose(m: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: spatial_matrix) -> spatial_matrixf
+.. function:: transpose(m: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]
 
    Return the transpose of the matrix m
 
 
-.. function:: transpose(m: matrix_t) -> matrix_t
+.. function:: transpose(m: spatial_matrix_t[~Scalar]) -> spatial_matrix_t[~Scalar]
 
    Return the transpose of the matrix m
 
 
-.. function:: inverse(m: mat22d) -> mat22d
+.. function:: inverse(m: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat33d) -> mat33d
+.. function:: inverse(m: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat44d) -> mat44d
+.. function:: inverse(m: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat22h) -> mat22h
+.. function:: inverse(m: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat33h) -> mat33h
+.. function:: inverse(m: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat44h) -> mat44h
+.. function:: inverse(m: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat22f) -> mat22f
+.. function:: inverse(m: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat22) -> mat22f
+.. function:: inverse(m: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat33f) -> mat33f
+.. function:: inverse(m: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat33) -> mat33f
+.. function:: inverse(m: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat44f) -> mat44f
+.. function:: inverse(m: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: mat44) -> mat44f
+.. function:: inverse(m: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
    Return the inverse of the matrix m
 
 
-.. function:: inverse(m: matrix_t) -> matrix_t
+.. function:: inverse(m: mat[typing.Any, typing.Any, ~Float]) -> mat[typing.Any, typing.Any, ~Float]
 
    Return the inverse of the matrix m
 
 
-.. function:: determinant(m: mat22d) -> float64
+.. function:: determinant(m: mat[2, 2, <class 'warp.types.float64'>]) -> float64
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat33d) -> float64
+.. function:: determinant(m: mat[3, 3, <class 'warp.types.float64'>]) -> float64
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat44d) -> float64
+.. function:: determinant(m: mat[4, 4, <class 'warp.types.float64'>]) -> float64
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat22h) -> float16
+.. function:: determinant(m: mat[2, 2, <class 'warp.types.float32'>]) -> float32
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat33h) -> float16
+.. function:: determinant(m: mat[2, 2, <class 'warp.types.float32'>]) -> float32
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat44h) -> float16
+.. function:: determinant(m: mat[3, 3, <class 'warp.types.float32'>]) -> float32
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat22f) -> float32
+.. function:: determinant(m: mat[3, 3, <class 'warp.types.float32'>]) -> float32
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat22) -> float32
+.. function:: determinant(m: mat[4, 4, <class 'warp.types.float32'>]) -> float32
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat33f) -> float32
+.. function:: determinant(m: mat[4, 4, <class 'warp.types.float32'>]) -> float32
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat33) -> float32
+.. function:: determinant(m: mat[2, 2, <class 'warp.types.float16'>]) -> float16
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat44f) -> float32
+.. function:: determinant(m: mat[3, 3, <class 'warp.types.float16'>]) -> float16
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: mat44) -> float32
+.. function:: determinant(m: mat[4, 4, <class 'warp.types.float16'>]) -> float16
 
    Return the determinant of the matrix m
 
 
-.. function:: determinant(m: matrix_t) -> Scalar
+.. function:: determinant(m: mat[typing.Any, typing.Any, ~Scalar]) -> Scalar
 
    Return the determinant of the matrix m
 
 
-.. function:: trace(m: mat22d) -> float64
+.. function:: trace(m: mat[2, 2, <class 'warp.types.float64'>]) -> float64
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat33d) -> float64
+.. function:: trace(m: mat[3, 3, <class 'warp.types.float64'>]) -> float64
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat44d) -> float64
+.. function:: trace(m: mat[4, 4, <class 'warp.types.float64'>]) -> float64
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat22h) -> float16
+.. function:: trace(m: mat[2, 2, <class 'warp.types.float32'>]) -> float32
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat33h) -> float16
+.. function:: trace(m: mat[2, 2, <class 'warp.types.float32'>]) -> float32
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat44h) -> float16
+.. function:: trace(m: mat[3, 3, <class 'warp.types.float32'>]) -> float32
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat22f) -> float32
+.. function:: trace(m: mat[3, 3, <class 'warp.types.float32'>]) -> float32
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat22) -> float32
+.. function:: trace(m: mat[4, 4, <class 'warp.types.float32'>]) -> float32
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat33f) -> float32
+.. function:: trace(m: mat[4, 4, <class 'warp.types.float32'>]) -> float32
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat33) -> float32
+.. function:: trace(m: mat[2, 2, <class 'warp.types.float16'>]) -> float16
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat44f) -> float32
+.. function:: trace(m: mat[3, 3, <class 'warp.types.float16'>]) -> float16
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: mat44) -> float32
+.. function:: trace(m: mat[4, 4, <class 'warp.types.float16'>]) -> float16
 
    Return the trace of the matrix m
 
 
-.. function:: trace(m: matrix_t) -> Scalar
+.. function:: trace(m: mat[typing.Any, typing.Any, ~Scalar]) -> Scalar
 
    Return the trace of the matrix m
 
 
-.. function:: diag(d: vec2d) -> mat22d
+.. function:: diag(d: vec[2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec3d) -> mat33d
+.. function:: diag(d: vec[3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec4d) -> mat44d
+.. function:: diag(d: vec[4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec2h) -> mat22h
+.. function:: diag(d: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec3h) -> mat33h
+.. function:: diag(d: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec4h) -> mat44h
+.. function:: diag(d: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec2f) -> mat22f
+.. function:: diag(d: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec2) -> mat22f
+.. function:: diag(d: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec3f) -> mat33f
+.. function:: diag(d: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec3) -> mat33f
+.. function:: diag(d: vec[2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec4f) -> mat44f
+.. function:: diag(d: vec[3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vec4) -> mat44f
+.. function:: diag(d: vec[4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: diag(d: vector_t)
+.. function:: diag(d: vec[typing.Any, ~Scalar])
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: cw_mul(x: vec2d, y: vec2d) -> vec2d
+.. function:: cw_mul(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec3d, y: vec3d) -> vec3d
+.. function:: cw_mul(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec4d, y: vec4d) -> vec4d
+.. function:: cw_mul(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec2ub, y: vec2ub) -> vec2ub
+.. function:: cw_mul(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec3ub, y: vec3ub) -> vec3ub
+.. function:: cw_mul(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec4ub, y: vec4ub) -> vec4ub
+.. function:: cw_mul(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec2h, y: vec2h) -> vec2h
+.. function:: cw_mul(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec3h, y: vec3h) -> vec3h
+.. function:: cw_mul(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec4h, y: vec4h) -> vec4h
+.. function:: cw_mul(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec2f, y: vec2f) -> vec2f
+.. function:: cw_mul(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec2f, y: vec2) -> vec2f
+.. function:: cw_mul(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec2, y: vec2f) -> vec2f
+.. function:: cw_mul(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec2, y: vec2) -> vec2f
+.. function:: cw_mul(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec3f, y: vec3f) -> vec3f
+.. function:: cw_mul(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec3f, y: vec3) -> vec3f
+.. function:: cw_mul(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec3, y: vec3f) -> vec3f
+.. function:: cw_mul(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec3, y: vec3) -> vec3f
+.. function:: cw_mul(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec4f, y: vec4f) -> vec4f
+.. function:: cw_mul(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec4f, y: vec4) -> vec4f
+.. function:: cw_mul(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec4, y: vec4f) -> vec4f
+.. function:: cw_mul(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vec4, y: vec4) -> vec4f
+.. function:: cw_mul(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: vector_t, y: vector_t) -> vector_t
+.. function:: cw_mul(x: vec[typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat22d, y: mat22d) -> mat22d
+.. function:: cw_mul(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat33d, y: mat33d) -> mat33d
+.. function:: cw_mul(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat44d, y: mat44d) -> mat44d
+.. function:: cw_mul(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat22h, y: mat22h) -> mat22h
+.. function:: cw_mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat33h, y: mat33h) -> mat33h
+.. function:: cw_mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat44h, y: mat44h) -> mat44h
+.. function:: cw_mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat22f, y: mat22f) -> mat22f
+.. function:: cw_mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat22f, y: mat22) -> mat22f
+.. function:: cw_mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat22, y: mat22f) -> mat22f
+.. function:: cw_mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat22, y: mat22) -> mat22f
+.. function:: cw_mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat33f, y: mat33f) -> mat33f
+.. function:: cw_mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat33f, y: mat33) -> mat33f
+.. function:: cw_mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat33, y: mat33f) -> mat33f
+.. function:: cw_mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat33, y: mat33) -> mat33f
+.. function:: cw_mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat44f, y: mat44f) -> mat44f
+.. function:: cw_mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat44f, y: mat44) -> mat44f
+.. function:: cw_mul(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat44, y: mat44f) -> mat44f
+.. function:: cw_mul(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat44, y: mat44) -> mat44f
+.. function:: cw_mul(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: cw_mul(x: mat[typing.Any, typing.Any, ~Scalar], y: mat[typing.Any, typing.Any, ~Scalar]) -> mat[typing.Any, typing.Any, ~Scalar]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_div(x: vec2d, y: vec2d) -> vec2d
+.. function:: cw_div(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec3d, y: vec3d) -> vec3d
+.. function:: cw_div(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec4d, y: vec4d) -> vec4d
+.. function:: cw_div(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec2ub, y: vec2ub) -> vec2ub
+.. function:: cw_div(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec3ub, y: vec3ub) -> vec3ub
+.. function:: cw_div(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec4ub, y: vec4ub) -> vec4ub
+.. function:: cw_div(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec2h, y: vec2h) -> vec2h
+.. function:: cw_div(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec3h, y: vec3h) -> vec3h
+.. function:: cw_div(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec4h, y: vec4h) -> vec4h
+.. function:: cw_div(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec2f, y: vec2f) -> vec2f
+.. function:: cw_div(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec2f, y: vec2) -> vec2f
+.. function:: cw_div(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec2, y: vec2f) -> vec2f
+.. function:: cw_div(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec2, y: vec2) -> vec2f
+.. function:: cw_div(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec3f, y: vec3f) -> vec3f
+.. function:: cw_div(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec3f, y: vec3) -> vec3f
+.. function:: cw_div(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec3, y: vec3f) -> vec3f
+.. function:: cw_div(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec3, y: vec3) -> vec3f
+.. function:: cw_div(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec4f, y: vec4f) -> vec4f
+.. function:: cw_div(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec4f, y: vec4) -> vec4f
+.. function:: cw_div(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec4, y: vec4f) -> vec4f
+.. function:: cw_div(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vec4, y: vec4) -> vec4f
+.. function:: cw_div(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: vector_t, y: vector_t) -> vector_t
+.. function:: cw_div(x: vec[typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat22d, y: mat22d) -> mat22d
+.. function:: cw_div(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat33d, y: mat33d) -> mat33d
+.. function:: cw_div(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat44d, y: mat44d) -> mat44d
+.. function:: cw_div(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat22h, y: mat22h) -> mat22h
+.. function:: cw_div(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat33h, y: mat33h) -> mat33h
+.. function:: cw_div(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat44h, y: mat44h) -> mat44h
+.. function:: cw_div(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat22f, y: mat22f) -> mat22f
+.. function:: cw_div(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat22f, y: mat22) -> mat22f
+.. function:: cw_div(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat22, y: mat22f) -> mat22f
+.. function:: cw_div(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat22, y: mat22) -> mat22f
+.. function:: cw_div(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat33f, y: mat33f) -> mat33f
+.. function:: cw_div(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat33f, y: mat33) -> mat33f
+.. function:: cw_div(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat33, y: mat33f) -> mat33f
+.. function:: cw_div(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat33, y: mat33) -> mat33f
+.. function:: cw_div(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat44f, y: mat44f) -> mat44f
+.. function:: cw_div(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat44f, y: mat44) -> mat44f
+.. function:: cw_div(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat44, y: mat44f) -> mat44f
+.. function:: cw_div(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat44, y: mat44) -> mat44f
+.. function:: cw_div(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: cw_div(x: mat[typing.Any, typing.Any, ~Scalar], y: mat[typing.Any, typing.Any, ~Scalar]) -> mat[typing.Any, typing.Any, ~Scalar]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: vec() -> vector_t
+.. function:: vec() -> vec[typing.Any, ~Scalar]
 
    Construct a zero-initialized vector.
 
 
-.. function:: vec(s: Scalar) -> vector_t
+.. function:: vec(s: Scalar) -> vec[typing.Any, ~Scalar]
 
    Construct a vector with all components set to s.
 
 
-.. function:: vec() -> vector_t
+.. function:: vec() -> vec[typing.Any, ~Scalar]
 
    Construct a vector from scalar compontents.
 
 
-.. function:: mat() -> matrix_t
+.. function:: mat() -> mat[typing.Any, typing.Any, ~Scalar]
 
    Construct a zero matrix
 
 
-.. function:: mat(s: Scalar) -> matrix_t
+.. function:: mat(s: Scalar) -> mat[typing.Any, typing.Any, ~Scalar]
 
    Construct a matrix with all components set to s
 
 
-.. function:: mat(pos: vector_t, rot: vector_t, scale: vector_t) -> matrix_t
+.. function:: mat(pos: vec[3, ~Float], rot: quaternion[~Float], scale: vec[3, ~Float]) -> mat[typing.Any, typing.Any, ~Float]
 
    Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
 
-.. function:: mat() -> matrix_t
+.. function:: mat() -> mat[typing.Any, typing.Any, ~Scalar]
 
    Construct a matrix from components or column vectors.
 
 
-.. function:: svd3(A: mat33h, U: mat33h, sigma: vec3h, V: mat33h) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float64'>], U: mat[3, 3, <class 'warp.types.float64'>], sigma: vec[3, <class 'warp.types.float64'>], V: mat[3, 3, <class 'warp.types.float64'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33f, U: mat33f, sigma: vec3f, V: mat33f) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float16'>], U: mat[3, 3, <class 'warp.types.float16'>], sigma: vec[3, <class 'warp.types.float16'>], V: mat[3, 3, <class 'warp.types.float16'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33f, U: mat33f, sigma: vec3f, V: mat33) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33f, U: mat33f, sigma: vec3, V: mat33f) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33f, U: mat33f, sigma: vec3, V: mat33) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33f, U: mat33, sigma: vec3f, V: mat33f) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33f, U: mat33, sigma: vec3f, V: mat33) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33f, U: mat33, sigma: vec3, V: mat33f) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33f, U: mat33, sigma: vec3, V: mat33) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33, U: mat33f, sigma: vec3f, V: mat33f) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33, U: mat33f, sigma: vec3f, V: mat33) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33, U: mat33f, sigma: vec3, V: mat33f) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33, U: mat33f, sigma: vec3, V: mat33) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33, U: mat33, sigma: vec3f, V: mat33f) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33, U: mat33, sigma: vec3f, V: mat33) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33f) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33, U: mat33, sigma: vec3, V: mat33) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: mat33d, U: mat33d, sigma: vec3d, V: mat33d) -> None
+.. function:: svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: svd3(A: matrix_t, U: matrix_t, sigma: vector_t, V: matrix_t) -> None
+.. function:: svd3(A: mat[3, 3, ~Float], U: mat[3, 3, ~Float], sigma: vec[3, ~Float], V: mat[3, 3, ~Scalar]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: qr3(A: mat33d, Q: mat33d, R: mat33d) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float64'>], Q: mat[3, 3, <class 'warp.types.float64'>], R: mat[3, 3, <class 'warp.types.float64'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33h, Q: mat33h, R: mat33h) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33f, Q: mat33f, R: mat33f) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33f, Q: mat33f, R: mat33) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33f, Q: mat33, R: mat33f) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33f, Q: mat33, R: mat33) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33, Q: mat33f, R: mat33f) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33, Q: mat33f, R: mat33) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33, Q: mat33, R: mat33f) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: mat33, Q: mat33, R: mat33) -> None
+.. function:: qr3(A: mat[3, 3, <class 'warp.types.float16'>], Q: mat[3, 3, <class 'warp.types.float16'>], R: mat[3, 3, <class 'warp.types.float16'>]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: qr3(A: matrix_t, Q: matrix_t, R: matrix_t) -> None
+.. function:: qr3(A: mat[3, 3, ~Float], Q: mat[3, 3, ~Float], R: mat[3, 3, ~Float]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: eig3(A: mat33h, Q: mat33h, d: vec3h) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float64'>], Q: mat[3, 3, <class 'warp.types.float64'>], d: vec[3, <class 'warp.types.float64'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33f, Q: mat33f, d: vec3f) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float16'>], Q: mat[3, 3, <class 'warp.types.float16'>], d: vec[3, <class 'warp.types.float16'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33f, Q: mat33f, d: vec3) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33f, Q: mat33, d: vec3f) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33f, Q: mat33, d: vec3) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33, Q: mat33f, d: vec3f) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33, Q: mat33f, d: vec3) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33, Q: mat33, d: vec3f) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33, Q: mat33, d: vec3) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: mat33d, Q: mat33d, d: vec3d) -> None
+.. function:: eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
 
-.. function:: eig3(A: matrix_t, Q: matrix_t, d: vector_t) -> None
+.. function:: eig3(A: mat[3, 3, ~Float], Q: mat[3, 3, ~Float], d: vec[3, ~Float]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
@@ -2903,283 +2913,283 @@ Vector Math
 
 Quaternion Math
 ---------------
-.. function:: quaternion() -> vector_t
+.. function:: quaternion() -> quaternion[~Float]
 
    Construct a zero-initialized quaternion, quaternions are laid out as
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.
 
 
-.. function:: quaternion(x: Float, y: Float, z: Float, w: Float) -> vector_t
+.. function:: quaternion(x: Float, y: Float, z: Float, w: Float) -> quaternion[~Float]
 
    Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.
 
 
-.. function:: quaternion(i: vector_t, r: Float) -> vector_t
+.. function:: quaternion(i: vec[3, ~Float], r: Float) -> quaternion[~Float]
 
    Construct a quaternion from it's imaginary components i, and real part r
 
 
-.. function:: quat_identity() -> quat
+.. function:: quat_identity() -> quaternion[<class 'warp.types.float32'>]
 
    Construct a float32 identity quaternion with zero imaginary part and real part of 1.0
 
 
-.. function:: quat_from_axis_angle(axis: vec3h, angle: float16) -> quath
+.. function:: quat_from_axis_angle(axis: vec[3, <class 'warp.types.float64'>], angle: float64) -> quaternion[<class 'warp.types.float64'>]
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_from_axis_angle(axis: vec3f, angle: float32) -> quatf
+.. function:: quat_from_axis_angle(axis: vec[3, <class 'warp.types.float16'>], angle: float16) -> quaternion[<class 'warp.types.float16'>]
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_from_axis_angle(axis: vec3, angle: float32) -> quatf
+.. function:: quat_from_axis_angle(axis: vec[3, <class 'warp.types.float32'>], angle: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_from_axis_angle(axis: vec3d, angle: float64) -> quatd
+.. function:: quat_from_axis_angle(axis: vec[3, <class 'warp.types.float32'>], angle: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_from_axis_angle(axis: vector_t, angle: Float) -> vector_t
+.. function:: quat_from_axis_angle(axis: vec[3, ~Float], angle: Float) -> quaternion[~Scalar]
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_to_axis_angle(q: quatd, axis: vec3d, angle: float64) -> None
+.. function:: quat_to_axis_angle(q: quaternion[<class 'warp.types.float64'>], axis: vec[3, <class 'warp.types.float64'>], angle: float64) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_to_axis_angle(q: quath, axis: vec3h, angle: float16) -> None
+.. function:: quat_to_axis_angle(q: quaternion[<class 'warp.types.float32'>], axis: vec[3, <class 'warp.types.float32'>], angle: float32) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_to_axis_angle(q: quatf, axis: vec3f, angle: float32) -> None
+.. function:: quat_to_axis_angle(q: quaternion[<class 'warp.types.float32'>], axis: vec[3, <class 'warp.types.float32'>], angle: float32) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_to_axis_angle(q: quatf, axis: vec3, angle: float32) -> None
+.. function:: quat_to_axis_angle(q: quaternion[<class 'warp.types.float32'>], axis: vec[3, <class 'warp.types.float32'>], angle: float32) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_to_axis_angle(q: quat, axis: vec3f, angle: float32) -> None
+.. function:: quat_to_axis_angle(q: quaternion[<class 'warp.types.float32'>], axis: vec[3, <class 'warp.types.float32'>], angle: float32) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_to_axis_angle(q: quat, axis: vec3, angle: float32) -> None
+.. function:: quat_to_axis_angle(q: quaternion[<class 'warp.types.float16'>], axis: vec[3, <class 'warp.types.float16'>], angle: float16) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_to_axis_angle(q: vector_t, axis: vector_t, angle: Float) -> None
+.. function:: quat_to_axis_angle(q: quaternion[~Float], axis: vec[3, ~Float], angle: Float) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_from_matrix(m: mat33d) -> quatd
+.. function:: quat_from_matrix(m: mat[3, 3, <class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_from_matrix(m: mat33h) -> quath
+.. function:: quat_from_matrix(m: mat[3, 3, <class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_from_matrix(m: mat33f) -> quatf
+.. function:: quat_from_matrix(m: mat[3, 3, <class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_from_matrix(m: mat33) -> quatf
+.. function:: quat_from_matrix(m: mat[3, 3, <class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_from_matrix(m: matrix_t) -> vector_t
+.. function:: quat_from_matrix(m: mat[3, 3, ~Float]) -> quaternion[~Scalar]
 
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_rpy(roll: float64, pitch: float64, yaw: float64) -> quatd
+.. function:: quat_rpy(roll: float64, pitch: float64, yaw: float64) -> quaternion[<class 'warp.types.float64'>]
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. function:: quat_rpy(roll: float16, pitch: float16, yaw: float16) -> quath
+.. function:: quat_rpy(roll: float32, pitch: float32, yaw: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. function:: quat_rpy(roll: float32, pitch: float32, yaw: float32) -> quatf
+.. function:: quat_rpy(roll: float16, pitch: float16, yaw: float16) -> quaternion[<class 'warp.types.float16'>]
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> vector_t
+.. function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> quaternion[~Scalar]
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. function:: quat_inverse(q: quatd) -> quatd
+.. function:: quat_inverse(q: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
    Compute quaternion conjugate.
 
 
-.. function:: quat_inverse(q: quath) -> quath
+.. function:: quat_inverse(q: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
    Compute quaternion conjugate.
 
 
-.. function:: quat_inverse(q: quatf) -> quatf
+.. function:: quat_inverse(q: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
    Compute quaternion conjugate.
 
 
-.. function:: quat_inverse(q: quat) -> quatf
+.. function:: quat_inverse(q: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
    Compute quaternion conjugate.
 
 
-.. function:: quat_inverse(q: vector_t) -> vector_t
+.. function:: quat_inverse(q: quaternion[~Float]) -> quaternion[~Scalar]
 
    Compute quaternion conjugate.
 
 
-.. function:: quat_rotate(q: quath, p: vec3h) -> vec3h
+.. function:: quat_rotate(q: quaternion[<class 'warp.types.float64'>], p: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate(q: quatf, p: vec3f) -> vec3f
+.. function:: quat_rotate(q: quaternion[<class 'warp.types.float16'>], p: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate(q: quatf, p: vec3) -> vec3f
+.. function:: quat_rotate(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate(q: quat, p: vec3f) -> vec3f
+.. function:: quat_rotate(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate(q: quat, p: vec3) -> vec3f
+.. function:: quat_rotate(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate(q: quatd, p: vec3d) -> vec3d
+.. function:: quat_rotate(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate(q: vector_t, p: vector_t) -> vector_t
+.. function:: quat_rotate(q: quaternion[~Float], p: vec[3, ~Float]) -> vec[3, ~Scalar]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate_inv(q: quath, p: vec3h) -> vec3h
+.. function:: quat_rotate_inv(q: quaternion[<class 'warp.types.float64'>], p: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_rotate_inv(q: quatf, p: vec3f) -> vec3f
+.. function:: quat_rotate_inv(q: quaternion[<class 'warp.types.float16'>], p: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_rotate_inv(q: quatf, p: vec3) -> vec3f
+.. function:: quat_rotate_inv(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_rotate_inv(q: quat, p: vec3f) -> vec3f
+.. function:: quat_rotate_inv(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_rotate_inv(q: quat, p: vec3) -> vec3f
+.. function:: quat_rotate_inv(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_rotate_inv(q: quatd, p: vec3d) -> vec3d
+.. function:: quat_rotate_inv(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_rotate_inv(q: vector_t, p: vector_t) -> vector_t
+.. function:: quat_rotate_inv(q: quaternion[~Float], p: vec[3, ~Float]) -> vec[3, ~Scalar]
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_slerp(q0: quath, q1: quath, t: float16) -> quath
+.. function:: quat_slerp(q0: quaternion[<class 'warp.types.float64'>], q1: quaternion[<class 'warp.types.float64'>], t: float64) -> quaternion[<class 'warp.types.float64'>]
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_slerp(q0: quatf, q1: quatf, t: float32) -> quatf
+.. function:: quat_slerp(q0: quaternion[<class 'warp.types.float16'>], q1: quaternion[<class 'warp.types.float16'>], t: float16) -> quaternion[<class 'warp.types.float16'>]
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_slerp(q0: quatf, q1: quat, t: float32) -> quatf
+.. function:: quat_slerp(q0: quaternion[<class 'warp.types.float32'>], q1: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_slerp(q0: quat, q1: quatf, t: float32) -> quatf
+.. function:: quat_slerp(q0: quaternion[<class 'warp.types.float32'>], q1: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_slerp(q0: quat, q1: quat, t: float32) -> quatf
+.. function:: quat_slerp(q0: quaternion[<class 'warp.types.float32'>], q1: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_slerp(q0: quatd, q1: quatd, t: float64) -> quatd
+.. function:: quat_slerp(q0: quaternion[<class 'warp.types.float32'>], q1: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_slerp(q0: vector_t, q1: vector_t, t: Float) -> vector_t
+.. function:: quat_slerp(q0: quaternion[~Float], q1: quaternion[~Float], t: Float) -> quaternion[~Scalar]
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_to_matrix(q: quatd) -> mat33d
+.. function:: quat_to_matrix(q: quaternion[<class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Convert a quaternion to a 3x3 rotation matrix.
 
 
-.. function:: quat_to_matrix(q: quath) -> mat33h
+.. function:: quat_to_matrix(q: quaternion[<class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Convert a quaternion to a 3x3 rotation matrix.
 
 
-.. function:: quat_to_matrix(q: quatf) -> mat33f
+.. function:: quat_to_matrix(q: quaternion[<class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Convert a quaternion to a 3x3 rotation matrix.
 
 
-.. function:: quat_to_matrix(q: quat) -> mat33f
+.. function:: quat_to_matrix(q: quaternion[<class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Convert a quaternion to a 3x3 rotation matrix.
 
 
-.. function:: quat_to_matrix(q: vector_t) -> matrix_t
+.. function:: quat_to_matrix(q: quaternion[~Float]) -> mat[3, 3, ~Scalar]
 
    Convert a quaternion to a 3x3 rotation matrix.
 
@@ -3188,290 +3198,290 @@ Quaternion Math
 
 Transformations
 ---------------
-.. function:: transform_t(p: vector_t, q: vector_t) -> transform_class
+.. function:: transform_t(p: vec[3, ~Float], q: quaternion[~Float]) -> transform_t[~Scalar]
 
    Construct a rigid body transformation with translation part p and rotation q.
 
 
-.. function:: transform_identity() -> transform
+.. function:: transform_identity() -> transform_t[<class 'warp.types.float32'>]
 
    Construct a float32 identity transform with zero translation and identity rotation.
 
 
-.. function:: transform_get_translation(t: transformd) -> vec3d
+.. function:: transform_get_translation(t: transform_t[<class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Return the translational part of a transform.
 
 
-.. function:: transform_get_translation(t: transformh) -> vec3h
+.. function:: transform_get_translation(t: transform_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the translational part of a transform.
 
 
-.. function:: transform_get_translation(t: transformf) -> vec3f
+.. function:: transform_get_translation(t: transform_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the translational part of a transform.
 
 
-.. function:: transform_get_translation(t: transform) -> vec3f
+.. function:: transform_get_translation(t: transform_t[<class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Return the translational part of a transform.
 
 
-.. function:: transform_get_translation(t: transform_class) -> vector_t
+.. function:: transform_get_translation(t: transform_t[~Float]) -> vec[3, ~Scalar]
 
    Return the translational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transformd) -> quatd
+.. function:: transform_get_rotation(t: transform_t[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
    Return the rotational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transformh) -> quath
+.. function:: transform_get_rotation(t: transform_t[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
    Return the rotational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transformf) -> quatf
+.. function:: transform_get_rotation(t: transform_t[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
    Return the rotational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transform) -> quatf
+.. function:: transform_get_rotation(t: transform_t[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
    Return the rotational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transform_class) -> vector_t
+.. function:: transform_get_rotation(t: transform_t[~Float]) -> quaternion[~Scalar]
 
    Return the rotational part of a transform.
 
 
-.. function:: transform_multiply(a: transformd, b: transformd) -> transformd
+.. function:: transform_multiply(a: transform_t[<class 'warp.types.float64'>], b: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_multiply(a: transformh, b: transformh) -> transformh
+.. function:: transform_multiply(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_multiply(a: transformf, b: transformf) -> transformf
+.. function:: transform_multiply(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_multiply(a: transformf, b: transform) -> transformf
+.. function:: transform_multiply(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_multiply(a: transform, b: transformf) -> transformf
+.. function:: transform_multiply(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_multiply(a: transform, b: transform) -> transformf
+.. function:: transform_multiply(a: transform_t[<class 'warp.types.float16'>], b: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_multiply(a: transform_class, b: transform_class) -> transform_class
+.. function:: transform_multiply(a: transform_t[~Float], b: transform_t[~Float]) -> transform_t[~Scalar]
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_point(t: transformh, p: vec3h) -> vec3h
+.. function:: transform_point(t: transform_t[<class 'warp.types.float64'>], p: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(t: transformf, p: vec3f) -> vec3f
+.. function:: transform_point(t: transform_t[<class 'warp.types.float16'>], p: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(t: transformf, p: vec3) -> vec3f
+.. function:: transform_point(t: transform_t[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(t: transform, p: vec3f) -> vec3f
+.. function:: transform_point(t: transform_t[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(t: transform, p: vec3) -> vec3f
+.. function:: transform_point(t: transform_t[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(t: transformd, p: vec3d) -> vec3d
+.. function:: transform_point(t: transform_t[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(t: transform_class, p: vector_t) -> vector_t
+.. function:: transform_point(t: transform_t[~Scalar], p: vec[3, ~Scalar]) -> vec[3, ~Scalar]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(m: mat44h, p: vec3h) -> vec3h
+.. function:: transform_point(m: mat[4, 4, <class 'warp.types.float64'>], p: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_point(m: mat44f, p: vec3f) -> vec3f
+.. function:: transform_point(m: mat[4, 4, <class 'warp.types.float16'>], p: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_point(m: mat44f, p: vec3) -> vec3f
+.. function:: transform_point(m: mat[4, 4, <class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_point(m: mat44, p: vec3f) -> vec3f
+.. function:: transform_point(m: mat[4, 4, <class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_point(m: mat44, p: vec3) -> vec3f
+.. function:: transform_point(m: mat[4, 4, <class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_point(m: mat44d, p: vec3d) -> vec3d
+.. function:: transform_point(m: mat[4, 4, <class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_point(m: matrix_t, p: vector_t) -> vector_t
+.. function:: transform_point(m: mat[4, 4, ~Scalar], p: vec[3, ~Scalar]) -> vec[3, ~Scalar]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(t: transformh, v: vec3h) -> vec3h
+.. function:: transform_vector(t: transform_t[<class 'warp.types.float64'>], v: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(t: transformf, v: vec3f) -> vec3f
+.. function:: transform_vector(t: transform_t[<class 'warp.types.float16'>], v: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(t: transformf, v: vec3) -> vec3f
+.. function:: transform_vector(t: transform_t[<class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(t: transform, v: vec3f) -> vec3f
+.. function:: transform_vector(t: transform_t[<class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(t: transform, v: vec3) -> vec3f
+.. function:: transform_vector(t: transform_t[<class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(t: transformd, v: vec3d) -> vec3d
+.. function:: transform_vector(t: transform_t[<class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(t: transform_class, v: vector_t) -> vector_t
+.. function:: transform_vector(t: transform_t[~Scalar], v: vec[3, ~Scalar]) -> vec[3, ~Scalar]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(m: mat44h, v: vec3h) -> vec3h
+.. function:: transform_vector(m: mat[4, 4, <class 'warp.types.float64'>], v: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(m: mat44f, v: vec3f) -> vec3f
+.. function:: transform_vector(m: mat[4, 4, <class 'warp.types.float16'>], v: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(m: mat44f, v: vec3) -> vec3f
+.. function:: transform_vector(m: mat[4, 4, <class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(m: mat44, v: vec3f) -> vec3f
+.. function:: transform_vector(m: mat[4, 4, <class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(m: mat44, v: vec3) -> vec3f
+.. function:: transform_vector(m: mat[4, 4, <class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(m: mat44d, v: vec3d) -> vec3d
+.. function:: transform_vector(m: mat[4, 4, <class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(m: matrix_t, v: vector_t) -> vector_t
+.. function:: transform_vector(m: mat[4, 4, ~Scalar], v: vec[3, ~Scalar]) -> vec[3, ~Scalar]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_inverse(t: transformd) -> transformd
+.. function:: transform_inverse(t: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]
 
    Compute the inverse of the transform.
 
 
-.. function:: transform_inverse(t: transformh) -> transformh
+.. function:: transform_inverse(t: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
    Compute the inverse of the transform.
 
 
-.. function:: transform_inverse(t: transformf) -> transformf
+.. function:: transform_inverse(t: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
    Compute the inverse of the transform.
 
 
-.. function:: transform_inverse(t: transform) -> transformf
+.. function:: transform_inverse(t: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]
 
    Compute the inverse of the transform.
 
 
-.. function:: transform_inverse(t: transform_class) -> transform_class
+.. function:: transform_inverse(t: transform_t[~Float]) -> transform_t[~Float]
 
    Compute the inverse of the transform.
 
@@ -3480,200 +3490,200 @@ Transformations
 
 Spatial Math
 ---------------
-.. function:: spatial_vector_t() -> vector_t
+.. function:: spatial_vector_t() -> spatial_vector_t[~Float]
 
    Construct a zero-initialized 6d screw vector. Screw vectors may be used to represent rigid body wrenches and twists (velocites).
 
 
-.. function:: spatial_vector_t(a: Float, b: Float, c: Float, d: Float, e: Float, f: Float) -> vector_t
+.. function:: spatial_vector_t(a: Float, b: Float, c: Float, d: Float, e: Float, f: Float) -> spatial_vector_t[~Float]
 
    Construct a 6d screw vector from it's components.
 
 
-.. function:: spatial_vector_t(w: vector_t, v: vector_t) -> vector_t
+.. function:: spatial_vector_t(w: vec[3, ~Float], v: vec[3, ~Float]) -> spatial_vector_t[~Float]
 
    Construct a 6d screw vector from two 3d vectors.
 
 
-.. function:: spatial_vector_t(s: Float) -> vector_t
+.. function:: spatial_vector_t(s: Float) -> spatial_vector_t[~Float]
 
    Construct a 6d screw vector with all components set to s
 
 
-.. function:: spatial_matrix_t() -> matrix_t
+.. function:: spatial_matrix_t() -> spatial_matrix_t[~Float]
 
    Construct a 6x6 zero-initialized spatial inertia matrix
 
 
-.. function:: spatial_matrix_t(s0: Scalar, s1: Scalar, s2: Scalar, s3: Scalar, s4: Scalar, s5: Scalar, s6: Scalar, s7: Scalar, s8: Scalar, s9: Scalar, s10: Scalar, s11: Scalar, s12: Scalar, s13: Scalar, s14: Scalar, s15: Scalar, s16: Scalar, s17: Scalar, s18: Scalar, s19: Scalar, s20: Scalar, s21: Scalar, s22: Scalar, s23: Scalar, s24: Scalar, s25: Scalar, s26: Scalar, s27: Scalar, s28: Scalar, s29: Scalar, s30: Scalar, s31: Scalar, s32: Scalar, s33: Scalar, s34: Scalar, s35: Scalar) -> matrix_t
+.. function:: spatial_matrix_t(s0: Scalar, s1: Scalar, s2: Scalar, s3: Scalar, s4: Scalar, s5: Scalar, s6: Scalar, s7: Scalar, s8: Scalar, s9: Scalar, s10: Scalar, s11: Scalar, s12: Scalar, s13: Scalar, s14: Scalar, s15: Scalar, s16: Scalar, s17: Scalar, s18: Scalar, s19: Scalar, s20: Scalar, s21: Scalar, s22: Scalar, s23: Scalar, s24: Scalar, s25: Scalar, s26: Scalar, s27: Scalar, s28: Scalar, s29: Scalar, s30: Scalar, s31: Scalar, s32: Scalar, s33: Scalar, s34: Scalar, s35: Scalar) -> spatial_matrix_t[~Float]
 
    Construct a 6x6 spatial inertia matrix from components
 
 
-.. function:: spatial_adjoint(r: matrix_t, s: matrix_t) -> matrix_t
+.. function:: spatial_adjoint(r: mat[3, 3, ~Float], s: mat[3, 3, ~Float]) -> spatial_matrix_t[~Scalar]
 
    Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.
 
 
-.. function:: spatial_dot(a: spatial_vectord, b: spatial_vectord) -> float64
+.. function:: spatial_dot(a: spatial_vector_t[<class 'warp.types.float64'>], b: spatial_vector_t[<class 'warp.types.float64'>]) -> float64
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_dot(a: spatial_vectorh, b: spatial_vectorh) -> float16
+.. function:: spatial_dot(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> float32
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_dot(a: spatial_vectorf, b: spatial_vectorf) -> float32
+.. function:: spatial_dot(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> float32
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_dot(a: spatial_vectorf, b: spatial_vector) -> float32
+.. function:: spatial_dot(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> float32
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_dot(a: spatial_vector, b: spatial_vectorf) -> float32
+.. function:: spatial_dot(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> float32
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_dot(a: spatial_vector, b: spatial_vector) -> float32
+.. function:: spatial_dot(a: spatial_vector_t[<class 'warp.types.float16'>], b: spatial_vector_t[<class 'warp.types.float16'>]) -> float16
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_dot(a: vector_t, b: vector_t) -> Scalar
+.. function:: spatial_dot(a: spatial_vector_t[~Float], b: spatial_vector_t[~Float]) -> Scalar
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord
+.. function:: spatial_cross(a: spatial_vector_t[<class 'warp.types.float64'>], b: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh
+.. function:: spatial_cross(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: spatial_vectorf, b: spatial_vectorf) -> spatial_vectorf
+.. function:: spatial_cross(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: spatial_vectorf, b: spatial_vector) -> spatial_vectorf
+.. function:: spatial_cross(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: spatial_vector, b: spatial_vectorf) -> spatial_vectorf
+.. function:: spatial_cross(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: spatial_vector, b: spatial_vector) -> spatial_vectorf
+.. function:: spatial_cross(a: spatial_vector_t[<class 'warp.types.float16'>], b: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: vector_t, b: vector_t) -> vector_t
+.. function:: spatial_cross(a: spatial_vector_t[~Float], b: spatial_vector_t[~Float]) -> spatial_vector_t[~Float]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: spatial_vectord, b: spatial_vectord) -> spatial_vectord
+.. function:: spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float64'>], b: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: spatial_vectorh, b: spatial_vectorh) -> spatial_vectorh
+.. function:: spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: spatial_vectorf, b: spatial_vectorf) -> spatial_vectorf
+.. function:: spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: spatial_vectorf, b: spatial_vector) -> spatial_vectorf
+.. function:: spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: spatial_vector, b: spatial_vectorf) -> spatial_vectorf
+.. function:: spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: spatial_vector, b: spatial_vector) -> spatial_vectorf
+.. function:: spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float16'>], b: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: vector_t, b: vector_t) -> vector_t
+.. function:: spatial_cross_dual(a: spatial_vector_t[~Float], b: spatial_vector_t[~Float]) -> spatial_vector_t[~Float]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_top(a: spatial_vectord) -> vec3d
+.. function:: spatial_top(a: spatial_vector_t[<class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_top(a: spatial_vectorh) -> vec3h
+.. function:: spatial_top(a: spatial_vector_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_top(a: spatial_vectorf) -> vec3f
+.. function:: spatial_top(a: spatial_vector_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_top(a: spatial_vector) -> vec3f
+.. function:: spatial_top(a: spatial_vector_t[<class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_top(a: vector_t)
+.. function:: spatial_top(a: spatial_vector_t[~Float])
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: spatial_vectord) -> vec3d
+.. function:: spatial_bottom(a: spatial_vector_t[<class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: spatial_vectorh) -> vec3h
+.. function:: spatial_bottom(a: spatial_vector_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: spatial_vectorf) -> vec3f
+.. function:: spatial_bottom(a: spatial_vector_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: spatial_vector) -> vec3f
+.. function:: spatial_bottom(a: spatial_vector_t[<class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: vector_t)
+.. function:: spatial_bottom(a: spatial_vector_t[~Float])
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_jacobian(S: array[vector_t], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: array[Float]) -> None
+.. function:: spatial_jacobian(S: array[spatial_vector_t[~Float]], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: array[Float]) -> None
 
 
-.. function:: spatial_mass(I_s: array[matrix_t], joint_start: int32, joint_count: int32, M_start: int32, M: array[Float]) -> None
+.. function:: spatial_mass(I_s: array[spatial_matrix_t[~Float]], joint_start: int32, joint_count: int32, M_start: int32, M: array[Float]) -> None
 
 
 
@@ -3865,452 +3875,452 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: quath, arg2: quath) -> None
+.. function:: expect_eq(arg1: quaternion[<class 'warp.types.float16'>], arg2: quaternion[<class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: quatf, arg2: quatf) -> None
+.. function:: expect_eq(arg1: quaternion[<class 'warp.types.float32'>], arg2: quaternion[<class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: quatd, arg2: quatd) -> None
+.. function:: expect_eq(arg1: quaternion[<class 'warp.types.float64'>], arg2: quaternion[<class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: quat, arg2: quat) -> None
+.. function:: expect_eq(arg1: quaternion[<class 'warp.types.float32'>], arg2: quaternion[<class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: transformh, arg2: transformh) -> None
+.. function:: expect_eq(arg1: transform_t[<class 'warp.types.float16'>], arg2: transform_t[<class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: transformf, arg2: transformf) -> None
+.. function:: expect_eq(arg1: transform_t[<class 'warp.types.float32'>], arg2: transform_t[<class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: transformd, arg2: transformd) -> None
+.. function:: expect_eq(arg1: transform_t[<class 'warp.types.float64'>], arg2: transform_t[<class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: transform, arg2: transform) -> None
+.. function:: expect_eq(arg1: transform_t[<class 'warp.types.float32'>], arg2: transform_t[<class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec2d, arg2: vec2d) -> None
+.. function:: expect_eq(arg1: vec[2, <class 'warp.types.float64'>], arg2: vec[2, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec3d, arg2: vec3d) -> None
+.. function:: expect_eq(arg1: vec[3, <class 'warp.types.float64'>], arg2: vec[3, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec4d, arg2: vec4d) -> None
+.. function:: expect_eq(arg1: vec[4, <class 'warp.types.float64'>], arg2: vec[4, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec2ub, arg2: vec2ub) -> None
+.. function:: expect_eq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec3ub, arg2: vec3ub) -> None
+.. function:: expect_eq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec4ub, arg2: vec4ub) -> None
+.. function:: expect_eq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec2h, arg2: vec2h) -> None
+.. function:: expect_eq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec3h, arg2: vec3h) -> None
+.. function:: expect_eq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec4h, arg2: vec4h) -> None
+.. function:: expect_eq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec2f, arg2: vec2f) -> None
+.. function:: expect_eq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec2f, arg2: vec2) -> None
+.. function:: expect_eq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec2, arg2: vec2f) -> None
+.. function:: expect_eq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec2, arg2: vec2) -> None
+.. function:: expect_eq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec3f, arg2: vec3f) -> None
+.. function:: expect_eq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec3f, arg2: vec3) -> None
+.. function:: expect_eq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec3, arg2: vec3f) -> None
+.. function:: expect_eq(arg1: vec[2, <class 'warp.types.uint8'>], arg2: vec[2, <class 'warp.types.uint8'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec3, arg2: vec3) -> None
+.. function:: expect_eq(arg1: vec[3, <class 'warp.types.uint8'>], arg2: vec[3, <class 'warp.types.uint8'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec4f, arg2: vec4f) -> None
+.. function:: expect_eq(arg1: vec[4, <class 'warp.types.uint8'>], arg2: vec[4, <class 'warp.types.uint8'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec4f, arg2: vec4) -> None
+.. function:: expect_eq(arg1: vec[2, <class 'warp.types.float16'>], arg2: vec[2, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec4, arg2: vec4f) -> None
+.. function:: expect_eq(arg1: vec[3, <class 'warp.types.float16'>], arg2: vec[3, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec4, arg2: vec4) -> None
+.. function:: expect_eq(arg1: vec[4, <class 'warp.types.float16'>], arg2: vec[4, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vector_t, arg2: vector_t)
+.. function:: expect_eq(arg1: vec[typing.Any, ~Scalar], arg2: vec[typing.Any, ~Scalar])
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat22d, arg2: mat22d) -> None
+.. function:: expect_eq(arg1: mat[2, 2, <class 'warp.types.float64'>], arg2: mat[2, 2, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat33d, arg2: mat33d) -> None
+.. function:: expect_eq(arg1: mat[3, 3, <class 'warp.types.float64'>], arg2: mat[3, 3, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat44d, arg2: mat44d) -> None
+.. function:: expect_eq(arg1: mat[4, 4, <class 'warp.types.float64'>], arg2: mat[4, 4, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat22h, arg2: mat22h) -> None
+.. function:: expect_eq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat33h, arg2: mat33h) -> None
+.. function:: expect_eq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat44h, arg2: mat44h) -> None
+.. function:: expect_eq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat22f, arg2: mat22f) -> None
+.. function:: expect_eq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat22f, arg2: mat22) -> None
+.. function:: expect_eq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat22, arg2: mat22f) -> None
+.. function:: expect_eq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat22, arg2: mat22) -> None
+.. function:: expect_eq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat33f, arg2: mat33f) -> None
+.. function:: expect_eq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat33f, arg2: mat33) -> None
+.. function:: expect_eq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat33, arg2: mat33f) -> None
+.. function:: expect_eq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat33, arg2: mat33) -> None
+.. function:: expect_eq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat44f, arg2: mat44f) -> None
+.. function:: expect_eq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat44f, arg2: mat44) -> None
+.. function:: expect_eq(arg1: mat[2, 2, <class 'warp.types.float16'>], arg2: mat[2, 2, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat44, arg2: mat44f) -> None
+.. function:: expect_eq(arg1: mat[3, 3, <class 'warp.types.float16'>], arg2: mat[3, 3, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat44, arg2: mat44) -> None
+.. function:: expect_eq(arg1: mat[4, 4, <class 'warp.types.float16'>], arg2: mat[4, 4, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: matrix_t, arg2: matrix_t)
+.. function:: expect_eq(arg1: mat[typing.Any, typing.Any, ~Scalar], arg2: mat[typing.Any, typing.Any, ~Scalar])
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_neq(arg1: vec2d, arg2: vec2d) -> None
+.. function:: expect_neq(arg1: vec[2, <class 'warp.types.float64'>], arg2: vec[2, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec3d, arg2: vec3d) -> None
+.. function:: expect_neq(arg1: vec[3, <class 'warp.types.float64'>], arg2: vec[3, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec4d, arg2: vec4d) -> None
+.. function:: expect_neq(arg1: vec[4, <class 'warp.types.float64'>], arg2: vec[4, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec2ub, arg2: vec2ub) -> None
+.. function:: expect_neq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec3ub, arg2: vec3ub) -> None
+.. function:: expect_neq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec4ub, arg2: vec4ub) -> None
+.. function:: expect_neq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec2h, arg2: vec2h) -> None
+.. function:: expect_neq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec3h, arg2: vec3h) -> None
+.. function:: expect_neq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec4h, arg2: vec4h) -> None
+.. function:: expect_neq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec2f, arg2: vec2f) -> None
+.. function:: expect_neq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec2f, arg2: vec2) -> None
+.. function:: expect_neq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec2, arg2: vec2f) -> None
+.. function:: expect_neq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec2, arg2: vec2) -> None
+.. function:: expect_neq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec3f, arg2: vec3f) -> None
+.. function:: expect_neq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec3f, arg2: vec3) -> None
+.. function:: expect_neq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec3, arg2: vec3f) -> None
+.. function:: expect_neq(arg1: vec[2, <class 'warp.types.uint8'>], arg2: vec[2, <class 'warp.types.uint8'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec3, arg2: vec3) -> None
+.. function:: expect_neq(arg1: vec[3, <class 'warp.types.uint8'>], arg2: vec[3, <class 'warp.types.uint8'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec4f, arg2: vec4f) -> None
+.. function:: expect_neq(arg1: vec[4, <class 'warp.types.uint8'>], arg2: vec[4, <class 'warp.types.uint8'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec4f, arg2: vec4) -> None
+.. function:: expect_neq(arg1: vec[2, <class 'warp.types.float16'>], arg2: vec[2, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec4, arg2: vec4f) -> None
+.. function:: expect_neq(arg1: vec[3, <class 'warp.types.float16'>], arg2: vec[3, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vec4, arg2: vec4) -> None
+.. function:: expect_neq(arg1: vec[4, <class 'warp.types.float16'>], arg2: vec[4, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: vector_t, arg2: vector_t)
+.. function:: expect_neq(arg1: vec[typing.Any, ~Scalar], arg2: vec[typing.Any, ~Scalar])
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat22d, arg2: mat22d) -> None
+.. function:: expect_neq(arg1: mat[2, 2, <class 'warp.types.float64'>], arg2: mat[2, 2, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat33d, arg2: mat33d) -> None
+.. function:: expect_neq(arg1: mat[3, 3, <class 'warp.types.float64'>], arg2: mat[3, 3, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat44d, arg2: mat44d) -> None
+.. function:: expect_neq(arg1: mat[4, 4, <class 'warp.types.float64'>], arg2: mat[4, 4, <class 'warp.types.float64'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat22h, arg2: mat22h) -> None
+.. function:: expect_neq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat33h, arg2: mat33h) -> None
+.. function:: expect_neq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat44h, arg2: mat44h) -> None
+.. function:: expect_neq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat22f, arg2: mat22f) -> None
+.. function:: expect_neq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat22f, arg2: mat22) -> None
+.. function:: expect_neq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat22, arg2: mat22f) -> None
+.. function:: expect_neq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat22, arg2: mat22) -> None
+.. function:: expect_neq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat33f, arg2: mat33f) -> None
+.. function:: expect_neq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat33f, arg2: mat33) -> None
+.. function:: expect_neq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat33, arg2: mat33f) -> None
+.. function:: expect_neq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat33, arg2: mat33) -> None
+.. function:: expect_neq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat44f, arg2: mat44f) -> None
+.. function:: expect_neq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat44f, arg2: mat44) -> None
+.. function:: expect_neq(arg1: mat[2, 2, <class 'warp.types.float16'>], arg2: mat[2, 2, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat44, arg2: mat44f) -> None
+.. function:: expect_neq(arg1: mat[3, 3, <class 'warp.types.float16'>], arg2: mat[3, 3, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat44, arg2: mat44) -> None
+.. function:: expect_neq(arg1: mat[4, 4, <class 'warp.types.float16'>], arg2: mat[4, 4, <class 'warp.types.float16'>]) -> None
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: matrix_t, arg2: matrix_t)
+.. function:: expect_neq(arg1: mat[typing.Any, typing.Any, ~Scalar], arg2: mat[typing.Any, typing.Any, ~Scalar])
 
    Prints an error to stdout if arg1 and arg2 are equal
 
@@ -4320,12 +4330,12 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: float16, b: float16, t: float16) -> float16
+.. function:: lerp(a: float32, b: float32, t: float32) -> float32
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: float32, b: float32, t: float32) -> float32
+.. function:: lerp(a: float16, b: float16, t: float16) -> float16
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
@@ -4335,202 +4345,202 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec2h, b: vec2h, t: float16) -> vec2h
+.. function:: lerp(a: vec[2, <class 'warp.types.float16'>], b: vec[2, <class 'warp.types.float16'>], t: float16) -> vec[2, <class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec2f, b: vec2f, t: float32) -> vec2f
+.. function:: lerp(a: vec[2, <class 'warp.types.float32'>], b: vec[2, <class 'warp.types.float32'>], t: float32) -> vec[2, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec2d, b: vec2d, t: float64) -> vec2d
+.. function:: lerp(a: vec[2, <class 'warp.types.float64'>], b: vec[2, <class 'warp.types.float64'>], t: float64) -> vec[2, <class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec2, b: vec2, t: float32) -> vec2
+.. function:: lerp(a: vec[2, <class 'warp.types.float32'>], b: vec[2, <class 'warp.types.float32'>], t: float32) -> vec[2, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec3h, b: vec3h, t: float16) -> vec3h
+.. function:: lerp(a: vec[3, <class 'warp.types.float16'>], b: vec[3, <class 'warp.types.float16'>], t: float16) -> vec[3, <class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec3f, b: vec3f, t: float32) -> vec3f
+.. function:: lerp(a: vec[3, <class 'warp.types.float32'>], b: vec[3, <class 'warp.types.float32'>], t: float32) -> vec[3, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec3d, b: vec3d, t: float64) -> vec3d
+.. function:: lerp(a: vec[3, <class 'warp.types.float64'>], b: vec[3, <class 'warp.types.float64'>], t: float64) -> vec[3, <class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec3, b: vec3, t: float32) -> vec3
+.. function:: lerp(a: vec[3, <class 'warp.types.float32'>], b: vec[3, <class 'warp.types.float32'>], t: float32) -> vec[3, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec4h, b: vec4h, t: float16) -> vec4h
+.. function:: lerp(a: vec[4, <class 'warp.types.float16'>], b: vec[4, <class 'warp.types.float16'>], t: float16) -> vec[4, <class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec4f, b: vec4f, t: float32) -> vec4f
+.. function:: lerp(a: vec[4, <class 'warp.types.float32'>], b: vec[4, <class 'warp.types.float32'>], t: float32) -> vec[4, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec4d, b: vec4d, t: float64) -> vec4d
+.. function:: lerp(a: vec[4, <class 'warp.types.float64'>], b: vec[4, <class 'warp.types.float64'>], t: float64) -> vec[4, <class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec4, b: vec4, t: float32) -> vec4
+.. function:: lerp(a: vec[4, <class 'warp.types.float32'>], b: vec[4, <class 'warp.types.float32'>], t: float32) -> vec[4, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat22h, b: mat22h, t: float16) -> mat22h
+.. function:: lerp(a: mat[2, 2, <class 'warp.types.float16'>], b: mat[2, 2, <class 'warp.types.float16'>], t: float16) -> mat[2, 2, <class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat22f, b: mat22f, t: float32) -> mat22f
+.. function:: lerp(a: mat[2, 2, <class 'warp.types.float32'>], b: mat[2, 2, <class 'warp.types.float32'>], t: float32) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat22d, b: mat22d, t: float64) -> mat22d
+.. function:: lerp(a: mat[2, 2, <class 'warp.types.float64'>], b: mat[2, 2, <class 'warp.types.float64'>], t: float64) -> mat[2, 2, <class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat22, b: mat22, t: float32) -> mat22
+.. function:: lerp(a: mat[2, 2, <class 'warp.types.float32'>], b: mat[2, 2, <class 'warp.types.float32'>], t: float32) -> mat[2, 2, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat33h, b: mat33h, t: float16) -> mat33h
+.. function:: lerp(a: mat[3, 3, <class 'warp.types.float16'>], b: mat[3, 3, <class 'warp.types.float16'>], t: float16) -> mat[3, 3, <class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat33f, b: mat33f, t: float32) -> mat33f
+.. function:: lerp(a: mat[3, 3, <class 'warp.types.float32'>], b: mat[3, 3, <class 'warp.types.float32'>], t: float32) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat33d, b: mat33d, t: float64) -> mat33d
+.. function:: lerp(a: mat[3, 3, <class 'warp.types.float64'>], b: mat[3, 3, <class 'warp.types.float64'>], t: float64) -> mat[3, 3, <class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat33, b: mat33, t: float32) -> mat33
+.. function:: lerp(a: mat[3, 3, <class 'warp.types.float32'>], b: mat[3, 3, <class 'warp.types.float32'>], t: float32) -> mat[3, 3, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat44h, b: mat44h, t: float16) -> mat44h
+.. function:: lerp(a: mat[4, 4, <class 'warp.types.float16'>], b: mat[4, 4, <class 'warp.types.float16'>], t: float16) -> mat[4, 4, <class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat44f, b: mat44f, t: float32) -> mat44f
+.. function:: lerp(a: mat[4, 4, <class 'warp.types.float32'>], b: mat[4, 4, <class 'warp.types.float32'>], t: float32) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat44d, b: mat44d, t: float64) -> mat44d
+.. function:: lerp(a: mat[4, 4, <class 'warp.types.float64'>], b: mat[4, 4, <class 'warp.types.float64'>], t: float64) -> mat[4, 4, <class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat44, b: mat44, t: float32) -> mat44
+.. function:: lerp(a: mat[4, 4, <class 'warp.types.float32'>], b: mat[4, 4, <class 'warp.types.float32'>], t: float32) -> mat[4, 4, <class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: quath, b: quath, t: float16) -> quath
+.. function:: lerp(a: quaternion[<class 'warp.types.float16'>], b: quaternion[<class 'warp.types.float16'>], t: float16) -> quaternion[<class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: quatf, b: quatf, t: float32) -> quatf
+.. function:: lerp(a: quaternion[<class 'warp.types.float32'>], b: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: quatd, b: quatd, t: float64) -> quatd
+.. function:: lerp(a: quaternion[<class 'warp.types.float64'>], b: quaternion[<class 'warp.types.float64'>], t: float64) -> quaternion[<class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: quat, b: quat, t: float32) -> quat
+.. function:: lerp(a: quaternion[<class 'warp.types.float32'>], b: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: transformh, b: transformh, t: float16) -> transformh
+.. function:: lerp(a: transform_t[<class 'warp.types.float16'>], b: transform_t[<class 'warp.types.float16'>], t: float16) -> transform_t[<class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: transformf, b: transformf, t: float32) -> transformf
+.. function:: lerp(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>], t: float32) -> transform_t[<class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: transformd, b: transformd, t: float64) -> transformd
+.. function:: lerp(a: transform_t[<class 'warp.types.float64'>], b: transform_t[<class 'warp.types.float64'>], t: float64) -> transform_t[<class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: transform, b: transform, t: float32) -> transform
+.. function:: lerp(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>], t: float32) -> transform_t[<class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: spatial_vectorh, b: spatial_vectorh, t: float16) -> spatial_vectorh
+.. function:: lerp(a: spatial_vector_t[<class 'warp.types.float16'>], b: spatial_vector_t[<class 'warp.types.float16'>], t: float16) -> spatial_vector_t[<class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: spatial_vectorf, b: spatial_vectorf, t: float32) -> spatial_vectorf
+.. function:: lerp(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>], t: float32) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: spatial_vectord, b: spatial_vectord, t: float64) -> spatial_vectord
+.. function:: lerp(a: spatial_vector_t[<class 'warp.types.float64'>], b: spatial_vector_t[<class 'warp.types.float64'>], t: float64) -> spatial_vector_t[<class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: spatial_vector, b: spatial_vector, t: float32) -> spatial_vector
+.. function:: lerp(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>], t: float32) -> spatial_vector_t[<class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: spatial_matrixh, b: spatial_matrixh, t: float16) -> spatial_matrixh
+.. function:: lerp(a: spatial_matrix_t[<class 'warp.types.float16'>], b: spatial_matrix_t[<class 'warp.types.float16'>], t: float16) -> spatial_matrix_t[<class 'warp.types.float16'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: spatial_matrixf, b: spatial_matrixf, t: float32) -> spatial_matrixf
+.. function:: lerp(a: spatial_matrix_t[<class 'warp.types.float32'>], b: spatial_matrix_t[<class 'warp.types.float32'>], t: float32) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: spatial_matrixd, b: spatial_matrixd, t: float64) -> spatial_matrixd
+.. function:: lerp(a: spatial_matrix_t[<class 'warp.types.float64'>], b: spatial_matrix_t[<class 'warp.types.float64'>], t: float64) -> spatial_matrix_t[<class 'warp.types.float64'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: spatial_matrix, b: spatial_matrix, t: float32) -> spatial_matrix
+.. function:: lerp(a: spatial_matrix_t[<class 'warp.types.float32'>], b: spatial_matrix_t[<class 'warp.types.float32'>], t: float32) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
@@ -4540,12 +4550,12 @@ Utility
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
 
 
-.. function:: smoothstep(edge0: float16, edge1: float16, x: float16) -> float16
+.. function:: smoothstep(edge0: float32, edge1: float32, x: float32) -> float32
 
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
 
 
-.. function:: smoothstep(edge0: float32, edge1: float32, x: float32) -> float32
+.. function:: smoothstep(edge0: float16, edge1: float16, x: float16) -> float16
 
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
 
@@ -4560,12 +4570,12 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
 
-.. function:: expect_near(arg1: float16, arg2: float16, tolerance: float16) -> None
+.. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
 
-.. function:: expect_near(arg1: float32, arg2: float32, tolerance: float32) -> None
+.. function:: expect_near(arg1: float16, arg2: float16, tolerance: float16) -> None
 
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
@@ -4575,7 +4585,7 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
 
-.. function:: expect_near(arg1: vec3, arg2: vec3, tolerance: float32) -> None
+.. function:: expect_near(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>], tolerance: float32) -> None
 
    Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
 
@@ -4584,7 +4594,7 @@ Utility
 
 Geometry
 ---------------
-.. function:: bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t
+.. function:: bvh_query_aabb(id: uint64, lower: vec[3, <class 'warp.types.float32'>], upper: vec[3, <class 'warp.types.float32'>]) -> bvh_query_t
 
    Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
    inside a bvh. Returns an object that is used to track state during bvh traversal.
@@ -4594,7 +4604,7 @@ Geometry
    :param upper: The upper bound of the bounding box in bvh space
 
 
-.. function:: bvh_query_ray(id: uint64, start: vec3, dir: vec3) -> bvh_query_t
+.. function:: bvh_query_ray(id: uint64, start: vec[3, <class 'warp.types.float32'>], dir: vec[3, <class 'warp.types.float32'>]) -> bvh_query_t
 
    Construct a ray query against a bvh object. This query can be used to iterate over all bounds
    that intersect the ray. Returns an object that is used to track state during bvh traversal.
@@ -4610,7 +4620,7 @@ Geometry
    if there are no more overlapping bound.
 
 
-.. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
+.. function:: mesh_query_point(id: uint64, point: vec[3, <class 'warp.types.float32'>], max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
 
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -4623,7 +4633,7 @@ Geometry
    :param bary_v: Retruns the barycentric v coordinate of the closest point
 
 
-.. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec3, face: int32) -> bool
+.. function:: mesh_query_ray(id: uint64, start: vec[3, <class 'warp.types.float32'>], dir: vec[3, <class 'warp.types.float32'>], max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec[3, <class 'warp.types.float32'>], face: int32) -> bool
 
    Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
 
@@ -4639,7 +4649,7 @@ Geometry
    :param face: Returns the index of the hit face
 
 
-.. function:: mesh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> mesh_query_aabb_t
+.. function:: mesh_query_aabb(id: uint64, lower: vec[3, <class 'warp.types.float32'>], upper: vec[3, <class 'warp.types.float32'>]) -> mesh_query_aabb_t
 
    Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
    inside a volume. Returns an object that is used to track state during mesh traversal.
@@ -4655,17 +4665,17 @@ Geometry
    if there are no more overlapping triangles.
 
 
-.. function:: mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3
+.. function:: mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec[3, <class 'warp.types.float32'>]
 
    Evaluates the position on the mesh given a face index, and barycentric coordinates.
 
 
-.. function:: mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3
+.. function:: mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec[3, <class 'warp.types.float32'>]
 
    Evaluates the velocity on the mesh given a face index, and barycentric coordinates.
 
 
-.. function:: hash_grid_query(id: uint64, point: vec3, max_dist: float32) -> hash_grid_query_t
+.. function:: hash_grid_query(id: uint64, point: vec[3, <class 'warp.types.float32'>], max_dist: float32) -> hash_grid_query_t
 
    Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
    fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
@@ -4683,7 +4693,7 @@ Geometry
    traversal occurs in a spatially coherent order.
 
 
-.. function:: intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3) -> int
+.. function:: intersect_tri_tri(v0: vec[3, <class 'warp.types.float32'>], v1: vec[3, <class 'warp.types.float32'>], v2: vec[3, <class 'warp.types.float32'>], u0: vec[3, <class 'warp.types.float32'>], u1: vec[3, <class 'warp.types.float32'>], u2: vec[3, <class 'warp.types.float32'>]) -> int
 
    Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.
 
@@ -4693,17 +4703,17 @@ Geometry
    Retrieves the mesh given its index.
 
 
-.. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3
+.. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec[3, <class 'warp.types.float32'>]
 
    Evaluates the face normal the mesh given a face index.
 
 
-.. function:: mesh_get_point(id: uint64, index: int32) -> vec3
+.. function:: mesh_get_point(id: uint64, index: int32) -> vec[3, <class 'warp.types.float32'>]
 
    Returns the point of the mesh given a index.
 
 
-.. function:: mesh_get_velocity(id: uint64, index: int32) -> vec3
+.. function:: mesh_get_velocity(id: uint64, index: int32) -> vec[3, <class 'warp.types.float32'>]
 
    Returns the velocity of the mesh given a index.
 
@@ -4713,7 +4723,7 @@ Geometry
    Returns the point-index of the mesh given a face-vertex index.
 
 
-.. function:: closest_point_edge_edge(p1: vec3, q1: vec3, p2: vec3, q2: vec3, epsilon: float32) -> vec3
+.. function:: closest_point_edge_edge(p1: vec[3, <class 'warp.types.float32'>], q1: vec[3, <class 'warp.types.float32'>], p2: vec[3, <class 'warp.types.float32'>], q2: vec[3, <class 'warp.types.float32'>], epsilon: float32) -> vec[3, <class 'warp.types.float32'>]
 
    Finds the closest points between two edges. Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
 
@@ -4729,7 +4739,7 @@ Geometry
 
 Volumes
 ---------------
-.. function:: volume_sample_f(id: uint64, uvw: vec3, sampling_mode: int32) -> float
+.. function:: volume_sample_f(id: uint64, uvw: vec[3, <class 'warp.types.float32'>], sampling_mode: int32) -> float
 
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
@@ -4744,22 +4754,22 @@ Volumes
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int32) -> vec3
+.. function:: volume_sample_v(id: uint64, uvw: vec[3, <class 'warp.types.float32'>], sampling_mode: int32) -> vec[3, <class 'warp.types.float32'>]
 
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
-.. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3
+.. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec[3, <class 'warp.types.float32'>]
 
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
-.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3) -> None
+.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec[3, <class 'warp.types.float32'>]) -> None
 
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_sample_i(id: uint64, uvw: vec3) -> int
+.. function:: volume_sample_i(id: uint64, uvw: vec[3, <class 'warp.types.float32'>]) -> int
 
    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
 
@@ -4774,22 +4784,22 @@ Volumes
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_index_to_world(id: uint64, uvw: vec3) -> vec3
+.. function:: volume_index_to_world(id: uint64, uvw: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_world_to_index(id: uint64, xyz: vec3) -> vec3
+.. function:: volume_world_to_index(id: uint64, xyz: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_index_to_world_dir(id: uint64, uvw: vec3) -> vec3
+.. function:: volume_index_to_world_dir(id: uint64, uvw: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3) -> vec3
+.. function:: volume_world_to_index_dir(id: uint64, xyz: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
 
@@ -4840,47 +4850,47 @@ Random
    Inverse transform sample a cumulative distribution function
 
 
-.. function:: sample_triangle(state: uint32) -> vec2
+.. function:: sample_triangle(state: uint32) -> vec[2, <class 'warp.types.float32'>]
 
    Uniformly sample a triangle. Returns sample barycentric coordinates
 
 
-.. function:: sample_unit_ring(state: uint32) -> vec2
+.. function:: sample_unit_ring(state: uint32) -> vec[2, <class 'warp.types.float32'>]
 
    Uniformly sample a ring in the xy plane
 
 
-.. function:: sample_unit_disk(state: uint32) -> vec2
+.. function:: sample_unit_disk(state: uint32) -> vec[2, <class 'warp.types.float32'>]
 
    Uniformly sample a disk in the xy plane
 
 
-.. function:: sample_unit_sphere_surface(state: uint32) -> vec3
+.. function:: sample_unit_sphere_surface(state: uint32) -> vec[3, <class 'warp.types.float32'>]
 
    Uniformly sample a unit sphere surface
 
 
-.. function:: sample_unit_sphere(state: uint32) -> vec3
+.. function:: sample_unit_sphere(state: uint32) -> vec[3, <class 'warp.types.float32'>]
 
    Uniformly sample a unit sphere
 
 
-.. function:: sample_unit_hemisphere_surface(state: uint32) -> vec3
+.. function:: sample_unit_hemisphere_surface(state: uint32) -> vec[3, <class 'warp.types.float32'>]
 
    Uniformly sample a unit hemisphere surface
 
 
-.. function:: sample_unit_hemisphere(state: uint32) -> vec3
+.. function:: sample_unit_hemisphere(state: uint32) -> vec[3, <class 'warp.types.float32'>]
 
    Uniformly sample a unit hemisphere
 
 
-.. function:: sample_unit_square(state: uint32) -> vec2
+.. function:: sample_unit_square(state: uint32) -> vec[2, <class 'warp.types.float32'>]
 
    Uniformly sample a unit square
 
 
-.. function:: sample_unit_cube(state: uint32) -> vec3
+.. function:: sample_unit_cube(state: uint32) -> vec[3, <class 'warp.types.float32'>]
 
    Uniformly sample a unit cube
 
@@ -4890,17 +4900,17 @@ Random
    Non-periodic Perlin-style noise in 1d.
 
 
-.. function:: noise(state: uint32, xy: vec2) -> float
+.. function:: noise(state: uint32, xy: vec[2, <class 'warp.types.float32'>]) -> float
 
    Non-periodic Perlin-style noise in 2d.
 
 
-.. function:: noise(state: uint32, xyz: vec3) -> float
+.. function:: noise(state: uint32, xyz: vec[3, <class 'warp.types.float32'>]) -> float
 
    Non-periodic Perlin-style noise in 3d.
 
 
-.. function:: noise(state: uint32, xyzt: vec4) -> float
+.. function:: noise(state: uint32, xyzt: vec[4, <class 'warp.types.float32'>]) -> float
 
    Non-periodic Perlin-style noise in 4d.
 
@@ -4910,32 +4920,32 @@ Random
    Periodic Perlin-style noise in 1d.
 
 
-.. function:: pnoise(state: uint32, xy: vec2, px: int32, py: int32) -> float
+.. function:: pnoise(state: uint32, xy: vec[2, <class 'warp.types.float32'>], px: int32, py: int32) -> float
 
    Periodic Perlin-style noise in 2d.
 
 
-.. function:: pnoise(state: uint32, xyz: vec3, px: int32, py: int32, pz: int32) -> float
+.. function:: pnoise(state: uint32, xyz: vec[3, <class 'warp.types.float32'>], px: int32, py: int32, pz: int32) -> float
 
    Periodic Perlin-style noise in 3d.
 
 
-.. function:: pnoise(state: uint32, xyzt: vec4, px: int32, py: int32, pz: int32, pt: int32) -> float
+.. function:: pnoise(state: uint32, xyzt: vec[4, <class 'warp.types.float32'>], px: int32, py: int32, pz: int32, pt: int32) -> float
 
    Periodic Perlin-style noise in 4d.
 
 
-.. function:: curlnoise(state: uint32, xy: vec2) -> vec2
+.. function:: curlnoise(state: uint32, xy: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
    Divergence-free vector field based on the gradient of a Perlin noise function. [1]_
 
 
-.. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
+.. function:: curlnoise(state: uint32, xyz: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
 
-.. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
+.. function:: curlnoise(state: uint32, xyzt: vec[4, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
    Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
@@ -4944,17 +4954,12 @@ Random
 
 Other
 ---------------
-.. function:: lower_bound(arr: array[Scalar], value: int8) -> int
+.. function:: lower_bound(arr: array[Scalar], value: uint32) -> int
 
    Search a sorted array for the closest element greater than or equal to value.
 
 
-.. function:: lower_bound(arr: array[Scalar], value: uint64) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: uint16) -> int
+.. function:: lower_bound(arr: array[Scalar], value: int16) -> int
 
    Search a sorted array for the closest element greater than or equal to value.
 
@@ -4964,27 +4969,7 @@ Other
    Search a sorted array for the closest element greater than or equal to value.
 
 
-.. function:: lower_bound(arr: array[Scalar], value: int32) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: int64) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: uint32) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: float32) -> int
-
-   Search a sorted array for the closest element greater than or equal to value.
-
-
-.. function:: lower_bound(arr: array[Scalar], value: uint8) -> int
+.. function:: lower_bound(arr: array[Scalar], value: int8) -> int
 
    Search a sorted array for the closest element greater than or equal to value.
 
@@ -4994,7 +4979,32 @@ Other
    Search a sorted array for the closest element greater than or equal to value.
 
 
-.. function:: lower_bound(arr: array[Scalar], value: int16) -> int
+.. function:: lower_bound(arr: array[Scalar], value: uint16) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: int32) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: uint64) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: float32) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: int64) -> int
+
+   Search a sorted array for the closest element greater than or equal to value.
+
+
+.. function:: lower_bound(arr: array[Scalar], value: uint8) -> int
 
    Search a sorted array for the closest element greater than or equal to value.
 
@@ -5008,1366 +5018,1366 @@ Other
 
 Operators
 ---------------
-.. function:: add(x: int8, y: int8) -> int8
-
-
-.. function:: add(x: uint64, y: uint64) -> uint64
-
-
-.. function:: add(x: uint16, y: uint16) -> uint16
-
-
-.. function:: add(x: float64, y: float64) -> float64
-
-
-.. function:: add(x: int32, y: int32) -> int32
-
-
-.. function:: add(x: int64, y: int64) -> int64
-
-
 .. function:: add(x: uint32, y: uint32) -> uint32
-
-
-.. function:: add(x: float32, y: float32) -> float32
-
-
-.. function:: add(x: uint8, y: uint8) -> uint8
-
-
-.. function:: add(x: float16, y: float16) -> float16
 
 
 .. function:: add(x: int16, y: int16) -> int16
 
 
+.. function:: add(x: float64, y: float64) -> float64
+
+
+.. function:: add(x: int8, y: int8) -> int8
+
+
+.. function:: add(x: float16, y: float16) -> float16
+
+
+.. function:: add(x: uint16, y: uint16) -> uint16
+
+
+.. function:: add(x: int32, y: int32) -> int32
+
+
+.. function:: add(x: uint64, y: uint64) -> uint64
+
+
+.. function:: add(x: float32, y: float32) -> float32
+
+
+.. function:: add(x: int64, y: int64) -> int64
+
+
+.. function:: add(x: uint8, y: uint8) -> uint8
+
+
 .. function:: add(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: add(x: vec2d, y: vec2d) -> vec2d
+.. function:: add(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
 
-.. function:: add(x: vec3d, y: vec3d) -> vec3d
+.. function:: add(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
 
-.. function:: add(x: vec4d, y: vec4d) -> vec4d
+.. function:: add(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
 
-.. function:: add(x: vec2ub, y: vec2ub) -> vec2ub
+.. function:: add(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec3ub, y: vec3ub) -> vec3ub
+.. function:: add(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec4ub, y: vec4ub) -> vec4ub
+.. function:: add(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec2h, y: vec2h) -> vec2h
+.. function:: add(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec3h, y: vec3h) -> vec3h
+.. function:: add(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec4h, y: vec4h) -> vec4h
+.. function:: add(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec2f, y: vec2f) -> vec2f
+.. function:: add(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec2f, y: vec2) -> vec2f
+.. function:: add(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec2, y: vec2f) -> vec2f
+.. function:: add(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec2, y: vec2) -> vec2f
+.. function:: add(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec3f, y: vec3f) -> vec3f
+.. function:: add(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec3f, y: vec3) -> vec3f
+.. function:: add(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: vec3, y: vec3f) -> vec3f
+.. function:: add(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]
 
 
-.. function:: add(x: vec3, y: vec3) -> vec3f
+.. function:: add(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
 
-.. function:: add(x: vec4f, y: vec4f) -> vec4f
+.. function:: add(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]
 
 
-.. function:: add(x: vec4f, y: vec4) -> vec4f
+.. function:: add(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
 
-.. function:: add(x: vec4, y: vec4f) -> vec4f
+.. function:: add(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
 
-.. function:: add(x: vec4, y: vec4) -> vec4f
+.. function:: add(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
 
-.. function:: add(x: vector_t, y: vector_t) -> vector_t
+.. function:: add(x: vec[typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
 
-.. function:: add(x: quatd, y: quatd) -> quatd
+.. function:: add(x: quaternion[<class 'warp.types.float64'>], y: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
 
-.. function:: add(x: quath, y: quath) -> quath
+.. function:: add(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: quatf, y: quatf) -> quatf
+.. function:: add(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: quatf, y: quat) -> quatf
+.. function:: add(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: quat, y: quatf) -> quatf
+.. function:: add(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: quat, y: quat) -> quatf
+.. function:: add(x: quaternion[<class 'warp.types.float16'>], y: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
 
-.. function:: add(x: vector_t, y: vector_t) -> vector_t
+.. function:: add(x: quaternion[~Scalar], y: quaternion[~Scalar]) -> quaternion[~Scalar]
 
 
-.. function:: add(x: mat22d, y: mat22d) -> mat22d
+.. function:: add(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
 
-.. function:: add(x: mat33d, y: mat33d) -> mat33d
+.. function:: add(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
 
-.. function:: add(x: mat44d, y: mat44d) -> mat44d
+.. function:: add(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
 
-.. function:: add(x: mat22h, y: mat22h) -> mat22h
+.. function:: add(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat33h, y: mat33h) -> mat33h
+.. function:: add(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat44h, y: mat44h) -> mat44h
+.. function:: add(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat22f, y: mat22f) -> mat22f
+.. function:: add(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat22f, y: mat22) -> mat22f
+.. function:: add(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat22, y: mat22f) -> mat22f
+.. function:: add(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat22, y: mat22) -> mat22f
+.. function:: add(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat33f, y: mat33f) -> mat33f
+.. function:: add(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat33f, y: mat33) -> mat33f
+.. function:: add(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat33, y: mat33f) -> mat33f
+.. function:: add(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat33, y: mat33) -> mat33f
+.. function:: add(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat44f, y: mat44f) -> mat44f
+.. function:: add(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: add(x: mat44f, y: mat44) -> mat44f
+.. function:: add(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
 
-.. function:: add(x: mat44, y: mat44f) -> mat44f
+.. function:: add(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
 
-.. function:: add(x: mat44, y: mat44) -> mat44f
+.. function:: add(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
 
-.. function:: add(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: add(x: mat[typing.Any, typing.Any, ~Scalar], y: mat[typing.Any, typing.Any, ~Scalar]) -> mat[typing.Any, typing.Any, ~Scalar]
 
 
-.. function:: add(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord
+.. function:: add(x: spatial_vector_t[<class 'warp.types.float64'>], y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]
 
 
-.. function:: add(x: spatial_vectorh, y: spatial_vectorh) -> spatial_vectorh
+.. function:: add(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: spatial_vectorf, y: spatial_vectorf) -> spatial_vectorf
+.. function:: add(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: spatial_vectorf, y: spatial_vector) -> spatial_vectorf
+.. function:: add(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: spatial_vector, y: spatial_vectorf) -> spatial_vectorf
+.. function:: add(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: spatial_vector, y: spatial_vector) -> spatial_vectorf
+.. function:: add(x: spatial_vector_t[<class 'warp.types.float16'>], y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]
 
 
-.. function:: add(x: vector_t, y: vector_t) -> vector_t
+.. function:: add(x: spatial_vector_t[~Scalar], y: spatial_vector_t[~Scalar]) -> spatial_vector_t[~Scalar]
 
 
-.. function:: add(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
+.. function:: add(x: spatial_matrix_t[<class 'warp.types.float64'>], y: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]
 
 
-.. function:: add(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh
+.. function:: add(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: spatial_matrixf, y: spatial_matrixf) -> spatial_matrixf
+.. function:: add(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: spatial_matrixf, y: spatial_matrix) -> spatial_matrixf
+.. function:: add(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: spatial_matrix, y: spatial_matrixf) -> spatial_matrixf
+.. function:: add(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: spatial_matrix, y: spatial_matrix) -> spatial_matrixf
+.. function:: add(x: spatial_matrix_t[<class 'warp.types.float16'>], y: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]
 
 
-.. function:: add(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: add(x: spatial_matrix_t[~Scalar], y: spatial_matrix_t[~Scalar]) -> spatial_matrix_t[~Scalar]
 
 
-.. function:: add(x: transformd, y: transformd) -> transformd
+.. function:: add(x: transform_t[<class 'warp.types.float64'>], y: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]
 
 
-.. function:: add(x: transformh, y: transformh) -> transformh
+.. function:: add(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: transformf, y: transformf) -> transformf
+.. function:: add(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: transformf, y: transform) -> transformf
+.. function:: add(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: transform, y: transformf) -> transformf
+.. function:: add(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: add(x: transform, y: transform) -> transformf
+.. function:: add(x: transform_t[<class 'warp.types.float16'>], y: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]
 
 
-.. function:: add(x: transform_class, y: transform_class) -> transform_class
-
-
-.. function:: sub(x: int8, y: int8) -> int8
-
-
-.. function:: sub(x: uint64, y: uint64) -> uint64
-
-
-.. function:: sub(x: uint16, y: uint16) -> uint16
-
-
-.. function:: sub(x: float64, y: float64) -> float64
-
-
-.. function:: sub(x: int32, y: int32) -> int32
-
-
-.. function:: sub(x: int64, y: int64) -> int64
+.. function:: add(x: transform_t[~Scalar], y: transform_t[~Scalar]) -> transform_t[~Scalar]
 
 
 .. function:: sub(x: uint32, y: uint32) -> uint32
 
 
-.. function:: sub(x: float32, y: float32) -> float32
+.. function:: sub(x: int16, y: int16) -> int16
 
 
-.. function:: sub(x: uint8, y: uint8) -> uint8
+.. function:: sub(x: float64, y: float64) -> float64
+
+
+.. function:: sub(x: int8, y: int8) -> int8
 
 
 .. function:: sub(x: float16, y: float16) -> float16
 
 
-.. function:: sub(x: int16, y: int16) -> int16
+.. function:: sub(x: uint16, y: uint16) -> uint16
+
+
+.. function:: sub(x: int32, y: int32) -> int32
+
+
+.. function:: sub(x: uint64, y: uint64) -> uint64
+
+
+.. function:: sub(x: float32, y: float32) -> float32
+
+
+.. function:: sub(x: int64, y: int64) -> int64
+
+
+.. function:: sub(x: uint8, y: uint8) -> uint8
 
 
 .. function:: sub(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: sub(x: vec2d, y: vec2d) -> vec2d
+.. function:: sub(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
 
-.. function:: sub(x: vec3d, y: vec3d) -> vec3d
+.. function:: sub(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
 
-.. function:: sub(x: vec4d, y: vec4d) -> vec4d
+.. function:: sub(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
 
-.. function:: sub(x: vec2ub, y: vec2ub) -> vec2ub
+.. function:: sub(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec3ub, y: vec3ub) -> vec3ub
+.. function:: sub(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec4ub, y: vec4ub) -> vec4ub
+.. function:: sub(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec2h, y: vec2h) -> vec2h
+.. function:: sub(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec3h, y: vec3h) -> vec3h
+.. function:: sub(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec4h, y: vec4h) -> vec4h
+.. function:: sub(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec2f, y: vec2f) -> vec2f
+.. function:: sub(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec2f, y: vec2) -> vec2f
+.. function:: sub(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec2, y: vec2f) -> vec2f
+.. function:: sub(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec2, y: vec2) -> vec2f
+.. function:: sub(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec3f, y: vec3f) -> vec3f
+.. function:: sub(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec3f, y: vec3) -> vec3f
+.. function:: sub(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: vec3, y: vec3f) -> vec3f
+.. function:: sub(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]
 
 
-.. function:: sub(x: vec3, y: vec3) -> vec3f
+.. function:: sub(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
 
-.. function:: sub(x: vec4f, y: vec4f) -> vec4f
+.. function:: sub(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]
 
 
-.. function:: sub(x: vec4f, y: vec4) -> vec4f
+.. function:: sub(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
 
-.. function:: sub(x: vec4, y: vec4f) -> vec4f
+.. function:: sub(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
 
-.. function:: sub(x: vec4, y: vec4) -> vec4f
+.. function:: sub(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
 
-.. function:: sub(x: vector_t, y: vector_t) -> vector_t
+.. function:: sub(x: vec[typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
 
-.. function:: sub(x: mat22d, y: mat22d) -> mat22d
+.. function:: sub(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
 
-.. function:: sub(x: mat33d, y: mat33d) -> mat33d
+.. function:: sub(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
 
-.. function:: sub(x: mat44d, y: mat44d) -> mat44d
+.. function:: sub(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
 
-.. function:: sub(x: mat22h, y: mat22h) -> mat22h
+.. function:: sub(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat33h, y: mat33h) -> mat33h
+.. function:: sub(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat44h, y: mat44h) -> mat44h
+.. function:: sub(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat22f, y: mat22f) -> mat22f
+.. function:: sub(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat22f, y: mat22) -> mat22f
+.. function:: sub(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat22, y: mat22f) -> mat22f
+.. function:: sub(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat22, y: mat22) -> mat22f
+.. function:: sub(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat33f, y: mat33f) -> mat33f
+.. function:: sub(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat33f, y: mat33) -> mat33f
+.. function:: sub(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat33, y: mat33f) -> mat33f
+.. function:: sub(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat33, y: mat33) -> mat33f
+.. function:: sub(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat44f, y: mat44f) -> mat44f
+.. function:: sub(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: sub(x: mat44f, y: mat44) -> mat44f
+.. function:: sub(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
 
-.. function:: sub(x: mat44, y: mat44f) -> mat44f
+.. function:: sub(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
 
-.. function:: sub(x: mat44, y: mat44) -> mat44f
+.. function:: sub(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
 
-.. function:: sub(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: sub(x: mat[typing.Any, typing.Any, ~Scalar], y: mat[typing.Any, typing.Any, ~Scalar]) -> mat[typing.Any, typing.Any, ~Scalar]
 
 
-.. function:: sub(x: spatial_vectord, y: spatial_vectord) -> spatial_vectord
+.. function:: sub(x: spatial_vector_t[<class 'warp.types.float64'>], y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]
 
 
-.. function:: sub(x: spatial_vectorh, y: spatial_vectorh) -> spatial_vectorh
+.. function:: sub(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: spatial_vectorf, y: spatial_vectorf) -> spatial_vectorf
+.. function:: sub(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: spatial_vectorf, y: spatial_vector) -> spatial_vectorf
+.. function:: sub(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: spatial_vector, y: spatial_vectorf) -> spatial_vectorf
+.. function:: sub(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: spatial_vector, y: spatial_vector) -> spatial_vectorf
+.. function:: sub(x: spatial_vector_t[<class 'warp.types.float16'>], y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]
 
 
-.. function:: sub(x: vector_t, y: vector_t) -> vector_t
+.. function:: sub(x: spatial_vector_t[~Scalar], y: spatial_vector_t[~Scalar]) -> spatial_vector_t[~Scalar]
 
 
-.. function:: sub(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
+.. function:: sub(x: spatial_matrix_t[<class 'warp.types.float64'>], y: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]
 
 
-.. function:: sub(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh
+.. function:: sub(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: spatial_matrixf, y: spatial_matrixf) -> spatial_matrixf
+.. function:: sub(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: spatial_matrixf, y: spatial_matrix) -> spatial_matrixf
+.. function:: sub(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: spatial_matrix, y: spatial_matrixf) -> spatial_matrixf
+.. function:: sub(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: spatial_matrix, y: spatial_matrix) -> spatial_matrixf
+.. function:: sub(x: spatial_matrix_t[<class 'warp.types.float16'>], y: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]
 
 
-.. function:: sub(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: sub(x: spatial_matrix_t[~Scalar], y: spatial_matrix_t[~Scalar]) -> spatial_matrix_t[~Scalar]
 
 
-.. function:: sub(x: quatd, y: quatd) -> quatd
+.. function:: sub(x: quaternion[<class 'warp.types.float64'>], y: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
 
-.. function:: sub(x: quath, y: quath) -> quath
+.. function:: sub(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: quatf, y: quatf) -> quatf
+.. function:: sub(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: quatf, y: quat) -> quatf
+.. function:: sub(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: quat, y: quatf) -> quatf
+.. function:: sub(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: quat, y: quat) -> quatf
+.. function:: sub(x: quaternion[<class 'warp.types.float16'>], y: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
 
-.. function:: sub(x: vector_t, y: vector_t) -> vector_t
+.. function:: sub(x: quaternion[~Scalar], y: quaternion[~Scalar]) -> quaternion[~Scalar]
 
 
-.. function:: sub(x: transformd, y: transformd) -> transformd
+.. function:: sub(x: transform_t[<class 'warp.types.float64'>], y: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]
 
 
-.. function:: sub(x: transformh, y: transformh) -> transformh
+.. function:: sub(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: transformf, y: transformf) -> transformf
+.. function:: sub(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: transformf, y: transform) -> transformf
+.. function:: sub(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: transform, y: transformf) -> transformf
+.. function:: sub(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: sub(x: transform, y: transform) -> transformf
+.. function:: sub(x: transform_t[<class 'warp.types.float16'>], y: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]
 
 
-.. function:: sub(x: transform_class, y: transform_class) -> transform_class
-
-
-.. function:: mul(x: int8, y: int8) -> int8
-
-
-.. function:: mul(x: uint64, y: uint64) -> uint64
-
-
-.. function:: mul(x: uint16, y: uint16) -> uint16
-
-
-.. function:: mul(x: float64, y: float64) -> float64
-
-
-.. function:: mul(x: int32, y: int32) -> int32
-
-
-.. function:: mul(x: int64, y: int64) -> int64
+.. function:: sub(x: transform_t[~Scalar], y: transform_t[~Scalar]) -> transform_t[~Scalar]
 
 
 .. function:: mul(x: uint32, y: uint32) -> uint32
 
 
-.. function:: mul(x: float32, y: float32) -> float32
+.. function:: mul(x: int16, y: int16) -> int16
 
 
-.. function:: mul(x: uint8, y: uint8) -> uint8
+.. function:: mul(x: float64, y: float64) -> float64
+
+
+.. function:: mul(x: int8, y: int8) -> int8
 
 
 .. function:: mul(x: float16, y: float16) -> float16
 
 
-.. function:: mul(x: int16, y: int16) -> int16
+.. function:: mul(x: uint16, y: uint16) -> uint16
+
+
+.. function:: mul(x: int32, y: int32) -> int32
+
+
+.. function:: mul(x: uint64, y: uint64) -> uint64
+
+
+.. function:: mul(x: float32, y: float32) -> float32
+
+
+.. function:: mul(x: int64, y: int64) -> int64
+
+
+.. function:: mul(x: uint8, y: uint8) -> uint8
 
 
 .. function:: mul(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: mul(x: vec2ub, y: uint8) -> vec2ub
+.. function:: mul(x: vec[2, <class 'warp.types.float64'>], y: float64) -> vec[2, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: vec3ub, y: uint8) -> vec3ub
+.. function:: mul(x: vec[3, <class 'warp.types.float64'>], y: float64) -> vec[3, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: vec4ub, y: uint8) -> vec4ub
+.. function:: mul(x: vec[4, <class 'warp.types.float64'>], y: float64) -> vec[4, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: vec2h, y: float16) -> vec2h
+.. function:: mul(x: vec[2, <class 'warp.types.float16'>], y: float16) -> vec[2, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: vec3h, y: float16) -> vec3h
+.. function:: mul(x: vec[3, <class 'warp.types.float16'>], y: float16) -> vec[3, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: vec4h, y: float16) -> vec4h
+.. function:: mul(x: vec[4, <class 'warp.types.float16'>], y: float16) -> vec[4, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: vec2f, y: float32) -> vec2f
+.. function:: mul(x: vec[2, <class 'warp.types.uint8'>], y: uint8) -> vec[2, <class 'warp.types.uint8'>]
 
 
-.. function:: mul(x: vec2, y: float32) -> vec2f
+.. function:: mul(x: vec[3, <class 'warp.types.uint8'>], y: uint8) -> vec[3, <class 'warp.types.uint8'>]
 
 
-.. function:: mul(x: vec3f, y: float32) -> vec3f
+.. function:: mul(x: vec[4, <class 'warp.types.uint8'>], y: uint8) -> vec[4, <class 'warp.types.uint8'>]
 
 
-.. function:: mul(x: vec3, y: float32) -> vec3f
+.. function:: mul(x: vec[2, <class 'warp.types.float32'>], y: float32) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: vec4f, y: float32) -> vec4f
+.. function:: mul(x: vec[2, <class 'warp.types.float32'>], y: float32) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: vec4, y: float32) -> vec4f
+.. function:: mul(x: vec[3, <class 'warp.types.float32'>], y: float32) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: vec2d, y: float64) -> vec2d
+.. function:: mul(x: vec[3, <class 'warp.types.float32'>], y: float32) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: vec3d, y: float64) -> vec3d
+.. function:: mul(x: vec[4, <class 'warp.types.float32'>], y: float32) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: vec4d, y: float64) -> vec4d
+.. function:: mul(x: vec[4, <class 'warp.types.float32'>], y: float32) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: vector_t, y: Scalar) -> vector_t
+.. function:: mul(x: vec[typing.Any, ~Scalar], y: Scalar) -> vec[typing.Any, ~Scalar]
 
 
-.. function:: mul(x: uint8, y: vec2ub) -> vec2ub
+.. function:: mul(x: float64, y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: uint8, y: vec3ub) -> vec3ub
+.. function:: mul(x: float64, y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: uint8, y: vec4ub) -> vec4ub
+.. function:: mul(x: float64, y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: float16, y: vec2h) -> vec2h
+.. function:: mul(x: float16, y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float16, y: vec3h) -> vec3h
+.. function:: mul(x: float16, y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float16, y: vec4h) -> vec4h
+.. function:: mul(x: float16, y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float32, y: vec2f) -> vec2f
+.. function:: mul(x: uint8, y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]
 
 
-.. function:: mul(x: float32, y: vec2) -> vec2f
+.. function:: mul(x: uint8, y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
 
-.. function:: mul(x: float32, y: vec3f) -> vec3f
+.. function:: mul(x: uint8, y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]
 
 
-.. function:: mul(x: float32, y: vec3) -> vec3f
+.. function:: mul(x: float32, y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float32, y: vec4f) -> vec4f
+.. function:: mul(x: float32, y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float32, y: vec4) -> vec4f
+.. function:: mul(x: float32, y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: vec2d) -> vec2d
+.. function:: mul(x: float32, y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: vec3d) -> vec3d
+.. function:: mul(x: float32, y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: vec4d) -> vec4d
+.. function:: mul(x: float32, y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: Scalar, y: vector_t) -> vector_t
+.. function:: mul(x: Scalar, y: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
 
-.. function:: mul(x: quath, y: float16) -> quath
+.. function:: mul(x: quaternion[<class 'warp.types.float64'>], y: float64) -> quaternion[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: quatf, y: float32) -> quatf
+.. function:: mul(x: quaternion[<class 'warp.types.float16'>], y: float16) -> quaternion[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: quat, y: float32) -> quatf
+.. function:: mul(x: quaternion[<class 'warp.types.float32'>], y: float32) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: quatd, y: float64) -> quatd
+.. function:: mul(x: quaternion[<class 'warp.types.float32'>], y: float32) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: vector_t, y: Scalar) -> vector_t
+.. function:: mul(x: quaternion[~Scalar], y: Scalar) -> quaternion[~Scalar]
 
 
-.. function:: mul(x: float16, y: quath) -> quath
+.. function:: mul(x: float64, y: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: float32, y: quatf) -> quatf
+.. function:: mul(x: float16, y: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float32, y: quat) -> quatf
+.. function:: mul(x: float32, y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: quatd) -> quatd
+.. function:: mul(x: float32, y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: Scalar, y: vector_t) -> vector_t
+.. function:: mul(x: Scalar, y: quaternion[~Scalar]) -> quaternion[~Scalar]
 
 
-.. function:: mul(x: quatd, y: quatd) -> quatd
+.. function:: mul(x: quaternion[<class 'warp.types.float64'>], y: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: quath, y: quath) -> quath
+.. function:: mul(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: quatf, y: quatf) -> quatf
+.. function:: mul(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: quatf, y: quat) -> quatf
+.. function:: mul(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: quat, y: quatf) -> quatf
+.. function:: mul(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: quat, y: quat) -> quatf
+.. function:: mul(x: quaternion[<class 'warp.types.float16'>], y: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: vector_t, y: vector_t) -> vector_t
+.. function:: mul(x: quaternion[~Scalar], y: quaternion[~Scalar]) -> quaternion[~Scalar]
 
 
-.. function:: mul(x: float16, y: mat22h) -> mat22h
+.. function:: mul(x: float64, y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: float16, y: mat33h) -> mat33h
+.. function:: mul(x: float64, y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: float16, y: mat44h) -> mat44h
+.. function:: mul(x: float64, y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: float32, y: mat22f) -> mat22f
+.. function:: mul(x: float16, y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float32, y: mat22) -> mat22f
+.. function:: mul(x: float16, y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float32, y: mat33f) -> mat33f
+.. function:: mul(x: float16, y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float32, y: mat33) -> mat33f
+.. function:: mul(x: float32, y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float32, y: mat44f) -> mat44f
+.. function:: mul(x: float32, y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float32, y: mat44) -> mat44f
+.. function:: mul(x: float32, y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: mat22d) -> mat22d
+.. function:: mul(x: float32, y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: mat33d) -> mat33d
+.. function:: mul(x: float32, y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: mat44d) -> mat44d
+.. function:: mul(x: float32, y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: Scalar, y: matrix_t) -> matrix_t
+.. function:: mul(x: Scalar, y: mat[typing.Any, typing.Any, ~Scalar]) -> mat[typing.Any, typing.Any, ~Scalar]
 
 
-.. function:: mul(x: mat22h, y: float16) -> mat22h
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float64'>], y: float64) -> mat[2, 2, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat33h, y: float16) -> mat33h
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float64'>], y: float64) -> mat[3, 3, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat44h, y: float16) -> mat44h
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float64'>], y: float64) -> mat[4, 4, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat22f, y: float32) -> mat22f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float16'>], y: float16) -> mat[2, 2, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: mat22, y: float32) -> mat22f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float16'>], y: float16) -> mat[3, 3, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: mat33f, y: float32) -> mat33f
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float16'>], y: float16) -> mat[4, 4, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: mat33, y: float32) -> mat33f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: float32) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44f, y: float32) -> mat44f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: float32) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44, y: float32) -> mat44f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: float32) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat22d, y: float64) -> mat22d
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: float32) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33d, y: float64) -> mat33d
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: float32) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44d, y: float64) -> mat44d
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: float32) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: matrix_t, y: Scalar) -> matrix_t
+.. function:: mul(x: mat[typing.Any, typing.Any, ~Scalar], y: Scalar) -> mat[typing.Any, typing.Any, ~Scalar]
 
 
-.. function:: mul(x: mat22h, y: vec2h) -> vec2h
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat33h, y: vec3h) -> vec3h
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat44h, y: vec4h) -> vec4h
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat22f, y: vec2f) -> vec2f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: mat22f, y: vec2) -> vec2f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: mat22, y: vec2f) -> vec2f
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: mat22, y: vec2) -> vec2f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33f, y: vec3f) -> vec3f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33f, y: vec3) -> vec3f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33, y: vec3f) -> vec3f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33, y: vec3) -> vec3f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44f, y: vec4f) -> vec4f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44f, y: vec4) -> vec4f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44, y: vec4f) -> vec4f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44, y: vec4) -> vec4f
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat22d, y: vec2d) -> vec2d
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33d, y: vec3d) -> vec3d
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44d, y: vec4d) -> vec4d
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: matrix_t, y: vector_t) -> vector_t
+.. function:: mul(x: mat[typing.Any, typing.Any, ~Scalar], y: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
 
-.. function:: mul(x: mat22d, y: mat22d) -> mat22d
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat33d, y: mat33d) -> mat33d
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat44d, y: mat44d) -> mat44d
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
 
-.. function:: mul(x: mat22h, y: mat22h) -> mat22h
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33h, y: mat33h) -> mat33h
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44h, y: mat44h) -> mat44h
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat22f, y: mat22f) -> mat22f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat22f, y: mat22) -> mat22f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat22, y: mat22f) -> mat22f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat22, y: mat22) -> mat22f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33f, y: mat33f) -> mat33f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33f, y: mat33) -> mat33f
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33, y: mat33f) -> mat33f
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat33, y: mat33) -> mat33f
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44f, y: mat44f) -> mat44f
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: mul(x: mat44f, y: mat44) -> mat44f
+.. function:: mul(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: mat44, y: mat44f) -> mat44f
+.. function:: mul(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: mat44, y: mat44) -> mat44f
+.. function:: mul(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
 
-.. function:: mul(x: matrix_t, y: matrix_t)
+.. function:: mul(x: mat[typing.Any, typing.Any, ~Scalar], y: mat[typing.Any, typing.Any, ~Scalar])
 
 
-.. function:: mul(x: spatial_vectorh, y: float16) -> spatial_vectorh
+.. function:: mul(x: spatial_vector_t[<class 'warp.types.float64'>], y: float64) -> spatial_vector_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: spatial_vectorf, y: float32) -> spatial_vectorf
+.. function:: mul(x: spatial_vector_t[<class 'warp.types.float16'>], y: float16) -> spatial_vector_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: spatial_vector, y: float32) -> spatial_vectorf
+.. function:: mul(x: spatial_vector_t[<class 'warp.types.float32'>], y: float32) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_vectord, y: float64) -> spatial_vectord
+.. function:: mul(x: spatial_vector_t[<class 'warp.types.float32'>], y: float32) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: vector_t, y: Scalar) -> vector_t
+.. function:: mul(x: spatial_vector_t[~Scalar], y: Scalar) -> spatial_vector_t[~Scalar]
 
 
-.. function:: mul(x: float16, y: spatial_vectorh) -> spatial_vectorh
+.. function:: mul(x: float64, y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: float32, y: spatial_vectorf) -> spatial_vectorf
+.. function:: mul(x: float16, y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float32, y: spatial_vector) -> spatial_vectorf
+.. function:: mul(x: float32, y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: spatial_vectord) -> spatial_vectord
+.. function:: mul(x: float32, y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: Scalar, y: vector_t) -> vector_t
+.. function:: mul(x: Scalar, y: spatial_vector_t[~Scalar]) -> spatial_vector_t[~Scalar]
 
 
-.. function:: mul(x: spatial_matrixd, y: spatial_matrixd) -> spatial_matrixd
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float64'>], y: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: spatial_matrixh, y: spatial_matrixh) -> spatial_matrixh
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_matrixf, y: spatial_matrixf) -> spatial_matrixf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_matrixf, y: spatial_matrix) -> spatial_matrixf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_matrix, y: spatial_matrixf) -> spatial_matrixf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_matrix, y: spatial_matrix) -> spatial_matrixf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float16'>], y: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: mul(x: spatial_matrix_t[~Scalar], y: spatial_matrix_t[~Scalar]) -> spatial_matrix_t[~Scalar]
 
 
-.. function:: mul(x: spatial_matrixh, y: spatial_vectorh) -> spatial_vectorh
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float64'>], y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: spatial_matrixf, y: spatial_vectorf) -> spatial_vectorf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float16'>], y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: spatial_matrixf, y: spatial_vector) -> spatial_vectorf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_matrix, y: spatial_vectorf) -> spatial_vectorf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_matrix, y: spatial_vector) -> spatial_vectorf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_matrixd, y: spatial_vectord) -> spatial_vectord
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: matrix_t, y: vector_t) -> vector_t
+.. function:: mul(x: spatial_matrix_t[~Scalar], y: spatial_vector_t[~Scalar]) -> spatial_vector_t[~Scalar]
 
 
-.. function:: mul(x: spatial_matrixh, y: float16) -> spatial_matrixh
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float64'>], y: float64) -> spatial_matrix_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: spatial_matrixf, y: float32) -> spatial_matrixf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float16'>], y: float16) -> spatial_matrix_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: spatial_matrix, y: float32) -> spatial_matrixf
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: float32) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: spatial_matrixd, y: float64) -> spatial_matrixd
+.. function:: mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: float32) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: matrix_t, y: Scalar) -> matrix_t
+.. function:: mul(x: spatial_matrix_t[~Scalar], y: Scalar) -> spatial_matrix_t[~Scalar]
 
 
-.. function:: mul(x: float16, y: spatial_matrixh) -> spatial_matrixh
+.. function:: mul(x: float64, y: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: float32, y: spatial_matrixf) -> spatial_matrixf
+.. function:: mul(x: float16, y: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float32, y: spatial_matrix) -> spatial_matrixf
+.. function:: mul(x: float32, y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: spatial_matrixd) -> spatial_matrixd
+.. function:: mul(x: float32, y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: Scalar, y: matrix_t) -> matrix_t
+.. function:: mul(x: Scalar, y: spatial_matrix_t[~Scalar]) -> spatial_matrix_t[~Scalar]
 
 
-.. function:: mul(x: transformd, y: transformd) -> transformd
+.. function:: mul(x: transform_t[<class 'warp.types.float64'>], y: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: transformh, y: transformh) -> transformh
+.. function:: mul(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: transformf, y: transformf) -> transformf
+.. function:: mul(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: transformf, y: transform) -> transformf
+.. function:: mul(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: transform, y: transformf) -> transformf
+.. function:: mul(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: transform, y: transform) -> transformf
+.. function:: mul(x: transform_t[<class 'warp.types.float16'>], y: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: transform_class, y: transform_class) -> transform_class
+.. function:: mul(x: transform_t[~Scalar], y: transform_t[~Scalar]) -> transform_t[~Scalar]
 
 
-.. function:: mul(x: float16, y: transformh) -> transformh
+.. function:: mul(x: float64, y: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: float32, y: transformf) -> transformf
+.. function:: mul(x: float16, y: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: float32, y: transform) -> transformf
+.. function:: mul(x: float32, y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: float64, y: transformd) -> transformd
+.. function:: mul(x: float32, y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: Scalar, y: transform_class) -> transform_class
+.. function:: mul(x: Scalar, y: transform_t[~Scalar]) -> transform_t[~Scalar]
 
 
-.. function:: mul(x: transformh, y: float16) -> transformh
+.. function:: mul(x: transform_t[<class 'warp.types.float64'>], y: float64) -> transform_t[<class 'warp.types.float64'>]
 
 
-.. function:: mul(x: transformf, y: float32) -> transformf
+.. function:: mul(x: transform_t[<class 'warp.types.float16'>], y: float16) -> transform_t[<class 'warp.types.float16'>]
 
 
-.. function:: mul(x: transform, y: float32) -> transformf
+.. function:: mul(x: transform_t[<class 'warp.types.float32'>], y: float32) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: transformd, y: float64) -> transformd
+.. function:: mul(x: transform_t[<class 'warp.types.float32'>], y: float32) -> transform_t[<class 'warp.types.float32'>]
 
 
-.. function:: mul(x: transform_class, y: Scalar) -> transform_class
-
-
-.. function:: mod(x: int8, y: int8) -> int8
-
-
-.. function:: mod(x: uint64, y: uint64) -> uint64
-
-
-.. function:: mod(x: uint16, y: uint16) -> uint16
-
-
-.. function:: mod(x: float64, y: float64) -> float64
-
-
-.. function:: mod(x: int32, y: int32) -> int32
-
-
-.. function:: mod(x: int64, y: int64) -> int64
+.. function:: mul(x: transform_t[~Scalar], y: Scalar) -> transform_t[~Scalar]
 
 
 .. function:: mod(x: uint32, y: uint32) -> uint32
 
 
-.. function:: mod(x: float32, y: float32) -> float32
+.. function:: mod(x: int16, y: int16) -> int16
 
 
-.. function:: mod(x: uint8, y: uint8) -> uint8
+.. function:: mod(x: float64, y: float64) -> float64
+
+
+.. function:: mod(x: int8, y: int8) -> int8
 
 
 .. function:: mod(x: float16, y: float16) -> float16
 
 
-.. function:: mod(x: int16, y: int16) -> int16
+.. function:: mod(x: uint16, y: uint16) -> uint16
+
+
+.. function:: mod(x: int32, y: int32) -> int32
+
+
+.. function:: mod(x: uint64, y: uint64) -> uint64
+
+
+.. function:: mod(x: float32, y: float32) -> float32
+
+
+.. function:: mod(x: int64, y: int64) -> int64
+
+
+.. function:: mod(x: uint8, y: uint8) -> uint8
 
 
 .. function:: mod(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: div(x: int8, y: int8) -> int8
-
-
-.. function:: div(x: uint64, y: uint64) -> uint64
-
-
-.. function:: div(x: uint16, y: uint16) -> uint16
-
-
-.. function:: div(x: float64, y: float64) -> float64
-
-
-.. function:: div(x: int32, y: int32) -> int32
-
-
-.. function:: div(x: int64, y: int64) -> int64
-
-
 .. function:: div(x: uint32, y: uint32) -> uint32
-
-
-.. function:: div(x: float32, y: float32) -> float32
-
-
-.. function:: div(x: uint8, y: uint8) -> uint8
-
-
-.. function:: div(x: float16, y: float16) -> float16
 
 
 .. function:: div(x: int16, y: int16) -> int16
 
 
+.. function:: div(x: float64, y: float64) -> float64
+
+
+.. function:: div(x: int8, y: int8) -> int8
+
+
+.. function:: div(x: float16, y: float16) -> float16
+
+
+.. function:: div(x: uint16, y: uint16) -> uint16
+
+
+.. function:: div(x: int32, y: int32) -> int32
+
+
+.. function:: div(x: uint64, y: uint64) -> uint64
+
+
+.. function:: div(x: float32, y: float32) -> float32
+
+
+.. function:: div(x: int64, y: int64) -> int64
+
+
+.. function:: div(x: uint8, y: uint8) -> uint8
+
+
 .. function:: div(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: div(x: vec2ub, y: uint8) -> vec2ub
+.. function:: div(x: vec[2, <class 'warp.types.float64'>], y: float64) -> vec[2, <class 'warp.types.float64'>]
 
 
-.. function:: div(x: vec3ub, y: uint8) -> vec3ub
+.. function:: div(x: vec[3, <class 'warp.types.float64'>], y: float64) -> vec[3, <class 'warp.types.float64'>]
 
 
-.. function:: div(x: vec4ub, y: uint8) -> vec4ub
+.. function:: div(x: vec[4, <class 'warp.types.float64'>], y: float64) -> vec[4, <class 'warp.types.float64'>]
 
 
-.. function:: div(x: vec2h, y: float16) -> vec2h
+.. function:: div(x: vec[2, <class 'warp.types.float16'>], y: float16) -> vec[2, <class 'warp.types.float16'>]
 
 
-.. function:: div(x: vec3h, y: float16) -> vec3h
+.. function:: div(x: vec[3, <class 'warp.types.float16'>], y: float16) -> vec[3, <class 'warp.types.float16'>]
 
 
-.. function:: div(x: vec4h, y: float16) -> vec4h
+.. function:: div(x: vec[4, <class 'warp.types.float16'>], y: float16) -> vec[4, <class 'warp.types.float16'>]
 
 
-.. function:: div(x: vec2f, y: float32) -> vec2f
+.. function:: div(x: vec[2, <class 'warp.types.uint8'>], y: uint8) -> vec[2, <class 'warp.types.uint8'>]
 
 
-.. function:: div(x: vec2, y: float32) -> vec2f
+.. function:: div(x: vec[3, <class 'warp.types.uint8'>], y: uint8) -> vec[3, <class 'warp.types.uint8'>]
 
 
-.. function:: div(x: vec3f, y: float32) -> vec3f
+.. function:: div(x: vec[4, <class 'warp.types.uint8'>], y: uint8) -> vec[4, <class 'warp.types.uint8'>]
 
 
-.. function:: div(x: vec3, y: float32) -> vec3f
+.. function:: div(x: vec[2, <class 'warp.types.float32'>], y: float32) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: vec4f, y: float32) -> vec4f
+.. function:: div(x: vec[2, <class 'warp.types.float32'>], y: float32) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: vec4, y: float32) -> vec4f
+.. function:: div(x: vec[3, <class 'warp.types.float32'>], y: float32) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: vec2d, y: float64) -> vec2d
+.. function:: div(x: vec[3, <class 'warp.types.float32'>], y: float32) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: vec3d, y: float64) -> vec3d
+.. function:: div(x: vec[4, <class 'warp.types.float32'>], y: float32) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: vec4d, y: float64) -> vec4d
+.. function:: div(x: vec[4, <class 'warp.types.float32'>], y: float32) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: vector_t, y: Scalar) -> vector_t
+.. function:: div(x: vec[typing.Any, ~Scalar], y: Scalar) -> vec[typing.Any, ~Scalar]
 
 
-.. function:: div(x: mat22h, y: float16) -> mat22h
+.. function:: div(x: mat[2, 2, <class 'warp.types.float64'>], y: float64) -> mat[2, 2, <class 'warp.types.float64'>]
 
 
-.. function:: div(x: mat33h, y: float16) -> mat33h
+.. function:: div(x: mat[3, 3, <class 'warp.types.float64'>], y: float64) -> mat[3, 3, <class 'warp.types.float64'>]
 
 
-.. function:: div(x: mat44h, y: float16) -> mat44h
+.. function:: div(x: mat[4, 4, <class 'warp.types.float64'>], y: float64) -> mat[4, 4, <class 'warp.types.float64'>]
 
 
-.. function:: div(x: mat22f, y: float32) -> mat22f
+.. function:: div(x: mat[2, 2, <class 'warp.types.float16'>], y: float16) -> mat[2, 2, <class 'warp.types.float16'>]
 
 
-.. function:: div(x: mat22, y: float32) -> mat22f
+.. function:: div(x: mat[3, 3, <class 'warp.types.float16'>], y: float16) -> mat[3, 3, <class 'warp.types.float16'>]
 
 
-.. function:: div(x: mat33f, y: float32) -> mat33f
+.. function:: div(x: mat[4, 4, <class 'warp.types.float16'>], y: float16) -> mat[4, 4, <class 'warp.types.float16'>]
 
 
-.. function:: div(x: mat33, y: float32) -> mat33f
+.. function:: div(x: mat[2, 2, <class 'warp.types.float32'>], y: float32) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: mat44f, y: float32) -> mat44f
+.. function:: div(x: mat[2, 2, <class 'warp.types.float32'>], y: float32) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: mat44, y: float32) -> mat44f
+.. function:: div(x: mat[3, 3, <class 'warp.types.float32'>], y: float32) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: mat22d, y: float64) -> mat22d
+.. function:: div(x: mat[3, 3, <class 'warp.types.float32'>], y: float32) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: mat33d, y: float64) -> mat33d
+.. function:: div(x: mat[4, 4, <class 'warp.types.float32'>], y: float32) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: mat44d, y: float64) -> mat44d
+.. function:: div(x: mat[4, 4, <class 'warp.types.float32'>], y: float32) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: div(x: matrix_t, y: Scalar) -> matrix_t
+.. function:: div(x: mat[typing.Any, typing.Any, ~Scalar], y: Scalar) -> mat[typing.Any, typing.Any, ~Scalar]
 
 
-.. function:: div(x: quath, y: float16) -> quath
+.. function:: div(x: quaternion[<class 'warp.types.float64'>], y: float64) -> quaternion[<class 'warp.types.float64'>]
 
 
-.. function:: div(x: quatf, y: float32) -> quatf
+.. function:: div(x: quaternion[<class 'warp.types.float16'>], y: float16) -> quaternion[<class 'warp.types.float16'>]
 
 
-.. function:: div(x: quat, y: float32) -> quatf
+.. function:: div(x: quaternion[<class 'warp.types.float32'>], y: float32) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: div(x: quatd, y: float64) -> quatd
+.. function:: div(x: quaternion[<class 'warp.types.float32'>], y: float32) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: div(x: vector_t, y: Scalar) -> vector_t
-
-
-.. function:: floordiv(x: int8, y: int8) -> int8
-
-
-.. function:: floordiv(x: uint64, y: uint64) -> uint64
-
-
-.. function:: floordiv(x: uint16, y: uint16) -> uint16
-
-
-.. function:: floordiv(x: float64, y: float64) -> float64
-
-
-.. function:: floordiv(x: int32, y: int32) -> int32
-
-
-.. function:: floordiv(x: int64, y: int64) -> int64
+.. function:: div(x: quaternion[~Scalar], y: Scalar) -> quaternion[~Scalar]
 
 
 .. function:: floordiv(x: uint32, y: uint32) -> uint32
 
 
-.. function:: floordiv(x: float32, y: float32) -> float32
+.. function:: floordiv(x: int16, y: int16) -> int16
 
 
-.. function:: floordiv(x: uint8, y: uint8) -> uint8
+.. function:: floordiv(x: float64, y: float64) -> float64
+
+
+.. function:: floordiv(x: int8, y: int8) -> int8
 
 
 .. function:: floordiv(x: float16, y: float16) -> float16
 
 
-.. function:: floordiv(x: int16, y: int16) -> int16
+.. function:: floordiv(x: uint16, y: uint16) -> uint16
+
+
+.. function:: floordiv(x: int32, y: int32) -> int32
+
+
+.. function:: floordiv(x: uint64, y: uint64) -> uint64
+
+
+.. function:: floordiv(x: float32, y: float32) -> float32
+
+
+.. function:: floordiv(x: int64, y: int64) -> int64
+
+
+.. function:: floordiv(x: uint8, y: uint8) -> uint8
 
 
 .. function:: floordiv(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: neg(x: int8) -> int8
-
-
-.. function:: neg(x: uint64) -> uint64
-
-
-.. function:: neg(x: uint16) -> uint16
-
-
-.. function:: neg(x: float64) -> float64
-
-
-.. function:: neg(x: int32) -> int32
-
-
-.. function:: neg(x: int64) -> int64
-
-
 .. function:: neg(x: uint32) -> uint32
-
-
-.. function:: neg(x: float32) -> float32
-
-
-.. function:: neg(x: uint8) -> uint8
-
-
-.. function:: neg(x: float16) -> float16
 
 
 .. function:: neg(x: int16) -> int16
 
 
+.. function:: neg(x: float64) -> float64
+
+
+.. function:: neg(x: int8) -> int8
+
+
+.. function:: neg(x: float16) -> float16
+
+
+.. function:: neg(x: uint16) -> uint16
+
+
+.. function:: neg(x: int32) -> int32
+
+
+.. function:: neg(x: uint64) -> uint64
+
+
+.. function:: neg(x: float32) -> float32
+
+
+.. function:: neg(x: int64) -> int64
+
+
+.. function:: neg(x: uint8) -> uint8
+
+
 .. function:: neg(x: Scalar) -> Scalar
 
 
-.. function:: neg(x: vec2d) -> vec2d
+.. function:: neg(x: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]
 
 
-.. function:: neg(x: vec3d) -> vec3d
+.. function:: neg(x: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]
 
 
-.. function:: neg(x: vec4d) -> vec4d
+.. function:: neg(x: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]
 
 
-.. function:: neg(x: vec2ub) -> vec2ub
+.. function:: neg(x: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: vec3ub) -> vec3ub
+.. function:: neg(x: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: vec4ub) -> vec4ub
+.. function:: neg(x: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: vec2h) -> vec2h
+.. function:: neg(x: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: vec3h) -> vec3h
+.. function:: neg(x: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: vec4h) -> vec4h
+.. function:: neg(x: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: vec2f) -> vec2f
+.. function:: neg(x: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]
 
 
-.. function:: neg(x: vec2) -> vec2f
+.. function:: neg(x: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]
 
 
-.. function:: neg(x: vec3f) -> vec3f
+.. function:: neg(x: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]
 
 
-.. function:: neg(x: vec3) -> vec3f
+.. function:: neg(x: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]
 
 
-.. function:: neg(x: vec4f) -> vec4f
+.. function:: neg(x: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]
 
 
-.. function:: neg(x: vec4) -> vec4f
+.. function:: neg(x: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]
 
 
-.. function:: neg(x: vector_t) -> vector_t
+.. function:: neg(x: vec[typing.Any, ~Scalar]) -> vec[typing.Any, ~Scalar]
 
 
-.. function:: neg(x: quatd) -> quatd
+.. function:: neg(x: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]
 
 
-.. function:: neg(x: quath) -> quath
+.. function:: neg(x: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: neg(x: quatf) -> quatf
+.. function:: neg(x: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]
 
 
-.. function:: neg(x: quat) -> quatf
+.. function:: neg(x: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]
 
 
-.. function:: neg(x: vector_t) -> vector_t
+.. function:: neg(x: quaternion[~Scalar]) -> quaternion[~Scalar]
 
 
-.. function:: neg(x: mat22d) -> mat22d
+.. function:: neg(x: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]
 
 
-.. function:: neg(x: mat33d) -> mat33d
+.. function:: neg(x: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]
 
 
-.. function:: neg(x: mat44d) -> mat44d
+.. function:: neg(x: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]
 
 
-.. function:: neg(x: mat22h) -> mat22h
+.. function:: neg(x: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: mat33h) -> mat33h
+.. function:: neg(x: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: mat44h) -> mat44h
+.. function:: neg(x: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: mat22f) -> mat22f
+.. function:: neg(x: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: mat22) -> mat22f
+.. function:: neg(x: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: mat33f) -> mat33f
+.. function:: neg(x: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]
 
 
-.. function:: neg(x: mat33) -> mat33f
+.. function:: neg(x: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]
 
 
-.. function:: neg(x: mat44f) -> mat44f
+.. function:: neg(x: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]
 
 
-.. function:: neg(x: mat44) -> mat44f
+.. function:: neg(x: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]
 
 
-.. function:: neg(x: matrix_t) -> matrix_t
+.. function:: neg(x: mat[typing.Any, typing.Any, ~Scalar]) -> mat[typing.Any, typing.Any, ~Scalar]
 
 
 .. function:: unot(b: bool) -> bool

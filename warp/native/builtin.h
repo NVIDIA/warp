@@ -46,6 +46,8 @@
 #define DO_IF_NO_FPCHECK(X) {X}
 #endif
 
+#define RAD_TO_DEG 57.29577951308232087679
+#define DEG_TO_RAD  0.01745329251994329577
 
 namespace wp
 {
@@ -843,16 +845,22 @@ inline CUDA_CALLABLE float tan(float x) { return ::tan(x); }
 inline CUDA_CALLABLE float sinh(float x) { return ::sinhf(x);}
 inline CUDA_CALLABLE float cosh(float x) { return ::coshf(x);}
 inline CUDA_CALLABLE float tanh(float x) { return ::tanhf(x);}
+inline CUDA_CALLABLE float degrees(float x) { return x * RAD_TO_DEG;}
+inline CUDA_CALLABLE float radians(float x) { return x * DEG_TO_RAD;}
 
 inline CUDA_CALLABLE double tan(double x) { return ::tan(x); }
 inline CUDA_CALLABLE double sinh(double x) { return ::sinh(x);}
 inline CUDA_CALLABLE double cosh(double x) { return ::cosh(x);}
 inline CUDA_CALLABLE double tanh(double x) { return ::tanh(x);}
+inline CUDA_CALLABLE double degrees(double x) { return x * RAD_TO_DEG;}
+inline CUDA_CALLABLE double radians(double x) { return x * DEG_TO_RAD;}
 
 inline CUDA_CALLABLE half tan(half x) { return ::tan(float(x)); }
 inline CUDA_CALLABLE half sinh(half x) { return ::sinhf(float(x));}
 inline CUDA_CALLABLE half cosh(half x) { return ::coshf(float(x));}
 inline CUDA_CALLABLE half tanh(half x) { return ::tanhf(float(x));}
+inline CUDA_CALLABLE half degrees(half x) { return x * RAD_TO_DEG;}
+inline CUDA_CALLABLE half radians(half x) { return x * DEG_TO_RAD;}
 
 inline CUDA_CALLABLE float round(float x) { return ::roundf(x); }
 inline CUDA_CALLABLE float rint(float x) { return ::rintf(x); }
@@ -1004,6 +1012,14 @@ inline CUDA_CALLABLE void adj_sqrt(T x, T& adj_x, T adj_ret)\
         printf("%s:%d - adj_sqrt(%f, %f, %f)\n", __FILE__, __LINE__, float(x), float(adj_x), float(adj_ret));\
         assert(0);\
     })\
+}\
+inline CUDA_CALLABLE void adj_degrees(T x, T& adj_x, T adj_ret)\
+{\
+    adj_x += RAD_TO_DEG * adj_ret;\
+}\
+inline CUDA_CALLABLE void adj_radians(T x, T& adj_x, T adj_ret)\
+{\
+    adj_x += DEG_TO_RAD * adj_ret;\
 }
 
 DECLARE_ADJOINTS(float16)
@@ -1095,7 +1111,7 @@ __device__ inline void set_launch_bounds(const launch_bounds_t& b)
 static launch_bounds_t s_launchBounds;
 static int s_threadIdx;
 
-void set_launch_bounds(const launch_bounds_t& b)
+inline void set_launch_bounds(const launch_bounds_t& b)
 {
     s_launchBounds = b;
 }

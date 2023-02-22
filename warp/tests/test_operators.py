@@ -231,7 +231,7 @@ def test_operators_mat44():
 
 def register(parent):
 
-    devices = wp.get_devices()
+    devices = get_test_devices()
 
     class TestOperators(parent):
         pass

@@ -54,6 +54,7 @@ import warp.tests.test_vec
 import warp.tests.test_mat
 import warp.tests.test_arithmetic
 import warp.tests.test_spatial
+import warp.tests.test_math
 
 
 def register_tests(parent):
@@ -104,6 +105,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_mat.register(parent))
     tests.append(warp.tests.test_arithmetic.register(parent))
     tests.append(warp.tests.test_spatial.register(parent))
+    tests.append(warp.tests.test_math.register(parent))
 
     return tests
 
@@ -175,7 +177,7 @@ class TeamCityTestRunner(unittest.TextTestRunner):
 def run():
 
     test_suite = unittest.TestSuite()
-
+    
     tests = register_tests(unittest.TestCase)
 
     for test in tests:
@@ -187,7 +189,7 @@ def run():
     # load all modules
     wp.force_load()
 
-    runner = TeamCityTestRunner(verbosity=2, failfast=False)
+    runner = TeamCityTestRunner(verbosity=2, failfast=True)
     ret = not runner.run(test_suite, "WarpTests").wasSuccessful()
     return ret
 
