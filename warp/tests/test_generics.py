@@ -94,7 +94,7 @@ wp.overload(generic_array_kernel_v2, [wp.array(dtype=wp.vec3), wp.array(dtype=wp
 
 # generic array kernel, version 3 (unspecified dtype)
 @wp.kernel
-def generic_array_kernel_v3(a: wp.array, b: wp.array, c: wp.array):
+def generic_array_kernel_v3(a: wp.array(), b: wp.array(), c: wp.array()):
     tid = wp.tid()
     sum = a[tid] + b[tid]   # test direct access
     c[tid] = generic_adder(sum, sum)  # test generic function
@@ -272,7 +272,7 @@ def test_generic_transform_kernel(test, device):
 
 
 @wp.kernel
-def generic_transform_array(v: wp.array, m: wp.array, result: wp.array):
+def generic_transform_array(v: wp.array(), m: wp.array(), result: wp.array()):
     tid = wp.tid()
     result[tid] = wp.mul(m[tid], v[tid])
 

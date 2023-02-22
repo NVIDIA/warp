@@ -420,7 +420,7 @@ class Kernel:
             #     arg_types.append(arg_type)
             elif arg is None:
                 # allow passing None for arrays
-                if isinstance(template_types[i], warp.array) or template_types[i] == warp.array:
+                if isinstance(template_types[i], warp.array):
                     arg_types.append(template_types[i])
                 else:
                     raise TypeError(f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got None")

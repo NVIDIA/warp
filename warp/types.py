@@ -762,7 +762,7 @@ class array (Generic[T]):
     # (initialized when needed)
     _vars = None
 
-    def __init__(self, data=None, dtype: T=None, shape=None, strides=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False, pinned=False):
+    def __init__(self, data=None, dtype: T=Any, shape=None, strides=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False, pinned=False):
         """ Constructs a new Warp array object from existing data.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
@@ -776,7 +776,7 @@ class array (Generic[T]):
 
         Args:
             data (Union[list, tuple, ndarray]) An object to construct the array from, can be a Tuple, List, or generally any type convertable to an np.array
-            dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is None and data an ndarray then it will be inferred from the array data type
+            dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is Any and data an ndarray then it will be inferred from the array data type
             shape (Tuple): Dimensions of the array
             strides (Tuple): Number of bytes in each dimension between successive elements of the array
             length (int): Number of elements (rows) of the data type (deprecated, users should use `shape` argument)
@@ -829,7 +829,7 @@ class array (Generic[T]):
             except Exception as e:
                 raise RuntimeError("When constructing an array the data argument must be convertable to ndarray type type. Encountered an error while converting:" + str(e))
             
-            if dtype == None:
+            if dtype == Any:
                 # infer dtype from the source data array
                 dtype = np_dtype_to_warp_type[arr.dtype]
 
@@ -938,28 +938,31 @@ class array (Generic[T]):
         for d in self.shape:
             self.size *= d
 
-        # update byte strides and contiguous flag
-        contiguous_strides = strides_from_shape(self.shape, self.dtype)
-        if strides is None:
-            self.strides = contiguous_strides
-            self.is_contiguous = True
-        else:
-            self.strides = strides
-            self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
-
-        # store flat shape (including type shape)
-        if dtype not in [Any,Scalar,Float] and issubclass(dtype,ctypes.Array):
-            # vector type, flatten the dimensions into one tuple
-            arr_shape = (*self.shape, *self.dtype._shape_)
-            dtype_strides =  strides_from_shape(self.dtype._shape_, self.dtype._type_) 
-            arr_strides = (*self.strides, *dtype_strides)
-        else:
-            # scalar type
-            arr_shape = self.shape
-            arr_strides = self.strides
+        self.grad = None
 
         # set up array interface access so we can treat this object as a numpy array
         if self.ptr:
+
+            # update byte strides and contiguous flag
+            contiguous_strides = strides_from_shape(self.shape, self.dtype)
+            if strides is None:
+                self.strides = contiguous_strides
+                self.is_contiguous = True
+            else:
+                self.strides = strides
+                self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
+
+            # store flat shape (including type shape)
+            if self.dtype not in [Any,Scalar,Float,Int] and issubclass(dtype,ctypes.Array):
+                # vector type, flatten the dimensions into one tuple
+                arr_shape = (*self.shape, *self.dtype._shape_)
+                dtype_strides =  strides_from_shape(self.dtype._shape_, self.dtype._type_) 
+                arr_strides = (*self.strides, *dtype_strides)
+            else:
+                # scalar type
+                arr_shape = self.shape
+                arr_strides = self.strides
+
             if device.is_cpu:
 
                 self.__array_interface__ = { 
@@ -981,11 +984,15 @@ class array (Generic[T]):
                     "version": 2
                 }
 
-        self.grad = None
+            # controls if gradients will be computed by wp.Tape
+            # this will trigger allocation of a gradient array if it doesn't exist already
+            self.requires_grad = requires_grad
 
-        # controls if gradients will be computed in by wp.Tape
-        # this will trigger allocation of a gradient array if it doesn't exist already
-        self.requires_grad = requires_grad
+        else:
+            # array has no data
+            self.strides = None
+            self.is_contiguous = None
+            self.requires_grad = False
 
 
     def __del__(self):
@@ -2212,10 +2219,10 @@ class MarchingCubes:
 
 
 def type_is_generic(t):
-    if t in [Any, Scalar, Float, Int, array]:
+    if t in (Any, Scalar, Float, Int):
         return True
-    elif isinstance(t, warp.array):
-        return t.dtype is None or type_is_generic(t.dtype) or not isinstance(t.ndim, int)
+    elif isinstance(t, array):
+        return type_is_generic(t.dtype)
     elif hasattr(t, "_wp_scalar_type_"):
         # vector/matrix type, check if dtype is generic
         if type_is_generic(t._wp_scalar_type_):
@@ -2250,12 +2257,20 @@ def type_matches_template(arg_type, template_type):
     # template type is generic, check that the argument type matches
     if template_type == Any:
         return True
-    elif template_type == Scalar:
-        return arg_type in scalar_types
+    elif isinstance(template_type, array):
+        # ensure the argument type is a non-generic array with matching dtype and dimensionality
+        if not isinstance(arg_type, array):
+            return False
+        if not type_matches_template(arg_type.dtype, template_type.dtype):
+            return False
+        if arg_type.ndim != template_type.ndim:
+            return False
     elif template_type == Float:
         return arg_type in float_types
     elif template_type == Int:
         return arg_type in int_types
+    elif template_type == Scalar:
+        return arg_type in scalar_types
     elif hasattr(template_type, "_wp_scalar_type_"):
         # vector/matrix type
         if not hasattr(arg_type, "_wp_scalar_type_"):
@@ -2269,26 +2284,6 @@ def type_matches_template(arg_type, template_type):
         for i in range(ndim):
             if template_type._shape_[i] != 0 and arg_type._shape_[i] != template_type._shape_[i]:
                 return False
-    elif template_type == warp.array:
-        # ensure the argument type is a non-generic array with valid dtype and dimensionality
-        if not isinstance(arg_type, warp.array):
-            return False
-        if type_is_generic(arg_type.dtype):
-            return False
-        if not isinstance(arg_type.ndim, int) or arg_type.ndim < 1:
-            return False
-    elif isinstance(template_type, warp.array):
-        # ensure the argument type is a non-generic array with matching dtype and dimensionality
-        if not isinstance(arg_type, warp.array):
-            return False
-        if not type_matches_template(arg_type.dtype, template_type.dtype):
-            return False
-        if isinstance(template_type.ndim, int):
-            # if template type has concrete ndim, make sure the argument matches
-            if arg_type.ndim != template_type.ndim:
-                return False
-        elif not isinstance(arg_type.ndim, int) or arg_type.ndim < 1:
-            return False
 
     return True
 
@@ -2325,11 +2320,12 @@ simple_type_codes = {
 
 def get_type_code(arg_type):
 
-    if isinstance(arg_type, type):
-        if arg_type == array:
-            # array with generic dimensionality and dtype
-            return "a??"
-        elif hasattr(arg_type, "_wp_scalar_type_"):
+    if arg_type == Any:
+        # special case for generics
+        # note: since Python 3.11 Any is a type, so we check for it first
+        return "?"
+    elif isinstance(arg_type, type):
+        if hasattr(arg_type, "_wp_scalar_type_"):
             # vector/matrix type
             dtype_code = get_type_code(arg_type._wp_scalar_type_)
             # check for "special" vector/matrix subtypes
@@ -2354,9 +2350,6 @@ def get_type_code(arg_type):
                 return f"m{dim_code0}{dim_code1}{dtype_code}"
             else:
                 raise TypeError("Invalid vector/matrix dimensionality")
-        elif arg_type == Any or arg_type == type(None):
-            # special case for generics (note: as of Python 3.11, Any is a type)
-            return "?"
         else:
             # simple type
             type_code = simple_type_codes.get(arg_type)
@@ -2368,18 +2361,15 @@ def get_type_code(arg_type):
         return f"a{arg_type.ndim}{get_type_code(arg_type.dtype)}"
     elif isinstance(arg_type, warp.codegen.Struct):
         return warp.codegen.make_full_qualified_name(arg_type.cls)
-    elif arg_type == Any or arg_type == None:
-        # special case for generics (note: prior to Python 3.11, Any is not a type)
-        return "?"
+    elif arg_type == Scalar:
+        # generic scalar type
+        return "s?"
     elif arg_type == Float:
         # generic float
         return "f?"
     elif arg_type == Int:
         # generic int
         return "i?"
-    elif arg_type == Scalar:
-        # generic scalar type
-        return "s?"
     elif isinstance(arg_type, Callable):
         # TODO: elaborate on Callable type?
         return "c"
