@@ -6,6 +6,8 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp as wp
+import numpy as np
+import math
 
 def _usd_add_xform(prim):
 
@@ -17,7 +19,6 @@ def _usd_add_xform(prim):
     t = prim.AddTranslateOp()
     r = prim.AddOrientOp()
     s = prim.AddScaleOp()
-
 
 def _usd_set_xform(xform, pos: tuple, rot: tuple, scale: tuple, time):
 
@@ -48,31 +49,6 @@ def _compute_segment_xform(pos0, pos1):
 
     return (mid, Gf.Quath(rot.GetQuat()), scale)
 
-def bourke_color_map(low, high, v):
-
-	c = [1.0, 1.0, 1.0]
-
-	if v < low:
-		v = low
-	if v > high:
-		v = high
-	dv = high - low
-
-	if v < (low + 0.25 * dv):
-		c[0] = 0.
-		c[1] = 4. * (v - low) / dv
-	elif v < (low + 0.5 * dv):
-		c[0] = 0.
-		c[2] = 1. + 4. * (low + 0.25 * dv - v) / dv
-	elif v < (low + 0.75 * dv):
-		c[0] = 4. * (v - low - 0.5 * dv) / dv
-		c[2] = 0.
-	else:
-		c[1] = 1. + 4. * (low + 0.75 * dv - v) / dv
-		c[2] = 0.
-
-	return c
-
 class UsdRenderer:
     """A USD renderer
     """  
@@ -81,7 +57,7 @@ class UsdRenderer:
         
         Args:
             model: A simulation model
-            stage (Usd.Stage): A USD stage (either in memory or on disk)            
+            stage (str/Usd.Stage): A USD stage (either in memory or on disk)            
             upaxis (str): The upfacing axis of the stage
             fps: The number of frames per second to use in the USD file
             scaling: Scaling factor to use for the entities in the scene
@@ -104,6 +80,11 @@ class UsdRenderer:
         self.draw_triangles = False
 
         self.root = UsdGeom.Xform.Define(stage, '/root')
+
+        # mapping from shape ID to UsdGeom class
+        self._shape_constructors = {}
+        # optional scaling applied to shape instances (e.g. cubes)
+        self._shape_custom_scale = {}
         
         # apply scaling
         self.root.ClearXformOpOrder()
@@ -144,6 +125,31 @@ class UsdRenderer:
     def end_frame(self):
         pass
 
+    def register_body(self, body_name):
+        from pxr import UsdGeom
+        xform = UsdGeom.Xform.Define(self.stage, self.root.GetPath().AppendChild(body_name))
+        wp.render.render_usd._usd_add_xform(xform)
+
+    def _resolve_path(self, name, parent_body=None, is_template=False):
+        # resolve the path to the prim with the given name and optional parent body
+        if is_template:
+            return self.root.GetPath().AppendChild("_template_shapes").AppendChild(name)
+        if parent_body is None:
+            return self.root.GetPath().AppendChild(name)
+        else:
+            return self.root.GetPath().AppendChild(parent_body).AppendChild(name)
+
+    def add_shape_instance(self, name: str, shape, body, pos: tuple, rot: tuple, scale: tuple=(1.,1.,1.), color: tuple=(1.,1.,1.)):
+        sdf_path = self._resolve_path(name, body)
+        instance = self._shape_constructors[shape.name].Define(self.stage, sdf_path)
+        instance.GetPrim().GetReferences().AddInternalReference(shape)
+
+        _usd_add_xform(instance)
+        if shape.name in self._shape_custom_scale:
+            cs = self._shape_custom_scale[shape.name]
+            scale = (scale[0] * cs[0], scale[1] * cs[1], scale[2] * cs[2])
+        _usd_set_xform(instance, pos, rot, scale, self.time)
+
     def render_ground(self, size: float=100.0):
 
         from pxr import UsdGeom
@@ -168,7 +174,7 @@ class UsdRenderer:
         mesh.GetFaceVertexCountsAttr().Set(counts)
         mesh.GetFaceVertexIndicesAttr().Set(indices)
 
-    def render_sphere(self, name: str, pos: tuple, rot: tuple, radius: float):
+    def render_sphere(self, name: str, pos: tuple, rot: tuple, radius: float, parent_body: str=None, is_template: bool=False):
         """Debug helper to add a sphere for visualization
         
         Args:
@@ -177,9 +183,19 @@ class UsdRenderer:
             name: A name for the USD prim on the stage
         """
 
-        from pxr import UsdGeom
+        from pxr import UsdGeom, Sdf
 
-        sphere_path = self.root.GetPath().AppendChild(name)
+        if is_template:
+            prim_path = self._resolve_path(name, parent_body, is_template)
+            blueprint = UsdGeom.Scope.Define(self.stage, prim_path)
+            blueprint_prim = blueprint.GetPrim()
+            blueprint_prim.SetInstanceable(True)
+            blueprint_prim.SetSpecifier(Sdf.SpecifierClass)
+            sphere_path = prim_path.AppendChild("sphere")
+        else:
+            sphere_path = self._resolve_path(name, parent_body)
+            prim_path = sphere_path
+            
         sphere = UsdGeom.Sphere.Get(self.stage, sphere_path)
         if not sphere:
             sphere = UsdGeom.Sphere.Define(self.stage, sphere_path)
@@ -187,16 +203,131 @@ class UsdRenderer:
         
         sphere.GetRadiusAttr().Set(radius, self.time)
 
-        # mat = Gf.Matrix4d()
-        # mat.SetIdentity()
-        # mat.SetTranslateOnly(Gf.Vec3d(pos[0], pos[1], pos[2]))
+        self._shape_constructors[name] = UsdGeom.Sphere
 
-        # op = sphere.MakeMatrixXform()
-        # op.Set(mat, self.time)
-        _usd_set_xform(sphere, pos, rot, (1.0, 1.0, 1.0), self.time)
+        if not is_template:
+            _usd_set_xform(sphere, pos, rot, (1.0, 1.0, 1.0), 0.0)
 
+        return prim_path
 
-    def render_box(self, name: str, pos: tuple, rot: tuple, extents: tuple):
+    def render_capsule(self, name: str, pos: tuple, rot: tuple, radius: float, half_height: float, parent_body: str=None, is_template: bool=False):
+        """
+        Debug helper to add a capsule for visualization
+        
+        Args:
+            pos: The position of the capsule
+            radius: The radius of the capsule
+            half_height: The half height of the capsule
+            name: A name for the USD prim on the stage
+        """
+        
+        from pxr import UsdGeom, Sdf
+        if is_template:
+            prim_path = self._resolve_path(name, parent_body, is_template)
+            blueprint = UsdGeom.Scope.Define(self.stage, prim_path)
+            blueprint_prim = blueprint.GetPrim()
+            blueprint_prim.SetInstanceable(True)
+            blueprint_prim.SetSpecifier(Sdf.SpecifierClass)
+            capsule_path = prim_path.AppendChild("capsule")
+        else:
+            capsule_path = self._resolve_path(name, parent_body)
+            prim_path = capsule_path
+        
+        capsule = UsdGeom.Capsule.Get(self.stage, capsule_path)
+        if not capsule:
+            capsule = UsdGeom.Capsule.Define(self.stage, capsule_path)
+            _usd_add_xform(capsule)
+
+        capsule.GetRadiusAttr().Set(float(radius))
+        capsule.GetHeightAttr().Set(float(half_height * 2.0))
+        capsule.GetAxisAttr().Set("Y")
+
+        self._shape_constructors[name] = UsdGeom.Capsule
+
+        if not is_template:
+            _usd_set_xform(capsule, pos, rot, (1.0, 1.0, 1.0), 0.0)
+
+        return prim_path
+    
+    def render_cylinder(self, name: str, pos: tuple, rot: tuple, radius: float, half_height: float, parent_body: str=None, is_template: bool=False):
+        """
+        Debug helper to add a cylinder for visualization
+
+        Args:
+            pos: The position of the cylinder
+            radius: The radius of the cylinder
+            half_height: The half height of the cylinder
+            name: A name for the USD prim on the stage
+        """
+        
+        from pxr import UsdGeom, Sdf
+        if is_template:
+            prim_path = self._resolve_path(name, parent_body, is_template)
+            blueprint = UsdGeom.Scope.Define(self.stage, prim_path)
+            blueprint_prim = blueprint.GetPrim()
+            blueprint_prim.SetInstanceable(True)
+            blueprint_prim.SetSpecifier(Sdf.SpecifierClass)
+            cylinder_path = prim_path.AppendChild("cylinder")
+        else:
+            cylinder_path = self._resolve_path(name, parent_body)
+            prim_path = cylinder_path
+        
+        cylinder = UsdGeom.Cylinder.Get(self.stage, cylinder_path)
+        if not cylinder:
+            cylinder = UsdGeom.Cylinder.Define(self.stage, cylinder_path)
+            _usd_add_xform(cylinder)
+
+        cylinder.GetRadiusAttr().Set(float(radius))
+        cylinder.GetHeightAttr().Set(float(half_height * 2.0))
+        cylinder.GetAxisAttr().Set("Y")
+
+        self._shape_constructors[name] = UsdGeom.Cylinder
+
+        if not is_template:
+            _usd_set_xform(cylinder, pos, rot, (1.0, 1.0, 1.0), 0.0)
+
+        return prim_path
+    
+    def render_cone(self, name: str, pos: tuple, rot: tuple, radius: float, half_height: float, parent_body: str=None, is_template: bool=False):
+        """
+        Debug helper to add a cone for visualization
+
+        Args:
+            pos: The position of the cone
+            radius: The radius of the cone
+            half_height: The half height of the cone
+            name: A name for the USD prim on the stage
+        """
+        
+        from pxr import UsdGeom, Sdf
+        if is_template:
+            prim_path = self._resolve_path(name, parent_body, is_template)
+            blueprint = UsdGeom.Scope.Define(self.stage, prim_path)
+            blueprint_prim = blueprint.GetPrim()
+            blueprint_prim.SetInstanceable(True)
+            blueprint_prim.SetSpecifier(Sdf.SpecifierClass)
+            cone_path = prim_path.AppendChild("cone")
+        else:
+            cone_path = self._resolve_path(name, parent_body)
+            prim_path = cone_path
+        
+        cone = UsdGeom.Cone.Get(self.stage, cone_path)
+        if not cone:
+            cone = UsdGeom.Cone.Define(self.stage, cone_path)
+            _usd_add_xform(cone)
+
+        cone.GetRadiusAttr().Set(float(radius))
+        cone.GetHeightAttr().Set(float(half_height * 2.0))
+        cone.GetAxisAttr().Set("Y")
+
+        self._shape_constructors[name] = UsdGeom.Cone
+
+        if not is_template:
+            _usd_set_xform(cone, pos, rot, (1.0, 1.0, 1.0), 0.0)
+
+        return prim_path
+
+    def render_box(self, name: str, pos: tuple, rot: tuple, extents: tuple, parent_body: str=None, is_template: bool=False):
         """Debug helper to add a box for visualization
         
         Args:
@@ -205,16 +336,30 @@ class UsdRenderer:
             name: A name for the USD prim on the stage
         """
 
-        from pxr import UsdGeom
+        from pxr import UsdGeom, Sdf, Gf, Vt
+        if is_template:
+            prim_path = self._resolve_path(name, parent_body, is_template)
+            blueprint = UsdGeom.Scope.Define(self.stage, prim_path)
+            blueprint_prim = blueprint.GetPrim()
+            blueprint_prim.SetInstanceable(True)
+            blueprint_prim.SetSpecifier(Sdf.SpecifierClass)
+            cube_path = prim_path.AppendChild("cube")
+        else:
+            cube_path = self._resolve_path(name, parent_body)
+            prim_path = cube_path
+        
+        cube = UsdGeom.Cube.Get(self.stage, cube_path)
+        if not cube:
+            cube = UsdGeom.Cube.Define(self.stage, cube_path)
+            _usd_add_xform(cube)
 
-        box_path = self.root.GetPath().AppendChild(name)
-        box = UsdGeom.Cube.Get(self.stage, box_path)
-        if not box:
-            box = UsdGeom.Cube.Define(self.stage, box_path)
-            _usd_add_xform(box)
+        self._shape_constructors[name] = UsdGeom.Cube
+        self._shape_custom_scale[name] = extents
 
-        # update transform        
-        _usd_set_xform(box, pos, rot, extents, self.time)
+        if not is_template:
+            _usd_set_xform(cube, pos, rot, extents, 0.0)
+
+        return prim_path
     
 
     def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple):
@@ -233,11 +378,20 @@ class UsdRenderer:
         _usd_set_xform(ref, pos, rot, scale, self.time)
 
 
-    def render_mesh(self, name: str, points, indices, colors=None, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0), update_topology=False):
+    def render_mesh(self, name: str, points, indices, colors=None, pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), scale=(1.0, 1.0, 1.0), update_topology=False, parent_body: str=None, is_template: bool=False):
         
-        from pxr import UsdGeom
-
-        mesh_path = self.root.GetPath().AppendChild(name)
+        from pxr import UsdGeom, Sdf
+        if is_template:
+            prim_path = self._resolve_path(name, parent_body, is_template)
+            blueprint = UsdGeom.Scope.Define(self.stage, prim_path)
+            blueprint_prim = blueprint.GetPrim()
+            blueprint_prim.SetInstanceable(True)
+            blueprint_prim.SetSpecifier(Sdf.SpecifierClass)
+            mesh_path = prim_path.AppendChild("mesh")
+        else:
+            mesh_path = self._resolve_path(name, parent_body)
+            prim_path = mesh_path
+        
         mesh = UsdGeom.Mesh.Get(self.stage, mesh_path)
         if not mesh:
             
@@ -251,14 +405,21 @@ class UsdRenderer:
         mesh.GetPointsAttr().Set(points, self.time)
 
         if update_topology:
-            mesh.GetFaceVertexIndicesAttr().Set(indices, self.time)
-            mesh.GetFaceVertexCountsAttr().Set([3] * int(len(indices)/3), self.time)
+            idxs = np.array(indices).reshape(-1, 3)
+            mesh.GetFaceVertexIndicesAttr().Set(idxs, self.time)
+            mesh.GetFaceVertexCountsAttr().Set([3] * len(idxs), self.time)
 
         if colors:
             mesh.GetDisplayColorAttr().Set(colors, self.time)
 
-        _usd_set_xform(mesh, pos, rot, scale, self.time)
+        self._shape_constructors[name] = UsdGeom.Mesh
+        self._shape_custom_scale[name] = scale
 
+        if not is_template:
+            _usd_set_xform(mesh, pos, rot, scale, self.time)
+
+        return prim_path
+        
 
     def render_line_list(self, name, vertices, indices, color, radius):
         """Debug helper to add a line list as a set of capsules
@@ -383,6 +544,25 @@ class UsdRenderer:
         else:
             instancer.GetPointsAttr().Set(points, self.time)
             instancer.GetDisplayColorAttr().Set(colors, self.time)
+        
+    
+    def update_body_transforms(self, body_q):
+        from pxr import UsdGeom, Sdf
+
+        if isinstance(body_q, wp.array):
+            body_q = body_q.numpy()
+
+        with Sdf.ChangeBlock():
+
+            for b in range(self.model.body_count):
+                node_name = self.body_names[b]
+                node = UsdGeom.Xform(self.stage.GetPrimAtPath(self.root.GetPath().AppendChild(node_name)))
+
+                # unpack rigid transform
+                X_sb = wp.transform_expand(body_q[b])
+
+                _usd_set_xform(node, X_sb.p, X_sb.q, (1.0, 1.0, 1.0), self.time)
+
 
     def save(self):
         try:
