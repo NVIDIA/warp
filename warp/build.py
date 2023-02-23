@@ -287,8 +287,17 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
     if os.name == 'nt':
 
+        # try loading clang.dll, except when we're building clang.dll
+        clang = None
+        if os.path.basename(dll_path) != "clang.dll":
+            try:
+                clang = warp.build.load_dll(f"{warp_home_path}/bin/clang.dll")
+            except RuntimeError as e:
+                clang = None
+
         if not warp.config.host_compiler:
-            raise RuntimeError("Warp build error: Host compiler was not found")
+            if not clang:
+                raise RuntimeError("Warp build error: No host or bundled compiler was not found")
         
         host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
 
@@ -325,9 +334,15 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         with ScopedTimer("build", active=warp.config.verbose):
             for cpp_path in cpp_paths:
                 cpp_out = cpp_path + ".obj"
-                cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
-                run_cmd(cpp_cmd)
                 linkopts.append(quote(cpp_out))
+
+                ret = -1
+                if clang:
+                    ret = clang.compile_cpp(cpp_path, native_dir, mode=="debug", warp.config.verbose, verify_fp, fast_math, cpp_out)
+                    
+                if ret != 0:
+                    cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+                    run_cmd(cpp_cmd)
 
         if cu_path:
 

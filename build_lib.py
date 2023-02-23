@@ -21,6 +21,7 @@ parser.add_argument('--verbose', type=bool, default=True, help="Verbose building
 parser.add_argument('--verify_fp', type=bool, default=False, help="Verify kernel inputs and outputs are finite after each launch, default False")
 parser.add_argument('--fast_math', type=bool, default=False, help="Enable fast math on library, default False")
 parser.add_argument('--quick', action='store_true', help="Only generate PTX code, disable CUTLASS ops")
+parser.add_argument('--build_llvm', type=bool, default=False, help="Build a bundled Clang/LLVM compiler")
 args = parser.parse_args()
 
 # set build output path off this file
@@ -71,8 +72,35 @@ if os.name == 'nt':
             sys.exit(1)
 
 
+# platform specific shared library extension
+def dll_ext():
+    if sys.platform == "win32":
+        return "dll"
+    elif sys.platform == "darwin":
+        return "dylib"
+    else:
+        return "so"
+
+
 try:
 
+    # build clang.dll
+    if args.build_llvm:
+
+        clang_cpp_paths = [os.path.join(build_path, "clang/clang.cpp")]
+
+        clang_dll_path = os.path.join(build_path, f"bin/clang.{dll_ext()}")
+
+        warp.build.build_dll(
+                        dll_path=clang_dll_path,
+                        cpp_paths=clang_cpp_paths,
+                        cu_path=None,
+                        mode=warp.config.mode,
+                        verify_fp=warp.config.verify_fp,
+                        fast_math=args.fast_math,
+                        use_cache=False)
+        
+    # build warp.dll
     cpp_sources = [
         "native/warp.cpp",
         "native/crt.cpp",
@@ -92,15 +120,10 @@ try:
     else:
         warp_cu_path = os.path.join(build_path, "native/warp.cu")
 
-    if sys.platform == "win32":
-        dll_path = os.path.join(build_path, "bin/warp.dll")
-    elif sys.platform == "darwin":
-        dll_path = os.path.join(build_path, "bin/warp.dylib")
-    else:
-        dll_path = os.path.join(build_path, "bin/warp.so")
+    warp_dll_path = os.path.join(build_path, f"bin/warp.{dll_ext()}")
 
     warp.build.build_dll(
-                    dll_path=dll_path,
+                    dll_path=warp_dll_path,
                     cpp_paths=warp_cpp_paths,
                     cu_path=warp_cu_path,
                     mode=warp.config.mode,
