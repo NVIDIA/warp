@@ -393,6 +393,13 @@ def test_slicing(test, device):
     assert_array_equal(index_c, wp.array(np_arr[1, :], dtype=float, device=device))
     wp.launch(kernel=compare_stepped_window_b, dim=1, inputs=[index_d], device=device)
 
+    np_arr = np.zeros(10, dtype=int)
+    wp_arr = wp.array(np_arr, dtype=int, device=device)
+
+    assert_array_equal(wp_arr[:5], wp.array(np_arr[:5], dtype=int, device=device))
+    assert_array_equal(wp_arr[1:5], wp.array(np_arr[1:5], dtype=int, device=device))
+    assert_array_equal(wp_arr[-9:-5:1], wp.array(np_arr[-9:-5:1], dtype=int, device=device))
+    assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))
 
 def test_view(test, device):
 
