@@ -428,7 +428,7 @@ def unload_dll(dll):
         max_attempts = 100
         for i in range(max_attempts):
             result = ctypes.windll.kernel32.FreeLibrary(ctypes.c_void_p(handle))
-            if result != 0:
+            if result == 0:
                 return
     else:
         _ctypes.dlclose(handle)
