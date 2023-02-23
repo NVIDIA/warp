@@ -74,6 +74,7 @@ try:
 
     cpp_sources = [
         "native/warp.cpp",
+        "native/crt.cpp",
         "native/cuda_util.cpp",
         "native/mesh.cpp",
         "native/hashgrid.cpp",

@@ -782,7 +782,6 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     opts.push_back("--device-as-default-execution-space");
     opts.push_back("--std=c++11");
     opts.push_back("--define-macro=WP_CUDA");
-    opts.push_back("--define-macro=WP_NO_CRT");
     
     if (debug)
     {

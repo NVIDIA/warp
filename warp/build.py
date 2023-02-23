@@ -284,6 +284,9 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
+        if "/NODEFAULTLIB" in linkopts:
+            runtime = "/sdl- /GS-"  # don't specify a runtime, and disable security checks with depend on it
+
         linkopts = linkopts.copy()
         linkopts.append("/DLL")
 
