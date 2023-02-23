@@ -98,9 +98,9 @@ try:
         dll_path = os.path.join(build_path, "bin/warp.so")
 
     warp.build.build_dll(
-                    cpp_paths=warp_cpp_paths,
-                    cu_path=warp_cu_path, 
                     dll_path=dll_path,
+                    cpp_paths=warp_cpp_paths,
+                    cu_path=warp_cu_path,
                     mode=warp.config.mode,
                     verify_fp=warp.config.verify_fp,
                     fast_math=args.fast_math,
