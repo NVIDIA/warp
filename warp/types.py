@@ -990,8 +990,8 @@ class array (Generic[T]):
 
         else:
             # array has no data
-            self.strides = None
-            self.is_contiguous = None
+            self.strides = (0,) * self.ndim
+            self.is_contiguous = False
             self.requires_grad = False
 
 
