@@ -8,6 +8,9 @@ if sys.version_info[0] < 3:
 
 import os
 import argparse
+import subprocess
+import shutil
+from git import Repo
 
 import warp.config
 import warp.build
@@ -25,7 +28,8 @@ parser.add_argument('--build_llvm', type=bool, default=False, help="Build a bund
 args = parser.parse_args()
 
 # set build output path off this file
-build_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "warp")
+base_path = os.path.dirname(os.path.realpath(__file__))
+build_path = os.path.join(base_path, "warp")
 
 print(args)
 
@@ -70,6 +74,55 @@ if os.name == 'nt':
         if not warp.config.host_compiler:
             print("Warp build error: Could not find MSVC compiler")
             sys.exit(1)
+
+
+if args.build_llvm:
+    llvm_project_path = os.path.join(base_path, "external/llvm-project")
+    if not os.path.exists(llvm_project_path):
+        # TDOD: Only do shallow clone (https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/)
+        repo = Repo.clone_from("https://github.com/llvm/llvm-project.git", llvm_project_path)
+        repo.git.checkout("tags/llvmorg-15.0.7", "-b", "llvm-15.0.7")
+    else:
+        repo = Repo(llvm_project_path)
+    
+    build_type = warp.config.mode.capitalize()  # CMake supports Debug, Release, RelWithDebInfo, and MinSizeRel
+
+    # Build LLVM and Clang
+    llvm_path = os.path.join(llvm_project_path, "llvm")
+    llvm_build_path = os.path.join(llvm_project_path, f"out/build/{build_type}")
+    llvm_install_path = os.path.join(llvm_project_path, f"out/install/{build_type}")
+
+    cmake_gen = ["cmake", "-S", llvm_path,
+                          "-B", llvm_build_path,
+                          "-G", "Ninja",
+                          "-D", f"CMAKE_BUILD_TYPE={build_type}",
+                          "-D", "LLVM_USE_CRT_RELEASE=MT",
+                          "-D", "LLVM_USE_CRT_DEBUG=MTd",
+                          "-D", "LLVM_TARGETS_TO_BUILD=X86",
+                          "-D", "LLVM_ENABLE_PROJECTS=clang",
+                          "-D", "LLVM_ENABLE_ZLIB=FALSE",
+                          "-D", "LLVM_ENABLE_ZSTD=FALSE",
+                          "-D", "LLVM_BUILD_LLVM_C_DYLIB=FALSE",
+                          "-D", "LLVM_BUILD_RUNTIME=FALSE",
+                          "-D", "LLVM_BUILD_RUNTIMES=FALSE",
+                          "-D", "LLVM_BUILD_TOOLS=FALSE",
+                          "-D", "LLVM_BUILD_UTILS=FALSE",
+                          "-D", "LLVM_INCLUDE_BENCHMARKS=FALSE",
+                          "-D", "LLVM_INCLUDE_DOCS=FALSE",
+                          "-D", "LLVM_INCLUDE_EXAMPLES=FALSE",
+                          "-D", "LLVM_INCLUDE_RUNTIMES=FALSE",
+                          "-D", "LLVM_INCLUDE_TESTS=FALSE",
+                          "-D", "LLVM_INCLUDE_TOOLS=TRUE",  # Needed by Clang
+                          "-D", "LLVM_INCLUDE_UTILS=FALSE",
+                          "-D", f"CMAKE_INSTALL_PREFIX={llvm_install_path}"
+                          ]
+    ret = subprocess.check_call(cmake_gen, stderr=subprocess.STDOUT)
+    
+    cmake_build = ["cmake", "--build", llvm_build_path]
+    ret = subprocess.check_call(cmake_build, stderr=subprocess.STDOUT)
+    
+    cmake_install = ["cmake", "--install", llvm_build_path]
+    ret = subprocess.check_call(cmake_install, stderr=subprocess.STDOUT)
 
 
 # platform specific shared library extension
