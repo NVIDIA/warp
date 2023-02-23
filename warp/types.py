@@ -1013,11 +1013,6 @@ class array (Generic[T]):
 
     def __getitem__(self, key):
 
-        new_shape = []
-        new_strides = []
-        ptr_offset = 0
-        new_dim = self.ndim
-
         if isinstance(key, int):
             if self.ndim == 1:
                 raise RuntimeError("Item indexing is not supported on wp.array objects")
@@ -1029,6 +1024,8 @@ class array (Generic[T]):
                     contains_slice = True
             if not contains_slice and len(key) == self.ndim:
                 raise RuntimeError("Item indexing is not supported on wp.array objects")
+        elif isinstance(key, slice):
+            key = [key]
 
         new_key = []
         for i in range(0, len(key)):
@@ -1037,6 +1034,11 @@ class array (Generic[T]):
             new_key.append(slice(None, None, None))
         key = tuple(new_key)
 
+        new_shape = []
+        new_strides = []
+        ptr_offset = 0
+        new_dim = self.ndim
+        
         for idx, k in enumerate(key):
             if isinstance(k, slice):
                 start, stop, step = k.start, k.stop, k.step
