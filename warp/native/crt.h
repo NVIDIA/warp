@@ -98,7 +98,11 @@ double tanh(double);
 float fmaf(float, float, float);
 
 // stddef.h
-using size_t = unsigned long long;
+#if defined(_MSC_VER)
+using size_t = unsigned __int64;
+#else
+using size_t = unsigned long;
+#endif
 
 // string.h
 void* memset(void*, int, size_t);
