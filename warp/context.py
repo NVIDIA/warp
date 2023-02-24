@@ -830,8 +830,8 @@ class Module:
                 h.update(bytes("verify_fp", 'utf-8'))
         
             # compile-time constants (global)
-            if warp.types.constant._hash:
-                h.update(warp.constant._hash.digest())
+            if warp.types._constant_hash:
+                h.update(warp.types._constant_hash.digest())
 
             # recurse on references
             visited.add(module)
