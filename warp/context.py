@@ -485,7 +485,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, template_
                     return_type = return_type_match[0]
                 
                 # finally we can generate a function call for these concrete types:
-                add_builtin(key, input_types=dict(zip(input_types.keys(),argtypes)), value_type=return_type, doc=doc, namespace=namespace, variadic=variadic, initializer_list_func=initializer_list_func, export=export, group=group, hidden=hidden, skip_replay=skip_replay, missing_grad=missing_grad)
+                add_builtin(key, input_types=dict(zip(input_types.keys(),argtypes)), value_type=return_type, doc=doc, namespace=namespace, variadic=variadic, initializer_list_func=initializer_list_func, export=export, group=group, hidden=True, skip_replay=skip_replay, missing_grad=missing_grad)
 
     func = Function(func=None,
                     key=key,

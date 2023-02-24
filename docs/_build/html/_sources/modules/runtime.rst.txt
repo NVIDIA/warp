@@ -195,46 +195,197 @@ The following scalar storage types are supported for array structures:
 
 Warp supports ``float`` and ``int`` as aliases for ``wp.float32`` and ``wp.int32`` respectively.
 
-.. note:: 
-   Currently Warp treats ``int32`` and ``float32`` as the two basic scalar *compute types*, and all other types as *storage types*. Storage types can be loaded and stored to arrays, but not participate in arithmetic operations directly. Users should cast storage types to a compute type (``int`` or ``float``) to perform computations.
 
-
-Vector Types
-############
+Vectors
+#######
 
 Warp provides built-in math and geometry types for common simulation and graphics problems. A full reference for operators and functions for these types is available in the :any:`functions`.
 
+Warp supports vectors of numbers with an arbitrary length/numeric type. The built in concrete types are as follows:
 
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| vec2            | 2d vector of floats                                                                                                             |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| vec3            | 3d vector of floats                                                                                                             |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| vec4            | 4d vector of floats                                                                                                             |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| mat22           | 2x2 matrix of floats                                                                                                            |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| mat33           | 3x3 matrix of floats                                                                                                            |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| mat44           | 4x4 matrix of floats                                                                                                            |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| quat            | Quaternion in form i,j,k,w where w is the real part                                                                             |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| transform       | 7d vector of floats representing a spatial rigid body transformation in format (p, q) where p is a vec3, and q is a quaternion  |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| spatial_vector  | 6d vector of floats, see wp.spatial_top(), wp.spatial_bottom(), useful for representing rigid body twists                       |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| spatial_matrix  | 6x6 matrix of floats used to represent spatial inertia matrices                                                                 |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| vec2 vec3 vec4        | 2,3 and 4d vector of single precision floats                                                                              |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| vec2f vec3f vec4f     | 2,3 and 4d vector of single precision floats                                                                              |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| vec2d vec3d vec4d     | 2,3 and 4d vector of double precision floats                                                                              |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| vec2h vec3h vec4h     | 2,3 and 4d vector of half precision floats                                                                                |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| vec2ub vec3ub vec4ub  | 2,3 and 4d vector of half precision floats                                                                                |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| spatial_vector        | 6d vector of single precision floats                                                                                      |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| spatial_vectorf       | 6d vector of single precision floats                                                                                      |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| spatial_vectord       | 6d vector of double precision floats                                                                                      |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+| spatial_vectorh       | 6d vector of half precision floats                                                                                        |
++-----------------------+---------------------------------------------------------------------------------------------------------------------------+
+
+It's possible to declare additional vec types with different lengths and numeric types as in the following example: ::
+
+   # declare a vec type for holding 5 double precision floats:
+   vec5d = wp.vec(length=5,dtype=wp.float64)
+
+   # create an array
+   v5s = wp.zeros(10, dtype=vec5d)
+
+   # use inside a kernel
+   @wp.kernel
+   vec5d_kernel( ... ):
+      ...
+      v = vec5d(wp.float64(1.0),wp.float64(1.0),wp.float64(1.0),wp.float64(1.0),wp.float64(1.0))
+      ...
+
+In addition it's possible to directly create anonymously typed instances of these vectors inside kernels like so: ::
+
+   # create a length 5 double precision vector from components: 
+   v5d = wp.create_vec(wp.float64(1.0),wp.float64(2.0),wp.float64(3.0),wp.float64(4.0),wp.float64(5.0))
+   
+   # initialize all 5 components to the same value:
+   v5d_const = wp.create_vec(wp.float64(0.0),length=5)
+
+These can be used with all the standard vector arithmetric operators, eg +,-, scalar multiplication etc and can also be transformed using matrices with compatible dimensions, potentially returning vectors with a different length.
+
+Matrices
+########
+
+Matrices with arbitrary shapes/numeric types are also supported. The built in concrete matrix types are as follows:
+
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+| mat22 mat33 mat44        | 2,3 and 4d square matrix of single precision floats                                                                    |
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+| mat22f mat33f mat44f     | 2,3 and 4d square matrix of single precision floats                                                                    |
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+| mat22d mat33d mat44d     | 2,3 and 4d square matrix of double precision floats                                                                    |
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+| mat22h mat33h mat44h     | 2,3 and 4d square matrix of half precision floats                                                                      |
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+| spatial_matrix           | 6 by 6 matrix of single precision floats                                                                               |
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+| spatial_matrixf          | 6 by 6 matrix of single precision floats                                                                               |
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+| spatial_matrixd          | 6 by 6 matrix of double precision floats                                                                               |
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+| spatial_matrixh          | 6 by 6 matrix of half precision floats                                                                                 |
++--------------------------+------------------------------------------------------------------------------------------------------------------------+
+
+In a similar manner to vectors, it's possible to declare mat types with arbitary shapes/numeric types as follows: ::
+
+   # declare a 3 by 2 half precision float matrix:
+   mat32h = wp.mat(shape=(3,2),dtype=wp.float64)
+
+   # create an array
+   m32s = wp.zeros(10, dtype=mat32h)
+
+   # use inside a kernel
+   @wp.kernel
+   mat32h_kernel( ... ):
+      ...
+      m = mat32h(
+         wp.float16(1.0),wp.float16(1.0),
+         wp.float16(1.0),wp.float16(1.0),
+         wp.float16(1.0),wp.float16(1.0)
+      )
+
+      # declare a 2 component half precision vector and
+      # multiply by the matrix, returning a 3 component vector:
+      v2 = wp.vec2h(wp.float16(1.0), wp.float16(1.0))
+      v3 = m * v2
+      ...
+
+It's also possible to directly create anonymously typed instances inside kernels like so: ::
+
+   # create a 3x2 half precision matrix from components (row major ordering):
+   m32h = wp.matrix(
+      wp.float16(1.0),wp.float16(2.0),
+      wp.float16(1.0),wp.float16(2.0),
+      wp.float16(1.0),wp.float16(2.0),
+      shape=(3,2)
+   )
+   
+   # initialize all 5 components to the same value:
+   m32h_const = wp.create_mat(wp.float16(0.0),shape=(3,2))
+
+   # create a 5x5 double precision identity matrix:
+   m55d = wp.identity(n=5, dtype=wp.float64)
+
+Like with vectors, you can do standard matrix arithmetric with these variables, along with multiplying matrices with compatible shapes and potentially returning a matrix with a new shape.
+
+Quaterions
+##########
+
+Warp supports quaternions in form i,j,k,w where w is the real part. Here are the built in concrete quaternion types:
+
++-----------------+------------------------------------------------------------------------------------------------------------------------+
+| quat            | Single precision floating point quaternion                                                                             |
++-----------------+------------------------------------------------------------------------------------------------------------------------+
+| quatf           | Single precision floating point quaternion                                                                             |
++-----------------+------------------------------------------------------------------------------------------------------------------------+
+| quatd           | Double precision floating point quaternion                                                                             |
++-----------------+------------------------------------------------------------------------------------------------------------------------+
+| quath           | Half precision floating point quaternion                                                                               |
++-----------------+------------------------------------------------------------------------------------------------------------------------+
+
+As with vectors and matrices, you can declare quaternion types with an arbitary numeric type like so: ::
+
+   quatd = wp.quaternion(dtype=wp.float64)
+
+You can also create an identity quaternions and anonymously typed instances inside a kernel like so: ::
+
+   # create double precision identity quaternion:
+   qd = wp.quat_identity(dtype=wp.float64)
+   
+   # precision defaults to wp.float32 so this creates a single precision identity quaternion:
+   qf = wp.quat_identity()
+
+   # create a half precision quaternion from components, or a vector/scalar:
+   qh = wp.create_quaternion(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0),wp.float16(1.0))
+   qh = wp.create_quaternion(
+      wp.vector(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0)),
+      wp.float16(1.0)
+   )
+
+Transforms
+##########
+
+Transforms are 7d vectors of floats representing a spatial rigid body transformation in format (p, q) where p is a 3d vector, and q is a quaternion.
+
++-----------------+--------------------------------------------+
+| transform       | single precision floating point transform  |
++-----------------+--------------------------------------------+
+| transformf      | single precision floating point transform  |
++-----------------+--------------------------------------------+
+| transformd      | double precision floating point transform  |
++-----------------+--------------------------------------------+
+| transformh      | half precision floating point transform    |
++-----------------+--------------------------------------------+
+
+As with vectors and matrices, you can declare transform types with an arbitary numeric type like so: ::
+
+   transformd = wp.transform_t(dtype=wp.float64)
+
+You can also create identity transforms and anonymously typed instances inside a kernel like so: ::
+
+   # create double precision identity transform:
+   qd = wp.transform_identity(dtype=wp.float64)
+   
+   # precision defaults to wp.float32 so this creates a single precision identity transform:
+   qf = wp.transform_identity()
+
+   # create a half precision transform from a vector/quaternion:
+   qh = wp.create_transform(
+      wp.create_vec(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0)),
+      wp.create_quaternion(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0),wp.float16(1.0))
+   )
 
 Type Conversions
 ################
 
 Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetric operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error. This can be surprising for users that are accustomed to C-type conversions but avoids a class of common bugs that result from implicit conversions.
 
-In addition, users should always cast storage types to a compute type (``int`` or ``float``) before computation. Compute types can be converted back to storage types through explicit casting, e.g.: ``byte_array[index] = wp.uint8(i)``.
-
-.. note:: Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using ``int()`` or ``float()`` constructors.
+.. note:: Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using constructors like ``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()`` etc.
 
 Constants
 ---------
@@ -319,7 +470,7 @@ Arithmetic Operators
 +-----------+--------------------------+
 
 .. note::
-   Arguments types to operators should match since implicit conversions are not performed, users should use the type constructors ``float()``, ``int()`` to cast variables to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar multiplication and matrix multiplication. Currently the ``@`` operator is not supported in this version.
+   Arguments types to operators should match since implicit conversions are not performed, users should use the type constructors like ``float()``, ``int()``, ``wp.int64()`` etc to cast variables to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar multiplication and matrix multiplication. Currently the ``@`` operator is not supported in this version.
 
 Meshes
 ------
