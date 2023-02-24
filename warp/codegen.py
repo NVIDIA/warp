@@ -1149,8 +1149,6 @@ class Adjoint:
         return adj.eval(node.value)
 
     def emit_Call(adj, node):
-
-        name = None
             
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr) 
@@ -1207,6 +1205,18 @@ class Adjoint:
             var = adj.eval(arg)
             args.append(var)
 
+        if func.template_func:
+
+            def kwval(kw):
+                if isinstance(kw.value,ast.Num):
+                    return kw.value.n
+                elif isinstance(kw.value,ast.Tuple):
+                    return tuple(e.n for e in kw.value.elts)
+                return adj.resolve_path(kw.value)[0]
+
+            kwds = { kw.arg : kwval(kw) for kw in node.keywords }
+            templates = func.template_func(args,kwds)
+        
         # get expected return count, e.g.: for multi-assignment
         min_outputs = None
         if hasattr(node, "expects"):

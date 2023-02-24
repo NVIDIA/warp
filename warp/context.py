@@ -39,6 +39,7 @@ class Function:
                  namespace,
                  input_types=None,
                  value_func=None,
+                 template_func=None,
                  module=None,
                  variadic=False,
                  initializer_list_func=None,
@@ -54,6 +55,7 @@ class Function:
         self.key = key
         self.namespace = namespace
         self.value_func = value_func    # a function that takes a list of args and a list of templates and returns the value type, e.g.: load(array, index) returns the type of value being loaded
+        self.template_func = template_func
         self.input_types = {}
         self.export = export
         self.doc = doc
@@ -374,7 +376,7 @@ def struct(c):
 builtin_functions = {}
 
 
-def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, initializer_list_func=None, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
+def add_builtin(key, input_types={}, value_type=None, value_func=None, template_func=None, doc="", namespace="wp::", variadic=False, initializer_list_func=None, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
 
     # wrap simple single-type functions with a value_func()
     if value_func == None:
@@ -490,6 +492,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     namespace=namespace,
                     input_types=input_types,
                     value_func=value_func,
+                    template_func=template_func,
                     variadic=variadic,
                     initializer_list_func=initializer_list_func,
                     export=export,
