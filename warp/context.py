@@ -166,7 +166,7 @@ class Function:
 
                             else:
                                 # already a built-in type, check it matches
-                                if type(a) != arg_type:
+                                if not warp.types.types_equal(type(a), arg_type):
                                     raise RuntimeError(f"Error calling function '{f.key}', parameter for argument '{arg_name}' has type '{type(a)}' but expected '{arg_type}'")
 
                                 x.value = a
