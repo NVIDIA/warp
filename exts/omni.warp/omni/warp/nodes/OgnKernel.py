@@ -37,8 +37,6 @@ from omni.warp.scripts.kernelnode import (
     deserialize_user_attribute_descs,
 )
 
-wp.init()
-
 QUIET_DEFAULT = wp.config.quiet
 
 ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
