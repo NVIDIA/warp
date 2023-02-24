@@ -210,6 +210,9 @@ def vec_constructor_value_func(args,templates):
     if templates is None:
         return vec(length=Any, dtype=Scalar)
     
+    if len(templates) == 0:
+        raise RuntimeError("Cannot use a generic type name in a kernel")
+
     veclen,vectype = templates
     if len(args) and args[0].type != vectype:
         raise RuntimeError("Wrong scalar type for vec<{}> constructor".format( ",".join(map(str,templates)) ))
@@ -222,6 +225,9 @@ add_builtin("vec", input_types={"s": Scalar}, value_func=vec_constructor_value_f
 def vec_component_constructor_value_func(args,templates):
     if templates is None:
         return vec(length=Any, dtype=Scalar)
+    
+    if len(templates) == 0:
+        raise RuntimeError("Cannot use a generic type name in a kernel")
     
     # check to make sure the user entered the correct number and type of components given the template arguments:
     veclen,vectype = templates
@@ -240,6 +246,9 @@ def mat_constructor_value_func(args,templates):
     if templates is None:
         return mat(shape=(Any,Any), dtype=Scalar)
     
+    if len(templates) == 0:
+        raise RuntimeError("Cannot use a generic type name in a kernel")
+
     matrows,matcols,mattype = templates
     if len(args) and args[0].type != mattype:
         raise RuntimeError("Wrong scalar type for mat<{}> constructor".format( ",".join(map(str,templates)) ))
@@ -255,6 +264,9 @@ def mat_initlist_constructor_value_func(args,templates):
     if templates is None:
         return mat(shape=(Any,Any), dtype=Scalar)
     
+    if len(templates) == 0:
+        raise RuntimeError("Cannot use a generic type name in a kernel")
+
     matrows,matcols,mattype = templates
     if infer_scalar_type(args) != mattype:
         raise RuntimeError("Wrong scalar type for mat<{}> constructor".format( ",".join(map(str,templates)) ))
@@ -288,6 +300,9 @@ def mat_quat_constructor_value_func(args,templates):
     if templates is None:
         return mat(shape=(Any,Any), dtype=Float)
     
+    if len(templates) == 0:
+        raise RuntimeError("Cannot use a generic type name in a kernel")
+    
     matrows,matcols,mattype = templates
     if (matrows,matcols) != (4,4):
         raise RuntimeError("Can only construct 4x4 matrices with position, rotation and scale")
@@ -315,6 +330,9 @@ add_builtin("eig3", input_types={"A": mat(shape=(3,3), dtype=Float), "Q":mat(sha
 def quat_constructor_value_func(args,templates):
     if templates is None:
         return quaternion(dtype=Float)
+    
+    if len(templates) == 0:
+        raise RuntimeError("Cannot use a generic type name in a kernel")
     
     quattype = templates[0]
     if len(args) and infer_scalar_type(args) != quattype:
@@ -361,6 +379,9 @@ def transform_constructor_value_func(args,templates):
     if templates is None:
         return transform_t(dtype=Scalar)
     
+    if len(templates) == 0:
+        raise RuntimeError("Cannot use a generic type name in a kernel")
+
     transtype = templates[0]
     if infer_scalar_type(args) != transtype:
         raise RuntimeError("Wrong scalar type for transform_t<{}> constructor".format( ",".join(map(str,templates)) ))
@@ -400,6 +421,9 @@ def spatial_vector_constructor_value_func(args,templates):
     if templates is None:
         return spatial_vector_t(dtype=Float)
     
+    if len(templates) == 0:
+        raise RuntimeError("Cannot use a generic type name in a kernel")
+
     vectype = templates[1]
     if len(args) and infer_scalar_type(args) != vectype:
         raise RuntimeError("Wrong scalar type for spatial_vector_t<{}> constructor".format( ",".join(map(str,templates)) ))
