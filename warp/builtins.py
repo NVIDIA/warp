@@ -433,14 +433,14 @@ add_builtin(
 
 # not making these functions available outside kernels (export=False) as they
 # return data via references, which we don't currently support:
-add_builtin("svd3", input_types={"A": mat(shape=(3,3), dtype=Float), "U":mat(shape=(3,3), dtype=Float), "sigma":vec(length=3, dtype=Float), "V":mat(shape=(3,3), dtype=Scalar)}, value_type=None, group="Vector Math",
+add_builtin("svd3", input_types={"A": mat(shape=(3,3), dtype=Float), "U":mat(shape=(3,3), dtype=Float), "sigma":vec(length=3, dtype=Float), "V":mat(shape=(3,3), dtype=Scalar)}, value_type=None, group="Vector Math", export=False,
     doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.""")
 
-add_builtin("qr3", input_types={"A": mat(shape=(3,3), dtype=Float), "Q":mat(shape=(3,3), dtype=Float), "R":mat(shape=(3,3), dtype=Float)}, value_type=None, group="Vector Math",
+add_builtin("qr3", input_types={"A": mat(shape=(3,3), dtype=Float), "Q":mat(shape=(3,3), dtype=Float), "R":mat(shape=(3,3), dtype=Float)}, value_type=None, group="Vector Math", export=False,
     doc="""Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.""")
 
-add_builtin("eig3", input_types={"A": mat(shape=(3,3), dtype=Float), "Q":mat(shape=(3,3), dtype=Float), "d":vec(length=3, dtype=Float)}, value_type=None, group="Vector Math",
+add_builtin("eig3", input_types={"A": mat(shape=(3,3), dtype=Float), "Q":mat(shape=(3,3), dtype=Float), "d":vec(length=3, dtype=Float)}, value_type=None, group="Vector Math", export=False,
     doc="""Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.""")
 
 #---------------------------------

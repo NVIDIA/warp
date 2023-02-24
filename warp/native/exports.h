@@ -379,15 +379,6 @@ WP_API void builtin_cw_div_mat22d_mat22d(mat22d x, mat22d y, mat22d* ret) { *ret
 WP_API void builtin_cw_div_mat33d_mat33d(mat33d x, mat33d y, mat33d* ret) { *ret = wp::cw_div(x, y); }
 WP_API void builtin_cw_div_mat44d_mat44d(mat44d x, mat44d y, mat44d* ret) { *ret = wp::cw_div(x, y); }
 WP_API void builtin_cw_div_spatial_matrixd_spatial_matrixd(spatial_matrixd x, spatial_matrixd y, spatial_matrixd* ret) { *ret = wp::cw_div(x, y); }
-WP_API void builtin_svd3_mat33h_mat33h_vec3h_mat33h(mat33h A, mat33h U, vec3h sigma, mat33h V) { wp::svd3(A, U, sigma, V); }
-WP_API void builtin_svd3_mat33_mat33_vec3_mat33(mat33 A, mat33 U, vec3 sigma, mat33 V) { wp::svd3(A, U, sigma, V); }
-WP_API void builtin_svd3_mat33d_mat33d_vec3d_mat33d(mat33d A, mat33d U, vec3d sigma, mat33d V) { wp::svd3(A, U, sigma, V); }
-WP_API void builtin_qr3_mat33h_mat33h_mat33h(mat33h A, mat33h Q, mat33h R) { wp::qr3(A, Q, R); }
-WP_API void builtin_qr3_mat33_mat33_mat33(mat33 A, mat33 Q, mat33 R) { wp::qr3(A, Q, R); }
-WP_API void builtin_qr3_mat33d_mat33d_mat33d(mat33d A, mat33d Q, mat33d R) { wp::qr3(A, Q, R); }
-WP_API void builtin_eig3_mat33h_mat33h_vec3h(mat33h A, mat33h Q, vec3h d) { wp::eig3(A, Q, d); }
-WP_API void builtin_eig3_mat33_mat33_vec3(mat33 A, mat33 Q, vec3 d) { wp::eig3(A, Q, d); }
-WP_API void builtin_eig3_mat33d_mat33d_vec3d(mat33d A, mat33d Q, vec3d d) { wp::eig3(A, Q, d); }
 WP_API void builtin_create_quaternion_float16_float16_float16_float16(float16 x, float16 y, float16 z, float16 w, quath* ret) { *ret = wp::create_quaternion(x, y, z, w); }
 WP_API void builtin_create_quaternion_float32_float32_float32_float32(float32 x, float32 y, float32 z, float32 w, quat* ret) { *ret = wp::create_quaternion(x, y, z, w); }
 WP_API void builtin_create_quaternion_float64_float64_float64_float64(float64 x, float64 y, float64 z, float64 w, quatd* ret) { *ret = wp::create_quaternion(x, y, z, w); }
