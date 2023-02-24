@@ -1425,30 +1425,6 @@ inline CUDA_CALLABLE void print(transform_t<Type> t)
     printf("(%g %g %g) (%g %g %g %g)\n", float(t.p[0]), float(t.p[1]), float(t.p[2]), float(t.q.x), float(t.q.y), float(t.q.z), float(t.q.w));
 }
 
-template<typename Type>
-inline CUDA_CALLABLE void print(spatial_vector_t<Type> v)
-{
-    printf("(%g %g %g) (%g %g %g)\n", float(v.w[0]), float(v.w[1]), float(v.w[2]), float(v.v[0]), float(v.v[1]), float(v.v[2]));
-}
-
-template<typename Type>
-inline CUDA_CALLABLE void print(spatial_matrix_t<Type> m)
-{
-    printf("%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n", 
-           float(m.data[0][0]), float(m.data[0][1]), float(m.data[0][2]), float(m.data[0][3]), float(m.data[0][4]), float(m.data[0][5]), 
-           float(m.data[1][0]), float(m.data[1][1]), float(m.data[1][2]), float(m.data[1][3]), float(m.data[1][4]), float(m.data[1][5]), 
-           float(m.data[2][0]), float(m.data[2][1]), float(m.data[2][2]), float(m.data[2][3]), float(m.data[2][4]), float(m.data[2][5]), 
-           float(m.data[3][0]), float(m.data[3][1]), float(m.data[3][2]), float(m.data[3][3]), float(m.data[3][4]), float(m.data[3][5]), 
-           float(m.data[4][0]), float(m.data[4][1]), float(m.data[4][2]), float(m.data[4][3]), float(m.data[4][4]), float(m.data[4][5]), 
-           float(m.data[5][0]), float(m.data[5][1]), float(m.data[5][2]), float(m.data[5][3]), float(m.data[5][4]), float(m.data[5][5]));
-}
-
-
 inline CUDA_CALLABLE void adj_print(int i, int adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float f, float adj_f) { printf("%g adj: %g\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(short f, short adj_f) { printf("%hd adj: %hd\n", f, adj_f); }
@@ -1468,9 +1444,9 @@ inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%g %g %g %g a
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_print(mat<Rows, Cols, Type> m, mat<Rows, Cols, Type>& adj_m) { }
 
-inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
-inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
-inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
+template<typename Type>
+inline CUDA_CALLABLE void adj_print(transform_t<Type> t, transform_t<Type>& adj_t) {}
+
 inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
 
 

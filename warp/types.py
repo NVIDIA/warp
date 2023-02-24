@@ -459,13 +459,7 @@ class mat44d(mat(shape=(4,4), dtype=float64)):
 
 
 def spatial_vector_t(dtype=Any):
-    ret = vector(length=6, dtype=dtype)
-    
-    # used in type checking and when writing out c++ code for constructors:
-    ret._wp_type_params_ = [dtype]
-    ret._wp_generic_type_str_ = "spatial_vector_t"
-
-    return ret
+    return vec(length=6, dtype=dtype)
 
 class spatial_vectorh(spatial_vector_t(dtype=float16)):
     pass
@@ -480,13 +474,7 @@ class spatial_vectord(spatial_vector_t(dtype=float64)):
     pass
 
 def spatial_matrix_t(dtype=Any):
-    ret = matrix(shape=(6,6), dtype=dtype)
-    
-    # used in type checking and when writing out c++ code for constructors:
-    ret._wp_type_params_ = [dtype]
-    ret._wp_generic_type_str_ = "spatial_matrix_t"
-
-    return ret
+    return mat(shape=(6,6), dtype=dtype)
 
 class spatial_matrixh(spatial_matrix_t(dtype=float16)):
     pass

@@ -65,6 +65,17 @@ struct vec
             c[i] = l[i];
         }
     }
+    
+    // special screw vector constructor for spatial_vectors:
+    CUDA_CALLABLE inline vec(vec<3,Type> w, vec<3,Type> v)
+    {
+        c[0] = w[0];
+        c[1] = w[1];
+        c[2] = w[2];
+        c[3] = v[0];
+        c[4] = v[1];
+        c[5] = v[2];
+    }
 
     inline CUDA_CALLABLE Type operator[](int index) const
     {
@@ -501,6 +512,17 @@ inline CUDA_CALLABLE void adj_vec(Type s, Type& adj_s, const vec<Length, Type>& 
     {
         adj_s += adj_ret[i];
     }
+}
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_vec(const vec<3,Type>& w, const vec<3,Type>& v, vec<3,Type>& adj_w, vec<3,Type>& adj_v, const vec<6,Type>& adj_ret)
+{
+    adj_w[0] += adj_ret[0];
+    adj_w[1] += adj_ret[1];
+    adj_w[2] += adj_ret[2];
+    adj_v[0] += adj_ret[3];
+    adj_v[1] += adj_ret[4];
+    adj_v[2] += adj_ret[5];
 }
 
 template<unsigned Length, typename Type>
