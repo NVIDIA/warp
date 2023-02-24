@@ -440,6 +440,9 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
         if scalartypes:
             scalartypes = scalartypes.pop().intersection(*scalartypes)
 
+        scalartypes = list(scalartypes)
+        scalartypes.sort(key=str)
+
         # generate function calls for each of these scalar types:
         for stype in scalartypes:
 
