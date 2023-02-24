@@ -369,7 +369,7 @@ inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { }
 inline CUDA_CALLABLE int8 abs(int8 x) { return ::abs(x); }
 inline CUDA_CALLABLE int16 abs(int16 x) { return ::abs(x); }
 inline CUDA_CALLABLE int32 abs(int32 x) { return ::abs(x); }
-inline CUDA_CALLABLE int64 abs(int64 x) { return ::abs(x); }
+inline CUDA_CALLABLE int64 abs(int64 x) { return ::llabs(x); }
 inline CUDA_CALLABLE uint8 abs(uint8 x) { return x; }
 inline CUDA_CALLABLE uint16 abs(uint16 x) { return x; }
 inline CUDA_CALLABLE uint32 abs(uint32 x) { return x; }
