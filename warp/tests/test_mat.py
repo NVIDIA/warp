@@ -2838,6 +2838,230 @@ def test_transform_vector(test,device,dtype, register_kernels=False):
             tape.zero()
 
 
+def test_anon_type_instance(test, device, dtype, register_kernels=False):
+
+    np.random.seed(123)
+
+    tol = {
+        np.float16: 5.e-3,
+        np.float32: 1.e-6,
+        np.float64: 1.e-8,
+    }.get(dtype,0)
+    
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def check_scalar_init(
+        input: wp.array(dtype=wptype),
+        output: wp.array(dtype=wptype),
+    ):
+        m2result = wp.create_mat(input[0],shape=(2,2))
+        m3result = wp.create_mat(input[1],shape=(3,3))
+        m4result = wp.create_mat(input[2],shape=(4,4))
+        m5result = wp.create_mat(input[3],shape=(5,5))
+        m32result = wp.create_mat(input[4],shape=(3,2))
+
+        idx = 0
+        for i in range(2):
+            for j in range(2):
+                output[idx] = wptype(2) * m2result[i,j]
+                idx = idx + 1
+        for i in range(3):
+            for j in range(3):
+                output[idx] = wptype(2) * m3result[i,j]
+                idx = idx + 1
+        for i in range(4):
+            for j in range(4):
+                output[idx] = wptype(2) * m4result[i,j]
+                idx = idx + 1
+        for i in range(5):
+            for j in range(5):
+                output[idx] = wptype(2) * m5result[i,j]
+                idx = idx + 1
+        for i in range(3):
+            for j in range(2):
+                output[idx] = wptype(2) * m32result[i,j]
+                idx = idx + 1
+    
+    def check_component_init(
+        input: wp.array(dtype=wptype),
+        output: wp.array(dtype=wptype),
+    ):
+        m2result = wp.create_mat(
+            input[0], input[1],
+            input[2], input[3],
+            shape=(2,2)
+        )
+        m3result = wp.create_mat(
+            input[4],  input[5],  input[6],
+            input[7],  input[8],  input[9],
+            input[10], input[11], input[12],
+            shape=(3,3)
+        )
+        m4result = wp.create_mat(
+            input[13], input[14], input[15], input[16],
+            input[17], input[18], input[19], input[20],
+            input[21], input[22], input[23], input[24],
+            input[25], input[26], input[27], input[28],
+            shape=(4,4)
+        )
+        m5result = wp.create_mat(
+            input[29], input[30], input[31], input[32], input[33],
+            input[34], input[35], input[36], input[37], input[38],
+            input[39], input[40], input[41], input[42], input[43],
+            input[44], input[45], input[46], input[47], input[48],
+            input[49], input[50], input[51], input[52], input[53],
+            shape=(5,5)
+        )
+        m32result = wp.create_mat(
+            input[54], input[55],
+            input[56], input[57],
+            input[58], input[59],
+            shape=(3,2)
+        )
+
+        idx = 0
+        for i in range(2):
+            for j in range(2):
+                output[idx] = wptype(2) * m2result[i,j]
+                idx = idx + 1
+        for i in range(3):
+            for j in range(3):
+                output[idx] = wptype(2) * m3result[i,j]
+                idx = idx + 1
+        for i in range(4):
+            for j in range(4):
+                output[idx] = wptype(2) * m4result[i,j]
+                idx = idx + 1
+        for i in range(5):
+            for j in range(5):
+                output[idx] = wptype(2) * m5result[i,j]
+                idx = idx + 1
+        for i in range(3):
+            for j in range(2):
+                output[idx] = wptype(2) * m32result[i,j]
+                idx = idx + 1
+
+    scalar_kernel = getkernel(check_scalar_init,suffix=dtype.__name__)
+    component_kernel = getkernel(check_component_init,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+
+    input = wp.array(randvals([5],dtype), requires_grad=True, device=device)
+    output = wp.zeros(2*2+3*3+4*4+5*5+3*2, dtype=wptype, requires_grad=True, device=device)
+
+    wp.launch(scalar_kernel, dim=1, inputs=[ input ], outputs=[ output ], device=device)
+
+    assert_np_equal(output.numpy()[:4], 2*np.array([input.numpy()[0]]*2*2), tol=1.e-6)
+    assert_np_equal(output.numpy()[4:13], 2*np.array([input.numpy()[1]]*3*3), tol=1.e-6)
+    assert_np_equal(output.numpy()[13:29], 2*np.array([input.numpy()[2]]*4*4), tol=1.e-6)
+    assert_np_equal(output.numpy()[29:54], 2*np.array([input.numpy()[3]]*5*5), tol=1.e-6)
+    assert_np_equal(output.numpy()[54:], 2*np.array([input.numpy()[4]]*3*2), tol=1.e-6)
+
+    if dtype in np_float_types:
+        out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        for i in range(len(output)):
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(scalar_kernel, dim=1, inputs=[ input ], outputs=[ output ], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[ output,i ], outputs=[out], device=device)
+
+            tape.backward(loss=out)
+            expected = np.zeros_like(input.numpy())
+            if i < 4:
+                expected[0] = 2
+            elif i < 13:
+                expected[1] = 2
+            elif i < 29:
+                expected[2] = 2
+            elif i < 54:
+                expected[3] = 2
+            else:
+                expected[4] = 2
+                
+            assert_np_equal(tape.gradients[input].numpy(),expected, tol=tol)
+
+            tape.reset()
+            tape.zero()
+
+    input = wp.array(randvals([2*2+3*3+4*4+5*5+3*2],dtype), requires_grad=True, device=device)
+    output = wp.zeros(2*2+3*3+4*4+5*5+3*2, dtype=wptype, requires_grad=True, device=device)
+
+    wp.launch(component_kernel, dim=1, inputs=[ input ], outputs=[ output ], device=device)
+
+    assert_np_equal(output.numpy(), 2*input.numpy(), tol=1.e-6)
+
+    if dtype in np_float_types:
+        out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        for i in range(len(output)):
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(component_kernel, dim=1, inputs=[ input ], outputs=[ output ], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[ output,i ], outputs=[out], device=device)
+
+            tape.backward(loss=out)
+            expected = np.zeros_like(input.numpy())
+            expected[i] = 2
+            
+            assert_np_equal(tape.gradients[input].numpy(),expected, tol=tol)
+
+            tape.reset()
+            tape.zero()
+
+def test_identity(test, device, dtype, register_kernels=False):
+
+    np.random.seed(123)
+
+    tol = {
+        np.float16: 5.e-3,
+        np.float32: 1.e-6,
+        np.float64: 1.e-8,
+    }.get(dtype,0)
+    
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def check_identity_mat(
+        output: wp.array(dtype=wptype),
+    ):
+        m2result = wp.identity(dtype=wptype,n=2)
+        m3result = wp.identity(dtype=wptype,n=3)
+        m4result = wp.identity(dtype=wptype,n=4)
+        m5result = wp.identity(dtype=wptype,n=5)
+
+        idx = 0
+        for i in range(2):
+            for j in range(2):
+                output[idx] = wptype(2) * m2result[i,j]
+                idx = idx + 1
+        for i in range(3):
+            for j in range(3):
+                output[idx] = wptype(2) * m3result[i,j]
+                idx = idx + 1
+        for i in range(4):
+            for j in range(4):
+                output[idx] = wptype(2) * m4result[i,j]
+                idx = idx + 1
+        for i in range(5):
+            for j in range(5):
+                output[idx] = wptype(2) * m5result[i,j]
+                idx = idx + 1
+
+    id_kernel = getkernel(check_identity_mat,suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+        
+    output = wp.zeros(2*2+3*3+4*4+5*5, dtype=wptype, requires_grad=True, device=device)
+    wp.launch(id_kernel, dim=1, inputs=[], outputs=[ output ], device=device)
+    assert_np_equal(output.numpy()[:4], 2*np.eye(2), tol=1.e-6)
+    assert_np_equal(output.numpy()[4:13], 2*np.eye(3), tol=1.e-6)
+    assert_np_equal(output.numpy()[13:29], 2*np.eye(4), tol=1.e-6)
+    assert_np_equal(output.numpy()[29:], 2*np.eye(5), tol=1.e-6)
+
+
 def register(parent):
 
     devices = get_test_devices()
@@ -2852,6 +3076,8 @@ def register(parent):
     for dtype in np_scalar_types:
         add_function_test(TestMat, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestMat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_anon_type_instance_{dtype.__name__}", test_anon_type_instance, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_identity_{dtype.__name__}", test_identity, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestMat, f"test_indexing_{dtype.__name__}", test_indexing, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestMat, f"test_equality_{dtype.__name__}", test_equality, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestMat, f"test_scalar_multiplication_{dtype.__name__}", test_scalar_multiplication, devices=devices, dtype=dtype)

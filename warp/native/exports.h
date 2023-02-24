@@ -388,7 +388,12 @@ WP_API void builtin_qr3_mat33d_mat33d_mat33d(mat33d A, mat33d Q, mat33d R) { wp:
 WP_API void builtin_eig3_mat33h_mat33h_vec3h(mat33h A, mat33h Q, vec3h d) { wp::eig3(A, Q, d); }
 WP_API void builtin_eig3_mat33_mat33_vec3(mat33 A, mat33 Q, vec3 d) { wp::eig3(A, Q, d); }
 WP_API void builtin_eig3_mat33d_mat33d_vec3d(mat33d A, mat33d Q, vec3d d) { wp::eig3(A, Q, d); }
-WP_API void builtin_quat_identity(quat* ret) { *ret = wp::quat_identity(); }
+WP_API void builtin_create_quaternion_float16_float16_float16_float16(float16 x, float16 y, float16 z, float16 w, quath* ret) { *ret = wp::create_quaternion(x, y, z, w); }
+WP_API void builtin_create_quaternion_float32_float32_float32_float32(float32 x, float32 y, float32 z, float32 w, quat* ret) { *ret = wp::create_quaternion(x, y, z, w); }
+WP_API void builtin_create_quaternion_float64_float64_float64_float64(float64 x, float64 y, float64 z, float64 w, quatd* ret) { *ret = wp::create_quaternion(x, y, z, w); }
+WP_API void builtin_create_quaternion_vec3h_float16(vec3h i, float16 r, quath* ret) { *ret = wp::create_quaternion(i, r); }
+WP_API void builtin_create_quaternion_vec3_float32(vec3 i, float32 r, quat* ret) { *ret = wp::create_quaternion(i, r); }
+WP_API void builtin_create_quaternion_vec3d_float64(vec3d i, float64 r, quatd* ret) { *ret = wp::create_quaternion(i, r); }
 WP_API void builtin_quat_from_axis_angle_vec3h_float16(vec3h axis, float16 angle, quath* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
 WP_API void builtin_quat_from_axis_angle_vec3_float32(vec3 axis, float32 angle, quat* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
 WP_API void builtin_quat_from_axis_angle_vec3d_float64(vec3d axis, float64 angle, quatd* ret) { *ret = wp::quat_from_axis_angle(axis, angle); }
@@ -416,7 +421,9 @@ WP_API void builtin_quat_slerp_quatd_quatd_float64(quatd q0, quatd q1, float64 t
 WP_API void builtin_quat_to_matrix_quath(quath q, mat33h* ret) { *ret = wp::quat_to_matrix(q); }
 WP_API void builtin_quat_to_matrix_quat(quat q, mat33* ret) { *ret = wp::quat_to_matrix(q); }
 WP_API void builtin_quat_to_matrix_quatd(quatd q, mat33d* ret) { *ret = wp::quat_to_matrix(q); }
-WP_API void builtin_transform_identity(transform* ret) { *ret = wp::transform_identity(); }
+WP_API void builtin_create_transform_vec3h_quath(vec3h p, quath q, transformh* ret) { *ret = wp::create_transform(p, q); }
+WP_API void builtin_create_transform_vec3_quat(vec3 p, quat q, transform* ret) { *ret = wp::create_transform(p, q); }
+WP_API void builtin_create_transform_vec3d_quatd(vec3d p, quatd q, transformd* ret) { *ret = wp::create_transform(p, q); }
 WP_API void builtin_transform_get_translation_transformh(transformh t, vec3h* ret) { *ret = wp::transform_get_translation(t); }
 WP_API void builtin_transform_get_translation_transform(transform t, vec3* ret) { *ret = wp::transform_get_translation(t); }
 WP_API void builtin_transform_get_translation_transformd(transformd t, vec3d* ret) { *ret = wp::transform_get_translation(t); }

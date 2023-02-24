@@ -242,6 +242,47 @@ def vec_initlist_func(args,_):
 
 add_builtin("vec", input_types={}, variadic=True, initializer_list_func=vec_initlist_func, value_func=vec_component_constructor_value_func, doc="Construct a vector from scalar compontents.", group="Vector Math", export=False)
 
+
+# anonymous type constructor:
+def create_vector_value_func(args,templates):
+    if args is None:
+        return vec(length=Any, dtype=Scalar)
+    
+    veclen,vectype = templates
+    if not all( vectype == a.type for a in args ):
+        raise RuntimeError("Wrong type of arguments for vector() function".format( ",".join(map(str,templates)) ))
+
+    retvalue = vec(length=veclen, dtype=vectype)
+    return retvalue
+
+def create_vector_template_func(args,kwargs):
+
+    if "length" in kwargs:
+        if len(args) == 0:
+            if "dtype" not in kwargs:
+                raise RuntimeError("vector() must have dtype as a keyword argument if it has no positional arguments")
+            return [kwargs["length"], kwargs["dtype"].__class__]
+        elif len(args) == 1:
+            return [kwargs["length"], args[0].type]
+        else:
+            raise RuntimeError("vector() must have one positional argument or the dtype keyword argument if the length keyword argument is specified")
+    
+    return [len(args), args[0].type]
+
+add_builtin(
+    "create_vec",
+    input_types={},
+    variadic=True,
+    initializer_list_func=lambda args,_: len(args) > 1,
+    value_func=create_vector_value_func,
+    template_func=create_vector_template_func,
+    doc="Construct a vector from scalar compontents.",
+    group="Vector Math",
+    export=False
+)
+
+
+
 def mat_constructor_value_func(args,templates):
     if templates is None:
         return mat(shape=(Any,Any), dtype=Scalar)
@@ -314,6 +355,84 @@ def mat_quat_constructor_value_func(args,templates):
 add_builtin("mat", input_types={"pos": vec(length=3, dtype=Float), "rot": quaternion(dtype=Float), "scale": vec(length=3, dtype=Float)}, value_func=mat_quat_constructor_value_func, 
     doc="""Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x""", group="Vector Math", export=False)
 
+
+# anonymous type constructor:
+def create_matrix_value_func(args,templates):
+    if args is None:
+        return mat(shape=(Any,Any), dtype=Scalar)
+    
+    rows,cols,mattype = templates
+    if not all( mattype == a.type for a in args ):
+        raise RuntimeError("Wrong type of arguments for matrix() function".format( ",".join(map(str,templates)) ))
+
+    retvalue = mat(shape=(rows,cols), dtype=mattype)
+    return retvalue
+
+def create_matrix_template_func(args,kwargs):
+
+    if "shape" not in kwargs:
+            raise RuntimeError("shape keyword must be specified when calling matrix() function")
+    
+    shape = kwargs["shape"]
+    if len(args) == 0:
+        if "dtype" not in kwargs:
+            raise RuntimeError("matrix() must have dtype as a keyword argument if it has no positional arguments")
+        return [shape[0], shape[1], kwargs["dtype"].__class__]
+    elif len(args) == 1 or len(args) == shape[0] * shape[1]:
+        return [shape[0], shape[1], args[0].type]
+    else:
+        raise RuntimeError("Wrong number of arguments for matrix() function")
+    
+
+add_builtin(
+    "create_mat",
+    input_types={},
+    variadic=True,
+    initializer_list_func=lambda args,_: len(args) > 1,
+    value_func=create_matrix_value_func,
+    template_func=create_matrix_template_func,
+    doc="Construct a matrix from scalar compontents.",
+    group="Vector Math",
+    export=False
+)
+
+
+
+
+# identity:
+def matrix_identity_value_func(args,templates):
+    if args is None:
+        return mat(shape=(Any,Any), dtype=Scalar)
+    
+    if len(args):
+        raise RuntimeError("identity() function does not accept positional arguments")
+    
+    n,mattype = templates
+    return mat(shape=(n,n), dtype=mattype)
+
+def matrix_identity_template_func(args,kwargs):
+
+    if "n" not in kwargs:
+        raise RuntimeError("'n' keyword argument must be specified when calling identity() function")
+    
+    if "dtype" not in kwargs:
+        raise RuntimeError("'dtype' keyword argument must be specified when calling identity() function")
+    
+    return [kwargs["n"], kwargs["dtype"].__class__]
+
+add_builtin(
+    "identity",
+    input_types={},
+    value_func=matrix_identity_value_func,
+    template_func=matrix_identity_template_func,
+    doc="Create an identity matrix with dimension n.",
+    group="Vector Math",
+    export=False
+)
+
+
+# not making these functions available outside kernels (export=False) as they
+# return data via references, which we don't currently support:
 add_builtin("svd3", input_types={"A": mat(shape=(3,3), dtype=Float), "U":mat(shape=(3,3), dtype=Float), "sigma":vec(length=3, dtype=Float), "V":mat(shape=(3,3), dtype=Scalar)}, value_type=None, group="Vector Math",
     doc="""Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.""")
@@ -348,8 +467,35 @@ add_builtin("quaternion", input_types={"x": Float, "y": Float, "z": Float, "w": 
 add_builtin("quaternion", input_types={"i": vec(length=3, dtype=Float), "r": Float}, value_func=quat_constructor_value_func, group="Quaternion Math",
     doc="Construct a quaternion from it's imaginary components i, and real part r", export=False)
 
-add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion Math",
-    doc="Construct a float32 identity quaternion with zero imaginary part and real part of 1.0")
+def quat_identity_value_func(args,templates):
+    if args is None:
+        return quaternion(dtype=Scalar)
+    
+    return quaternion(dtype=templates[0])
+
+def quat_identity_template_func(args,kwargs):
+
+    if "dtype" not in kwargs:
+        # defaulting to float32 to preserve current behavior:
+        return [float32]
+
+    return [kwargs["dtype"].__class__]
+
+add_builtin("quat_identity", input_types={}, value_func=quat_identity_value_func, template_func=quat_identity_template_func, group="Quaternion Math",
+    doc="Construct an identity quaternion with zero imaginary part and real part of 1.0", export=False)
+
+
+def create_quaternion_value_func(args,templates):
+    if args is None:
+        return quaternion(dtype=Scalar)
+    
+    return quaternion(dtype=infer_scalar_type(args))
+
+add_builtin("create_quaternion", input_types={"x": Float, "y": Float, "z": Float, "w": Float}, value_func=create_quaternion_value_func, group="Quaternion Math",
+    doc="Create a quaternion using the supplied components (type inferred from component type)")
+add_builtin("create_quaternion", input_types={"i": vec(length=3, dtype=Float), "r": Float}, value_func=create_quaternion_value_func, group="Quaternion Math",
+    doc="Create a quaternion using the supplied vector/scalar (type inferred from scalar type)")
+
 
 add_builtin("quat_from_axis_angle", input_types={"axis": vec(length=3, dtype=Float), "angle": Float}, value_func=lambda args,_: quaternion(dtype=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
@@ -391,8 +537,33 @@ def transform_constructor_value_func(args,templates):
 add_builtin("transform_t", input_types={"p": vec(length=3, dtype=Float), "q": quaternion(dtype=Float)}, value_func=transform_constructor_value_func, group="Transformations",
     doc="Construct a rigid body transformation with translation part p and rotation q.", export=False)
 
-add_builtin("transform_identity", input_types={}, value_type=transform, group="Transformations",
-    doc="Construct a float32 identity transform with zero translation and identity rotation.")
+def create_transform_value_func(args,templates):
+    if args is None:
+        return transform_t(dtype=Scalar)
+    
+    return transform_t(dtype=infer_scalar_type(args))
+
+add_builtin("create_transform", input_types={"p": vec(length=3, dtype=Float), "q": quaternion(dtype=Float)}, value_func=create_transform_value_func, group="Transformations",
+    doc="Construct a rigid body transformation with translation part p and rotation q.")
+
+
+
+def transform_identity_value_func(args,templates):
+    if args is None:
+        return transform_t(dtype=Scalar)
+    
+    return transform_t(dtype=templates[0])
+
+def transform_identity_template_func(args,kwargs):
+
+    if "dtype" not in kwargs:
+        # defaulting to float32 to preserve current behavior:
+        return [float32]
+
+    return [kwargs["dtype"].__class__]
+
+add_builtin("transform_identity", input_types={}, value_func=transform_identity_value_func, template_func=transform_identity_template_func, group="Transformations",
+    doc="Construct an identity transform with zero translation and identity rotation.", export=False)
 
 add_builtin("transform_get_translation", input_types={"t": transform_t(dtype=Float)}, value_func=lambda args,_: vec(length=3, dtype=infer_scalar_type(args)), group="Transformations",
     doc="Return the translational part of a transform.")

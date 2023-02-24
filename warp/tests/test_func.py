@@ -66,7 +66,7 @@ def test_overload_func():
 def test_func_export(test, device):
     # tests calling native functions from Python
     
-    q = wp.quat_identity()
+    q = wp.create_quaternion(0.0,0.0,0.0,1.0)
     assert_np_equal(np.array([*q]), np.array([0.0, 0.0, 0.0, 1.0]))
 
     r = wp.quat_from_axis_angle((1.0, 0.0, 0.0), 2.0)
@@ -94,7 +94,10 @@ def test_func_export(test, device):
     test.assertEqual(m22[1,1], 8.0)
     test.assertEqual(str(m22), "[[2.0, 4.0],\n [6.0, 8.0]]")
 
-    t = wp.transform_identity()
+    t = wp.create_transform(
+        wp.vec3(0.0,0.0,0.0),
+        wp.quat(0.0,0.0,0.0,1.0),
+    )
     assert_np_equal(np.array([*t]), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
 
     f = wp.sin(math.pi*0.5)

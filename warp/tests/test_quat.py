@@ -1585,6 +1585,103 @@ def test_quat_from_matrix(test, device, dtype, register_kernels=False):
     assert_np_equal(gradients_z, gradients_z_auto, tol=eps)
     assert_np_equal(gradients_w, gradients_w_auto, tol=eps)
 
+
+def test_quat_identity(test, device, dtype, register_kernels=False):
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def quat_identity_test(
+        output: wp.array(dtype=wptype)
+    ):
+        q = wp.quat_identity(dtype=wptype)
+        output[0] = q[0]
+        output[1] = q[1]
+        output[2] = q[2]
+        output[3] = q[3]
+    
+    def quat_identity_test_default(
+        output: wp.array(dtype=wp.float32)
+    ):
+        q = wp.quat_identity()
+        output[0] = q[0]
+        output[1] = q[1]
+        output[2] = q[2]
+        output[3] = q[3]
+
+    quat_identity_kernel = getkernel(quat_identity_test,suffix=dtype.__name__)
+    quat_identity_default_kernel = getkernel(quat_identity_test_default,suffix=np.float32.__name__)
+    
+    if register_kernels:
+        return
+    
+    output = wp.zeros(4, dtype=wptype, device=device)
+    wp.launch(quat_identity_kernel, dim=1, inputs=[], outputs=[output], device=device)
+    expected = np.zeros_like(output.numpy())
+    expected[3] = 1
+    assert_np_equal(output.numpy(), expected)
+
+    # let's just test that it defaults to float32:
+    output = wp.zeros(4, dtype=wp.float32, device=device)
+    wp.launch(quat_identity_default_kernel, dim=1, inputs=[], outputs=[output], device=device)
+    expected = np.zeros_like(output.numpy())
+    expected[3] = 1
+    assert_np_equal(output.numpy(), expected)
+
+
+def test_anon_type_instance(test, device, dtype, register_kernels=False):
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def quat_create_test(
+        input: wp.array(dtype=wptype),
+        output: wp.array(dtype=wptype)
+    ):
+        # component constructor:
+        q = wp.create_quaternion(
+            input[0],
+            input[1],
+            input[2],
+            input[3]
+        )
+        output[0] = wptype(2) * q[0]
+        output[1] = wptype(2) * q[1]
+        output[2] = wptype(2) * q[2]
+        output[3] = wptype(2) * q[3]
+        
+        # vector / scalar constructor:
+        q2 = wp.create_quaternion(
+            wp.create_vec(input[4],input[5],input[6]),
+            input[7]
+        )
+        output[4] = wptype(2) * q2[0]
+        output[5] = wptype(2) * q2[1]
+        output[6] = wptype(2) * q2[2]
+        output[7] = wptype(2) * q2[3]
+    
+    quat_create_kernel = getkernel(quat_create_test,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+    
+    if register_kernels:
+        return
+    
+    input = wp.array(np.random.randn(8).astype(dtype), requires_grad=True, device=device)
+    output = wp.zeros(8, dtype=wptype, requires_grad=True, device=device)
+    wp.launch(quat_create_kernel, dim=1, inputs=[input], outputs=[output], device=device)
+    assert_np_equal(output.numpy(), 2*input.numpy())
+    
+    for i in range(len(input)):
+        cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(quat_create_kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
+            wp.launch(output_select_kernel, dim=1, inputs=[ output,i ], outputs=[cmp], device=device)
+        tape.backward(loss=cmp)
+        expectedgrads = np.zeros(len(input))
+        expectedgrads[i] = 2
+        assert_np_equal(tape.gradients[input].numpy(), expectedgrads)
+        tape.zero()
+
+
 def register(parent):
 
     devices = get_test_devices()
@@ -1595,7 +1692,9 @@ def register(parent):
     for dtype in np_float_types:
 
         add_function_test_register_kernel(TestQuat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestQuat, f"test_anon_type_instance_{dtype.__name__}", test_anon_type_instance, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestQuat, f"test_inverse_{dtype.__name__}", test_inverse, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestQuat, f"test_quat_identity_{dtype.__name__}", test_quat_identity, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestQuat, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestQuat, f"test_length_{dtype.__name__}", test_length, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestQuat, f"test_normalize_{dtype.__name__}", test_normalize, devices=devices, dtype=dtype)

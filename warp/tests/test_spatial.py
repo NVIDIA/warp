@@ -1674,6 +1674,84 @@ def test_spatial_adjoint(test,device,dtype, register_kernels=False):
             idx = idx + 1
 
 
+
+def test_transform_identity(test, device, dtype, register_kernels=False):
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def transform_identity_test(
+        output: wp.array(dtype=wptype)
+    ):
+        t = wp.transform_identity(dtype=wptype)
+        for i in range(7):
+            output[i] = t[i]
+    
+    def transform_identity_test_default(
+        output: wp.array(dtype=wp.float32)
+    ):
+        t = wp.transform_identity()
+        for i in range(7):
+            output[i] = t[i]
+
+    quat_identity_kernel = getkernel(transform_identity_test,suffix=dtype.__name__)
+    quat_identity_default_kernel = getkernel(transform_identity_test_default,suffix=np.float32.__name__)
+    
+    if register_kernels:
+        return
+    
+    output = wp.zeros(7, dtype=wptype, device=device)
+    wp.launch(quat_identity_kernel, dim=1, inputs=[], outputs=[output], device=device)
+    expected = np.zeros_like(output.numpy())
+    expected[-1] = 1
+    assert_np_equal(output.numpy(), expected)
+
+    # let's just test that it defaults to float32:
+    output = wp.zeros(7, dtype=wp.float32, device=device)
+    wp.launch(quat_identity_default_kernel, dim=1, inputs=[], outputs=[output], device=device)
+    expected = np.zeros_like(output.numpy())
+    expected[-1] = 1
+    assert_np_equal(output.numpy(), expected)
+
+
+
+def test_transform_anon_type_instance(test, device, dtype, register_kernels=False):
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    def transform_create_test(
+        input: wp.array(dtype=wptype),
+        output: wp.array(dtype=wptype)
+    ):
+        t = wp.create_transform(
+            wp.create_vec(input[0],input[1],input[2]),
+            wp.create_quaternion(input[3],input[4],input[5],input[6])
+        )
+        for i in range(7):
+            output[i] = wptype(2) * t[i]
+    
+    transform_create_kernel = getkernel(transform_create_test,suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+    
+    if register_kernels:
+        return
+    
+    input = wp.array(np.random.randn(7).astype(dtype), requires_grad=True, device=device)
+    output = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
+    wp.launch(transform_create_kernel, dim=1, inputs=[input], outputs=[output], device=device)
+    assert_np_equal(output.numpy(), 2*input.numpy())
+    
+    for i in range(len(input)):
+        cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(transform_create_kernel, dim=1, inputs=[ input ], outputs=[output], device=device)
+            wp.launch(output_select_kernel, dim=1, inputs=[ output,i ], outputs=[cmp], device=device)
+        tape.backward(loss=cmp)
+        expectedgrads = np.zeros(len(input))
+        expectedgrads[i] = 2
+        assert_np_equal(tape.gradients[input].numpy(), expectedgrads)
+        tape.zero()
+
 def register(parent):
 
     devices = get_test_devices()
@@ -1693,6 +1771,8 @@ def register(parent):
 
 
         add_function_test_register_kernel(TestSpatial, f"test_transform_constructors_{dtype.__name__}", test_transform_constructors, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_anon_type_instance_{dtype.__name__}", test_transform_anon_type_instance, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestSpatial, f"test_transform_identity_{dtype.__name__}", test_transform_identity, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestSpatial, f"test_transform_indexing_{dtype.__name__}", test_transform_indexing, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestSpatial, f"test_transform_get_trans_rot_{dtype.__name__}", test_transform_get_trans_rot, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestSpatial, f"test_transform_multiply_{dtype.__name__}", test_transform_multiply, devices=devices, dtype=dtype)

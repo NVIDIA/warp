@@ -30,6 +30,19 @@ struct quaternion
 };
 
 template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> create_quaternion(Type x, Type y, Type z, Type w)
+{
+    return quaternion<Type>(x, y, z, w);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> create_quaternion(const vec<3,Type>& v, Type w)
+{
+    return quaternion<Type>(v, w);
+}
+
+
+template<typename Type>
 inline CUDA_CALLABLE bool operator==(const quaternion<Type>& a, const quaternion<Type>& b)
 {
     return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
@@ -68,6 +81,18 @@ inline CUDA_CALLABLE void adj_quaternion(const vec<3,Type>& v, Type w, vec<3,Typ
     adj_v[1] += adj_ret.y;
     adj_v[2] += adj_ret.z;
     adj_w   += adj_ret.w;
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_create_quaternion(Type x, Type y, Type z, Type w, Type& adj_x, Type& adj_y, Type& adj_z, Type& adj_w, quaternion<Type> adj_ret)
+{
+    adj_quaternion(x, y, z, w, adj_x, adj_y, adj_z, adj_w, adj_ret);
+}
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_create_quaternion(const vec<3,Type>& v, Type w, vec<3,Type>& adj_v, Type& adj_w, quaternion<Type> adj_ret)
+{
+    adj_quaternion(v, w, adj_v, adj_w, adj_ret);
 }
 
 // forward methods
@@ -1018,34 +1043,10 @@ using quat = quaternion<float>;
 using quatf = quaternion<float>;
 using quatd = quaternion<double>;
 
-inline CUDA_CALLABLE quath quath_identity()
+template<typename Type>
+inline CUDA_CALLABLE quaternion<Type> quat_identity()
 {
-    return quath(0.0f, 0.0f, 0.0f, 1.0f);
-}
-
-inline CUDA_CALLABLE void adj_quath_identity(const quath& adj_ret)
-{
-    // nop
-}
-
-inline CUDA_CALLABLE quat quat_identity()
-{
-    return quat(0.0f, 0.0f, 0.0f, 1.0f);
-}
-
-inline CUDA_CALLABLE void adj_quat_identity(const quat& adj_ret)
-{
-    // nop
-}
-
-inline CUDA_CALLABLE quatd quatd_identity()
-{
-    return quatd(0.0f, 0.0f, 0.0f, 1.0f);
-}
-
-inline CUDA_CALLABLE void adj_quatd_identity(const quatd& adj_ret)
-{
-    // nop
+    return quaternion<Type>(Type(0), Type(0), Type(0), Type(1));
 }
 
 inline CUDA_CALLABLE void adj_mat44(const vec3& pos, const quat& rot, const vec3& scale,

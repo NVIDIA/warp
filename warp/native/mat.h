@@ -132,7 +132,7 @@ struct mat
 
     inline CUDA_CALLABLE mat(const vec<3,Type>& pos, const quaternion<Type>& rot, const vec<3,Type>& scale);
 
-    inline CUDA_CALLABLE mat(initializer_array<Rows * Cols, Type> l)
+    inline CUDA_CALLABLE mat(const initializer_array<Rows * Cols, Type> &l)
     {
         for (unsigned i=0; i < Rows; ++i)
         {
@@ -143,7 +143,7 @@ struct mat
         }
     }
 
-    inline CUDA_CALLABLE mat(initializer_array<Cols, vec<Rows,Type> > l)
+    inline CUDA_CALLABLE mat(const initializer_array<Cols, vec<Rows,Type> > &l)
     {
         for (unsigned j=0; j < Cols; ++j)
         {
@@ -185,6 +185,31 @@ struct mat
     // row major storage assumed to be compatible with PyTorch
     Type data[Rows][Cols] = {};
 };
+
+
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat<Rows, Cols, Type> create_mat(const initializer_array<Rows * Cols, Type> &l)
+{
+    return mat<Rows, Cols, Type>(l);
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE mat<Rows, Cols, Type> create_mat(Type s)
+{
+    return mat<Rows, Cols, Type>(s);
+}
+
+template<unsigned Rows, typename Type>
+inline CUDA_CALLABLE mat<Rows, Rows, Type> identity()
+{
+    mat<Rows, Rows, Type> m;
+    for( unsigned i=0; i < Rows; ++i )
+    {
+        m.data[i][i] = Type(1);
+    }
+    return m;
+}
 
 template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE bool operator==(const mat<Rows,Cols,Type>& a, const mat<Rows,Cols,Type>& b)
@@ -1072,7 +1097,7 @@ inline CUDA_CALLABLE void adj_mat(Type s, Type& adj_s, const mat<Rows, Cols, Typ
 
 // adjoint for the initializer_array scalar constructor:
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_mat(initializer_array<Rows * Cols, Type> cmps, initializer_array<Rows * Cols, Type*> adj_cmps, const mat<Rows, Cols, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_mat(const initializer_array<Rows * Cols, Type> &cmps, const initializer_array<Rows * Cols, Type*> &adj_cmps, const mat<Rows, Cols, Type>& adj_ret)
 {
     for (unsigned i=0; i < Rows; ++i)
     {
@@ -1081,6 +1106,19 @@ inline CUDA_CALLABLE void adj_mat(initializer_array<Rows * Cols, Type> cmps, ini
             *adj_cmps[i * Cols + j] += adj_ret.data[i][j];
         }
     }
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_create_mat(Type s, Type& adj_s, const mat<Rows, Cols, Type>& adj_ret)
+{
+    adj_mat(s, adj_s, adj_ret);
+}
+
+// adjoint for the initializer_array scalar constructor:
+template<unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_create_mat(const initializer_array<Rows * Cols, Type> &cmps, const initializer_array<Rows * Cols, Type*> &adj_cmps, const mat<Rows, Cols, Type>& adj_ret)
+{
+    adj_mat(cmps, adj_cmps, adj_ret);
 }
 
 template<typename Type>
@@ -1149,7 +1187,7 @@ inline CUDA_CALLABLE void adj_mat(Type m00, Type m01, Type m02, Type m03,
 
 // adjoint for the initializer_array vector constructor:
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_mat(initializer_array<Cols, vec<Rows,Type> > cmps, initializer_array<Cols, vec<Rows,Type>* > adj_cmps, const mat<Rows, Cols, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_mat(const initializer_array<Cols, vec<Rows,Type> > &cmps, const initializer_array<Cols, vec<Rows,Type>* > &adj_cmps, const mat<Rows, Cols, Type>& adj_ret)
 {
     for (unsigned j=0; j < Cols; ++j)
     {

@@ -143,6 +143,18 @@ struct transform_t
 };
 
 template<typename Type>
+inline CUDA_CALLABLE transform_t<Type> create_transform(vec<3,Type> p, quaternion<Type> q)
+{
+    return transform_t<Type>(p,q);
+}
+
+template<typename Type>
+CUDA_CALLABLE inline transform_t<Type> transform_identity()
+{
+    return transform_t<Type>(vec<3,Type>(), quat_identity<Type>());
+}
+
+template<typename Type>
 inline CUDA_CALLABLE bool operator==(const transform_t<Type>& a, const transform_t<Type>& b)
 {
     return a.p == b.p && a.q == b.q;
@@ -322,6 +334,12 @@ CUDA_CALLABLE inline void adj_transform_t(const vec<3,Type>& p, const quaternion
     adj_q += adj_ret.q;
 }
 
+
+template<typename Type>
+CUDA_CALLABLE inline void adj_create_transform(const vec<3,Type>& p, const quaternion<Type>& q, vec<3,Type>& adj_p, quaternion<Type>& adj_q, const transform_t<Type>& adj_ret)
+{
+    adj_transform_t(p, q, adj_p, adj_q, adj_ret);
+}
 
 template<typename Type>
 CUDA_CALLABLE inline void adj_transform_get_translation(const transform_t<Type>& t, transform_t<Type>& adj_t, const vec<3,Type>& adj_ret)
@@ -622,42 +640,5 @@ using spatial_matrixh = spatial_matrix_t<half>;
 using spatial_matrix = spatial_matrix_t<float>;
 using spatial_matrixf = spatial_matrix_t<float>;
 using spatial_matrixd = spatial_matrix_t<double>;
-
-
-
-CUDA_CALLABLE inline transformh transformh_identity()
-{
-    return transformh(vec3h(), quath_identity());
-}
-
-CUDA_CALLABLE inline void adj_transformh_identity(const transformh& adj_ret)
-{
-    // nop
-}
-
-CUDA_CALLABLE inline transform transform_identity()
-{
-    return transform(vec3(), quat_identity());
-}
-
-CUDA_CALLABLE inline void adj_transform_identity(const transform& adj_ret)
-{
-    // nop
-}
-
-CUDA_CALLABLE inline transformd transformd_identity()
-{
-    return transformd(vec3d(), quatd_identity());
-}
-
-CUDA_CALLABLE inline void adj_transformd_identity(const transformd& adj_ret)
-{
-    // nop
-}
-
-CUDA_CALLABLE inline void adj_transform(const vec3& p, const quat& q, vec3& adj_p, quat& adj_q, const transform& adj_ret)
-{
-    adj_transform_t(p, q, adj_p, adj_q, adj_ret);
-}
 
  } // namespace wp

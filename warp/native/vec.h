@@ -58,7 +58,7 @@ struct vec
         c[3]=w;
     }
     
-    inline CUDA_CALLABLE vec(initializer_array<Length, Type> l)
+    inline CUDA_CALLABLE vec(const initializer_array<Length, Type> &l)
     {
         for( unsigned i=0; i < Length; ++i )
         {
@@ -90,6 +90,19 @@ struct vec
     }
 
 };
+
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec<Length, Type> create_vec(const initializer_array<Length,Type> &l)
+{
+    return vec<Length,Type>(l);
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE vec<Length, Type> create_vec(Type s)
+{
+    return vec<Length,Type>(s);
+}
 
 //--------------
 // vec<Length, Type> methods
@@ -471,12 +484,18 @@ inline CUDA_CALLABLE void adj_expect_near(const vec<Length, Type>& actual, const
 
 // adjoint for the initializer_array constructor:
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_vec(initializer_array<Length, Type> cmps, initializer_array<Length, Type*> adj_cmps, const vec<Length, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_vec(const initializer_array<Length, Type> &cmps, const initializer_array<Length, Type*> &adj_cmps, const vec<Length, Type>& adj_ret)
 {
     for(unsigned i=0; i < Length; ++i)
     {
-        *adj_cmps[i] += adj_ret[i];
+        *(adj_cmps[i]) += adj_ret[i];
     }
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_create_vec(const initializer_array<Length, Type> &cmps, const initializer_array<Length, Type*> &adj_cmps, const vec<Length, Type>& adj_ret)
+{
+    adj_vec(cmps, adj_cmps, adj_ret);
 }
 
 // adjoint for the component constructors:
@@ -512,6 +531,12 @@ inline CUDA_CALLABLE void adj_vec(Type s, Type& adj_s, const vec<Length, Type>& 
     {
         adj_s += adj_ret[i];
     }
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_create_vec(Type s, Type& adj_s, const vec<Length, Type>& adj_ret)
+{
+    adj_vec(s, adj_s, adj_ret);
 }
 
 template<typename Type>
