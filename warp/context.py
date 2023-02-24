@@ -404,6 +404,13 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
         # so we can match arguments against them:
         generic_vtypes = [x for x in warp.types.vector_types if hasattr(x,"_wp_generic_type_str_")]
 
+        # deduplicate identical types:
+        def typekey(t):
+            return f"{t._wp_generic_type_str_}_{t._wp_type_params_}"
+        
+        typedict = { typekey(t):t for t in generic_vtypes }
+        generic_vtypes = [typedict[k] for k in sorted(typedict.keys())]
+
         # collect the parent type names of all the generic arguments:
         def generic_names(l):
             for t in l:
