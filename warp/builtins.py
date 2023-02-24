@@ -51,8 +51,8 @@ add_builtin("atan2", input_types={"y": Float, "x": Float}, value_func=sametype_v
 add_builtin("sinh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the sinh of x.", group="Scalar Math")
 add_builtin("cosh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the cosh of x.", group="Scalar Math")
 add_builtin("tanh", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the tanh of x.", group="Scalar Math")
-add_builtin("degrees", input_types={"x": float}, value_type=float, doc="Convert radians into degrees.", group="Scalar Math")
-add_builtin("radians", input_types={"x": float}, value_type=float, doc="Convert degrees into radians.", group="Scalar Math")
+add_builtin("degrees", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Convert radians into degrees.", group="Scalar Math")
+add_builtin("radians", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Convert degrees into radians.", group="Scalar Math")
 
 add_builtin("log", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the natural log (base-e) of x, where x is positive.", group="Scalar Math")
 add_builtin("log2", input_types={"x": Float}, value_func=sametype_value_func(Float), doc="Return the natural log (base-2) of x, where x is positive.", group="Scalar Math")
@@ -953,12 +953,25 @@ add_builtin("expect_neq", input_types={"arg1": mat(shape=(Any,Any), dtype=Scalar
 add_builtin("lerp", input_types={"a": Float, "b": Float, "t": Float}, value_func=sametype_value_func(Float), doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
 add_builtin("smoothstep", input_types={"edge0": Float, "edge1": Float, "x": Float}, value_func=sametype_value_func(Float), doc="Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping", group="Utility")
 
-for typ in vector_types:
-    t = typ._wp_scalar_type_
-    if t not in [float16,float32,float64,]:
-        continue
 
-    add_builtin("lerp", input_types={"a": typ, "b": typ, "t": t}, value_type=typ, doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
+def lerp_value_func(default):
+
+    def fn(args,_):
+        if args is None:
+            return default
+        scalar_type = args[-1].type
+        if not types_equal(args[0].type,args[1].type):
+            raise RuntimeError("Can't lerp between objects with different types")
+        if args[0].type._wp_scalar_type_ != scalar_type:
+            raise RuntimeError("'t' parameter must have the same scalar type as objects you're lerping between")
+
+        return args[0].type
+    return fn
+
+add_builtin("lerp", input_types={"a": vec(length=Any, dtype=Float), "b": vec(length=Any, dtype=Float), "t": Float}, value_func=lerp_value_func(vec(length=Any, dtype=Float)), doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
+add_builtin("lerp", input_types={"a": mat(shape=(Any,Any), dtype=Float), "b": mat(shape=(Any,Any), dtype=Float), "t": Float}, value_func=lerp_value_func(mat(shape=(Any,Any), dtype=Float)), doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
+add_builtin("lerp", input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float), "t": Float}, value_func=lerp_value_func(quaternion(dtype=Float)), doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
+add_builtin("lerp", input_types={"a": transform_t(dtype=Float), "b": transform_t(dtype=Float), "t": Float}, value_func=lerp_value_func(transform_t(dtype=Float)), doc="Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``", group="Utility")
 
 # fuzzy compare for float values
 add_builtin("expect_near", input_types={"arg1": Float, "arg2": Float, "tolerance": Float}, value_type=None, doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude", group="Utility")
