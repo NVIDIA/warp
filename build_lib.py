@@ -79,9 +79,12 @@ if os.name == 'nt':
 if args.build_llvm:
     llvm_project_path = os.path.join(base_path, "external/llvm-project")
     if not os.path.exists(llvm_project_path):
-        # TDOD: Only do shallow clone (https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/)
-        repo = Repo.clone_from("https://github.com/llvm/llvm-project.git", llvm_project_path)
-        repo.git.checkout("tags/llvmorg-15.0.7", "-b", "llvm-15.0.7")
+        shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
+        if shallow_clone:
+            repo = Repo.clone_from("https://github.com/llvm/llvm-project.git", to_path=llvm_project_path, single_branch=True, branch="llvmorg-15.0.7", depth=1)
+        else:
+            repo = Repo.clone_from("https://github.com/llvm/llvm-project.git", llvm_project_path)
+            repo.git.checkout("tags/llvmorg-15.0.7", "-b", "llvm-15.0.7")
     else:
         repo = Repo(llvm_project_path)
     
