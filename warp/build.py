@@ -287,9 +287,9 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
     if os.name == 'nt':
 
-        # try loading clang.dll, except when we're building clang.dll
+        # try loading clang.dll, except when we're building clang.dll or warp.dll
         clang = None
-        if os.path.basename(dll_path) != "clang.dll":
+        if os.path.basename(dll_path) != "clang.dll" and os.path.basename(dll_path) != "warp.dll":
             try:
                 clang = warp.build.load_dll(f"{warp_home_path}/bin/clang.dll")
             except RuntimeError as e:
@@ -301,7 +301,9 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         
         host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
 
+        cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
         cuda_includes = f' /I"{cuda_home}/include"' if cu_path else ""
+        includes = cpp_includes + cuda_includes
 
         # nvrtc_static.lib is built with /MT and _ITERATOR_DEBUG_LEVEL=0 so if we link it in we must match these options
         if cu_path or mode != "debug":
@@ -317,10 +319,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             runtime = "/sdl- /GS-"  # don't specify a runtime, and disable security checks with depend on it
 
         if (mode == "debug"):
-            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
             linkopts = ["/DLL", "/DEBUG"]
         elif (mode == "release"):
-            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
             linkopts = ["/DLL"]
         else:
             raise RuntimeError(f"Unrecognized build configuration (debug, release), got: {mode}")
@@ -336,11 +338,11 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 cpp_out = cpp_path + ".obj"
                 linkopts.append(quote(cpp_out))
 
-                ret = -1
                 if clang:
-                    ret = clang.compile_cpp(cpp_path, native_dir, mode=="debug", warp.config.verbose, verify_fp, fast_math, cpp_out)
-                    
-                if ret != 0:
+                    with open(cpp_path, "rb") as cpp:
+                        clang.compile_cpp(cpp.read(), native_dir.encode('utf-8'), cpp_out.encode('utf-8'))
+
+                else:
                     cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
                     run_cmd(cpp_cmd)
 
