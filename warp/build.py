@@ -362,9 +362,19 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 linkopts.append(f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"')
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
-            run_cmd(link_cmd)
-        
+            linkargs = linkopts + libs
+            if clang:
+                linkargs.append(f"/out:{dll_path}")
+                linkargs = [s.replace('"', '') for s in linkargs]
+                linkargs = [s.encode('utf-8') for s in linkargs]
+                argc = len(linkargs)
+                array_type = ctypes.c_char_p * argc
+                clang.link(argc, array_type(*linkargs))
+
+            else:
+                link_cmd = f'"{host_linker}" {" ".join(linkargs)} /out:"{dll_path}"'
+                run_cmd(link_cmd)
+
     else:
 
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""

@@ -26,6 +26,8 @@
 #include <llvm/InitializePasses.h>
 #include <llvm/IR/LegacyPassManager.h>
 
+#include <lld/Common/Driver.h>
+
 #include <vector>
 #include <iostream>
 #include <string>
@@ -111,6 +113,22 @@ WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char*
     delete target_machine;
 
     return 0;
+}
+
+WP_API int link(int argc, const char** argv)
+{
+    std::vector<const char*> args = {"lld-link.exe"};
+
+	for(int i = 0; i < argc; i++)
+	{
+	    args.push_back(argv[i]);
+	}    
+
+    bool success = lld::coff::link(args, llvm::outs(), llvm::errs(), /*exitEarly*/ false, /*disableOutput*/ false);
+
+    lld::CommonLinkerContext::destroy();
+
+    return success ? 0 : -1;
 }
 
 }  // extern "C"

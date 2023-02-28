@@ -108,7 +108,7 @@ if args.build_llvm:
                           "-D", "LLVM_USE_CRT_DEBUG=MTd",
                           "-D", "LLVM_USE_CRT_RELWITHDEBINFO=MTd",
                           "-D", "LLVM_TARGETS_TO_BUILD=X86",
-                          "-D", "LLVM_ENABLE_PROJECTS=clang",
+                          "-D", "LLVM_ENABLE_PROJECTS=clang;lld",
                           "-D", "LLVM_ENABLE_ZLIB=FALSE",
                           "-D", "LLVM_ENABLE_ZSTD=FALSE",
                           "-D", "LLVM_BUILD_LLVM_C_DYLIB=FALSE",
