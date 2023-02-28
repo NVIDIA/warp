@@ -88,19 +88,25 @@ if args.build_llvm:
     else:
         repo = Repo(llvm_project_path)
     
-    build_type = warp.config.mode.capitalize()  # CMake supports Debug, Release, RelWithDebInfo, and MinSizeRel
+    # CMake supports Debug, Release, RelWithDebInfo, and MinSizeRel builds
+    if warp.config.mode == "release":
+        cmake_build_type = "MinSizeRel"  # prefer smaller size over aggressive speed
+    else:
+        cmake_build_type = "Debug"
 
     # Build LLVM and Clang
     llvm_path = os.path.join(llvm_project_path, "llvm")
-    llvm_build_path = os.path.join(llvm_project_path, f"out/build/{build_type}")
-    llvm_install_path = os.path.join(llvm_project_path, f"out/install/{build_type}")
+    llvm_build_path = os.path.join(llvm_project_path, f"out/build/{warp.config.mode}")
+    llvm_install_path = os.path.join(llvm_project_path, f"out/install/{warp.config.mode}")
 
     cmake_gen = ["cmake", "-S", llvm_path,
                           "-B", llvm_build_path,
                           "-G", "Ninja",
-                          "-D", f"CMAKE_BUILD_TYPE={build_type}",
+                          "-D", f"CMAKE_BUILD_TYPE={cmake_build_type}",
                           "-D", "LLVM_USE_CRT_RELEASE=MT",
+                          "-D", "LLVM_USE_CRT_MINSIZEREL=MT",
                           "-D", "LLVM_USE_CRT_DEBUG=MTd",
+                          "-D", "LLVM_USE_CRT_RELWITHDEBINFO=MTd",
                           "-D", "LLVM_TARGETS_TO_BUILD=X86",
                           "-D", "LLVM_ENABLE_PROJECTS=clang",
                           "-D", "LLVM_ENABLE_ZLIB=FALSE",
