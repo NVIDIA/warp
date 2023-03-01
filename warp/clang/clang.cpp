@@ -70,10 +70,10 @@ std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string &input_file, const c
     compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
-    compiler_instance.ExecuteAction(emit_llvm_only_action);
+    bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
     buffer.release();
 
-    return std::move(emit_llvm_only_action.takeModule());
+    return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
 }
 
 WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file)
@@ -87,6 +87,11 @@ WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char*
 
     llvm::LLVMContext context;
     std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, context);
+
+    if(!module)
+    {
+        return -1;
+    }
 
     std::string target_triple = llvm::sys::getDefaultTargetTriple();
     std::string Error;
