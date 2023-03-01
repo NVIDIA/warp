@@ -902,7 +902,8 @@ class ModuleBuilder:
 
     def codegen_cpu(self):
 
-        cpp_source = ""
+        # ensure we have at least one exported function
+        cpp_source = 'extern "C" int _wp_main() { return 0xC0DE; }'
 
         # code-gen structs
         for struct in self.structs.keys():
