@@ -110,6 +110,9 @@ def vector(length, dtype):
         def __rdiv__(self, x):
             return warp.div(x, self)
 
+        def __pos__(self, y):
+            return warp.pos(self, y)
+
         def __neg__(self, y):
             return warp.neg(self, y)
 
@@ -184,6 +187,9 @@ def matrix(shape, dtype):
 
         def __rdiv__(self, x):
             return warp.div(x, self)
+
+        def __pos__(self, y):
+            return warp.pos(self, y)
 
         def __neg__(self, y):
             return warp.neg(self, y)
