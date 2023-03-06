@@ -1112,8 +1112,8 @@ class Module:
                 h.update(bytes("verify_fp", 'utf-8'))
         
             # compile-time constants (global)
-            if warp.types.constant._hash:
-                h.update(warp.constant._hash.digest())
+            if warp.types._constant_hash:
+                h.update(warp.types._constant_hash.digest())
 
             # recurse on references
             visited.add(module)
@@ -1200,9 +1200,17 @@ class Module:
                     cpp_file.write(cpp_source)
                     cpp_file.close()
 
+                    if os.name == 'nt':
+                        bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
+                        linkopts = ["warp.lib", f'/LIBPATH:"{bin_path}"']
+                        linkopts.append("/NOENTRY")
+                        linkopts.append("/NODEFAULTLIB")
+                    else:
+                        linkopts = []
+
                     # build DLL
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll([cpp_path], None, dll_path, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_dll(dll_path, [cpp_path], None, linkopts, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
                     # load the DLL
                     self.dll = warp.build.load_dll(dll_path)

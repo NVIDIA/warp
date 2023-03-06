@@ -25,41 +25,40 @@ Scalar = TypeVar('Scalar')
 Float = TypeVar('Float')
 Int = TypeVar('Int')
 
-class constant:
-    """Class to declare compile-time constants accessible from Warp kernels
+# shared hash for all constants 
+_constant_hash = hashlib.sha256()
+
+def constant(x):
+    """Function to declare compile-time constants accessible from Warp kernels
     
     Args:
         x: Compile-time constant value, can be any of the built-in math types.    
     """
 
-    def __init__(self, x):
+    global _constant_hash
 
-        self.val = x
+    # hash the constant value
+    if isinstance(x, int):
+        _constant_hash.update(struct.pack("<q", x))
+    elif isinstance(x, float):
+        _constant_hash.update(struct.pack("<d", x))
+    elif isinstance(x, bool):
+        _constant_hash.update(struct.pack("?", x))
+    elif isinstance(x, float16):
+        # float16 is a special case
+        p = ctypes.pointer(ctypes.c_float(x.value))
+        _constant_hash.update(p.contents)
+    elif isinstance(x, tuple(scalar_types)):
+        p = ctypes.pointer(x._type_(x.value))
+        _constant_hash.update(p.contents)
+    elif isinstance(x, ctypes.Array):
+        _constant_hash.update(bytes(x))
+    else:
+        raise RuntimeError(f"Invalid constant type: {type(x)}")
 
-        # hash the constant value
-        if isinstance(x, int):
-            constant._hash.update(struct.pack("<q", x))
-        elif isinstance(x, float):
-            constant._hash.update(struct.pack("<d", x))
-        elif isinstance(x, bool):
-            constant._hash.update(struct.pack("?", x))
-        elif isinstance(x, float16):
-            # float16 is a special case
-            p = ctypes.pointer(ctypes.c_float(x.value))
-            constant._hash.update(p.contents)
-        elif isinstance(x, tuple(scalar_types)):
-            p = ctypes.pointer(x._type_(x.value))
-            constant._hash.update(p.contents)
-        elif isinstance(x, ctypes.Array):
-            constant._hash.update(bytes(x))
-        else:
-            raise RuntimeError(f"Invalid constant type: {type(x)}")
+    return x
 
-    def __eq__(self, other):
-        return self.val == other
 
-    # shared hash for all constants    
-    _hash = hashlib.sha256()
 
 #----------------------
 # built-in types
@@ -112,6 +111,9 @@ def vector(length, dtype):
 
         def __rdiv__(self, x):
             return warp.div(x, self)
+
+        def __pos__(self, y):
+            return warp.pos(self, y)
 
         def __neg__(self, y):
             return warp.neg(self, y)
@@ -187,6 +189,9 @@ def matrix(shape, dtype):
 
         def __rdiv__(self, x):
             return warp.div(x, self)
+
+        def __pos__(self, y):
+            return warp.pos(self, y)
 
         def __neg__(self, y):
             return warp.neg(self, y)
@@ -507,6 +512,7 @@ class spatial_matrixd(spatial_matrix_t(dtype=float64)):
 int_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64]
 float_types = [float16, float32, float64]
 scalar_types = int_types + float_types
+
 vector_types = [
     vec2ub, vec2h, vec2f, vec2d, vec2,
     vec3ub, vec3h, vec3f, vec3d, vec3,
@@ -680,25 +686,42 @@ def type_typestr(dtype):
     else:
         raise Exception("Unknown ctype")
 
+
 def type_is_int(t):
-    if (t == int or
-        t == int8 or
-        t == uint8 or
-        t == int16 or
-        t == uint16 or
-        t == int32 or 
-        t == uint32 or 
-        t == int64 or         
-        t == uint64):
-        return True
+    if (t == int):
+        t = int32
+
+    return t in int_types
+
+def type_is_float(t):
+    if (t == float):
+        t = float32
+
+    return t in float_types
+
+# returns true for all value types (int, float, bool, scalars, vectors, matrices)
+def type_is_value(x):
+  
+    if ((x == int) or
+        (x == float) or
+        (x == bool) or
+        (x in scalar_types) or
+        issubclass(x, ctypes.Array)):
+        return True 
     else:
         return False
 
-def type_is_float(t):
-    if (t == float or t == float32):
-        return True
-    else:
-        return False
+
+# equivalent of the above but for values
+def is_int(x):
+    return type_is_int(type(x))
+
+def is_float(x):
+    return type_is_float(type(x))
+
+def is_value(x):
+    return type_is_value(type(x))
+
 
 def types_equal(a, b, match_generic=False):
     
@@ -1165,10 +1188,10 @@ class array (Generic[T]):
                 # something similar, eg arr.fill_(wp.vec3(1.0,2.0,3.0)).
 
                 # check input type:
-                valueTypeOk = False
+                value_type_ok = False
                 if issubclass( self.dtype, ctypes.Array ):
-                    valueTypeOk = (self.dtype._length_ == value._length_) and (self.dtype._type_ == value._type_)
-                if not valueTypeOk:
+                    value_type_ok = (self.dtype._length_ == value._length_) and (self.dtype._type_ == value._type_)
+                if not value_type_ok:
                     raise RuntimeError(f"wp.array has Array type elements (eg vec, mat etc). Value type must match element type in wp.array.fill_() method")
 
                 src = ctypes.cast(value, ctypes.POINTER(ctypes.c_void_p))
