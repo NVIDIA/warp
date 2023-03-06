@@ -116,15 +116,9 @@ void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
 
 
 // impl. files
-#include "cuda_util.cpp"
+// TODO: compile as separate translation units
 #include "bvh.cpp"
-#include "mesh.cpp"
-#include "hashgrid.cpp"
 #include "scan.cpp"
-#include "sort.cpp"
-#include "volume.cpp"
-#include "marching.cpp"
-#include "cutlass_gemm.cpp"
 
 
 // stubs for platforms where there is no CUDA

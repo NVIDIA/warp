@@ -830,8 +830,8 @@ class Module:
                 h.update(bytes("verify_fp", 'utf-8'))
         
             # compile-time constants (global)
-            if warp.types.constant._hash:
-                h.update(warp.constant._hash.digest())
+            if warp.types._constant_hash:
+                h.update(warp.types._constant_hash.digest())
 
             # recurse on references
             visited.add(module)
@@ -918,9 +918,17 @@ class Module:
                     cpp_file.write(cpp_source)
                     cpp_file.close()
 
+                    if os.name == 'nt':
+                        bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
+                        linkopts = ["warp.lib", f'/LIBPATH:"{bin_path}"']
+                        linkopts.append("/NOENTRY")
+                        linkopts.append("/NODEFAULTLIB")
+                    else:
+                        linkopts = []
+
                     # build DLL
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(cpp_path, None, dll_path, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_dll(dll_path, [cpp_path], None, linkopts, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
                     # load the DLL
                     self.dll = warp.build.load_dll(dll_path)
@@ -2124,7 +2132,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                         
                         # check subtype
                         if not warp.types.types_equal(a.dtype, arg_type.dtype):
-                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dtype={type_str(arg_type.dtype)} but passed array has dtype={type_str(a.dtype)}.")
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={a.dtype}.")
 
                         # check dimensions
                         if (a.ndim != arg_type.ndim):
@@ -2502,8 +2510,6 @@ def type_str(t):
         return "Tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
         return f"array[{type_str(t.dtype)}]"
-    elif hasattr(t,"_wp_generic_type_str_"):
-        return t._wp_generic_type_str_ + str(t._wp_type_params_)
     else:
         return t.__name__
 

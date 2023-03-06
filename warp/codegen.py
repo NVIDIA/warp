@@ -45,6 +45,7 @@ builtin_operators[ast.Div] = "div"
 builtin_operators[ast.FloorDiv] = "floordiv"
 builtin_operators[ast.Pow] = "pow"
 builtin_operators[ast.Mod] = "mod"
+builtin_operators[ast.UAdd] = "pos"
 builtin_operators[ast.USub] = "neg"
 builtin_operators[ast.Not] = "unot"
 
@@ -833,13 +834,13 @@ class Adjoint:
         if node.id in adj.symbols:
             return adj.symbols[node.id]
 
-        # try and resolve the name using the functions globals context (used to lookup constants + functions)
+        # try and resolve the name using the function's globals context (used to lookup constants + functions)
         elif node.id in adj.func.__globals__:
             obj = adj.func.__globals__[node.id]
-            
-            if isinstance(obj, warp.constant):
+                        
+            if warp.types.is_value(obj): 
                 # evaluate constant
-                out = adj.add_constant(obj.val)
+                out = adj.add_constant(obj)
                 adj.symbols[node.id] = out
                 return out
 
@@ -898,10 +899,11 @@ class Adjoint:
             # or a wp.func object
             obj = attribute_to_val(node, adj.func.__globals__)
             
-            if isinstance(obj, warp.constant):
-                out = adj.add_constant(obj.val)
-                adj.symbols[key] = out          # if referencing a constant
+            if warp.types.is_value(obj):
+                out = adj.add_constant(obj)
+                adj.symbols[key] = out
                 return out
+
             elif isinstance(node.value, ast.Attribute):
                 # resolve nested attribute
                 val = adj.eval(node.value)
@@ -1022,7 +1024,7 @@ class Adjoint:
                 # try and resolve the expression to an object
                 # e.g.: wp.constant in the globals scope
                 obj, path = adj.resolve_path(a)
-                if isinstance(obj, warp.constant):
+                if warp.types.is_int(obj):
                     return True
                 else:
                     return False
@@ -1037,8 +1039,8 @@ class Adjoint:
                 # try and resolve the expression to an object
                 # e.g.: wp.constant in the globals scope
                 obj, path = adj.resolve_path(a)
-                if isinstance(obj, warp.constant):
-                    return obj.val
+                if warp.types.is_int(obj):
+                    return obj
                 else:
                     return False
 
@@ -1492,6 +1494,7 @@ class Adjoint:
 # code generation
 
 cpu_module_header = '''
+#define WP_NO_CRT
 #include "../native/builtin.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
@@ -1506,6 +1509,7 @@ using namespace wp;
 '''
 
 cuda_module_header = '''
+#define WP_NO_CRT
 #include "../native/builtin.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++

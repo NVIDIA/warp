@@ -19,7 +19,8 @@ wp.init()
 LOCAL_ONE = wp.constant(1)
 
 SQRT3_OVER_3 = wp.constant(0.57735026919)
-UNIT_VEC = wp.constant(wp.vec3(SQRT3_OVER_3.val, SQRT3_OVER_3.val, SQRT3_OVER_3.val))
+UNIT_VEC = wp.constant(wp.vec3(SQRT3_OVER_3, SQRT3_OVER_3, SQRT3_OVER_3))
+
 
 class Foobar:
     ONE = wp.constant(1)
@@ -42,6 +43,14 @@ def test_constants_float(x: float):
     approx_one = wp.dot(UNIT_VEC, UNIT_VEC)
     expect_near(approx_one, 1.0, 1e-6)
 
+def test_constant_math(test, device):
+
+    # test doing math with Python defined constants in *Python* scope
+    twopi = wp.pi*2.0
+
+    import math
+    test.assertEqual(twopi, math.pi*2.0)
+
 
 def register(parent):
 
@@ -55,6 +64,8 @@ def register(parent):
 
     add_kernel_test(TestConstants, test_constants_int, dim=1, inputs=[a], devices=devices)
     add_kernel_test(TestConstants, test_constants_float, dim=1, inputs=[x], devices=devices)
+
+    add_function_test(TestConstants, "test_constant_math", test_constant_math, devices=devices)
 
     return TestConstants
 
