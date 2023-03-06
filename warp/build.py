@@ -222,7 +222,8 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
             raise Exception(f"CUDA Toolkit version {min_ctk_version[0]}.{min_ctk_version[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})")
 
         # minimum supported architecture (PTX)
-        gencode_opts = ["-gencode=arch=compute_72,code=compute_72"]
+        gencode_opts = ["-gencode=arch=compute_52,code=compute_52",
+                        "-gencode=arch=compute_75,code=compute_75"]
 
         if all_architectures:
             # generate code for all supported architectures
@@ -247,7 +248,7 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
             if ctk_version > (11, 8):
                 "-gencode=arch=compute_89,code=sm_89",  # Ada
                 "-gencode=arch=compute_90,code=sm_90",  # Hopper
-                
+
 
         nvcc_opts = gencode_opts + [
             "-t0", # multithreaded compilation
