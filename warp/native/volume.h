@@ -11,10 +11,8 @@
 #include "builtin.h"
 
 #define PNANOVDB_C
-#ifdef WP_CUDA
-#    define PNANOVDB_MEMCPY_CUSTOM
-#    define pnanovdb_memcpy memcpy
-#endif
+#define PNANOVDB_MEMCPY_CUSTOM
+#define pnanovdb_memcpy memcpy
 #include "nanovdb/PNanoVDB.h"
 #include "nanovdb/PNanoVDBWrite.h"
 

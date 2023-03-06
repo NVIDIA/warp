@@ -1080,6 +1080,10 @@ add_builtin("div", input_types={"x": quaternion(dtype=Scalar), "y": Scalar}, val
 
 add_builtin("floordiv", input_types={"x": Scalar, "y": Scalar}, value_func=sametype_value_func(Scalar), doc="", group="Operators")
 
+add_builtin("pos", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), doc="", group="Operators")
+add_builtin("pos", input_types={"x": vec(length=Any, dtype=Scalar)}, value_func=sametype_value_func(vec(length=Any, dtype=Scalar)), doc="", group="Operators")
+add_builtin("pos", input_types={"x": quaternion(dtype=Scalar)}, value_func=sametype_value_func(quaternion(dtype=Scalar)), doc="", group="Operators")
+add_builtin("pos", input_types={"x": mat(shape=(Any,Any), dtype=Scalar)}, value_func=sametype_value_func(mat(shape=(Any,Any), dtype=Scalar)), doc="", group="Operators")
 add_builtin("neg", input_types={"x": Scalar}, value_func=sametype_value_func(Scalar), doc="", group="Operators")
 add_builtin("neg", input_types={"x": vec(length=Any, dtype=Scalar)}, value_func=sametype_value_func(vec(length=Any, dtype=Scalar)), doc="", group="Operators")
 add_builtin("neg", input_types={"x": quaternion(dtype=Scalar)}, value_func=sametype_value_func(quaternion(dtype=Scalar)), doc="", group="Operators")
