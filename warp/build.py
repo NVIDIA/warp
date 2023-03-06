@@ -221,8 +221,8 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
         if ctk_version < min_ctk_version:
             raise Exception(f"CUDA Toolkit version {min_ctk_version[0]}.{min_ctk_version[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})")
 
-        # minimum supported architecture
-        gencode_opts = ["-gencode=arch=compute_86,code=sm_86"]
+        # minimum supported architecture (PTX)
+        gencode_opts = ["-gencode=arch=compute_72,code=compute_72"]
 
         if all_architectures:
             # generate code for all supported architectures
@@ -234,6 +234,7 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
                 "-gencode=arch=compute_70,code=sm_70",  # Volta
                 "-gencode=arch=compute_75,code=sm_75",  # Turing
                 "-gencode=arch=compute_80,code=sm_80",  # Ampere
+                "-gencode=arch=compute_86,code=sm_86",  # Ampere
                 
                 # SASS for supported mobile architectures (e.g. Tegra/Jetson)
                 # "-gencode=arch=compute_53,code=sm_53",
@@ -243,19 +244,10 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
             ]
 
             # support for Ada and Hopper is available with CUDA Toolkit 11.8+
-            if ctk_version < (11, 8):
-                gencode_opts += [
-                    # PTX for future compatibility
-                    "-gencode=arch=compute_86,code=compute_86",
-                ]
-            else: # ctk_version >= (11, 8)
-                gencode_opts += [
-                    "-gencode=arch=compute_89,code=sm_89",  # Ada
-                    "-gencode=arch=compute_90,code=sm_90",  # Hopper
-
-                    # PTX for future compatibility
-                    "-gencode=arch=compute_90,code=compute_90",
-                ]
+            if ctk_version > (11, 8):
+                "-gencode=arch=compute_89,code=sm_89",  # Ada
+                "-gencode=arch=compute_90,code=sm_90",  # Hopper
+                
 
         nvcc_opts = gencode_opts + [
             "-t0", # multithreaded compilation
