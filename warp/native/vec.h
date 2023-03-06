@@ -104,6 +104,12 @@ inline CUDA_CALLABLE vec<Length, Type> operator - (vec<Length, Type> a)
 }
 
 template<unsigned Length, typename Type>
+CUDA_CALLABLE inline vec<Length, Type> pos(const vec<Length, Type>& x)
+{
+    return x;
+}
+
+template<unsigned Length, typename Type>
 CUDA_CALLABLE inline vec<Length, Type> neg(const vec<Length, Type>& x)
 {
     return -x;

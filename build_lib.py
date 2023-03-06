@@ -20,6 +20,7 @@ parser.add_argument('--mode', type=str, default="release", help="Build configura
 parser.add_argument('--verbose', type=bool, default=True, help="Verbose building output, default True")
 parser.add_argument('--verify_fp', type=bool, default=False, help="Verify kernel inputs and outputs are finite after each launch, default False")
 parser.add_argument('--fast_math', type=bool, default=False, help="Enable fast math on library, default False")
+parser.add_argument('--all_architectures', action='store_true', help="Generate code for all supported architectures")
 args = parser.parse_args()
 
 # set build output path off this file
@@ -105,7 +106,8 @@ try:
                     mode=warp.config.mode,
                     verify_fp=warp.config.verify_fp,
                     fast_math=args.fast_math,
-                    use_cache=False)
+                    use_cache=False,
+                    all_architectures=args.all_architectures)
                     
 except Exception as e:
 

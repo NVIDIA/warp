@@ -45,6 +45,7 @@ builtin_operators[ast.Div] = "div"
 builtin_operators[ast.FloorDiv] = "floordiv"
 builtin_operators[ast.Pow] = "pow"
 builtin_operators[ast.Mod] = "mod"
+builtin_operators[ast.UAdd] = "pos"
 builtin_operators[ast.USub] = "neg"
 builtin_operators[ast.Not] = "unot"
 
