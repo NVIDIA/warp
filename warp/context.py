@@ -12,6 +12,8 @@ import hashlib
 import ctypes
 import platform
 import ast
+import types
+import inspect
 
 from typing import Tuple
 from typing import List
@@ -21,6 +23,8 @@ from typing import Callable
 from typing import Union
 from typing import Mapping
 from typing import Optional
+
+from copy import copy as shallowcopy
 
 import warp
 import warp.utils
@@ -69,12 +73,12 @@ class Function:
         self.missing_grad = missing_grad # whether or not builtin is missing a corresponding adjoint
         self.generic = generic
 
-        # embedded linked list of all overloads
-        # the module's function dictionary holds 
-        # the list head for a given key (func name)
-        self.overloads = [self]
-
         if func:
+            # user-defined function
+
+            # generic and concrete overload lookups by type signature
+            self.user_templates = {}
+            self.user_overloads = {}
 
             # user defined (Python) function
             self.adj = warp.codegen.Adjoint(func)
@@ -91,6 +95,12 @@ class Function:
                     self.input_types[name] = type
 
         else:
+            # builtin function
+
+            # embedded linked list of all overloads
+            # the builtin_functions dictionary holds 
+            # the list head for a given key (func name)
+            self.overloads = []
 
             # builtin (native) function, canonicalize argument types
             for k, v in input_types.items():
@@ -101,6 +111,8 @@ class Function:
                 self.mangled_name = self.mangle()
             else:
                 self.mangled_name = None
+
+        self.add_overload(self)
 
         # add to current module
         if module:
@@ -269,15 +281,74 @@ class Function:
 
     def add_overload(self, f):
 
-        # todo: note that it is an error to add two functions
-        # with the exact same signature as this would cause compile
-        # errors during compile time. We should check here if there
-        # is a previously created function with the same signature
-        self.overloads.append(f)
+        if self.is_builtin():
+            # todo: note that it is an error to add two functions
+            # with the exact same signature as this would cause compile
+            # errors during compile time. We should check here if there
+            # is a previously created function with the same signature
+            self.overloads.append(f)
 
-        # make sure variadic overloads appear last so non variadic
-        # ones are matched first:
-        self.overloads.sort(key=lambda f : f.variadic)
+            # make sure variadic overloads appear last so non variadic
+            # ones are matched first:
+            self.overloads.sort(key=lambda f : f.variadic)
+
+        else:
+            # get function signature based on the input types
+            sig = warp.types.get_signature(f.input_types.values(), func_name=f.key, arg_names=list(f.input_types.keys()))
+            
+            # check if generic
+            if warp.types.is_generic_signature(sig):
+                if sig in self.user_templates:
+                    raise RuntimeError(f"Duplicate generic function overload {self.key} with arguments {f.input_types.values()}")
+                self.user_templates[sig] = f
+            else:
+                if sig in self.user_overloads:
+                    raise RuntimeError(f"Duplicate function overload {self.key} with arguments {f.input_types.values()}")
+                self.user_overloads[sig] = f
+
+
+    def get_overload(self, arg_types):
+
+        assert(not self.is_builtin())
+
+        sig = warp.types.get_signature(arg_types, func_name=self.key)
+
+        f = self.user_overloads.get(sig)
+        if f is not None:
+            return f
+        else:
+            for f in self.user_templates.values():
+                
+                if len(f.input_types) != len(arg_types):
+                    continue
+                
+                # try to match the given types to the function template types
+                template_types = list(f.input_types.values())
+                args_matched = True
+
+                for i in range(len(arg_types)):
+                    if not warp.types.type_matches_template(arg_types[i], template_types[i]):
+                        args_matched = False
+                        break
+
+                if args_matched:
+                    # instantiate this function with the specified argument types
+
+                    arg_names = f.input_types.keys()
+                    overload_annotations = dict(zip(arg_names, arg_types))
+
+                    ovl = shallowcopy(f)
+                    ovl.adj = warp.codegen.Adjoint(f.func, overload_annotations)
+                    ovl.input_types = overload_annotations
+                    ovl.value_func = None
+
+                    self.user_overloads[sig] = ovl
+
+                    return ovl
+            
+            # failed  to find overload
+            return None
+
 
 class KernelHooks:
     def __init__(self, forward, backward):
@@ -297,8 +368,124 @@ class Kernel:
 
         self.adj = warp.codegen.Adjoint(func)
 
+        # check if generic
+        self.is_generic = False
+        for arg_type in self.adj.arg_types.values():
+            if warp.types.type_is_generic(arg_type):
+                self.is_generic = True
+                break
+
+        # unique signature (used to differentiate instances of generic kernels during codegen)
+        self.sig = ""
+
+        # known overloads for generic kernels, indexed by type signature
+        self.overloads = {}
+
+        # argument indices by name
+        self.arg_indices = dict((a.label, i) for i, a in enumerate(self.adj.args))
+
         if (module):
             module.register_kernel(self)
+
+
+    def infer_argument_types(self, args):
+
+        template_types = list(self.adj.arg_types.values())
+
+        if len(args) != len(template_types):
+            raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
+
+        arg_names = list(self.adj.arg_types.keys())
+        arg_types = []
+
+        for i in range(len(args)):
+            arg = args[i]
+            arg_type = type(arg)
+            if arg_type == warp.array:
+                arg_types.append(warp.array(dtype=arg.dtype, ndim=arg.ndim))
+            elif arg_type in warp.types.scalar_types:
+                arg_types.append(arg_type)
+            elif arg_type in [int, float]:
+                # canonicalize type
+                arg_types.append(warp.types.type_to_warp(arg_type))
+            elif hasattr(arg_type, "_wp_scalar_type_"):
+                # vector/matrix type
+                arg_types.append(arg_type)
+            elif issubclass(arg_type, warp.codegen.StructInstance):
+                # a struct
+                arg_types.append(arg._struct_)
+            # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
+            #     arg_types.append(arg_type)
+            # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.bvh_query_t]:
+            #     arg_types.append(arg_type)
+            elif arg is None:
+                # allow passing None for arrays
+                if isinstance(template_types[i], warp.array):
+                    arg_types.append(template_types[i])
+                else:
+                    raise TypeError(f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got None")
+            else:
+                # TODO: attempt to figure out if it's a vector/matrix type given as a numpy array, list, etc.
+                raise TypeError(f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got {arg_type}")
+        
+        return arg_types
+
+
+    def add_overload(self, arg_types):
+
+        if len(arg_types) != len(self.adj.arg_types):
+            raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
+
+        arg_names = list(self.adj.arg_types.keys())
+        template_types = list(self.adj.arg_types.values())
+
+        # make sure all argument types are concrete and match the kernel parameters
+        for i in range(len(arg_types)):
+            if not warp.types.type_matches_template(arg_types[i], template_types[i]):
+                if warp.types.type_is_generic(arg_types[i]):
+                    raise TypeError(f"Kernel {self.key} argument '{arg_names[i]}' cannot be generic, got {arg_types[i]}")
+                else:
+                    raise TypeError(f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {template_types[i]}, got {arg_types[i]}")
+
+        # get a type signature from the given argument types
+        sig = warp.types.get_signature(arg_types, func_name=self.key)
+        if sig in self.overloads:
+            raise RuntimeError(f"Duplicate overload for kernel {self.key}, an overload with the given arguments already exists")
+
+        overload_annotations = dict(zip(arg_names, arg_types))
+
+        # instantiate this kernel with the given argument types
+        ovl = shallowcopy(self)
+        ovl.adj = warp.codegen.Adjoint(self.func, overload_annotations)
+        ovl.is_generic = False
+        ovl.overloads = {}
+        ovl.sig = sig
+
+        self.overloads[sig] = ovl
+
+        self.module.unload()
+
+        return ovl
+
+
+    def get_overload(self, arg_types):
+
+        sig = warp.types.get_signature(arg_types, func_name=self.key)
+
+        ovl = self.overloads.get(sig)
+        if ovl is not None:
+            return ovl
+        else:
+            return self.add_overload(arg_types)
+
+
+    def get_mangled_name(self):
+
+        if self.sig:
+            return f"{self.key}_{self.sig}"
+        else:
+            return self.key
+
 
     # lookup and cache entry points based on name, called after compilation / module load
     def get_hooks(self, device):
@@ -310,14 +497,16 @@ class Kernel:
         hooks = device_hooks.get(self)
         if hooks is not None:
             return hooks
+
+        name = self.get_mangled_name()
         
         if device.is_cpu:
-            forward = eval("self.module.dll." + self.key + "_cpu_forward")
-            backward = eval("self.module.dll." + self.key + "_cpu_backward")
+            forward = eval("self.module.dll." + name + "_cpu_forward")
+            backward = eval("self.module.dll." + name + "_cpu_backward")
         else:
             cu_module = self.module.cuda_modules[device.context]
-            forward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_forward").encode('utf-8'))
-            backward = runtime.core.cuda_get_kernel(device.context, cu_module, (self.key + "_cuda_kernel_backward").encode('utf-8'))
+            forward = runtime.core.cuda_get_kernel(device.context, cu_module, (name + "_cuda_kernel_forward").encode('utf-8'))
+            backward = runtime.core.cuda_get_kernel(device.context, cu_module, (name + "_cuda_kernel_backward").encode('utf-8'))
 
         hooks = KernelHooks(forward, backward)
         device_hooks[self] = hooks
@@ -371,6 +560,81 @@ def struct(c):
     return s
 
 
+# overload a kernel with the given argument types
+def overload(kernel, arg_types=None):
+
+    if isinstance(kernel, Kernel):
+
+        # handle cases where user calls us directly, e.g. wp.overload(kernel, [args...])
+
+        if not kernel.is_generic:
+            raise RuntimeError(f"Only generic kernels can be overloaded.  Kernel {kernel.key} is not generic")
+
+        if isinstance(arg_types, list):
+            arg_list = arg_types
+        elif isinstance(arg_types, dict):
+            # substitute named args
+            arg_list = [a.type for a in kernel.adj.args]
+            for arg_name, arg_type in arg_types.items():
+                idx = kernel.arg_indices.get(arg_name)
+                if idx is None:
+                    raise RuntimeError(f"Invalid argument name '{arg_name}' in overload of kernel {kernel.key}")
+                arg_list[idx] = arg_type
+        elif arg_types is None:
+            arg_list = []
+        else:
+            raise TypeError("Kernel overload types must be given in a list or dict")
+
+        # return new kernel overload
+        return kernel.add_overload(arg_list)
+
+    elif isinstance(kernel, types.FunctionType):
+
+        # handle cases where user calls us as a function decorator (@wp.overload)
+
+        # ensure this function name corresponds to a kernel
+        fn = kernel
+        module = get_module(fn.__module__)
+        kernel = module.kernels.get(fn.__name__)
+        if kernel is None:
+            raise RuntimeError(f"Failed to find a kernel named '{fn.__name__}' in module {fn.__module__}")
+
+        if not kernel.is_generic:
+            raise RuntimeError(f"Only generic kernels can be overloaded.  Kernel {kernel.key} is not generic")
+
+        # ensure the function is defined without a body, only ellipsis (...), pass, or a string expression
+        # TODO: show we allow defining a new body for kernel overloads?
+        source = inspect.getsource(fn)
+        tree = ast.parse(source)
+        assert(isinstance(tree, ast.Module))
+        assert(isinstance(tree.body[0], ast.FunctionDef))
+        func_body = tree.body[0].body
+        for node in func_body:
+            if isinstance(node, ast.Pass):
+                continue
+            elif isinstance(node, ast.Expr) and isinstance(node.value, (ast.Str, ast.Ellipsis)):
+                continue
+            raise RuntimeError("Illegal statement in kernel overload definition.  Only pass, ellipsis (...), comments, or docstrings are allowed")
+
+        # ensure all arguments are annotated
+        argspec = inspect.getfullargspec(fn)
+        if len(argspec.annotations) < len(argspec.args):
+            raise RuntimeError(f"Incomplete argument annotations on kernel overload {fn.__name__}")
+
+        # get type annotation list
+        arg_list = []
+        for arg_name, arg_type in argspec.annotations.items():
+            if arg_name != "return":
+                arg_list.append(arg_type)
+
+        # add new overload, but we must return the original kernel from @wp.overload decorator!
+        kernel.add_overload(arg_list)
+        return kernel
+    
+    else:
+        raise RuntimeError("wp.overload() called with invalid argument!")
+
+
 builtin_functions = {}
 
 
@@ -399,7 +663,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
     generic = any( is_generic(x) for x in input_types.values() )
     if generic and export:
 
-        
+
         # get a list of existing generic vector types (includes matrices and stuff)
         # so we can match arguments against them:
         generic_vtypes = [x for x in warp.types.vector_types if hasattr(x,"_wp_generic_type_str_")]
@@ -567,11 +831,16 @@ class ModuleBuilder:
 
         # build all functions declared in the module
         for func in module.functions.values():
-            self.build_function(func)
+            for f in func.user_overloads.values():
+                self.build_function(f)
 
         # build all kernel entry points
         for kernel in module.kernels.values():
-            self.build_kernel(kernel)
+            if not kernel.is_generic:
+                self.build_kernel(kernel)
+            else:
+                for k in kernel.overloads.values():
+                    self.build_kernel(k)
 
     def build_struct(self, struct):
         self.structs[struct] = None
@@ -623,8 +892,13 @@ class ModuleBuilder:
         for kernel in self.module.kernels.values():
 
             # each kernel gets an entry point in the module
-            cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu", options=self.options)
-            cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
+            if not kernel.is_generic:
+                cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu", options=self.options)
+                cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
+            else:
+                for k in kernel.overloads.values():
+                    cpp_source += warp.codegen.codegen_kernel(k, device="cpu", options=self.options)
+                    cpp_source += warp.codegen.codegen_module(k, device="cpu")
 
         # add headers
         cpp_source = warp.codegen.cpu_module_header + cpp_source
@@ -644,8 +918,13 @@ class ModuleBuilder:
             cu_source += warp.codegen.codegen_func(func.adj, device="cuda") 
 
         for kernel in self.module.kernels.values():
-            cu_source += warp.codegen.codegen_kernel(kernel, device="cuda", options=self.options)
-            cu_source += warp.codegen.codegen_module(kernel, device="cuda")
+            if not kernel.is_generic:
+                cu_source += warp.codegen.codegen_kernel(kernel, device="cuda", options=self.options)
+                cu_source += warp.codegen.codegen_module(kernel, device="cuda")
+            else:
+                for k in kernel.overloads.values():
+                    cu_source += warp.codegen.codegen_kernel(k, device="cuda", options=self.options)
+                    cu_source += warp.codegen.codegen_module(k, device="cuda")
 
         # add headers
         cu_source = warp.codegen.cuda_module_header + cu_source
@@ -810,8 +1089,11 @@ class Module:
                     
                 # kernel source
                 for kernel in module.kernels.values():
-                    s = kernel.adj.source
-                    ch.update(bytes(s, 'utf-8'))
+                    if not kernel.is_generic:
+                        ch.update(bytes(kernel.adj.source, 'utf-8'))
+                    else:
+                        for k in kernel.overloads.values():
+                            ch.update(bytes(k.adj.source, 'utf-8'))
                 
                 module.content_hash = ch.digest()
 
@@ -2095,11 +2377,6 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
     if (warp.config.print_launches):
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
-    # delay load modules
-    success = kernel.module.load(device)
-    if (success == False):
-        return
-
     # construct launch bounds
     bounds = warp.types.launch_bounds_t(dim)
 
@@ -2193,11 +2470,20 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         if (len(fwd_args)) != (len(kernel.adj.args)): 
             raise RuntimeError(f"Error launching kernel '{kernel.key}', passed {len(fwd_args)} arguments but kernel requires {len(kernel.adj.args)}.")
 
-        pack_args(fwd_args, params)
-        pack_args(adj_args, params)
+        # if it's a generic kernel, infer the required overload from the arguments
+        if kernel.is_generic:
+            fwd_types = kernel.infer_argument_types(fwd_args)
+            kernel = kernel.get_overload(fwd_types)
+
+        # delay load modules, including new overload if needed
+        if not kernel.module.load(device):
+            return
 
         # late bind
         hooks = kernel.get_hooks(device)
+
+        pack_args(fwd_args, params)
+        pack_args(adj_args, params)
 
         # run kernel
         if device.is_cpu:
@@ -2341,7 +2627,6 @@ def set_module_options(options: Dict[str, Any], module: Optional[Any] = None):
     """
    
     if module is None:
-        import inspect
         m = inspect.getmodule(inspect.stack()[1][0])
     else:
         m = module
@@ -2354,7 +2639,6 @@ def get_module_options(module: Optional[Any] = None) -> Dict[str, Any]:
     """Returns a list of options for the current module.
     """
     if module is None:
-        import inspect
         m = inspect.getmodule(inspect.stack()[1][0])
     else:
         m = module
