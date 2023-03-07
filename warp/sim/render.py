@@ -24,17 +24,18 @@ def AbstractSimRenderer(renderer):
 
         use_unique_colors = True
         
-        def __init__(self, model: warp.sim.Model, path, scaling=1.0, fps=60, upaxis="y"):
+        def __init__(self, model: warp.sim.Model, path, scaling=1.0, fps=60, upaxis="y", **render_kwargs):
             # create USD stage
-            super().__init__(path, scaling=scaling, fps=fps, upaxis=upaxis)
+            super().__init__(path, scaling=scaling, fps=fps, upaxis=upaxis, **render_kwargs)
+            self.cam_axis = "xyz".index(upaxis.lower())
+            self.populate(model)
 
+        def populate(self, model: warp.sim.Model):
             self.skip_rendering = False
 
             self.model = model
             self.num_envs = model.num_envs
             self.body_names = []
-
-            self.cam_axis = "xyz".index(upaxis.lower())
 
             self.body_env = []  # mapping from body index to its environment index
             env_id = 0
