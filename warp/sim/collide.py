@@ -10,7 +10,7 @@ Collision handling functions and kernels.
 """
 
 import warp as wp
-from .inertia import ModelShapeGeometry
+from .model import ModelShapeGeometry
 
 
 @wp.func
@@ -999,17 +999,19 @@ def handle_contact_pairs(
         distance = wp.dot(diff, normal)
 
     elif (geo_type_a == wp.sim.GEO_BOX and geo_type_b == wp.sim.GEO_PLANE):
+        plane_width = geo_scale_b[0]
+        plane_length = geo_scale_b[1]
         if point_id < 8:
             # vertex-based contact
             p_a_body = get_box_vertex(point_id, geo_scale_a)
             p_a_world = wp.transform_point(X_ws_a, p_a_body)  
             query_b = wp.transform_point(X_sw_b, p_a_world)
-            p_b_body = closest_point_plane(geo_scale_b[0], geo_scale_b[1], query_b)
+            p_b_body = closest_point_plane(plane_width, plane_length, query_b)
             p_b_world = wp.transform_point(X_ws_b, p_b_body)
             diff = p_a_world - p_b_world
-            normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))            
-            if (geo_scale_b[0] > 0.0 and geo_scale_b[1] > 0.0):
-                if wp.abs(query_b[0]) > geo_scale_b[0] or wp.abs(query_b[2]) > geo_scale_b[1]:
+            normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
+            if (plane_width > 0.0 and plane_length > 0.0):
+                if wp.abs(query_b[0]) > plane_width or wp.abs(query_b[2]) > plane_length:
                     # skip, we will evaluate the plane edge contact with the box later
                     contact_shape0[tid] = -1
                     contact_shape1[tid] = -1
@@ -1025,8 +1027,6 @@ def handle_contact_pairs(
             distance = wp.dot(diff, normal)
         else:
             # contact between box A and edges of finite plane B
-            plane_width = geo_scale_b[0]
-            plane_length = geo_scale_b[1]
             edge = get_plane_edge(point_id - 8, plane_width, plane_length)
             edge0_world = wp.transform_point(X_ws_b, wp.spatial_top(edge))
             edge1_world = wp.transform_point(X_ws_b, wp.spatial_bottom(edge))
@@ -1041,13 +1041,19 @@ def handle_contact_pairs(
             p_a_body = closest_point_box(geo_scale_a, query_a)
             p_a_world = wp.transform_point(X_ws_a, p_a_body)
             query_b = wp.transform_point(X_sw_b, p_a_world)
-            if wp.abs(query_b[0]) > geo_scale_b[0] or wp.abs(query_b[2]) > geo_scale_b[1]:
-                # ensure that the closest point is actually above the plane
+            if wp.abs(query_b[0]) > plane_width or wp.abs(query_b[2]) > plane_length:
+                # ensure that the closest point is actually inside the plane
                 contact_shape0[tid] = -1
                 contact_shape1[tid] = -1
                 return
             diff = p_a_world - p_b_world
-            normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
+            com_a = wp.transform_get_translation(X_ws_a)
+            query_b = wp.transform_point(X_sw_b, com_a)
+            if wp.abs(query_b[0]) > plane_width or wp.abs(query_b[2]) > plane_length:
+                # the COM is outside the plane
+                normal = wp.normalize(com_a - p_b_world)
+            else:
+                normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
             distance = wp.dot(diff, normal)
 
     elif (geo_type_a == wp.sim.GEO_CAPSULE and geo_type_b == wp.sim.GEO_CAPSULE):
@@ -1137,8 +1143,10 @@ def handle_contact_pairs(
             p_b_body = closest_point_plane(geo_scale_b[0], geo_scale_b[1], query_b)
             p_b_world = wp.transform_point(X_ws_b, p_b_body)
             diff = p_a_world - p_b_world
-            normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
-            # normal = wp.normalize(diff)
+            if (geo_scale_b[0] > 0.0 and geo_scale_b[1] > 0.0):
+                normal = wp.normalize(diff)
+            else:
+                normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
             distance = wp.dot(diff, normal)
         else:
             # contact between capsule A and edges of finite plane B
@@ -1247,22 +1255,18 @@ def handle_contact_pairs(
         normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
         distance = wp.length(diff)
         
-        if (geo_scale_b[0] > 0.0 and geo_scale_b[1] > 0.0):
-            # check which side the mesh COM is on if the plane is finite
-            com = wp.transform_point(X_wb_a, body_com[rigid_a])
-            sign = wp.sign(wp.dot(com - p_b_world, normal))
-            if sign < 0.0:
-                # the entire box is most likely below the plane
-                contact_shape0[tid] = -1
-                contact_shape1[tid] = -1
-                return
-        # if the plane is infinite or the point is above the plane we fix the normal to prevent intersections
+        # if the plane is infinite or the point is within the plane we fix the normal to prevent intersections
         if (geo_scale_b[0] == 0.0 and geo_scale_b[1] == 0.0 
                 or wp.abs(query_b[0]) < geo_scale_b[0] and wp.abs(query_b[2]) < geo_scale_b[1]):
             normal = wp.transform_vector(X_ws_b, wp.vec3(0.0, 1.0, 0.0))
         else:
             normal = wp.normalize(diff)
         distance = wp.dot(diff, normal)
+        # ignore extreme penetrations (e.g. when mesh is below the plane)
+        if distance < -rigid_contact_margin:
+            contact_shape0[tid] = -1
+            contact_shape1[tid] = -1
+            return
 
     else:
         print("Unsupported geometry pair in collision handling")
@@ -1283,7 +1287,7 @@ def handle_contact_pairs(
         contact_shape1[tid] = -1
 
 
-def collide(model, state, edge_sdf_iter: int = 5):
+def collide(model, state, edge_sdf_iter: int = 2):
     """
     Generates contact points for the particles and rigid bodies in the model,
     to be used in the contact dynamics kernel of the integrator.
