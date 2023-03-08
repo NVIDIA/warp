@@ -8,16 +8,16 @@
 
 from . model import State, Model, ModelBuilder, Mesh
 
-from . inertia import GEO_SPHERE
-from . inertia import GEO_BOX
-from . inertia import GEO_CAPSULE
-from . inertia import GEO_CYLINDER
-from . inertia import GEO_CONE
-from . inertia import GEO_MESH
-from . inertia import GEO_SDF
-from . inertia import GEO_PLANE
-from . inertia import GEO_NONE
-from . inertia import ModelShapeGeometry
+from . model import GEO_SPHERE
+from . model import GEO_BOX
+from . model import GEO_CAPSULE
+from . model import GEO_CYLINDER
+from . model import GEO_CONE
+from . model import GEO_MESH
+from . model import GEO_SDF
+from . model import GEO_PLANE
+from . model import GEO_NONE
+from . model import ModelShapeGeometry
 
 from . model import JOINT_MODE_LIMIT
 from . model import JOINT_MODE_TARGET_POSITION
@@ -47,3 +47,4 @@ from . articulation import eval_fk, eval_ik
 from . import_mjcf import parse_mjcf
 from . import_urdf import parse_urdf
 from . import_snu import parse_snu
+from . import_usd import parse_usd

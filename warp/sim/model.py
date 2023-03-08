@@ -16,20 +16,31 @@ import copy
 
 from typing import List, Optional, Tuple, Union
 
-from .inertia import compute_mesh_inertia, compute_shape_mass, transform_inertia
+from warp.types import Volume
+Vec3 = List[float]
+Vec4 = List[float]
+Quat = List[float]
+Mat33 = List[float]
+Transform = Tuple[Vec3, Quat]
 
-from .inertia import GEO_SPHERE
-from .inertia import GEO_BOX
-from .inertia import GEO_CAPSULE
-from .inertia import GEO_CYLINDER
-from .inertia import GEO_CONE
-from .inertia import GEO_MESH
-from .inertia import GEO_SDF
-from .inertia import GEO_PLANE
-from .inertia import GEO_NONE
-from .inertia import ModelShapeGeometry
+# Shape geometry types
+GEO_SPHERE = wp.constant(0)
+GEO_BOX = wp.constant(1)
+GEO_CAPSULE = wp.constant(2)
+GEO_CYLINDER = wp.constant(3)
+GEO_CONE = wp.constant(4)
+GEO_MESH = wp.constant(5)
+GEO_SDF = wp.constant(6)
+GEO_PLANE = wp.constant(7)
+GEO_NONE = wp.constant(8)
 
-from .collide import count_contact_points
+from .inertia import compute_mesh_inertia
+from .inertia import compute_sphere_inertia
+from .inertia import compute_box_inertia
+from .inertia import compute_capsule_inertia
+from .inertia import compute_cylinder_inertia
+from .inertia import compute_cone_inertia
+from .inertia import transform_inertia
 
 from warp.types import Volume
 Vec3 = List[float]
@@ -62,6 +73,15 @@ class ModelShapeMaterials:
     kf: wp.array(dtype=float)  # The contact friction stiffness (only used by Euler integrator)
     mu: wp.array(dtype=float)  # The coefficient of friction
     restitution: wp.array(dtype=float)  # The coefficient of restitution (only used by XPBD integrator)
+
+# Shape properties of geometry
+@wp.struct
+class ModelShapeGeometry:
+    type: wp.array(dtype=wp.int32)      # The type of geometry (GEO_SPHERE, GEO_BOX, etc.)
+    is_solid: wp.array(dtype=wp.uint8)  # Indicates whether the shape is solid or hollow
+    thickness: wp.array(dtype=float)    # The thickness of the shape (used for collision detection, and inertia computation of hollow shapes)
+    source: wp.array(dtype=wp.uint64)   # Pointer to the source geometry (in case of a mesh, zero otherwise)
+    scale: wp.array(dtype=wp.vec3)      # The 3D scale of the shape
 
 # Axis (linear or angular) of a joint that can have bounds and be driven towards a target
 class JointAxis:
@@ -193,6 +213,62 @@ class State:
                 tensors.append(value)
 
         return tensors
+    
+
+def compute_shape_mass(type, scale, src, density, is_solid, thickness):
+    
+    if density == 0.0 or type == GEO_PLANE:     # zero density means fixed
+        return 0.0, np.zeros(3), np.zeros((3, 3))
+
+    if (type == GEO_SPHERE):
+        solid = compute_sphere_inertia(density, scale[0])
+        if is_solid:
+            return solid
+        else:
+            hollow = compute_sphere_inertia(density, scale[0] - thickness)
+            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
+    elif (type == GEO_BOX):
+        w, h, d = np.array(scale[:3]) * 2.0
+        solid = compute_box_inertia(density, w, h, d)
+        if is_solid:
+            return solid
+        else:
+            hollow = compute_box_inertia(density, w - thickness, h - thickness, d - thickness)
+            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
+    elif (type == GEO_CAPSULE):
+        r, h = scale[0], scale[1] * 2.0
+        solid = compute_capsule_inertia(density, r, h)
+        if is_solid:
+            return solid
+        else:
+            hollow = compute_capsule_inertia(density, r - thickness, h - 2.0 * thickness)
+            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
+    elif (type == GEO_CYLINDER):
+        r, h = scale[0], scale[1] * 2.0
+        solid = compute_cylinder_inertia(density, r, h)
+        if is_solid:
+            return solid
+        else:
+            hollow = compute_cylinder_inertia(density, r - thickness, h - 2.0 * thickness)
+            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
+    elif (type == GEO_CONE):
+        r, h = scale[0], scale[1] * 2.0
+        solid = compute_cone_inertia(density, r, h)
+        if is_solid:
+            return solid
+        else:
+            hollow = compute_cone_inertia(density, r - thickness, h - 2.0 * thickness)
+            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
+    elif (type == GEO_MESH):
+        if src.mass > 0.0 and src.is_solid == is_solid:
+            s = scale[0]
+            return (density * src.mass * s * s * s, src.com, density * src.I * s * s * s * s * s)
+        else:
+            # fall back to computing inertia from mesh geometry
+            vertices = np.array(src.vertices) * np.array(scale[:3])
+            m, c, I, vol = compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
+            return m, c, I
+    raise ValueError("Unsupported shape type: {}".format(type))
 
 
 class Model:
@@ -451,6 +527,7 @@ class Model:
         self.body_count = 0
         self.shape_count = 0
         self.joint_count = 0
+        self.joint_axis_count = 0
         self.tri_count = 0
         self.tet_count = 0
         self.edge_count = 0
@@ -556,6 +633,7 @@ class Model:
         """
         Counts the maximum number of contact points that need to be allocated.
         """
+        from .collide import count_contact_points
         # calculate the potential number of shape pair contact points
         contact_count = wp.zeros(1, dtype=wp.int32, device=self.device)
         wp.launch(
@@ -2942,6 +3020,7 @@ class ModelBuilder:
 
             # joints
             m.joint_count = self.joint_count
+            m.joint_axis_count = self.joint_axis_count
             m.joint_type = wp.array(self.joint_type, dtype=wp.int32)
             m.joint_parent = wp.array(self.joint_parent, dtype=wp.int32)
             m.joint_child = wp.array(self.joint_child, dtype=wp.int32)

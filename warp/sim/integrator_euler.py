@@ -12,8 +12,7 @@ models + state forward in time.
 
 import warp as wp
 
-from .model import ModelShapeMaterials
-from .inertia import ModelShapeGeometry
+from .model import ModelShapeMaterials, ModelShapeGeometry
 
 from .optimizer import Optimizer
 from .particles import eval_particle_forces

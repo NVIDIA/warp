@@ -13,8 +13,6 @@ except:
 
 import math
 import numpy as np
-import os
-import xml.etree.ElementTree as ET
 
 import warp as wp
 from warp.sim.model import Mesh

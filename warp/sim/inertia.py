@@ -5,43 +5,15 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-"""A module for building simulation models and state.
+"""Helper functions for computing rigid body inertia properties.
 """
 
 import warp as wp
 import numpy as np
 
 import math
-import copy
 
-from typing import List, Optional, Tuple, Union
-
-from warp.types import Volume
-Vec3 = List[float]
-Vec4 = List[float]
-Quat = List[float]
-Mat33 = List[float]
-Transform = Tuple[Vec3, Quat]
-
-# Shape geometry types
-GEO_SPHERE = wp.constant(0)
-GEO_BOX = wp.constant(1)
-GEO_CAPSULE = wp.constant(2)
-GEO_CYLINDER = wp.constant(3)
-GEO_CONE = wp.constant(4)
-GEO_MESH = wp.constant(5)
-GEO_SDF = wp.constant(6)
-GEO_PLANE = wp.constant(7)
-GEO_NONE = wp.constant(8)
-
-# Shape properties of geometry
-@wp.struct
-class ModelShapeGeometry:
-    type: wp.array(dtype=wp.int32)  # The type of geometry (GEO_SPHERE, GEO_BOX, etc.)
-    is_solid: wp.array(dtype=wp.uint8)  # Indicates whether the shape is solid or hollow
-    thickness: wp.array(dtype=float)    # The thickness of the shape (used for collision detection, and inertia computation of hollow shapes)
-    source: wp.array(dtype=wp.uint64)   # Pointer to the source geometry (in case of a mesh, zero otherwise)
-    scale: wp.array(dtype=wp.vec3)      # The 3D scale of the shape
+from typing import List, Union
 
 
 @wp.func
@@ -338,61 +310,6 @@ def compute_mesh_inertia(density: float, vertices: list, indices: list, is_solid
     I = I_warp.numpy()[0] * density
     volume = vol_warp.numpy()[0]
     return mass, com, I, volume
-
-def compute_shape_mass(type, scale, src, density, is_solid, thickness):
-    
-    if density == 0.0 or type == GEO_PLANE:     # zero density means fixed
-        return 0.0, np.zeros(3), np.zeros((3, 3))
-
-    if (type == GEO_SPHERE):
-        solid = compute_sphere_inertia(density, scale[0])
-        if is_solid:
-            return solid
-        else:
-            hollow = compute_sphere_inertia(density, scale[0] - thickness)
-            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif (type == GEO_BOX):
-        w, h, d = np.array(scale[:3]) * 2.0
-        solid = compute_box_inertia(density, w, h, d)
-        if is_solid:
-            return solid
-        else:
-            hollow = compute_box_inertia(density, w - thickness, h - thickness, d - thickness)
-            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif (type == GEO_CAPSULE):
-        r, h = scale[0], scale[1] * 2.0
-        solid = compute_capsule_inertia(density, r, h)
-        if is_solid:
-            return solid
-        else:
-            hollow = compute_capsule_inertia(density, r - thickness, h - 2.0 * thickness)
-            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif (type == GEO_CYLINDER):
-        r, h = scale[0], scale[1] * 2.0
-        solid = compute_cylinder_inertia(density, r, h)
-        if is_solid:
-            return solid
-        else:
-            hollow = compute_cylinder_inertia(density, r - thickness, h - 2.0 * thickness)
-            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif (type == GEO_CONE):
-        r, h = scale[0], scale[1] * 2.0
-        solid = compute_cone_inertia(density, r, h)
-        if is_solid:
-            return solid
-        else:
-            hollow = compute_cone_inertia(density, r - thickness, h - 2.0 * thickness)
-            return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif (type == GEO_MESH):
-        if src.mass > 0.0 and src.is_solid == is_solid:
-            s = scale[0]
-            return (density * src.mass * s * s * s, src.com, density * src.I * s * s * s * s * s)
-        else:
-            # fall back to computing inertia from mesh geometry
-            vertices = np.array(src.vertices) * np.array(scale[:3])
-            m, c, I, vol = compute_mesh_inertia(density, vertices, src.indices, is_solid, thickness)
-            return m, c, I
-    raise ValueError("Unsupported shape type: {}".format(type))
 
 
 def transform_inertia(m, I, p, q):
