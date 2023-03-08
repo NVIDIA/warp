@@ -663,7 +663,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     bool var_64;
     float32 var_65;
     vec2 var_66;
-    vec2 var_67;
+    // vec2 var_67;
     float32 var_68;
     float32 var_69;
     float32 var_70;
@@ -671,7 +671,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     float32 var_72;
     float32 var_73;
     float32 var_74;
-    vec2 var_75;
+    // vec2 var_75;
     //---------
     // dual vars
     vec3 adj_0 = 0;
@@ -835,7 +835,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     	var_66 = wp::vec2(var_5, var_65);
     	goto label5;
     }
-    var_67 = wp::select(var_64, var_50, var_66);
+    // var_67 = wp::select(var_64, var_50, var_66);
     var_68 = wp::add(var_53, var_41);
     var_69 = wp::add(var_68, var_21);
     var_70 = wp::div(var_9, var_69);
@@ -843,7 +843,7 @@ CUDA_CALLABLE inline void adj_closest_point_to_triangle(
     var_72 = wp::mul(var_21, var_70);
     var_73 = wp::sub(var_9, var_71);
     var_74 = wp::sub(var_73, var_72);
-    var_75 = wp::vec2(var_74, var_71);
+    // var_75 = wp::vec2(var_74, var_71);
     goto label6;
     //---------
     // reverse
