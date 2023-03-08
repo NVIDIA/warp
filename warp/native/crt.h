@@ -20,6 +20,16 @@
 // - Warp runtime (!WP_NO_CRT). When building warp.dll it's fine to include the
 //   standard C library headers, and it avoids mismatched redefinitions.
 
+#if !defined(__CUDA_ARCH__)
+    #if defined(_WIN32)
+        #define WP_API __declspec(dllexport)
+    #else
+        #define WP_API __attribute__ ((visibility ("default")))
+    #endif
+#else
+    #define WP_API
+#endif
+
 #if !defined(WP_NO_CRT)
 
 #include <stdint.h>
@@ -113,10 +123,10 @@ void* malloc(size_t);
 void free(void*);
 
 // Helper for implementing assert() macro
-void _wp_assert(const char* message, const char* file, unsigned int line);
+WP_API void _wp_assert(const char* message, const char* file, unsigned int line);
 
 // Helper for implementing isfinite()
-int _wp_isfinite(double);
+WP_API int _wp_isfinite(double);
 
 }  // extern "C"
 

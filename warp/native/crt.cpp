@@ -12,12 +12,12 @@
 #include <cstdio>
 #include <cassert>
 
-extern "C" int _wp_isfinite(double x)
+extern "C" WP_API int _wp_isfinite(double x)
 {
     return std::isfinite(x);
 }
 
-extern "C" void _wp_assert(const char* expression, const char* file, unsigned int line)
+extern "C" WP_API void _wp_assert(const char* expression, const char* file, unsigned int line)
 {
     fflush(stdout);
     fprintf(stderr,
