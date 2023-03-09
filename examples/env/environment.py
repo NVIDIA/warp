@@ -30,6 +30,7 @@ class IntegratorType(Enum):
 
 def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), upaxis="y"):
     # compute positional offsets per environment
+    env_offset = np.array(env_offset)
     nonzeros = np.nonzero(env_offset)[0]
     num_dim = nonzeros.shape[0]
     if num_dim > 0:

@@ -6,7 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Example Sim Ant
+# Ant environment
 #
 # Shows how to set up a simulation of a rigid-body Ant articulation based on
 # the OpenAI gym environment using the wp.sim.ModelBuilder() and MCJF
@@ -22,7 +22,7 @@ import warp.sim
 
 from environment import Environment, run_env, IntegratorType
 
-class Demo(Environment):
+class AntEnvironment(Environment):
     sim_name = "example_sim_ant"
     env_offset=(2.5, 0.0, 2.5)
     tiny_render_settings = dict(scaling=3.0)
@@ -38,7 +38,7 @@ class Demo(Environment):
 
     def create_articulation(self, builder):
         wp.sim.parse_mjcf(
-            os.path.join(os.path.dirname(__file__), "assets/nv_ant.xml"),
+            os.path.join(os.path.dirname(__file__), "../assets/nv_ant.xml"),
             builder,
             stiffness=0.0,
             damping=1.0,
@@ -53,5 +53,6 @@ class Demo(Environment):
         builder.joint_q[7:] = [0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0]
         builder.joint_q[:7] = [0.0, 0.7, 0.0, *wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5)]
 
+
 if __name__ == "__main__":
-    run_env(Demo)
+    run_env(AntEnvironment)
