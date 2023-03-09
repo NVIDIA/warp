@@ -101,9 +101,7 @@ class Environment:
 
         assert len(self.ref_traj) == self.episode_frames * self.state_dim
 
-        solve_iterations = 1
-        self.integrator = wp.sim.XPBDIntegrator(solve_iterations)
-        # self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.SemiImplicitIntegrator()
 
     def simulate(self, state: wp.sim.State, action: wp.array, action_index: int, requires_grad=False) -> wp.sim.State:
         """
