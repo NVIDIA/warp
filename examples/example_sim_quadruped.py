@@ -21,7 +21,7 @@ import os
 import warp as wp
 import warp.sim
 import warp.sim.render
-from warp.sim.tiny_render import compute_env_offsets
+from env.environment import compute_env_offsets
 
 wp.init()
 
