@@ -1202,7 +1202,7 @@ class ModelBuilder:
         collision_filter_parent: bool = True,
         enabled: bool = True,
     ) -> int:
-        self.joint_type.append(joint_type.val)
+        self.joint_type.append(joint_type)
         self.joint_parent.append(parent)
         if child not in self.joint_parents:
             self.joint_parents[child] = [parent]
@@ -1222,7 +1222,7 @@ class ModelBuilder:
 
         for dim in linear_axes:
             self.joint_axis.append(dim.axis)
-            self.joint_axis_mode.append(dim.mode.val)
+            self.joint_axis_mode.append(dim.mode)
             self.joint_target.append(dim.target)
             self.joint_target_ke.append(dim.target_ke)
             self.joint_target_kd.append(dim.target_kd)
@@ -1232,7 +1232,7 @@ class ModelBuilder:
             self.joint_limit_upper.append(dim.limit_upper)
         for dim in angular_axes:
             self.joint_axis.append(dim.axis)
-            self.joint_axis_mode.append(dim.mode.val)
+            self.joint_axis_mode.append(dim.mode)
             self.joint_target.append(dim.target)
             self.joint_target_ke.append(dim.target_ke)
             self.joint_target_kd.append(dim.target_kd)
@@ -2027,7 +2027,7 @@ class ModelBuilder:
         else:
             self.body_shapes[body] = [shape]
         self.shape_transform.append(wp.transform(pos, rot))
-        self.shape_geo_type.append(type.val)
+        self.shape_geo_type.append(type)
         self.shape_geo_scale.append((scale[0], scale[1], scale[2]))
         self.shape_geo_src.append(src)
         self.shape_geo_thickness.append(thickness)

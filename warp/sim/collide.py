@@ -186,7 +186,7 @@ def plane_sdf(width: float, length: float, p: wp.vec3):
 
 
 @wp.func
-def closest_point_plane(width: float, length: float, point: wp.vec3) -> wp.vec3:
+def closest_point_plane(width: float, length: float, point: wp.vec3):
     # projects the point onto the quad in the xz plane (if width and length > 0.0, otherwise the plane is infinite)
     if width > 0.0:
         x = wp.clamp(point[0], -width, width)
@@ -200,7 +200,7 @@ def closest_point_plane(width: float, length: float, point: wp.vec3) -> wp.vec3:
 
 
 @wp.func
-def closest_point_line_segment(a: wp.vec3, b: wp.vec3, point: wp.vec3) -> wp.vec3:
+def closest_point_line_segment(a: wp.vec3, b: wp.vec3, point: wp.vec3):
     ab = b - a
     ap = point - a
     t = wp.dot(ap, ab) / wp.dot(ab, ab)
@@ -209,7 +209,7 @@ def closest_point_line_segment(a: wp.vec3, b: wp.vec3, point: wp.vec3) -> wp.vec
 
 
 @wp.func
-def closest_point_box(upper: wp.vec3, point: wp.vec3) -> wp.vec3:
+def closest_point_box(upper: wp.vec3, point: wp.vec3):
     # closest point to box surface
     x = wp.clamp(point[0], -upper[0], upper[0])
     y = wp.clamp(point[1], -upper[1], upper[1])
@@ -258,6 +258,7 @@ def get_box_edge(edge_id: int, upper: wp.vec3):
     j = i + 4
     return wp.spatial_vector(get_box_vertex(i, upper), get_box_vertex(j, upper))
 
+
 @wp.func
 def get_plane_edge(edge_id: int, plane_width: float, plane_length: float):
     # get the edge of the plane given its ID (0-3)
@@ -273,7 +274,7 @@ def get_plane_edge(edge_id: int, plane_width: float, plane_length: float):
 
 
 @wp.func
-def closest_edge_coordinate_box(upper: wp.vec3, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int) -> float:
+def closest_edge_coordinate_box(upper: wp.vec3, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int):
     # find point on edge closest to box, return its barycentric edge coordinate
     # Golden-section search
     a = float(0.0)
@@ -351,7 +352,7 @@ def closest_edge_coordinate_plane(plane_width: float, plane_length: float, edge_
 
 
 @wp.func
-def closest_edge_coordinate_capsule(radius: float, half_height: float, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int) -> float:
+def closest_edge_coordinate_capsule(radius: float, half_height: float, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int):
     # find point on edge closest to capsule, return its barycentric edge coordinate
     # Golden-section search
     a = float(0.0)
@@ -417,7 +418,7 @@ def closest_point_mesh(mesh: wp.uint64, point: wp.vec3, max_dist: float):
 
 
 @wp.func
-def closest_edge_coordinate_mesh(mesh: wp.uint64, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int, max_dist: float) -> float:
+def closest_edge_coordinate_mesh(mesh: wp.uint64, edge_a: wp.vec3, edge_b: wp.vec3, max_iter: int, max_dist: float):
     # find point on edge closest to mesh, return its barycentric edge coordinate
     # Golden-section search
     a = float(0.0)
@@ -911,6 +912,7 @@ def handle_contact_pairs(
     contact_body1[tid] = rigid_b
 
     distance = 1.0e6
+    u = float(0.0)
 
     if geo_type_a == wp.sim.GEO_SPHERE:
         p_a_world = wp.transform_get_translation(X_ws_a)
