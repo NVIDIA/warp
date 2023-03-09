@@ -89,10 +89,6 @@ class Environment:
         # finalize model
         self.model = builder.finalize(device, requires_grad=True)
 
-        self.model.joint_attach_kd = 0.0
-        self.model.joint_limit_ke.zero_()
-        self.model.joint_limit_kd.zero_()
-
         self.builder = builder
         self.model.ground = False
 
