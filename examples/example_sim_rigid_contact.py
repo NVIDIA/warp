@@ -198,14 +198,6 @@ class Example:
 
             wp.synchronize()
 
- 
-        avg_time = np.array(profiler["simulate"]).mean()/self.episode_frames
-        avg_steps_second = 1000.0*float(self.num_envs)/avg_time
-
-        print(f"envs: {self.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
-
-        return 1000.0*float(self.num_envs)/avg_time
-
 
 stage = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd")
 robot = Example(stage, render=True)
