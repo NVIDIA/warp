@@ -20,31 +20,30 @@ import numpy as np
 
 import warp as wp
 import warp.sim
+import warp.sim.render
 
-from pxr import Usd, UsdGeom
+from pxr import UsdGeom, Usd
 
-from environment import Environment, run_env
+wp.init()
 
-class Demo(Environment):
-    sim_name = "example_sim_rigid_contact"
-    env_offset=(2.0, 0.0, 2.0)
-    tiny_render_settings = dict(scaling=3.0)
-    usd_render_settings = dict(scaling=100.0)
+class Example:
 
-    sim_substeps_euler = 32
-    sim_substeps_xpbd = 5
+    frame_dt = 1.0/60.0
 
-    xpbd_settings = dict(
-        iterations=2,
-        joint_linear_relaxation=0.7,
-        joint_angular_relaxation=0.5,
-        rigid_contact_relaxation=1.0,
-        rigid_contact_con_weighting=True,
-    )
+    episode_duration = 20.0      # seconds
+    episode_frames = int(episode_duration/frame_dt)
 
-    num_envs = 1
+    sim_substeps = 10
+    sim_dt = frame_dt / sim_substeps
+    sim_steps = int(episode_duration / sim_dt)
+   
+    sim_time = 0.0
 
-    def create_articulation(self, builder):
+    def __init__(self, stage=None, render=True):
+
+        builder = wp.sim.ModelBuilder()
+
+        self.enable_rendering = render
 
         self.num_bodies = 8
         self.scale = 0.8
@@ -118,6 +117,21 @@ class Demo(Environment):
                     density=1e3,
                 )
 
+
+        # finalize model
+        self.model = builder.finalize()
+        self.model.ground = True
+
+        self.model.joint_attach_ke = 1600.0
+        self.model.joint_attach_kd = 20.0
+
+        self.integrator = wp.sim.SemiImplicitIntegrator()
+
+        #-----------------------
+        # set up Usd renderer
+        if (self.enable_rendering):
+            self.renderer = wp.sim.render.SimRendererTiny(self.model, stage)
+
     def load_mesh(self, filename, path):
         asset_stage = Usd.Stage.Open(filename)
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(path))
@@ -127,6 +141,72 @@ class Demo(Environment):
         
         return wp.sim.Mesh(points, indices)
 
+    def update(self):
+        for _ in range(self.sim_substeps):
+            self.state_0.clear_forces()
+            wp.sim.collide(self.model, self.state_0)
+            self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
+            self.state_0, self.state_1 = self.state_1, self.state_0
+    
+    def render(self, is_live=False):
+        time = 0.0 if is_live else self.sim_time
 
-if __name__ == "__main__":
-    run_env(Demo)
+        self.renderer.begin_frame(time)
+        self.renderer.render(self.state_0)
+        self.renderer.end_frame()
+
+    def run(self, render=True):
+
+        #---------------
+        # run simulation
+
+        self.sim_time = 0.0
+        self.state_0 = self.model.state()
+        self.state_1 = self.model.state()
+
+        wp.sim.eval_fk(
+            self.model,
+            self.model.joint_q,
+            self.model.joint_qd,
+            None,
+            self.state_0)
+
+        profiler = {}
+
+        # create update graph
+        wp.capture_begin()
+
+        # simulate
+        self.update()
+                
+        graph = wp.capture_end()
+
+
+        # simulate
+        with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
+
+            for f in range(0, self.episode_frames):
+                
+                with wp.ScopedTimer("simulate", active=True):
+                    wp.capture_launch(graph)
+                self.sim_time += self.frame_dt
+
+                if (self.enable_rendering):
+
+                    with wp.ScopedTimer("render", active=True):
+                        self.render()
+
+            wp.synchronize()
+
+ 
+        avg_time = np.array(profiler["simulate"]).mean()/self.episode_frames
+        avg_steps_second = 1000.0*float(self.num_envs)/avg_time
+
+        print(f"envs: {self.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
+
+        return 1000.0*float(self.num_envs)/avg_time
+
+
+stage = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_contact.usd")
+robot = Example(stage, render=True)
+robot.run()
