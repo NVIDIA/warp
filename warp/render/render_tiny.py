@@ -576,7 +576,7 @@ class TinyRenderer:
             color: The color of the plane
             texture: The texture of the plane (optional)
         """
-        geo_hash = hash((int(warp.sim.GEO_PLANE.val), width, length))
+        geo_hash = hash((int(warp.sim.GEO_PLANE), width, length))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self._update_instance(name, pos, rot):
@@ -625,7 +625,7 @@ class TinyRenderer:
             radius: The radius of the sphere
             name: A name for the USD prim on the stage
         """
-        geo_hash = hash((int(warp.sim.GEO_SPHERE.val), radius))
+        geo_hash = hash((int(warp.sim.GEO_SPHERE), radius))
         scale = float(radius) * 2. * self.scaling
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
@@ -650,7 +650,7 @@ class TinyRenderer:
             half_height: The half height of the capsule
             name: A name for the USD prim on the stage
         """
-        geo_hash = hash((int(warp.sim.GEO_CAPSULE.val), radius, half_height))
+        geo_hash = hash((int(warp.sim.GEO_CAPSULE), radius, half_height))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self._update_instance(name, pos, rot):
@@ -675,7 +675,7 @@ class TinyRenderer:
             half_height: The half height of the cylinder
             name: A name for the USD prim on the stage
         """
-        geo_hash = hash((int(warp.sim.GEO_CYLINDER.val), radius, half_height))
+        geo_hash = hash((int(warp.sim.GEO_CYLINDER), radius, half_height))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self._update_instance(name, pos, rot):
@@ -715,7 +715,7 @@ class TinyRenderer:
             half_height: The half height of the cone
             name: A name for the USD prim on the stage
         """
-        geo_hash = hash((int(warp.sim.GEO_CONE.val), radius, half_height))
+        geo_hash = hash((int(warp.sim.GEO_CONE), radius, half_height))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self._update_instance(name, pos, rot):
@@ -753,7 +753,7 @@ class TinyRenderer:
             extents: The radius of the sphere
             name: A name for the USD prim on the stage
         """
-        geo_hash = hash((int(warp.sim.GEO_BOX.val), float(extents[0]), float(extents[1]), float(extents[2])))
+        geo_hash = hash((int(warp.sim.GEO_BOX), float(extents[0]), float(extents[1]), float(extents[2])))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self._update_instance(name, pos, rot):
@@ -782,7 +782,7 @@ class TinyRenderer:
             self._update_instance(name, pos, rot)
             shape = self._mesh_name[name]
             return shape
-        geo_hash = hash((int(warp.sim.GEO_MESH.val), tuple(np.array(points).flatten()), tuple(np.array(indices).flatten())))
+        geo_hash = hash((int(warp.sim.GEO_MESH), tuple(np.array(points).flatten()), tuple(np.array(indices).flatten())))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
             if self._update_instance(name, pos, rot):
