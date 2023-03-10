@@ -6,7 +6,7 @@
  * license agreement from NVIDIA CORPORATION is strictly prohibited.
  */
 
-#include "../native/builtin.h"
+#include "../native/crt.h"
 
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Basic/DiagnosticOptions.h>
@@ -26,7 +26,7 @@
 #include <llvm/InitializePasses.h>
 #include <llvm/IR/LegacyPassManager.h>
 
-#include <lld/Common/Driver.h>
+#include <llvm/ExecutionEngine/Orc/LLJIT.h>
 
 #include <vector>
 #include <iostream>
@@ -120,22 +120,100 @@ WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char*
     return 0;
 }
 
-WP_API int link(int argc, const char** argv)
+// Global JIT instance
+static llvm::orc::LLJIT* jit = nullptr;
+
+// Load an object file into an in-memory DLL named `module_name`
+WP_API int load_obj(const char* object_file, const char* module_name)
 {
-    std::vector<const char*> args = {"lld-link.exe"};
+    if(!jit)
+    {
+        auto jit_expected = llvm::orc::LLJITBuilder().create();
 
-	for(int i = 0; i < argc; i++)
-	{
-	    args.push_back(argv[i]);
-	}    
+        if(!jit_expected)
+        {
+            std::cerr << "Failed to create JIT instance: " << toString(jit_expected.takeError()) << std::endl;
+            return -1;
+        }
 
-    bool success = lld::coff::link(args, llvm::outs(), llvm::errs(), /*exitEarly*/ false, /*disableOutput*/ false);
+        jit = (*jit_expected).release();
+    }
 
-    lld::CommonLinkerContext::destroy();
+    auto dll = jit->createJITDylib(module_name);
 
-    return success ? 0 : -1;
+    if(!dll)
+    {
+        std::cerr << "Failed to create JITDylib: " << toString(dll.takeError()) << std::endl;
+        return -1;
+    }
+
+    // Enable searching for external symbols in the calling module
+    {
+        char global_prefix = '\0';
+        auto search = llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(global_prefix);
+
+        if(!search)
+        {
+            std::cerr << "Failed to create generator: " << toString(search.takeError()) << std::endl;
+            return -1;
+        }
+
+        dll->addGenerator(std::move(*search));
+    }
+
+    // Load the object file into a memory buffer
+    auto buffer = llvm::MemoryBuffer::getFile(object_file);
+    if(!buffer)
+    {
+        std::cerr << "Failed to load object file: " << buffer.getError().message() << std::endl;
+        return -1;
+    }
+
+    auto err = jit->addObjectFile(*dll, std::move(*buffer));
+    if(err)
+    {
+         std::cerr << "Failed to add object file: " << llvm::toString(std::move(err)) << std::endl;
+        return -1;
+    }
+
+    return 0;
+}
+
+ WP_API int unload_obj(const char* module_name)
+{
+    if(!jit)  // If there's no JIT instance there are no object files loaded
+    {
+        return 0;
+    }
+
+    auto* dll = jit->getJITDylibByName(module_name);
+    llvm::Error error = jit->getExecutionSession().removeJITDylib(*dll);
+
+    if(error)
+    {
+        std::cerr << "Failed to unload: " << llvm::toString(std::move(error)) << std::endl;
+        return -1;
+    }
+
+    return 0;
+}
+
+WP_API uint64_t lookup(const char* dll_name, const char* function_name)
+{
+    auto* dll = jit->getJITDylibByName(dll_name);
+
+    auto func = jit->lookupLinkerMangled(*dll, function_name);
+
+    if(!func)
+    {
+        std::cerr << "Failed to lookup symbol: " << llvm::toString(func.takeError()) << std::endl;
+        return -1;
+    }
+
+    return func->getValue();
 }
 
 }  // extern "C"
 
 }  // namespace wp
+
