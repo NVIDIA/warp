@@ -93,10 +93,10 @@ def test_arrays(test, device, dtype):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
     
     v2_np = randvals((10,2),dtype)
     v3_np = randvals((10,3),dtype)
@@ -113,9 +113,9 @@ def test_arrays(test, device, dtype):
     assert_np_equal(v4.numpy(), v4_np, tol=1.e-6)
     assert_np_equal(v5.numpy(), v5_np, tol=1.e-6)
 
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
     
     v2 = wp.array(v2_np, dtype=vec2, requires_grad=True, device=device)
     v3 = wp.array(v3_np, dtype=vec3, requires_grad=True, device=device)
@@ -142,10 +142,10 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
         input: wp.array(dtype=wptype),
         output: wp.array(dtype=wptype),
     ):
-        v2result = wp.create_vec(input[0],length=2)
-        v3result = wp.create_vec(input[1],length=3)
-        v4result = wp.create_vec(input[2],length=4)
-        v5result = wp.create_vec(input[3],length=5)
+        v2result = wp.vec(input[0],length=2)
+        v3result = wp.vec(input[1],length=3)
+        v4result = wp.vec(input[2],length=4)
+        v5result = wp.vec(input[3],length=5)
 
         idx = 0
         for i in range(2):
@@ -165,10 +165,10 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
         input: wp.array(dtype=wptype),
         output: wp.array(dtype=wptype),
     ):
-        v2result = wp.create_vec(input[0], input[1])
-        v3result = wp.create_vec(input[2], input[3], input[4])
-        v4result = wp.create_vec(input[5], input[6], input[7], input[8])
-        v5result = wp.create_vec(input[9], input[10], input[11], input[12], input[13])
+        v2result = wp.vec(input[0], input[1])
+        v3result = wp.vec(input[2], input[3], input[4])
+        v4result = wp.vec(input[5], input[6], input[7], input[8])
+        v5result = wp.vec(input[9], input[10], input[11], input[12], input[13])
 
         idx = 0
         for i in range(2):
@@ -254,7 +254,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
 
 def test_float_int_in_kernel(test, device, register_kernels=False):
     """
-    vecX = wp.vec(length=4, dtype=wp.float32)
+    vecX = wp.vector_t(length=4, dtype=wp.float32)
     cTest = vecX( 1.0, 2.0, 3.0, 4.0 )
     And then try to access an entry of that vector in a kernel:
     t = cTest[0]
@@ -276,10 +276,10 @@ def test_constructors(test, device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
     
     def check_scalar_constructor(
         input: wp.array(dtype=wptype),
@@ -509,10 +509,10 @@ def test_indexing(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
     
     def check_indexing(
         v2: wp.array(dtype=vec2),
@@ -620,10 +620,10 @@ def test_equality(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_equality(
         v20: wp.array(dtype=vec2),
@@ -714,10 +714,10 @@ def test_negation(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_negation(
         v2: wp.array(dtype=vec2),
@@ -831,10 +831,10 @@ def test_scalar_multiplication(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_mul(
         s: wp.array(dtype=wptype),
@@ -951,10 +951,10 @@ def test_scalar_multiplication_rightmul(test,device, dtype, register_kernels=Fal
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_rightmul(
         s: wp.array(dtype=wptype),
@@ -1070,10 +1070,10 @@ def test_cw_multiplication(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_cw_mul(
         s2: wp.array(dtype=vec2),
@@ -1200,10 +1200,10 @@ def test_scalar_division(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_div(
         s: wp.array(dtype=wptype),
@@ -1346,10 +1346,10 @@ def test_cw_division(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_cw_div(
         s2: wp.array(dtype=vec2),
@@ -1501,10 +1501,10 @@ def test_addition(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_add(
         s2: wp.array(dtype=vec2),
@@ -1628,10 +1628,10 @@ def test_subtraction_unsigned(test,device,dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_subtraction_unsigned():
 
@@ -1670,10 +1670,10 @@ def test_subtraction(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_subtraction(
         s2: wp.array(dtype=vec2),
@@ -1802,10 +1802,10 @@ def test_dotproduct(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_dot(
         s2: wp.array(dtype=vec2),
@@ -1908,10 +1908,10 @@ def test_length(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_length(
         v2: wp.array(dtype=vec2),
@@ -2030,10 +2030,10 @@ def test_normalize(test,device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
 
     def check_normalize(
         v2: wp.array(dtype=vec2),
@@ -2196,7 +2196,7 @@ def test_crossproduct(test,device,dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.vec(length=3, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
 
     def check_cross(
         s3: wp.array(dtype=vec3),
@@ -2273,10 +2273,10 @@ def test_minmax(test,device,dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp.vec(length=2, dtype=wptype)
-    vec3 = wp.vec(length=3, dtype=wptype)
-    vec4 = wp.vec(length=4, dtype=wptype)
-    vec5 = wp.vec(length=5, dtype=wptype)
+    vec2 = wp.vector_t(length=2, dtype=wptype)
+    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec4 = wp.vector_t(length=4, dtype=wptype)
+    vec5 = wp.vector_t(length=5, dtype=wptype)
     
     # \TODO: Also not quite sure why: this kernel compiles incredibly
     # slowly though...
@@ -2412,6 +2412,8 @@ def register(parent):
 
     for dtype in np_float_types:
         add_function_test_register_kernel(TestVec, f"test_crossproduct_{dtype.__name__}", test_crossproduct, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestVec, f"test_length_{dtype.__name__}", test_length, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestVec, f"test_normalize_{dtype.__name__}", test_normalize, devices=devices, dtype=dtype)
 
     for dtype in np_scalar_types:
         add_function_test(TestVec, f"test_arrays_{dtype.__name__}", test_arrays, devices=devices, dtype=dtype)
@@ -2426,15 +2428,13 @@ def register(parent):
         add_function_test_register_kernel(TestVec, f"test_cw_division_{dtype.__name__}", test_cw_division, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestVec, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestVec, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype)
+
         # the kernels in this test compile incredibly slowly...
         # add_function_test_register_kernel(TestVec, f"test_minmax_{dtype.__name__}", test_minmax, devices=devices, dtype=dtype)
     
-    for dtype in np_float_types:
-        add_function_test_register_kernel(TestVec, f"test_length_{dtype.__name__}", test_length, devices=devices, dtype=dtype)
-        add_function_test_register_kernel(TestVec, f"test_normalize_{dtype.__name__}", test_normalize, devices=devices, dtype=dtype)
     
     return TestVec
 
 if __name__ == '__main__':
     c = register(unittest.TestCase)
-    unittest.main(verbosity=2, failfast=False)
+    unittest.main(verbosity=2, failfast=True)

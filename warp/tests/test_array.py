@@ -506,10 +506,10 @@ def test_fill_zero(test, device):
         assert_np_equal(a4.numpy(), np.zeros_like(a4.numpy()))
 
         # test some vector types too:
-        v1 = wp.zeros(dim_x, dtype=wp.vec(3,wptype), device=device)
-        v2 = wp.zeros((dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
-        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
-        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+        v1 = wp.zeros(dim_x, dtype=wp.vector_t(3,wptype), device=device)
+        v2 = wp.zeros((dim_x,dim_x), dtype=wp.vector_t(3,wptype), device=device)
+        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.vector_t(3,wptype), device=device)
+        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.vector_t(3,wptype), device=device)
 
         v1.fill_(127)
         v2.fill_(127)
@@ -545,10 +545,10 @@ def test_fill_zero(test, device):
         assert_np_equal(a4.numpy(), 127 * np.ones_like(a4.numpy()))
         
         # test some vector types too:
-        v1 = wp.zeros(dim_x, dtype=wp.vec(3,wptype), device=device)
-        v2 = wp.zeros((dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
-        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
-        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+        v1 = wp.zeros(dim_x, dtype=wp.vector_t(3,wptype), device=device)
+        v2 = wp.zeros((dim_x,dim_x), dtype=wp.vector_t(3,wptype), device=device)
+        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.vector_t(3,wptype), device=device)
+        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.vector_t(3,wptype), device=device)
 
         v1.fill_(127)
         v2.fill_(127)
@@ -563,7 +563,7 @@ def test_fill_zero(test, device):
     # test fill with vector constant:
     for nptype,wptype in wp.types.np_dtype_to_warp_type.items():
         
-        vectype = wp.vec(3,wptype)
+        vectype = wp.vector_t(3,wptype)
 
         vecvalue = vectype(1,2,3)
 
@@ -593,7 +593,7 @@ def test_fill_zero(test, device):
 
         wptype = wp.types.np_dtype_to_warp_type[nptype]
         
-        vectype = wp.vec(3,wptype)
+        vectype = wp.vector_t(3,wptype)
 
         vecvalue = vectype(1.25,2.5,3.75)
 
@@ -639,8 +639,8 @@ def test_round_trip(test, device):
 
         assert_np_equal(a.numpy(), a_np)
 
-        v_np = np.random.randn(dim_x,3).astype(nptype)
-        v = wp.array(v_np,dtype=wp.vec(3,wptype),device=device)
+        v_np = np.random.randn(dim_x, 3).astype(nptype)
+        v = wp.array(v_np,dtype=wp.vector_t(3, wptype),device=device)
 
         assert_np_equal(v.numpy(), v_np)
 

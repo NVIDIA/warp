@@ -148,13 +148,18 @@ class Struct:
                 StructInstance.__init__(inst, self)
         return NewStructInstance()
 
-def compute_type_str(generictype,typeparams):
-    def param2str(p):
-        if isinstance(p,int):
-            return str(p)
-        return p.__name__
+def compute_type_str(base_name, template_params):
 
-    return f"{generictype}<{','.join(map(param2str,typeparams))}>"
+    if template_params == None or len(template_params) == 0:
+        return base_name
+    else:
+
+        def param2str(p):
+            if isinstance(p,int):
+                return str(p)
+            return p.__name__
+
+        return f"{base_name}<{','.join(map(param2str, template_params))}>"
             
 class Var:
     def __init__(self, label, type, requires_grad=False, constant=None):
@@ -405,7 +410,7 @@ class Adjoint:
 
         return output
 
-    def add_call(adj, func, inputs, min_outputs=None, templates=[]):
+    def add_call(adj, func, args, min_outputs=None, templates=[], kwds=None):
 
         # if func is overloaded then perform overload resolution here
         # we validate argument types before they go to generated native code
@@ -418,7 +423,7 @@ class Adjoint:
             if not f.variadic:
 
                 # check argument counts match (todo: default arguments?)
-                if len(f.input_types) != len(inputs):
+                if len(f.input_types) != len(args):
                     match = False
                     continue
 
@@ -431,11 +436,11 @@ class Adjoint:
                         continue
 
                     # handle function refs as a special case
-                    if a == Callable and type(inputs[i]) is warp.context.Function:
+                    if a == Callable and type(args[i]) is warp.context.Function:
                         continue
 
                     # otherwise check arg type matches input variable type
-                    if not types_equal(a, inputs[i].type, match_generic=True):
+                    if not types_equal(a, args[i].type, match_generic=True):
                         match = False
                         break
 
@@ -443,7 +448,7 @@ class Adjoint:
             if min_outputs:
 
                 try:
-                    value_type = f.value_func(inputs,templates)
+                    value_type = f.value_func(args, kwds, templates)
                     if len(value_type) != min_outputs:
                         match = False
                         continue
@@ -463,7 +468,7 @@ class Adjoint:
             
             arg_types = []
 
-            for x in inputs:
+            for x in args:
                 if isinstance(x, Var):
                     # shorten Warp primitive type names
                     if x.type.__module__ == "warp.types":
@@ -484,52 +489,52 @@ class Adjoint:
             adj.builder.build_function(func)
 
         # evaluate the function type based on inputs
-        value_type = func.value_func(inputs,templates)
+        value_type = func.value_func(args, kwds, templates)
+                
+        func_name = compute_type_str( func.key, templates)
 
-        funcname = func.key
-        if templates:
-            funcname = compute_type_str( func.key, templates )
+        use_initializer_list = func.initializer_list_func(args, templates)
 
-        # handle expression (zero output), e.g.: void do_something();
-        initializer_list = func.initializer_list_func(inputs, templates)
+
         if (value_type == None):
+            # handles expression (zero output) functions, e.g.: void do_something();
 
-            if initializer_list:
-                forward_call = func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs))
+            if use_initializer_list:
+                forward_call = func.namespace + "{}({{{}}});".format(func_name, adj.format_args("var_", args))
             else:
-                forward_call = func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs))
+                forward_call = func.namespace + "{}({});".format(func_name, adj.format_args("var_", args))
             
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="//" + forward_call)
             else:
                 adj.add_forward(forward_call)
 
-            if (len(inputs)):
-                if initializer_list:
-                    reverse_call = func.namespace + "{}({}, {{{}}});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("&adj_", inputs))
+            if (len(args)):
+                if use_initializer_list:
+                    reverse_call = func.namespace + "{}({}, {{{}}});".format("adj_" + func.key, adj.format_args("var_", args), adj.format_args("&adj_", args))
                 else:
-                    reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs))
+                    reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", args), adj.format_args("adj_", args))
                 adj.add_reverse(reverse_call)
 
             return None
 
-        # handle multiple value functions
         elif (isinstance(value_type, list)):
-
+            # handle multiple value functions
+            
             output = [adj.add_var(v) for v in value_type]
-            if initializer_list:
-                forward_call = func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs+output))
+            if use_initializer_list:
+                forward_call = func.namespace + "{}({{{}}});".format(func_name, adj.format_args("var_", args+output))
             else:
-                forward_call = func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs+output))
+                forward_call = func.namespace + "{}({});".format(func_name, adj.format_args("var_", args+output))
             adj.add_forward(forward_call)
 
-            if (len(inputs)):
-                if initializer_list:
+            if (len(args)):
+                if use_initializer_list:
                     reverse_call = func.namespace + "{}({{{}}}, {{{}}}, {});".format(
-                        "adj_" + func.key, adj.format_args("var_", inputs+output), adj.format_args("&adj_", inputs), adj.format_args("adj_", output))
+                        "adj_" + func.key, adj.format_args("var_", args+output), adj.format_args("&adj_", args), adj.format_args("adj_", output))
                 else:
                     reverse_call = func.namespace + "{}({}, {}, {});".format(
-                        "adj_" + func.key, adj.format_args("var_", inputs+output), adj.format_args("adj_", inputs), adj.format_args("adj_", output))
+                        "adj_" + func.key, adj.format_args("var_", args+output), adj.format_args("adj_", args), adj.format_args("adj_", output))
                 adj.add_reverse(reverse_call)
 
             if len(output) == 1:
@@ -540,26 +545,26 @@ class Adjoint:
         # handle simple function (one output)
         else:
 
-            output = adj.add_var(func.value_func(inputs,templates))
+            output = adj.add_var(func.value_func(args, kwds, templates))
 
-            if initializer_list:
-                forward_call = "var_{} = ".format(output) + func.namespace + "{}({{{}}});".format(funcname, adj.format_args("var_", inputs))
+            if use_initializer_list:
+                forward_call = "var_{} = ".format(output) + func.namespace + "{}({{{}}});".format(func_name, adj.format_args("var_", args))
             else:
-                forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(funcname, adj.format_args("var_", inputs))
+                forward_call = "var_{} = ".format(output) + func.namespace + "{}({});".format(func_name, adj.format_args("var_", args))
 
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="//" + forward_call)
             else:
                 adj.add_forward(forward_call)
             
-            if (len(inputs)):
+            if (len(args)):
 
-                if initializer_list:
+                if use_initializer_list:
                     reverse_call = func.namespace + "{}({{{}}}, {{{}}}, {});".format(
-                        "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("&adj_", inputs), adj.format_args("adj_", [output]))
+                        "adj_" + func.key, adj.format_args("var_", args), adj.format_args("&adj_", args), adj.format_args("adj_", [output]))
                 else:
                     reverse_call = func.namespace + "{}({}, {}, {});".format(
-                        "adj_" + func.key, adj.format_args("var_", inputs), adj.format_args("adj_", inputs), adj.format_args("adj_", [output]))
+                        "adj_" + func.key, adj.format_args("var_", args), adj.format_args("adj_", args), adj.format_args("adj_", [output]))
                 adj.add_reverse(reverse_call)
 
             return output
@@ -1205,17 +1210,15 @@ class Adjoint:
             var = adj.eval(arg)
             args.append(var)
 
-        if func.template_func:
+        # eval all keyword ags
+        def kwval(kw):
+            if isinstance(kw.value,ast.Num):
+                return kw.value.n
+            elif isinstance(kw.value,ast.Tuple):
+                return tuple(e.n for e in kw.value.elts)
+            return adj.resolve_path(kw.value)[0]
 
-            def kwval(kw):
-                if isinstance(kw.value,ast.Num):
-                    return kw.value.n
-                elif isinstance(kw.value,ast.Tuple):
-                    return tuple(e.n for e in kw.value.elts)
-                return adj.resolve_path(kw.value)[0]
-
-            kwds = { kw.arg : kwval(kw) for kw in node.keywords }
-            templates = func.template_func(args,kwds)
+        kwds = { kw.arg : kwval(kw) for kw in node.keywords }
         
         # get expected return count, e.g.: for multi-assignment
         min_outputs = None
@@ -1223,7 +1226,7 @@ class Adjoint:
             min_outputs = node.expects
 
         # add var with value type from the function
-        out = adj.add_call(func, args, min_outputs, templates=templates)
+        out = adj.add_call(func=func, args=args, kwds=kwds, templates=templates, min_outputs=min_outputs)
         return out
 
     def emit_Index(adj, node):

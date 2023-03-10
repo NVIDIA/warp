@@ -116,16 +116,16 @@ CUDA_CALLABLE inline void adj_spatial_bottom(const spatial_vector_t<Type>& a, sp
 
 
 //---------------------------------------------------------------------------------
-// Represents a rigid body transform_t<Type>ation
+// Represents a rigid body transform<Type>ation
 
 template<typename Type>
-struct transform_t
+struct transform
 {
     vec<3,Type> p;
-    quaternion<Type> q;
+    quat<Type> q;
 
-    CUDA_CALLABLE inline transform_t(vec<3,Type> p=vec<3,Type>(), quaternion<Type> q=quaternion<Type>()) : p(p), q(q) {}
-    CUDA_CALLABLE inline transform_t(Type)  {}  // helps uniform initialization
+    CUDA_CALLABLE inline transform(vec<3,Type> p=vec<3,Type>(), quat<Type> q=quat<Type>()) : p(p), q(q) {}
+    CUDA_CALLABLE inline transform(Type)  {}  // helps uniform initialization
 
     CUDA_CALLABLE inline Type operator[](int index) const
     {
@@ -143,50 +143,44 @@ struct transform_t
 };
 
 template<typename Type>
-inline CUDA_CALLABLE transform_t<Type> create_transform(vec<3,Type> p, quaternion<Type> q)
+CUDA_CALLABLE inline transform<Type> transform_identity()
 {
-    return transform_t<Type>(p,q);
+    return transform<Type>(vec<3,Type>(), quat_identity<Type>());
 }
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> transform_identity()
-{
-    return transform_t<Type>(vec<3,Type>(), quat_identity<Type>());
-}
-
-template<typename Type>
-inline CUDA_CALLABLE bool operator==(const transform_t<Type>& a, const transform_t<Type>& b)
+inline CUDA_CALLABLE bool operator==(const transform<Type>& a, const transform<Type>& b)
 {
     return a.p == b.p && a.q == b.q;
 }
 
 
 template<typename Type>
-inline bool CUDA_CALLABLE isfinite(const transform_t<Type>& t)
+inline bool CUDA_CALLABLE isfinite(const transform<Type>& t)
 {
     return isfinite(t.p) && isfinite(t.q);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline vec<3,Type> transform_get_translation(const transform_t<Type>& t)
+CUDA_CALLABLE inline vec<3,Type> transform_get_translation(const transform<Type>& t)
 {
     return t.p;
 }
 
 template<typename Type>
-CUDA_CALLABLE inline quaternion<Type> transform_get_rotation(const transform_t<Type>& t)
+CUDA_CALLABLE inline quat<Type> transform_get_rotation(const transform<Type>& t)
 {
     return t.q;
 }
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> transform_multiply(const transform_t<Type>& a, const transform_t<Type>& b)
+CUDA_CALLABLE inline transform<Type> transform_multiply(const transform<Type>& a, const transform<Type>& b)
 {
     return { quat_rotate(a.q, b.p) + a.p, mul(a.q, b.q) };
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_transform_multiply(const transform_t<Type>& a, const transform_t<Type>& b, transform_t<Type>& adj_a, transform_t<Type>& adj_b, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform_multiply(const transform<Type>& a, const transform<Type>& b, transform<Type>& adj_a, transform<Type>& adj_b, const transform<Type>& adj_ret)
 {
     // translational part
     adj_quat_rotate(a.q, b.p, adj_a.q, adj_b.p, adj_ret.p);
@@ -198,86 +192,86 @@ CUDA_CALLABLE inline void adj_transform_multiply(const transform_t<Type>& a, con
 
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> transform_inverse(const transform_t<Type>& t)
+CUDA_CALLABLE inline transform<Type> transform_inverse(const transform<Type>& t)
 {
-    quaternion<Type> q_inv = quat_inverse(t.q);
-    return transform_t<Type>(-quat_rotate(q_inv, t.p), q_inv);
+    quat<Type> q_inv = quat_inverse(t.q);
+    return transform<Type>(-quat_rotate(q_inv, t.p), q_inv);
 }
 
     
 template<typename Type>
-CUDA_CALLABLE inline vec<3,Type> transform_vector(const transform_t<Type>& t, const vec<3,Type>& x)
+CUDA_CALLABLE inline vec<3,Type> transform_vector(const transform<Type>& t, const vec<3,Type>& x)
 {
     return quat_rotate(t.q, x);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline vec<3,Type> transform_point(const transform_t<Type>& t, const vec<3,Type>& x)
+CUDA_CALLABLE inline vec<3,Type> transform_point(const transform<Type>& t, const vec<3,Type>& x)
 {
     return t.p + quat_rotate(t.q, x);
 }
 
 // not totally sure why you'd want to do this seeing as adding/subtracting two rotation
-// quaternions doesn't seem to do anything meaningful
+// quats doesn't seem to do anything meaningful
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> add(const transform_t<Type>& a, const transform_t<Type>& b)
+CUDA_CALLABLE inline transform<Type> add(const transform<Type>& a, const transform<Type>& b)
 {
     return { a.p + b.p, a.q + b.q };
 }
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> sub(const transform_t<Type>& a, const transform_t<Type>& b)
+CUDA_CALLABLE inline transform<Type> sub(const transform<Type>& a, const transform<Type>& b)
 {
     return { a.p - b.p, a.q - b.q };
 }
 
-// also not sure why you'd want to do this seeing as the quaternion would end up unnormalized
+// also not sure why you'd want to do this seeing as the quat would end up unnormalized
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> mul(const transform_t<Type>& a, Type s)
+CUDA_CALLABLE inline transform<Type> mul(const transform<Type>& a, Type s)
 {
     return { a.p*s, a.q*s };
 }
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> mul(Type s, const transform_t<Type>& a)
+CUDA_CALLABLE inline transform<Type> mul(Type s, const transform<Type>& a)
 {
     return mul(a, s);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> mul(const transform_t<Type>& a, const transform_t<Type>& b)
+CUDA_CALLABLE inline transform<Type> mul(const transform<Type>& a, const transform<Type>& b)
 {
     return transform_multiply(a, b);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> operator*(const transform_t<Type>& a, Type s)
+CUDA_CALLABLE inline transform<Type> operator*(const transform<Type>& a, Type s)
 {
     return mul(a, s);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> operator*(Type s, const transform_t<Type>& a)
+CUDA_CALLABLE inline transform<Type> operator*(Type s, const transform<Type>& a)
 {
     return mul(a, s);
 }
 
 
 template<typename Type>
-inline CUDA_CALLABLE Type tensordot(const transform_t<Type>& a, const transform_t<Type>& b)
+inline CUDA_CALLABLE Type tensordot(const transform<Type>& a, const transform<Type>& b)
 {
     // corresponds to `np.tensordot()` with all axes being contracted
     return tensordot(a.p, b.p) + tensordot(a.q, b.q);
 }
 
 template<typename Type>
-inline CUDA_CALLABLE Type index(const transform_t<Type>& t, int i)
+inline CUDA_CALLABLE Type index(const transform<Type>& t, int i)
 {
     return t[i];
 }
 
 template<typename Type>
-inline void CUDA_CALLABLE adj_index(const transform_t<Type>& t, int i, transform_t<Type>& adj_t, int& adj_i, Type adj_ret)
+inline void CUDA_CALLABLE adj_index(const transform<Type>& t, int i, transform<Type>& adj_t, int& adj_i, Type adj_ret)
 {
     adj_t[i] += adj_ret;
 }
@@ -285,91 +279,84 @@ inline void CUDA_CALLABLE adj_index(const transform_t<Type>& t, int i, transform
 
 // adjoint methods
 template<typename Type>
-CUDA_CALLABLE inline void adj_add(const transform_t<Type>& a, const transform_t<Type>& b, transform_t<Type>& adj_a, transform_t<Type>& adj_b, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_add(const transform<Type>& a, const transform<Type>& b, transform<Type>& adj_a, transform<Type>& adj_b, const transform<Type>& adj_ret)
 {
     adj_add(a.p, b.p, adj_a.p, adj_b.p, adj_ret.p);
     adj_add(a.q, b.q, adj_a.q, adj_b.q, adj_ret.q);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_sub(const transform_t<Type>& a, const transform_t<Type>& b, transform_t<Type>& adj_a, transform_t<Type>& adj_b, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_sub(const transform<Type>& a, const transform<Type>& b, transform<Type>& adj_a, transform<Type>& adj_b, const transform<Type>& adj_ret)
 {
     adj_sub(a.p, b.p, adj_a.p, adj_b.p, adj_ret.p);
     adj_sub(a.q, b.q, adj_a.q, adj_b.q, adj_ret.q);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_mul(const transform_t<Type>& a, Type s, transform_t<Type>& adj_a, Type& adj_s, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_mul(const transform<Type>& a, Type s, transform<Type>& adj_a, Type& adj_s, const transform<Type>& adj_ret)
 {
     adj_mul(a.p, s, adj_a.p, adj_s, adj_ret.p);
     adj_mul(a.q, s, adj_a.q, adj_s, adj_ret.q);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_mul(Type s, const transform_t<Type>& a, Type& adj_s, transform_t<Type>& adj_a, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_mul(Type s, const transform<Type>& a, Type& adj_s, transform<Type>& adj_a, const transform<Type>& adj_ret)
 {
     adj_mul(a, s, adj_a, adj_s, adj_ret);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_mul(const transform_t<Type>& a, const transform_t<Type>& b, transform_t<Type>& adj_a, transform_t<Type>& adj_b, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_mul(const transform<Type>& a, const transform<Type>& b, transform<Type>& adj_a, transform<Type>& adj_b, const transform<Type>& adj_ret)
 {
     adj_transform_multiply(a, b, adj_a, adj_b, adj_ret);
 }
 
 
 template<typename Type>
-inline CUDA_CALLABLE transform_t<Type> atomic_add(transform_t<Type>* addr, const transform_t<Type>& value) 
+inline CUDA_CALLABLE transform<Type> atomic_add(transform<Type>* addr, const transform<Type>& value) 
 {   
     vec<3,Type> p = atomic_add(&addr->p, value.p);
-    quaternion<Type> q = atomic_add(&addr->q, value.q);
+    quat<Type> q = atomic_add(&addr->q, value.q);
 
-    return transform_t<Type>(p, q);
+    return transform<Type>(p, q);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_transform_t(const vec<3,Type>& p, const quaternion<Type>& q, vec<3,Type>& adj_p, quaternion<Type>& adj_q, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform(const vec<3,Type>& p, const quat<Type>& q, vec<3,Type>& adj_p, quat<Type>& adj_q, const transform<Type>& adj_ret)
 {
     adj_p += adj_ret.p;
     adj_q += adj_ret.q;
 }
 
-
 template<typename Type>
-CUDA_CALLABLE inline void adj_create_transform(const vec<3,Type>& p, const quaternion<Type>& q, vec<3,Type>& adj_p, quaternion<Type>& adj_q, const transform_t<Type>& adj_ret)
-{
-    adj_transform_t(p, q, adj_p, adj_q, adj_ret);
-}
-
-template<typename Type>
-CUDA_CALLABLE inline void adj_transform_get_translation(const transform_t<Type>& t, transform_t<Type>& adj_t, const vec<3,Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform_get_translation(const transform<Type>& t, transform<Type>& adj_t, const vec<3,Type>& adj_ret)
 {
     adj_t.p += adj_ret;
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_transform_get_rotation(const transform_t<Type>& t, transform_t<Type>& adj_t, const quaternion<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform_get_rotation(const transform<Type>& t, transform<Type>& adj_t, const quat<Type>& adj_ret)
 {
     adj_t.q += adj_ret;
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_transform_inverse(const transform_t<Type>& t, transform_t<Type>& adj_t, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform_inverse(const transform<Type>& t, transform<Type>& adj_t, const transform<Type>& adj_ret)
 {
 
     // forward
-    quaternion<Type> q_inv = quat_inverse(t.q); 
+    quat<Type> q_inv = quat_inverse(t.q); 
     vec<3,Type> p = quat_rotate(q_inv, t.p);
     vec<3,Type> np = -p;
-    // transform_t<Type> t = transform_t<Type>(np, q_inv)
+    // transform<Type> t = transform<Type>(np, q_inv)
 
     // backward
-    quaternion<Type> adj_q_inv(0.0f);
-    quaternion<Type> adj_q(0.0f);
+    quat<Type> adj_q_inv(0.0f);
+    quat<Type> adj_q(0.0f);
     vec<3,Type> adj_p(0.0f);
     vec<3,Type> adj_np(0.0f);
 
-    adj_transform_t(np, q_inv, adj_np, adj_q_inv, adj_ret);
+    adj_transform(np, q_inv, adj_np, adj_q_inv, adj_ret);
     adj_p = -adj_np;
     adj_quat_rotate(q_inv, t.p, adj_q_inv, adj_t.p, adj_p);
     adj_quat_inverse(t.q, adj_t.q, adj_q_inv);
@@ -377,13 +364,13 @@ CUDA_CALLABLE inline void adj_transform_inverse(const transform_t<Type>& t, tran
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_transform_vector(const transform_t<Type>& t, const vec<3,Type>& x, transform_t<Type>& adj_t, vec<3,Type>& adj_x, const vec<3,Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform_vector(const transform<Type>& t, const vec<3,Type>& x, transform<Type>& adj_t, vec<3,Type>& adj_x, const vec<3,Type>& adj_ret)
 {
     adj_quat_rotate(t.q, x, adj_t.q, adj_x, adj_ret);
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_transform_point(const transform_t<Type>& t, const vec<3,Type>& x, transform_t<Type>& adj_t, vec<3,Type>& adj_x, const vec<3,Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform_point(const transform<Type>& t, const vec<3,Type>& x, transform<Type>& adj_t, vec<3,Type>& adj_x, const vec<3,Type>& adj_ret)
 {
     adj_quat_rotate(t.q, x, adj_t.q, adj_x, adj_ret);
     adj_t.p += adj_ret;
@@ -391,16 +378,16 @@ CUDA_CALLABLE inline void adj_transform_point(const transform_t<Type>& t, const 
 
 
 template<typename Type>
-CUDA_CALLABLE void print(transform_t<Type> t);
+CUDA_CALLABLE void print(transform<Type> t);
 
 template<typename Type>
-CUDA_CALLABLE inline transform_t<Type> lerp(const transform_t<Type>& a, const transform_t<Type>& b, Type t)
+CUDA_CALLABLE inline transform<Type> lerp(const transform<Type>& a, const transform<Type>& b, Type t)
 {
     return a*(Type(1)-t) + b*t;
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_lerp(const transform_t<Type>& a, const transform_t<Type>& b, Type t, transform_t<Type>& adj_a, transform_t<Type>& adj_b, Type& adj_t, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_lerp(const transform<Type>& a, const transform<Type>& b, Type t, transform<Type>& adj_a, transform<Type>& adj_b, Type& adj_t, const transform<Type>& adj_ret)
 {
     adj_a += adj_ret*(Type(1)-t);
     adj_b += adj_ret*t;
@@ -626,10 +613,9 @@ CUDA_CALLABLE inline void adj_spatial_mass(
     } 
 }
 
-using transformh = transform_t<half>;
-using transform = transform_t<float>;
-using transformf = transform_t<float>;
-using transformd = transform_t<double>;
+using transformh = transform<half>;
+using transformf = transform<float>;
+using transformd = transform<double>;
 
 using spatial_vectorh = spatial_vector_t<half>;
 using spatial_vector = spatial_vector_t<float>;

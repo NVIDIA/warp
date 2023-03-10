@@ -85,7 +85,7 @@ class Function:
             for name, type in self.adj.arg_types.items():
                 
                 if name == "return":
-                    def value_func(args,templates):
+                    def value_func(args, kwds, templates):
                         return type
                     self.value_func = value_func
                 
@@ -195,7 +195,7 @@ class Function:
                             # scalar type
                             return dtype._type_
 
-                    value_type = type_ctype(f.value_func(None,None))
+                    value_type = type_ctype(f.value_func(None, None, None))
 
                     # construct return value (passed by address)
                     ret = value_type()
@@ -248,7 +248,7 @@ class Function:
         try:
             # todo: construct a default value for each of the functions args
             # so we can generate the return type for overloaded functions
-            return_type = type_str(self.value_func(None,None))
+            return_type = type_str(self.value_func(None, None, None))
         except:
             return False
 
@@ -380,7 +380,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, template_
 
     # wrap simple single-type functions with a value_func()
     if value_func == None:
-        def value_func(args,templates):
+        def value_func(args, kwds, templates):
             return value_type
     
     if initializer_list_func == None:
@@ -472,7 +472,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, template_
                 # on the generated argument list and skip generation if it fails.
                 # This also gives us the return type, which we keep for later:
                 try:
-                    return_type = value_func([warp.codegen.Var("",t) for t in argtypes],[])
+                    return_type = value_func([warp.codegen.Var("",t) for t in argtypes], {}, [])
                 except Exception as e:
                     continue
 
@@ -608,7 +608,7 @@ class ModuleBuilder:
             if not func.value_func:
 
                 def wrap(adj):
-                    def value_type(args,templates):
+                    def value_type(args, kwds, templates):
                         if (adj.return_var):
                             return adj.return_var.type
                         else:
@@ -2531,7 +2531,7 @@ def print_function(f, file):
 
         # todo: construct a default value for each of the functions args
         # so we can generate the return type for overloaded functions
-        return_type = " -> " + type_str(f.value_func(None,None))
+        return_type = " -> " + type_str(f.value_func(None, None, None))
     except:
         pass
 
@@ -2637,7 +2637,7 @@ def export_stubs(file):
                        
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
-                return_type = f.value_func(None,None)
+                return_type = f.value_func(None, None, None)
                 if return_type:
                     return_str = " -> " + type_str(return_type)
 
@@ -2681,7 +2681,7 @@ def export_builtins(file):
             try:
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
-                return_type = type_str(f.value_func(None,None))
+                return_type = type_str(f.value_func(None, None, None))
             except:
                 pass
 

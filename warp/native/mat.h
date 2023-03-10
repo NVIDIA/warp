@@ -16,7 +16,7 @@ namespace wp
 //----------------------------------------------------------
 // mat
 template<typename T>
-class quaternion;
+class quat;
 
 template<unsigned Rows, unsigned Cols, typename Type>
 struct mat
@@ -130,7 +130,8 @@ struct mat
         data[3][3] = m33;
     }
 
-    inline CUDA_CALLABLE mat(const vec<3,Type>& pos, const quaternion<Type>& rot, const vec<3,Type>& scale);
+    // implemented in quat.h
+    inline CUDA_CALLABLE mat(const vec<3,Type>& pos, const quat<Type>& rot, const vec<3,Type>& scale);
 
     inline CUDA_CALLABLE mat(const initializer_array<Rows * Cols, Type> &l)
     {
@@ -187,18 +188,6 @@ struct mat
 };
 
 
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat<Rows, Cols, Type> create_mat(const initializer_array<Rows * Cols, Type> &l)
-{
-    return mat<Rows, Cols, Type>(l);
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE mat<Rows, Cols, Type> create_mat(Type s)
-{
-    return mat<Rows, Cols, Type>(s);
-}
 
 template<unsigned Rows, typename Type>
 inline CUDA_CALLABLE mat<Rows, Rows, Type> identity()
@@ -1106,19 +1095,6 @@ inline CUDA_CALLABLE void adj_mat(const initializer_array<Rows * Cols, Type> &cm
             *adj_cmps[i * Cols + j] += adj_ret.data[i][j];
         }
     }
-}
-
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_create_mat(Type s, Type& adj_s, const mat<Rows, Cols, Type>& adj_ret)
-{
-    adj_mat(s, adj_s, adj_ret);
-}
-
-// adjoint for the initializer_array scalar constructor:
-template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_create_mat(const initializer_array<Rows * Cols, Type> &cmps, const initializer_array<Rows * Cols, Type*> &adj_cmps, const mat<Rows, Cols, Type>& adj_ret)
-{
-    adj_mat(cmps, adj_cmps, adj_ret);
 }
 
 template<typename Type>
