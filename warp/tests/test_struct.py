@@ -144,6 +144,49 @@ class Empty:
 def test_empty(input: Empty):
     tid = wp.tid()
 
+@wp.struct
+class Baz:
+    data: wp.array(dtype=int)
+    z: wp.vec3
+
+@wp.struct
+class Bar:
+    baz: Baz
+    y: float
+
+@wp.struct
+class Foo:
+    bar: Bar
+    x: int
+
+@wp.kernel
+def kernel_nested_struct(foo: Foo):
+    tid = wp.tid()
+    foo.bar.baz.data[tid] = (
+          foo.bar.baz.data[tid]
+        + foo.x
+        + int(foo.bar.y * 100.0)
+        + int(wp.length_sq(foo.bar.baz.z))
+        + tid * 2
+    )
+
+def test_nested_struct(test, device):
+    dim = 3
+
+    foo = Foo()
+    foo.bar = Bar()
+    foo.bar.baz = Baz()
+    foo.bar.baz.data = wp.zeros(dim, dtype=int)
+    foo.bar.baz.z = wp.vec3(1, 2, 3)
+    foo.bar.y = 1.23
+    foo.x = 123
+
+    wp.launch(kernel_nested_struct, dim=dim, inputs=[foo], device=device)
+
+    assert_array_equal(
+        foo.bar.baz.data,
+        wp.array((260, 262, 264), dtype=int, device=device),
+    )
 
 def register(parent):
     
@@ -155,6 +198,7 @@ def register(parent):
     add_function_test(TestStruct, "test_step", test_step, devices=devices)
     add_function_test(TestStruct, "test_step_grad", test_step_grad, devices=devices)
     add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
+    add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
 
     return TestStruct
 
