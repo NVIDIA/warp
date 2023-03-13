@@ -59,6 +59,7 @@ def set_msvc_compiler(msvc_path, sdk_path):
     os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib/um/x64")
 
     os.environ["PATH"] += os.pathsep + os.path.join(msvc_path, "bin/HostX64/x64")
+    os.environ["PATH"] += os.pathsep + os.path.join(sdk_path, "bin/x64")
 
     warp.config.host_compiler = os.path.join(msvc_path, "bin", "HostX64", "x64", "cl.exe")
 
@@ -302,6 +303,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
 
         cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
+        cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'
         cuda_includes = f' /I"{cuda_home}/include"' if cu_path else ""
         includes = cpp_includes + cuda_includes
 

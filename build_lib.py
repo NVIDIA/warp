@@ -22,6 +22,7 @@ parser.add_argument('--verify_fp', type=bool, default=False, help="Verify kernel
 parser.add_argument('--fast_math', type=bool, default=False, help="Enable fast math on library, default False")
 parser.add_argument('--quick', action='store_true', help="Only generate PTX code, disable CUTLASS ops")
 parser.add_argument('--build_llvm', type=bool, default=False, help="Build a bundled Clang/LLVM compiler")
+parser.add_argument('--standalone', type=bool, default=False, help="Use standalone LLVM-based JIT")
 args = parser.parse_args()
 
 # set build output path off this file
@@ -152,9 +153,8 @@ def dll_ext():
 
 try:
 
-    # build clang.dll
-    if args.build_llvm:
-
+    if args.standalone and os.name == 'nt':
+        # build clang.dll
         cpp_sources = [
             "clang/clang.cpp",
             "native/crt.cpp",
@@ -163,7 +163,14 @@ try:
 
         clang_dll_path = os.path.join(build_path, f"bin/clang.{dll_ext()}")
 
-        libpath = os.path.join(llvm_install_path, "lib")
+        if args.build_llvm:
+            # obtain Clang and LLVM libraries from the local build
+            libpath = os.path.join(llvm_install_path, "lib")
+        else:
+            # obtain Clang and LLVM libraries from packman
+            assert os.path.exists("_build/host-deps/llvm-project"), "run build.bat / build.sh"
+            libpath = os.path.join(base_path, "_build/host-deps/llvm-project/lib")
+
         for (_, _, libs) in os.walk(libpath):
             break  # just the top level contains .lib files
 
