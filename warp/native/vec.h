@@ -105,68 +105,6 @@ using vec2d = vec_t<2,double>;
 using vec3d = vec_t<3,double>;
 using vec4d = vec_t<4,double>;
 
-/*
-template <unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> vec(Type s)
-{
-    vec_t<Length, Type> v;
-
-    for( unsigned i=0; i < Length; ++i )
-    {
-        v.c[i] = s;
-    }
-}
-
-template <typename Type>
-inline CUDA_CALLABLE vec_t<2, Type> vec(Type x, Type y)
-{
-    vec_t<2, Type> v = {x, y};
-    return v;
-}
-
-template <typename Type>
-inline CUDA_CALLABLE vec_t<3, Type> vec(Type x, Type y, Type z)
-{
-    vec_t<3, Type> v = {x, y, z};
-    return v;
-}
-
-template <typename Type>
-inline CUDA_CALLABLE vec_t<4, Type> vec(Type x, Type y, Type z, Type w)
-{
-    vec_t<4, Type> v = {x, y, z, w};
-    return v;
-}
-
-template <unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> vec(const initializer_array<Length, Type> &l)
-{
-    vec_t<4, Type> v;
-    for( unsigned i=0; i < Length; ++i )
-    {
-        v.c[i] = l[i];
-    }
-
-    return v;
-}
-
-// special screw vector constructor for spatial_vectors:
-template <unsigned Length, typename Type>
-inline CUDA_CALLABLE vec_t<Length, Type> vec(vec_t<3,Type> w, vec_t<3,Type> v)
-{
-    vec_t<6, Type> v;
-    v.c[0] = w[0];
-    v.c[1] = w[1];
-    v.c[2] = w[2];
-    v.c[3] = v[0];
-    v.c[4] = v[1];
-    v.c[5] = v[2];
-
-    return v;
-}
-
-*/
-
 //--------------
 // vec<Length, Type> methods
 

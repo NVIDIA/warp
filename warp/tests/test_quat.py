@@ -1638,7 +1638,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
         output: wp.array(dtype=wptype)
     ):
         # component constructor:
-        q = wp.quat(
+        q = wp.quaternion(
             input[0],
             input[1],
             input[2],

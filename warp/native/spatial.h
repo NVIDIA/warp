@@ -322,7 +322,7 @@ inline CUDA_CALLABLE transform_t<Type> atomic_add(transform_t<Type>* addr, const
 }
 
 template<typename Type>
-CUDA_CALLABLE inline void adj_transform(const vec_t<3,Type>& p, const quat_t<Type>& q, vec_t<3,Type>& adj_p, quat_t<Type>& adj_q, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform_t(const vec_t<3,Type>& p, const quat_t<Type>& q, vec_t<3,Type>& adj_p, quat_t<Type>& adj_q, const transform_t<Type>& adj_ret)
 {
     adj_p += adj_ret.p;
     adj_q += adj_ret.q;
@@ -356,7 +356,7 @@ CUDA_CALLABLE inline void adj_transform_inverse(const transform_t<Type>& t, tran
     vec_t<3,Type> adj_p(0.0f);
     vec_t<3,Type> adj_np(0.0f);
 
-    adj_transform(np, q_inv, adj_np, adj_q_inv, adj_ret);
+    adj_transform_t(np, q_inv, adj_np, adj_q_inv, adj_ret);
     adj_p = -adj_np;
     adj_quat_rotate(q_inv, t.p, adj_q_inv, adj_t.p, adj_p);
     adj_quat_inverse(t.q, adj_t.q, adj_q_inv);

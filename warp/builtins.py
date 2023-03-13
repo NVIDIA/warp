@@ -246,7 +246,7 @@ def vector_constructor_func(args, kwds, templates):
             vectype = args[0].type
 
             if not all( vectype == a.type for a in args ):
-                raise RuntimeError("All numeric arguments to vec() constructor should have the same type.".format( ",".join(map(str,args)) ))
+                raise RuntimeError(f"All numeric arguments to vec() constructor should have the same type, expected {veclen} args of type {vectype}, received { ','.join(map(lambda x : str(x.type), args)) }")
 
 
         # update the templates list, so we can generate vec<len, type>() correctly in codegen
@@ -257,7 +257,7 @@ def vector_constructor_func(args, kwds, templates):
         # construction of a predeclared type, e.g.: vec5d
         veclen, vectype = templates
         if not all( vectype == a.type for a in args ):
-            raise RuntimeError("All numeric arguments to vec() constructor should have the same type".format( ",".join(map(str,templates)) ))
+            raise RuntimeError(f"All numeric arguments to vec() constructor should have the same type, expected {veclen} args of type {vectype}, received { ','.join(map(lambda x : str(x.type), args)) }")
 
     retvalue = vector(length=veclen, dtype=vectype)
     return retvalue
@@ -432,60 +432,28 @@ add_builtin("eig3", input_types={"A": matrix(shape=(3,3), dtype=Float), "Q": mat
 #---------------------------------
 # Quaternion Math
 
-def quat_constructor_value_func(args, kwds, templates):
-    if templates is None:
-        return quaternion(dtype=Float)
-    
-    if templates == None or len(templates) == 0:
-        # handle construction of anonymous (undeclared) quat types
-        if "dtype" in kwds:          
-            
-            if len(args) == 0:                
-                if "dtype" not in kwds:
-                    raise RuntimeError("quaternion() must have dtype as a keyword argument if it has no positional arguments, e.g.: wp.vector(length=5, dtype=wp.float32)")
-
-                # zero initialization e.g.: wp.vector(length=5, dtype=wp.float32)
-                dtype = kwds["dtype"]
-
-            elif len(args) == 1:
-                
-                # scalar initialization e.g.: wp.quaternion(0.0, dtype=wp.float32)
-                dtype = args[0].type            
-            else:
-                raise RuntimeError("quaternion() must have one scalar argument or the dtype keyword argument if the length keyword argument is specified, e.g.: wp.vec(1.0, length=5)")
-        else:
-
-            if len(args) == 0: 
-                raise RuntimeError("quaternion() must have at least one numeric argument, if it's dtype is not specified")
-
-            # component wise construction of an anonymous vector, e.g. wp.vec(wp.float16(1.0), wp.float16(2.0), ....)
-            # we infer the length and data type from the number and type of the arg values
-            if len(args) != 4:
-                raise RuntimeError("quaternion() must have 4 numeric arguments")
-
-            dtype = args[0].type
-
-            if not all( dtype == a.type for a in args ):
-                raise RuntimeError("All numeric arguments to vec() constructor should have the same type.".format( ",".join(map(str,args)) ))
-
+def quaternion_value_func(args, kwds, templates):
+    if args is None:
+        return quaternion(dtype=Scalar)
+       
+    # if constructing anonymous quat type then infer output type from arguments
+    if len(templates) == 0:
+        dtype = infer_scalar_type(args)
         templates.append(dtype)
-
     else:
-        
-        # pre-declared type initialization, e.g.: q = quatf(0.0, 0.0, 0.0, 1.0)
-        dtype = templates[0]
-        if len(args) and infer_scalar_type(args) != dtype:
-            raise RuntimeError("Wrong scalar type for quaternion<{}> constructor".format( ",".join(map(str,templates)) ))
-    
-    return quaternion(dtype=dtype)
+        # if constructing predeclared type then check args match expectation
+        if infer_scalar_type(args) != templates[0]:
+            raise RuntimeError("Wrong scalar type for quat {} constructor".format( ",".join(map(str,templates)) ))
 
-add_builtin("quaternion", input_types={}, value_func=quat_constructor_value_func, native_func="quat_t", group="Quaternion Math", 
+    return quaternion(dtype=templates[0])
+
+add_builtin("quaternion", input_types={}, value_func=quaternion_value_func, native_func="quat_t", group="Quaternion Math", 
     doc="""Construct a zero-initialized quaternion, quaternions are laid out as
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.""", export=False)
-add_builtin("quaternion", input_types={"x": Float, "y": Float, "z": Float, "w": Float}, value_func=quat_constructor_value_func, native_func="quat_t", group="Quaternion Math",
-    doc="Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.", export=False)
-add_builtin("quaternion", input_types={"i": vector(length=3, dtype=Float), "r": Float}, value_func=quat_constructor_value_func, native_func="quat_t", group="Quaternion Math",
-    doc="Construct a quaternion from it's imaginary components i, and real part r", export=False)
+add_builtin("quaternion", input_types={"x": Float, "y": Float, "z": Float, "w": Float}, value_func=quaternion_value_func, native_func="quat_t", group="Quaternion Math",
+    doc="Create a quaternion using the supplied components (type inferred from component type)", export=False)
+add_builtin("quaternion", input_types={"i": vector(length=3, dtype=Float), "r": Float}, value_func=quaternion_value_func, native_func="quat_t", group="Quaternion Math",
+    doc="Create a quaternion using the supplied vector/scalar (type inferred from scalar type)", export=False)
 
 def quat_identity_value_func(args, kwds, templates):
     if args is None:
@@ -504,29 +472,6 @@ def quat_identity_value_func(args, kwds, templates):
 
 add_builtin("quat_identity", input_types={}, value_func=quat_identity_value_func, group="Quaternion Math",
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0", export=False)
-
-
-def quaternion_value_func(args, kwds, templates):
-    if args is None:
-        return quaternion(dtype=Scalar)
-       
-    # if constructing anonymous quat type then infer output type from arguments
-    if len(templates) == 0:
-        dtype = infer_scalar_type(args)
-        templates.append(dtype)
-    else:
-        # if constructing predeclared type then check args match expectation
-        if infer_scalar_type(args) != templates[0]:
-            raise RuntimeError("Wrong scalar type for quat {} constructor".format( ",".join(map(str,templates)) ))
-
-    return quaternion(dtype=templates[0])
-
-add_builtin("quat", input_types={"x": Float, "y": Float, "z": Float, "w": Float}, value_func=quaternion_value_func, group="Quaternion Math",
-    doc="Create a quaternion using the supplied components (type inferred from component type)", export=False)
-add_builtin("quat", input_types={"i": vector(length=3, dtype=Float), "r": Float}, value_func=quaternion_value_func, group="Quaternion Math",
-    doc="Create a quaternion using the supplied vector/scalar (type inferred from scalar type)", export=False)
-
-
 add_builtin("quat_from_axis_angle", input_types={"axis": vector(length=3, dtype=Float), "angle": Float}, value_func=lambda args, kwds, _: quaternion(dtype=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
 add_builtin("quat_to_axis_angle", input_types={"q": quaternion(dtype=Float), "axis": vector(length=3, dtype=Float), "angle": Float}, value_type=None, group="Quaternion Math",
@@ -562,7 +507,7 @@ def transform_constructor_value_func(args, kwds, templates):
     else:
         # if constructing predeclared type then check args match expectation
         if infer_scalar_type(args) != templates[0]:
-            raise RuntimeError("Wrong scalar type for transform {} constructor".format( ",".join(map(str,templates)) ))
+            raise RuntimeError(f"Wrong scalar type for transform constructor expected {templates[0]}, got {','.join(map(lambda x : str(x.type), args))}")
     
     return transformation(dtype=templates[0])
 
@@ -623,9 +568,9 @@ def spatial_vector_constructor_value_func(args, kwds, templates):
     if len(args) and infer_scalar_type(args) != vectype:
         raise RuntimeError("Wrong scalar type for spatial_vector<{}> constructor".format( ",".join(map(str,templates)) ))
     
-    return spatial_vector(dtype=vectype)
+    return vector(length=6, dtype=vectype)
 
-add_builtin("vec", input_types={"w": vector(length=3, dtype=Float), "v": vector(length=3, dtype=Float)}, value_func=spatial_vector_constructor_value_func, group="Spatial Math",
+add_builtin("vector", input_types={"w": vector(length=3, dtype=Float), "v": vector(length=3, dtype=Float)}, value_func=spatial_vector_constructor_value_func, native_func="vec_t", group="Spatial Math",
     doc="Construct a 6d screw vector from two 3d vectors.", export=False)
 
 
