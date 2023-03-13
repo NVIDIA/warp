@@ -409,7 +409,7 @@ void _svd(// input A
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void svd3(const mat<3,3,Type>& A, mat<3,3,Type>& U, vec<3,Type>& sigma, mat<3,3,Type>& V) {
+inline CUDA_CALLABLE void svd3(const mat_t<3,3,Type>& A, mat_t<3,3,Type>& U, vec_t<3,Type>& sigma, mat_t<3,3,Type>& V) {
   Type s12, s13, s21, s23, s31, s32;
   _svd(A.data[0][0], A.data[0][1], A.data[0][2],
        A.data[1][0], A.data[1][1], A.data[1][2],
@@ -429,14 +429,14 @@ inline CUDA_CALLABLE void svd3(const mat<3,3,Type>& A, mat<3,3,Type>& U, vec<3,T
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void adj_svd3(const mat<3,3,Type>& A,
-                                  const mat<3,3,Type>& U,
-                                  const vec<3,Type>& sigma,
-                                  const mat<3,3,Type>& V,
-                                  mat<3,3,Type>& adj_A,
-                                  const mat<3,3,Type>& adj_U,
-                                  const vec<3,Type>& adj_sigma,
-                                  const mat<3,3,Type>& adj_V) {
+inline CUDA_CALLABLE void adj_svd3(const mat_t<3,3,Type>& A,
+                                  const mat_t<3,3,Type>& U,
+                                  const vec_t<3,Type>& sigma,
+                                  const mat_t<3,3,Type>& V,
+                                  mat_t<3,3,Type>& adj_A,
+                                  const mat_t<3,3,Type>& adj_U,
+                                  const vec_t<3,Type>& adj_sigma,
+                                  const mat_t<3,3,Type>& adj_V) {
   Type sx2 = sigma[0] * sigma[0];
   Type sy2 = sigma[1] * sigma[1];
   Type sz2 = sigma[2] * sigma[2];
@@ -445,32 +445,32 @@ inline CUDA_CALLABLE void adj_svd3(const mat<3,3,Type>& A,
   Type F02 = Type(1) / min(sz2 - sx2, Type(-1e-6f));
   Type F12 = Type(1) / min(sz2 - sy2, Type(-1e-6f));
 
-  mat<3,3,Type> F = mat<3,3,Type>(0, F01, F02,
+  mat_t<3,3,Type> F = mat_t<3,3,Type>(0, F01, F02,
                   -F01, 0, F12,
                   -F02, -F12, 0);
 
-  mat<3,3,Type> adj_sigma_mat = mat<3,3,Type>(adj_sigma[0], 0, 0,
+  mat_t<3,3,Type> adj_sigma_mat = mat_t<3,3,Type>(adj_sigma[0], 0, 0,
                               0, adj_sigma[1], 0,
                               0, 0, adj_sigma[2]);
-  mat<3,3,Type> s_mat = mat<3,3,Type>(sigma[0], 0, 0,
+  mat_t<3,3,Type> s_mat = mat_t<3,3,Type>(sigma[0], 0, 0,
                       0, sigma[1], 0,
                       0, 0, sigma[2]);
 
   // https://github.com/pytorch/pytorch/blob/d7ddae8e4fe66fa1330317673438d1eb5aa99ca4/torch/csrc/autograd/FunctionsManual.cpp
-  mat<3,3,Type> UT = transpose(U);
-  mat<3,3,Type> VT = transpose(V);
+  mat_t<3,3,Type> UT = transpose(U);
+  mat_t<3,3,Type> VT = transpose(V);
 
-  mat<3,3,Type> sigma_term = mul(U, mul(adj_sigma_mat, VT));
+  mat_t<3,3,Type> sigma_term = mul(U, mul(adj_sigma_mat, VT));
 
-  mat<3,3,Type> u_term = mul(mul(U, mul(cw_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
-  mat<3,3,Type> v_term = mul(U, mul(s_mat, mul(cw_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
+  mat_t<3,3,Type> u_term = mul(mul(U, mul(cw_mul(F, (mul(UT, adj_U) - mul(transpose(adj_U), U))), s_mat)), VT);
+  mat_t<3,3,Type> v_term = mul(U, mul(s_mat, mul(cw_mul(F, (mul(VT, adj_V) - mul(transpose(adj_V), V))), VT)));
 
   adj_A = adj_A + (u_term + v_term + sigma_term);
 }
 
 
 template<typename Type>
-inline CUDA_CALLABLE void qr3(const mat<3,3,Type>& A, mat<3,3,Type>& Q, mat<3,3,Type>& R) {
+inline CUDA_CALLABLE void qr3(const mat_t<3,3,Type>& A, mat_t<3,3,Type>& Q, mat_t<3,3,Type>& R) {
     QRDecomposition(A.data[0][0], A.data[0][1], A.data[0][2],
        A.data[1][0], A.data[1][1], A.data[1][2],
        A.data[2][0], A.data[2][1], A.data[2][2],
@@ -486,15 +486,15 @@ inline CUDA_CALLABLE void qr3(const mat<3,3,Type>& A, mat<3,3,Type>& Q, mat<3,3,
 
 
 template<typename Type>
-inline CUDA_CALLABLE void adj_qr3(const mat<3,3,Type>& A,
-                                  const mat<3,3,Type>& Q,                                  
-                                  const mat<3,3,Type>& R,
-                                  mat<3,3,Type>& adj_A,
-                                  const mat<3,3,Type>& adj_Q,
-                                  const mat<3,3,Type>& adj_R) {
+inline CUDA_CALLABLE void adj_qr3(const mat_t<3,3,Type>& A,
+                                  const mat_t<3,3,Type>& Q,                                  
+                                  const mat_t<3,3,Type>& R,
+                                  mat_t<3,3,Type>& adj_A,
+                                  const mat_t<3,3,Type>& adj_Q,
+                                  const mat_t<3,3,Type>& adj_R) {
     // Eq 3 of https://arxiv.org/pdf/2009.10071.pdf
-    mat<3,3,Type> M = mul(R,transpose(adj_R)) - mul(transpose(adj_Q), Q);
-    mat<3,3,Type> copyltuM = mat<3,3,Type>(M.data[0][0], M.data[1][0], M.data[2][0],
+    mat_t<3,3,Type> M = mul(R,transpose(adj_R)) - mul(transpose(adj_Q), Q);
+    mat_t<3,3,Type> copyltuM = mat_t<3,3,Type>(M.data[0][0], M.data[1][0], M.data[2][0],
                            M.data[1][0], M.data[1][1], M.data[2][1],
                            M.data[2][0], M.data[2][1], M.data[2][2]);
     adj_A = adj_A + mul(adj_Q + mul(Q,copyltuM), inverse(transpose(R)));
@@ -502,7 +502,7 @@ inline CUDA_CALLABLE void adj_qr3(const mat<3,3,Type>& A,
 
 
 template<typename Type>
-inline CUDA_CALLABLE void eig3(const mat<3,3,Type>& A, mat<3,3,Type>& Q, vec<3,Type>& d) {
+inline CUDA_CALLABLE void eig3(const mat_t<3,3,Type>& A, mat_t<3,3,Type>& Q, vec_t<3,Type>& d) {
     Type qV[4];
     Type s11 = A.data[0][0];
     Type s21 = A.data[1][0];
@@ -513,27 +513,27 @@ inline CUDA_CALLABLE void eig3(const mat<3,3,Type>& A, mat<3,3,Type>& Q, vec<3,T
                        
     jacobiEigenanlysis(s11, s21, s22, s31, s32, s33, qV);
     quatToMat3(qV, Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2]);
-    mat<3,3,Type> t;
+    mat_t<3,3,Type> t;
     multAtB(Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2],
             A.data[0][0], A.data[0][1], A.data[0][2], A.data[1][0], A.data[1][1], A.data[1][2], A.data[2][0], A.data[2][1], A.data[2][2],
             t.data[0][0], t.data[0][1], t.data[0][2], t.data[1][0], t.data[1][1], t.data[1][2], t.data[2][0], t.data[2][1], t.data[2][2]);
 
-    mat<3,3,Type> u;
+    mat_t<3,3,Type> u;
     multAB(t.data[0][0], t.data[0][1], t.data[0][2], t.data[1][0], t.data[1][1], t.data[1][2], t.data[2][0], t.data[2][1], t.data[2][2],
            Q.data[0][0], Q.data[0][1], Q.data[0][2], Q.data[1][0], Q.data[1][1], Q.data[1][2], Q.data[2][0], Q.data[2][1], Q.data[2][2],           
            u.data[0][0], u.data[0][1], u.data[0][2], u.data[1][0], u.data[1][1], u.data[1][2], u.data[2][0], u.data[2][1], u.data[2][2]
            );
-    d = vec<3,Type>(u.data[0][0], u.data[1][1], u.data[2][2]);
+    d = vec_t<3,Type>(u.data[0][0], u.data[1][1], u.data[2][2]);
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void adj_eig3(const mat<3,3,Type>& A, const mat<3,3,Type>& Q, const vec<3,Type>& d, 
-                                     mat<3,3,Type>& adj_A, const mat<3,3,Type>& adj_Q, const vec<3,Type>& adj_d) {
+inline CUDA_CALLABLE void adj_eig3(const mat_t<3,3,Type>& A, const mat_t<3,3,Type>& Q, const vec_t<3,Type>& d, 
+                                     mat_t<3,3,Type>& adj_A, const mat_t<3,3,Type>& adj_Q, const vec_t<3,Type>& adj_d) {
     // Page 10 of https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
-    mat<3,3,Type> D = mat<3,3,Type>(d[0], 0, 0,
+    mat_t<3,3,Type> D = mat_t<3,3,Type>(d[0], 0, 0,
                     0, d[1], 0,
                     0, 0, d[2]);
-    mat<3,3,Type> D_bar = mat<3,3,Type>(adj_d[0], 0, 0,
+    mat_t<3,3,Type> D_bar = mat_t<3,3,Type>(adj_d[0], 0, 0,
                     0, adj_d[1], 0,
                     0, 0, adj_d[2]);
                     
@@ -553,10 +553,10 @@ inline CUDA_CALLABLE void adj_eig3(const mat<3,3,Type>& A, const mat<3,3,Type>& 
     Type F01 = Type(1) / dyx;
     Type F02 = Type(1) / dzx;
     Type F12 = Type(1) / dzy;
-    mat<3,3,Type> F = mat<3,3,Type>(0, F01, F02,
+    mat_t<3,3,Type> F = mat_t<3,3,Type>(0, F01, F02,
                  -F01, 0, F12,
                  -F02, -F12, 0);
-    mat<3,3,Type> QT = transpose(Q);
+    mat_t<3,3,Type> QT = transpose(Q);
     adj_A = adj_A + mul(Q, mul(D_bar + cw_mul(F, mul(QT, adj_Q)), QT));
 }
 }

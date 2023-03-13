@@ -11,9 +11,6 @@
 from warp.types import array, array2d, array3d, array4d, constant
 from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 
-# generic math types
-from warp.types import vector_t, matrix_t, quaternion_t, transform_t, spatial_matrix_t, spatial_vector_t
-
 # concrete math types
 from warp.types import vec2, vec2ub, vec2h, vec2f, vec2d
 from warp.types import vec3, vec3ub, vec3h, vec3f, vec3d

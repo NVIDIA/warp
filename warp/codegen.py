@@ -491,7 +491,7 @@ class Adjoint:
         # evaluate the function type based on inputs
         value_type = func.value_func(args, kwds, templates)
                 
-        func_name = compute_type_str( func.key, templates)
+        func_name = compute_type_str( func.native_func, templates)
 
         use_initializer_list = func.initializer_list_func(args, templates)
 
@@ -511,9 +511,9 @@ class Adjoint:
 
             if (len(args)):
                 if use_initializer_list:
-                    reverse_call = func.namespace + "{}({}, {{{}}});".format("adj_" + func.key, adj.format_args("var_", args), adj.format_args("&adj_", args))
+                    reverse_call = func.namespace + "{}({}, {{{}}});".format("adj_" + func.native_func, adj.format_args("var_", args), adj.format_args("&adj_", args))
                 else:
-                    reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.key, adj.format_args("var_", args), adj.format_args("adj_", args))
+                    reverse_call = func.namespace + "{}({}, {});".format("adj_" + func.native_func, adj.format_args("var_", args), adj.format_args("adj_", args))
                 adj.add_reverse(reverse_call)
 
             return None
@@ -531,10 +531,10 @@ class Adjoint:
             if (len(args)):
                 if use_initializer_list:
                     reverse_call = func.namespace + "{}({{{}}}, {{{}}}, {});".format(
-                        "adj_" + func.key, adj.format_args("var_", args+output), adj.format_args("&adj_", args), adj.format_args("adj_", output))
+                        "adj_" + func.native_func, adj.format_args("var_", args+output), adj.format_args("&adj_", args), adj.format_args("adj_", output))
                 else:
                     reverse_call = func.namespace + "{}({}, {}, {});".format(
-                        "adj_" + func.key, adj.format_args("var_", args+output), adj.format_args("adj_", args), adj.format_args("adj_", output))
+                        "adj_" + func.native_func, adj.format_args("var_", args+output), adj.format_args("adj_", args), adj.format_args("adj_", output))
                 adj.add_reverse(reverse_call)
 
             if len(output) == 1:
@@ -561,10 +561,10 @@ class Adjoint:
 
                 if use_initializer_list:
                     reverse_call = func.namespace + "{}({{{}}}, {{{}}}, {});".format(
-                        "adj_" + func.key, adj.format_args("var_", args), adj.format_args("&adj_", args), adj.format_args("adj_", [output]))
+                        "adj_" + func.native_func, adj.format_args("var_", args), adj.format_args("&adj_", args), adj.format_args("adj_", [output]))
                 else:
                     reverse_call = func.namespace + "{}({}, {}, {});".format(
-                        "adj_" + func.key, adj.format_args("var_", args), adj.format_args("adj_", args), adj.format_args("adj_", [output]))
+                        "adj_" + func.native_func, adj.format_args("var_", args), adj.format_args("adj_", args), adj.format_args("adj_", [output]))
                 adj.add_reverse(reverse_call)
 
             return output
@@ -1181,7 +1181,7 @@ class Adjoint:
                 # are:
                 
                 templates = caller._wp_type_params_
-                func = warp.context.builtin_functions.get(caller._wp_generic_type_str_)
+                func = warp.context.builtin_functions.get(caller._wp_constructor_)
 
             if func is None and caller.__class__.__name__ in warp.context.builtin_functions:
 

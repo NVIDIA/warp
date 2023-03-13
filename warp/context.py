@@ -49,7 +49,8 @@ class Function:
                  hidden=False,
                  skip_replay=False,
                  missing_grad=False,
-                 generic=False):
+                 generic=False,
+                 native_func=None): 
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -70,6 +71,12 @@ class Function:
         self.skip_replay = skip_replay  # whether or not operation will be performed during the forward replay in the backward pass
         self.missing_grad = missing_grad # whether or not builtin is missing a corresponding adjoint
         self.generic = generic
+
+        # allow registering builtin functions with a different name in Python from the native code
+        if native_func == None:
+            self.native_func = key
+        else:
+            self.native_func = native_func
 
         # embedded linked list of all overloads
         # the module's function dictionary holds 
@@ -376,7 +383,7 @@ def struct(c):
 builtin_functions = {}
 
 
-def add_builtin(key, input_types={}, value_type=None, value_func=None, template_func=None, doc="", namespace="wp::", variadic=False, initializer_list_func=None, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
+def add_builtin(key, input_types={}, value_type=None, value_func=None, template_func=None, doc="", namespace="wp::", variadic=False, initializer_list_func=None, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False, native_func=None):
 
     # wrap simple single-type functions with a value_func()
     if value_func == None:
@@ -386,7 +393,8 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, template_
     if initializer_list_func == None:
         def initializer_list_func(args,templates):
             return False
-   
+  
+
     def is_generic(t):
         ret = False
         if t in [warp.types.Scalar,warp.types.Float]:
@@ -501,7 +509,8 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, template_
                     hidden=hidden,
                     skip_replay=skip_replay,
                     missing_grad=missing_grad,
-                    generic=generic)
+                    generic=generic,
+                    native_func = native_func)
 
     if key in builtin_functions:
         builtin_functions[key].add_overload(func)

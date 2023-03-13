@@ -66,7 +66,7 @@ def dtype_is_compatible(torch_dtype, warp_dtype):
         dtype_is_compatible.compatible_sets = {
             torch.float64: {warp.float64},
             # float32 can be used for scalars and vector/matrix types
-            torch.float32: {warp.float32, *warp.types.vector_types},
+            torch.float32: {warp.float32, *warp.types.warp.types.vector_types},
             torch.float16: {warp.float16},
             # allow aliasing integer tensors as signed or unsigned integer arrays
             torch.int64: {warp.int64, warp.uint64},

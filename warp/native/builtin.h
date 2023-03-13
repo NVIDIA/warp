@@ -1391,7 +1391,7 @@ inline CUDA_CALLABLE void print(unsigned long long i)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void print(vec<Length, Type> v)
+inline CUDA_CALLABLE void print(vec_t<Length, Type> v)
 {
     for( unsigned i=0; i < Length; ++i )
     {
@@ -1401,13 +1401,13 @@ inline CUDA_CALLABLE void print(vec<Length, Type> v)
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void print(quat<Type> i)
+inline CUDA_CALLABLE void print(quat_t<Type> i)
 {
     printf("%g %g %g %g\n", float(i.x), float(i.y), float(i.z), float(i.w));
 }
 
 template<unsigned Rows,unsigned Cols,typename Type>
-inline CUDA_CALLABLE void print(const mat<Rows,Cols,Type> &m)
+inline CUDA_CALLABLE void print(const mat_t<Rows,Cols,Type> &m)
 {
     for( unsigned i=0; i< Rows; ++i )
     {
@@ -1420,7 +1420,7 @@ inline CUDA_CALLABLE void print(const mat<Rows,Cols,Type> &m)
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void print(transform<Type> t)
+inline CUDA_CALLABLE void print(transform_t<Type> t)
 {
     printf("(%g %g %g) (%g %g %g %g)\n", float(t.p[0]), float(t.p[1]), float(t.p[2]), float(t.q.x), float(t.q.y), float(t.q.z), float(t.q.w));
 }
@@ -1437,16 +1437,16 @@ inline CUDA_CALLABLE void adj_print(unsigned long long f, unsigned long long adj
 inline CUDA_CALLABLE void adj_print(half h, half adj_h) { printf("%g adj: %g\n", half_to_float(h), half_to_float(adj_h)); }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_print(vec<Length, Type> v, vec<Length, Type>& adj_v) { printf("%g %g adj: %g %g \n", v[0], v[1], adj_v[0], adj_v[1]); }
+inline CUDA_CALLABLE void adj_print(vec_t<Length, Type> v, vec_t<Length, Type>& adj_v) { printf("%g %g adj: %g %g \n", v[0], v[1], adj_v[0], adj_v[1]); }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_print(mat<Rows, Cols, Type> m, mat<Rows, Cols, Type>& adj_m) { }
+inline CUDA_CALLABLE void adj_print(mat_t<Rows, Cols, Type> m, mat_t<Rows, Cols, Type>& adj_m) { }
 
 template<typename Type>
-inline CUDA_CALLABLE void adj_print(quat<Type> q, quat<Type>& adj_q) { printf("%g %g %g %g adj: %g %g %g %g\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
+inline CUDA_CALLABLE void adj_print(quat_t<Type> q, quat_t<Type>& adj_q) { printf("%g %g %g %g adj: %g %g %g %g\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
 
 template<typename Type>
-inline CUDA_CALLABLE void adj_print(transform<Type> t, transform<Type>& adj_t) {}
+inline CUDA_CALLABLE void adj_print(transform_t<Type> t, transform_t<Type>& adj_t) {}
 
 inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
 

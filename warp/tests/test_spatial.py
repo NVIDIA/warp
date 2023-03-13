@@ -44,7 +44,7 @@ def test_spatial_vector_constructors(test, device, dtype, register_kernels=False
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
     spatial_vector = wp.types.spatial_vector_t(dtype=wptype)
     
     def check_spatial_vector_component_constructor(
@@ -541,9 +541,9 @@ def test_transform_constructors(test, device, dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp.vector_t(length=3, dtype=wptype)
-    transform = wp.transform_t(dtype=wptype)
-    quat = wp.quaternion_t(dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    transform = wp.types.transformation(dtype=wptype)
+    quat = wp.types.quaternion(dtype=wptype)
     
     def check_transform_constructor(
         input: wp.array(dtype=wptype),
@@ -1004,7 +1004,7 @@ def test_transform_point_vector(test,device,dtype, register_kernels=False):
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
     transform = wp.transform_t(dtype=wptype)
-    vec3 = wp.vector_t(length=3, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
 
     def check_transform_point_vector(
         t: wp.array(dtype=transform),
@@ -1608,7 +1608,7 @@ def test_spatial_adjoint(test,device,dtype, register_kernels=False):
     }.get(dtype,0)
     
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat3 = wp.matrix_t(shape=(3,3), dtype=wptype)
+    mat3 = wp.types.matrix(shape=(3,3), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -1723,8 +1723,8 @@ def test_transform_anon_type_instance(test, device, dtype, register_kernels=Fals
         output: wp.array(dtype=wptype)
     ):
         t = wp.transform(
-            wp.vec(input[0],input[1],input[2]),
-            wp.quat(input[3],input[4],input[5],input[6])
+            wp.vector(input[0],input[1],input[2]),
+            wp.quaternion(input[3],input[4],input[5],input[6])
         )
         for i in range(7):
             output[i] = wptype(2) * t[i]
