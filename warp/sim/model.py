@@ -1102,7 +1102,6 @@ class ModelBuilder:
             "joint_target",
             "joint_target_ke",
             "joint_target_kd",
-            "joint_axis_mode",
             "joint_linear_compliance",
             "joint_angular_compliance",
             "shape_transform",
