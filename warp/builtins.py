@@ -267,7 +267,7 @@ add_builtin(
     "vector",
     input_types={},
     variadic=True,
-    initializer_list_func=lambda args, _: len(args) > 1,
+    initializer_list_func=lambda args, _: len(args) > 4,
     value_func=vector_constructor_func,
     native_func="vec_t",
     doc="Construct a vector",
