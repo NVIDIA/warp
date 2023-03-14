@@ -150,6 +150,58 @@ class UsdRenderer:
             scale = (scale[0] * cs[0], scale[1] * cs[1], scale[2] * cs[2])
         _usd_set_xform(instance, pos, rot, scale, self.time)
 
+    def render_plane(self, name: str, pos: tuple, rot: tuple, width: float, length: float, color: tuple=None, parent_body: str=None, is_template: bool=False):
+        """
+        Render a plane with the given dimensions.
+        
+        Args:
+            name: Name of the plane
+            pos: Position of the plane
+            rot: Rotation of the plane
+            width: Width of the plane
+            length: Length of the plane
+            color: Color of the plane
+            parent_body: Name of the parent body
+            is_template: Whether the plane is a template
+        """
+        from pxr import UsdGeom, Sdf
+
+        if is_template:
+            prim_path = self._resolve_path(name, parent_body, is_template)
+            blueprint = UsdGeom.Scope.Define(self.stage, prim_path)
+            blueprint_prim = blueprint.GetPrim()
+            blueprint_prim.SetInstanceable(True)
+            blueprint_prim.SetSpecifier(Sdf.SpecifierClass)
+            plane_path = prim_path.AppendChild("plane")
+        else:
+            plane_path = self._resolve_path(name, parent_body)
+            prim_path = plane_path
+            
+        plane = UsdGeom.Mesh.Get(self.stage, plane_path)
+        if not plane:
+            plane = UsdGeom.Mesh.Define(self.stage, plane_path)
+            plane.CreateDoubleSidedAttr().Set(True)
+
+            width = (width if width > 0.0 else 100.0)
+            length = (length if length > 0.0 else 100.0)
+            points = ((-width, 0.0, -length), (width, 0.0, -length), (width, 0.0, length), (-width, 0.0, length))
+            normals = ((0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0))
+            counts = (4, )
+            indices = [0, 1, 2, 3]
+
+            plane.GetPointsAttr().Set(points)
+            plane.GetNormalsAttr().Set(normals)
+            plane.GetFaceVertexCountsAttr().Set(counts)
+            plane.GetFaceVertexIndicesAttr().Set(indices)
+            _usd_add_xform(plane)
+
+        self._shape_constructors[name] = UsdGeom.Mesh
+
+        if not is_template:
+            _usd_set_xform(plane, pos, rot, (1.0, 1.0, 1.0), 0.0)
+
+        return prim_path
+
     def render_ground(self, size: float=100.0):
 
         from pxr import UsdGeom
