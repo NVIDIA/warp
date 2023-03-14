@@ -27,10 +27,6 @@ def get_select_kernel(dtype):
     
     return getkernel(output_select_kernel_fn,suffix=dtype.__name__)
 
-def add_function_test_register_kernel(cls, name, func, devices=None, **kwargs):
-    func( None, None, **kwargs, register_kernels=True )
-    add_function_test(cls, name, func, devices=None, **kwargs)
-
 ############################################################
 
 
@@ -1114,6 +1110,8 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
         np.float64: 1.e-8,
     }.get(dtype,0)
 
+
+
     # wrt t
 
     # gather gradients from builtin adjoints
@@ -1684,7 +1682,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
 
 def register(parent):
 
-    devices = ["cpu"]#get_test_devices()
+    devices = get_test_devices()
 
     class TestQuat(parent):
         pass

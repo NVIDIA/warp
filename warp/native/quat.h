@@ -34,31 +34,6 @@ using quath = quat_t<half>;
 using quatf = quat_t<float>;
 using quatd = quat_t<double>;
 
-/*
-template <typename Type>
-inline CUDA_CALLABLE quat_t<Type> quat(Type x=Type(0), Type y=Type(0), Type z=Type(0), Type w=Type(0)) 
-{
-    quat_t<Type> q = quat_t<Type>();
-    q.x = x;
-    q.y = y;
-    q.z = z;
-    q.w = w;
-
-    return q;
-} 
-template <typename Type>
-inline CUDA_CALLABLE quat_t<Type> quat(const vec_t<3,Type>& v, Type w=Type(0))
-{
-    quat_t<Type> q = quat_t<Type>();
-    q.x = v[0];
-    q.y = v[1];
-    q.z = v[2];
-    q.w = w;
-
-    return q;
-} 
-*/
-
 
 template<typename Type>
 inline CUDA_CALLABLE bool operator==(const quat_t<Type>& a, const quat_t<Type>& b)

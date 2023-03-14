@@ -75,11 +75,6 @@ def get_select_kernel2(dtype):
     
     return getkernel(output_select_kernel2_fn,suffix=dtype.__name__)
 
-def add_function_test_register_kernel(cls, name, func, devices=None, **kwargs):
-    func( None, None, **kwargs, register_kernels=True )
-    add_function_test(cls, name, func, devices=None, **kwargs)
-
-
 def test_arrays(test, device, dtype):
 
     np.random.seed(123)
