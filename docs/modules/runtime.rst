@@ -293,23 +293,23 @@ Matrices
 
 Matrices with arbitrary shapes/numeric types are also supported. The built in concrete matrix types are as follows:
 
-+--------------------------+-------------------------------------------------------+
-| mat22 mat33 mat44        | 2,3 and 4d square matrix of default precision         |
-+--------------------------+-------------------------------------------------------+
-| mat22f mat33f mat44f     | 2,3 and 4d square matrix of single precision floats   |
-+--------------------------+-------------------------------------------------------+
-| mat22d mat33d mat44d     | 2,3 and 4d square matrix of double precision floats   |
-+--------------------------+-------------------------------------------------------+
-| mat22h mat33h mat44h     | 2,3 and 4d square matrix of half precision floats     |
-+--------------------------+-------------------------------------------------------+
-| spatial_matrix           | 6x6 matrix of single precision floats                 |
-+--------------------------+-------------------------------------------------------+
-| spatial_matrixf          | 6x6 matrix of single precision floats                 |
-+--------------------------+-------------------------------------------------------+
-| spatial_matrixd          | 6x6 matrix of double precision floats                 |
-+--------------------------+-------------------------------------------------------+
-| spatial_matrixh          | 6x6 matrix of half precision floats                   |
-+--------------------------+-------------------------------------------------------+
++--------------------------+-----------------------------------------------------+
+| mat22 mat33 mat44        | 2,3 and 4d square matrix of default precision       |
++--------------------------+-----------------------------------------------------+
+| mat22f mat33f mat44f     | 2,3 and 4d square matrix of single precision floats |
++--------------------------+-----------------------------------------------------+
+| mat22d mat33d mat44d     | 2,3 and 4d square matrix of double precision floats |
++--------------------------+-----------------------------------------------------+
+| mat22h mat33h mat44h     | 2,3 and 4d square matrix of half precision floats   |
++--------------------------+-----------------------------------------------------+
+| spatial_matrix           | 6x6 matrix of single precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixf          | 6x6 matrix of single precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixd          | 6x6 matrix of double precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixh          | 6x6 matrix of half precision floats                 |
++--------------------------+-----------------------------------------------------+
 
 Matrices are stored in row-major format and support most standard linear algebra operations: ::
 
