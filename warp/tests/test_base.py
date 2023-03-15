@@ -203,3 +203,9 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
         # use a lambda to forward the device to the inner test function
         test_lambda = lambda test, device=d: test_func(test, device)
         setattr(cls, name + "_" + sanitize_identifier(d), test_lambda)
+
+# helper that first calls the test function to generate all kernel permuations
+# so that compilation is done in one-shot instead of per-test
+def add_function_test_register_kernel(cls, name, func, devices=None, **kwargs):
+    func( None, None, **kwargs, register_kernels=True )
+    add_function_test(cls, name, func, devices=devices, **kwargs)
