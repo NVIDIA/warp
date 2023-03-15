@@ -470,8 +470,12 @@ def quat_identity_value_func(args, kwds, templates):
     return quaternion(dtype=dtype)
 
 
+add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion Math",
+    doc="Construct an identity quaternion with zero imaginary part and real part of 1.0", export=True)
+
 add_builtin("quat_identity", input_types={}, value_func=quat_identity_value_func, group="Quaternion Math",
     doc="Construct an identity quaternion with zero imaginary part and real part of 1.0", export=False)
+    
 add_builtin("quat_from_axis_angle", input_types={"axis": vector(length=3, dtype=Float), "angle": Float}, value_func=lambda args, kwds, _: quaternion(dtype=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
 add_builtin("quat_to_axis_angle", input_types={"q": quaternion(dtype=Float), "axis": vector(length=3, dtype=Float), "angle": Float}, value_type=None, group="Quaternion Math",
@@ -531,6 +535,8 @@ def transform_identity_value_func(args, kwds, templates):
     return transformation(dtype=dtype)
 
 
+add_builtin("transform_identity", input_types={}, value_type=transform, group="Transformations",
+    doc="Construct an identity transform with zero translation and identity rotation.", export=True)
 add_builtin("transform_identity", input_types={}, value_func=transform_identity_value_func, group="Transformations",
     doc="Construct an identity transform with zero translation and identity rotation.", export=False)
 
@@ -933,6 +939,7 @@ add_builtin("tid", input_types={}, value_type=[int, int, int, int], group="Utili
 
 add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args, kwds, _: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
+add_builtin("select", input_types={"arr": array(dtype=Any), "arg1": Any, "arg2": Any}, value_func=lambda args, kwds, _: args[1].type, doc="Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``", group="Utility")
 
 # does argument checking and type progagation for load()
 def load_value_func(args, kwds, _):

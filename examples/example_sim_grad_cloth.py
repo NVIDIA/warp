@@ -88,7 +88,10 @@ class Cloth:
             self.states.append(self.model.state(requires_grad=True))
 
         if (self.render):
-            self.stage = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_cloth.usd"))
+            self.stage = wp.sim.render.SimRenderer(
+                self.model,
+                os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_cloth.usd"),
+                scaling=40.0)
        
 
     @wp.kernel

@@ -11,10 +11,20 @@ from . model import State, Model, ModelBuilder, Mesh
 from . model import GEO_SPHERE
 from . model import GEO_BOX
 from . model import GEO_CAPSULE
+from . model import GEO_CYLINDER
+from . model import GEO_CONE
 from . model import GEO_MESH
 from . model import GEO_SDF
 from . model import GEO_PLANE
 from . model import GEO_NONE
+from . model import ModelShapeGeometry
+
+from . model import JOINT_MODE_LIMIT
+from . model import JOINT_MODE_TARGET_POSITION
+from . model import JOINT_MODE_TARGET_VELOCITY
+
+from . model import JointAxis
+from . model import ModelShapeMaterials
 
 from . model import JOINT_PRISMATIC
 from . model import JOINT_REVOLUTE
@@ -23,6 +33,8 @@ from . model import JOINT_FIXED
 from . model import JOINT_FREE
 from . model import JOINT_COMPOUND
 from . model import JOINT_UNIVERSAL
+from . model import JOINT_DISTANCE
+from . model import JOINT_D6
 
 from . integrator_euler import SemiImplicitIntegrator
 from . integrator_euler import VariationalImplicitIntegrator

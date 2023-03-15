@@ -599,6 +599,13 @@ def select(cond: bool, arg1: Any, arg2: Any):
    ...
 
 @overload
+def select(arr: array, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if arr is null then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@overload
 def atomic_add(a: array[Any], i: int32, value: Any):
    """
    Atomically add ``value`` onto the array at location given by index.

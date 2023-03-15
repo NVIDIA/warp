@@ -82,7 +82,7 @@ class Example:
 
         self.volume = wp.zeros(1, dtype=wp.float32)
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
     def update(self):
 
