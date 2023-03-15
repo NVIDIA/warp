@@ -1019,7 +1019,7 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type>::mat_t(const vec_t<3,Type>& pos, cons
     data[3][3] = Type(1);
 }
 
-template<typename Type>
+template<typename Type=float32>
 inline CUDA_CALLABLE quat_t<Type> quat_identity()
 {
     return quat_t<Type>(Type(0), Type(0), Type(0), Type(1));
