@@ -1223,17 +1223,17 @@ class Module:
                     cpp_file.write(cpp_source)
                     cpp_file.close()
 
+                    bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
                     if os.name == 'nt':
-                        bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
-                        linkopts = ["warp.lib", f'/LIBPATH:"{bin_path}"']
-                        linkopts.append("/NOENTRY")
-                        linkopts.append("/NODEFAULTLIB")
+                        libs = ["warp.lib", f'/LIBPATH:"{bin_path}"']
+                        libs.append("/NOENTRY")
+                        libs.append("/NODEFAULTLIB")
                     else:
-                        linkopts = []
+                        libs = ["-l:warp.so", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
 
                     # build DLL
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(dll_path, [cpp_path], None, linkopts, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_dll(dll_path, [cpp_path], None, libs, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
                     # load the DLL
                     self.dll = warp.build.load_dll(dll_path)
