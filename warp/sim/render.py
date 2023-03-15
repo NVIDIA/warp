@@ -18,9 +18,9 @@ import numpy as np
 
 from warp.render.utils import solidify_mesh, tab10_color_map
 
-
-def AbstractSimRenderer(renderer):
-    class SimRenderer_t(renderer):
+def CreateSimRenderer(renderer):
+    
+    class SimRenderer(renderer):
 
         use_unique_colors = True
         
@@ -214,9 +214,10 @@ def AbstractSimRenderer(renderer):
             if (self.model.body_count): 
                 self.update_body_transforms(state.body_q)
 
-    return SimRenderer_t
+    return SimRenderer
 
 
-SimRendererUsd = AbstractSimRenderer(wp.render.UsdRenderer)
-SimRendererTiny = AbstractSimRenderer(wp.render.TinyRenderer)
+SimRendererUsd = CreateSimRenderer(wp.render.UsdRenderer)
+SimRendererTiny = CreateSimRenderer(wp.render.TinyRenderer)
+
 SimRenderer = SimRendererUsd

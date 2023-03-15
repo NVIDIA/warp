@@ -128,7 +128,8 @@ class UsdRenderer:
     def register_body(self, body_name):
         from pxr import UsdGeom
         xform = UsdGeom.Xform.Define(self.stage, self.root.GetPath().AppendChild(body_name))
-        wp.render.render_usd._usd_add_xform(xform)
+
+        _usd_add_xform(xform)
 
     def _resolve_path(self, name, parent_body=None, is_template=False):
         # resolve the path to the prim with the given name and optional parent body
