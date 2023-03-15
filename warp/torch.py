@@ -66,7 +66,7 @@ def dtype_is_compatible(torch_dtype, warp_dtype):
         dtype_is_compatible.compatible_sets = {
             torch.float64: {warp.float64},
             # float32 can be used for scalars and vector/matrix types
-            torch.float32: {warp.float32, *warp.types.vector_types},
+            torch.float32: {warp.float32, *warp.types.warp.types.vector_types},
             torch.float16: {warp.float16},
             # allow aliasing integer tensors as signed or unsigned integer arrays
             torch.int64: {warp.int64, warp.uint64},
@@ -92,12 +92,15 @@ dtype_is_compatible.compatible_sets = None
 
 
 # wrap a torch tensor to a wp array, data is not copied
-def from_torch(t, dtype=None):
+def from_torch(t, dtype=None, requires_grad=None):
 
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
         raise RuntimeError(f"Incompatible data types: {t.dtype} and {dtype}")
+
+    if requires_grad is None:
+        requires_grad = t.requires_grad
 
     # get size of underlying data type to compute strides
     ctype_size = ctypes.sizeof(dtype._type_)
@@ -132,7 +135,7 @@ def from_torch(t, dtype=None):
         strides=strides,
         copy=False,
         owner=False,
-        requires_grad=t.requires_grad,
+        requires_grad=requires_grad,
         device=device_from_torch(t.device))
 
     # save a reference to the source tensor, otherwise it will be deallocated

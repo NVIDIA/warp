@@ -43,6 +43,7 @@ class Function:
                  namespace,
                  input_types=None,
                  value_func=None,
+                 template_func=None,
                  module=None,
                  variadic=False,
                  initializer_list_func=None,
@@ -52,12 +53,14 @@ class Function:
                  hidden=False,
                  skip_replay=False,
                  missing_grad=False,
-                 generic=False):
+                 generic=False,
+                 native_func=None): 
         
         self.func = func   # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
         self.namespace = namespace
         self.value_func = value_func    # a function that takes a list of args and a list of templates and returns the value type, e.g.: load(array, index) returns the type of value being loaded
+        self.template_func = template_func
         self.input_types = {}
         self.export = export
         self.doc = doc
@@ -73,6 +76,13 @@ class Function:
         self.missing_grad = missing_grad # whether or not builtin is missing a corresponding adjoint
         self.generic = generic
 
+        # allow registering builtin functions with a different name in Python from the native code
+        if native_func == None:
+            self.native_func = key
+        else:
+            self.native_func = native_func
+
+
         if func:
             # user-defined function
 
@@ -87,7 +97,7 @@ class Function:
             for name, type in self.adj.arg_types.items():
                 
                 if name == "return":
-                    def value_func(args,templates):
+                    def value_func(args, kwds, templates):
                         return type
                     self.value_func = value_func
                 
@@ -176,7 +186,7 @@ class Function:
 
                             else:
                                 # already a built-in type, check it matches
-                                if type(a) != arg_type:
+                                if not warp.types.types_equal(type(a), arg_type):
                                     raise RuntimeError(f"Error calling function '{f.key}', parameter for argument '{arg_name}' has type '{type(a)}' but expected '{arg_type}'")
 
                                 x.value = a
@@ -205,7 +215,7 @@ class Function:
                             # scalar type
                             return dtype._type_
 
-                    value_type = type_ctype(f.value_func(None,None))
+                    value_type = type_ctype(f.value_func(None, None, None))
 
                     # construct return value (passed by address)
                     ret = value_type()
@@ -258,7 +268,7 @@ class Function:
         try:
             # todo: construct a default value for each of the functions args
             # so we can generate the return type for overloaded functions
-            return_type = type_str(self.value_func(None,None))
+            return_type = type_str(self.value_func(None, None, None))
         except:
             return False
 
@@ -638,17 +648,18 @@ def overload(kernel, arg_types=None):
 builtin_functions = {}
 
 
-def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", namespace="wp::", variadic=False, initializer_list_func=None, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False):
+def add_builtin(key, input_types={}, value_type=None, value_func=None, template_func=None, doc="", namespace="wp::", variadic=False, initializer_list_func=None, export=True, group="Other", hidden=False, skip_replay=False, missing_grad=False, native_func=None):
 
     # wrap simple single-type functions with a value_func()
     if value_func == None:
-        def value_func(args,templates):
+        def value_func(args, kwds, templates):
             return value_type
     
     if initializer_list_func == None:
         def initializer_list_func(args,templates):
             return False
-   
+  
+
     def is_generic(t):
         ret = False
         if t in [warp.types.Scalar,warp.types.Float]:
@@ -667,6 +678,13 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
         # get a list of existing generic vector types (includes matrices and stuff)
         # so we can match arguments against them:
         generic_vtypes = [x for x in warp.types.vector_types if hasattr(x,"_wp_generic_type_str_")]
+
+        # deduplicate identical types:
+        def typekey(t):
+            return f"{t._wp_generic_type_str_}_{t._wp_type_params_}"
+        
+        typedict = { typekey(t):t for t in generic_vtypes }
+        generic_vtypes = [typedict[k] for k in sorted(typedict.keys())]
 
         # collect the parent type names of all the generic arguments:
         def generic_names(l):
@@ -697,6 +715,9 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
         if scalartypes:
             scalartypes = scalartypes.pop().intersection(*scalartypes)
 
+        scalartypes = list(scalartypes)
+        scalartypes.sort(key=str)
+
         # generate function calls for each of these scalar types:
         for stype in scalartypes:
 
@@ -724,7 +745,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                 # on the generated argument list and skip generation if it fails.
                 # This also gives us the return type, which we keep for later:
                 try:
-                    return_type = value_func([warp.codegen.Var("",t) for t in argtypes],[])
+                    return_type = value_func([warp.codegen.Var("",t) for t in argtypes], {}, [])
                 except Exception as e:
                     continue
 
@@ -737,13 +758,14 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     return_type = return_type_match[0]
                 
                 # finally we can generate a function call for these concrete types:
-                add_builtin(key, input_types=dict(zip(input_types.keys(),argtypes)), value_type=return_type, doc=doc, namespace=namespace, variadic=variadic, initializer_list_func=initializer_list_func, export=export, group=group, hidden=hidden, skip_replay=skip_replay, missing_grad=missing_grad)
+                add_builtin(key, input_types=dict(zip(input_types.keys(),argtypes)), value_type=return_type, doc=doc, namespace=namespace, variadic=variadic, initializer_list_func=initializer_list_func, export=export, group=group, hidden=True, skip_replay=skip_replay, missing_grad=missing_grad)
 
     func = Function(func=None,
                     key=key,
                     namespace=namespace,
                     input_types=input_types,
                     value_func=value_func,
+                    template_func=template_func,
                     variadic=variadic,
                     initializer_list_func=initializer_list_func,
                     export=export,
@@ -752,7 +774,8 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, doc="", n
                     hidden=hidden,
                     skip_replay=skip_replay,
                     missing_grad=missing_grad,
-                    generic=generic)
+                    generic=generic,
+                    native_func = native_func)
 
     if key in builtin_functions:
         builtin_functions[key].add_overload(func)
@@ -864,7 +887,7 @@ class ModuleBuilder:
             if not func.value_func:
 
                 def wrap(adj):
-                    def value_type(args,templates):
+                    def value_type(args, kwds, templates):
                         if (adj.return_var):
                             return adj.return_var.type
                         else:
@@ -1200,17 +1223,17 @@ class Module:
                     cpp_file.write(cpp_source)
                     cpp_file.close()
 
+                    bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
                     if os.name == 'nt':
-                        bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
-                        linkopts = ["warp.lib", f'/LIBPATH:"{bin_path}"']
-                        linkopts.append("/NOENTRY")
-                        linkopts.append("/NODEFAULTLIB")
+                        libs = ["warp.lib", f'/LIBPATH:"{bin_path}"']
+                        libs.append("/NOENTRY")
+                        libs.append("/NODEFAULTLIB")
                     else:
-                        linkopts = []
+                        libs = ["-l:warp.so", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
 
                     # build DLL
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(dll_path, [cpp_path], None, linkopts, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
+                        warp.build.build_dll(dll_path, [cpp_path], None, libs, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
                     # load the DLL
                     self.dll = warp.build.load_dll(dll_path)
@@ -2811,7 +2834,7 @@ def print_function(f, file):
 
         # todo: construct a default value for each of the functions args
         # so we can generate the return type for overloaded functions
-        return_type = " -> " + type_str(f.value_func(None,None))
+        return_type = " -> " + type_str(f.value_func(None, None, None))
     except:
         pass
 
@@ -2917,7 +2940,7 @@ def export_stubs(file):
                        
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
-                return_type = f.value_func(None,None)
+                return_type = f.value_func(None, None, None)
                 if return_type:
                     return_str = " -> " + type_str(return_type)
 
@@ -2961,7 +2984,7 @@ def export_builtins(file):
             try:
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
-                return_type = type_str(f.value_func(None,None))
+                return_type = type_str(f.value_func(None, None, None))
             except:
                 pass
 

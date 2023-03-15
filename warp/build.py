@@ -160,7 +160,7 @@ def load_cuda(input_path, device):
 def quote(path):
     return "\"" + path + "\""
 
-def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_fp=False, fast_math=False, use_cache=True, all_architectures=True):
+def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, use_cache=True, all_architectures=True):
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
@@ -280,17 +280,15 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
-        if "/NODEFAULTLIB" in linkopts:
+        if "/NODEFAULTLIB" in libs:
             runtime = "/sdl- /GS-"  # don't specify a runtime, and disable security checks with depend on it
-
-        linkopts = linkopts.copy()
-        linkopts.append("/DLL")
 
         if (mode == "debug"):
             cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
-            linkopts.append("/DEBUG")
+            linkopts = ["/DLL", "/DEBUG"]
         elif (mode == "release"):
             cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            linkopts = ["/DLL"]
         else:
             raise RuntimeError(f"Unrecognized build configuration (debug, release), got: {mode}")
 
@@ -323,7 +321,7 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
                 linkopts.append(f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"')
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = f'"{host_linker}" {" ".join(linkopts)} /out:"{dll_path}"'
+            link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
             run_cmd(link_cmd)
         
     else:
@@ -332,19 +330,17 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
 
         if (mode == "debug"):
             cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -D{cuda_enabled} -fPIC -fvisibility=hidden --std=c++11 -fkeep-inline-functions -I"{native_dir}" {cuda_includes}'
-            ld_flags = "-D_DEBUG"
-            ld_inputs = []
 
         if (mode == "release"):
             cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -D{cuda_enabled} -fPIC -fvisibility=hidden --std=c++11 -I"{native_dir}" {cuda_includes}'
-            ld_flags = "-DNDEBUG"
-            ld_inputs = []
 
         if verify_fp:
             cpp_flags += ' -DWP_VERIFY_FP'
 
         if fast_math:
             cpp_flags += ' -ffast-math'
+
+        ld_inputs = []
 
         with ScopedTimer("build", active=warp.config.verbose):
             for cpp_path in cpp_paths:
@@ -377,7 +373,7 @@ def build_dll(dll_path, cpp_paths, cu_path, linkopts=[], mode="release", verify_
             opt_exclude_libs = "-Wl,--exclude-libs,ALL"
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = f"g++ -shared -Wl,-rpath,'$ORIGIN' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs)}"
+            link_cmd = f"g++ -shared -Wl,-rpath,'$ORIGIN' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
             run_cmd(link_cmd)
 
     

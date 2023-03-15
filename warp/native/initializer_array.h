@@ -22,6 +22,11 @@ struct initializer_array
     {
         return storage[i];
     }
+
+    const Type operator[](unsigned i) const
+    {
+        return storage[i];
+    }
 };
 
 }  // namespace wp
