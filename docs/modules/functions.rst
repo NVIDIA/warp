@@ -73,7 +73,7 @@ Scalar Math
    Return the minimum of two scalars.
 
 
-.. function:: min(x: vector_t, y: vector_t) -> vector_t
+.. function:: min(x: vec_t, y: vec_t) -> vec_t
 
    Return the element wise minimum of two vectors.
 
@@ -83,7 +83,7 @@ Scalar Math
    Return the maximum of two scalars.
 
 
-.. function:: max(x: vector_t, y: vector_t) -> vector_t
+.. function:: max(x: vec_t, y: vec_t) -> vec_t
 
    Return the element wise maximum of two vectors.
 
@@ -239,178 +239,148 @@ Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 Vector Math
 ---------------
-.. function:: dot(x: vector_t, y: vector_t) -> Scalar
+.. function:: dot(x: vec_t, y: vec_t) -> Scalar
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vector_t, y: vector_t) -> Scalar
+.. function:: dot(x: vec_t, y: vec_t) -> Scalar
 
    Compute the dot product between two quaternions.
 
 
-.. function:: ddot(x: matrix_t, y: matrix_t) -> Scalar
+.. function:: ddot(x: mat_t, y: mat_t) -> Scalar
 
    Compute the double dot product between two matrices.
 
 
-.. function:: outer(x: vector_t, y: vector_t) -> matrix_t
+.. function:: outer(x: vec_t, y: vec_t) -> mat_t
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: cross(x: vector_t, y: vector_t) -> vector_t
+.. function:: cross(x: vec_t, y: vec_t) -> vec_t
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: skew(x: vector_t)
+.. function:: skew(x: vec_t)
 
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: length(x: vector_t) -> Scalar
+.. function:: length(x: vec_t) -> Scalar
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vector_t) -> Scalar
+.. function:: length(x: vec_t) -> Scalar
 
    Compute the length of a quaternion.
 
 
-.. function:: length_sq(x: vector_t) -> Scalar
+.. function:: length_sq(x: vec_t) -> Scalar
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vector_t) -> Scalar
+.. function:: length_sq(x: vec_t) -> Scalar
 
    Compute the squared length of a quaternion.
 
 
-.. function:: normalize(x: vector_t) -> vector_t
+.. function:: normalize(x: vec_t) -> vec_t
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vector_t) -> vector_t
+.. function:: normalize(x: vec_t) -> vec_t
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: transpose(m: matrix_t)
+.. function:: transpose(m: mat_t)
 
    Return the transpose of the matrix m
 
 
-.. function:: inverse(m: matrix_t) -> matrix_t
+.. function:: inverse(m: mat_t) -> mat_t
 
    Return the inverse of the matrix m
 
 
-.. function:: determinant(m: matrix_t) -> Scalar
+.. function:: determinant(m: mat_t) -> Scalar
 
    Return the determinant of the matrix m
 
 
-.. function:: trace(m: matrix_t) -> Scalar
+.. function:: trace(m: mat_t) -> Scalar
 
    Return the trace of the matrix m
 
 
-.. function:: diag(d: vector_t)
+.. function:: diag(d: vec_t)
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: cw_mul(x: vector_t, y: vector_t) -> vector_t
+.. function:: cw_mul(x: vec_t, y: vec_t) -> vec_t
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: cw_mul(x: mat_t, y: mat_t) -> mat_t
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_div(x: vector_t, y: vector_t) -> vector_t
+.. function:: cw_div(x: vec_t, y: vec_t) -> vec_t
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: cw_div(x: mat_t, y: mat_t) -> mat_t
 
    Component wise division of two 2d vectors.
 
 
-.. function:: vec() -> vector_t
-
-   Construct a zero-initialized vector.
-
-
-.. function:: vec(s: Scalar) -> vector_t
-
-   Construct a vector with all components set to s.
-
-
-.. function:: vec(w: vector_t, v: vector_t) -> vector_t
+.. function:: vector(w: vec_t, v: vec_t)
 
    Construct a 6d screw vector from two 3d vectors.
 
 
-.. function:: vec() -> vector_t
+.. function:: vector() -> vec_t
 
-   Construct a vector from scalar compontents.
-
-
-.. function:: create_vec() -> vector_t
-
-   Construct a vector from scalar compontents.
+   Construct a vector
 
 
-.. function:: mat() -> matrix_t
-
-   Construct a zero matrix
-
-
-.. function:: mat(s: Scalar) -> matrix_t
-
-   Construct a matrix with all components set to s
-
-
-.. function:: mat(pos: vector_t, rot: vector_t, scale: vector_t) -> matrix_t
+.. function:: matrix(pos: vec_t, rot: vec_t, scale: vec_t) -> mat_t
 
    Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
 
-.. function:: mat() -> matrix_t
+.. function:: matrix() -> mat_t
 
-   Construct a matrix from components or column vectors.
-
-
-.. function:: create_mat() -> matrix_t
-
-   Construct a matrix from scalar compontents.
+   Construct a matrix.
 
 
-.. function:: identity() -> matrix_t
+.. function:: identity() -> mat_t
 
-   Create an identity matrix with dimension n.
+   Create an identity matrix with shape=(n,n).
 
 
-.. function:: svd3(A: matrix_t, U: matrix_t, sigma: vector_t, V: matrix_t) -> None
+.. function:: svd3(A: mat_t, U: mat_t, sigma: vec_t, V: mat_t) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: qr3(A: matrix_t, Q: matrix_t, R: matrix_t) -> None
+.. function:: qr3(A: mat_t, Q: mat_t, R: mat_t) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: eig3(A: matrix_t, Q: matrix_t, d: vector_t) -> None
+.. function:: eig3(A: mat_t, Q: mat_t, d: vec_t) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
@@ -419,78 +389,68 @@ Vector Math
 
 Quaternion Math
 ---------------
-.. function:: quaternion() -> vector_t
+.. function:: quaternion() -> vec_t
 
    Construct a zero-initialized quaternion, quaternions are laid out as
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.
 
 
-.. function:: quaternion(x: Float, y: Float, z: Float, w: Float) -> vector_t
-
-   Construct a quarternion from its components x, y, z are the imaginary parts, w is the real part.
-
-
-.. function:: quaternion(i: vector_t, r: Float) -> vector_t
-
-   Construct a quaternion from it's imaginary components i, and real part r
-
-
-.. function:: quat_identity() -> vector_t
-
-   Construct an identity quaternion with zero imaginary part and real part of 1.0
-
-
-.. function:: create_quaternion(x: Float, y: Float, z: Float, w: Float) -> vector_t
+.. function:: quaternion(x: Float, y: Float, z: Float, w: Float) -> vec_t
 
    Create a quaternion using the supplied components (type inferred from component type)
 
 
-.. function:: create_quaternion(i: vector_t, r: Float) -> vector_t
+.. function:: quaternion(i: vec_t, r: Float) -> vec_t
 
    Create a quaternion using the supplied vector/scalar (type inferred from scalar type)
 
 
-.. function:: quat_from_axis_angle(axis: vector_t, angle: Float) -> vector_t
+.. function:: quat_identity() -> vec_t
+
+   Construct an identity quaternion with zero imaginary part and real part of 1.0
+
+
+.. function:: quat_from_axis_angle(axis: vec_t, angle: Float) -> vec_t
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_to_axis_angle(q: vector_t, axis: vector_t, angle: Float) -> None
+.. function:: quat_to_axis_angle(q: vec_t, axis: vec_t, angle: Float) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_from_matrix(m: matrix_t) -> vector_t
+.. function:: quat_from_matrix(m: mat_t) -> vec_t
 
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> vector_t
+.. function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> vec_t
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. function:: quat_inverse(q: vector_t) -> vector_t
+.. function:: quat_inverse(q: vec_t) -> vec_t
 
    Compute quaternion conjugate.
 
 
-.. function:: quat_rotate(q: vector_t, p: vector_t) -> vector_t
+.. function:: quat_rotate(q: vec_t, p: vec_t) -> vec_t
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate_inv(q: vector_t, p: vector_t) -> vector_t
+.. function:: quat_rotate_inv(q: vec_t, p: vec_t) -> vec_t
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_slerp(q0: vector_t, q1: vector_t, t: Float) -> vector_t
+.. function:: quat_slerp(q0: vec_t, q1: vec_t, t: Float) -> vec_t
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_to_matrix(q: vector_t) -> matrix_t
+.. function:: quat_to_matrix(q: vec_t) -> mat_t
 
    Convert a quaternion to a 3x3 rotation matrix.
 
@@ -499,61 +459,56 @@ Quaternion Math
 
 Transformations
 ---------------
-.. function:: transform_t(p: vector_t, q: vector_t) -> transform_class
+.. function:: transformation(p: vec_t, q: vec_t) -> transform_t
 
    Construct a rigid body transformation with translation part p and rotation q.
 
 
-.. function:: create_transform(p: vector_t, q: vector_t) -> transform_class
-
-   Construct a rigid body transformation with translation part p and rotation q.
-
-
-.. function:: transform_identity() -> transform_class
+.. function:: transform_identity() -> transform_t
 
    Construct an identity transform with zero translation and identity rotation.
 
 
-.. function:: transform_get_translation(t: transform_class) -> vector_t
+.. function:: transform_get_translation(t: transform_t) -> vec_t
 
    Return the translational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transform_class) -> vector_t
+.. function:: transform_get_rotation(t: transform_t) -> vec_t
 
    Return the rotational part of a transform.
 
 
-.. function:: transform_multiply(a: transform_class, b: transform_class) -> transform_class
+.. function:: transform_multiply(a: transform_t, b: transform_t) -> transform_t
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_point(t: transform_class, p: vector_t) -> vector_t
+.. function:: transform_point(t: transform_t, p: vec_t) -> vec_t
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(m: matrix_t, p: vector_t) -> vector_t
+.. function:: transform_point(m: mat_t, p: vec_t) -> vec_t
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(t: transform_class, v: vector_t) -> vector_t
+.. function:: transform_vector(t: transform_t, v: vec_t) -> vec_t
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(m: matrix_t, v: vector_t) -> vector_t
+.. function:: transform_vector(m: mat_t, v: vec_t) -> vec_t
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_inverse(t: transform_class) -> transform_class
+.. function:: transform_inverse(t: transform_t) -> transform_t
 
    Compute the inverse of the transform.
 
@@ -562,40 +517,40 @@ Transformations
 
 Spatial Math
 ---------------
-.. function:: spatial_adjoint(r: matrix_t, s: matrix_t) -> matrix_t
+.. function:: spatial_adjoint(r: mat_t, s: mat_t) -> mat_t
 
    Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.
 
 
-.. function:: spatial_dot(a: vector_t, b: vector_t) -> Scalar
+.. function:: spatial_dot(a: vec_t, b: vec_t) -> Scalar
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: vector_t, b: vector_t) -> vector_t
+.. function:: spatial_cross(a: vec_t, b: vec_t) -> vec_t
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: vector_t, b: vector_t) -> vector_t
+.. function:: spatial_cross_dual(a: vec_t, b: vec_t) -> vec_t
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_top(a: vector_t)
+.. function:: spatial_top(a: vec_t)
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: vector_t)
+.. function:: spatial_bottom(a: vec_t)
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_jacobian(S: array[vector_t], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: array[Float]) -> None
+.. function:: spatial_jacobian(S: array[vec_t], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: array[Float]) -> None
 
 
-.. function:: spatial_mass(I_s: array[matrix_t], joint_start: int32, joint_count: int32, M_start: int32, M: array[Float]) -> None
+.. function:: spatial_mass(I_s: array[mat_t], joint_start: int32, joint_count: int32, M_start: int32, M: array[Float]) -> None
 
 
 
@@ -827,22 +782,22 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vector_t, arg2: vector_t)
+.. function:: expect_eq(arg1: vec_t, arg2: vec_t)
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: matrix_t, arg2: matrix_t)
+.. function:: expect_eq(arg1: mat_t, arg2: mat_t)
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_neq(arg1: vector_t, arg2: vector_t)
+.. function:: expect_neq(arg1: vec_t, arg2: vec_t)
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: matrix_t, arg2: matrix_t)
+.. function:: expect_neq(arg1: mat_t, arg2: mat_t)
 
    Prints an error to stdout if arg1 and arg2 are equal
 
@@ -852,22 +807,22 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vector_t, b: vector_t, t: Float) -> vector_t
+.. function:: lerp(a: vec_t, b: vec_t, t: Float) -> vec_t
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: matrix_t, b: matrix_t, t: Float) -> matrix_t
+.. function:: lerp(a: mat_t, b: mat_t, t: Float) -> mat_t
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vector_t, b: vector_t, t: Float) -> vector_t
+.. function:: lerp(a: vec_t, b: vec_t, t: Float) -> vec_t
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: transform_class, b: transform_class, t: Float) -> transform_class
+.. function:: lerp(a: transform_t, b: transform_t, t: Float) -> transform_t
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
@@ -1263,70 +1218,70 @@ Operators
 .. function:: add(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: add(x: vector_t, y: vector_t) -> vector_t
+.. function:: add(x: vec_t, y: vec_t) -> vec_t
 
 
-.. function:: add(x: vector_t, y: vector_t) -> vector_t
+.. function:: add(x: vec_t, y: vec_t) -> vec_t
 
 
-.. function:: add(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: add(x: mat_t, y: mat_t) -> mat_t
 
 
-.. function:: add(x: transform_class, y: transform_class) -> transform_class
+.. function:: add(x: transform_t, y: transform_t) -> transform_t
 
 
 .. function:: sub(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: sub(x: vector_t, y: vector_t) -> vector_t
+.. function:: sub(x: vec_t, y: vec_t) -> vec_t
 
 
-.. function:: sub(x: matrix_t, y: matrix_t) -> matrix_t
+.. function:: sub(x: mat_t, y: mat_t) -> mat_t
 
 
-.. function:: sub(x: vector_t, y: vector_t) -> vector_t
+.. function:: sub(x: vec_t, y: vec_t) -> vec_t
 
 
-.. function:: sub(x: transform_class, y: transform_class) -> transform_class
+.. function:: sub(x: transform_t, y: transform_t) -> transform_t
 
 
 .. function:: mul(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: mul(x: vector_t, y: Scalar) -> vector_t
+.. function:: mul(x: vec_t, y: Scalar) -> vec_t
 
 
-.. function:: mul(x: Scalar, y: vector_t) -> vector_t
+.. function:: mul(x: Scalar, y: vec_t) -> vec_t
 
 
-.. function:: mul(x: vector_t, y: Scalar) -> vector_t
+.. function:: mul(x: vec_t, y: Scalar) -> vec_t
 
 
-.. function:: mul(x: Scalar, y: vector_t) -> vector_t
+.. function:: mul(x: Scalar, y: vec_t) -> vec_t
 
 
-.. function:: mul(x: vector_t, y: vector_t) -> vector_t
+.. function:: mul(x: vec_t, y: vec_t) -> vec_t
 
 
-.. function:: mul(x: Scalar, y: matrix_t) -> matrix_t
+.. function:: mul(x: Scalar, y: mat_t) -> mat_t
 
 
-.. function:: mul(x: matrix_t, y: Scalar) -> matrix_t
+.. function:: mul(x: mat_t, y: Scalar) -> mat_t
 
 
-.. function:: mul(x: matrix_t, y: vector_t) -> vector_t
+.. function:: mul(x: mat_t, y: vec_t) -> vec_t
 
 
-.. function:: mul(x: matrix_t, y: matrix_t)
+.. function:: mul(x: mat_t, y: mat_t)
 
 
-.. function:: mul(x: transform_class, y: transform_class) -> transform_class
+.. function:: mul(x: transform_t, y: transform_t) -> transform_t
 
 
-.. function:: mul(x: Scalar, y: transform_class) -> transform_class
+.. function:: mul(x: Scalar, y: transform_t) -> transform_t
 
 
-.. function:: mul(x: transform_class, y: Scalar) -> transform_class
+.. function:: mul(x: transform_t, y: Scalar) -> transform_t
 
 
 .. function:: mod(x: Scalar, y: Scalar) -> Scalar
@@ -1335,13 +1290,13 @@ Operators
 .. function:: div(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: div(x: vector_t, y: Scalar) -> vector_t
+.. function:: div(x: vec_t, y: Scalar) -> vec_t
 
 
-.. function:: div(x: matrix_t, y: Scalar) -> matrix_t
+.. function:: div(x: mat_t, y: Scalar) -> mat_t
 
 
-.. function:: div(x: vector_t, y: Scalar) -> vector_t
+.. function:: div(x: vec_t, y: Scalar) -> vec_t
 
 
 .. function:: floordiv(x: Scalar, y: Scalar) -> Scalar
@@ -1350,13 +1305,13 @@ Operators
 .. function:: neg(x: Scalar) -> Scalar
 
 
-.. function:: neg(x: vector_t) -> vector_t
+.. function:: neg(x: vec_t) -> vec_t
 
 
-.. function:: neg(x: vector_t) -> vector_t
+.. function:: neg(x: vec_t) -> vec_t
 
 
-.. function:: neg(x: matrix_t) -> matrix_t
+.. function:: neg(x: mat_t) -> mat_t
 
 
 .. function:: unot(b: bool) -> bool
