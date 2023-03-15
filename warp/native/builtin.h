@@ -369,7 +369,7 @@ inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { }
 inline CUDA_CALLABLE int8 abs(int8 x) { return ::abs(x); }
 inline CUDA_CALLABLE int16 abs(int16 x) { return ::abs(x); }
 inline CUDA_CALLABLE int32 abs(int32 x) { return ::abs(x); }
-inline CUDA_CALLABLE int64 abs(int64 x) { return ::abs(x); }
+inline CUDA_CALLABLE int64 abs(int64 x) { return ::llabs(x); }
 inline CUDA_CALLABLE uint8 abs(uint8 x) { return x; }
 inline CUDA_CALLABLE uint16 abs(uint16 x) { return x; }
 inline CUDA_CALLABLE uint32 abs(uint32 x) { return x; }
@@ -1067,6 +1067,11 @@ CUDA_CALLABLE inline T operator+(const T& a, const T& b) { return add(a, b); }
 template <typename T>
 CUDA_CALLABLE inline T operator-(const T& a, const T& b) { return sub(a, b); }
 
+template <typename T>
+CUDA_CALLABLE inline T pos(const T& x) { return x; }
+template <typename T>
+CUDA_CALLABLE inline void adj_pos(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(adj_ret); }
+
 // unary negation implementated as negative multiply, not sure the fp implications of this
 // may be better as 0.0 - x?
 template <typename T>
@@ -1435,6 +1440,7 @@ inline CUDA_CALLABLE void adj_print(unsigned short f, unsigned short adj_f) { pr
 inline CUDA_CALLABLE void adj_print(unsigned long f, unsigned long adj_f) { printf("%lu adj: %lu\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(unsigned long long f, unsigned long long adj_f) { printf("%llu adj: %llu\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(half h, half adj_h) { printf("%g adj: %g\n", half_to_float(h), half_to_float(adj_h)); }
+inline CUDA_CALLABLE void adj_print(double f, double adj_f) { printf("%g adj: %g\n", f, adj_f); }
 
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_print(vec_t<Length, Type> v, vec_t<Length, Type>& adj_v) { printf("%g %g adj: %g %g \n", v[0], v[1], adj_v[0], adj_v[1]); }

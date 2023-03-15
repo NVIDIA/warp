@@ -10,8 +10,8 @@
 
 from warp.types import array, array2d, array3d, array4d, constant
 from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
+from warp.types import Scalar, Float, Int
 
-# concrete math types
 from warp.types import vec2, vec2ub, vec2h, vec2f, vec2d
 from warp.types import vec3, vec3ub, vec3h, vec3f, vec3d
 from warp.types import vec4, vec4ub, vec4h, vec4f, vec4d
@@ -30,7 +30,7 @@ from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
 # device-wide gemms
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, from_ptr
 
-from warp.context import init, func, kernel, struct
+from warp.context import init, func, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
 from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device

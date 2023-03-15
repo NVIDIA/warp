@@ -203,149 +203,233 @@ Warp provides built-in math and geometry types for common simulation and graphic
 
 Warp supports vectors of numbers with an arbitrary length/numeric type. The built in concrete types are as follows:
 
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| vec2 vec3 vec4        | 2,3 and 4d vector of single precision floats                                                                              |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| vec2f vec3f vec4f     | 2,3 and 4d vector of single precision floats                                                                              |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| vec2d vec3d vec4d     | 2,3 and 4d vector of double precision floats                                                                              |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| vec2h vec3h vec4h     | 2,3 and 4d vector of half precision floats                                                                                |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| vec2ub vec3ub vec4ub  | 2,3 and 4d vector of half precision floats                                                                                |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| spatial_vector        | 6d vector of single precision floats                                                                                      |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| spatial_vectorf       | 6d vector of single precision floats                                                                                      |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| spatial_vectord       | 6d vector of double precision floats                                                                                      |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
-| spatial_vectorh       | 6d vector of half precision floats                                                                                        |
-+-----------------------+---------------------------------------------------------------------------------------------------------------------------+
++-----------------------+------------------------------------------------+
+| vec2 vec3 vec4        | 2d, 3d, 4d vector of default precision floats  |
++-----------------------+------------------------------------------------+
+| vec2f vec3f vec4f     | 2d, 3d, 4d vector of single precision floats   |
++-----------------------+------------------------------------------------+
+| vec2d vec3d vec4d     | 2d, 3d, 4d vector of double precision floats   |
++-----------------------+------------------------------------------------+
+| vec2h vec3h vec4h     | 2d, 3d, 4d vector of half precision floats     |
++-----------------------+------------------------------------------------+
+| vec2ub vec3ub vec4ub  | 2d, 3d, 4d vector of half precision floats     |
++-----------------------+------------------------------------------------+
+| spatial_vector        | 6d vector of single precision floats           |
++-----------------------+------------------------------------------------+
+| spatial_vectorf       | 6d vector of single precision floats           |
++-----------------------+------------------------------------------------+
+| spatial_vectord       | 6d vector of double precision floats           |
++-----------------------+------------------------------------------------+
+| spatial_vectorh       | 6d vector of half precision floats             |
++-----------------------+------------------------------------------------+
 
-It's possible to declare additional vec types with different lengths and numeric types as in the following example: ::
+Vectors support most standard linear algebra operations, e.g.: ::
 
-   # declare a vec type for holding 5 double precision floats:
-   vec5d = wp.vec(length=5,dtype=wp.float64)
+   @wp.kernel
+   def compute( ... ):
+      
+      # basis vectors
+      a = wp.vec3(1.0, 0.0, 0.0)
+      b = wp.vec3(0.0, 1.0, 0.0)
 
-   # create an array
-   v5s = wp.zeros(10, dtype=vec5d)
+      # take the cross product
+      c = wp.cross(a, b)
+
+      # compute 
+      r = wp.dot(c, c)
+
+      ...
+
+
+It's possible to declare additional vector types with different lengths and data types. This is done in outside of kernels in *Python scope* using ``warp.types.vector()``, for example: ::
+
+   # declare a new vector type for holding 5 double precision floats:
+   vec5d = wp.types.vector(length=5, dtype=wp.float64)
+
+Once declared, the new type can be used when allocating arrays or inside kernels: ::
+
+   # create an array of vec5d
+   arr = wp.zeros(10, dtype=vec5d)
 
    # use inside a kernel
    @wp.kernel
-   vec5d_kernel( ... ):
+   def compute( ... ):
+      
+      # zero initialize a custom named vector type
+      v = vec5d()
       ...
-      v = vec5d(wp.float64(1.0),wp.float64(1.0),wp.float64(1.0),wp.float64(1.0),wp.float64(1.0))
+
+      # component-wise initialize a named vector type
+      v = vec5d(wp.float64(1.0),
+                wp.float64(2.0),
+                wp.float64(3.0),
+                wp.float64(4.0),
+                wp.float64(5.0))
       ...
 
-In addition it's possible to directly create anonymously typed instances of these vectors inside kernels like so: ::
+In addition, it's possible to directly create *anonymously* typed instances of these vectors without declaring their type in advance. In this case the type will be inferred by the constructor arguments. For example: ::
 
-   # create a length 5 double precision vector from components: 
-   v5d = wp.create_vec(wp.float64(1.0),wp.float64(2.0),wp.float64(3.0),wp.float64(4.0),wp.float64(5.0))
-   
-   # initialize all 5 components to the same value:
-   v5d_const = wp.create_vec(wp.float64(0.0),length=5)
+   @wp.kernel
+   def compute( ... ):
 
-These can be used with all the standard vector arithmetric operators, eg +,-, scalar multiplication etc and can also be transformed using matrices with compatible dimensions, potentially returning vectors with a different length.
+      # zero initialize vector of 5 doubles:
+      v = wp.vector(dtype=wp.float64, length=5)
+
+      # scalar initialize a vector of 5 doubles to the same value:
+      v = wp.vector(wp.float64(1.0), length=5)
+
+      # component-wise initialize a vector of 5 doubles
+      v = wp.vector(wp.float64(1.0),
+                    wp.float64(2.0),
+                    wp.float64(3.0),
+                    wp.float64(4.0),
+                    wp.float64(5.0))
+
+
+These can be used with all the standard vector arithmetric operators, e.g.: ``+``, ``-``, scalar multiplication, and can also be transformed using matrices with compatible dimensions, potentially returning vectors with a different length.
 
 Matrices
 ########
 
 Matrices with arbitrary shapes/numeric types are also supported. The built in concrete matrix types are as follows:
 
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
-| mat22 mat33 mat44        | 2,3 and 4d square matrix of single precision floats                                                                    |
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
-| mat22f mat33f mat44f     | 2,3 and 4d square matrix of single precision floats                                                                    |
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
-| mat22d mat33d mat44d     | 2,3 and 4d square matrix of double precision floats                                                                    |
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
-| mat22h mat33h mat44h     | 2,3 and 4d square matrix of half precision floats                                                                      |
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
-| spatial_matrix           | 6 by 6 matrix of single precision floats                                                                               |
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
-| spatial_matrixf          | 6 by 6 matrix of single precision floats                                                                               |
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
-| spatial_matrixd          | 6 by 6 matrix of double precision floats                                                                               |
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
-| spatial_matrixh          | 6 by 6 matrix of half precision floats                                                                                 |
-+--------------------------+------------------------------------------------------------------------------------------------------------------------+
++--------------------------+-----------------------------------------------------+
+| mat22 mat33 mat44        | 2,3 and 4d square matrix of default precision       |
++--------------------------+-----------------------------------------------------+
+| mat22f mat33f mat44f     | 2,3 and 4d square matrix of single precision floats |
++--------------------------+-----------------------------------------------------+
+| mat22d mat33d mat44d     | 2,3 and 4d square matrix of double precision floats |
++--------------------------+-----------------------------------------------------+
+| mat22h mat33h mat44h     | 2,3 and 4d square matrix of half precision floats   |
++--------------------------+-----------------------------------------------------+
+| spatial_matrix           | 6x6 matrix of single precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixf          | 6x6 matrix of single precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixd          | 6x6 matrix of double precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixh          | 6x6 matrix of half precision floats                 |
++--------------------------+-----------------------------------------------------+
 
-In a similar manner to vectors, it's possible to declare mat types with arbitary shapes/numeric types as follows: ::
+Matrices are stored in row-major format and support most standard linear algebra operations: ::
 
-   # declare a 3 by 2 half precision float matrix:
-   mat32h = wp.mat(shape=(3,2),dtype=wp.float64)
-
-   # create an array
-   m32s = wp.zeros(10, dtype=mat32h)
-
-   # use inside a kernel
    @wp.kernel
-   mat32h_kernel( ... ):
-      ...
-      m = mat32h(
-         wp.float16(1.0),wp.float16(1.0),
-         wp.float16(1.0),wp.float16(1.0),
-         wp.float16(1.0),wp.float16(1.0)
-      )
+   def compute( ... ):
+      
+      # initialize matrix
+      m = wp.mat22(1.0, 2.0,
+                   3.0, 4.0)
 
-      # declare a 2 component half precision vector and
-      # multiply by the matrix, returning a 3 component vector:
+      # compute inverse
+      minv = wp.inverse(m)
+
+      # transform vector
+      v = minv * wp.vec2(0.5, 0.3)
+
+      ...
+
+
+In a similar manner to vectors, it's possible to declare new matrix types with arbitary shapes and data types using ``wp.types.matrix()``, for example: ::
+
+   # declare a new 3x2 half precision float matrix type:
+   mat32h = wp.types.matrix(shape=(3,2), dtype=wp.float64)
+
+   # create an array of this type
+   a = wp.zeros(10, dtype=mat32h)
+
+These can be used inside a kernel: ::
+
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # initialize a mat32h matrix 
+      m = mat32h(wp.float16(1.0), wp.float16(2.0),
+                 wp.float16(3.0), wp.float16(4.0),
+                 wp.float16(5.0), wp.float16(6.0))
+
+      # declare a 2 component half precision vector
       v2 = wp.vec2h(wp.float16(1.0), wp.float16(1.0))
+
+      # multiply by the matrix, returning a 3 component vector:
       v3 = m * v2
       ...
 
-It's also possible to directly create anonymously typed instances inside kernels like so: ::
+It's also possible to directly create anonymously typed instances inside kernels where the type is inferred from constructor arguments as follows: ::
 
-   # create a 3x2 half precision matrix from components (row major ordering):
-   m32h = wp.matrix(
-      wp.float16(1.0),wp.float16(2.0),
-      wp.float16(1.0),wp.float16(2.0),
-      wp.float16(1.0),wp.float16(2.0),
-      shape=(3,2)
-   )
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # create a 3x2 half precision matrix from components (row major ordering):
+      m = wp.matrix(
+            wp.float16(1.0), wp.float16(2.0),
+            wp.float16(1.0), wp.float16(2.0),
+            wp.float16(1.0), wp.float16(2.0),
+            shape=(3,2))
    
-   # initialize all 5 components to the same value:
-   m32h_const = wp.create_mat(wp.float16(0.0),shape=(3,2))
+      # zero initialize a 3x2 half precision matrix:
+      m = wp.matrix(wp.float16(0.0),shape=(3,2))
 
-   # create a 5x5 double precision identity matrix:
-   m55d = wp.identity(n=5, dtype=wp.float64)
+      # create a 5x5 double precision identity matrix:
+      m = wp.identity(n=5, dtype=wp.float64)
 
-Like with vectors, you can do standard matrix arithmetric with these variables, along with multiplying matrices with compatible shapes and potentially returning a matrix with a new shape.
+As with vectors, you can do standard matrix arithmetic with these variables, along with multiplying matrices with compatible shapes and potentially returning a matrix with a new shape.
 
 Quaterions
 ##########
 
 Warp supports quaternions in form i,j,k,w where w is the real part. Here are the built in concrete quaternion types:
 
-+-----------------+------------------------------------------------------------------------------------------------------------------------+
-| quat            | Single precision floating point quaternion                                                                             |
-+-----------------+------------------------------------------------------------------------------------------------------------------------+
-| quatf           | Single precision floating point quaternion                                                                             |
-+-----------------+------------------------------------------------------------------------------------------------------------------------+
-| quatd           | Double precision floating point quaternion                                                                             |
-+-----------------+------------------------------------------------------------------------------------------------------------------------+
-| quath           | Half precision floating point quaternion                                                                               |
-+-----------------+------------------------------------------------------------------------------------------------------------------------+
++-----------------+-----------------------------------------------+
+| quat            | Default precision floating point quaternion   |
++-----------------+-----------------------------------------------+
+| quatf           | Single precision floating point quaternion    |
++-----------------+-----------------------------------------------+
+| quatd           | Double precision floating point quaternion    |
++-----------------+-----------------------------------------------+
+| quath           | Half precision floating point quaternion      |
++-----------------+-----------------------------------------------+
+
+Quaternions can be used to transform vectors as follows: ::
+
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # construct a 30 degree rotation around the x-axis
+      q = wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), wp.degrees(30.0))
+
+      # rotate an axis by this quaternion
+      v = wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0))
+
 
 As with vectors and matrices, you can declare quaternion types with an arbitary numeric type like so: ::
 
-   quatd = wp.quaternion(dtype=wp.float64)
+   quatd = wp.types.quaternion(dtype=wp.float64)
 
-You can also create an identity quaternions and anonymously typed instances inside a kernel like so: ::
+You can also create identity quaternion and anonymously typed instances inside a kernel like so: ::
 
-   # create double precision identity quaternion:
-   qd = wp.quat_identity(dtype=wp.float64)
-   
-   # precision defaults to wp.float32 so this creates a single precision identity quaternion:
-   qf = wp.quat_identity()
+   @wp.kernel
+   def compute( ... ):
+      ...
 
-   # create a half precision quaternion from components, or a vector/scalar:
-   qh = wp.create_quaternion(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0),wp.float16(1.0))
-   qh = wp.create_quaternion(
-      wp.vector(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0)),
-      wp.float16(1.0)
-   )
+      # create a double precision identity quaternion:
+      qd = wp.quat_identity(dtype=wp.float64)
+      
+      # precision defaults to wp.float32 so this creates a single precision identity quaternion:
+      qf = wp.quat_identity()
+
+      # create a half precision quaternion from components, or a vector/scalar:
+      qh = wp.quaternion(wp.float16(0.0),
+                         wp.float16(0.0),
+                         wp.float16(0.0),
+                         wp.float16(1.0))
+
+
+      qh = wp.quaternion(
+         wp.vector(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0)),
+         wp.float16(1.0))
 
 Transforms
 ##########
@@ -353,33 +437,46 @@ Transforms
 Transforms are 7d vectors of floats representing a spatial rigid body transformation in format (p, q) where p is a 3d vector, and q is a quaternion.
 
 +-----------------+--------------------------------------------+
-| transform       | single precision floating point transform  |
+| transform       | Default precision floating point transform |
 +-----------------+--------------------------------------------+
-| transformf      | single precision floating point transform  |
+| transformf      | Single precision floating point transform  |
 +-----------------+--------------------------------------------+
-| transformd      | double precision floating point transform  |
+| transformd      | Double precision floating point transform  |
 +-----------------+--------------------------------------------+
-| transformh      | half precision floating point transform    |
+| transformh      | Half precision floating point transform    |
 +-----------------+--------------------------------------------+
 
-As with vectors and matrices, you can declare transform types with an arbitary numeric type like so: ::
+Transforms can be constructed inside kernels from translation and rotation parts: ::
 
-   transformd = wp.transform_t(dtype=wp.float64)
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # create a transform from a vector/quaternion:
+      t = wp.transform(
+             wp.vec3(1.0, 2.0, 3.0),
+             wp.quat_from_axis_angle(0.0, 1.0, 0.0, wp.degrees(30.0)))
+
+      # transform a point 
+      p = wp.transform_point(t, wp.vec3(10.0, 0.5, 1.0))
+
+      # transform a vector (ignore translation)
+      p = wp.transform_vector(t, wp.vec3(10.0, 0.5, 1.0))
+
+
+As with vectors and matrices, you can declare transform types with an arbitary numeric type using ``warp.types.transformation()``, for example: ::
+
+   transformd = wp.types.transformation(dtype=wp.float64)
 
 You can also create identity transforms and anonymously typed instances inside a kernel like so: ::
 
-   # create double precision identity transform:
-   qd = wp.transform_identity(dtype=wp.float64)
+   @wp.kernel
+   def compute( ... ):
+
+      # create double precision identity transform:
+      qd = wp.transform_identity(dtype=wp.float64)
+      
    
-   # precision defaults to wp.float32 so this creates a single precision identity transform:
-   qf = wp.transform_identity()
-
-   # create a half precision transform from a vector/quaternion:
-   qh = wp.create_transform(
-      wp.create_vec(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0)),
-      wp.create_quaternion(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0),wp.float16(1.0))
-   )
-
 Type Conversions
 ################
 

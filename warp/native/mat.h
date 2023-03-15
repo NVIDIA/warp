@@ -229,6 +229,18 @@ inline CUDA_CALLABLE mat_t<Rows,Cols,Type> operator - (mat_t<Rows,Cols,Type> a)
 
 
 template<unsigned Rows, unsigned Cols, typename Type>
+CUDA_CALLABLE inline mat_t<Rows,Cols,Type> pos(const mat_t<Rows,Cols,Type>& x)
+{
+    return x;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
+CUDA_CALLABLE inline void adj_pos(const mat_t<Rows,Cols,Type>& x, mat_t<Rows,Cols,Type>& adj_x, const mat_t<Rows,Cols,Type>& adj_ret)
+{
+    adj_x += adj_ret;
+}
+
+template<unsigned Rows, unsigned Cols, typename Type>
 CUDA_CALLABLE inline mat_t<Rows,Cols,Type> neg(const mat_t<Rows,Cols,Type>& x)
 {
     return -x;

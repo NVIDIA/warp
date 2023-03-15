@@ -463,7 +463,11 @@ class Adjoint:
             if (match):
                 resolved_func = f
                 break
-
+        else:
+            # user-defined function
+            arg_types = [a.type for a in args]
+            resolved_func = func.get_overload(arg_types)
+            
         if resolved_func == None:
             
             arg_types = []

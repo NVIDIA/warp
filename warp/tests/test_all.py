@@ -55,6 +55,7 @@ import warp.tests.test_mat
 import warp.tests.test_arithmetic
 import warp.tests.test_spatial
 import warp.tests.test_math
+import warp.tests.test_generics
 
 
 def register_tests(parent):
@@ -106,6 +107,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_arithmetic.register(parent))
     tests.append(warp.tests.test_spatial.register(parent))
     tests.append(warp.tests.test_math.register(parent))
+    tests.append(warp.tests.test_generics.register(parent))
 
     return tests
 

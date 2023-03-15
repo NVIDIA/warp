@@ -112,12 +112,14 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
             i1 = inputs[1,i]
             i2 = inputs[2,i]
             i3 = inputs[3,i]
+            i4 = inputs[4,i]
             
             # multiply outputs by 2 so we've got something to backpropagate:
-            outputs[0,i] = wptype(2.0) * (-i0)
-            outputs[1,i] = wptype(2.0) * wp.sign(i1)
-            outputs[2,i] = wptype(2.0) * wp.abs(i2)
-            outputs[3,i] = wptype(2.0) * wp.step(i3)
+            outputs[0,i] = wptype(2.0) * (+i0)
+            outputs[1,i] = wptype(2.0) * (-i1)
+            outputs[2,i] = wptype(2.0) * wp.sign(i2)
+            outputs[3,i] = wptype(2.0) * wp.abs(i3)
+            outputs[4,i] = wptype(2.0) * wp.step(i4)
 
     kernel = getkernel(check_unary,suffix=dtype.__name__)
     output_select_kernel = get_select_kernel2(wptype)
@@ -126,24 +128,25 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
         return
     
     if dtype in np_float_types:
-        inputs = wp.array(np.random.randn(4,10).astype(dtype), dtype=wptype, requires_grad=True, device=device)
+        inputs = wp.array(np.random.randn(5,10).astype(dtype), dtype=wptype, requires_grad=True, device=device)
     else:
-        inputs = wp.array(np.random.randint(-2,3,size=(4,10),dtype=dtype), dtype=wptype, requires_grad=True, device=device)
+        inputs = wp.array(np.random.randint(-2,3,size=(5,10),dtype=dtype), dtype=wptype, requires_grad=True, device=device)
     outputs = wp.zeros_like(inputs)
 
     wp.launch(kernel, dim=1, inputs=[inputs ], outputs=[outputs], device=device)
-    assert_np_equal(outputs.numpy()[0], -2 * inputs.numpy()[0], tol=tol)
-    expected = 2 * np.sign(inputs.numpy()[1])
+    assert_np_equal(outputs.numpy()[0], 2 * inputs.numpy()[0], tol=tol)
+    assert_np_equal(outputs.numpy()[1], -2 * inputs.numpy()[1], tol=tol)
+    expected = 2 * np.sign(inputs.numpy()[2])
     expected[expected == 0] = 2
-    assert_np_equal(outputs.numpy()[1], expected, tol=tol)
-    assert_np_equal(outputs.numpy()[2], 2 * np.abs(inputs.numpy()[2]), tol=tol)
-    assert_np_equal(outputs.numpy()[3], 2 * (1-np.heaviside(inputs.numpy()[3],1)), tol=tol)
+    assert_np_equal(outputs.numpy()[2], expected, tol=tol)
+    assert_np_equal(outputs.numpy()[3], 2 * np.abs(inputs.numpy()[3]), tol=tol)
+    assert_np_equal(outputs.numpy()[4], 2 * (1-np.heaviside(inputs.numpy()[4],1)), tol=tol)
 
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     if dtype in np_float_types:
         for i in range(10):
 
-            # grad of -2x:
+            # grad of 2x:
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[ inputs ], outputs=[outputs], device=device)
@@ -151,7 +154,19 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
 
             tape.backward(loss=out)
             expected_grads = np.zeros_like(inputs.numpy())
-            expected_grads[0,i] = -2
+            expected_grads[0,i] = 2
+            assert_np_equal(tape.gradients[inputs].numpy(),expected_grads, tol=tol)
+            tape.zero()
+
+            # grad of -2x:
+            tape = wp.Tape()
+            with tape:
+                wp.launch(kernel, dim=1, inputs=[ inputs ], outputs=[outputs], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[ outputs,1,i ], outputs=[out], device=device)
+
+            tape.backward(loss=out)
+            expected_grads = np.zeros_like(inputs.numpy())
+            expected_grads[1,i] = -2
             assert_np_equal(tape.gradients[inputs].numpy(),expected_grads, tol=tol)
             tape.zero()
 
@@ -159,7 +174,7 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[ inputs ], outputs=[outputs], device=device)
-                wp.launch(output_select_kernel, dim=1, inputs=[ outputs,1,i ], outputs=[out], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[ outputs,2,i ], outputs=[out], device=device)
 
             tape.backward(loss=out)
             expected_grads = np.zeros_like(inputs.numpy())
@@ -170,11 +185,11 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[ inputs ], outputs=[outputs], device=device)
-                wp.launch(output_select_kernel, dim=1, inputs=[ outputs,2,i ], outputs=[out], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[ outputs,3,i ], outputs=[out], device=device)
 
             tape.backward(loss=out)
             expected_grads = np.zeros_like(inputs.numpy())
-            expected_grads[2,i] = 2*np.sign(inputs.numpy()[2,i])
+            expected_grads[3,i] = 2*np.sign(inputs.numpy()[3,i])
             assert_np_equal(tape.gradients[inputs].numpy(),expected_grads, tol=tol)
             tape.zero()
             
@@ -182,7 +197,7 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[ inputs ], outputs=[outputs], device=device)
-                wp.launch(output_select_kernel, dim=1, inputs=[ outputs,3,i ], outputs=[out], device=device)
+                wp.launch(output_select_kernel, dim=1, inputs=[ outputs,4,i ], outputs=[out], device=device)
 
             tape.backward(loss=out)
             expected_grads = np.zeros_like(inputs.numpy())
