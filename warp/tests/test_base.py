@@ -208,4 +208,4 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
 # so that compilation is done in one-shot instead of per-test
 def add_function_test_register_kernel(cls, name, func, devices=None, **kwargs):
     func( None, None, **kwargs, register_kernels=True )
-    add_function_test(cls, name, func, devices=None, **kwargs)
+    add_function_test(cls, name, func, devices=devices, **kwargs)

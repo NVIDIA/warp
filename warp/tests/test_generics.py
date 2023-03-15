@@ -221,8 +221,8 @@ def test_generic_fill_overloads(test, device):
 
 
 # custom vector/matrix types
-my_vec5 = wp.vec(length=5, dtype=wp.float32)
-my_mat55 = wp.mat(shape=(5,5), dtype=wp.float32)
+my_vec5 = wp.types.vector(length=5, dtype=wp.float32)
+my_mat55 = wp.types.matrix(shape=(5,5), dtype=wp.float32)
 
 
 @wp.kernel
