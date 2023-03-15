@@ -76,6 +76,13 @@ class Function:
         self.missing_grad = missing_grad # whether or not builtin is missing a corresponding adjoint
         self.generic = generic
 
+        # allow registering builtin functions with a different name in Python from the native code
+        if native_func == None:
+            self.native_func = key
+        else:
+            self.native_func = native_func
+
+
         if func:
             # user-defined function
 
