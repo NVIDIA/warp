@@ -1242,7 +1242,10 @@ class array (Generic[T]):
 
         # use the CUDA default stream for synchronous behaviour with other streams
         with warp.ScopedStream(self.device.null_stream):
-            return np.array(self.to("cpu"), copy=False)
+            if self.ptr is None:
+                return np.empty(shape=self.shape, dtype=self.dtype)
+            else:
+                return np.array(self.to("cpu"), copy=False)
         
 
     # convert data from one device to another, nop if already on device
