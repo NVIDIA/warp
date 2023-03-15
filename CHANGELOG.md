@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [0.7.3] - 2023-03-14
+
+- Add optional `requires_grad` parameter to `wp.from_torch()` to override gradient allocation
+
+
 ## [0.7.2] - 2023-02-15
 
 - Reduce test time for vec/math types
