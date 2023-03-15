@@ -72,7 +72,7 @@ Built-in unit tests can be run from the command-line as follows:
 
 For developers who want to build the library themselves the following tools are required:
 
-* Microsoft Visual Studio 2017 upwards (Windows)
+* Microsoft Visual Studio 2019 upwards (Windows)
 * GCC 6.0 upwards (Linux)
 * CUDA Toolkit 11.5 or higher
 * Git LFS installed (https://git-lfs.github.com/) 
