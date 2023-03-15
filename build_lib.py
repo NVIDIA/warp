@@ -8,9 +8,6 @@ if sys.version_info[0] < 3:
 
 import os
 import argparse
-import subprocess
-import shutil
-from git import Repo
 
 import warp.config
 import warp.build
@@ -77,6 +74,10 @@ if os.name == 'nt':
 
 
 if args.build_llvm:
+    
+    import subprocess
+    from git import Repo
+
     llvm_project_path = os.path.join(base_path, "external/llvm-project")
     if not os.path.exists(llvm_project_path):
         shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
