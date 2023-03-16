@@ -154,8 +154,7 @@ def cylinder_sdf_grad(radius: float, half_height: float, p: wp.vec3):
     dy = wp.abs(p[1]) - half_height
     if (dx > dy):
         return wp.normalize(wp.vec3(p[0], 0.0, p[2]))
-    else:
-        return wp.vec3(0.0, wp.sign(p[1]), 0.0)
+    return wp.vec3(0.0, wp.sign(p[1]), 0.0)
 
 
 @wp.func
@@ -171,8 +170,7 @@ def cone_sdf_grad(radius: float, half_height: float, p: wp.vec3):
     dy = wp.abs(p[1]) - half_height
     if (dy < 0.0 or dx == 0.0):
         return wp.vec3(0.0, wp.sign(p[1]), 0.0)
-    else:
-        return wp.normalize(wp.vec3(p[0], 0.0, p[2])) + wp.vec3(0.0, radius / (2.0 * half_height), 0.0)
+    return wp.normalize(wp.vec3(p[0], 0.0, p[2])) + wp.vec3(0.0, radius / (2.0 * half_height), 0.0)
 
 
 @wp.func
@@ -181,8 +179,7 @@ def plane_sdf(width: float, length: float, p: wp.vec3):
     if width > 0.0 and length > 0.0:
         d = wp.max(wp.abs(p[0]) - width, wp.abs(p[2]) - length)
         return wp.max(d, wp.abs(p[1]))
-    else:
-        return p[1]
+    return p[1]
 
 
 @wp.func
@@ -387,8 +384,8 @@ def closest_edge_coordinate_capsule(radius: float, half_height: float, edge_a: w
 
     if yc < yd:
         return 0.5 * (a + d)
-    else:
-        return 0.5 * (c + b)
+
+    return 0.5 * (c + b)
 
 
 @wp.func
