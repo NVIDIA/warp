@@ -5,29 +5,75 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
-
 import warp as wp
 import warp.sim
 import warp.render
 
 from collections import defaultdict
-from typing import Union
 
 import numpy as np
 
 from warp.render.utils import solidify_mesh, tab10_color_map
 
-def CreateSimRenderer(renderer):
+# TODO allow NaNs in Warp kernels
+NAN = wp.constant(-1.0e8)
+
+
+@wp.kernel
+def compute_contact_points(
+    body_q: wp.array(dtype=wp.transform),
+    shape_body: wp.array(dtype=int),
+    contact_shape0: wp.array(dtype=int),    
+    contact_shape1: wp.array(dtype=int),
+    contact_point0: wp.array(dtype=wp.vec3),
+    contact_point1: wp.array(dtype=wp.vec3),
+    # outputs
+    contact_pos0: wp.array(dtype=wp.vec3),
+    contact_pos1: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+    shape_a = contact_shape0[tid]
+    shape_b = contact_shape1[tid]
+    if shape_a == shape_b:
+        contact_pos0[tid] = wp.vec3(NAN, NAN, NAN)
+        contact_pos1[tid] = wp.vec3(NAN, NAN, NAN)
+        return
     
-    class SimRenderer(renderer):
+    body_a = shape_body[shape_a]
+    body_b = shape_body[shape_b]
+    X_wb_a = wp.transform_identity()
+    X_wb_b = wp.transform_identity()
+    if (body_a >= 0):
+        X_wb_a = body_q[body_a]
+    if (body_b >= 0):
+        X_wb_b = body_q[body_b]
+
+    contact_pos0[tid] = wp.transform_point(X_wb_a, contact_point0[tid])
+    contact_pos1[tid] = wp.transform_point(X_wb_b, contact_point1[tid])
+
+
+def AbstractSimRenderer(renderer):
+    class SimRenderer_t(renderer):
 
         use_unique_colors = True
         
-        def __init__(self, model: warp.sim.Model, path, scaling=1.0, fps=60, upaxis="y", **render_kwargs):
+        def __init__(
+            self,
+            model: warp.sim.Model,
+            path,
+            scaling=1.0,
+            fps=60,
+            upaxis="y",
+            show_rigid_contact_points=False,
+            contact_points_radius=1e-3,
+            **render_kwargs
+        ):
             # create USD stage
             super().__init__(path, scaling=scaling, fps=fps, upaxis=upaxis, **render_kwargs)
+            self.scaling = scaling
             self.cam_axis = "xyz".index(upaxis.lower())
+            self.show_rigid_contact_points = show_rigid_contact_points
+            self.contact_points_radius = contact_points_radius
             self.populate(model)
 
         def populate(self, model: warp.sim.Model):
@@ -36,6 +82,13 @@ def CreateSimRenderer(renderer):
             self.model = model
             self.num_envs = model.num_envs
             self.body_names = []
+
+            if self.show_rigid_contact_points and model.rigid_contact_max:
+                self.contact_points0 = wp.array(np.zeros((model.rigid_contact_max, 3)), dtype=wp.vec3, device=model.device)
+                self.contact_points1 = wp.array(np.zeros((model.rigid_contact_max, 3)), dtype=wp.vec3, device=model.device)
+
+                self.contact_points0_colors = [(1.0, 0.5, 0.0)] * model.rigid_contact_max
+                self.contact_points1_colors = [(0.0, 0.5, 1.0)] * model.rigid_contact_max
 
             self.body_env = []  # mapping from body index to its environment index
             env_id = 0
@@ -214,10 +267,38 @@ def CreateSimRenderer(renderer):
             if (self.model.body_count): 
                 self.update_body_transforms(state.body_q)
 
-    return SimRenderer
+                if self.show_rigid_contact_points and self.model.rigid_contact_max:
+                    wp.launch(
+                        kernel=compute_contact_points,
+                        dim=self.model.rigid_contact_max,
+                        inputs=[
+                            state.body_q,
+                            self.model.shape_body,
+                            self.model.rigid_contact_shape0,
+                            self.model.rigid_contact_shape1,
+                            self.model.rigid_contact_point0,
+                            self.model.rigid_contact_point1,
+                        ],
+                        outputs=[
+                            self.contact_points0,
+                            self.contact_points1,
+                        ],
+                        device=self.model.device)
+                    
+                    self.render_points(
+                        "contact_points0",
+                        self.contact_points0.numpy(),
+                        radius=self.contact_points_radius*self.scaling,
+                        colors=self.contact_points0_colors)
+                    self.render_points(
+                        "contact_points1",
+                        self.contact_points1.numpy(),
+                        radius=self.contact_points_radius*self.scaling,
+                        colors=self.contact_points1_colors)
+
+    return SimRenderer_t
 
 
-SimRendererUsd = CreateSimRenderer(wp.render.UsdRenderer)
-SimRendererTiny = CreateSimRenderer(wp.render.TinyRenderer)
-
+SimRendererUsd = AbstractSimRenderer(wp.render.UsdRenderer)
+SimRendererTiny = AbstractSimRenderer(wp.render.TinyRenderer)
 SimRenderer = SimRendererUsd
