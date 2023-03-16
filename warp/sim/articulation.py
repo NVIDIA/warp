@@ -64,6 +64,7 @@ def eval_articulation_fk(
         ang_axis_count = joint_axis_dim[i,1]
 
         X_jc = wp.transform_identity()
+        v_jc = wp.spatial_vector(wp.vec3(), wp.vec3())
 
         if type == wp.sim.JOINT_PRISMATIC:
             axis = joint_axis[axis_start]
@@ -98,11 +99,6 @@ def eval_articulation_fk(
             
             X_jc = wp.transform(wp.vec3(), r)
             v_jc = wp.spatial_vector(w, wp.vec3())
-
-        if type == wp.sim.JOINT_FIXED:
-            
-            X_jc = wp.transform_identity()
-            v_jc = wp.spatial_vector(wp.vec3(), wp.vec3())
 
         if type == wp.sim.JOINT_FREE:
 
