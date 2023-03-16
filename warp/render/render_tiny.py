@@ -147,6 +147,7 @@ class TinyRenderer:
         upaxis="y",
         suppress_keyboard_help=False,
         move_camera_target_to_center=True,
+        draw_grid=False,
         screen_width=1024,
         screen_height=768,
         headless=False):
@@ -194,6 +195,11 @@ class TinyRenderer:
         self.cam_axis = "xyz".index(upaxis.lower())
         self.cam.set_camera_up_axis(self.cam_axis)
         self.app.renderer.set_camera(self.cam)
+        
+        self._grid_data = self.p.DrawGridData()
+        self._grid_data.drawAxis = True
+        self._grid_data.upAxis = self.cam_axis
+        self.draw_grid = draw_grid
 
         self._instance_count = 0
         
@@ -1030,6 +1036,8 @@ class TinyRenderer:
             return
         self.app.renderer.update_camera(self.cam_axis)
         self.app.renderer.render_scene()
+        if self.draw_grid:
+            self.app.draw_grid(self._grid_data)
         self.app.swap_buffer()
 
     def save(self):
