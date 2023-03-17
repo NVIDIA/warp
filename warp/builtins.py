@@ -456,8 +456,10 @@ add_builtin("quaternion", input_types={"i": vector(length=3, dtype=Float), "r": 
     doc="Create a quaternion using the supplied vector/scalar (type inferred from scalar type)", export=False)
 
 def quat_identity_value_func(args, kwds, templates):
+
+    # if args is None then we are in 'export' mode
     if args is None:
-        return quaternion(dtype=Scalar)
+        return quatf
     
     if "dtype" not in kwds:
         # defaulting to float32 to preserve current behavior:
@@ -470,11 +472,8 @@ def quat_identity_value_func(args, kwds, templates):
     return quaternion(dtype=dtype)
 
 
-add_builtin("quat_identity", input_types={}, value_type=quat, group="Quaternion Math",
-    doc="Construct an identity quaternion with zero imaginary part and real part of 1.0", export=True)
-
 add_builtin("quat_identity", input_types={}, value_func=quat_identity_value_func, group="Quaternion Math",
-    doc="Construct an identity quaternion with zero imaginary part and real part of 1.0", export=False)
+    doc="Construct an identity quaternion with zero imaginary part and real part of 1.0", export=True)
     
 add_builtin("quat_from_axis_angle", input_types={"axis": vector(length=3, dtype=Float), "angle": Float}, value_func=lambda args, kwds, _: quaternion(dtype=infer_scalar_type(args)), group="Quaternion Math",
     doc="Construct a quaternion representing a rotation of angle radians around the given axis.")
@@ -522,7 +521,7 @@ add_builtin("transformation", input_types={"p": vector(length=3, dtype=Float), "
 
 def transform_identity_value_func(args, kwds, templates):
     if args is None:
-        return transformation(dtype=Scalar)
+        return transformf
     
     if "dtype" not in kwds:
         # defaulting to float32 to preserve current behavior:
@@ -535,10 +534,8 @@ def transform_identity_value_func(args, kwds, templates):
     return transformation(dtype=dtype)
 
 
-add_builtin("transform_identity", input_types={}, value_type=transform, group="Transformations",
-    doc="Construct an identity transform with zero translation and identity rotation.", export=True)
 add_builtin("transform_identity", input_types={}, value_func=transform_identity_value_func, group="Transformations",
-    doc="Construct an identity transform with zero translation and identity rotation.", export=False)
+    doc="Construct an identity transform with zero translation and identity rotation.", export=True)
 
 add_builtin("transform_get_translation", input_types={"t": transformation(dtype=Float)}, value_func=lambda args, kwds, _: vector(length=3, dtype=infer_scalar_type(args)), group="Transformations",
     doc="Return the translational part of a transform.")
