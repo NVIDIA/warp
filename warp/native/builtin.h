@@ -61,7 +61,7 @@ typedef uint64_t uint64;
 
 
 // matches Python string type for constant strings
-typedef char* str;
+typedef const char* str;
 
 
 
