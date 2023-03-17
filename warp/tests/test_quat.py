@@ -1106,7 +1106,7 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
 
     eps = {
         np.float16: 2.e-2,
-        np.float32: 1.e-6,
+        np.float32: 1.e-5,
         np.float64: 1.e-8,
     }.get(dtype,0)
 

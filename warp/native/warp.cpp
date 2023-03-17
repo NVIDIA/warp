@@ -45,6 +45,21 @@ void shutdown()
 {
 }
 
+int is_cuda_enabled()
+{
+    return int(WP_ENABLE_CUDA);
+}
+
+int is_cuda_compatibility_enabled()
+{
+    return int(WP_ENABLE_CUDA_COMPATIBILITY);
+}
+
+int is_cutlass_enabled()
+{
+    return int(WP_ENABLE_CUTLASS);
+}
+
 void* alloc_host(size_t s)
 {
     return malloc(s);

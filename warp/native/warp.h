@@ -17,6 +17,13 @@ extern "C"
     WP_API int init();
     //WP_API void shutdown();
 
+    // whether Warp was compiled with CUDA support
+    WP_API int is_cuda_enabled();
+    // whether Warp was compiled with enhanced CUDA compatibility
+    WP_API int is_cuda_compatibility_enabled();
+    // whether Warp was compiled with CUTLASS support
+    WP_API int is_cutlass_enabled();
+
     WP_API uint16_t float_to_half_bits(float x);
 
     WP_API void* alloc_host(size_t s);

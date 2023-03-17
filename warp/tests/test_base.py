@@ -12,9 +12,18 @@ import sys
 import numpy as np
 import warp as wp
 
+# default test mode (see get_test_devices())
+#   "basic" - only run on CPU and first GPU device
+#   "unique" - run on CPU and all unique GPU arches
+#   "all" - run on all devices
+test_mode = "basic"
 
-def get_test_devices(mode="basic"):
+def get_test_devices(mode=None):
     
+    if mode is None:
+        global test_mode
+        mode = test_mode
+
     devices = []
 
     # only run on CPU and first GPU device

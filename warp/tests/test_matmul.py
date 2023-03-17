@@ -101,9 +101,15 @@ def register(parent):
     class TestMatmul(parent):
         pass
 
-    #add_function_test(TestMatmul, "test_f16", test_f16, devices=devices)
-    add_function_test(TestMatmul, "test_f32", test_f32, devices=devices)
-    add_function_test(TestMatmul, "test_f64", test_f64, devices=devices)
+    if devices:
+        # check if CUTLASS is available
+        from warp.context import runtime
+        if runtime.core.is_cutlass_enabled():
+            #add_function_test(TestMatmul, "test_f16", test_f16, devices=devices)
+            add_function_test(TestMatmul, "test_f32", test_f32, devices=devices)
+            add_function_test(TestMatmul, "test_f64", test_f64, devices=devices)
+        else:
+            print(f"Skipping matmul tests because CUTLASS is not supported in this build")
 
     return TestMatmul
 
