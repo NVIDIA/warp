@@ -160,12 +160,18 @@ def load_cuda(input_path, device):
 def quote(path):
     return "\"" + path + "\""
 
-def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, use_cache=True, all_architectures=True):
+def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, use_cache=True, quick=False):
 
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
-    cutlass_home = "warp/native/cutlass"
-    cutlass_includes = f'-I"{cutlass_home}/include" -I"{cutlass_home}/tools/util/include"'
+
+    if quick:
+        cutlass_includes = ""
+        cutlass_enabled = "WP_ENABLE_CUTLASS=0"
+    else:
+        cutlass_home = "warp/native/cutlass"
+        cutlass_includes = f'-I"{cutlass_home}/include" -I"{cutlass_home}/tools/util/include"'
+        cutlass_enabled = "WP_ENABLE_CUTLASS=1"
 
     import pathlib
     warp_home_path = pathlib.Path(__file__).parent
@@ -225,7 +231,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         gencode_opts = ["-gencode=arch=compute_52,code=compute_52",
                         "-gencode=arch=compute_75,code=compute_75"]
 
-        if all_architectures:
+        if not quick:
             # generate code for all supported architectures
             gencode_opts += [
                 # SASS for supported desktop/datacenter architectures
@@ -248,7 +254,6 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             if ctk_version > (11, 8):
                 "-gencode=arch=compute_89,code=sm_89",  # Ada
                 "-gencode=arch=compute_90,code=sm_90",  # Hopper
-
 
         nvcc_opts = gencode_opts + [
             "-t0", # multithreaded compilation
@@ -284,10 +289,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             runtime = "/sdl- /GS-"  # don't specify a runtime, and disable security checks with depend on it
 
         if (mode == "debug"):
-            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             linkopts = ["/DLL", "/DEBUG"]
         elif (mode == "release"):
-            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
+            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {cuda_includes}'
             linkopts = ["/DLL"]
         else:
             raise RuntimeError(f"Unrecognized build configuration (debug, release), got: {mode}")
@@ -310,10 +315,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             cu_out = cu_path + ".o"
 
             if (mode == "debug"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA -DWP_ENABLE_CUDA=1 {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA -DWP_ENABLE_CUDA=1 -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             elif (mode == "release"):
-                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -I"{nanovdb_home}" -DNDEBUG -DWP_CUDA -DWP_ENABLE_CUDA=1 {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
+                cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -I"{nanovdb_home}" -DNDEBUG -DWP_CUDA -DWP_ENABLE_CUDA=1 -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
