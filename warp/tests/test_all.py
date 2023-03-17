@@ -10,6 +10,11 @@ from unittest import runner
 import os
 
 import warp as wp
+
+# Uncomment to run the tests on all devices
+# import warp.tests.test_base
+# warp.tests.test_base.test_mode = "all"
+
 import warp.tests.test_codegen
 import warp.tests.test_mesh_query_aabb
 import warp.tests.test_mesh_query_point
@@ -191,7 +196,7 @@ def run():
     # load all modules
     wp.force_load()
 
-    runner = TeamCityTestRunner(verbosity=2, failfast=True)
+    runner = TeamCityTestRunner(verbosity=2, failfast=False)
     ret = not runner.run(test_suite, "WarpTests").wasSuccessful()
     return ret
 

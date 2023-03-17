@@ -1770,6 +1770,13 @@ class Runtime:
 
         self.core.volume_get_voxel_size.argtypes = [ctypes.c_uint64, ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float)]
 
+        self.core.is_cuda_enabled.argtypes = None
+        self.core.is_cuda_enabled.restype = ctypes.c_int
+        self.core.is_cuda_compatibility_enabled.argtypes = None
+        self.core.is_cuda_compatibility_enabled.restype = ctypes.c_int
+        self.core.is_cutlass_enabled.argtypes = None
+        self.core.is_cutlass_enabled.restype = ctypes.c_int
+
         self.core.cuda_driver_version.argtypes = None
         self.core.cuda_driver_version.restype = ctypes.c_int
         self.core.cuda_toolkit_version.argtypes = None
@@ -1931,12 +1938,29 @@ class Runtime:
                 driver_version = (self.driver_version // 1000, (self.driver_version % 1000) // 10)
                 print(f"   CUDA Toolkit: {toolkit_version[0]}.{toolkit_version[1]}, Driver: {driver_version[0]}.{driver_version[1]}")
             else:
-                print(f"   CUDA not available")
+                if self.core.is_cuda_enabled():
+                    # Warp was compiled with CUDA support, but no devices are available
+                    print("   CUDA devices not available")
+                else:
+                    # Warp was compiled without CUDA support
+                    print("   CUDA support not enabled in this build")
             print("   Devices:")
             print(f"     \"{self.cpu_device.alias}\"    | {self.cpu_device.name}")
             for cuda_device in self.cuda_devices:
                 print(f"     \"{cuda_device.alias}\" | {cuda_device.name} (sm_{cuda_device.arch})")
             print(f"   Kernel cache: {warp.config.kernel_cache_dir}")
+
+        # CUDA compatibility check
+        if cuda_device_count > 0 and not self.core.is_cuda_compatibility_enabled():
+            if self.driver_version < self.toolkit_version:
+                print("******************************************************************")
+                print("* WARNING:                                                       *")
+                print("*   Warp was compiled without CUDA compatibility support         *")
+                print("*   (quick build).  The CUDA Toolkit version used to build       *")
+                print("*   Warp is not fully supported by the current driver.           *")
+                print("*   Some CUDA functionality may not work correctly!              *")
+                print("*   Update the driver or rebuild Warp without the --quick flag.  *")
+                print("******************************************************************")
 
         # global tape
         self.tape = None
