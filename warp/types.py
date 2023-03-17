@@ -1859,7 +1859,7 @@ def matmul(a: array2d, b: array2d, c: array2d, d: array2d, alpha: float = 1., be
                               allow_tf32x3_arith,
                               1)
     if not ret:
-        raise RuntimeError("Matmul failed.")
+        raise RuntimeError("matmul failed.")
 
 def adj_matmul(
     a: array2d, b: array2d, c: array2d, adj_d: array2d, alpha: float, beta: float, 
