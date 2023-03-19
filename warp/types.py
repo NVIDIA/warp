@@ -1832,10 +1832,14 @@ def matmul(a: array2d, b: array2d, c: array2d, d: array2d, alpha: float = 1., be
         beta (float): parameter beta of GEMM
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
-    """
+        device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
+    """ 
     from warp.context import runtime
-    device = runtime.get_device(device)
-    cc = device.arch
+    if device is None:
+        device = runtime.get_device(device)
+
+    if a.device != device or b.device != device or c.device != device or d.device != device:
+        raise RuntimeError("Matrices A, B, C, and D must all be on the same device as the runtime device.")
 
     if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != d.dtype:
         raise RuntimeError("wp.matmul currently only supports operation between {A, B, C, D} matrices of the same type.")
@@ -1846,6 +1850,13 @@ def matmul(a: array2d, b: array2d, c: array2d, d: array2d, alpha: float = 1., be
     if b.shape != (k, n) or c.shape != (m, n) or d.shape != (m, n):
         raise RuntimeError("Invalid shapes for matrices: A = {} B = {} C = {} D = {}".format(
             a.shape, b.shape, c.shape, d.shape))
+
+    # cpu fallback if no cuda devices found
+    if device == "cpu":
+        d.assign(alpha * (a.numpy() @ b.numpy()) + beta * c.numpy())
+        return
+    
+    cc = device.arch
     ret = runtime.core.cutlass_gemm(
                               cc,
                               m, n, k,
@@ -1881,12 +1892,16 @@ def adj_matmul(
         adj_c (array2d): two-dimensional array to which the adjoint of matrix C is written
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
+        device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
     """
     from warp.context import runtime
-    device = runtime.get_device(device)
-    cc = device.arch
+    if device is None:
+        device = runtime.get_device(device)
 
-    if adj_d.dtype != a.dtype or adj_d.dtype != b.dtype or adj_d.dtype != c.dtype or adj_d.dtype != adj_a.dtype or adj_d.dtype != adj_b.dtype or adj_d.dtype != adj_c.dtype:
+    if a.device != device or b.device != device or c.device != device or adj_a.device != device or adj_b.device != device or adj_c.device != device or adj_d.device != device:
+        raise RuntimeError("Matrices A, B, C, D, and their adjoints must all be on the same device as the runtime device.")
+
+    if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != adj_a.dtype or a.dtype != adj_b.dtype or a.dtype != adj_c.dtype or a.dtype != adj_d.dtype:
         raise RuntimeError("wp.adj_matmul currently only supports operation between {A, B, C, adj_D, adj_A, adj_B, adj_C} matrices of the same type.")
 
     m = a.shape[0]
@@ -1895,6 +1910,15 @@ def adj_matmul(
     if a.shape != (m, k) or b.shape != (k, n) or c.shape != (m, n) or adj_d.shape != (m, n) or adj_a.shape != (m, k) or adj_b.shape != (k, n) or adj_c.shape != (m, n):
         raise RuntimeError("Invalid shapes for matrices: A = {} B = {} C = {} adj_D = {} adj_A = {} adj_B = {} adj_C = {}".format(
             a.shape, b.shape, c.shape, adj_d.shape, adj_a.shape, adj_b.shape, adj_c.shape))
+
+    # cpu fallback if no cuda devices found
+    if device == "cpu":
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(),b.numpy().transpose()))
+        adj_b.assign(alpha * (a.numpy().transpose() @ adj_d.numpy()))
+        adj_c.assign(beta * adj_d.numpy())
+        return
+
+    cc = device.arch
 
     # adj_a
     ret = runtime.core.cutlass_gemm(
@@ -1956,10 +1980,14 @@ def batched_matmul(a: array3d, b: array3d, c: array3d, d: array3d, alpha: float 
         beta (float): parameter beta of GEMM
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
+        device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
     """
     from warp.context import runtime
-    device = runtime.get_device(device)
-    cc = device.arch
+    if device is None:
+        device = runtime.get_device(device)
+
+    if a.device != device or b.device != device or c.device != device or d.device != device:
+        raise RuntimeError("Matrices A, B, C, and D must all be on the same device as the runtime device.")
 
     if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != d.dtype:
         raise RuntimeError("wp.batched_matmul currently only supports operation between {A, B, C, D} matrices of the same type.")
@@ -1971,6 +1999,13 @@ def batched_matmul(a: array3d, b: array3d, c: array3d, d: array3d, alpha: float 
     if b.shape != (batch_count, k, n) or c.shape != (batch_count, m, n) or d.shape != (batch_count, m, n):
         raise RuntimeError("Invalid shapes for matrices: A = {} B = {} C = {} D = {}".format(
             a.shape, b.shape, c.shape, d.shape))
+    
+    # cpu fallback if no cuda devices found
+    if device == "cpu":
+        d.assign(alpha * np.matmul(a.numpy(), b.numpy()) + beta * c.numpy())
+        return
+
+    cc = device.arch
     ret = runtime.core.cutlass_gemm(
                               cc,
                               m, n, k,
@@ -2004,12 +2039,16 @@ def adj_batched_matmul(
         adj_c (array3d): three-dimensional array to which the adjoints of C matrices are written. Overall array dimension is {batch_count, M, N}
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
+        device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
     """
     from warp.context import runtime
-    device = runtime.get_device(device)
-    cc = device.arch
+    if device is None:
+        device = runtime.get_device(device)
 
-    if adj_d.dtype != a.dtype or adj_d.dtype != b.dtype or adj_d.dtype != c.dtype or adj_d.dtype != adj_a.dtype or adj_d.dtype != adj_b.dtype or adj_d.dtype != adj_c.dtype:
+    if a.device != device or b.device != device or c.device != device or adj_a.device != device or adj_b.device != device or adj_c.device != device or adj_d.device != device:
+        raise RuntimeError("Matrices A, B, C, D, and their adjoints must all be on the same device as the runtime device.")
+
+    if a.dtype != b.dtype or a.dtype != c.dtype or a.dtype != adj_a.dtype or a.dtype != adj_b.dtype or a.dtype != adj_c.dtype or a.dtype != adj_d.dtype:
         raise RuntimeError("wp.adj_batched_matmul currently only supports operation between {A, B, C, adj_D, adj_A, adj_B, adj_C} matrices of the same type.")
 
     m = a.shape[1]
@@ -2019,6 +2058,15 @@ def adj_batched_matmul(
     if b.shape != (batch_count, k, n) or c.shape != (batch_count, m, n) or adj_d.shape != (batch_count, m, n) or adj_a.shape != (batch_count, m, k) or adj_b.shape != (batch_count, k, n) or adj_c.shape != (batch_count, m, n):
         raise RuntimeError("Invalid shapes for matrices: A = {} B = {} C = {} adj_D = {} adj_A = {} adj_B = {} adj_C = {}".format(
             a.shape, b.shape, c.shape, adj_d.shape, adj_a.shape, adj_b.shape, adj_c.shape))
+
+    # cpu fallback if no cuda devices found
+    if device == "cpu":
+        adj_a.assign(alpha * np.matmul(adj_d.numpy(), b.numpy().transpose((0, 2, 1))))
+        adj_b.assign(alpha * np.matmul(a.numpy().transpose((0, 2, 1)), adj_d.numpy()))
+        adj_c.assign(beta * adj_d.numpy())
+        return
+
+    cc = device.arch
 
     # adj_a
     ret = runtime.core.cutlass_gemm(
