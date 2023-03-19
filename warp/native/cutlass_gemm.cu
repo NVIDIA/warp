@@ -19,45 +19,10 @@
 namespace wp {
 
 template <typename Gemm>
-struct Allocation {
-    // Allocations holding input and output tensors
-    cutlass::DeviceAllocation<typename Gemm::ElementA> ptr_A;
-    cutlass::DeviceAllocation<typename Gemm::ElementB> ptr_B;
-    cutlass::DeviceAllocation<typename Gemm::ElementC> ptr_C;
-    cutlass::DeviceAllocation<typename Gemm::ElementC> ptr_D;
-
-    // Leading dimensions
-    int64_t lda;
-    int64_t ldb;
-    int64_t ldc;
-    int64_t ldd;
-
-    Allocation(int m, int n, int k, int batch_count, const void* a, const void* b, const void* c, void* d) {
-    ptr_A.reset(m * k * batch_count);
-    ptr_B.reset(k * n * batch_count);
-    ptr_C.reset(m * n * batch_count);
-    ptr_D.reset(m * n * batch_count);
-
-    ptr_A.copy_from_host((typename Gemm::ElementA*)a);
-    ptr_B.copy_from_host((typename Gemm::ElementB*)b);
-    ptr_C.copy_from_host((typename Gemm::ElementC*)c);
-    ptr_D.copy_from_host((typename Gemm::ElementC*)d);
-
-    lda = Gemm::LayoutA::packed({m, k}).stride(0);
-    ldb = Gemm::LayoutB::packed({k, n}).stride(0);
-    ldc = n;
-    ldd = n;
-    }
-};
-
-
-template <typename Gemm>
 bool run_gemm(int m, int n, int k, int batch_count, const void* a, const void* b, const void* c, void* d, float alpha, float beta) {
     //
-    // Allocate and initialize arguments
+    // Initialize arguments
     //
-
-    Allocation<Gemm> alloc(m, n, k, batch_count, a, b, c, d);
     typename Gemm::EpilogueOutputOp::Params epilogue_params(
         (typename Gemm::EpilogueOutputOp::ElementCompute)alpha,
         (typename Gemm::EpilogueOutputOp::ElementCompute)beta);
@@ -67,15 +32,9 @@ bool run_gemm(int m, int n, int k, int batch_count, const void* a, const void* b
         cutlass::gemm::GemmCoord{m, n, k}, // Problem size
         batch_count,
         epilogue_params,
-        (void const*)alloc.ptr_A.get(),
-        (void const*)alloc.ptr_B.get(),
-        (void const*)alloc.ptr_C.get(),
-        (void      *)alloc.ptr_D.get(),
+        a, b, c, d,
         int64_t(m * k), int64_t(k * n), int64_t(m * n), int64_t(m * n), // Batch strides
-        alloc.lda,
-        alloc.ldb,
-        alloc.ldc,
-        alloc.ldd
+        Gemm::LayoutA::packed({m, k}).stride(0), Gemm::LayoutB::packed({k, n}).stride(0), n, n
     };
 
     Gemm gemm;
@@ -100,10 +59,8 @@ bool run_gemm(int m, int n, int k, int batch_count, const void* a, const void* b
         return false;
     }
 
-    alloc.ptr_D.copy_to_host((typename Gemm::ElementC*)d);
     return true;
 }
-
 
 template <
     int ComputeCapability,

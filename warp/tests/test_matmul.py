@@ -10,40 +10,41 @@ wp.init()
 
 
 class GemmTestbedRunner:
-    def __init__(self, dtype):
+    def __init__(self, dtype, device):
         self.dtype = dtype
+        self.device = device
 
     def alloc(self, m, n, k, batch_count):
         low=-4.5
         high=3.5
         if batch_count == 1:
-            A = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=self.dtype)
-            B = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(k, n))), dtype=self.dtype)
-            C = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(m, n))), dtype=self.dtype)
-            D = wp.array2d(np.zeros((m, n)), dtype=self.dtype)
-            adj_A = wp.array2d(np.zeros((m, k)), dtype=self.dtype)
-            adj_B = wp.array2d(np.zeros((k, n)), dtype=self.dtype)
-            adj_C = wp.array2d(np.zeros((m, n)), dtype=self.dtype)
-            adj_D = wp.array2d(np.ones((m, n)), dtype=self.dtype)
+            A = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=self.dtype, device=self.device)
+            B = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(k, n))), dtype=self.dtype, device=self.device)
+            C = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(m, n))), dtype=self.dtype, device=self.device)
+            D = wp.array2d(np.zeros((m, n)), dtype=self.dtype, device=self.device)
+            adj_A = wp.array2d(np.zeros((m, k)), dtype=self.dtype, device=self.device)
+            adj_B = wp.array2d(np.zeros((k, n)), dtype=self.dtype, device=self.device)
+            adj_C = wp.array2d(np.zeros((m, n)), dtype=self.dtype, device=self.device)
+            adj_D = wp.array2d(np.ones((m, n)), dtype=self.dtype, device=self.device)
         else:
-            A = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, m, k))), dtype=self.dtype)
-            B = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, k, n))), dtype=self.dtype)
-            C = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, m, n))), dtype=self.dtype)
-            D = wp.array2d(np.zeros((batch_count, m, n)), dtype=self.dtype)
-            adj_A = wp.array2d(np.zeros((batch_count, m, k)), dtype=self.dtype)
-            adj_B = wp.array2d(np.zeros((batch_count, k, n)), dtype=self.dtype)
-            adj_C = wp.array2d(np.zeros((batch_count, m, n)), dtype=self.dtype)
-            adj_D = wp.array2d(np.ones((batch_count, m, n)), dtype=self.dtype)
+            A = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, m, k))), dtype=self.dtype, device=self.device)
+            B = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, k, n))), dtype=self.dtype, device=self.device)
+            C = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(batch_count, m, n))), dtype=self.dtype, device=self.device)
+            D = wp.array2d(np.zeros((batch_count, m, n)), dtype=self.dtype, device=self.device)
+            adj_A = wp.array2d(np.zeros((batch_count, m, k)), dtype=self.dtype, device=self.device)
+            adj_B = wp.array2d(np.zeros((batch_count, k, n)), dtype=self.dtype, device=self.device)
+            adj_C = wp.array2d(np.zeros((batch_count, m, n)), dtype=self.dtype, device=self.device)
+            adj_D = wp.array2d(np.ones((batch_count, m, n)), dtype=self.dtype, device=self.device)
         return A, B, C, D, adj_A, adj_B, adj_C, adj_D
 
     def run_and_verify(self, m, n, k, batch_count, alpha, beta):
         A, B, C, D, adj_A, adj_B, adj_C, adj_D = self.alloc(m, n, k, batch_count)
         if batch_count == 1:
-            wp.matmul(A, B, C, D, alpha, beta)
+            wp.matmul(A, B, C, D, alpha, beta, False, self.device)
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C.numpy()
             assert np.array_equal(D_np, D.numpy())
 
-            wp.adj_matmul(A, B, C, adj_D, alpha, beta, adj_A, adj_B, adj_C)
+            wp.adj_matmul(A, B, C, adj_D, alpha, beta, adj_A, adj_B, adj_C, False, self.device)
             adj_A_np = alpha * np.matmul(adj_D.numpy(),B.numpy().transpose())
             adj_B_np = alpha * (A.numpy().transpose() @ adj_D.numpy())
             adj_C_np = beta * adj_D.numpy()
@@ -52,11 +53,11 @@ class GemmTestbedRunner:
             assert np.array_equal(adj_B_np, adj_B.numpy())
             assert np.array_equal(adj_C_np, adj_C.numpy())
         else:
-            wp.batched_matmul(A, B, C, D, alpha, beta)
+            wp.batched_matmul(A, B, C, D, alpha, beta, False, self.device)
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
             assert np.array_equal(D_np, D.numpy())
 
-            wp.adj_batched_matmul(A, B, C, adj_D, alpha, beta, adj_A, adj_B, adj_C)
+            wp.adj_batched_matmul(A, B, C, adj_D, alpha, beta, adj_A, adj_B, adj_C, False, self.device)
             adj_A_np = alpha * np.matmul(adj_D.numpy(), B.numpy().transpose((0, 2, 1)))
             adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), adj_D.numpy())
             adj_C_np = beta * adj_D.numpy()
@@ -82,21 +83,23 @@ class GemmTestbedRunner:
 
 # NOTE: F16 tests are slow due to the performance of the reference numpy F16 matmuls performed on CPU.
 def test_f16(test, device):
-    GemmTestbedRunner(wp.float16).run()
+    GemmTestbedRunner(wp.float16, device).run()
 
 
 def test_f32(test, device):
-    GemmTestbedRunner(wp.float32).run()
+    GemmTestbedRunner(wp.float32, device).run()
 
 
 def test_f64(test, device):
-    GemmTestbedRunner(wp.float64).run()
+    GemmTestbedRunner(wp.float64, device).run()
 
 
 def register(parent):
     
-    # Implementation currently only available on GPU
-    devices = [d for d in get_test_devices() if 'cuda' in d.alias]
+    # we test two cases
+    # A: arrays are stored on host, multiplied on device
+    # B: arrays are stored on device, multipled on device
+    devices = [d for d in get_test_devices()]
 
     class TestMatmul(parent):
         pass
