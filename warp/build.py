@@ -90,9 +90,9 @@ def find_host_compiler():
             cl_path = run_cmd("where cl.exe").decode("utf-8").rstrip()
             cl_version = os.environ["VCToolsVersion"].split(".")
 
-            # ensure at least VS2017 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
+            # ensure at least VS2019 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
             cl_required_major = 14
-            cl_required_minor = 1
+            cl_required_minor = 29
 
             if ((int(cl_version[0]) < cl_required_major) or
                 (int(cl_version[0]) == cl_required_major) and int(cl_version[1]) < cl_required_minor):

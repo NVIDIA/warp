@@ -10,4 +10,4 @@ REM Python dependencies
 call %PYTHON% -m pip install numpy
 
 REM Build
-call %PYTHON% build_lib.py --msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.16.27023" --sdk_path="_build/host-deps/winsdk" --cuda_path="_build/target-deps/cuda"
+call %PYTHON% build_lib.py --msvc_path="_build/host-deps/msvc/VC/Tools/MSVC/14.29.30133" --sdk_path="_build/host-deps/winsdk" --cuda_path="_build/target-deps/cuda"
