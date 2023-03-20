@@ -52,8 +52,8 @@ def compute_contact_points(
     contact_pos1[tid] = wp.transform_point(X_wb_b, contact_point1[tid])
 
 
-def AbstractSimRenderer(renderer):
-    class SimRenderer_t(renderer):
+def CreateSimRenderer(renderer):
+    class SimRenderer(renderer):
 
         use_unique_colors = True
         
@@ -296,9 +296,9 @@ def AbstractSimRenderer(renderer):
                         radius=self.contact_points_radius*self.scaling,
                         colors=self.contact_points1_colors)
 
-    return SimRenderer_t
+    return SimRenderer
 
 
-SimRendererUsd = AbstractSimRenderer(wp.render.UsdRenderer)
-SimRendererTiny = AbstractSimRenderer(wp.render.TinyRenderer)
+SimRendererUsd = CreateSimRenderer(wp.render.UsdRenderer)
+SimRendererTiny = CreateSimRenderer(wp.render.TinyRenderer)
 SimRenderer = SimRendererUsd
