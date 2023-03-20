@@ -176,7 +176,7 @@ def test_nested_struct(test, device):
     foo = Foo()
     foo.bar = Bar()
     foo.bar.baz = Baz()
-    foo.bar.baz.data = wp.zeros(dim, dtype=int)
+    foo.bar.baz.data = wp.zeros(dim, dtype=int, device=device)
     foo.bar.baz.z = wp.vec3(1, 2, 3)
     foo.bar.y = 1.23
     foo.x = 123
