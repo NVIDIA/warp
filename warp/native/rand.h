@@ -29,7 +29,7 @@ inline CUDA_CALLABLE uint32 rand_init(int seed, int offset) { return rand_pcg(ui
 inline CUDA_CALLABLE int randi(uint32& state) { state = rand_pcg(state); return int(state); }
 inline CUDA_CALLABLE int randi(uint32& state, int min, int max) { state = rand_pcg(state); return state % (max - min) + min; }
 
-inline CUDA_CALLABLE float randf(uint32& state) { state = rand_pcg(state); return float(state) / 0xffffffff; }
+inline CUDA_CALLABLE float randf(uint32& state) { state = rand_pcg(state); return float(state) / float(0xffffffff); }
 inline CUDA_CALLABLE float randf(uint32& state, float min, float max) { return (max - min) * randf(state) + min; }
 
 // Box-Muller method
