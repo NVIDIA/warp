@@ -22,7 +22,7 @@ import warp.sim
 from environment import Environment, run_env
 
 class CartpoleEnvironment(Environment):
-    sim_name = "example_sim_cartpole"
+    sim_name = "env_cartpole"
     env_offset=(2.0, 0.0, 2.0)
     tiny_render_settings = dict(scaling=3.0)
     usd_render_settings = dict(scaling=100.0)

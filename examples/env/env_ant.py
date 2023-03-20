@@ -23,7 +23,7 @@ import warp.sim
 from environment import Environment, run_env, IntegratorType
 
 class AntEnvironment(Environment):
-    sim_name = "example_sim_ant"
+    sim_name = "env_ant"
     env_offset=(2.5, 0.0, 2.5)
     tiny_render_settings = dict(scaling=3.0)
     usd_render_settings = dict(scaling=100.0)

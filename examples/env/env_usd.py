@@ -19,7 +19,7 @@ from environment import Environment, run_env
 
 
 class UsdEnvironment(Environment):
-    sim_name = "example_sim_usd"
+    sim_name = "env_usd"
     tiny_render_settings = dict(scaling=10.0, draw_grid=True)
     usd_render_settings = dict(scaling=100.0)
 
