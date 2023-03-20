@@ -145,6 +145,14 @@ def test_empty(input: Empty):
     tid = wp.tid()
 
 @wp.struct
+class Uninitialized:
+    data: wp.array(dtype=int)
+
+@wp.kernel
+def test_uninitialized(input: Uninitialized):
+    tid = wp.tid()
+
+@wp.struct
 class Baz:
     data: wp.array(dtype=int)
     z: wp.vec3
@@ -198,6 +206,7 @@ def register(parent):
     add_function_test(TestStruct, "test_step", test_step, devices=devices)
     add_function_test(TestStruct, "test_step_grad", test_step_grad, devices=devices)
     add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
+    add_kernel_test(TestStruct, kernel=test_uninitialized, name="test_uninitialized", dim=1, inputs=[Uninitialized()], devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
 
     return TestStruct

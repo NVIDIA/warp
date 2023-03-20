@@ -80,7 +80,7 @@ def _get_struct_instance_ctype(
         inst_ctype = getattr(parent_ctype, parent_field)
 
     for field_name, _ in inst_ctype._fields_:
-        value = getattr(inst, field_name)
+        value = getattr(inst, field_name, None)
 
         var_type = inst._struct_.vars[field_name].type
         if isinstance(var_type, array):
