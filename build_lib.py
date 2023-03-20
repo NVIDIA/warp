@@ -78,17 +78,22 @@ if args.build_llvm:
     import subprocess
     from git import Repo
 
-    llvm_project_path = os.path.join(base_path, "external/llvm-project")
+    llvm_project_dir = "external/llvm-project"
+    llvm_project_path = os.path.join(base_path, llvm_project_dir)
+    repo_url = "https://github.com/llvm/llvm-project.git"
+
     if not os.path.exists(llvm_project_path):
+        print(f"Cloning LLVM project...")
         shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
         if shallow_clone:
-            repo = Repo.clone_from("https://github.com/llvm/llvm-project.git", to_path=llvm_project_path, single_branch=True, branch="llvmorg-15.0.7", depth=1)
+            repo = Repo.clone_from(repo_url, to_path=llvm_project_path, single_branch=True, branch="llvmorg-15.0.7", depth=1)
         else:
-            repo = Repo.clone_from("https://github.com/llvm/llvm-project.git", llvm_project_path)
+            repo = Repo.clone_from(repo_url, to_path=llvm_project_path)
             repo.git.checkout("tags/llvmorg-15.0.7", "-b", "llvm-15.0.7")
     else:
+        print(f"Found existing {llvm_project_dir} directory")
         repo = Repo(llvm_project_path)
-    
+
     # CMake supports Debug, Release, RelWithDebInfo, and MinSizeRel builds
     if warp.config.mode == "release":
         cmake_build_type = "MinSizeRel"  # prefer smaller size over aggressive speed
@@ -109,7 +114,7 @@ if args.build_llvm:
                           "-D", "LLVM_USE_CRT_DEBUG=MTd",
                           "-D", "LLVM_USE_CRT_RELWITHDEBINFO=MTd",
                           "-D", "LLVM_TARGETS_TO_BUILD=X86",
-                          "-D", "LLVM_ENABLE_PROJECTS=clang;lld",
+                          "-D", "LLVM_ENABLE_PROJECTS=clang",
                           "-D", "LLVM_ENABLE_ZLIB=FALSE",
                           "-D", "LLVM_ENABLE_ZSTD=FALSE",
                           "-D", "LLVM_BUILD_LLVM_C_DYLIB=FALSE",
@@ -150,7 +155,11 @@ try:
     # build clang.dll
     if args.build_llvm:
 
-        clang_cpp_paths = [os.path.join(build_path, "clang/clang.cpp")]
+        cpp_sources = [
+            "clang/clang.cpp",
+            "native/crt.cpp",
+        ]
+        clang_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 
         clang_dll_path = os.path.join(build_path, f"bin/clang.{dll_ext()}")
 

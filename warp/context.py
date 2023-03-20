@@ -511,8 +511,13 @@ class Kernel:
         name = self.get_mangled_name()
         
         if device.is_cpu:
-            forward = eval("self.module.dll." + name + "_cpu_forward")
-            backward = eval("self.module.dll." + name + "_cpu_backward")
+            if self.module.cpu_module:
+                func = ctypes.CFUNCTYPE(None)
+                forward = func(runtime.llvm.lookup(self.module.cpu_module.encode('utf-8'), (name + "_cpu_forward").encode('utf-8')))
+                backward = func(runtime.llvm.lookup(self.module.cpu_module.encode('utf-8'), (name + "_cpu_backward").encode('utf-8')))
+            else:
+                forward = eval("self.module.dll." + name + "_cpu_forward")
+                backward = eval("self.module.dll." + name + "_cpu_backward")
         else:
             cu_module = self.module.cuda_modules[device.context]
             forward = runtime.core.cuda_get_kernel(device.context, cu_module, (name + "_cuda_kernel_forward").encode('utf-8'))
@@ -902,8 +907,7 @@ class ModuleBuilder:
 
     def codegen_cpu(self):
 
-        # ensure we have at least one exported function
-        cpp_source = 'extern "C" int _wp_main() { return 0xC0DE; }'
+        cpp_source = ""
 
         # code-gen structs
         for struct in self.structs.keys():
@@ -973,6 +977,7 @@ class Module:
         self.structs = []
 
         self.dll = None
+        self.cpu_module = None
         self.cuda_modules = {} # module lookup by CUDA context
 
         self.cpu_build_failed = False
@@ -1160,7 +1165,9 @@ class Module:
 
         if device.is_cpu:
             # check if already loaded
-            if self.dll is not None:
+            if self.dll:
+                return True
+            if self.cpu_module:
                 return True
             # avoid repeated build attempts
             if self.cpu_build_failed:
@@ -1232,14 +1239,20 @@ class Module:
                     else:
                         libs = ["-l:warp.so", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
 
-                    # build DLL
+                    # build DLL or object code
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
                         warp.build.build_dll(dll_path, [cpp_path], None, libs, mode=self.options["mode"], fast_math=self.options["fast_math"], verify_fp=warp.config.verify_fp)
 
-                    # load the DLL
-                    self.dll = warp.build.load_dll(dll_path)
-                    if self.dll is None:
-                        raise Exception("Failed to load CPU module")
+                    if runtime.llvm:
+                        # load the object code
+                        obj_path = cpp_path + ".obj"
+                        runtime.llvm.load_obj(obj_path.encode('utf-8'), module_name.encode('utf-8'))
+                        self.cpu_module = module_name
+                    else:
+                    	# load the DLL
+                        self.dll = warp.build.load_dll(dll_path)
+                        if self.dll is None:
+                            raise Exception("Failed to load CPU module")
 
                     # update cpu hash
                     with open(cpu_hash_path, 'wb') as f:
@@ -1320,9 +1333,13 @@ class Module:
 
     def unload(self):
 
-        if self.dll is not None:
+        if self.dll:
             warp.build.unload_dll(self.dll)
             self.dll = None
+
+        if self.cpu_module:
+            runtime.llvm.unload_obj(self.cpu_module.encode('utf-8'))
+            self.cpu_module = None
 
         # need to unload the CUDA module from all CUDA contexts where it is loaded
         # note: we ensure that this doesn't change the current CUDA context
@@ -1655,18 +1672,27 @@ class Runtime:
                 os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
 
 
-            warp_lib = "warp.dll"
-            self.core = warp.build.load_dll(os.path.join(bin_path, warp_lib))
+            warp_lib = os.path.join(bin_path, "warp.dll")
+            llvm_lib = os.path.join(bin_path, "clang.dll")
 
         elif sys.platform == "darwin":
 
             warp_lib = os.path.join(bin_path, "warp.dylib")
-            self.core = warp.build.load_dll(warp_lib)
+            llvm_lib = None
 
         else:
 
             warp_lib = os.path.join(bin_path, "warp.so")
-            self.core = warp.build.load_dll(warp_lib)
+            llvm_lib = None
+
+        self.core = warp.build.load_dll(warp_lib)
+
+        if llvm_lib and os.path.exists(llvm_lib):
+            self.llvm = warp.build.load_dll(llvm_lib)
+            # setup c-types for clang.dll
+            self.llvm.lookup.restype = ctypes.c_uint64
+        else:
+            self.llvm = None
 
         # setup c-types for warp.dll
         self.core.alloc_host.argtypes = [ctypes.c_size_t]
