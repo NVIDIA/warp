@@ -62,7 +62,6 @@ def test_overload_func():
     noreturn(wp.vec3(1.0, 0.0, 0.0))
 
 
-
 def test_func_export(test, device):
     # tests calling native functions from Python
     
@@ -104,6 +103,31 @@ def test_func_export(test, device):
     test.assertAlmostEqual(f, 1.0, places=3)
 
 
+def test_func_closure_capture(test, device):
+
+    def make_closure_kernel(func):
+        
+        def closure_kernel_fn(
+            data: wp.array(dtype=float),
+            expected: float
+        ):
+            f = func(data[wp.tid()])
+            wp.expect_eq(f, expected)
+
+        key = f"test_func_closure_capture_{func.key}"
+        return wp.Kernel(func=closure_kernel_fn, key=key, module=wp.get_module(closure_kernel_fn.__module__))
+
+
+    sqr_closure = make_closure_kernel(sqr)
+    cube_closure = make_closure_kernel(cube)
+
+    data = wp.array([2.0], dtype=float, device=device)
+    expected_sqr = 4.0
+    expected_cube = 8.0
+
+    wp.launch(sqr_closure, dim=data.shape, inputs=[data, expected_sqr], device=device)
+    wp.launch(cube_closure, dim=data.shape, inputs=[data, expected_cube], device=device)
+
 
 def register(parent):
 
@@ -114,6 +138,7 @@ def register(parent):
 
     add_kernel_test(TestFunc, kernel=test_overload_func, name="test_overload_func", dim=1, devices=devices)
     add_function_test(TestFunc, func=test_func_export, name="test_func_export", devices=["cpu"])
+    add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
 
     return TestFunc
 

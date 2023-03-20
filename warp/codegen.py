@@ -938,6 +938,16 @@ class Adjoint:
                 raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
             
         else:
+            # Lookup constant in captured contents
+            capturedvars = dict(zip(adj.func.__code__.co_freevars,[ c.cell_contents for c in (adj.func.__closure__ or []) ]))
+            obj = capturedvars.get(str(node.id), None)
+                        
+            if warp.types.is_value(obj): 
+                # evaluate constant
+                out = adj.add_constant(obj)
+                adj.symbols[node.id] = out
+                return out
+
             raise KeyError("Referencing undefined symbol: " + str(node.id))
 
     def emit_Attribute(adj, node):
@@ -1548,8 +1558,9 @@ class Adjoint:
             # Look up the closure info and append it to adj.func.__globals__
             # in case you want to define a kernel inside a function and refer
             # to varibles you've declared inside that function:
-            
-            capturedvars = dict(zip(adj.func.__code__.co_freevars,[ c.cell_contents() for c in (adj.func.__closure__ or []) ]))
+            extract_contents = lambda contents : contents if isinstance(contents, warp.context.Function) or not callable(contents) else contents()
+            capturedvars = dict(zip(adj.func.__code__.co_freevars,[ extract_contents(c.cell_contents) for c in (adj.func.__closure__ or []) ]))
+
             vars_dict = {**adj.func.__globals__, **capturedvars}
             func = eval(".".join(path), vars_dict)
             return func, path
