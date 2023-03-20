@@ -111,8 +111,8 @@ class Tape:
             return a.grad
 
         elif isinstance(a, wp.codegen.StructInstance):
-            adj = wp.codegen.StructInstance(a._struct_)
-            for name in a.__dict__:
+            adj = a._struct_()
+            for name, _ in a._struct_.ctype._fields_:
                 if name.startswith("_"):
                     continue
                 if isinstance(a._struct_.vars[name].type, wp.array):
@@ -123,7 +123,7 @@ class Tape:
                         grad = None
                     setattr(adj, name, grad)
                 else:
-                    setattr(adj, name, a.__dict__[name])
+                    setattr(adj, name, getattr(a, name))
 
             self.gradients[a] = adj
             return adj

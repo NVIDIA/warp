@@ -2498,7 +2498,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
 
                 elif (isinstance(arg_type, warp.codegen.Struct)):
                     assert a is not None
-                    params.append(a._c_struct_)
+                    params.append(a.__ctype__())
 
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):

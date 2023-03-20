@@ -28,6 +28,8 @@ from typing import Dict
 from typing import Any
 from typing import Callable
 from typing import Mapping
+from typing import NamedTuple
+from typing import Union
 
 from warp.types import *
 import warp.config
@@ -64,38 +66,81 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
 
     return getattr(obj, "__annotations__", {})
 
+def _get_struct_instance_ctype(
+    inst: StructInstance,
+    parent_ctype: Union[StructInstance, None],
+    parent_field: Union[str, None],
+) -> ctypes.Structure:
+    if inst._struct_.ctype._fields_ == [("_dummy_", ctypes.c_int)]:
+        return inst._struct_.ctype()
+
+    if parent_ctype is None:
+        inst_ctype = inst._struct_.ctype()
+    else:
+        inst_ctype = getattr(parent_ctype, parent_field)
+
+    for field_name, _ in inst_ctype._fields_:
+        value = getattr(inst, field_name)
+
+        var_type = inst._struct_.vars[field_name].type
+        if isinstance(var_type, array):
+            if value is None:
+                # create array with null pointer
+                setattr(inst_ctype, field_name, array_t())
+            else:
+                # wp.array
+                assert isinstance(value, array)
+                assert value.dtype == var_type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(field_name, var_type.dtype, value.dtype)
+                setattr(inst_ctype, field_name, value.__ctype__())
+        elif isinstance(var_type, Struct):
+            _get_struct_instance_ctype(value, inst_ctype, field_name)
+        elif issubclass(var_type, ctypes.Array):
+            # array type e.g. vec3
+            setattr(inst_ctype, field_name, var_type(*value))
+        else:
+            # primitive type
+            setattr(inst_ctype, field_name, var_type._type_(value))
+
+    return inst_ctype
+
+def _fmt_struct_instance_repr(inst: StructInstance, depth: int) -> str:
+    indent = "\t"
+
+    if inst._struct_.ctype._fields_ == [("_dummy_", ctypes.c_int)]:
+        return f"{inst._struct_.key}()"
+
+    lines = []
+    lines.append(f"{inst._struct_.key}(")
+
+    for field_name, _ in inst._struct_.ctype._fields_:
+        if field_name == "_dummy_":
+            continue
+
+        field_value = getattr(inst, field_name)
+
+        if isinstance(field_value, StructInstance):
+            field_value = _fmt_struct_instance_repr(field_value, depth + 1)
+
+        lines.append(
+            f"{indent * (depth + 1)}{field_name}={field_value},"
+        )
+
+    lines.append(f"{indent * depth})")
+    return "\n".join(lines)
 
 class StructInstance:
     def __init__(self, struct: Struct):
         self.__dict__['_struct_'] = struct
-        self.__dict__['_c_struct_'] = struct.ctype()
 
     def __setattr__(self, name, value):
         assert name in self._struct_.vars, "invalid struct member variable {}".format(name)
-        if isinstance(self._struct_.vars[name].type, array):
-            if value is None:
-                # create array with null pointer
-                setattr(self._c_struct_, name, array_t())
-            else:                    
-                # wp.array
-                assert isinstance(value, array)
-                assert value.dtype == self._struct_.vars[name].type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(name, self._struct_.vars[name].type.dtype, value.dtype)
-                setattr(self._c_struct_, name, value.__ctype__())
-        elif issubclass(self._struct_.vars[name].type, ctypes.Array):
-            # array type e.g. vec3
-            setattr(self._c_struct_, name, self._struct_.vars[name].type(*value))
-        else:
-            # primitive type
-            setattr(self._c_struct_, name, self._struct_.vars[name].type._type_(value))
+        super().__setattr__(name, value)
 
-        self.__dict__[name] = value
+    def __ctype__(self):
+        return _get_struct_instance_ctype(self, None, None)
 
     def __repr__(self):
-        lines = []
-        for k, v in self.__dict__.items():
-            if not k.startswith('_'):
-                lines.append(' ' * 4 + f"{k}: {v.__repr__()}")
-        return "StructInstance(\n" + "\n".join(lines) + "\n)\n"
+        return _fmt_struct_instance_repr(self, 0)
 
 
 class Struct:
@@ -114,6 +159,8 @@ class Struct:
         for label, var in self.vars.items():
             if isinstance(var.type, array):
                 fields.append((label, array_t))
+            elif isinstance(var.type, Struct):
+                fields.append((label, var.type.ctype))
             elif issubclass(var.type, ctypes.Array):
                 fields.append((label, var.type))
             else:
@@ -306,8 +353,22 @@ class Adjoint:
                 raise e
 
         for a in adj.args:
+            structs = []
             if isinstance(a.type, Struct):
-                builder.build_struct(a.type)
+                stack = [a.type]
+                while stack:
+                    s = stack.pop()
+
+                    if not s in structs:
+                        structs.append(s)
+
+                    for var in s.vars.values():
+                        if isinstance(var.type, Struct):
+                            stack.append(var.type)
+
+            # Build them in reverse to generate a correct dependency order.
+            for s in reversed(structs):
+                builder.build_struct(s)
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -1750,8 +1811,6 @@ def codegen_struct(struct, indent=4):
     body = []
     indent_block = " " * indent
     for label, var in struct.vars.items():
-        assert not (isinstance(var.type, Struct))
-
         body.append(var.ctype() + " " + label + ";\n")
 
     return struct_template.format(
