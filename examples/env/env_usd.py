@@ -6,23 +6,19 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 ###########################################################################
-# Example Sim USD
+# USD Environment
 #
-# Shows how to load a USD file following the USD Physics schema.
+# Shows how to load a USD file containing USD Physics schema definitions.
 #
 ###########################################################################
-
-import os
-
-import warp as wp
 
 import warp as wp
 import warp.sim
 
-from env.environment import Environment, run_env, IntegratorType, RenderMode
+from environment import Environment, run_env
 
 
-class Demo(Environment):
+class UsdEnvironment(Environment):
     sim_name = "example_sim_usd"
     tiny_render_settings = dict(scaling=10.0, draw_grid=True)
     usd_render_settings = dict(scaling=100.0)
@@ -44,9 +40,6 @@ class Demo(Environment):
     # USD files define their own ground plane if necessary
     activate_ground_plane = False
     num_envs = 1
-
-    # render_mode = RenderMode.USD
-    # integrator_type = IntegratorType.EULER
 
     plot_body_coords = False
 
@@ -98,4 +91,4 @@ class Demo(Environment):
             print("body_q", self.state.body_q.numpy())
 
 if __name__ == "__main__":
-    run_env(Demo)
+    run_env(UsdEnvironment)
