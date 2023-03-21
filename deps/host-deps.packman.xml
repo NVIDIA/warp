@@ -13,5 +13,6 @@
   </dependency>
   <dependency name="llvm-project" linkPath="../_build/host-deps/llvm-project">
     <package name="clang+llvm-warp" version="15.0.7-windows-x86_64-vs142" platforms="windows-x86_64" />
+    <package name="clang+llvm-warp" version="15.0.7-linux-x86_64-gcc7.5-cxx11abi0" platforms="linux-x86_64" />
   </dependency>
 </project>

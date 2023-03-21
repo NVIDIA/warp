@@ -1215,7 +1215,8 @@ class Module:
 
                     if runtime.llvm:
                         # load the object code
-                        obj_path = cpp_path + ".obj"
+                        obj_ext = ".obj" if os.name == "nt" else ".o"
+                        obj_path = cpp_path + obj_ext
                         runtime.llvm.load_obj(obj_path.encode('utf-8'), module_name.encode('utf-8'))
                         self.cpu_module = module_name
                     else:
@@ -1685,7 +1686,7 @@ class Runtime:
         else:
 
             warp_lib = os.path.join(bin_path, "warp.so")
-            llvm_lib = None
+            llvm_lib = os.path.join(bin_path, "clang.so")
 
         self.core = warp.build.load_dll(warp_lib)
 
