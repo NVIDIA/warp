@@ -329,9 +329,6 @@ def quaternion(dtype=Any):
 
     return ret
 
-class quat(quaternion(dtype=float32)):
-    pass
-
 class quath(quaternion(dtype=float16)):
     pass
 
@@ -365,9 +362,6 @@ def transformation(dtype=Any):
 
     return transform_t
 
-class transform(transformation(dtype=float32)):
-    pass
-
 class transformh(transformation(dtype=float16)):
     pass
 
@@ -384,15 +378,6 @@ class vec3h(vector(length=3, dtype=float16)):
     pass
 
 class vec4h(vector(length=4, dtype=float16)):
-    pass
-
-class vec2(vector(length=2, dtype=float32)):
-    pass
-
-class vec3(vector(length=3, dtype=float32)):
-    pass
-
-class vec4(vector(length=4, dtype=float32)):
     pass
 
 class vec2f(vector(length=2, dtype=float32)):
@@ -431,15 +416,6 @@ class mat33h(matrix(shape=(3,3), dtype=float16)):
 class mat44h(matrix(shape=(4,4), dtype=float16)):
     pass
     
-class mat22(matrix(shape=(2,2), dtype=float32)):
-    pass
-    
-class mat33(matrix(shape=(3,3), dtype=float32)):
-    pass
-
-class mat44(matrix(shape=(4,4), dtype=float32)):
-    pass
-    
 class mat22f(matrix(shape=(2,2), dtype=float32)):
     pass
     
@@ -458,13 +434,6 @@ class mat33d(matrix(shape=(3,3), dtype=float64)):
 class mat44d(matrix(shape=(4,4), dtype=float64)):
     pass
 
-
-# def spatial_vector(dtype=Any):
-#     return vector(length=6, dtype=dtype)
-
-class spatial_vector(vector(length=6, dtype=float32)):
-    pass
-
 class spatial_vectorh(vector(length=6, dtype=float16)):
     pass
 
@@ -474,13 +443,7 @@ class spatial_vectorf(vector(length=6, dtype=float32)):
 class spatial_vectord(vector(length=6, dtype=float64)):
     pass
 
-# def spatial_matrix(dtype=Any):
-#     return matrix(shape=(6,6), dtype=dtype)
-
 class spatial_matrixh(matrix(shape=(6,6), dtype=float16)):
-    pass
-
-class spatial_matrix(matrix(shape=(6,6), dtype=float32)):
     pass
 
 class spatial_matrixf(matrix(shape=(6,6), dtype=float32)):
@@ -490,21 +453,34 @@ class spatial_matrixd(matrix(shape=(6,6), dtype=float64)):
     pass
 
 
+# built-in type aliases that default to 32bit precision
+vec2 = vec2f
+vec3 = vec3f
+vec4 = vec4f 
+mat22 = mat22f
+mat33 = mat33f
+mat44 = mat44f
+quat = quatf
+transform = transformf
+spatial_vector = spatial_vectorf
+spatial_matrix = spatial_matrixf
+
+
 int_types = [int8, uint8, int16, uint16, int32, uint32, int64, uint64]
 float_types = [float16, float32, float64]
 scalar_types = int_types + float_types
 
 vector_types = [
-    vec2ub, vec2h, vec2f, vec2d, vec2,
-    vec3ub, vec3h, vec3f, vec3d, vec3,
-    vec4ub, vec4h, vec4f, vec4d, vec4,
-    mat22h, mat22f, mat22d, mat22,
-    mat33h, mat33f, mat33d, mat33,
-    mat44h, mat44f, mat44d, mat44,
-    quath, quatf, quatd, quat,
-    transformh, transformf, transformd, transform,
-    spatial_vectorh, spatial_vectorf, spatial_vectord, spatial_vector,
-    spatial_matrixh, spatial_matrixf, spatial_matrixd, spatial_matrix
+    vec2ub, vec2h, vec2f, vec2d,
+    vec3ub, vec3h, vec3f, vec3d,
+    vec4ub, vec4h, vec4f, vec4d,
+    mat22h, mat22f, mat22d,
+    mat33h, mat33f, mat33d,
+    mat44h, mat44f, mat44d,
+    quath, quatf, quatd,
+    transformh, transformf, transformd,
+    spatial_vectorh, spatial_vectorf, spatial_vectord,
+    spatial_matrixh, spatial_matrixf, spatial_matrixd,
 ]
 
 

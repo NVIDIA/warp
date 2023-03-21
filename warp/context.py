@@ -667,7 +667,7 @@ def add_builtin(key, input_types={}, value_type=None, value_func=None, template_
 
     def is_generic(t):
         ret = False
-        if t in [warp.types.Scalar,warp.types.Float]:
+        if t in [warp.types.Scalar, warp.types.Float]:
             ret = True
         if hasattr(t,"_wp_type_params_"):
             ret = warp.types.Scalar in t._wp_type_params_ or warp.types.Float in t._wp_type_params_ or warp.types.Any in t._wp_type_params_
