@@ -567,6 +567,8 @@ class ScopedDevice:
         # make it the current CUDA device so that device alias "cuda" will evaluate to this device
         self.device.context_guard.__enter__()
 
+        return self.device
+
     def __exit__(self, exc_type, exc_value, traceback):
 
         # restore original CUDA context
@@ -591,6 +593,8 @@ class ScopedStream:
             self.device_scope.__enter__()
             self.saved_stream = self.device.stream
             self.device.stream = self.stream
+        
+        return self.stream
 
     def __exit__(self, exc_type, exc_value, traceback):
 

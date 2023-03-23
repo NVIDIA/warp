@@ -25,6 +25,8 @@ class Tape:
 
         wp.context.runtime.tape = self
 
+        return self
+
     def __exit__(self, exc_type, exc_value, traceback):
         if (wp.context.runtime.tape == None):
             raise RuntimeError("Warp: Error, ended tape capture, but tape not present")            
