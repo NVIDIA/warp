@@ -58,6 +58,8 @@ MAX_DIMENSIONS = 4
 _ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 _ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
 
+EXPLICIT_SOURCE = "explicit"
+
 #   User Attribute Events
 # ------------------------------------------------------------------------------
 

@@ -21,12 +21,17 @@ from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
 from omni.warp.scripts.attributes import (
     SUPPORTED_SDF_DATA_TYPE_NAMES,
+    get_attr_base_name,
     get_attr_name,
 )
-from omni.warp.scripts.nodes.kernel import MAX_DIMENSIONS
+from omni.warp.scripts.nodes.kernel import (
+    EXPLICIT_SOURCE,
+    MAX_DIMENSIONS,
+)
 from omni.warp.scripts.props.codefile import get_code_file_prop_builder
 from omni.warp.scripts.props.codestr import get_code_str_prop_builder
 from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
+from omni.warp.scripts.props.sourcepicker import get_source_picker_prop_builder
 
 def find_prop(
     props: Sequence[UsdPropertyUiEntry],
@@ -47,6 +52,10 @@ class CustomLayout:
         self.node_prim_path = self.compute_node_widget._payload[-1]
         self.node = og.Controller.node(self.node_prim_path)
 
+        self.dim_source_attr = og.Controller.attribute(
+            "inputs:dimSource",
+            self.node,
+        )
         self.dim_count_attr = og.Controller.attribute(
             "inputs:dimCount",
             self.node,
@@ -69,6 +78,9 @@ class CustomLayout:
         )
         self.node.register_on_disconnected_callback(
             self._handle_node_attr_disconnected
+        )
+        self.dim_source_attr.register_value_changed_callback(
+            self._handle_dim_source_value_changed
         )
         self.dim_count_attr.register_value_changed_callback(
             self._handle_dim_count_value_changed
@@ -97,6 +109,12 @@ class CustomLayout:
             # Redraw the UI to update the view/edit code button label.
             self.refresh()
 
+    def _handle_dim_source_value_changed(self, attr: og.Attribute) -> None:
+        """Callback for the dimension source attribute value having changed."""
+        # Redraw the UI to display a different set of attributes depending on
+        # the dimension source value.
+        self.refresh()
+
     def _handle_dim_count_value_changed(self, attr: og.Attribute) -> None:
         """Callback for the dimension count attribute value having changed."""
         # Redraw the UI to display a different set of attributes depending on
@@ -115,6 +133,20 @@ class CustomLayout:
 
     def apply(self, props) -> Sequence[UsdPropertyUiEntry]:
         """Builds the UI."""
+        input_array_attrs = tuple(
+            x
+            for x in self.node.get_attributes()
+            if (
+                x.is_dynamic()
+                and x.get_port_type() == og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
+                and x.get_resolved_type().array_depth > 0
+            )
+        )
+        dim_sources = (
+            (EXPLICIT_SOURCE,)
+            + tuple(get_attr_base_name(x) for x in input_array_attrs)
+        )
+
         frame = CustomLayoutFrame(hide_extra=True)
 
         with frame:
@@ -136,27 +168,43 @@ class CustomLayout:
                         display_name=prop.metadata["customData"]["uiName"],
                     )
 
-                prop = find_prop(props, "inputs:dimCount")
+                prop = find_prop(props, "inputs:dimSource")
                 if prop is not None:
                     CustomLayoutProperty(
                         prop.prop_name,
                         display_name=prop.metadata["customData"]["uiName"],
+                        build_fn=partial(
+                            get_source_picker_prop_builder(
+                                self,
+                                dim_sources,
+                            ),
+                            prop,
+                        ),
                     )
 
-                dim_count = min(
-                    max(
-                        og.Controller.get(self.dim_count_attr),
-                        0,
-                    ),
-                    MAX_DIMENSIONS,
-                )
-                for i in range(dim_count):
-                    prop = find_prop(props, "inputs:dim{}".format(i + 1))
+                dim_source = og.Controller.get(self.dim_source_attr)
+                if dim_source == EXPLICIT_SOURCE:
+                    prop = find_prop(props, "inputs:dimCount")
                     if prop is not None:
                         CustomLayoutProperty(
                             prop.prop_name,
                             display_name=prop.metadata["customData"]["uiName"],
                         )
+
+                    dim_count = min(
+                        max(
+                            og.Controller.get(self.dim_count_attr),
+                            0,
+                        ),
+                        MAX_DIMENSIONS,
+                    )
+                    for i in range(dim_count):
+                        prop = find_prop(props, "inputs:dim{}".format(i + 1))
+                        if prop is not None:
+                            CustomLayoutProperty(
+                                prop.prop_name,
+                                display_name=prop.metadata["customData"]["uiName"],
+                            )
 
                 prop = find_prop(props, "inputs:codeProvider")
                 if prop is not None:

@@ -8,6 +8,7 @@
 """Warp kernel exposed as an OmniGraph node."""
 
 import traceback
+from typing import Tuple
 
 import warp as wp
 
@@ -15,7 +16,9 @@ import omni.graph.core as og
 import omni.timeline
 
 from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
+from omni.warp.scripts.attributes import join_attr_name
 from omni.warp.scripts.nodes.kernel import (
+    EXPLICIT_SOURCE,
     MAX_DIMENSIONS,
     InternalStateBase,
     UserAttributesEvent,
@@ -104,6 +107,34 @@ class InternalState(InternalStateBase):
 #   Compute
 # ------------------------------------------------------------------------------
 
+def infer_kernel_shape(
+    db: OgnKernelDatabase,
+) -> Tuple[int, ...]:
+    """Infers the shape of the kernel."""
+    source = db.inputs.dimSource
+    if source == EXPLICIT_SOURCE:
+        dim_count = min(max(db.inputs.dimCount, 0), MAX_DIMENSIONS)
+        return tuple(
+            max(getattr(db.inputs, "dim{}".format(i + 1)), 0)
+            for i in range(dim_count)
+        )
+
+    try:
+        value = getattr(db.inputs, source)
+    except AttributeError:
+        raise RuntimeError(
+            "The attribute '{}' used to source the dimension doesn't exist."
+            .format(join_attr_name(ATTR_PORT_TYPE_INPUT, source))
+        )
+
+    try:
+        return (value.shape[0],)
+    except AttributeError:
+        raise RuntimeError(
+            "The attribute '{}' used to source the dimension isn't an array."
+            .format(join_attr_name(ATTR_PORT_TYPE_INPUT, source))
+        )
+
 def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     """Evaluates the node."""
     db.set_dynamic_attribute_memory_location(
@@ -111,17 +142,13 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
         gpu_ptr_kind=og.PtrToPtrKind.CPU,
     )
 
-    # Retrieve the shape of the kernel.
-    dim_count = min(max(db.inputs.dimCount, 0), MAX_DIMENSIONS)
-    kernel_shape = tuple(
-        max(getattr(db.inputs, "dim{}".format(i + 1)), 0)
-        for i in range(dim_count)
-    )
+    # Infer the kernels's shape.
+    kernel_shape = infer_kernel_shape(db)
 
     # Ensure that our internal state is correctly initialized.
     timeline =  omni.timeline.get_timeline_interface()
     if db.internal_state.needs_initialization(db, timeline.is_stopped()):
-        if not db.internal_state.initialize(db, dim_count):
+        if not db.internal_state.initialize(db, len(kernel_shape)):
             return
 
         db.internal_state.is_valid = True

@@ -16,6 +16,12 @@
                 "uiName": "Device",
                 "default": "cuda:0"
             },
+            "dimSource": {
+                "type": "token",
+                "description": "Where to read the dimensions from.",
+                "uiName": "Dim Source",
+                "default": "explicit"
+            },
             "dimCount": {
                 "type": "int",
                 "description": "Number of kernel dimensions.",
