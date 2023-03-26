@@ -101,12 +101,12 @@ class Tape:
     def get_adjoint(self, a):
 
 
-        if isinstance(a, wp.array) == False and isinstance(a, wp.codegen.StructInstance) == False:
+        if not wp.types.is_array(a) and not isinstance(a, wp.codegen.StructInstance):
             # if input is a simple type (e.g.: float, vec3, etc) then
             # no gradient needed (we only return gradients through arrays and structs)
             return a
 
-        elif isinstance(a, wp.array) and a.grad:
+        elif wp.types.is_array(a) and a.grad:
             # keep track of all gradients used by the tape (for zeroing)
             # ignore the scalar loss since we don't want to clear its grad
             self.gradients[a] = a.grad

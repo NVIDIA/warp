@@ -18,6 +18,7 @@ from typing import TypeVar
 from typing import Generic
 from typing import List
 from typing import Callable
+from typing import Union
 
 import warp
 
@@ -565,6 +566,12 @@ class shape_t(ctypes.Structure):
         pass
 
 
+# must match array.h
+class ArrayType:
+    Regular = 0
+    Indexed = 1
+
+
 class array_t(ctypes.Structure): 
 
     _fields_ = [("data", ctypes.c_uint64),
@@ -578,7 +585,22 @@ class array_t(ctypes.Structure):
         self.strides = (0,)*ARRAY_MAX_DIMS
         self.ndim = 0       
 
-        
+
+class indexedarray_t(ctypes.Structure):
+
+    _fields_ = [("data", array_t),
+                ("indices", ctypes.c_void_p*ARRAY_MAX_DIMS),
+                ("shape", ctypes.c_int32*ARRAY_MAX_DIMS)]
+    
+    def __init__(self, data, indices, shape):
+        self.data = data.__ctype__()
+        for i in range(data.ndim):
+            if indices[i] is not None:
+                self.indices[i] = ctypes.c_void_p(indices[i].ptr)
+            else:
+                self.indices[i] = ctypes.c_void_p(None)
+            self.shape[i] = shape[i]
+
 
 def type_ctype(dtype):
 
@@ -716,6 +738,8 @@ def types_equal(a, b, match_generic=False):
         return all( [are_equal(p1,p2) for p1,p2 in zip(a._wp_type_params_, b._wp_type_params_)] )
     if isinstance(a, array) and isinstance(b, array):
         return True
+    if isinstance(a, indexedarray) and isinstance(b, indexedarray):
+        return True
     else:
         return are_equal(a,b)
 
@@ -737,6 +761,8 @@ T = TypeVar('T')
 
 
 class array (Generic[T]):
+
+    array_type_id = ArrayType.Regular
 
     # member attributes available during code-gen (e.g.: d = array.shape[0])
     # (initialized when needed)
@@ -1007,15 +1033,20 @@ class array (Generic[T]):
             if self.ndim == 1:
                 raise RuntimeError("Item indexing is not supported on wp.array objects")
             key = [key]
+        elif isinstance(key, (slice, array)):
+            key = [key]
         elif isinstance(key, Tuple):
             contains_slice = False
+            contains_indices = False
             for k in key:
                 if isinstance(k, slice):
                     contains_slice = True
-            if not contains_slice and len(key) == self.ndim:
+                if isinstance(k, array):
+                    contains_indices = True
+            if not contains_slice and not contains_indices and len(key) == self.ndim:
                 raise RuntimeError("Item indexing is not supported on wp.array objects")
-        elif isinstance(key, slice):
-            key = [key]
+        else:
+            raise RuntimeError(f"Invalid index: {key}")
 
         new_key = []
         for i in range(0, len(key)):
@@ -1029,6 +1060,9 @@ class array (Generic[T]):
         ptr_offset = 0
         new_dim = self.ndim
         
+        # maps dimension index to an array of indices, if given
+        index_arrays = {}
+
         for idx, k in enumerate(key):
             if isinstance(k, slice):
                 start, stop, step = k.start, k.stop, k.step
@@ -1053,6 +1087,16 @@ class array (Generic[T]):
                 new_shape.append(-((stop - start) // -step))  # ceil division
                 new_strides.append(self.strides[idx] * step)
 
+                ptr_offset += self.strides[idx] * start
+
+            elif isinstance(k, array):
+                # note: index array properties will be checked during indexedarray construction
+                index_arrays[idx] = k
+
+                # shape and strides are unchanged for this dimension
+                new_shape.append(self.shape[idx])
+                new_strides.append(self.strides[idx])
+
             else:  # is int
                 start = k
                 if start < 0:
@@ -1061,7 +1105,7 @@ class array (Generic[T]):
                     raise RuntimeError(f"Invalid indexing in slice: {k}")
                 new_dim -= 1
 
-            ptr_offset += self.strides[idx] * start
+                ptr_offset += self.strides[idx] * start
 
         a = array(dtype=self.dtype,
                 shape=tuple(new_shape),
@@ -1075,7 +1119,14 @@ class array (Generic[T]):
 
         # store back-ref to stop data being destroyed
         a._ref = self
-        return a   
+
+        if index_arrays:
+            indices = [None] * self.ndim
+            for dim, index_array in index_arrays.items():
+                indices[dim] = index_array
+            return indexedarray(a, indices)
+        else:
+            return a
 
     # construct a C-representation of the array for passing to kernels
     def __ctype__(self):
@@ -1232,7 +1283,8 @@ class array (Generic[T]):
             return self
         else:
             dest = warp.empty(shape=self.shape, dtype=self.dtype, device=device)
-            warp.copy(dest, self)
+            # to copy between devices, array must be contiguous
+            warp.copy(dest, self.contiguous())
             return dest
 
 
@@ -1318,6 +1370,16 @@ class array (Generic[T]):
             return a
 
 
+    def contiguous(self):
+
+        if self.is_contiguous:
+            return self
+
+        a = warp.empty_like(self)
+        warp.copy(a, self)
+
+        return a
+
 
     # note: transpose operation will return an array with a non-contiguous access pattern
     def transpose(self, axes=None):
@@ -1387,6 +1449,190 @@ def from_ptr(ptr, length, dtype=None, device=None):
         owner=False,
         requires_grad=False
     )
+
+
+class indexedarray(Generic[T]):
+
+    array_type_id = ArrayType.Indexed
+
+    # member attributes available during code-gen (e.g.: d = arr.shape[0])
+    # (initialized when needed)
+    _vars = None
+
+    def __init__(self, data:array=None, indices:Union[array,List[array]]=None, dtype=None, ndim=None, requires_grad=False):
+
+        # canonicalize types
+        if dtype is not None:
+            if dtype == int:
+                dtype = int32
+            elif dtype == float:
+                dtype = float32
+
+        self.data = data
+        self.indices = [None] * ARRAY_MAX_DIMS
+
+        if data is not None:
+
+            if not isinstance(data, array):
+                raise ValueError("Indexed array data must be a Warp array")
+            if dtype is not None and dtype != data.dtype:
+                raise ValueError(f"Requested dtype ({dtype}) does not match dtype of data array ({data.dtype})")
+            if ndim is not None and ndim != data.ndim:
+                raise ValueError(f"Requested dimensionality ({ndim}) does not match dimensionality of data array ({data.ndim})")
+
+            self.dtype = data.dtype
+            self.ndim = data.ndim
+            self.device = data.device
+            self.pinned = data.pinned
+
+            # determine shape from original data shape and index counts
+            shape = list(data.shape)
+
+            if indices is not None:
+
+                # helper to check index array properties
+                def check_index_array(inds, data):
+                    if inds.ndim != 1:
+                        raise ValueError(f"Index array must be one-dimensional, got {inds.ndim}")
+                    if inds.dtype != int32:
+                        raise ValueError(f"Index array must use int32, got dtype {inds.dtype}")
+                    if inds.device != data.device:
+                        raise ValueError(f"Index array device ({inds.device} does not match data array device ({data.device}))")
+
+                if isinstance(indices, (list, tuple)):
+                    if len(indices) > self.ndim:
+                        raise ValueError(f"Number of indices provided ({len(indices)}) exceeds number of dimensions ({self.ndim})")
+                    
+                    for i in range(len(indices)):
+                        if isinstance(indices[i], array):
+                            check_index_array(indices[i], data)
+                            self.indices[i] = indices[i]
+                            shape[i] = len(indices[i])
+                        elif indices[i] is not None:
+                            raise TypeError(f"Invalid index array type: {type(indices[i])}")            
+                                    
+                elif isinstance(indices, array):
+                    # only a single index array was provided
+                    check_index_array(indices, data)
+                    self.indices[0] = indices
+                    shape[0] = len(indices)
+                
+                else:
+                    raise ValueError(f"Indices must be a single Warp array or a list of Warp arrays")
+
+            self.shape = tuple(shape)
+
+        else:
+            # allow empty indexedarrays in type annotations
+            self.dtype = dtype
+            self.ndim = ndim or 1
+            self.device = None
+            self.pinned = False
+            self.shape = (0,) * self.ndim
+
+        # update size (num elements)
+        self.size = 1
+        for d in self.shape:
+            self.size *= d
+
+        self.is_contiguous = False
+
+        self.grad = None
+        self.requires_grad = requires_grad
+
+    def __len__(self):
+
+        return self.shape[0]
+
+    def __str__(self):
+
+        return f"indexedarray{self.dtype}"
+
+    # construct a C-representation of the array for passing to kernels
+    def __ctype__(self):
+
+        return indexedarray_t(self.data, self.indices, self.shape)
+
+    @property
+    def requires_grad(self):
+
+        return self._requires_grad
+
+    @requires_grad.setter
+    def requires_grad(self, value:bool):
+        
+        if value and self.grad is None and self.data is not None:
+            self._alloc_grad()
+        elif not value:
+            self.grad = None
+
+        self._requires_grad = value
+
+    def _alloc_grad(self):
+
+        self.grad = warp.zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+
+    @property
+    def vars(self):
+        # member attributes available during code-gen (e.g.: d = arr.shape[0])
+        # Note: we use a shared dict for all indexedarray instances
+        if indexedarray._vars is None:
+            from warp.codegen import Var
+            indexedarray._vars = { "shape": Var("shape", shape_t) }
+        return indexedarray._vars
+
+    def contiguous(self):
+
+        a = warp.empty_like(self)
+        warp.copy(a, self)
+
+        return a
+
+    # convert data from one device to another, nop if already on device
+    def to(self, device):
+
+        device = warp.get_device(device)
+        if self.device == device:
+            return self
+        else:
+            dest = warp.empty(shape=self.shape, dtype=self.dtype, device=device)
+            # to copy between devices, array must be contiguous
+            warp.copy(dest, self.contiguous())
+            return dest
+
+    # convert array to ndarray (alias memory through array interface)
+    def numpy(self):
+
+        # use the CUDA default stream for synchronous behaviour with other streams
+        with warp.ScopedStream(self.device.null_stream):
+            return np.array(self.contiguous().to("cpu"), copy=False)
+
+
+# aliases for indexedarrays with small dimensions
+def indexedarray1d(*args, **kwargs):
+    kwargs["ndim"] = 1
+    return indexedarray(*args, **kwargs)
+
+# equivalent to calling indexedarray(..., ndim=2)
+def indexedarray2d(*args, **kwargs):
+    kwargs["ndim"] = 2
+    return indexedarray(*args, **kwargs)
+
+# equivalent to calling indexedarray(..., ndim=3)
+def indexedarray3d(*args, **kwargs):
+    kwargs["ndim"] = 3
+    return indexedarray(*args, **kwargs)
+
+# equivalent to calling indexedarray(..., ndim=4)
+def indexedarray4d(*args, **kwargs):
+    kwargs["ndim"] = 4
+    return indexedarray(*args, **kwargs)
+
+
+array_types = (array, indexedarray)
+
+def is_array(a):
+    return isinstance(a, array_types)
 
 
 class Bvh:
@@ -2252,7 +2498,7 @@ class MarchingCubes:
 def type_is_generic(t):
     if t in (Any, Scalar, Float, Int):
         return True
-    elif isinstance(t, array):
+    elif is_array(t):
         return type_is_generic(t.dtype)
     elif hasattr(t, "_wp_scalar_type_"):
         # vector/matrix type, check if dtype is generic
@@ -2288,9 +2534,9 @@ def type_matches_template(arg_type, template_type):
     # template type is generic, check that the argument type matches
     if template_type == Any:
         return True
-    elif isinstance(template_type, array):
+    elif is_array(template_type):
         # ensure the argument type is a non-generic array with matching dtype and dimensionality
-        if not isinstance(arg_type, array):
+        if type(arg_type) != type(template_type):
             return False
         if not type_matches_template(arg_type.dtype, template_type.dtype):
             return False
@@ -2390,6 +2636,8 @@ def get_type_code(arg_type):
                 raise TypeError(f"Unrecognized type '{arg_type}'")
     elif isinstance(arg_type, array):
         return f"a{arg_type.ndim}{get_type_code(arg_type.dtype)}"
+    elif isinstance(arg_type, indexedarray):
+        return f"ia{arg_type.ndim}{get_type_code(arg_type.dtype)}"
     elif isinstance(arg_type, warp.codegen.Struct):
         return warp.codegen.make_full_qualified_name(arg_type.cls)
     elif arg_type == Scalar:

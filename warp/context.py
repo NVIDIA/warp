@@ -411,8 +411,8 @@ class Kernel:
         for i in range(len(args)):
             arg = args[i]
             arg_type = type(arg)
-            if arg_type == warp.array:
-                arg_types.append(warp.array(dtype=arg.dtype, ndim=arg.ndim))
+            if arg_type in warp.types.array_types:
+                arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
             elif arg_type in warp.types.scalar_types:
                 arg_types.append(arg_type)
             elif arg_type in [int, float]:
@@ -430,8 +430,9 @@ class Kernel:
             #     arg_types.append(arg_type)
             elif arg is None:
                 # allow passing None for arrays
-                if isinstance(template_types[i], warp.array):
-                    arg_types.append(template_types[i])
+                t = template_types[i]
+                if warp.types.is_array(t):
+                    arg_types.append(type(t)(dtype=t.dtype, ndim=t.ndim))
                 else:
                     raise TypeError(f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got None")
             else:
@@ -1733,6 +1734,11 @@ class Runtime:
         self.core.memcpy_peer.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_peer.restype = None
 
+        self.core.arrcpy_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.arrcpy_host.restype = ctypes.c_size_t
+        self.core.arrcpy_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.arrcpy_device.restype = ctypes.c_size_t
+
         self.core.bvh_create_host.restype = ctypes.c_uint64
         self.core.bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
 
@@ -2461,33 +2467,43 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         params.append(bounds)
 
         # converts arguments to kernel's expected ctypes and packs into params
-        def pack_args(args, params):
+        def pack_args(args, params, adjoint=False):
 
             for i, a in enumerate(args):
 
                 arg_type = kernel.adj.args[i].type
                 arg_name = kernel.adj.args[i].label
 
-                if (isinstance(arg_type, warp.types.array)):
+                if warp.types.is_array(arg_type):
 
                     if (a is None):
                         
                         # allow for NULL arrays
-                        params.append(warp.types.array_t())
+                        params.append(arg_type.__ctype__())
 
                     else:
 
-                        # check for array value
-                        if (isinstance(a, warp.types.array) == False):
-                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array, but passed value has type {type(a)}.")
+                        # check for array type
+                        # - in forward passes, array types have to match
+                        # - in backward passes, indexed array gradients are regular arrays
+                        if adjoint:
+                            array_matches = type(a) == warp.array
+                        else:
+                            array_matches = type(a) == type(arg_type)
+
+                        if not array_matches:
+                            adj = "adjoint " if adjoint else ""
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {type(arg_type)}, but passed value has type {type(a)}.")
                         
                         # check subtype
                         if not warp.types.types_equal(a.dtype, arg_type.dtype):
-                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={a.dtype}.")
+                            adj = "adjoint " if adjoint else ""
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={a.dtype}.")
 
                         # check dimensions
                         if (a.ndim != arg_type.ndim):
-                            raise RuntimeError(f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {a.ndim} dimension(s).")
+                            adj = "adjoint " if adjoint else ""
+                            raise RuntimeError(f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {a.ndim} dimension(s).")
 
                         # check device
                         #if a.device != device and not device.can_access(a.device):
@@ -2557,7 +2573,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         hooks = kernel.get_hooks(device)
 
         pack_args(fwd_args, params)
-        pack_args(adj_args, params)
+        pack_args(adj_args, params, adjoint=True)
 
         # run kernel
         if device.is_cpu:
@@ -2804,6 +2820,9 @@ def copy(dest:warp.array, src:warp.array, dest_offset:int=0, src_offset:int=0, c
 
     """
 
+    if not warp.types.is_array(src) or not warp.types.is_array(dest):
+        raise RuntimeError("Copy source and destination must be arrays")
+
     # backwards compatability, if count is zero then copy entire src array
     if count <= 0:
         count = src.size
@@ -2811,50 +2830,77 @@ def copy(dest:warp.array, src:warp.array, dest_offset:int=0, src_offset:int=0, c
     if count == 0:
         return
 
-    if not dest.is_contiguous or not src.is_contiguous:
-        raise RuntimeError(f"Copying to or from a non-contiguous array is unsupported.")
+    if src.is_contiguous and dest.is_contiguous:
 
-    bytes_to_copy = count * warp.types.type_size_in_bytes(src.dtype)
+        bytes_to_copy = count * warp.types.type_size_in_bytes(src.dtype)
 
-    src_size_in_bytes = src.size * warp.types.type_size_in_bytes(src.dtype)
-    dst_size_in_bytes = dest.size * warp.types.type_size_in_bytes(dest.dtype)
+        src_size_in_bytes = src.size * warp.types.type_size_in_bytes(src.dtype)
+        dst_size_in_bytes = dest.size * warp.types.type_size_in_bytes(dest.dtype)
 
-    src_offset_in_bytes = src_offset * warp.types.type_size_in_bytes(src.dtype)
-    dst_offset_in_bytes = dest_offset * warp.types.type_size_in_bytes(dest.dtype)
+        src_offset_in_bytes = src_offset * warp.types.type_size_in_bytes(src.dtype)
+        dst_offset_in_bytes = dest_offset * warp.types.type_size_in_bytes(dest.dtype)
 
-    src_ptr = src.ptr + src_offset_in_bytes
-    dst_ptr = dest.ptr + dst_offset_in_bytes
+        src_ptr = src.ptr + src_offset_in_bytes
+        dst_ptr = dest.ptr + dst_offset_in_bytes
 
-    if src_offset_in_bytes + bytes_to_copy > src_size_in_bytes:
-        raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) from offset ({src_offset_in_bytes}) is larger than source size ({src_size_in_bytes})")
+        if src_offset_in_bytes + bytes_to_copy > src_size_in_bytes:
+            raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) from offset ({src_offset_in_bytes}) is larger than source size ({src_size_in_bytes})")
 
-    if dst_offset_in_bytes + bytes_to_copy > dst_size_in_bytes:
-        raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) to offset ({dst_offset_in_bytes}) is larger than destination size ({dst_size_in_bytes})")
+        if dst_offset_in_bytes + bytes_to_copy > dst_size_in_bytes:
+            raise RuntimeError(f"Trying to copy source buffer with size ({bytes_to_copy}) to offset ({dst_offset_in_bytes}) is larger than destination size ({dst_size_in_bytes})")
 
-    if src.device.is_cpu and dest.device.is_cpu:
-        runtime.core.memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
-    else:
-        # figure out the CUDA context/stream for the copy
-        if stream is not None:
-            copy_device = stream.device
-        elif dest.device.is_cuda:
-            copy_device = dest.device
+        if src.device.is_cpu and dest.device.is_cpu:
+            runtime.core.memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
         else:
-            copy_device = src.device
-
-        with warp.ScopedStream(stream):
-
-            if src.device.is_cpu and dest.device.is_cuda:
-                runtime.core.memcpy_h2d(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
-            elif src.device.is_cuda and dest.device.is_cpu:
-                runtime.core.memcpy_d2h(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
-            elif src.device.is_cuda and dest.device.is_cuda:
-                if src.device == dest.device:
-                    runtime.core.memcpy_d2d(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
-                else:
-                    runtime.core.memcpy_peer(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+            # figure out the CUDA context/stream for the copy
+            if stream is not None:
+                copy_device = stream.device
+            elif dest.device.is_cuda:
+                copy_device = dest.device
             else:
-                raise RuntimeError("Unexpected source and destination combination")
+                copy_device = src.device
+
+            with warp.ScopedStream(stream):
+
+                if src.device.is_cpu and dest.device.is_cuda:
+                    runtime.core.memcpy_h2d(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+                elif src.device.is_cuda and dest.device.is_cpu:
+                    runtime.core.memcpy_d2h(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+                elif src.device.is_cuda and dest.device.is_cuda:
+                    if src.device == dest.device:
+                        runtime.core.memcpy_d2d(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+                    else:
+                        runtime.core.memcpy_peer(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+                else:
+                    raise RuntimeError("Unexpected source and destination combination")
+
+    else:
+        # handle non-contiguous and indexed arrays
+
+        if src.device != dest.device:
+            raise RuntimeError(f"Copies between non-contiguous arrays must be on the same device, got {dest.device} and {src.device}")
+
+        if src.shape != dest.shape:
+            raise RuntimeError("Incompatible array shapes")
+
+        src_elem_size = warp.types.type_size_in_bytes(src.dtype)
+        dst_elem_size = warp.types.type_size_in_bytes(dest.dtype)
+
+        if src_elem_size != dst_elem_size:
+            raise RuntimeError("Incompatible array data types")
+
+        src_desc = src.__ctype__()
+        dst_desc = dest.__ctype__()
+        src_ptr = ctypes.pointer(src_desc)
+        dst_ptr = ctypes.pointer(dst_desc)
+        src_type = type(src).array_type_id
+        dst_type = type(dest).array_type_id
+        
+        if src.device.is_cuda:
+            with warp.ScopedStream(stream):
+                runtime.core.arrcpy_device(src.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
+        else:
+            runtime.core.arrcpy_host(dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
 
 
 def type_str(t):
@@ -2868,6 +2914,8 @@ def type_str(t):
         return "Tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
         return f"array[{type_str(t.dtype)}]"
+    elif isinstance(t, warp.indexedarray):
+        return f"indexedarray[{type_str(t.dtype)}]"
     else:
         return t.__name__
 

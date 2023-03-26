@@ -227,12 +227,13 @@ class Var:
         return self.label
 
     def ctype(self):
-        if (isinstance(self.type, array)):
+        if is_array(self.type):
             if hasattr(self.type.dtype,"_wp_generic_type_str_"):
-                typestr = compute_type_str( self.type.dtype._wp_generic_type_str_, self.type.dtype._wp_type_params_ )
+                dtypestr = compute_type_str(self.type.dtype._wp_generic_type_str_, self.type.dtype._wp_type_params_)
             else:
-                typestr = str(self.type.dtype.__name__)
-            return f"array_t<{typestr}>"
+                dtypestr = str(self.type.dtype.__name__)
+            classstr = type(self.type).__name__
+            return f"{classstr}_t<{dtypestr}>"
         elif (isinstance(self.type, Struct)):
             return make_full_qualified_name(self.type.cls)
         elif hasattr(self.type,"_wp_generic_type_str_"):
@@ -1352,7 +1353,7 @@ class Adjoint:
             var = adj.eval(node.slice)
             indices.append(var)
 
-        if isinstance(target.type, array):
+        if is_array(target.type):
             
             if len(indices) == target.type.ndim:
                 # handles array loads (where each dimension has an index specified)
@@ -1425,7 +1426,7 @@ class Adjoint:
                 var = adj.eval(slice)
                 indices.append(var)
 
-            if (isinstance(target.type, array)):
+            if is_array(target.type):
                 adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
             else:
                 raise RuntimeError("Can only subscript assign array types")
@@ -1943,7 +1944,12 @@ def codegen_func(adj, device='cpu'):
 
     # reverse args
     for arg in adj.args:
-        reverse_args.append(arg.ctype() + " & adj_" + arg.label)
+        # indexed array gradients are regular arrays
+        if isinstance(arg.type, indexedarray):
+            _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
+            reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
+        else:
+            reverse_args.append(arg.ctype() + " & adj_" + arg.label)
     
     if return_type != 'void':
         reverse_args.append(return_type + " & adj_ret")
@@ -1989,7 +1995,12 @@ def codegen_kernel(kernel, device, options):
 
     # reverse args
     for arg in adj.args:
-        reverse_args.append(arg.ctype() + " adj_" + arg.label)
+        # indexed array gradients are regular arrays
+        if isinstance(arg.type, indexedarray):
+            _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
+            reverse_args.append(_arg.ctype() + " adj_" + arg.label)
+        else:
+            reverse_args.append(arg.ctype() + " adj_" + arg.label)
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type='kernel', device=device)
@@ -2034,7 +2045,12 @@ def codegen_module(kernel, device='cpu'):
     reverse_params = [*forward_params]
 
     for arg in adj.args:
-        reverse_args.append(arg.ctype() + " adj_" + arg.label)
+        # indexed array gradients are regular arrays
+        if isinstance(arg.type, indexedarray):
+            _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
+            reverse_args.append(_arg.ctype() + " adj_" + arg.label)
+        else:
+            reverse_args.append(arg.ctype() + " adj_" + arg.label)
         reverse_params.append("adj_" + arg.label)
 
     if device == 'cpu':
