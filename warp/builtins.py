@@ -941,7 +941,7 @@ add_builtin("select", input_types={"arr": array(dtype=Any), "arg1": Any, "arg2":
 # does argument checking and type progagation for load()
 def load_value_func(args, kwds, _):
 
-    if (type(args[0].type) != array):
+    if not is_array(args[0].type):
         raise RuntimeError("load() argument 0 must be an array")
 
     num_indices = len(args[1:])
@@ -962,7 +962,7 @@ def load_value_func(args, kwds, _):
 
 # does argument checking and type progagation for view()
 def view_value_func(args, kwds, _):
-    if (type(args[0].type) != array):
+    if not is_array(args[0].type):
         raise RuntimeError("view() argument 0 must be an array")
 
     # check array dim big enough to support view
@@ -987,7 +987,7 @@ def view_value_func(args, kwds, _):
 # does argument checking and type progagation for store()
 def store_value_func(args, kwds, _):
     # check target type
-    if (type(args[0].type) != array):
+    if not is_array(args[0].type):
         raise RuntimeError("store() argument 0 must be an array")
     
     num_indices = len(args[1:-1])
@@ -1019,7 +1019,7 @@ add_builtin("store", variadic=True, hidden=True, value_func=store_value_func, sk
 def atomic_op_value_func(args, kwds, _):
 
     # check target type
-    if (type(args[0].type) != array):
+    if not is_array(args[0].type):
         raise RuntimeError("atomic() operation argument 0 must be an array")
     
     num_indices = len(args[1:-1])
@@ -1042,26 +1042,27 @@ def atomic_op_value_func(args, kwds, _):
 
     return args[0].type.dtype
 
+for array_type in array_types:
 
-add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
-add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_add", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+    add_builtin("atomic_add", input_types={"a": array_type(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically add ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
+    add_builtin("atomic_add", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+    add_builtin("atomic_add", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+    add_builtin("atomic_add", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically add ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
-add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
-add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
-add_builtin("atomic_sub", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+    add_builtin("atomic_sub", input_types={"a": array_type(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically subtract ``value`` onto the array at location given by index.", group="Utility", skip_replay=True)
+    add_builtin("atomic_sub", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+    add_builtin("atomic_sub", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
+    add_builtin("atomic_sub", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_func, doc="Atomically subtract ``value`` onto the array at location given by indices.", group="Utility", skip_replay=True)
 
-add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
-add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
-add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
-add_builtin("atomic_min", input_types={"a": array(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+    add_builtin("atomic_min", input_types={"a": array_type(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+    add_builtin("atomic_min", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+    add_builtin("atomic_min", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+    add_builtin("atomic_min", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k": int, "l": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
 
-add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
-add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
-add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
-add_builtin("atomic_max", input_types={"a": array(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+    add_builtin("atomic_max", input_types={"a": array_type(dtype=Any), "i": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+    add_builtin("atomic_max", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+    add_builtin("atomic_max", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k":int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
+    add_builtin("atomic_max", input_types={"a": array_type(dtype=Any), "i": int, "j": int, "k":int, "l": int, "value": Any}, value_func=atomic_op_value_func, doc="Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.", group="Utility", skip_replay=True)
 
 
 # used to index into builtin types, i.e.: y = vec3[1]

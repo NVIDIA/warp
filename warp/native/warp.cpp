@@ -130,6 +130,131 @@ void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
 }
 
 
+static void arrcpy_nd(void* dst, const void* src,
+                      const int* dst_strides, const int* src_strides,
+                      const int*const* dst_indices, const int*const* src_indices,
+                      const int* shape, int ndim, int elem_size)
+{
+    if (ndim == 1)
+    {
+        for (int i = 0; i < shape[0]; i++)
+        {
+            int src_idx = src_indices[0] ? src_indices[0][i] : i;
+            int dst_idx = dst_indices[0] ? dst_indices[0][i] : i;
+            const char* p = (const char*)src + src_idx * src_strides[0];
+            char* q = (char*)dst + dst_idx * dst_strides[0];
+            // copy element
+            memcpy(q, p, elem_size);
+        }
+    }
+    else
+    {
+        for (int i = 0; i < shape[0]; i++)
+        {
+            int src_idx = src_indices[0] ? src_indices[0][i] : i;
+            int dst_idx = dst_indices[0] ? dst_indices[0][i] : i;
+            const char* p = (const char*)src + src_idx * src_strides[0];
+            char* q = (char*)dst + dst_idx * dst_strides[0];
+            // recurse on next inner dimension
+            arrcpy_nd(q, p, dst_strides + 1, src_strides + 1, dst_indices + 1, src_indices + 1, shape + 1, ndim - 1, elem_size);
+        }
+    }
+}
+
+
+WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int elem_size)
+{
+    if (!src || !dst)
+        return 0;
+
+    const void* src_data = NULL;
+    void* dst_data = NULL;
+    int src_ndim = 0;
+    int dst_ndim = 0;
+    const int* src_shape = NULL;
+    const int* dst_shape = NULL;
+    const int* src_strides = NULL;
+    const int* dst_strides = NULL;
+    const int*const* src_indices = NULL;
+    const int*const* dst_indices = NULL;
+
+    const int* null_indices[wp::ARRAY_MAX_DIMS] = { NULL };
+
+    if (src_type == wp::ArrayType::eREGULAR)
+    {
+        const wp::array_t<void>& src_arr = *static_cast<const wp::array_t<void>*>(src);
+        src_data = src_arr.data;
+        src_ndim = src_arr.ndim;
+        src_shape = src_arr.shape.dims;
+        src_strides = src_arr.strides;
+        src_indices = null_indices;
+    }
+    else if (src_type == wp::ArrayType::eINDEXED)
+    {
+        const wp::indexedarray_t<void>& src_arr = *static_cast<const wp::indexedarray_t<void>*>(src);
+        src_data = src_arr.arr.data;
+        src_ndim = src_arr.arr.ndim;
+        src_shape = src_arr.shape.dims;
+        src_strides = src_arr.arr.strides;
+        src_indices = src_arr.indices;
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Invalid array type (%d)\n", src_type);
+        return 0;
+    }
+
+    if (dst_type == wp::ArrayType::eREGULAR)
+    {
+        const wp::array_t<void>& dst_arr = *static_cast<const wp::array_t<void>*>(dst);
+        dst_data = dst_arr.data;
+        dst_ndim = dst_arr.ndim;
+        dst_shape = dst_arr.shape.dims;
+        dst_strides = dst_arr.strides;
+        dst_indices = null_indices;
+    }
+    else if (dst_type == wp::ArrayType::eINDEXED)
+    {
+        const wp::indexedarray_t<void>& dst_arr = *static_cast<const wp::indexedarray_t<void>*>(dst);
+        dst_data = dst_arr.arr.data;
+        dst_ndim = dst_arr.arr.ndim;
+        dst_shape = dst_arr.shape.dims;
+        dst_strides = dst_arr.arr.strides;
+        dst_indices = dst_arr.indices;
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Invalid array type (%d)\n", dst_type);
+        return 0;
+    }
+
+    if (src_ndim != dst_ndim)
+    {
+        fprintf(stderr, "Warp error: Incompatible array dimensionalities (%d and %d)\n", src_ndim, dst_ndim);
+        return 0;
+    }
+
+    size_t n = 1;
+
+    for (int i = 0; i < src_ndim; i++)
+    {
+        if (src_shape[i] != dst_shape[i])
+        {
+            fprintf(stderr, "Warp error: Incompatible array shapes\n");
+            return 0;
+        }
+        n *= src_shape[i];
+    }
+
+    arrcpy_nd(dst_data, src_data,
+              dst_strides, src_strides,
+              dst_indices, src_indices,
+              src_shape, src_ndim, elem_size);
+
+    return n;
+}
+
+
 // impl. files
 // TODO: compile as separate translation units
 #include "bvh.cpp"

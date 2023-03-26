@@ -41,6 +41,10 @@ extern "C"
     WP_API void memcpy_d2d(void* context, void* dest, void* src, size_t n);
     WP_API void memcpy_peer(void* context, void* dest, void* src, size_t n);
 
+    // generic copy supporting non-contiguous arrays
+    WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int elem_size);
+    WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size);
+
     // all memsets are performed asynchronously
     WP_API void memset_host(void* dest, int value, size_t n);
     WP_API void memset_device(void* context, void* dest, int value, size_t n);
