@@ -37,7 +37,7 @@ namespace wp {
 
 extern "C" {
 
-std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string &input_file, const char* cpp_src, const char* include_dir, llvm::LLVMContext& context)
+std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, llvm::LLVMContext& context)
 {
     // Compilation arguments
     std::vector<const char*> args;
@@ -101,7 +101,8 @@ WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char*
     const char* features = "";
     llvm::TargetOptions target_options;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;  // DLLs need Position Independent Code
-    llvm::TargetMachine* target_machine = target->createTargetMachine(target_triple, CPU, features, target_options, relocation_model);
+    llvm::CodeModel::Model code_model = llvm::CodeModel::Large;  // Don't make assumptions about displacement sizes
+    llvm::TargetMachine* target_machine = target->createTargetMachine(target_triple, CPU, features, target_options, relocation_model, code_model);
 
     module->setDataLayout(target_machine->createDataLayout());
 
