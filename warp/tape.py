@@ -62,38 +62,50 @@ class Tape:
         # run launches backwards
         for launch in reversed(self.launches):
 
-            kernel = launch[0]
-            dim = launch[1]
-            inputs = launch[2]
-            outputs = launch[3]
-            device = launch[4]
+            if callable(launch):
+                launch()
+        
+            else:
+                kernel = launch[0]
+                dim = launch[1]
+                inputs = launch[2]
+                outputs = launch[3]
+                device = launch[4]
 
-            adj_inputs = []
-            adj_outputs = []
+                adj_inputs = []
+                adj_outputs = []
 
-            # lookup adjoint inputs
-            for a in inputs:
-                adj_inputs.append(self.get_adjoint(a))
+                # lookup adjoint inputs
+                for a in inputs:
+                    adj_inputs.append(self.get_adjoint(a))
 
-            # lookup adjoint outputs, todo: only allocate outputs if necessary
-            for a in outputs:
-                adj_outputs.append(self.get_adjoint(a))
+                # lookup adjoint outputs, todo: only allocate outputs if necessary
+                for a in outputs:
+                    adj_outputs.append(self.get_adjoint(a))
 
-            wp.launch(
-                kernel=kernel, 
-                dim=dim, 
-                inputs=inputs, 
-                outputs=outputs,
-                adj_inputs=adj_inputs,
-                adj_outputs=adj_outputs,
-                device=device,
-                adjoint=True)
+                wp.launch(
+                    kernel=kernel, 
+                    dim=dim, 
+                    inputs=inputs, 
+                    outputs=outputs,
+                    adj_inputs=adj_inputs,
+                    adj_outputs=adj_outputs,
+                    device=device,
+                    adjoint=True)
 
 
     # record a kernel launch on the tape
     def record(self, kernel, dim, inputs, outputs, device):
         self.launches.append([kernel, dim, inputs, outputs, device])
 
+    def record_func(self, backward, arrays):
+        self.launches.append(backward)
+
+        for a in arrays:
+            if isinstance(a, wp.array) and a.grad:
+                self.gradients[a] = a.grad
+            else:
+                raise RuntimeError(f"Array {a} is not of type wp.array or is missing a gradient array. Set array parameter requires_grad=True during instantiation.")
 
     # returns the adjoint of a kernel parameter
     def get_adjoint(self, a):
@@ -145,4 +157,3 @@ class Tape:
                             getattr(g, name).zero_()
                 else:
                     g.zero_()
-

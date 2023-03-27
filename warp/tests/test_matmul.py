@@ -7,6 +7,7 @@ from warp.tests.test_base import *
 np.random.seed(0)
 
 wp.init()
+wp.config.mode = 'debug'
 
 
 class GemmTestbedRunner:
@@ -44,7 +45,7 @@ class GemmTestbedRunner:
             D_np = alpha * (A.numpy() @ B.numpy()) + beta * C.numpy()
             assert np.array_equal(D_np, D.numpy())
 
-            wp.adj_matmul(A, B, C, adj_D, alpha, beta, adj_A, adj_B, adj_C, False, self.device)
+            wp.adj_matmul(A, B, C, adj_A, adj_B, adj_C, adj_D, alpha, beta, False, self.device)
             adj_A_np = alpha * np.matmul(adj_D.numpy(),B.numpy().transpose())
             adj_B_np = alpha * (A.numpy().transpose() @ adj_D.numpy())
             adj_C_np = beta * adj_D.numpy()
@@ -57,7 +58,7 @@ class GemmTestbedRunner:
             D_np = alpha * np.matmul(A.numpy(), B.numpy()) + beta * C.numpy()
             assert np.array_equal(D_np, D.numpy())
 
-            wp.adj_batched_matmul(A, B, C, adj_D, alpha, beta, adj_A, adj_B, adj_C, False, self.device)
+            wp.adj_batched_matmul(A, B, C, adj_A, adj_B, adj_C, adj_D, alpha, beta, False, self.device)
             adj_A_np = alpha * np.matmul(adj_D.numpy(), B.numpy().transpose((0, 2, 1)))
             adj_B_np = alpha * np.matmul(A.numpy().transpose((0, 2, 1)), adj_D.numpy())
             adj_C_np = beta * adj_D.numpy()
@@ -92,6 +93,44 @@ def test_f32(test, device):
 
 def test_f64(test, device):
     GemmTestbedRunner(wp.float64, device).run()
+
+
+@wp.kernel
+def matrix_sum_kernel(arr: wp.array2d(dtype=float), loss: wp.array(dtype=float)):
+    i,j = wp.tid()
+    wp.atomic_add(loss, 0, arr[i,j])
+
+
+def test_tape(test, device):
+
+    low=-4.5
+    high=3.5
+    m=64
+    n=128
+    k=256
+    A = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(m, k))), dtype=float, device=device, requires_grad=True)
+    B = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(k, n))), dtype=float, device=device, requires_grad=True)
+    C = wp.array2d(np.ceil(np.random.uniform(low=low, high=high, size=(m, n))), dtype=float, device=device, requires_grad=True)
+    D = wp.array2d(np.zeros((m, n)), dtype=float, device=device, requires_grad=True)
+    loss = wp.zeros(1, dtype=float, requires_grad=True)
+
+    # test tape
+    tape = wp.Tape()
+    with tape:
+        wp.matmul(A, B, C, D, device=device)
+        wp.launch(matrix_sum_kernel, dim=(m,n), inputs=[D, loss], device=device)
+
+    tape.backward(loss=loss)
+    A_grad = A.grad.numpy()
+
+    # test adjoint
+    D.grad = wp.array2d(np.ones((m, n)), dtype=float, device=device)
+    wp.adj_matmul(A, B, C, A.grad, B.grad, C.grad, D.grad)
+    assert_np_equal(A_grad, A.grad.numpy())
+    
+    # test zero
+    tape.zero()
+    assert_array_equal(A.grad, wp.zeros_like(A))
 
 
 def register(parent):
