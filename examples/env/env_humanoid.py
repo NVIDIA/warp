@@ -22,7 +22,7 @@ import warp.sim
 from environment import Environment, run_env
 
 class HumanoidEnvironment(Environment):
-    sim_name = "example_sim_humanoid"
+    sim_name = "env_humanoid"
     env_offset=(2.0, 0.0, 2.0)
     tiny_render_settings = dict(scaling=3.0)
     usd_render_settings = dict(scaling=100.0)

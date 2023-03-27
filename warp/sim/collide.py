@@ -1286,7 +1286,7 @@ def handle_contact_pairs(
         contact_shape1[tid] = -1
 
 
-def collide(model, state, edge_sdf_iter: int = 2):
+def collide(model, state, edge_sdf_iter: int = 10):
     """
     Generates contact points for the particles and rigid bodies in the model,
     to be used in the contact dynamics kernel of the integrator.
