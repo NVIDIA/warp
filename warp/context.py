@@ -2617,7 +2617,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
 
     # record on tape if one is active
     if (runtime.tape and record_tape):
-        runtime.tape.record(kernel, dim, inputs, outputs, device)
+        runtime.tape.record_launch(kernel, dim, inputs, outputs, device)
 
 
 def synchronize():

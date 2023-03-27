@@ -97,9 +97,12 @@ class Tape:
 
 
     # record a kernel launch on the tape
-    def record(self, kernel, dim, inputs, outputs, device):
+    def record_launch(self, kernel, dim, inputs, outputs, device):
         self.launches.append([kernel, dim, inputs, outputs, device])
 
+    # records a custom function for the backward pass, can be any
+    # Callable python object. Callee should also pass arrays that 
+    # take part in the function for gradient tracking.
     def record_func(self, backward, arrays):
         self.launches.append(backward)
 
