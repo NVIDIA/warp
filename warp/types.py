@@ -2088,11 +2088,17 @@ def matmul(a: array2d, b: array2d, c: array2d, d: array2d, alpha: float = 1., be
                               allow_tf32x3_arith,
                               1)
     if not ret:
-        raise RuntimeError("matmul failed.")
+        raise RuntimeError("Matmul failed.")
+    
+    if (runtime.tape):
+        runtime.tape.record_func(
+            backward=lambda: adj_matmul(a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device),
+            arrays=[a, b, c, d])
 
 def adj_matmul(
-    a: array2d, b: array2d, c: array2d, adj_d: array2d, alpha: float, beta: float, 
-    adj_a: array2d, adj_b: array2d, adj_c: array2d, 
+    a: array2d, b: array2d, c: array2d, 
+    adj_a: array2d, adj_b: array2d, adj_c: array2d, adj_d: array2d, 
+    alpha: float = 1.0, beta: float = 0.0,
     allow_tf32x3_arith: bool = False, device = None):
     """ Computes the adjoint of a generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
         note: the adjoint of parameter alpha is not included but can be computed as `adj_alpha = np.sum(np.concatenate(np.multiply(a @ b, adj_d)))`.
@@ -2102,12 +2108,12 @@ def adj_matmul(
         a (array2d): two-dimensional array containing matrix A
         b (array2d): two-dimensional array containing matrix B
         c (array2d): two-dimensional array containing matrix C
-        adj_d (array2d): two-dimensional array containing the adjoint of matrix D
-        alpha (float): parameter alpha of GEMM
-        beta (float): parameter beta of GEMM
         adj_a (array2d): two-dimensional array to which the adjoint of matrix A is written
         adj_b (array2d): two-dimensional array to which the adjoint of matrix B is written
         adj_c (array2d): two-dimensional array to which the adjoint of matrix C is written
+        adj_d (array2d): two-dimensional array containing the adjoint of matrix D
+        alpha (float): parameter alpha of GEMM
+        beta (float): parameter beta of GEMM
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
         device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
@@ -2153,7 +2159,7 @@ def adj_matmul(
                               1)
     if not ret:
         raise RuntimeError("adj_matmul failed.")
-
+    
     # adj_b
     ret = runtime.core.cutlass_gemm(
                               cc,
@@ -2184,7 +2190,7 @@ def adj_matmul(
                               allow_tf32x3_arith,
                               1)
     if not ret:
-        raise RuntimeError("adj_matmul failed.")
+        raise RuntimeError("adj_matmul failed.")    
 
 def batched_matmul(a: array3d, b: array3d, c: array3d, d: array3d, alpha: float = 1., beta: float = 0., allow_tf32x3_arith: bool = False, device=None):
     """ Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
@@ -2239,9 +2245,16 @@ def batched_matmul(a: array3d, b: array3d, c: array3d, d: array3d, alpha: float 
     if not ret:
         raise RuntimeError("Batched matmul failed.")
 
+    if (runtime.tape):
+        runtime.tape.record_func(
+            backward=lambda: adj_matmul(a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device),
+            arrays=[a, b, c, d])
+
+
 def adj_batched_matmul(
-    a: array3d, b: array3d, c: array3d, adj_d: array3d, alpha: float, beta: float,
-    adj_a: array3d, adj_b: array3d, adj_c: array3d,
+    a: array3d, b: array3d, c: array3d,
+    adj_a: array3d, adj_b: array3d, adj_c: array3d, adj_d: array3d,
+    alpha: float = 1.0, beta: float = 0.0,
     allow_tf32x3_arith: bool = False, device=None):
     """ Computes a batched generic matrix-matrix multiplication (GEMM) of the form: `d = alpha * (a @ b) + beta * c`.
 
@@ -2249,12 +2262,12 @@ def adj_batched_matmul(
         a (array3d): three-dimensional array containing A matrices. Overall array dimension is {batch_count, M, K}
         b (array3d): three-dimensional array containing B matrices. Overall array dimension is {batch_count, K, N}
         c (array3d): three-dimensional array containing C matrices. Overall array dimension is {batch_count, M, N}
-        adj_d (array3d): three-dimensional array containing adjoints of D matrices. Overall array dimension is {batch_count, M, N}
-        alpha (float): parameter alpha of GEMM
-        beta (float): parameter beta of GEMM
         adj_a (array3d): three-dimensional array to which the adjoints of A matrices are written. Overall array dimension is {batch_count, M, K}
         adj_b (array3d): three-dimensional array to which the adjoints of B matrices are written. Overall array dimension is {batch_count, K, N}
         adj_c (array3d): three-dimensional array to which the adjoints of C matrices are written. Overall array dimension is {batch_count, M, N}
+        adj_d (array3d): three-dimensional array containing adjoints of D matrices. Overall array dimension is {batch_count, M, N}
+        alpha (float): parameter alpha of GEMM
+        beta (float): parameter beta of GEMM
         allow_tf32x3_arith (bool): whether to use CUTLASS's 3xTF32 GEMMs, which enable accuracy similar to FP32
                                    while using Tensor Cores
         device: device we want to use to multiply matrices. Defaults to active runtime device. If "cpu", resorts to using numpy multiplication.
