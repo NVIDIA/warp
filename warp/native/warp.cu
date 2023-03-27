@@ -280,7 +280,7 @@ void memset_device(void* context, void* dest, int value, size_t n)
 }
 
 
-static __global__ void arrcpy_1d_kernel(void* dst, const void* src,
+static __global__ void array_copy_1d_kernel(void* dst, const void* src,
                                         int dst_stride, int src_stride,
                                         const int* dst_indices, const int* src_indices,
                                         int n, int elem_size)
@@ -296,7 +296,7 @@ static __global__ void arrcpy_1d_kernel(void* dst, const void* src,
     }
 }
 
-static __global__ void arrcpy_2d_kernel(void* dst, const void* src,
+static __global__ void array_copy_2d_kernel(void* dst, const void* src,
                                         wp::vec_t<2, int> dst_strides, wp::vec_t<2, int> src_strides,
                                         wp::vec_t<2, const int*> dst_indices, wp::vec_t<2, const int*> src_indices,
                                         wp::vec_t<2, int> shape, int elem_size)
@@ -317,7 +317,7 @@ static __global__ void arrcpy_2d_kernel(void* dst, const void* src,
     }
 }
 
-static __global__ void arrcpy_3d_kernel(void* dst, const void* src,
+static __global__ void array_copy_3d_kernel(void* dst, const void* src,
                                         wp::vec_t<3, int> dst_strides, wp::vec_t<3, int> src_strides,
                                         wp::vec_t<3, const int*> dst_indices, wp::vec_t<3, const int*> src_indices,
                                         wp::vec_t<3, int> shape, int elem_size)
@@ -346,7 +346,7 @@ static __global__ void arrcpy_3d_kernel(void* dst, const void* src,
     }
 }
 
-static __global__ void arrcpy_4d_kernel(void* dst, const void* src,
+static __global__ void array_copy_4d_kernel(void* dst, const void* src,
                                         wp::vec_t<4, int> dst_strides, wp::vec_t<4, int> src_strides,
                                         wp::vec_t<4, const int*> dst_indices, wp::vec_t<4, const int*> src_indices,
                                         wp::vec_t<4, int> shape, int elem_size)
@@ -382,7 +382,7 @@ static __global__ void arrcpy_4d_kernel(void* dst, const void* src,
 }
 
 
-WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
+WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
 {
     if (!src || !dst)
         return 0;
@@ -400,7 +400,7 @@ WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, i
 
     const int* null_indices[wp::ARRAY_MAX_DIMS] = { NULL };
 
-    if (src_type == wp::ArrayType::eREGULAR)
+    if (src_type == wp::ARRAY_TYPE_REGULAR)
     {
         const wp::array_t<void>& src_arr = *static_cast<const wp::array_t<void>*>(src);
         src_data = src_arr.data;
@@ -409,7 +409,7 @@ WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, i
         src_strides = src_arr.strides;
         src_indices = null_indices;
     }
-    else if (src_type == wp::ArrayType::eINDEXED)
+    else if (src_type == wp::ARRAY_TYPE_INDEXED)
     {
         const wp::indexedarray_t<void>& src_arr = *static_cast<const wp::indexedarray_t<void>*>(src);
         src_data = src_arr.arr.data;
@@ -424,7 +424,7 @@ WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, i
         return 0;
     }
 
-    if (dst_type == wp::ArrayType::eREGULAR)
+    if (dst_type == wp::ARRAY_TYPE_REGULAR)
     {
         const wp::array_t<void>& dst_arr = *static_cast<const wp::array_t<void>*>(dst);
         dst_data = dst_arr.data;
@@ -433,7 +433,7 @@ WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, i
         dst_strides = dst_arr.strides;
         dst_indices = null_indices;
     }
-    else if (dst_type == wp::ArrayType::eINDEXED)
+    else if (dst_type == wp::ARRAY_TYPE_INDEXED)
     {
         const wp::indexedarray_t<void>& dst_arr = *static_cast<const wp::indexedarray_t<void>*>(dst);
         dst_data = dst_arr.arr.data;
@@ -472,7 +472,7 @@ WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, i
     {
     case 1:
     {
-        wp_launch_device(WP_CURRENT_CONTEXT, arrcpy_1d_kernel, n, (dst_data, src_data,
+        wp_launch_device(WP_CURRENT_CONTEXT, array_copy_1d_kernel, n, (dst_data, src_data,
                                                                    dst_strides[0], src_strides[0],
                                                                    dst_indices[0], src_indices[0],
                                                                    src_shape[0], elem_size));
@@ -486,7 +486,7 @@ WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, i
         wp::vec_t<2, const int*> src_indices_v(src_indices[0], src_indices[1]);
         wp::vec_t<2, const int*> dst_indices_v(dst_indices[0], dst_indices[1]);
 
-        wp_launch_device(WP_CURRENT_CONTEXT, arrcpy_2d_kernel, n, (dst_data, src_data,
+        wp_launch_device(WP_CURRENT_CONTEXT, array_copy_2d_kernel, n, (dst_data, src_data,
                                                                    dst_strides_v, src_strides_v,
                                                                    dst_indices_v, src_indices_v,
                                                                    shape_v, elem_size));
@@ -500,7 +500,7 @@ WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, i
         wp::vec_t<3, const int*> src_indices_v(src_indices[0], src_indices[1], src_indices[2]);
         wp::vec_t<3, const int*> dst_indices_v(dst_indices[0], dst_indices[1], dst_indices[2]);
 
-        wp_launch_device(WP_CURRENT_CONTEXT, arrcpy_3d_kernel, n, (dst_data, src_data,
+        wp_launch_device(WP_CURRENT_CONTEXT, array_copy_3d_kernel, n, (dst_data, src_data,
                                                                    dst_strides_v, src_strides_v,
                                                                    dst_indices_v, src_indices_v,
                                                                    shape_v, elem_size));
@@ -514,7 +514,7 @@ WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, i
         wp::vec_t<4, const int*> src_indices_v(src_indices[0], src_indices[1], src_indices[2], src_indices[3]);
         wp::vec_t<4, const int*> dst_indices_v(dst_indices[0], dst_indices[1], dst_indices[2], dst_indices[3]);
 
-        wp_launch_device(WP_CURRENT_CONTEXT, arrcpy_4d_kernel, n, (dst_data, src_data,
+        wp_launch_device(WP_CURRENT_CONTEXT, array_copy_4d_kernel, n, (dst_data, src_data,
                                                                    dst_strides_v, src_strides_v,
                                                                    dst_indices_v, src_indices_v,
                                                                    shape_v, elem_size));

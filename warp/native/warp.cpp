@@ -8,6 +8,7 @@
 
 #include "warp.h"
 #include "scan.h"
+#include "array.h"
 
 #include "stdlib.h"
 #include "string.h"
@@ -130,7 +131,7 @@ void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
 }
 
 
-static void arrcpy_nd(void* dst, const void* src,
+static void array_copy_nd(void* dst, const void* src,
                       const int* dst_strides, const int* src_strides,
                       const int*const* dst_indices, const int*const* src_indices,
                       const int* shape, int ndim, int elem_size)
@@ -156,13 +157,13 @@ static void arrcpy_nd(void* dst, const void* src,
             const char* p = (const char*)src + src_idx * src_strides[0];
             char* q = (char*)dst + dst_idx * dst_strides[0];
             // recurse on next inner dimension
-            arrcpy_nd(q, p, dst_strides + 1, src_strides + 1, dst_indices + 1, src_indices + 1, shape + 1, ndim - 1, elem_size);
+            array_copy_nd(q, p, dst_strides + 1, src_strides + 1, dst_indices + 1, src_indices + 1, shape + 1, ndim - 1, elem_size);
         }
     }
 }
 
 
-WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int elem_size)
+WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, int elem_size)
 {
     if (!src || !dst)
         return 0;
@@ -180,7 +181,7 @@ WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int 
 
     const int* null_indices[wp::ARRAY_MAX_DIMS] = { NULL };
 
-    if (src_type == wp::ArrayType::eREGULAR)
+    if (src_type == wp::ARRAY_TYPE_REGULAR)
     {
         const wp::array_t<void>& src_arr = *static_cast<const wp::array_t<void>*>(src);
         src_data = src_arr.data;
@@ -189,7 +190,7 @@ WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int 
         src_strides = src_arr.strides;
         src_indices = null_indices;
     }
-    else if (src_type == wp::ArrayType::eINDEXED)
+    else if (src_type == wp::ARRAY_TYPE_INDEXED)
     {
         const wp::indexedarray_t<void>& src_arr = *static_cast<const wp::indexedarray_t<void>*>(src);
         src_data = src_arr.arr.data;
@@ -204,7 +205,7 @@ WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int 
         return 0;
     }
 
-    if (dst_type == wp::ArrayType::eREGULAR)
+    if (dst_type == wp::ARRAY_TYPE_REGULAR)
     {
         const wp::array_t<void>& dst_arr = *static_cast<const wp::array_t<void>*>(dst);
         dst_data = dst_arr.data;
@@ -213,7 +214,7 @@ WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int 
         dst_strides = dst_arr.strides;
         dst_indices = null_indices;
     }
-    else if (dst_type == wp::ArrayType::eINDEXED)
+    else if (dst_type == wp::ARRAY_TYPE_INDEXED)
     {
         const wp::indexedarray_t<void>& dst_arr = *static_cast<const wp::indexedarray_t<void>*>(dst);
         dst_data = dst_arr.arr.data;
@@ -246,7 +247,7 @@ WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int 
         n *= src_shape[i];
     }
 
-    arrcpy_nd(dst_data, src_data,
+    array_copy_nd(dst_data, src_data,
               dst_strides, src_strides,
               dst_indices, src_indices,
               src_shape, src_ndim, elem_size);

@@ -525,9 +525,14 @@ class hash_grid_query_t:
     def __init__(self):
         pass
 
-# maximum number of dimensions
+# maximum number of dimensions, must match array.h
 ARRAY_MAX_DIMS = 4
 LAUNCH_MAX_DIMS = 4
+
+# must match array.h
+ARRAY_TYPE_REGULAR = 0
+ARRAY_TYPE_INDEXED = 1
+
 
 # represents bounds for kernel launch (number of threads across multiple dimensions)
 class launch_bounds_t(ctypes.Structure):
@@ -565,11 +570,6 @@ class shape_t(ctypes.Structure):
     def __init__(self):
         pass
 
-
-# must match array.h
-class ArrayType:
-    Regular = 0
-    Indexed = 1
 
 
 class array_t(ctypes.Structure): 
@@ -761,8 +761,6 @@ T = TypeVar('T')
 
 
 class array (Generic[T]):
-
-    array_type_id = ArrayType.Regular
 
     # member attributes available during code-gen (e.g.: d = array.shape[0])
     # (initialized when needed)
@@ -1452,8 +1450,6 @@ def from_ptr(ptr, length, dtype=None, device=None):
 
 
 class indexedarray(Generic[T]):
-
-    array_type_id = ArrayType.Indexed
 
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)

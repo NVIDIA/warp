@@ -41,10 +41,6 @@ extern "C"
     WP_API void memcpy_d2d(void* context, void* dest, void* src, size_t n);
     WP_API void memcpy_peer(void* context, void* dest, void* src, size_t n);
 
-    // generic copy supporting non-contiguous arrays
-    WP_API size_t arrcpy_host(void* dst, void* src, int dst_type, int src_type, int elem_size);
-    WP_API size_t arrcpy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size);
-
     // all memsets are performed asynchronously
     WP_API void memset_host(void* dest, int value, size_t n);
     WP_API void memset_device(void* context, void* dest, int value, size_t n);
@@ -104,6 +100,10 @@ extern "C"
     WP_API void marching_cubes_destroy_device(uint64_t id);
     WP_API int marching_cubes_surface_device(uint64_t id, const float* field, int nx, int ny, int nz, float threshold, wp::vec3* verts, int* triangles, int max_verts, int max_tris, int* out_num_verts, int* out_num_tris);
 
+    // generic copy supporting non-contiguous arrays
+    WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, int elem_size);
+    WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size);
+
     WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
 
@@ -115,6 +115,7 @@ extern "C"
 
     WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive);
     WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive);
+
     WP_API int cuda_driver_version();   // CUDA driver version
     WP_API int cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
 

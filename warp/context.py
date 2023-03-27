@@ -1734,10 +1734,15 @@ class Runtime:
         self.core.memcpy_peer.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         self.core.memcpy_peer.restype = None
 
-        self.core.arrcpy_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.arrcpy_host.restype = ctypes.c_size_t
-        self.core.arrcpy_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.arrcpy_device.restype = ctypes.c_size_t
+        self.core.array_copy_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_copy_host.restype = ctypes.c_size_t
+        self.core.array_copy_device.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_copy_device.restype = ctypes.c_size_t
+
+        self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+        self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+        self.core.array_scan_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+        self.core.array_scan_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]      
 
         self.core.bvh_create_host.restype = ctypes.c_uint64
         self.core.bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
@@ -1777,11 +1782,6 @@ class Runtime:
 
         self.core.cutlass_gemm.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_float, ctypes.c_float, ctypes.c_bool, ctypes.c_bool, ctypes.c_bool, ctypes.c_int]
         self.core.cutlass_gemm.restypes = ctypes.c_bool
-
-        self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-        self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-        self.core.array_scan_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
-        self.core.array_scan_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]      
 
         self.core.volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
         self.core.volume_create_host.restype = ctypes.c_uint64
@@ -2889,18 +2889,25 @@ def copy(dest:warp.array, src:warp.array, dest_offset:int=0, src_offset:int=0, c
         if src_elem_size != dst_elem_size:
             raise RuntimeError("Incompatible array data types")
 
+        def array_type(a):
+            if isinstance(a, warp.types.array):
+                return warp.types.ARRAY_TYPE_REGULAR
+            elif isinstance(a, warp.types.indexedarray):
+                return warp.types.ARRAY_TYPE_INDEXED
+
+
         src_desc = src.__ctype__()
         dst_desc = dest.__ctype__()
         src_ptr = ctypes.pointer(src_desc)
-        dst_ptr = ctypes.pointer(dst_desc)
-        src_type = type(src).array_type_id
-        dst_type = type(dest).array_type_id
+        dst_ptr = ctypes.pointer(dst_desc)       
+        src_type = array_type(src)
+        dst_type = array_type(dest)
         
         if src.device.is_cuda:
             with warp.ScopedStream(stream):
-                runtime.core.arrcpy_device(src.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
+                runtime.core.array_copy_device(src.device.context, dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
         else:
-            runtime.core.arrcpy_host(dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
+            runtime.core.array_copy_host(dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
 
 
 def type_str(t):

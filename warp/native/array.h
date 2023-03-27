@@ -86,8 +86,10 @@ namespace wp
 
 #endif  // WP_FP_CHECK
 
-const int ARRAY_MAX_DIMS = 4;    // must match constant in types.py
+const int ARRAY_MAX_DIMS = 4;       // must match constant in types.py
 
+const int ARRAY_TYPE_REGULAR = 0;   // must match constant in types.py
+const int ARRAY_TYPE_INDEXED = 1;   // must match constant in types.py
 
 struct shape_t
 {
@@ -121,16 +123,6 @@ inline CUDA_CALLABLE void print(shape_t s)
     printf("(%d, %d, %d, %d)\n", s.dims[0], s.dims[1], s.dims[2], s.dims[3]);
 }
 inline CUDA_CALLABLE void adj_print(shape_t s, shape_t& shape_t) {}
-
-// must match types.py
-struct ArrayType
-{
-    enum
-    {
-        eREGULAR,
-        eINDEXED,
-    };
-};
 
 
 template <typename T>
