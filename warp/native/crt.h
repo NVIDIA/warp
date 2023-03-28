@@ -15,8 +15,8 @@
 //   declared builtins for most functions. printf() and macro definitions are
 //   the notable exceptions.
 // - C++ kernel modules (WP_NO_CRT and !__CUDACC__). These can't use the CRT
-//   directly when using a standalone compiler. The functions get exported from
-//   the Warp runtime instead (warp.dll).
+//   directly when using a standalone compiler. The functions get obtained from
+//   the compiler library instead (clang.dll).
 // - Warp runtime (!WP_NO_CRT). When building warp.dll it's fine to include the
 //   standard C library headers, and it avoids mismatched redefinitions.
 
@@ -29,6 +29,16 @@
 #else
     #define WP_API
 #endif
+
+extern "C" {
+
+// Helper for implementing assert() macro
+WP_API void _wp_assert(const char* message, const char* file, unsigned int line);
+
+// Helper for implementing isfinite()
+WP_API int _wp_isfinite(double);
+
+}  // extern "C"
 
 #if !defined(WP_NO_CRT)
 
@@ -121,12 +131,6 @@ void* memcpy(void*, const void*, size_t);
 // stdlib.h
 void* malloc(size_t);
 void free(void*);
-
-// Helper for implementing assert() macro
-WP_API void _wp_assert(const char* message, const char* file, unsigned int line);
-
-// Helper for implementing isfinite()
-WP_API int _wp_isfinite(double);
 
 }  // extern "C"
 
