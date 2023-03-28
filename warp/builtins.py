@@ -888,6 +888,12 @@ add_builtin("sample_unit_square", input_types={"state": uint32}, value_type=vec2
 add_builtin("sample_unit_cube", input_types={"state": uint32}, value_type=vec3, group="Random",
     doc="Uniformly sample a unit cube")
 
+add_builtin("poisson", input_types={"state": uint32, "lambda": float}, value_type=uint32, group="Random",
+    doc="""Generate a random sample from a Poisson distribution.
+    
+    :param state: RNG state
+    :param lambda: The expected value of the distribution""")
+
 add_builtin("noise", input_types={"state": uint32, "x": float}, value_type=float, group="Random",
     doc="Non-periodic Perlin-style noise in 1d.")
 add_builtin("noise", input_types={"state": uint32, "xy": vec2}, value_type=float, group="Random",
