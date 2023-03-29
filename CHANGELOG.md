@@ -3,6 +3,7 @@
 ## [0.7.3] - 2023-03-14
 
 - Add optional `requires_grad` parameter to `wp.from_torch()` to override gradient allocation
+- Optimized kernel launches with about 2-3x improvement in common cases
 
 
 ## [0.7.2] - 2023-02-15

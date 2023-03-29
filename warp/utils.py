@@ -617,6 +617,7 @@ class ScopedTimer:
         self.print = print
         self.detailed = detailed
         self.dict = dict
+        self.elapsed = 0.0
 
         if self.dict is not None:
             if name not in self.dict:

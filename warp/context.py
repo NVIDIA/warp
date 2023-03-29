@@ -498,37 +498,6 @@ class Kernel:
             return self.key
 
 
-    # lookup and cache entry points based on name, called after compilation / module load
-    def get_hooks(self, device):
-
-        # get dictionary of hooks for the given device
-        device_hooks = self.module.kernel_hooks.get(device.context, {})
-
-        # look up this kernel
-        hooks = device_hooks.get(self)
-        if hooks is not None:
-            return hooks
-
-        name = self.get_mangled_name()
-        
-        if device.is_cpu:
-            if self.module.cpu_module:
-                func = ctypes.CFUNCTYPE(None)
-                forward = func(runtime.llvm.lookup(self.module.cpu_module.encode('utf-8'), (name + "_cpu_forward").encode('utf-8')))
-                backward = func(runtime.llvm.lookup(self.module.cpu_module.encode('utf-8'), (name + "_cpu_backward").encode('utf-8')))
-            else:
-                forward = eval("self.module.dll." + name + "_cpu_forward")
-                backward = eval("self.module.dll." + name + "_cpu_backward")
-        else:
-            cu_module = self.module.cuda_modules[device.context]
-            forward = runtime.core.cuda_get_kernel(device.context, cu_module, (name + "_cuda_kernel_forward").encode('utf-8'))
-            backward = runtime.core.cuda_get_kernel(device.context, cu_module, (name + "_cuda_kernel_backward").encode('utf-8'))
-
-        hooks = KernelHooks(forward, backward)
-        device_hooks[self] = hooks
-        return hooks
-
-
 #----------------------
 
 # decorator to register function, @func
@@ -992,7 +961,7 @@ class Module:
 
         # kernel hook lookup per device
         # hooks are stored with the module so they can be easily cleared when the module is reloaded.
-        # -> See ``Kernel.get_hooks()``
+        # -> See ``Module.get_kernel_hooks()``
         self.kernel_hooks = {}
 
         # Module dependencies are determined by scanning each function
@@ -1356,6 +1325,38 @@ class Module:
 
         # clear content hash
         self.content_hash = None
+
+    # lookup and cache kernel entry points based on name, called after compilation / module load
+    def get_kernel_hooks(self, kernel, device):
+
+        # get all hooks for this device
+        device_hooks = self.kernel_hooks.get(device.context)
+        if device_hooks is None:
+            self.kernel_hooks[device.context] = device_hooks = {}
+
+        # look up this kernel
+        hooks = device_hooks.get(kernel)
+        if hooks is not None:
+            return hooks
+
+        name = kernel.get_mangled_name()
+        
+        if device.is_cpu:
+            if self.cpu_module:
+                func = ctypes.CFUNCTYPE(None)
+                forward = func(runtime.llvm.lookup(self.cpu_module.encode('utf-8'), (name + "_cpu_forward").encode('utf-8')))
+                backward = func(runtime.llvm.lookup(self.cpu_module.encode('utf-8'), (name + "_cpu_backward").encode('utf-8')))
+            else:
+                forward = eval("self.dll." + name + "_cpu_forward")
+                backward = eval("self.dll." + name + "_cpu_backward")
+        else:
+            cu_module = self.cuda_modules[device.context]
+            forward = runtime.core.cuda_get_kernel(device.context, cu_module, (name + "_cuda_kernel_forward").encode('utf-8'))
+            backward = runtime.core.cuda_get_kernel(device.context, cu_module, (name + "_cuda_kernel_backward").encode('utf-8'))
+
+        hooks = KernelHooks(forward, backward)
+        device_hooks[kernel] = hooks
+        return hooks
 
 
 #-------------------------------------------
@@ -2566,11 +2567,12 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
             kernel = kernel.get_overload(fwd_types)
 
         # delay load modules, including new overload if needed
-        if not kernel.module.load(device):
+        module = kernel.module
+        if not module.load(device):
             return
 
         # late bind
-        hooks = kernel.get_hooks(device)
+        hooks = module.get_kernel_hooks(kernel, device)
 
         pack_args(fwd_args, params)
         pack_args(adj_args, params, adjoint=True)

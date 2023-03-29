@@ -579,11 +579,12 @@ class array_t(ctypes.Structure):
                 ("strides", ctypes.c_int32*ARRAY_MAX_DIMS),
                 ("ndim", ctypes.c_int32)]
     
-    def __init__(self):
-        self.data = 0
-        self.shape = (0,)*ARRAY_MAX_DIMS
-        self.strides = (0,)*ARRAY_MAX_DIMS
-        self.ndim = 0       
+    def __init__(self, data=0, ndim=0, shape=(0,), strides=(0,)):
+        self.data = data
+        self.ndim = ndim
+        for i in range(ndim):
+            self.shape[i] = shape[i]
+            self.strides[i] = strides[i]
 
 
 class indexedarray_t(ctypes.Structure):
@@ -600,7 +601,7 @@ class indexedarray_t(ctypes.Structure):
             else:
                 self.indices[i] = ctypes.c_void_p(None)
             self.shape[i] = shape[i]
-
+        
 
 def type_ctype(dtype):
 
@@ -998,6 +999,7 @@ class array (Generic[T]):
             self.is_contiguous = False
             self.requires_grad = False
 
+        self.ctype = None
 
     def __del__(self):
         
@@ -1128,20 +1130,12 @@ class array (Generic[T]):
 
     # construct a C-representation of the array for passing to kernels
     def __ctype__(self):
-        a = array_t()
-        
-        if (self.ptr == None):
-            a.data = 0
-        else:
-            a.data = ctypes.c_uint64(self.ptr)
 
-        a.ndim = ctypes.c_int32(len(self.shape))
+        if self.ctype is None:
+            data = 0 if self.ptr is None else ctypes.c_uint64(self.ptr)
+            self.ctype = array_t(data=data, ndim=self.ndim, shape=self.shape, strides=self.strides)
 
-        for i in range(a.ndim):
-            a.shape[i] = self.shape[i]
-            a.strides[i] = self.strides[i]
-
-        return a        
+        return self.ctype
 
     @property
     def requires_grad(self):
