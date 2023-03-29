@@ -201,6 +201,21 @@ class Struct:
                 StructInstance.__init__(inst, self)
         return NewStructInstance()
 
+    def initializer(self):
+
+        input_types = {label : var.type for label, var in self.vars.items()}
+
+        return warp.context.Function(
+            func=None,
+            key = self.key,
+            namespace = "",
+            value_func = lambda *_: self,
+            input_types = input_types,
+            initializer_list_func = lambda *_ : False,
+            native_func=make_full_qualified_name(self.cls),
+        )
+
+
 def compute_type_str(base_name, template_params):
 
     if template_params == None or len(template_params) == 0:
@@ -359,22 +374,9 @@ class Adjoint:
                 raise e
 
         for a in adj.args:
-            structs = []
             if isinstance(a.type, Struct):
-                stack = [a.type]
-                while stack:
-                    s = stack.pop()
+                builder.build_struct_recursive(a.type)
 
-                    if not s in structs:
-                        structs.append(s)
-
-                    for var in s.vars.values():
-                        if isinstance(var.type, Struct):
-                            stack.append(var.type)
-
-            # Build them in reverse to generate a correct dependency order.
-            for s in reversed(structs):
-                builder.build_struct(s)
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -752,7 +754,10 @@ class Adjoint:
 
         # zero adjoints
         for i in body_block.vars:
-             reverse.append(adj.prefix + f"\tadj_{i} = {i.ctype()}(0);")
+            if isinstance(i.type, Struct):
+                reverse.append(adj.prefix + f"\tadj_{i} = {i.ctype()}{{}};")
+            else:
+                reverse.append(adj.prefix + f"\tadj_{i} = {i.ctype()}(0);")
 
         # replay
         for i in body_block.body_replay:
@@ -815,7 +820,10 @@ class Adjoint:
 
         # zero adjoints of local vars
         for i in body_block.vars:
-             reverse.append(f"adj_{i} = {i.ctype()}(0);")
+            if isinstance(i.type, Struct):
+                reverse.append(f"adj_{i} = {i.ctype()}{{}};")
+            else:
+                reverse.append(f"adj_{i} = {i.ctype()}(0);")
 
         # replay
         for i in body_block.body_replay:
@@ -1301,6 +1309,10 @@ class Adjoint:
                 
                 func = warp.context.builtin_functions.get(caller.__class__.__name__)
 
+            if func is None and isinstance(caller, Struct):
+                adj.builder.build_struct_recursive(caller)
+                func = caller.initializer()
+
             if func is None:
                 raise RuntimeError(f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel.")
 
@@ -1642,8 +1654,18 @@ struct_template = '''
 struct {name}
 {{
 {struct_body}
+
+    CUDA_CALLABLE {name}({forward_args})
+    {forward_initializers}
+    {{
+    }}
+
 }};
 
+static CUDA_CALLABLE void adj_{name}({reverse_args})
+{{
+{reverse_body}
+}}
 '''
 
 cpu_function_template = '''
@@ -1824,15 +1846,49 @@ def indent(args, stops=1):
 def make_full_qualified_name(func):
     return re.sub('[^0-9a-zA-Z_]+', '', func.__qualname__.replace('.', '__'))
 
-def codegen_struct(struct, indent=4):
+def codegen_struct(struct, device='cpu', indent_size=4):
+
+    name = make_full_qualified_name(struct.cls)
+
     body = []
-    indent_block = " " * indent
+    indent_block = " " * indent_size
     for label, var in struct.vars.items():
         body.append(var.ctype() + " " + label + ";\n")
 
+
+    forward_args = []
+    reverse_args = []
+
+    forward_initializers = []
+    reverse_body = []
+
+    # forward args
+    for label, var in struct.vars.items():
+        forward_args.append(f"{var.ctype()} const& {label} = {{}}")
+        reverse_args.append(f"{var.ctype()} const&")
+
+        prefix = f"{indent_block}," if forward_initializers else ":"
+        forward_initializers.append(
+            f"{indent_block}{prefix} {label}{{{label}}}\n"
+        )
+
+    # reverse args
+    for label, var in struct.vars.items():
+        reverse_args.append(var.ctype() + " const& adj_" + label)
+        
+        reverse_body.append(
+            f"{indent_block}adj_ret.{label} = adj_{label};\n"
+        )
+    
+    reverse_args.append(name + " & adj_ret")
+
     return struct_template.format(
-        name=make_full_qualified_name(struct.cls),
-        struct_body="".join([indent_block + l for l in body])
+        name=name,
+        struct_body="".join([indent_block + l for l in body]),
+        forward_args=indent(forward_args),
+        forward_initializers="".join(forward_initializers),
+        reverse_args=indent(reverse_args),
+        reverse_body="".join(reverse_body)
     )
 
 
@@ -1917,7 +1973,10 @@ def codegen_func_reverse(adj, func_type='kernel', device='cpu'):
     s += "    // dual vars\n"
 
     for var in adj.variables:
-        s += "    " + var.ctype() + " adj_" + str(var.label) + "(0);\n"
+        if isinstance(var.type, Struct):
+            s += "    " + var.ctype() + " adj_" + str(var.label) + ";\n"
+        else:
+            s += "    " + var.ctype() + " adj_" + str(var.label) + "(0);\n"
 
     if device == 'cpu':
         s += codegen_func_reverse_body(adj, device=device, indent=4)

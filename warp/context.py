@@ -840,6 +840,25 @@ class ModuleBuilder:
                 for k in kernel.overloads.values():
                     self.build_kernel(k)
 
+
+    def build_struct_recursive(self, struct: warp.codegen.Struct):
+        structs = []
+
+        stack = [struct]
+        while stack:
+            s = stack.pop()
+
+            if not s in structs:
+                structs.append(s)
+
+            for var in s.vars.values():
+                if isinstance(var.type, warp.codegen.Struct):
+                    stack.append(var.type)
+
+        # Build them in reverse to generate a correct dependency order.
+        for s in reversed(structs):
+            self.build_struct(s)
+
     def build_struct(self, struct):
         self.structs[struct] = None
 
