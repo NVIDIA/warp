@@ -16,7 +16,7 @@ namespace wp
 //----------------------------------------------------------
 // mat
 template<typename T>
-class quat_t;
+struct quat_t;
 
 template<unsigned Rows, unsigned Cols, typename Type>
 struct mat_t
