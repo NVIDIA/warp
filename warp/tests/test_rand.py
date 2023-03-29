@@ -206,6 +206,8 @@ def test_poisson(test, device):
     # _ = plt.hist(poisson_high.numpy(), bins)
     # plt.show()
 
+    np.random.default_rng(seed)
+
     np_poisson_low = np.random.poisson(3.0, N)
     np_poisson_high = np.random.poisson(42.0, N)
     

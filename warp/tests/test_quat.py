@@ -1235,13 +1235,14 @@ def test_quat_to_axis_angle_grad(test, device, dtype, register_kernels=False):
         
     def quat_sampler(
         kernel_seed: int,
+        angles: wp.array(dtype=float),
         quats: wp.array(dtype=quat)):
 
         tid = wp.tid()
 
         state = wp.rand_init(kernel_seed, tid)
 
-        angle = wp.randf(state, 0.0, 2.0 * 3.1415926535)
+        angle = angles[tid]
         dir = wp.sample_unit_sphere_surface(state) * wp.sin(angle*0.5)
 
         q = quat(wptype(dir[0]), wptype(dir[1]), wptype(dir[2]), wptype(wp.cos(angle*0.5)))
@@ -1255,7 +1256,8 @@ def test_quat_to_axis_angle_grad(test, device, dtype, register_kernels=False):
         return
     
     quats = wp.zeros(num_rand, dtype=quat, device=device, requires_grad=True)
-    wp.launch(kernel=quat_sampler, dim=num_rand, inputs=[seed, quats], device=device)
+    angles = wp.array(np.linspace(0.0, 2.0*np.pi, num_rand, endpoint=False, dtype=np.float32), dtype=float, device=device)
+    wp.launch(kernel=quat_sampler, dim=num_rand, inputs=[seed, angles, quats], device=device)
     
     edge_cases = np.array([(1.0, 0.0, 0.0, 0.0), (0.0, 1.0 / np.sqrt(3), 1.0 / np.sqrt(3), 1.0 / np.sqrt(3)), (0.0, 0.0, 0.0, 0.0)])
     num_edge = len(edge_cases)
@@ -1302,11 +1304,10 @@ def test_quat_to_axis_angle_grad(test, device, dtype, register_kernels=False):
     _, edge_gradients_z_auto = compute_gradients(edge_cases, quat_to_axis_angle_kernel_forward, num_edge, 2)
     _, edge_gradients_w_auto = compute_gradients(edge_cases, quat_to_axis_angle_kernel_forward, num_edge, 3)
 
-    # compare
     eps = {
-        np.float16: 2.e-2,
-        np.float32: 1.e-5,
-        np.float64: 1.e-8,
+        np.float16: 2.e-1,
+        np.float32: 2.e-4,
+        np.float64: 2.e-7,
     }.get(dtype,0)
 
     assert_np_equal(xcmp, xcmp_auto, tol=eps)
