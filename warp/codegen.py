@@ -95,8 +95,13 @@ def _get_struct_instance_ctype(
         elif isinstance(var_type, Struct):
             _get_struct_instance_ctype(value, inst_ctype, field_name)
         elif issubclass(var_type, ctypes.Array):
-            # array type e.g. vec3
-            setattr(inst_ctype, field_name, var_type(*value))
+            # vector/matrix type, e.g. vec3
+            if types_equal(type(value), var_type):
+                setattr(inst_ctype, field_name, value)
+            elif value is None:
+                setattr(inst_ctype, field_name, var_type()) # default value
+            else:
+                raise TypeError(f"assign to struct member {field_name} failed, expected type {var_type}, got type {type(value)}")
         else:
             # primitive type
             setattr(inst_ctype, field_name, var_type._type_(value))

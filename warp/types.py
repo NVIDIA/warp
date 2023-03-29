@@ -81,19 +81,37 @@ def vector(length, dtype):
         
 
         def __init__(self, *args):
+
             if self._wp_scalar_type_ == float16:
-                
                 # special case for float16 type: in this case, data is stored
                 # as uint16 but it's actually half precision floating point
                 # data. This means we need to convert each of the arguments
                 # to uint16s containing half float bits before storing them in
                 # the array:
-
                 from warp.context import runtime
-                super().__init__(*[runtime.core.float_to_half_bits(x) for x in args])
+                scalar_value = runtime.core.float_to_half_bits
             else:
-                super().__init__(*args)
-        
+                scalar_value = lambda x: x
+
+            num_args = len(args)
+            if num_args == 0:
+                super().__init__()
+            elif num_args == 1:
+                if hasattr(args[0], "__len__"):
+                    # try to copy from expanded sequence, e.g. (1, 2, 3)
+                    self.__init__(*args[0])
+                else:
+                    # set all elements to the same value
+                    value = scalar_value(args[0])
+                    for i in range(self._length_):
+                        super().__setitem__(i, value)
+            elif num_args == self._length_:
+                # set all scalar elements
+                for i in range(self._length_):
+                    super().__setitem__(i, scalar_value(args[i]))
+            else:
+                raise ValueError("Invalid number of arguments in vector constructor")
+
         def __add__(self, y):
             return warp.add(self, y)
 
@@ -127,12 +145,12 @@ def vector(length, dtype):
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"
 
-        def __getitem__(self, key):
-            # used to terminate iterations
-            if isinstance(key, int) and key >= self._length_:
-                raise IndexError()
-            else:
-                return super().__getitem__(key)
+    # wrap the value (which is a ctypes.Array) in a structure to ensure
+    # parameter is passed to kernels by value rather than reference
+    class ValueArg(ctypes.Structure):
+        _fields_ = [ ('value', vec_t)]
+
+    vec_t.ValueArg = ValueArg
 
     return vec_t
 
@@ -153,20 +171,47 @@ def matrix(shape, dtype):
         _wp_generic_type_str_ = "mat_t"
         _wp_constructor_ = "matrix"
         
+        _wp_row_type_ = vector(0 if shape[1] == Any else shape[1], dtype)
 
         def __init__(self, *args):
+
             if self._wp_scalar_type_ == float16:
-                
                 # special case for float16 type: in this case, data is stored
                 # as uint16 but it's actually half precision floating point
                 # data. This means we need to convert each of the arguments
                 # to uint16s containing half float bits before storing them in
                 # the array:
-
                 from warp.context import runtime
-                super().__init__(*[runtime.core.float_to_half_bits(x) for x in args])
+                scalar_value = runtime.core.float_to_half_bits
             else:
-                super().__init__(*args)
+                scalar_value = lambda x: x
+
+            num_args = len(args)
+            if num_args == 0:
+                super().__init__()
+            elif num_args == 1:
+                if hasattr(args[0], "__len__"):
+                    # try to copy from expanded sequence, e.g. [[1, 0], [0, 1]]
+                    self.__init__(*args[0])
+                else:
+                    # set all elements to the same value
+                    value = scalar_value(args[0])
+                    for i in range(self._length_):
+                        super().__setitem__(i, value)
+            elif num_args == self._length_:
+                # set all scalar elements
+                for i in range(self._length_):
+                    super().__setitem__(i, scalar_value(args[i]))
+            elif num_args == self._shape_[0]:
+                # row vectors
+                for i, row in enumerate(args):
+                    if not hasattr(row, "__len__") or len(row) != self._shape_[1]:
+                        raise TypeError(f"Invalid argument in matrix constructor: {row}")
+                    offset = i * self._shape_[1]
+                    for i in range(self._shape_[1]):
+                        super().__setitem__(offset + i, scalar_value(row[i]))
+            else:
+                raise ValueError("Invalid number of arguments in matrix constructor")
 
         def __add__(self, y):
             return warp.add(self, y)
@@ -198,32 +243,50 @@ def matrix(shape, dtype):
         def __neg__(self, y):
             return warp.neg(self, y)
 
-        def _row(self, r):
-            row_start = r*self._shape_[1]
-            row_end = row_start + self._shape_[1]
-            row_type = vector(self._shape_[1], self._wp_scalar_type_)
-            row_val = row_type(*super().__getitem__(slice(row_start,row_end)))
-
-            return row_val
-
         def __str__(self):
             row_str = []
             for r in range(self._shape_[0]):      
-                row_val = self._row(r)
+                row_val = self.get_row(r)
                 row_str.append(f"[{', '.join(map(str, row_val))}]")
             
             return "[" + ",\n ".join(row_str) + "]"
+
+        def get_row(self, r):
+            if r < 0 or r >= self._shape_[0]:
+                raise IndexError("Invalid row index")
+            row_start = r * self._shape_[1]
+            row_end = row_start + self._shape_[1]
+            return self._wp_row_type_(*super().__getitem__(slice(row_start, row_end)))
+
+        def set_row(self, r, v):
+            if r < 0 or r >= self._shape_[0]:
+                raise IndexError("Invalid row index")
+            row_start = r * self._shape_[1]
+            row_end = row_start + self._shape_[1]
+            super().__setitem__(slice(row_start,row_end), v)
 
         def __getitem__(self, key):
             if isinstance(key, Tuple):
                 # element indexing m[i,j]
                 return super().__getitem__(key[1]*self._shape_[0] + key[1])
             else:
-                # used to terminate iterations
-                if key >= self._length_[0]:
-                    raise IndexError()
-                else:
-                    return self._row(key)
+                # row vector indexing m[r]
+                return self.get_row(key)
+
+        def __setitem__(self, key, value):
+            if isinstance(key, Tuple):
+                # element indexing m[i,j] = x
+                return super().__setitem__(key[1]*self._shape_[0] + key[1], value)
+            else:
+                # row vector indexing m[r] = v
+                self.set_row(key, value)
+
+    # wrap the value (which is a ctypes.Array) in a structure to ensure
+    # parameter is passed to kernels by value rather than reference
+    class ValueArg(ctypes.Structure):
+        _fields_ = [ ('value', mat_t)]
+
+    mat_t.ValueArg = ValueArg
 
     return mat_t
 

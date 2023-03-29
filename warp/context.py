@@ -2519,24 +2519,26 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):
 
-                    # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
-                    a = np.array(a)
+                    if hasattr(a, "_wp_generic_type_str_"):
+                        # a Warp vector/matrix type
+                        if warp.types.types_equal(type(a), arg_type):
+                            x = arg_type.ValueArg()
+                            x.value = a
+                            params.append(x)
+                        else:
+                            raise TypeError(f"Invalid argument type for param {arg_name}, expected {type_str(arg_type)}, got {type_str(type(a))}")
+                    else:
+                        # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
+                        v = np.array(a)
 
-                    # flatten to 1D array
-                    v = a.flatten()
-                    if (len(v) != arg_type._length_):
-                        raise RuntimeError(f"Error launching kernel '{kernel.key}', parameter for argument '{arg_name}' has length {len(v)}, but expected {arg_type._length_}. Could not convert parameter to {arg_type}.")
+                        # ensure shape is correct
+                        if v.shape != arg_type._shape_:
+                            raise TypeError(f"Invalid argument shape for param {arg_name}, expected {arg_type.shape}, got {v.shape}")
 
-                    # wrap the arg_type (which is an ctypes.Array) in a structure
-                    # to ensure parameter is passed to the .dll by value rather than reference
-                    class ValueArg(ctypes.Structure):
-                        _fields_ = [ ('value', arg_type)]
-
-                    x = ValueArg()
-                    for i in range(arg_type._length_):
-                        x.value[i] = v[i]
-
-                    params.append(x)
+                        x = arg_type.ValueArg()
+                        for i in range(arg_type._shape_[0]):
+                           x.value[i] = v[i]
+                        params.append(x)
 
                 elif isinstance(a, arg_type):
                     try:

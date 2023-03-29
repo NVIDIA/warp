@@ -2,6 +2,9 @@
 
 ## [0.7.3] - 2023-03-14
 
+- Fix matrices in structs
+- Add new Python vector and matrix constructors
+- Allow setting and getting row vectors for Python matrices
 - Add optional `requires_grad` parameter to `wp.from_torch()` to override gradient allocation
 
 
