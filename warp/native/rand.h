@@ -249,7 +249,7 @@ inline CUDA_CALLABLE uint32 random_poisson(uint32& state, float lam)
         {
             return k;
         }
-        if ((k < 0) || ((us < 0.013) && (V > us)))
+        if ((us < 0.013) && (V > us))
         {
             continue;
         }
