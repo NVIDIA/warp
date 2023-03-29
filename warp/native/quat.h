@@ -331,7 +331,15 @@ inline CUDA_CALLABLE Type index(const quat_t<Type>& a, int idx)
     }
 #endif
 
-    return (&a.x)[idx];
+    /*
+    * Because quat data is not stored in an array, we index the quaternion by checking all possible idx values.
+    * (&a.x)[idx] would be the preferred access strategy, but this results in undefined behavior in the clang compiler
+    * at optimization level 3.
+    */ 
+    if (idx == 0)       {return a.x;}
+    else if (idx == 1)  {return a.y;}
+    else if (idx == 2)  {return a.z;}
+    else                {return a.w;}
 }
 
 template<typename Type>
@@ -359,7 +367,11 @@ inline CUDA_CALLABLE void adj_index(const quat_t<Type>& a, int idx, quat_t<Type>
     }
 #endif
 
-    (&adj_a.x)[idx] += adj_ret;
+    // See wp::index(const quat_t<Type>& a, int idx) note
+    if (idx == 0)       {adj_a.x += adj_ret;}
+    else if (idx == 1)  {adj_a.y += adj_ret;}
+    else if (idx == 2)  {adj_a.z += adj_ret;}
+    else                {adj_a.w += adj_ret;}
 }
 
 
@@ -444,33 +456,33 @@ inline CUDA_CALLABLE void adj_quat_to_axis_angle(const quat_t<Type>& q, vec_t<3,
 template<typename Type>
 inline CUDA_CALLABLE void adj_quat_rpy(Type roll, Type pitch, Type yaw, Type& adj_roll, Type& adj_pitch, Type& adj_yaw, const quat_t<Type>& adj_ret)
 {
-    Type cy = cos(yaw * 0.5);
-    Type sy = sin(yaw * 0.5);
-    Type cr = cos(roll * 0.5);
-    Type sr = sin(roll * 0.5);
-    Type cp = cos(pitch * 0.5);
-    Type sp = sin(pitch * 0.5);
+    Type cy = cos(yaw * Type(0.5));
+    Type sy = sin(yaw * Type(0.5));
+    Type cr = cos(roll * Type(0.5));
+    Type sr = sin(roll * Type(0.5));
+    Type cp = cos(pitch * Type(0.5));
+    Type sp = sin(pitch * Type(0.5));
 
     Type w = (cy * cr * cp + sy * sr * sp);
     Type x = (cy * sr * cp - sy * cr * sp);
     Type y = (cy * cr * sp + sy * sr * cp);
     Type z = (sy * cr * cp - cy * sr * sp);
 
-    Type dx_dr = 0.5 * w;
-    Type dx_dp = -0.5 * cy * sr * sp - 0.5 * sy * cr * cp;
-    Type dx_dy = -0.5 * y;
+    Type dx_dr = Type(0.5) * w;
+    Type dx_dp = -Type(0.5) * cy * sr * sp - Type(0.5) * sy * cr * cp;
+    Type dx_dy = -Type(0.5) * y;
 
-    Type dy_dr = 0.5 * z;
-    Type dy_dp = 0.5 * cy * cr * cp - 0.5 * sy * sr * sp;
-    Type dy_dy = 0.5 * x;
+    Type dy_dr = Type(0.5) * z;
+    Type dy_dp = Type(0.5) * cy * cr * cp - Type(0.5) * sy * sr * sp;
+    Type dy_dy = Type(0.5) * x;
 
-    Type dz_dr = -0.5 * y;
-    Type dz_dp = -0.5 * sy * cr * sp - 0.5 * cy * sr * cp;
-    Type dz_dy = 0.5 * w;
+    Type dz_dr = -Type(0.5) * y;
+    Type dz_dp = -Type(0.5) * sy * cr * sp - Type(0.5) * cy * sr * cp;
+    Type dz_dy = Type(0.5) * w;
 
-    Type dw_dr = -0.5 * x;
-    Type dw_dp = -0.5 * cy * cr * sp + 0.5 * sy * sr * cp;
-    Type dw_dy = -0.5 * z;
+    Type dw_dr = -Type(0.5) * x;
+    Type dw_dp = -Type(0.5) * cy * cr * sp + Type(0.5) * sy * sr * cp;
+    Type dw_dy = -Type(0.5) * z;
 
     adj_roll += dot(quat_t<Type>(dx_dr, dy_dr, dz_dr, dw_dr), adj_ret);
     adj_pitch += dot(quat_t<Type>(dx_dp, dy_dp, dz_dp, dw_dp), adj_ret);
