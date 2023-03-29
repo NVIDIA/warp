@@ -196,6 +196,17 @@ def test_nested_struct(test, device):
         wp.array((260, 262, 264), dtype=int, device=device),
     )
 
+@wp.kernel
+def test_struct_instantiate(data: wp.array(dtype=int)):
+    baz = Baz(data, wp.vec3(0.0, 0.0, 26.0))
+    bar = Bar(baz, 25.0)
+    foo = Foo(bar, 24)
+
+    wp.expect_eq(foo.x, 24)
+    wp.expect_eq(foo.bar.y, 25.0)
+    wp.expect_eq(foo.bar.baz.z[2], 26.0)
+    wp.expect_eq(foo.bar.baz.data[0], 1)
+
 def register(parent):
     
     devices = get_test_devices()
@@ -208,6 +219,9 @@ def register(parent):
     add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
     add_kernel_test(TestStruct, kernel=test_uninitialized, name="test_uninitialized", dim=1, inputs=[Uninitialized()], devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
+
+    for device in devices:
+        add_kernel_test(TestStruct, kernel=test_struct_instantiate, name="test_struct_instantiate", dim=1, inputs=[wp.array([1], dtype=int, device=device)], devices=[device])
 
     return TestStruct
 
