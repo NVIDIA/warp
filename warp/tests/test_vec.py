@@ -2391,6 +2391,48 @@ def test_minmax(test,device,dtype, register_kernels=False):
                 tape.zero()
     
 
+def test_equivalent_types(test, device, dtype, register_kernels=False):
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    # vector types
+    vec2_1 = wp.types.vector(length=2, dtype=wptype)
+    vec3_1 = wp.types.vector(length=3, dtype=wptype)
+    vec4_1 = wp.types.vector(length=4, dtype=wptype)
+    vec5_1 = wp.types.vector(length=5, dtype=wptype)
+
+    # vector types equivalent to the above
+    vec2_2 = wp.types.vector(length=2, dtype=wptype)
+    vec3_2 = wp.types.vector(length=3, dtype=wptype)
+    vec4_2 = wp.types.vector(length=4, dtype=wptype)
+    vec5_2 = wp.types.vector(length=5, dtype=wptype)
+
+    # declare kernel with original types
+    def check_equivalence(
+        v2: vec2_1,
+        v3: vec3_1,
+        v4: vec4_1,
+        v5: vec5_1,
+    ):
+        wp.expect_eq(v2, vec2_1(wptype(1), wptype(2)))
+        wp.expect_eq(v3, vec3_1(wptype(1), wptype(2), wptype(3)))
+        wp.expect_eq(v4, vec4_1(wptype(1), wptype(2), wptype(3), wptype(4)))
+        wp.expect_eq(v5, vec5_1(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
+
+    kernel = getkernel(check_equivalence, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    # call kernel with equivalent types
+    v2 = vec2_2(1, 2)
+    v3 = vec3_2(1, 2, 3)
+    v4 = vec4_2(1, 2, 3, 4)
+    v5 = vec5_2(1, 2, 3, 4, 5)
+
+    wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5])
+
+
 def register(parent):
 
     devices = get_test_devices()
@@ -2423,6 +2465,7 @@ def register(parent):
         add_function_test_register_kernel(TestVec, f"test_cw_division_{dtype.__name__}", test_cw_division, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestVec, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestVec, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestVec, f"test_equivalent_types_{dtype.__name__}", test_equivalent_types, devices=devices, dtype=dtype)
 
         # the kernels in this test compile incredibly slowly...
         # add_function_test_register_kernel(TestVec, f"test_minmax_{dtype.__name__}", test_minmax, devices=devices, dtype=dtype)

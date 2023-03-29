@@ -2042,21 +2042,31 @@ def codegen_module(kernel, device='cpu'):
     forward_params = ["dim"]
 
     for arg in adj.args:
-        forward_args.append(arg.ctype() + " var_" + arg.label)
-        forward_params.append("var_" + arg.label)
+        if hasattr(arg.type, "_wp_generic_type_str_"):
+            # vectors and matrices are passed from Python by pointer
+            forward_args.append(f"const {arg.ctype()}* var_" + arg.label)
+            forward_params.append(f"*var_{arg.label}")
+        else:
+            forward_args.append(f"{arg.ctype()} var_{arg.label}")
+            forward_params.append("var_" + arg.label)
 
     # build reverse signature
     reverse_args = [*forward_args]
     reverse_params = [*forward_params]
 
     for arg in adj.args:
-        # indexed array gradients are regular arrays
         if isinstance(arg.type, indexedarray):
+            # indexed array gradients are regular arrays
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
-            reverse_args.append(_arg.ctype() + " adj_" + arg.label)
+            reverse_args.append(f"const {_arg.ctype()} adj_{arg.label}")
+            reverse_params.append(f"adj_{_arg.label}")
+        elif hasattr(arg.type, "_wp_generic_type_str_"):
+            # vectors and matrices are passed from Python by pointer
+            reverse_args.append(f"const {arg.ctype()}* adj_{arg.label}")
+            reverse_params.append(f"*adj_{arg.label}")
         else:
-            reverse_args.append(arg.ctype() + " adj_" + arg.label)
-        reverse_params.append("adj_" + arg.label)
+            reverse_args.append(f"{arg.ctype()} adj_{arg.label}")
+            reverse_params.append(f"adj_{arg.label}")
 
     if device == 'cpu':
         template = cpu_module_template
