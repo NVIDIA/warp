@@ -1726,7 +1726,7 @@ class Runtime:
         elif sys.platform == "darwin":
 
             warp_lib = os.path.join(bin_path, "libwarp.dylib")
-            llvm_lib = None
+            llvm_lib = os.path.join(bin_path, "libclang.dylib")
 
         else:
 
