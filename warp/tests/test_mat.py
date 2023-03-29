@@ -3062,28 +3062,33 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     # matrix types
-    mat22_1 = wp.types.matrix(shape=(2,2), dtype=wptype)
-    mat33_1 = wp.types.matrix(shape=(3,3), dtype=wptype)
-    mat44_1 = wp.types.matrix(shape=(4,4), dtype=wptype)
-    mat55_1 = wp.types.matrix(shape=(5,5), dtype=wptype)
+    mat22 = wp.types.matrix(shape=(2,2), dtype=wptype)
+    mat33 = wp.types.matrix(shape=(3,3), dtype=wptype)
+    mat44 = wp.types.matrix(shape=(4,4), dtype=wptype)
+    mat55 = wp.types.matrix(shape=(5,5), dtype=wptype)
 
     # matrix types equivalent to the above
-    mat22_2 = wp.types.matrix(shape=(2,2), dtype=wptype)
-    mat33_2 = wp.types.matrix(shape=(3,3), dtype=wptype)
-    mat44_2 = wp.types.matrix(shape=(4,4), dtype=wptype)
-    mat55_2 = wp.types.matrix(shape=(5,5), dtype=wptype)
+    mat22_equiv = wp.types.matrix(shape=(2,2), dtype=wptype)
+    mat33_equiv = wp.types.matrix(shape=(3,3), dtype=wptype)
+    mat44_equiv = wp.types.matrix(shape=(4,4), dtype=wptype)
+    mat55_equiv = wp.types.matrix(shape=(5,5), dtype=wptype)
 
     # declare kernel with original types
     def check_equivalence(
-        m2: mat22_1,
-        m3: mat33_1,
-        m4: mat44_1,
-        m5: mat55_1,
+        m2: mat22,
+        m3: mat33,
+        m4: mat44,
+        m5: mat55,
     ):
-        wp.expect_eq(m2, mat22_1(wptype(42)))
-        wp.expect_eq(m3, mat33_1(wptype(43)))
-        wp.expect_eq(m4, mat44_1(wptype(44)))
-        wp.expect_eq(m5, mat55_1(wptype(45)))
+        wp.expect_eq(m2, mat22(wptype(42)))
+        wp.expect_eq(m3, mat33(wptype(43)))
+        wp.expect_eq(m4, mat44(wptype(44)))
+        wp.expect_eq(m5, mat55(wptype(45)))
+
+        wp.expect_eq(m2, mat22_equiv(wptype(42)))
+        wp.expect_eq(m3, mat33_equiv(wptype(43)))
+        wp.expect_eq(m4, mat44_equiv(wptype(44)))
+        wp.expect_eq(m5, mat55_equiv(wptype(45)))
 
     kernel = getkernel(check_equivalence, suffix=dtype.__name__)
 
@@ -3091,12 +3096,12 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
         return
 
     # call kernel with equivalent types
-    m2 = mat22_2(42)
-    m3 = mat33_2(43)
-    m4 = mat44_2(44)
-    m5 = mat55_2(45)
+    m2 = mat22_equiv(42)
+    m3 = mat33_equiv(43)
+    m4 = mat44_equiv(44)
+    m5 = mat55_equiv(45)
 
-    wp.launch(kernel, dim=1, inputs=[m2, m3, m4, m5])
+    wp.launch(kernel, dim=1, inputs=[m2, m3, m4, m5], device=device)
 
 
 def register(parent):

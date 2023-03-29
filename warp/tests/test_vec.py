@@ -2396,28 +2396,33 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     # vector types
-    vec2_1 = wp.types.vector(length=2, dtype=wptype)
-    vec3_1 = wp.types.vector(length=3, dtype=wptype)
-    vec4_1 = wp.types.vector(length=4, dtype=wptype)
-    vec5_1 = wp.types.vector(length=5, dtype=wptype)
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
 
     # vector types equivalent to the above
-    vec2_2 = wp.types.vector(length=2, dtype=wptype)
-    vec3_2 = wp.types.vector(length=3, dtype=wptype)
-    vec4_2 = wp.types.vector(length=4, dtype=wptype)
-    vec5_2 = wp.types.vector(length=5, dtype=wptype)
+    vec2_equiv = wp.types.vector(length=2, dtype=wptype)
+    vec3_equiv = wp.types.vector(length=3, dtype=wptype)
+    vec4_equiv = wp.types.vector(length=4, dtype=wptype)
+    vec5_equiv = wp.types.vector(length=5, dtype=wptype)
 
     # declare kernel with original types
     def check_equivalence(
-        v2: vec2_1,
-        v3: vec3_1,
-        v4: vec4_1,
-        v5: vec5_1,
+        v2: vec2,
+        v3: vec3,
+        v4: vec4,
+        v5: vec5,
     ):
-        wp.expect_eq(v2, vec2_1(wptype(1), wptype(2)))
-        wp.expect_eq(v3, vec3_1(wptype(1), wptype(2), wptype(3)))
-        wp.expect_eq(v4, vec4_1(wptype(1), wptype(2), wptype(3), wptype(4)))
-        wp.expect_eq(v5, vec5_1(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
+        wp.expect_eq(v2, vec2(wptype(1), wptype(2)))
+        wp.expect_eq(v3, vec3(wptype(1), wptype(2), wptype(3)))
+        wp.expect_eq(v4, vec4(wptype(1), wptype(2), wptype(3), wptype(4)))
+        wp.expect_eq(v5, vec5(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
+
+        wp.expect_eq(v2, vec2_equiv(wptype(1), wptype(2)))
+        wp.expect_eq(v3, vec3_equiv(wptype(1), wptype(2), wptype(3)))
+        wp.expect_eq(v4, vec4_equiv(wptype(1), wptype(2), wptype(3), wptype(4)))
+        wp.expect_eq(v5, vec5_equiv(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
 
     kernel = getkernel(check_equivalence, suffix=dtype.__name__)
 
@@ -2425,12 +2430,12 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
         return
 
     # call kernel with equivalent types
-    v2 = vec2_2(1, 2)
-    v3 = vec3_2(1, 2, 3)
-    v4 = vec4_2(1, 2, 3, 4)
-    v5 = vec5_2(1, 2, 3, 4, 5)
+    v2 = vec2_equiv(1, 2)
+    v3 = vec3_equiv(1, 2, 3)
+    v4 = vec4_equiv(1, 2, 3, 4)
+    v5 = vec5_equiv(1, 2, 3, 4, 5)
 
-    wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5])
+    wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5], device=device)
 
 
 def register(parent):
