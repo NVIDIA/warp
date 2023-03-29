@@ -2523,9 +2523,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                     if hasattr(a, "_wp_generic_type_str_"):
                         # a Warp vector/matrix type
                         if warp.types.types_equal(type(a), arg_type):
-                            x = arg_type.ValueArg()
-                            x.value = a
-                            params.append(x)
+                            params.append(a)
                         else:
                             raise TypeError(f"Invalid argument type for param {arg_name}, expected {type_str(arg_type)}, got {type_str(type(a))}")
                     else:
@@ -2536,10 +2534,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                         if v.shape != arg_type._shape_:
                             raise TypeError(f"Invalid argument shape for param {arg_name}, expected {arg_type.shape}, got {v.shape}")
 
-                        x = arg_type.ValueArg()
-                        for i in range(arg_type._shape_[0]):
-                           x.value[i] = v[i]
-                        params.append(x)
+                        params.append(arg_type(v))
 
                 elif isinstance(a, arg_type):
                     try:
@@ -2927,6 +2922,13 @@ def type_str(t):
         return f"array[{type_str(t.dtype)}]"
     elif isinstance(t, warp.indexedarray):
         return f"indexedarray[{type_str(t.dtype)}]"
+    elif hasattr(t, "_wp_generic_type_str_"):
+        if len(t._shape_) == 1:
+            return f"vec{t._shape_[0]}[{type_str(t._wp_scalar_type_)}]"
+        elif len(t._shape_) == 2:
+            return f"mat{t._shape_[0]}{t._shape_[1]}[{type_str(t._wp_scalar_type_)}]"
+        else:
+            raise TypeError("Invalid vector or matrix dimensions")
     else:
         return t.__name__
 

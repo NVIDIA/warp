@@ -3057,6 +3057,48 @@ def test_identity(test, device, dtype, register_kernels=False):
     assert_np_equal(output.numpy()[29:], 2*np.eye(5), tol=1.e-6)
 
 
+def test_equivalent_types(test, device, dtype, register_kernels=False):
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+
+    # matrix types
+    mat22_1 = wp.types.matrix(shape=(2,2), dtype=wptype)
+    mat33_1 = wp.types.matrix(shape=(3,3), dtype=wptype)
+    mat44_1 = wp.types.matrix(shape=(4,4), dtype=wptype)
+    mat55_1 = wp.types.matrix(shape=(5,5), dtype=wptype)
+
+    # matrix types equivalent to the above
+    mat22_2 = wp.types.matrix(shape=(2,2), dtype=wptype)
+    mat33_2 = wp.types.matrix(shape=(3,3), dtype=wptype)
+    mat44_2 = wp.types.matrix(shape=(4,4), dtype=wptype)
+    mat55_2 = wp.types.matrix(shape=(5,5), dtype=wptype)
+
+    # declare kernel with original types
+    def check_equivalence(
+        m2: mat22_1,
+        m3: mat33_1,
+        m4: mat44_1,
+        m5: mat55_1,
+    ):
+        wp.expect_eq(m2, mat22_1(wptype(42)))
+        wp.expect_eq(m3, mat33_1(wptype(43)))
+        wp.expect_eq(m4, mat44_1(wptype(44)))
+        wp.expect_eq(m5, mat55_1(wptype(45)))
+
+    kernel = getkernel(check_equivalence, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    # call kernel with equivalent types
+    m2 = mat22_2(42)
+    m3 = mat33_2(43)
+    m4 = mat44_2(44)
+    m5 = mat55_2(45)
+
+    wp.launch(kernel, dim=1, inputs=[m2, m3, m4, m5])
+
+
 def register(parent):
 
     devices = get_test_devices()
@@ -3087,6 +3129,7 @@ def register(parent):
         add_function_test_register_kernel(TestMat, f"test_ddot_{dtype.__name__}", test_ddot, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestMat, f"test_trace_{dtype.__name__}", test_trace, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestMat, f"test_diag_{dtype.__name__}", test_diag, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_equivalent_types_{dtype.__name__}", test_equivalent_types, devices=devices, dtype=dtype)
     
     for dtype in np_float_types:
         add_function_test_register_kernel(TestMat, f"test_quat_constructor_{dtype.__name__}", test_quat_constructor, devices=devices, dtype=dtype)

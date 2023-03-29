@@ -145,13 +145,6 @@ def vector(length, dtype):
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"
 
-    # wrap the value (which is a ctypes.Array) in a structure to ensure
-    # parameter is passed to kernels by value rather than reference
-    class ValueArg(ctypes.Structure):
-        _fields_ = [ ('value', vec_t)]
-
-    vec_t.ValueArg = ValueArg
-
     return vec_t
 
 def matrix(shape, dtype):
@@ -269,24 +262,24 @@ def matrix(shape, dtype):
             if isinstance(key, Tuple):
                 # element indexing m[i,j]
                 return super().__getitem__(key[1]*self._shape_[0] + key[1])
-            else:
+            elif isinstance(key, int):
                 # row vector indexing m[r]
                 return self.get_row(key)
+            else:
+                # slice etc.
+                return super().__getitem__(key)
 
         def __setitem__(self, key, value):
             if isinstance(key, Tuple):
                 # element indexing m[i,j] = x
                 return super().__setitem__(key[1]*self._shape_[0] + key[1], value)
-            else:
+            elif isinstance(key, int):
                 # row vector indexing m[r] = v
                 self.set_row(key, value)
-
-    # wrap the value (which is a ctypes.Array) in a structure to ensure
-    # parameter is passed to kernels by value rather than reference
-    class ValueArg(ctypes.Structure):
-        _fields_ = [ ('value', mat_t)]
-
-    mat_t.ValueArg = ValueArg
+                return value
+            else:
+                # slice etc.
+                return super().__setitem__(key, value)
 
     return mat_t
 
