@@ -23,7 +23,7 @@ def length_sq(a):
 
 
 def cross(a, b):
-    return np.array((a[1]*b[2] - a[2]*b[1], 
+    return np.array((a[1]*b[2] - a[2]*b[1],
                      a[2]*b[0] - a[0]*b[2],
                      a[0]*b[1] - a[1]*b[0]), dtype=np.float32)
 
@@ -121,7 +121,7 @@ def quat_from_matrix(m):
 
     tr = m[0, 0] + m[1, 1] + m[2, 2]
     h = 0.0
-    
+
     if(tr >= 0.0):
 
         h = math.sqrt(tr + 1.0)
@@ -139,7 +139,7 @@ def quat_from_matrix(m):
             i = 1
         if(m[2, 2] > m[i, i]):
             i = 2
-        
+
         if (i == 0):
 
             h = math.sqrt((m[0, 0] - (m[1, 1] + m[2, 2])) + 1.0)
@@ -149,7 +149,7 @@ def quat_from_matrix(m):
             y = (m[0, 1] + m[1, 0]) * h
             z = (m[2, 0] + m[0, 2]) * h
             w = (m[2, 1] - m[1, 2]) * h
-            
+
         elif (i == 1):
 
             h = math.sqrt((m[1, 1] - (m[2, 2] + m[0, 0])) + 1.0)
@@ -159,7 +159,7 @@ def quat_from_matrix(m):
             z = (m[1, 2] + m[2, 1]) * h
             x = (m[0, 1] + m[1, 0]) * h
             w = (m[0, 2] - m[2, 0]) * h
-        
+
         elif (i == 2):
 
             h = math.sqrt((m[2, 2] - (m[0, 0] + m[1, 1])) + 1.0)
@@ -232,7 +232,7 @@ def transform_expand(t):
 def transform_flatten_list(xforms):
     exp = lambda t: transform_flatten(t)
     return list(map(exp, xforms))
- 
+
 
 def transform_expand_list(xforms):
     exp = lambda t: transform_expand(t)
@@ -469,7 +469,7 @@ class MeshAdjacency:
 
 
 def mem_report():
-  
+
     def _mem_report(tensors, mem_type):
         '''Print the selected tensors of type
         There are two major storage types in our major concern:
@@ -553,7 +553,7 @@ class ScopedCudaGuard:
 class ScopedDevice:
 
     def __init__(self, device):
-        
+
         self.device = wp.get_device(device)
 
     def __enter__(self):
@@ -586,14 +586,14 @@ class ScopedStream:
         if stream is not None:
             self.device = stream.device
             self.device_scope = ScopedDevice(self.device)
-    
+
     def __enter__(self):
 
         if self.stream is not None:
             self.device_scope.__enter__()
             self.saved_stream = self.device.stream
             self.device.stream = self.stream
-        
+
         return self.stream
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -609,14 +609,26 @@ class ScopedTimer:
     indent = -1
 
     enabled = True
-    use_nvtx = False
 
-    def __init__(self, name, active=True, print=True, detailed=False, dict=None):
+    def __init__(self, name, active=True, print=True, detailed=False, dict=None, use_nvtx=False, color='rapids'):
+        """ Context manager object for a timer
+            
+        Args:
+            name (str): Name of timer
+            active (bool): Enables this timer
+            print (bool): At context manager exit, print elapsed time to sys.stdout
+            detailed (bool): Collects additional profiling data using cProfile and calls ``print_stats()`` at context exit
+            dict (dict): A dictionary of lists to which the elapsed time will be appended using ``name`` as a key 
+            use_nvtx (bool): If true, timing functionality is replaced by an NVTX range
+            color (int or str): ARGB value (e.g. 0x00FFFF) or color name (e.g. 'cyan') associated with the NVTX range
+        """
         self.name = name
         self.active = active and self.enabled
         self.print = print
         self.detailed = detailed
         self.dict = dict
+        self.use_nvtx = use_nvtx
+        self.color = color
         self.elapsed = 0.0
 
         if self.dict is not None:
@@ -628,7 +640,7 @@ class ScopedTimer:
         if (self.active):
             if (self.use_nvtx):
                 import nvtx
-                self.nvtx_range_id = nvtx.start_range(self.name)
+                self.nvtx_range_id = nvtx.start_range(self.name, color=self.color)
                 return
 
             self.start = timeit.default_timer()
@@ -638,7 +650,7 @@ class ScopedTimer:
                 self.cp = cProfile.Profile()
                 self.cp.clear()
                 self.cp.enable()
-        
+
         return self
 
 
@@ -667,4 +679,3 @@ class ScopedTimer:
                 print("{}{} took {:.2f} ms".format(indent, self.name, self.elapsed))
 
             ScopedTimer.indent -= 1
-
