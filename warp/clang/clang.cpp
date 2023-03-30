@@ -28,6 +28,8 @@
 
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 
+#define _GNU_SOURCE  // declare sincos()
+#include <cmath>
 #include <vector>
 #include <iostream>
 #include <string>
@@ -57,6 +59,7 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     args.push_back("-I");
     args.push_back(include_dir);
+    args.push_back("-O2");
 
     clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
@@ -174,13 +177,13 @@ WP_API int load_obj(const char* object_file, const char* module_name)
         #else
             #define MANGLING_PREFIX ""
         #endif
-        
+
         const auto flags = llvm::JITSymbolFlags::Exported | llvm::JITSymbolFlags::Absolute;
         #define SYMBOL(sym) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(&::sym), flags} }
         #define SYMBOL_T(sym, T) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(static_cast<T>(&::sym)), flags} }
 
         auto error = dll->define(llvm::orc::absoluteSymbols({
-            SYMBOL(printf),
+            SYMBOL(printf), SYMBOL(puts), SYMBOL(putchar),
             SYMBOL_T(abs, int(*)(int)), SYMBOL(llabs),
             SYMBOL(fmodf), SYMBOL_T(fmod, double(*)(double, double)),
             SYMBOL(logf), SYMBOL_T(log, double(*)(double)),
@@ -206,8 +209,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
             SYMBOL(coshf), SYMBOL_T(cosh, double(*)(double)),
             SYMBOL(tanhf), SYMBOL_T(tanh, double(*)(double)),
             SYMBOL(fmaf),
-            SYMBOL(memcpy),
-            SYMBOL(memset),
+            SYMBOL(memcpy), SYMBOL(memset), SYMBOL(memmove),
             SYMBOL(_wp_assert),
             SYMBOL(_wp_isfinite),
         #if defined(_WIN64)
@@ -217,6 +219,8 @@ WP_API int load_obj(const char* object_file, const char* module_name)
             SYMBOL(__chkstk),
         #elif defined(__APPLE__)
             SYMBOL(__bzero),
+        #else
+            SYMBOL(sincosf), SYMBOL_T(sincos, void(*)(double,double*,double*)),
         #endif
         }));
 
@@ -245,7 +249,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
     return 0;
 }
 
- WP_API int unload_obj(const char* module_name)
+WP_API int unload_obj(const char* module_name)
 {
     if(!jit)  // If there's no JIT instance there are no object files loaded
     {
