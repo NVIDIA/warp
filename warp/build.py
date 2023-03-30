@@ -371,13 +371,24 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
     else:
 
+        # try loading clang.so, except when we're building clang.so or warp.so
+        clang = None
+        if os.path.basename(dll_path) != "clang.so" and os.path.basename(dll_path) != "warp.so":
+            try:
+                clang = warp.build.load_dll(f"{warp_home_path}/bin/clang.so")
+            except RuntimeError as e:
+                clang = None
+
+        cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
+        cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
+        includes = cpp_includes + cuda_includes
 
         if (mode == "debug"):
-            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++11 -fkeep-inline-functions -I"{native_dir}" {cuda_includes}'
+            cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -fkeep-inline-functions -I"{native_dir}" {includes}'
 
         if (mode == "release"):
-            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++11 -I"{native_dir}" {cuda_includes}'
+            cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes}'
 
         if verify_fp:
             cpp_flags += ' -DWP_VERIFY_FP'
@@ -390,9 +401,15 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         with ScopedTimer("build", active=warp.config.verbose):
             for cpp_path in cpp_paths:
                 cpp_out = cpp_path + ".o"
-                build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
-                run_cmd(build_cmd)
                 ld_inputs.append(quote(cpp_out))
+
+                if clang:
+                    with open(cpp_path, "rb") as cpp:
+                        clang.compile_cpp(cpp.read(), native_dir.encode('utf-8'), cpp_out.encode('utf-8'))
+
+                else:
+                    build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
+                    run_cmd(build_cmd)
 
         if cu_path:
 
@@ -418,8 +435,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             opt_exclude_libs = "-Wl,--exclude-libs,ALL"
 
         with ScopedTimer("link", active=warp.config.verbose):
-            link_cmd = f"g++ -shared -Wl,-rpath,'$ORIGIN' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
-            run_cmd(link_cmd)
+            # Link into a DLL, unless we have LLVM to load the object code directly
+            if not clang:
+                link_cmd = f"g++ -shared -Wl,-rpath,'$ORIGIN' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+                run_cmd(link_cmd)
 
     
 def load_dll(dll_path):    

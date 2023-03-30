@@ -101,11 +101,15 @@ if args.build_llvm:
     else:
         cmake_build_type = "Debug"
 
-    # Build LLVM and Clang
     llvm_path = os.path.join(llvm_project_path, "llvm")
     llvm_build_path = os.path.join(llvm_project_path, f"out/build/{warp.config.mode}")
     llvm_install_path = os.path.join(llvm_project_path, f"out/install/{warp.config.mode}")
 
+    # Location of cmake and ninja installed through pip (see build.bat / build.sh)
+    python_bin = "python/Scripts" if sys.platform == "win32" else "python/bin"
+    os.environ["PATH"] = os.path.join(base_path, "_build/target-deps/" + python_bin) + os.pathsep + os.environ["PATH"]
+
+    # Build LLVM and Clang
     cmake_gen = ["cmake", "-S", llvm_path,
                           "-B", llvm_build_path,
                           "-G", "Ninja",
@@ -118,6 +122,7 @@ if args.build_llvm:
                           "-D", "LLVM_ENABLE_PROJECTS=clang",
                           "-D", "LLVM_ENABLE_ZLIB=FALSE",
                           "-D", "LLVM_ENABLE_ZSTD=FALSE",
+                          "-D", "LLVM_ENABLE_TERMINFO=FALSE",
                           "-D", "LLVM_BUILD_LLVM_C_DYLIB=FALSE",
                           "-D", "LLVM_BUILD_RUNTIME=FALSE",
                           "-D", "LLVM_BUILD_RUNTIMES=FALSE",
@@ -130,7 +135,8 @@ if args.build_llvm:
                           "-D", "LLVM_INCLUDE_TESTS=FALSE",
                           "-D", "LLVM_INCLUDE_TOOLS=TRUE",  # Needed by Clang
                           "-D", "LLVM_INCLUDE_UTILS=FALSE",
-                          "-D", f"CMAKE_INSTALL_PREFIX={llvm_install_path}"
+                          "-D", "CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # The pre-C++11 ABI is still the default on the CentOS 7 toolchain
+                          "-D", f"CMAKE_INSTALL_PREFIX={llvm_install_path}",
                           ]
     ret = subprocess.check_call(cmake_gen, stderr=subprocess.STDOUT)
     
@@ -153,7 +159,7 @@ def dll_ext():
 
 try:
 
-    if args.standalone and os.name == 'nt':
+    if args.standalone and sys.platform != "darwin":
         # build clang.dll
         cpp_sources = [
             "clang/clang.cpp",
@@ -172,10 +178,18 @@ try:
             libpath = os.path.join(base_path, "_build/host-deps/llvm-project/lib")
 
         for (_, _, libs) in os.walk(libpath):
-            break  # just the top level contains .lib files
+            break  # just the top level contains library files
 
-        libs.append("Version.lib")
-        libs.append(f'/LIBPATH:"{libpath}"')
+        if os.name == 'nt':
+            libs.append("Version.lib")
+            libs.append(f'/LIBPATH:"{libpath}"')
+        else:
+            libs = [f"-l:{lib}" for lib in libs if os.path.splitext(lib)[1] == ".a"]
+            libs.insert(0, "-Wl,--start-group")
+            libs.append("-Wl,--end-group")
+            libs.append(f"-L{libpath}")
+            libs.append("-lpthread")
+            libs.append("-ldl")
 
         warp.build.build_dll(
                         dll_path=clang_dll_path,
