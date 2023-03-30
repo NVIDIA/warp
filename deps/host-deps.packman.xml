@@ -11,4 +11,7 @@
   <dependency name="nanovdb" linkPath="../_build/host-deps/nanovdb">
     <package name="nanovdb" version="32.3.3-34-${platform}-release" platforms="windows-x86_64 linux-x86_64 linux-aarch64" />
   </dependency>
+  <dependency name="llvm-project" linkPath="../_build/host-deps/llvm-project">
+    <package name="clang+llvm-warp" version="15.0.7-windows-x86_64-vs142" platforms="windows-x86_64" />
+  </dependency>
 </project>
