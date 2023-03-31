@@ -7,16 +7,10 @@
 # Use the Kit Template repo configuration as a base. Only override things specific to the repo.
 import_configs = [
     "${root}/_repo/deps/repo_kit_tools/kit-template/repo.toml",
-    "${root}/_repo/deps/repo_kit_tools/kit-template/repo-app.toml"
 ]
 
 # Repository Name
-name = "kit-app-template"
-
-[repo_kit_link_app]
-app_name = "create"   # App name.
-app_version = ""    # App version. Empty means latest. Specify to lock version, e.g. "2022.2.0-rc.3"
-
+name = "warp"
 
 ########################################################################################################################
 # Documentation building
@@ -36,3 +30,21 @@ config_path = "${root}/docs/docs.toml"
 extensions = [
 ]
 
+########################################################################################################################
+# Build tool setup
+########################################################################################################################
+
+[repo_build]
+
+# List of packman projects to pull (in order)
+fetch.packman_host_files_to_pull = [
+    "${root}/deps/host-deps.packman.xml",
+]
+
+fetch.packman_target_files_to_pull = [
+    "${root}/deps/target-deps.packman.xml",
+]
+
+# Extensions precache
+fetch.after_pull_commands = [
+]
