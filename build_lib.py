@@ -147,14 +147,14 @@ if args.build_llvm:
     ret = subprocess.check_call(cmake_install, stderr=subprocess.STDOUT)
 
 
-# platform specific shared library extension
-def dll_ext():
+# return platform specific shared library name
+def lib_name(name):
     if sys.platform == "win32":
-        return "dll"
+        return f"{name}.dll"
     elif sys.platform == "darwin":
-        return "dylib"
+        return f"lib{name}.dylib"
     else:
-        return "so"
+        return f"{name}.so"
 
 
 try:
@@ -167,7 +167,7 @@ try:
         ]
         clang_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 
-        clang_dll_path = os.path.join(build_path, f"bin/clang.{dll_ext()}")
+        clang_dll_path = os.path.join(build_path, f"bin/{lib_name('clang')}")
 
         if args.build_llvm:
             # obtain Clang and LLVM libraries from the local build
@@ -221,7 +221,7 @@ try:
     else:
         warp_cu_path = os.path.join(build_path, "native/warp.cu")
 
-    warp_dll_path = os.path.join(build_path, f"bin/warp.{dll_ext()}")
+    warp_dll_path = os.path.join(build_path, f"bin/{lib_name('warp')}")
 
     warp.build.build_dll(
                     dll_path=warp_dll_path,
