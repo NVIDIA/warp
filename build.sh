@@ -4,7 +4,7 @@ set -e
 SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 #source "$SCRIPT_DIR/repo.sh" build --fetch-only $@ || exit $?
 
-"$SCRIPT_DIR/repo.sh" build --fetch-only --no-docker $@ 
+"$SCRIPT_DIR/repo.sh" build --fetch-only $@ 
 
 # host deps
 # tools/packman/packman pull -p linux-x86_64 deps/host-deps.packman.xml
