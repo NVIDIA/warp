@@ -3,109 +3,48 @@
 ########################################################################################################################
 
 [repo]
-logging = "warn"
 
-# Use Kit Template repo configuration as a base. Only override things specific to the repo.
-import_configs = ["${root}/_repo/deps/repo_kit_tools/kit-template/repo.toml"]
-
-# Reposiory Name. It is used for solution name and final package name
-name = "kit-template"
-
-
-########################################################################################################################
-# Packaging 
-########################################################################################################################
-
-# package content
-[repo_package.packages.main_package]
-files = [
-    ["**"],
-]
-files_exclude = [
-    ["kit/**"]
+# Use the Kit Template repo configuration as a base. Only override things specific to the repo.
+import_configs = [
+    "${root}/_repo/deps/repo_kit_tools/kit-template/repo.toml",
 ]
 
-[repo_package.packages."platform:windows-x86_64".docs]
-omniverse_flow_version_scheme = true
-files = [
-    ["_build/docs"]
-]
-
-
-########################################################################################################################
-# Extensions publisher
-########################################################################################################################
-
-[repo_publish_exts]
-
-# Extensions to publish, include and exclude among those discovered by kit. Wildcards are supported.
-exts.include = [
-    "example.cpp_ext",
-    "example.mixed_ext",
-    "example.python_ext"
-]
-exts.exclude = []
-
-# verify before publishing
-publish_verification = true
-
-
-########################################################################################################################
-# Extensions precacher
-########################################################################################################################
-
-[repo_precache_exts]
-# Apps to run and precache
-apps = [
-    "${root}/_build/$platform/$config/apps/omni.app.precache_exts_demo.kit"
-]
-
-
+# Repository Name
+name = "warp"
 
 ########################################################################################################################
 # Documentation building
 ########################################################################################################################
 
 [repo_docs]
-enabled = true
+#name = "Kit App Template"
 
-project = "${conf:repo.name}"
-name = "Kit Extension Template"
-copyright_start = 2021
+# kit-manual doc
+[[repo_docs.kit.custom_project]]
+name = "kit-app-template"
+root = "${root}"
+config_path = "${root}/docs/docs.toml"
 
-config = "release"
 
-doxygen_input = [
-    "include/omni/example/IBattleSimulator.h",
+[repo_docs.kit]
+extensions = [
 ]
 
-doxygen_aliases = [
+########################################################################################################################
+# Build tool setup
+########################################################################################################################
+
+[repo_build]
+
+# List of packman projects to pull (in order)
+fetch.packman_host_files_to_pull = [
+    "${root}/deps/host-deps.packman.xml",
 ]
 
-extra_sys_paths = [
-    "${root}/_build/${platform_target}/release/kit/exts/*/bin",
-    "${root}/_build/${platform_target}/release/kit/exts/*",
-    "${root}/_build/${platform_target}/release/kit/extscore/*",
-    "${root}/_build/${platform_target}/release/kit",
-    "${root}/_build/${platform_target}/release/kit/plugins",
-    "${root}/_build/${platform_target}/release/kit/plugins/bindings-python",
-    "${root}/_build/${platform_target}/release/exts/example.python_ext",
+fetch.packman_target_files_to_pull = [
+    "${root}/deps/target-deps.packman.xml",
 ]
 
-sphinx_exclude_patterns = [
-    "include",
-    "tools",
-    "_build",
-    "VERSION.md",
+# Extensions precache
+fetch.after_pull_commands = [
 ]
-
-repo_url = "https://gitlab-master.nvidia.com/omniverse/kit-extensions/kit-template/-/blob/master"
-
-deps = [
-    [ "repo_docs", "${root}/_repo/deps/repo_docs/_build/docs/repo_docs/latest"]
-]
-
-[repo_docs.editions.s3web]
-protocol = "s3"
-bucket_name = "omniverse-docs"
-bucket_dir = "${project}/${version}"

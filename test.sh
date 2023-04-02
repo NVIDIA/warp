@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR=$(dirname ${BASH_SOURCE})
-"$SCRIPT_DIR/repo.sh" build --fetch-only --no-docker $@ 
+"$SCRIPT_DIR/repo.sh" build --fetch-only $@ 
 
 echo "Installing test dependencies"
 ./_build/target-deps/python/python -m pip install matplotlib
