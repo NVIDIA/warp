@@ -1225,6 +1225,8 @@ class Module:
                         libs = ["warp.lib", f'/LIBPATH:"{bin_path}"']
                         libs.append("/NOENTRY")
                         libs.append("/NODEFAULTLIB")
+                    elif sys.platform == "darwin":
+                        libs = [f"-lwarp", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
                     else:
                         libs = ["-l:warp.so", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
 
@@ -1699,7 +1701,7 @@ class Runtime:
 
         elif sys.platform == "darwin":
 
-            warp_lib = os.path.join(bin_path, "warp.dylib")
+            warp_lib = os.path.join(bin_path, "libwarp.dylib")
             llvm_lib = None
 
         else:

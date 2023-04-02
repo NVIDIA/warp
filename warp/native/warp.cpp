@@ -313,6 +313,11 @@ void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t
 {
 }
 
+size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
+{
+    return 0;
+}
+
 WP_API int cuda_driver_version() { return 0; }
 WP_API int cuda_toolkit_version() { return 0; }
 
