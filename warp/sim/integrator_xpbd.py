@@ -1637,13 +1637,16 @@ class XPBDIntegrator:
     After constructing `Model` and `State` objects this time-integrator
     may be used to advance the simulation state forward in time.
 
-    Example:
+    Example
+    -------
 
-        >>> integrator = wp.SemiImplicitIntegrator()
-        >>>
-        >>> # simulation loop
-        >>> for i in range(100):
-        >>>     state = integrator.simulate(model, state_in, state_out, dt)
+    .. code-block:: python
+
+        integrator = wp.SemiImplicitIntegrator()
+        
+        # simulation loop
+        for i in range(100):
+            state = integrator.simulate(model, state_in, state_out, dt)
 
     """
 

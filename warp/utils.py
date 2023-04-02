@@ -613,7 +613,7 @@ class ScopedTimer:
     def __init__(self, name, active=True, print=True, detailed=False, dict=None, use_nvtx=False, color='rapids'):
         """ Context manager object for a timer
             
-        Args:
+        Parameters:
             name (str): Name of timer
             active (bool): Enables this timer
             print (bool): At context manager exit, print elapsed time to sys.stdout
@@ -621,6 +621,9 @@ class ScopedTimer:
             dict (dict): A dictionary of lists to which the elapsed time will be appended using ``name`` as a key 
             use_nvtx (bool): If true, timing functionality is replaced by an NVTX range
             color (int or str): ARGB value (e.g. 0x00FFFF) or color name (e.g. 'cyan') associated with the NVTX range
+
+        Attributes:
+            elapsed (float): The duration of the ``with`` block used with this object
         """
         self.name = name
         self.active = active and self.enabled

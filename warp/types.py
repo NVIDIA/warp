@@ -838,8 +838,8 @@ class array (Generic[T]):
         Args:
             data (Union[list, tuple, ndarray]) An object to construct the array from, can be a Tuple, List, or generally any type convertable to an np.array
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is Any and data an ndarray then it will be inferred from the array data type
-            shape (Tuple): Dimensions of the array
-            strides (Tuple): Number of bytes in each dimension between successive elements of the array
+            shape (tuple): Dimensions of the array
+            strides (tuple): Number of bytes in each dimension between successive elements of the array
             length (int): Number of elements (rows) of the data type (deprecated, users should use `shape` argument)
             ptr (uint64): Address of an external memory address to alias (data should be None)
             capacity (int): Maximum size in bytes of the ptr allocation (data should be None)
@@ -1710,7 +1710,7 @@ class Bvh:
 
         self.device = lowers.device
         self.lowers = lowers
-        self.upupers = uppers
+        self.uppers = uppers
 
         def get_data(array):
             if (array):

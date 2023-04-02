@@ -1638,13 +1638,16 @@ class SemiImplicitIntegrator:
 
     See: https://en.wikipedia.org/wiki/Semi-implicit_Euler_method
 
-    Example:
+    Example
+    -------
 
-        >>> integrator = wp.SemiImplicitIntegrator()
-        >>>
-        >>> # simulation loop
-        >>> for i in range(100):
-        >>>     state = integrator.simulate(model, state_in, state_out, dt)
+    .. code-block:: python
+
+        integrator = wp.SemiImplicitIntegrator()
+        
+        # simulation loop
+        for i in range(100):
+            state = integrator.simulate(model, state_in, state_out, dt)
 
     """
 
@@ -1868,6 +1871,3 @@ class VariationalImplicitIntegrator:
   
 
             return state_out
-
-
-
