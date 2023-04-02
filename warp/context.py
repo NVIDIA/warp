@@ -3002,7 +3002,7 @@ def print_builtins(file):
     for t in warp.types.scalar_types:
         print(f".. autoclass:: {t.__name__}", file=file)
 
-    print("Vector Types", file=file)
+    print("\n\nVector Types", file=file)
     print("------------", file=file)
 
     for t in warp.types.vector_types:
@@ -3140,4 +3140,3 @@ def init():
 
     if (runtime == None):
         runtime = Runtime()
-

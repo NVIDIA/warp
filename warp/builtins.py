@@ -62,19 +62,19 @@ add_builtin("pow", input_types={"x": Float, "y": Float}, value_func=sametype_val
 
 add_builtin("round", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
     doc="""Calculate the nearest integer value, rounding halfway cases away from zero.
-This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.""")
+    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
+    Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.""")
 
 add_builtin("rint", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
     doc="""Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-It is generally faster than ``warp.round()``.
-Equivalent to ``numpy.rint()``.""")
+    It is generally faster than ``warp.round()``.
+    Equivalent to ``numpy.rint()``.""")
 
 add_builtin("trunc", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
     doc="""Calculate the nearest integer that is closer to zero than x.
-In other words, it discards the fractional part of x.
-It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.""")
+    In other words, it discards the fractional part of x.
+    It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+    Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.""")
 
 add_builtin("floor", input_types={"x": Float}, value_func=sametype_value_func(Float), group="Scalar Math",
     doc="""Calculate the largest integer that is less than or equal to x.""")
@@ -200,7 +200,7 @@ add_builtin("cw_div", input_types={"x": matrix(shape=(Any,Any), dtype=Scalar), "
     doc="Component wise division of two 2d vectors.")
 
 
-# scalar type construtors between all storage / compute types 
+# scalar type constructors between all storage / compute types 
 scalar_types_all = [*scalar_types, int, float]
 for t in scalar_types_all:
     for u in scalar_types_all:
@@ -424,10 +424,10 @@ add_builtin("svd3", input_types={"A": matrix(shape=(3,3), dtype=Float), "U": mat
    while the left and right basis vectors are returned in U and V.""")
 
 add_builtin("qr3", input_types={"A": matrix(shape=(3,3), dtype=Float), "Q": matrix(shape=(3,3), dtype=Float), "R": matrix(shape=(3,3), dtype=Float)}, value_type=None, group="Vector Math", export=False,
-    doc="""Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.""")
+    doc="""Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returned in R.""")
 
 add_builtin("eig3", input_types={"A": matrix(shape=(3,3), dtype=Float), "Q": matrix(shape=(3,3), dtype=Float), "d": vector(length=3, dtype=Float)}, value_type=None, group="Vector Math", export=False,
-    doc="""Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.""")
+    doc="""Compute the eigendecomposition of a 3x3 matrix. The eigenvectors are returned as the columns of Q, while the corresponding eigenvalues are returned in d.""")
 
 #---------------------------------
 # Quaternion Math
@@ -548,13 +548,13 @@ add_builtin("transform_point", input_types={"t": transformation(dtype=Scalar), "
 add_builtin("transform_point", input_types={"m": matrix(shape=(4,4), dtype=Scalar), "p": vector(length=3, dtype=Scalar)}, value_func=lambda args, kwds, _: vector(length=3, dtype=infer_scalar_type(args)), group="Vector Math",
     doc="""Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the tranformation matrix before calling this method.""")
+   then users should transpose the transformation matrix before calling this method.""")
 add_builtin("transform_vector", input_types={"t": transformation(dtype=Scalar), "v": vector(length=3, dtype=Scalar)}, value_func=lambda args, kwds, _: vector(length=3, dtype=infer_scalar_type(args)), group="Transformations",
     doc="Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).")
 add_builtin("transform_vector", input_types={"m": matrix(shape=(4,4), dtype=Scalar), "v": vector(length=3, dtype=Scalar)}, value_func=lambda args, kwds, _: vector(length=3, dtype=infer_scalar_type(args)), group="Vector Math",
     doc="""Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the tranformation matrix before calling this method.""")
+   then users should transpose the transformation matrix before calling this method.""")
 add_builtin("transform_inverse", input_types={"t": transformation(dtype=Float)}, value_func=sametype_value_func(transformation(dtype=Float)), group="Transformations",
     doc="Compute the inverse of the transform.")
 #---------------------------------
@@ -715,7 +715,7 @@ add_builtin("mesh_query_point", input_types={"id": uint64, "point": vec3, "max_d
    :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
-   :param bary_v: Retruns the barycentric v coordinate of the closest point""")
+   :param bary_v: Returns the barycentric v coordinate of the closest point""")
 
 add_builtin("mesh_query_ray", input_types={"id": uint64, "start": vec3, "dir": vec3, "max_t": float, "t": float, "bary_u": float, "bary_v": float, "sign": float, "normal": vec3, "face": int}, value_type=bool, group="Geometry",
     doc="""Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
@@ -944,7 +944,7 @@ add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args, kwds, _: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
 add_builtin("select", input_types={"arr": array(dtype=Any), "arg1": Any, "arg2": Any}, value_func=lambda args, kwds, _: args[1].type, doc="Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``", group="Utility")
 
-# does argument checking and type progagation for load()
+# does argument checking and type propagation for load()
 def load_value_func(args, kwds, _):
 
     if not is_array(args[0].type):
@@ -966,7 +966,7 @@ def load_value_func(args, kwds, _):
 
     return args[0].type.dtype
 
-# does argument checking and type progagation for view()
+# does argument checking and type propagation for view()
 def view_value_func(args, kwds, _):
     if not is_array(args[0].type):
         raise RuntimeError("view() argument 0 must be an array")
@@ -990,7 +990,7 @@ def view_value_func(args, kwds, _):
     
     return view_type
 
-# does argument checking and type progagation for store()
+# does argument checking and type propagation for store()
 def store_value_func(args, kwds, _):
     # check target type
     if not is_array(args[0].type):

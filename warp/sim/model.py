@@ -351,7 +351,6 @@ class Model:
         joint_target (wp.array): Joint target position/velocity (depending on joint axis mode), shape [joint_axis_count], float
         joint_target_ke (wp.array): Joint stiffness, shape [joint_axis_count], float
         joint_target_kd (wp.array): Joint damping, shape [joint_axis_count], float
-        joint_target (wp.array): Joint target, shape [joint_axis_count], float
         joint_axis_start (wp.array): Start index of the first axis per joint, shape [joint_count], int
         joint_axis_dim (wp.array): Number of linear and angular axes per joint, shape [joint_count, 2], int
         joint_axis_mode (wp.array): Joint axis mode, shape [joint_axis_count], int
@@ -740,31 +739,34 @@ class ModelBuilder:
     has been called the ModelBuilder transfers all data to Warp tensors and returns 
     an object that may be used for simulation.
 
-    Example:
+    Example
+    -------
 
-        >>> import warp as wp
-        >>> import warp.sim
-        >>>
-        >>> builder = wp.sim.ModelBuilder()
-        >>>
-        >>> # anchor point (zero mass)
-        >>> builder.add_particle((0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
-        >>>
-        >>> # build chain
-        >>> for i in range(1,10):
-        >>>     builder.add_particle((i, 1.0, 0.0), (0.0, 0.0, 0.0), 1.0)
-        >>>     builder.add_spring(i-1, i, 1.e+3, 0.0, 0)
-        >>>
-        >>> # create model
-        >>> model = builder.finalize("cuda")
-        >>> 
-        >>> state = model.state()
-        >>> integrator = wp.sim.SemiImplicitIntegrator()
-        >>>
-        >>> for i in range(100):
-        >>>
-        >>>    state.clear_forces()
-        >>>    integrator.simulate(model, state, state, dt=1.0/60.0)
+    .. code-block:: python
+
+        import warp as wp
+        import warp.sim
+        
+        builder = wp.sim.ModelBuilder()
+        
+        # anchor point (zero mass)
+        builder.add_particle((0, 1.0, 0.0), (0.0, 0.0, 0.0), 0.0)
+        
+        # build chain
+        for i in range(1,10):
+            builder.add_particle((i, 1.0, 0.0), (0.0, 0.0, 0.0), 1.0)
+            builder.add_spring(i-1, i, 1.e+3, 0.0, 0)
+        
+        # create model
+        model = builder.finalize("cuda")
+        
+        state = model.state()
+        integrator = wp.sim.SemiImplicitIntegrator()
+        
+        for i in range(100):
+        
+           state.clear_forces()
+           integrator.simulate(model, state, state, dt=1.0/60.0)
 
     Note:
         It is strongly recommended to use the ModelBuilder to construct a simulation rather
