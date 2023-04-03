@@ -209,6 +209,7 @@ def cast_array_attr_value_to_warp(
             dtype=dtype,
             shape=shape,
             owner=False,
+            device=device,
         )
 
     elif device.is_cuda:
