@@ -53,10 +53,6 @@ def tab10_color_map(i):
     return [c/255. for c in colors[i % num_colors]]
 
 
-@wp.func
-def mul_elemwise(a: wp.vec3, b: wp.vec3):
-    return wp.vec3(a[0]*b[0], a[1]*b[1], a[2]*b[2])
-
 
 # triangulate mesh around given surface with given thickness
 @wp.kernel

@@ -9,8 +9,7 @@ import sys
 import os
 
 import warp as wp
-import warp.sim
-from .utils import mul_elemwise, tab10_color_map
+from .utils import tab10_color_map
 
 from collections import defaultdict
 from typing import Union
@@ -95,9 +94,9 @@ def compute_gfx_vertices(
     gfx_vertices: wp.array(dtype=float, ndim=2)):
 
     tid = wp.tid()
-    v0 = mul_elemwise(vertices[indices[tid, 0]], geo_scale)
-    v1 = mul_elemwise(vertices[indices[tid, 1]], geo_scale)
-    v2 = mul_elemwise(vertices[indices[tid, 2]], geo_scale)
+    v0 = wp.cw_mul(vertices[indices[tid, 0]], geo_scale)
+    v1 = wp.cw_mul(vertices[indices[tid, 1]], geo_scale)
+    v2 = wp.cw_mul(vertices[indices[tid, 2]], geo_scale)
     i = tid * 3; j = i + 1; k = i + 2
     gfx_vertices[i,0] = v0[0]; gfx_vertices[i,1] = v0[1]; gfx_vertices[i,2] = v0[2]
     gfx_vertices[j,0] = v1[0]; gfx_vertices[j,1] = v1[1]; gfx_vertices[j,2] = v1[2]
@@ -118,9 +117,9 @@ def update_gfx_vertices(
     gfx_vertices: wp.array(dtype=float, ndim=2)):
 
     tid = wp.tid()
-    v0 = mul_elemwise(vertices[indices[tid, 0]], geo_scale)
-    v1 = mul_elemwise(vertices[indices[tid, 1]], geo_scale)
-    v2 = mul_elemwise(vertices[indices[tid, 2]], geo_scale)
+    v0 = wp.cw_mul(vertices[indices[tid, 0]], geo_scale)
+    v1 = wp.cw_mul(vertices[indices[tid, 1]], geo_scale)
+    v2 = wp.cw_mul(vertices[indices[tid, 2]], geo_scale)
     i = tid * 3 + offset; j = i + 1; k = i + 2
     gfx_vertices[i,0] = v0[0]; gfx_vertices[i,1] = v0[1]; gfx_vertices[i,2] = v0[2]
     gfx_vertices[j,0] = v1[0]; gfx_vertices[j,1] = v1[1]; gfx_vertices[j,2] = v1[2]
@@ -582,6 +581,8 @@ class TinyRenderer:
             color: The color of the plane
             texture: The texture of the plane (optional)
         """
+        import warp.sim
+
         geo_hash = hash((int(warp.sim.GEO_PLANE), width, length))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
@@ -631,6 +632,8 @@ class TinyRenderer:
             radius: The radius of the sphere
             name: A name for the USD prim on the stage
         """
+        import warp.sim
+
         geo_hash = hash((int(warp.sim.GEO_SPHERE), radius))
         scale = float(radius) * 2. * self.scaling
         if geo_hash in self._shape_geo_hash:
@@ -656,6 +659,8 @@ class TinyRenderer:
             half_height: The half height of the capsule
             name: A name for the USD prim on the stage
         """
+        import warp.sim
+
         geo_hash = hash((int(warp.sim.GEO_CAPSULE), radius, half_height))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
@@ -681,6 +686,8 @@ class TinyRenderer:
             half_height: The half height of the cylinder
             name: A name for the USD prim on the stage
         """
+        import warp.sim
+
         geo_hash = hash((int(warp.sim.GEO_CYLINDER), radius, half_height))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
@@ -721,6 +728,8 @@ class TinyRenderer:
             half_height: The half height of the cone
             name: A name for the USD prim on the stage
         """
+        import warp.sim
+
         geo_hash = hash((int(warp.sim.GEO_CONE), radius, half_height))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
@@ -759,6 +768,8 @@ class TinyRenderer:
             extents: The radius of the sphere
             name: A name for the USD prim on the stage
         """
+        import warp.sim
+
         geo_hash = hash((int(warp.sim.GEO_BOX), float(extents[0]), float(extents[1]), float(extents[2])))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
@@ -788,6 +799,9 @@ class TinyRenderer:
             self._update_instance(name, pos, rot)
             shape = self._mesh_name[name]
             return shape
+        
+        import warp.sim
+
         geo_hash = hash((int(warp.sim.GEO_MESH), tuple(np.array(points).flatten()), tuple(np.array(indices).flatten())))
         if geo_hash in self._shape_geo_hash:
             shape = self._shape_geo_hash[geo_hash]
