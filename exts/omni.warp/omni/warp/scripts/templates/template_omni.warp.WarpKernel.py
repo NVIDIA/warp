@@ -19,13 +19,17 @@ from omni.kit.property.usd.custom_layout_helper import (
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
-from omni.warp.scripts.nodes.kernel import (
-    MAX_DIMENSIONS,
-    SUPPORTED_ATTR_TYPES,
-)
+from omni.warp.scripts.attributes import SUPPORTED_SDF_DATA_TYPE_NAMES
+from omni.warp.scripts.nodes.kernel import MAX_DIMENSIONS
 from omni.warp.scripts.props.codefile import get_code_file_prop_builder
 from omni.warp.scripts.props.codestr import get_code_str_prop_builder
 from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
+
+SUPPORTED_ATTR_TYPES = tuple(
+    y
+    for x in SUPPORTED_SDF_DATA_TYPE_NAMES
+    for y in (x, "{}[]".format(x))
+)
 
 def find_prop(
     props: Sequence[UsdPropertyUiEntry],

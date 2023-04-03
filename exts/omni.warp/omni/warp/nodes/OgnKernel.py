@@ -19,18 +19,19 @@ from typing import (
     Mapping,
     Sequence,
     Tuple,
-    Union,
 )
 
-import numpy as np
 import warp as wp
 
 import omni.graph.core as og
 import omni.timeline
 
 from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
+from omni.warp.scripts.attributes import (
+    cast_array_attr_value_to_warp,
+    convert_sdf_type_name_to_warp,
+)
 from omni.warp.scripts.nodes.kernel import (
-    ATTR_TO_WARP_TYPE,
     MAX_DIMENSIONS,
     UserAttributeDesc,
     UserAttributesEvent,
@@ -75,7 +76,16 @@ def generate_header_code(
     params = {}
     for attr in attrs:
         attr_type = attr.get_type_name()
-        warp_type = ATTR_TO_WARP_TYPE.get(attr_type)
+        is_array = attr_type.endswith("[]")
+        if is_array:
+            attr_data_type = attr_type[:-2]
+        else:
+            attr_data_type = attr_type
+        warp_type = convert_sdf_type_name_to_warp(
+            attr_data_type,
+            dim_count=int(is_array),
+            as_str=True,
+        )
 
         if warp_type is None:
             raise RuntimeError(
@@ -298,27 +308,6 @@ class InternalState:
 #   Compute
 # ------------------------------------------------------------------------------
 
-def cast_array_to_warp_type(
-    value: Union[np.array, og.DataWrapper],
-    warp_annotation: Any,
-    device: wp.context.Device,
-) -> wp.array:
-    """Casts an attribute array to its corresponding warp type."""
-    if device.is_cpu:
-        return wp.array(
-            value,
-            dtype=warp_annotation.dtype,
-            owner=False,
-        )
-
-    elif device.is_cuda:
-        return omni.warp.from_omni_graph(
-            value,
-            dtype=warp_annotation.dtype,
-        )
-
-    assert False, "Unexpected device '{}'.".format(device.alias)
-
 def are_array_annotations_equal(
     annotation_1: Any,
     annotation_2: Any,
@@ -346,7 +335,12 @@ def get_kernel_args(
         # warp type if is is an array.
         value = getattr(db.inputs, name)
         if isinstance(warp_annotation, wp.array):
-            value = cast_array_to_warp_type(value, warp_annotation, device)
+            value = cast_array_attr_value_to_warp(
+                value,
+                warp_annotation.dtype,
+                (value.shape[0],),
+                device,
+            )
 
         # Store the result in the inputs struct.
         setattr(inputs, name, value)
@@ -375,7 +369,12 @@ def get_kernel_args(
         # Retrieve the output attribute value and cast it to the corresponding
         # warp type.
         value = getattr(db.outputs, name)
-        value = cast_array_to_warp_type(value, warp_annotation, device)
+        value = cast_array_attr_value_to_warp(
+            value,
+            warp_annotation.dtype,
+            (size,),
+            device,
+        )
 
         # Store the result in the outputs struct.
         setattr(outputs, name, value)
