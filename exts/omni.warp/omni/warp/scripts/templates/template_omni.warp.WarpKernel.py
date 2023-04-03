@@ -19,7 +19,7 @@ from omni.kit.property.usd.custom_layout_helper import (
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
-from omni.warp.scripts.kernelnode import (
+from omni.warp.scripts.nodes.kernel import (
     MAX_DIMENSIONS,
     SUPPORTED_ATTR_TYPES,
 )

@@ -29,7 +29,7 @@ import omni.graph.core as og
 import omni.timeline
 
 from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
-from omni.warp.scripts.kernelnode import (
+from omni.warp.scripts.nodes.kernel import (
     ATTR_TO_WARP_TYPE,
     MAX_DIMENSIONS,
     UserAttributeDesc,

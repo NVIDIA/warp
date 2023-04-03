@@ -11,7 +11,7 @@ import omni.graph.core as og
 from omni.kit.widget.searchfield import SearchField
 import omni.ui as ui
 
-from omni.warp.scripts.kernelnode import UserAttributeDesc
+from omni.warp.scripts.nodes.kernel import UserAttributeDesc
 
 _DIALOG_TITLE = "Attribute Creator"
 _DIALOG_WIDTH = 400

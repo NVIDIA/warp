@@ -18,7 +18,7 @@ import omni.graph.core as og
 import omni.ui as ui
 
 from omni.warp.scripts.attributes import join_attr_name
-from omni.warp.scripts.kernelnode import (
+from omni.warp.scripts.nodes.kernel import (
     UserAttributeDesc,
     UserAttributesEvent,
     deserialize_user_attribute_descs,
