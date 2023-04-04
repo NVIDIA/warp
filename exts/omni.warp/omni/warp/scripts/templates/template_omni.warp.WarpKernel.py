@@ -19,17 +19,14 @@ from omni.kit.property.usd.custom_layout_helper import (
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
-from omni.warp.scripts.attributes import SUPPORTED_SDF_DATA_TYPE_NAMES
+from omni.warp.scripts.attributes import (
+    SUPPORTED_SDF_DATA_TYPE_NAMES,
+    get_attr_name,
+)
 from omni.warp.scripts.nodes.kernel import MAX_DIMENSIONS
 from omni.warp.scripts.props.codefile import get_code_file_prop_builder
 from omni.warp.scripts.props.codestr import get_code_str_prop_builder
 from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
-
-SUPPORTED_ATTR_TYPES = tuple(
-    y
-    for x in SUPPORTED_SDF_DATA_TYPE_NAMES
-    for y in (x, "{}[]".format(x))
-)
 
 def find_prop(
     props: Sequence[UsdPropertyUiEntry],
@@ -86,7 +83,7 @@ class CustomLayout:
         attr_to: og.Attribute,
     ) -> None:
         """Callback for a node attribute having been disconnected."""
-        if attr_to.get_name() == "inputs:codeStr":
+        if get_attr_name(attr_to) == "inputs:codeStr":
             # Redraw the UI to update the view/edit code button label.
             self.refresh()
 
@@ -96,7 +93,7 @@ class CustomLayout:
         attr_to: og.Attribute,
     ) -> None:
         """Callback for a node attribute having been disconnected."""
-        if attr_to.get_name() == "inputs:codeStr":
+        if get_attr_name(attr_to) == "inputs:codeStr":
             # Redraw the UI to update the view/edit code button label.
             self.refresh()
 
@@ -127,7 +124,7 @@ class CustomLayout:
                     display_name=None,
                     build_fn=get_edit_attrs_prop_builder(
                         self,
-                        SUPPORTED_ATTR_TYPES,
+                        SUPPORTED_SDF_DATA_TYPE_NAMES,
                     ),
                 )
 

@@ -8,12 +8,6 @@
 """Warp kernel exposed as an OmniGraph node."""
 
 import traceback
-from typing import (
-    Any,
-    Mapping,
-    Sequence,
-    Tuple,
-)
 
 import warp as wp
 
@@ -26,9 +20,11 @@ from omni.warp.scripts.nodes.kernel import (
     InternalStateBase,
     UserAttributesEvent,
     deserialize_user_attribute_descs,
+    gather_attribute_infos,
     get_kernel_args,
     initialize_kernel_module,
     validate_input_arrays,
+    write_output_attrs,
 )
 
 QUIET_DEFAULT = wp.config.quiet
@@ -38,14 +34,6 @@ ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
 
 #   Internal State
 # ------------------------------------------------------------------------------
-
-def get_annotations(obj: Any) -> Mapping[str, Any]:
-    """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
-    # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
-    if isinstance(obj, type):
-        return obj.__dict__.get("__annotations__", {})
-
-    return getattr(obj, "__annotations__", {})
 
 class InternalState(InternalStateBase):
     """Internal state for the node."""
@@ -71,79 +59,50 @@ class InternalState(InternalStateBase):
 
         return False
 
-    def initialize(self, db: OgnKernelDatabase) -> bool:
-        """Initialize the internal state and recompile the kernel."""
+    def initialize(
+        self,
+        db: OgnKernelDatabase,
+        kernel_dim_count: int,
+    ) -> bool:
+        """Initializes the internal state and recompile the kernel."""
         if not super().initialize(db):
             return False
 
         # Cache the node attribute values relevant to this internal state.
         # They're the ones used to check whether this state is outdated or not.
-        self._dim_count = db.inputs.dimCount
+        self._dim_count = kernel_dim_count
 
-        # Retrieve the dynamic user attributes defined on the node.
-        attrs = tuple(x for x in db.node.get_attributes() if x.is_dynamic())
-
-        # Retrieve any user attribute descriptions available.
+        # Retrieve the user attribute descriptions, if any.
         attr_descs = deserialize_user_attribute_descs(db.state.userAttrDescs)
+
+        # Gather the information about each attribute to pass to the kernel.
+        attr_infos = gather_attribute_infos(
+            db.node,
+            db.inputs,
+            db.outputs,
+            attr_descs,
+            kernel_dim_count,
+        )
 
         try:
             kernel_module = initialize_kernel_module(
-                attrs,
-                attr_descs,
-                db.inputs.codeProvider,
-                db.inputs.codeStr,
-                db.inputs.codeFile,
+                attr_infos,
+                self._code_provider,
+                self._code_str,
+                self._code_file,
             )
         except Exception:
             db.log_error(traceback.format_exc())
             return False
 
-        # Retrieves the type annotations for warp's kernel in/out structures.
-        kernel_annotations = {
-            ATTR_PORT_TYPE_INPUT: get_annotations(kernel_module.Inputs.cls),
-            ATTR_PORT_TYPE_OUTPUT: get_annotations(kernel_module.Outputs.cls),
-        }
-
-        # Ensure that all output parameters are arrays. Writing to non-array
-        # types is not supported as per CUDA's design.
-        invalid_attrs = tuple(
-            k
-            for k, v in kernel_annotations[ATTR_PORT_TYPE_OUTPUT].items()
-            if not isinstance(v, wp.array)
-        )
-        if invalid_attrs:
-            db.log_error(
-                "Output attributes are required to be arrays but "
-                "the following attributes are not: {}."
-                .format(", ".join(invalid_attrs))
-            )
-            return False
-
         # Define the base class members.
+        self.attr_infos = attr_infos
         self.kernel_module = kernel_module
-        self.kernel_annotations = kernel_annotations
 
         return True
 
 #   Compute
 # ------------------------------------------------------------------------------
-
-def write_output_attrs(
-    db: OgnKernelDatabase,
-    annotations: Mapping[og.AttributePortType, Sequence[Tuple[str, Any]]],
-    outputs: Any,
-    device: wp.context.Device,
-) -> None:
-    """Writes the output values to the node's attributes."""
-    if device.is_cuda:
-        # CUDA attribute arrays are directly being written to by Warp.
-        return
-
-    for name, warp_annotation in annotations[ATTR_PORT_TYPE_OUTPUT].items():
-        assert isinstance(warp_annotation, wp.array)
-
-        value = getattr(outputs, name)
-        setattr(db.outputs, name, value)
 
 def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     """Evaluates the node."""
@@ -152,55 +111,47 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
         gpu_ptr_kind=og.PtrToPtrKind.CPU,
     )
 
+    # Retrieve the shape of the kernel.
+    dim_count = min(max(db.inputs.dimCount, 0), MAX_DIMENSIONS)
+    kernel_shape = tuple(
+        max(getattr(db.inputs, "dim{}".format(i + 1)), 0)
+        for i in range(dim_count)
+    )
+
     # Ensure that our internal state is correctly initialized.
     timeline =  omni.timeline.get_timeline_interface()
     if db.internal_state.needs_initialization(db, timeline.is_stopped()):
-        if not db.internal_state.initialize(db):
+        if not db.internal_state.initialize(db, dim_count):
             return
 
         db.internal_state.is_valid = True
 
-    # Exit early if there are no outputs.
-    if not db.internal_state.kernel_annotations[ATTR_PORT_TYPE_OUTPUT]:
+    # Exit early if there are no outputs defined.
+    if not db.internal_state.attr_infos[ATTR_PORT_TYPE_OUTPUT]:
         return
-
-    # Retrieve the number of dimensions.
-    dim_count = min(max(db.inputs.dimCount, 1), MAX_DIMENSIONS)
-
-    # Retrieve the shape of the dimensions to launch the kernel with.
-    dims = tuple(
-        max(getattr(db.inputs, "dim{}".format(i + 1)), 0)
-        for i in range(dim_count)
-    )
 
     # Retrieve the inputs and outputs argument values to pass to the kernel.
     inputs, outputs = get_kernel_args(
         db.inputs,
         db.outputs,
+        db.internal_state.attr_infos,
         db.internal_state.kernel_module,
-        db.internal_state.kernel_annotations,
-        dims,
-        device,
+        kernel_shape,
     )
 
-    # Validates array input attributes.
-    validate_input_arrays(db.node, db.internal_state.kernel_annotations, inputs)
+    # Ensure that all array input values are valid.
+    validate_input_arrays(db.node, db.internal_state.attr_infos, inputs)
 
     # Launch the kernel.
     wp.launch(
         db.internal_state.kernel_module.compute,
-        dim=dims,
+        dim=kernel_shape,
         inputs=[inputs],
         outputs=[outputs],
     )
 
     # Write the output values to the node's attributes.
-    write_output_attrs(
-        db,
-        db.internal_state.kernel_annotations,
-        outputs,
-        device,
-    )
+    write_output_attrs(db.outputs, db.internal_state.attr_infos, outputs)
 
 #   Node Entry Point
 # ------------------------------------------------------------------------------

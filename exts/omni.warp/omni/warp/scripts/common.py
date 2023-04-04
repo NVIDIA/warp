@@ -5,10 +5,42 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from typing import Optional
+from enum import Enum
+from typing import (
+    Any,
+    Mapping,
+    Optional,
+)
 
 import carb
+import omni.graph.core as og
 import warp as wp
+
+BUNDLE_TYPE_ATTR_NAME = "bundleType"
+
+BUNDLE_TYPE_OG_TYPE = og.Type(
+    og.BaseDataType.UCHAR,
+    tuple_count=1,
+    array_depth=1,
+    role=og.AttributeRole.TEXT,
+)
+
+class IntEnum(int, Enum):
+    """Base class for integer enumerators with labels."""
+
+    def __new__(cls, value, label):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        obj.label = label
+        return obj
+
+def get_annotations(obj: Any) -> Mapping[str, Any]:
+    """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
+    # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
+    if isinstance(obj, type):
+        return obj.__dict__.get("__annotations__", {})
+
+    return getattr(obj, "__annotations__", {})
 
 def get_warp_type_from_data_type_name(
     data_type_name: str,
