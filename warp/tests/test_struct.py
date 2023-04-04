@@ -207,6 +207,40 @@ def test_struct_instantiate(data: wp.array(dtype=int)):
     wp.expect_eq(foo.bar.baz.z[2], 26.0)
     wp.expect_eq(foo.bar.baz.data[0], 1)
 
+
+@wp.struct
+class MathThings:
+    v1: wp.vec3
+    v2: wp.vec3
+    v3: wp.vec3
+    m1: wp.mat22
+    m2: wp.mat22
+    m3: wp.mat22
+
+@wp.kernel
+def check_math_conversions(s: MathThings):
+    wp.expect_eq(s.v1, wp.vec3(1.0, 2.0, 3.0))
+    wp.expect_eq(s.v2, wp.vec3(10.0, 20.0, 30.0))
+    wp.expect_eq(s.v3, wp.vec3(100.0, 200.0, 300.0))
+    wp.expect_eq(s.m1, wp.mat22(1.0, 2.0, 3.0, 4.0))
+    wp.expect_eq(s.m2, wp.mat22(10.0, 20.0, 30.0, 40.0))
+    wp.expect_eq(s.m3, wp.mat22(100.0, 200.0, 300.0, 400.0))
+
+def test_struct_math_conversions(test, device):
+
+    s = MathThings()
+
+    # test assigning various iterables to vector and matrix attributes
+    s.v1 = (1, 2, 3)
+    s.v2 = [10, 20, 30]
+    s.v3 = np.array([100, 200, 300])
+    s.m1 = ((1, 2), (3, 4))
+    s.m2 = [[10, 20], [30, 40]]
+    s.m3 = np.array([[100, 200], [300, 400]])
+
+    wp.launch(check_math_conversions, dim=1, inputs=[s])
+
+
 def register(parent):
     
     devices = get_test_devices()
@@ -219,6 +253,7 @@ def register(parent):
     add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
     add_kernel_test(TestStruct, kernel=test_uninitialized, name="test_uninitialized", dim=1, inputs=[Uninitialized()], devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
+    add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
 
     for device in devices:
         add_kernel_test(TestStruct, kernel=test_struct_instantiate, name="test_struct_instantiate", dim=1, inputs=[wp.array([1], dtype=int, device=device)], devices=[device])

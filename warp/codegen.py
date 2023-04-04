@@ -98,10 +98,9 @@ def _get_struct_instance_ctype(
             # vector/matrix type, e.g. vec3
             if types_equal(type(value), var_type):
                 setattr(inst_ctype, field_name, value)
-            elif value is None:
-                setattr(inst_ctype, field_name, var_type()) # default value
             else:
-                raise TypeError(f"assign to struct member {field_name} failed, expected type {var_type}, got type {type(value)}")
+                # conversion from list/tuple, ndarray, etc.
+                setattr(inst_ctype, field_name, var_type(*value))
         else:
             # primitive type
             setattr(inst_ctype, field_name, var_type._type_(value))
