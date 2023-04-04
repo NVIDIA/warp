@@ -151,7 +151,7 @@ struct mat_t
         {
             for (unsigned i=0; i < Rows; ++i)
             {
-                data[j][i] = l[i][j];
+                data[i][j] = l[j][i];
             }
         }
     }
