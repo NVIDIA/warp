@@ -1078,7 +1078,7 @@ def index_value_func(args, kwds, _):
 add_builtin("index", input_types={"a": vector(length=Any, dtype=Scalar), "i": int}, value_func=index_value_func, hidden=True, group="Utility")
 add_builtin("index", input_types={"a": quaternion(dtype=Scalar), "i": int}, value_func=index_value_func, hidden=True, group="Utility")
 
-add_builtin("index", input_types={"a": matrix(shape=(Any,Any), dtype=Scalar), "i": int}, value_func=lambda args, kwds, _: vector(length=args[0].type._shape_[0], dtype=args[0].type._wp_scalar_type_), hidden=True, group="Utility")
+add_builtin("index", input_types={"a": matrix(shape=(Any,Any), dtype=Scalar), "i": int}, value_func=lambda args, kwds, _: vector(length=args[0].type._shape_[1], dtype=args[0].type._wp_scalar_type_), hidden=True, group="Utility")
 add_builtin("index", input_types={"a": matrix(shape=(Any,Any), dtype=Scalar), "i": int, "j": int}, value_func=index_value_func, hidden=True, group="Utility")
 
 add_builtin("index", input_types={"a": transformation(dtype=Scalar), "i": int}, value_func=index_value_func, hidden=True, group="Utility")
