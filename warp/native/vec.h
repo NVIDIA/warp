@@ -783,6 +783,34 @@ namespace wp
         }
     }
 
+    template <unsigned Length, typename Type>
+    inline CUDA_CALLABLE void adj_abs(const vec<Length, Type> &a, vec<Length, Type> &adj_a, const vec<Length, Type> &adj_ret)
+    {
+        for (unsigned i = 0; i < Length; ++i)
+        {
+            if (a[i] > Type(0))
+                adj_a[i] += adj_ret[i];
+            else if (a[i] < Type(0))
+                adj_a[i] -= adj_ret[i];
+            else
+                adj_a[i] += Type(0); // derivative of abs(x) at x=0 is not defined, we take 0 here
+        }
+    }
+
+    template <unsigned Length, typename Type>
+    inline CUDA_CALLABLE void adj_sign(const vec<Length, Type> &a, vec<Length, Type> &adj_a, const vec<Length, Type> &adj_ret)
+    {
+        for (unsigned i = 0; i < Length; ++i)
+        {
+            if (a[i] > Type(0))
+                adj_a[i] += adj_ret[i];
+            else if (a[i] < Type(0))
+                adj_a[i] -= adj_ret[i];
+            else
+                adj_a[i] += Type(0); // derivative of sign(x) at x=0 is not defined, we take 0 here
+        }
+    }
+
     // Do I need to specialize these for different lengths?
     template <unsigned Length, typename Type>
     inline CUDA_CALLABLE vec<Length, Type> atomic_add(vec<Length, Type> *addr, vec<Length, Type> value)
