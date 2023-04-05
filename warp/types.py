@@ -111,8 +111,8 @@ def vector(length, dtype):
         def __rdiv__(self, x):
             return warp.div(x, self)
 
-        def __neg__(self, y):
-            return warp.neg(self, y)
+        def __neg__(self):
+            return warp.neg(self)
 
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"
