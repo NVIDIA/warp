@@ -22,9 +22,24 @@ from typing import Union
 
 import warp
 
-Scalar = TypeVar('Scalar')
-Float = TypeVar('Float')
-Int = TypeVar('Int')
+# type hints
+Length = TypeVar("Length", bound=int)
+Rows = TypeVar("Rows")
+Cols = TypeVar("Cols")
+DType = TypeVar("DType")
+
+Int = TypeVar("Int")
+Float = TypeVar("Float")
+Scalar = TypeVar("Scalar")
+Vector = Generic[Length, Scalar]
+Matrix = Generic[Rows, Cols, Scalar]
+Quaternion = Generic[Float]
+Transformation = Generic[Float]
+
+DType = TypeVar("DType")
+Array = Generic[DType]
+
+T = TypeVar('T')
 
 # shared hash for all constants 
 _constant_hash = hashlib.sha256()
@@ -66,6 +81,12 @@ def constant(x):
 
 def vector(length, dtype):
         
+    # canonicalize dtype
+    if (dtype == int):
+        dtype = int32
+    elif (dtype == float):
+        dtype = float32
+
     class vec_t(ctypes.Array):
 
         # ctypes.Array data for length, shape and c type:
@@ -150,6 +171,12 @@ def vector(length, dtype):
 def matrix(shape, dtype):
         
     assert(len(shape) == 2)
+
+    # canonicalize dtype
+    if (dtype == int):
+        dtype = int32
+    elif (dtype == float):
+        dtype = float32
 
     class mat_t(ctypes.Array):
 
@@ -379,7 +406,13 @@ class uint64:
         self.value = x
 
 def quaternion(dtype=Any):
-    ret = vector(length=4, dtype=dtype)
+    
+    class quat_t(vector(length=4, dtype=dtype)):
+        pass        
+        # def __init__(self, *args):
+        #     super().__init__(args)
+
+    ret = quat_t
     ret._wp_type_params_ = [dtype]
     ret._wp_generic_type_str_ = "quat_t"
     ret._wp_constructor_ = "quaternion"
@@ -539,7 +572,6 @@ vector_types = [
     spatial_vectorh, spatial_vectorf, spatial_vectord,
     spatial_matrixh, spatial_matrixf, spatial_matrixd,
 ]
-
 
 np_dtype_to_warp_type = {
     np.dtype(np.int8): int8,
@@ -814,16 +846,14 @@ def strides_from_shape(shape:Tuple, dtype):
 
     return tuple(strides)
 
-T = TypeVar('T')
 
-
-class array (Generic[T]):
+class array (Array):
 
     # member attributes available during code-gen (e.g.: d = array.shape[0])
     # (initialized when needed)
     _vars = None
 
-    def __init__(self, data=None, dtype: T=Any, shape=None, strides=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False, pinned=False):
+    def __init__(self, data=None, dtype: DType=Any, shape=None, strides=None, length=0, ptr=None, capacity=0, device=None, copy=True, owner=True, ndim=None, requires_grad=False, pinned=False):
         """ Constructs a new Warp array object from existing data.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.

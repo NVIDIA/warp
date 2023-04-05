@@ -13,9 +13,8 @@ faulthandler.enable()
 
 from warp.types import array, array1d, array2d, array3d, array4d, constant
 from warp.types import indexedarray, indexedarray1d, indexedarray2d, indexedarray3d, indexedarray4d
-from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
-from warp.types import Scalar, Float, Int
 
+from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
 from warp.types import vec2, vec2ub, vec2h, vec2f, vec2d
 from warp.types import vec3, vec3ub, vec3h, vec3f, vec3d
 from warp.types import vec4, vec4ub, vec4h, vec4f, vec4d

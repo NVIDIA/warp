@@ -579,7 +579,7 @@ class Adjoint:
 
         # evaluate the function type based on inputs
         value_type = func.value_func(args, kwds, templates)
-                
+            
         func_name = compute_type_str( func.native_func, templates)
 
         use_initializer_list = func.initializer_list_func(args, templates)
@@ -1273,41 +1273,24 @@ class Adjoint:
             if len(path) == 0:
                 raise RuntimeError(f"Unrecognized syntax for function call, path not valid: '{node.func}'")
 
-            # try and lookup function in builtins, this allows users to avoid 
-            # using "wp." prefix, and also handles type constructors
-            # e.g.: wp.vec3 which aren't explicitly function objects
             attr = path[-1]
             caller = func
             func = None
+
+            # try and lookup function name in builtins (e.g.: using `dot` directly without wp prefix)
             if attr in warp.context.builtin_functions:
                 func = warp.context.builtin_functions[attr]
-            elif hasattr(caller,"_wp_generic_type_str_"):
-
-                # This is a constructor for an object with a generic type,
-                # so we're going to need the template information stored in
-                # the class to actually figure out what the c++ template arguments
-                # are:
-                
+            
+            # vector class type e.g.: wp.vec3f constructor
+            if func == None and hasattr(caller,"_wp_generic_type_str_"):               
                 templates = caller._wp_type_params_
                 func = warp.context.builtin_functions.get(caller._wp_constructor_)
 
-            if func is None and caller.__class__.__name__ in warp.context.builtin_functions:
+            # scalar class type e.g.: wp.int8 constructor
+            if func == None and hasattr(caller, "__name__") and caller.__name__ in warp.context.builtin_functions:              
+                func = warp.context.builtin_functions.get(caller.__name__)
 
-                # This can be necessary if you've aliased a type before defining the
-                # kernel then used it inside the kernel, eg
-                    
-                # wptype = wp.float64
-                # @wp.kernel
-                # def mykernel( ... )
-                #   ...
-                #   a = wptype(2)
-                
-                # The attr variable we used to try and look up the builtin for wptype
-                # is just "wptype", which isn't in the builtins, so we try and look
-                # it up based on wptype's class name instead:
-                
-                func = warp.context.builtin_functions.get(caller.__class__.__name__)
-
+            # struct constructor
             if func is None and isinstance(caller, Struct):
                 adj.builder.build_struct_recursive(caller)
                 func = caller.initializer()
@@ -1574,8 +1557,8 @@ class Adjoint:
 
             # Look up the closure info and append it to adj.func.__globals__
             # in case you want to define a kernel inside a function and refer
-            # to varibles you've declared inside that function:
-            extract_contents = lambda contents : contents if isinstance(contents, warp.context.Function) or not callable(contents) else contents()
+            # to variables you've declared inside that function:
+            extract_contents = lambda contents : contents if isinstance(contents, warp.context.Function) or not callable(contents) else contents
             capturedvars = dict(zip(adj.func.__code__.co_freevars,[ extract_contents(c.cell_contents) for c in (adj.func.__closure__ or []) ]))
 
             vars_dict = {**adj.func.__globals__, **capturedvars}
