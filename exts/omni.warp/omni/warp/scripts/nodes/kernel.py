@@ -53,8 +53,6 @@ from omni.warp.scripts.types.array import (
     read_bundle as array_read_bundle,
 )
 
-MAX_DIMENSIONS = 4
-
 _ATTR_PORT_TYPE_INPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
 _ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
 

@@ -17,9 +17,9 @@ import omni.timeline
 
 from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
 from omni.warp.scripts.attributes import join_attr_name
+from omni.warp.scripts.nodes.common import MAX_DIMENSIONS
 from omni.warp.scripts.nodes.kernel import (
     EXPLICIT_SOURCE,
-    MAX_DIMENSIONS,
     InternalStateBase,
     UserAttributesEvent,
     deserialize_user_attribute_descs,
