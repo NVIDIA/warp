@@ -5,6 +5,7 @@ __pycache__
 *.prof
 warp/kernels
 warp.egg-info
+.[v]env
 .vscode
 archive
 *.o
