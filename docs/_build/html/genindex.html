@@ -34,7 +34,9 @@
         <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -69,7 +71,7 @@
             
             
               <div class="version">
-                0.7.2
+                0.8.0
               </div>
             
           
@@ -175,6 +177,7 @@
  | <a href="#D"><strong>D</strong></a>
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
+ | <a href="#G"><strong>G</strong></a>
  | <a href="#H"><strong>H</strong></a>
  | <a href="#I"><strong>I</strong></a>
  | <a href="#J"><strong>J</strong></a>
@@ -200,9 +203,11 @@
 </li>
       <li><a href="modules/functions.html#warp.acos">acos() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#id69">add() (in module warp)</a>, <a href="modules/functions.html#id70">[1]</a>, <a href="modules/functions.html#id71">[2]</a>, <a href="modules/functions.html#id72">[3]</a>, <a href="modules/functions.html#warp.add">[4]</a>
+      <li><a href="modules/functions.html#id53">add() (in module warp)</a>, <a href="modules/functions.html#id54">[1]</a>, <a href="modules/functions.html#id55">[2]</a>, <a href="modules/functions.html#id56">[3]</a>, <a href="modules/functions.html#warp.add">[4]</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_body">add_body() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_builder">add_builder() (warp.sim.ModelBuilder method)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_cloth_grid">add_cloth_grid() (warp.sim.ModelBuilder method)</a>
 </li>
@@ -212,15 +217,37 @@
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_edges">add_edges() (warp.sim.ModelBuilder method)</a>
 </li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_ball">add_joint_ball() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_compound">add_joint_compound() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_d6">add_joint_d6() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_distance">add_joint_distance() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_fixed">add_joint_fixed() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_free">add_joint_free() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_prismatic">add_joint_prismatic() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_revolute">add_joint_revolute() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_joint_universal">add_joint_universal() (warp.sim.ModelBuilder method)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_muscle">add_muscle() (warp.sim.ModelBuilder method)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_particle">add_particle() (warp.sim.ModelBuilder method)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_rigid_articulation">add_rigid_articulation() (warp.sim.ModelBuilder method)</a>
-</li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_box">add_shape_box() (warp.sim.ModelBuilder method)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_capsule">add_shape_capsule() (warp.sim.ModelBuilder method)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_cone">add_shape_cone() (warp.sim.ModelBuilder method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_cylinder">add_shape_cylinder() (warp.sim.ModelBuilder method)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_mesh">add_shape_mesh() (warp.sim.ModelBuilder method)</a>
 </li>
@@ -228,8 +255,6 @@
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_shape_sphere">add_shape_sphere() (warp.sim.ModelBuilder method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_soft_grid">add_soft_grid() (warp.sim.ModelBuilder method)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder.add_soft_mesh">add_soft_mesh() (warp.sim.ModelBuilder method)</a>
@@ -246,7 +271,13 @@
 </li>
       <li><a href="modules/runtime.html#warp.Volume.allocate_by_tiles">allocate_by_tiles() (warp.Volume class method)</a>
 </li>
+      <li><a href="modules/functions.html#warp.Array">Array (class in warp)</a>
+</li>
       <li><a href="modules/runtime.html#warp.array">array (class in warp)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.articulation_count">articulation_count (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.articulation_start">articulation_start (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/functions.html#warp.asin">asin() (in module warp)</a>
 </li>
@@ -254,13 +285,13 @@
 </li>
       <li><a href="modules/functions.html#warp.atan2">atan2() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#id17">atomic_add() (in module warp)</a>, <a href="modules/functions.html#id18">[1]</a>, <a href="modules/functions.html#id19">[2]</a>, <a href="modules/functions.html#warp.atomic_add">[3]</a>
+      <li><a href="modules/functions.html#id22">atomic_add() (in module warp)</a>, <a href="modules/functions.html#id23">[1]</a>, <a href="modules/functions.html#id24">[2]</a>, <a href="modules/functions.html#warp.atomic_add">[3]</a>
 </li>
-      <li><a href="modules/functions.html#id26">atomic_max() (in module warp)</a>, <a href="modules/functions.html#id27">[1]</a>, <a href="modules/functions.html#id28">[2]</a>, <a href="modules/functions.html#warp.atomic_max">[3]</a>
+      <li><a href="modules/functions.html#id31">atomic_max() (in module warp)</a>, <a href="modules/functions.html#id32">[1]</a>, <a href="modules/functions.html#id33">[2]</a>, <a href="modules/functions.html#warp.atomic_max">[3]</a>
 </li>
-      <li><a href="modules/functions.html#id23">atomic_min() (in module warp)</a>, <a href="modules/functions.html#id24">[1]</a>, <a href="modules/functions.html#id25">[2]</a>, <a href="modules/functions.html#warp.atomic_min">[3]</a>
+      <li><a href="modules/functions.html#id28">atomic_min() (in module warp)</a>, <a href="modules/functions.html#id29">[1]</a>, <a href="modules/functions.html#id30">[2]</a>, <a href="modules/functions.html#warp.atomic_min">[3]</a>
 </li>
-      <li><a href="modules/functions.html#id20">atomic_sub() (in module warp)</a>, <a href="modules/functions.html#id21">[1]</a>, <a href="modules/functions.html#id22">[2]</a>, <a href="modules/functions.html#warp.atomic_sub">[3]</a>
+      <li><a href="modules/functions.html#id25">atomic_sub() (in module warp)</a>, <a href="modules/functions.html#id26">[1]</a>, <a href="modules/functions.html#id27">[2]</a>, <a href="modules/functions.html#warp.atomic_sub">[3]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -274,11 +305,29 @@
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.body_inertia">body_inertia (warp.sim.Model attribute)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.State.body_q">body_q (warp.sim.State attribute)</a>
+      <li><a href="modules/sim.html#warp.sim.Model.body_inv_inertia">body_inv_inertia (warp.sim.Model attribute)</a>
 </li>
+      <li><a href="modules/sim.html#warp.sim.Model.body_inv_mass">body_inv_mass (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.body_mass">body_mass (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.body_name">body_name (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.body_q">body_q (warp.sim.Model attribute)</a>
+
+      <ul>
+        <li><a href="modules/sim.html#warp.sim.State.body_q">(warp.sim.State attribute)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/sim.html#warp.sim.State.body_qd">body_qd (warp.sim.State attribute)</a>
+      <li><a href="modules/sim.html#warp.sim.Model.body_qd">body_qd (warp.sim.Model attribute)</a>
+
+      <ul>
+        <li><a href="modules/sim.html#warp.sim.State.body_qd">(warp.sim.State attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/sim.html#warp.sim.Model.body_shapes">body_shapes (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/runtime.html#warp.HashGrid.build">build() (warp.HashGrid method)</a>
 </li>
@@ -308,31 +357,25 @@
 </li>
       <li><a href="modules/functions.html#warp.closest_point_edge_edge">closest_point_edge_edge() (in module warp)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.Model.collide">collide() (warp.sim.Model method)</a>
-</li>
-      <li><a href="modules/sim.html#warp.sim.ModelBuilder.compute_box_inertia">compute_box_inertia() (warp.sim.ModelBuilder method)</a>
+      <li><a href="modules/runtime.html#warp.constant">constant (class in warp)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/sim.html#warp.sim.ModelBuilder.compute_capsule_inertia">compute_capsule_inertia() (warp.sim.ModelBuilder method)</a>
-</li>
-      <li><a href="modules/sim.html#warp.sim.ModelBuilder.compute_sphere_inertia">compute_sphere_inertia() (warp.sim.ModelBuilder method)</a>
-</li>
-      <li><a href="modules/runtime.html#warp.constant">constant (class in warp)</a>
-</li>
       <li><a href="modules/sim.html#warp.sim.Model.contact_count">contact_count (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/functions.html#warp.cos">cos() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.cosh">cosh() (in module warp)</a>
 </li>
+      <li><a href="modules/sim.html#warp.sim.Model.count_contact_points">count_contact_points() (warp.sim.Model method)</a>
+</li>
       <li><a href="modules/functions.html#warp.cross">cross() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#id65">curlnoise() (in module warp)</a>, <a href="modules/functions.html#id67">[1]</a>, <a href="modules/functions.html#warp.curlnoise">[2]</a>
+      <li><a href="modules/functions.html#id49">curlnoise() (in module warp)</a>, <a href="modules/functions.html#id51">[1]</a>, <a href="modules/functions.html#warp.curlnoise">[2]</a>
 </li>
-      <li><a href="modules/functions.html#id7">cw_div() (in module warp)</a>, <a href="modules/functions.html#warp.cw_div">[1]</a>
+      <li><a href="modules/functions.html#id11">cw_div() (in module warp)</a>, <a href="modules/functions.html#warp.cw_div">[1]</a>
 </li>
-      <li><a href="modules/functions.html#id6">cw_mul() (in module warp)</a>, <a href="modules/functions.html#warp.cw_mul">[1]</a>
+      <li><a href="modules/functions.html#id10">cw_mul() (in module warp)</a>, <a href="modules/functions.html#warp.cw_mul">[1]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -344,19 +387,21 @@
 </li>
       <li><a href="modules/functions.html#warp.degrees">degrees() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#warp.determinant">determinant() (in module warp)</a>
+      <li><a href="modules/functions.html#id8">determinant() (in module warp)</a>, <a href="modules/functions.html#id9">[1]</a>, <a href="modules/functions.html#warp.determinant">[2]</a>
 </li>
       <li><a href="modules/runtime.html#warp.HashGrid.device">device (warp.HashGrid attribute)</a>
 
       <ul>
         <li><a href="modules/runtime.html#warp.Mesh.device">(warp.Mesh attribute)</a>
 </li>
+        <li><a href="modules/sim.html#warp.sim.Model.device">(warp.sim.Model attribute)</a>
+</li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.diag">diag() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#id89">div() (in module warp)</a>, <a href="modules/functions.html#id90">[1]</a>, <a href="modules/functions.html#id91">[2]</a>, <a href="modules/functions.html#warp.div">[3]</a>
+      <li><a href="modules/functions.html#id73">div() (in module warp)</a>, <a href="modules/functions.html#id74">[1]</a>, <a href="modules/functions.html#id75">[2]</a>, <a href="modules/functions.html#warp.div">[3]</a>
 </li>
       <li><a href="modules/functions.html#id2">dot() (in module warp)</a>, <a href="modules/functions.html#warp.dot">[1]</a>
 </li>
@@ -366,6 +411,8 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/sim.html#warp.sim.Model.edge_bending_properties">edge_bending_properties (warp.sim.Model attribute)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.Model.edge_count">edge_count (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.edge_indices">edge_indices (warp.sim.Model attribute)</a>
@@ -374,19 +421,17 @@
 </li>
       <li><a href="modules/functions.html#warp.eig3">eig3() (in module warp)</a>
 </li>
-      <li><a href="modules/runtime.html#warp.empty">empty() (in module warp)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/runtime.html#warp.ScopedTimer.elapsed">elapsed (warp.ScopedTimer attribute)</a>
+</li>
+      <li><a href="modules/runtime.html#warp.empty">empty() (in module warp)</a>
+</li>
       <li><a href="modules/runtime.html#warp.empty_like">empty_like() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.exp">exp() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#id29">expect_eq() (in module warp)</a>, <a href="modules/functions.html#id30">[1]</a>, <a href="modules/functions.html#id31">[2]</a>, <a href="modules/functions.html#id32">[3]</a>, <a href="modules/functions.html#id33">[4]</a>, <a href="modules/functions.html#id34">[5]</a>, <a href="modules/functions.html#id35">[6]</a>, <a href="modules/functions.html#id36">[7]</a>, <a href="modules/functions.html#id37">[8]</a>, <a href="modules/functions.html#id38">[9]</a>, <a href="modules/functions.html#id39">[10]</a>, <a href="modules/functions.html#id40">[11]</a>, <a href="modules/functions.html#id41">[12]</a>, <a href="modules/functions.html#id42">[13]</a>, <a href="modules/functions.html#id43">[14]</a>, <a href="modules/functions.html#id44">[15]</a>, <a href="modules/functions.html#id45">[16]</a>, <a href="modules/functions.html#id46">[17]</a>, <a href="modules/functions.html#id47">[18]</a>, <a href="modules/functions.html#id48">[19]</a>, <a href="modules/functions.html#warp.expect_eq">[20]</a>
-</li>
-      <li><a href="modules/functions.html#id54">expect_near() (in module warp)</a>, <a href="modules/functions.html#warp.expect_near">[1]</a>
-</li>
-      <li><a href="modules/functions.html#id49">expect_neq() (in module warp)</a>, <a href="modules/functions.html#warp.expect_neq">[1]</a>
+      <li><a href="modules/functions.html#id38">expect_near() (in module warp)</a>, <a href="modules/functions.html#warp.expect_near">[1]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -402,10 +447,12 @@
         <li><a href="modules/sim.html#warp.sim.State.flatten">(warp.sim.State method)</a>
 </li>
       </ul></li>
-      <li><a href="modules/functions.html#warp.float16">float16 (class in warp)</a>
+      <li><a href="modules/functions.html#warp.Float">Float (class in warp)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/functions.html#warp.float16">float16 (class in warp)</a>
+</li>
       <li><a href="modules/functions.html#warp.float32">float32 (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.float64">float64 (class in warp)</a>
@@ -413,6 +460,20 @@
       <li><a href="modules/functions.html#warp.floor">floor() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.floordiv">floordiv() (in module warp)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="G">G</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/sim.html#warp.sim.Model.gravity">gravity (warp.sim.Model attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/sim.html#warp.sim.Model.ground">ground (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.ground_plane">ground_plane (warp.sim.Model attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -444,6 +505,8 @@
       </ul></li>
       <li><a href="modules/functions.html#warp.identity">identity() (in module warp)</a>
 </li>
+      <li><a href="modules/functions.html#warp.Int">Int (class in warp)</a>
+</li>
       <li><a href="modules/functions.html#warp.int16">int16 (class in warp)</a>
 </li>
   </ul></td>
@@ -456,7 +519,7 @@
 </li>
       <li><a href="modules/functions.html#warp.intersect_tri_tri">intersect_tri_tri() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#warp.inverse">inverse() (in module warp)</a>
+      <li><a href="modules/functions.html#id6">inverse() (in module warp)</a>, <a href="modules/functions.html#id7">[1]</a>, <a href="modules/functions.html#warp.inverse">[2]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -464,25 +527,73 @@
 <h2 id="J">J</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_act">joint_act (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_angular_compliance">joint_angular_compliance (warp.sim.Model attribute)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.Model.joint_armature">joint_armature (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_attach_kd">joint_attach_kd (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_attach_ke">joint_attach_ke (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.joint_axis">joint_axis (warp.sim.Model attribute)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.Model.joint_parent">joint_parent (warp.sim.Model attribute)</a>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_axis_dim">joint_axis_dim (warp.sim.Model attribute)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.Model.joint_target">joint_target (warp.sim.Model attribute)</a>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_axis_mode">joint_axis_mode (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_axis_start">joint_axis_start (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_child">joint_child (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_coord_count">joint_coord_count (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_count">joint_count (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_dof_count">joint_dof_count (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_enabled">joint_enabled (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_limit_kd">joint_limit_kd (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_limit_ke">joint_limit_ke (warp.sim.Model attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_limit_lower">joint_limit_lower (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_limit_upper">joint_limit_upper (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_linear_compliance">joint_linear_compliance (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_name">joint_name (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_parent">joint_parent (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_q">joint_q (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_q_start">joint_q_start (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_qd">joint_qd (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_qd_start">joint_qd_start (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_target">joint_target (warp.sim.Model attribute)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.Model.joint_target_kd">joint_target_kd (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.joint_target_ke">joint_target_ke (warp.sim.Model attribute)</a>
 </li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_twist_lower">joint_twist_lower (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_twist_upper">joint_twist_upper (warp.sim.Model attribute)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.Model.joint_type">joint_type (warp.sim.Model attribute)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.Model.joint_X_cm">joint_X_cm (warp.sim.Model attribute)</a>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_X_c">joint_X_c (warp.sim.Model attribute)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.Model.joint_X_pj">joint_X_pj (warp.sim.Model attribute)</a>
+      <li><a href="modules/sim.html#warp.sim.Model.joint_X_p">joint_X_p (warp.sim.Model attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -496,7 +607,7 @@
 </li>
       <li><a href="modules/functions.html#id4">length_sq() (in module warp)</a>, <a href="modules/functions.html#warp.length_sq">[1]</a>
 </li>
-      <li><a href="modules/functions.html#id50">lerp() (in module warp)</a>, <a href="modules/functions.html#id51">[1]</a>, <a href="modules/functions.html#id52">[2]</a>, <a href="modules/functions.html#id53">[3]</a>, <a href="modules/functions.html#warp.lerp">[4]</a>
+      <li><a href="modules/functions.html#id34">lerp() (in module warp)</a>, <a href="modules/functions.html#id35">[1]</a>, <a href="modules/functions.html#id36">[2]</a>, <a href="modules/functions.html#id37">[3]</a>, <a href="modules/functions.html#warp.lerp">[4]</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -516,15 +627,11 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/functions.html#warp.mat22">mat22 (class in warp)</a>
-</li>
       <li><a href="modules/functions.html#warp.mat22d">mat22d (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.mat22f">mat22f (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.mat22h">mat22h (class in warp)</a>
-</li>
-      <li><a href="modules/functions.html#warp.mat33">mat33 (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.mat33d">mat33d (class in warp)</a>
 </li>
@@ -532,15 +639,15 @@
 </li>
       <li><a href="modules/functions.html#warp.mat33h">mat33h (class in warp)</a>
 </li>
-      <li><a href="modules/functions.html#warp.mat44">mat44 (class in warp)</a>
-</li>
       <li><a href="modules/functions.html#warp.mat44d">mat44d (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.mat44f">mat44f (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.mat44h">mat44h (class in warp)</a>
 </li>
-      <li><a href="modules/functions.html#id9">matrix() (in module warp)</a>, <a href="modules/functions.html#warp.matrix">[1]</a>
+      <li><a href="modules/functions.html#warp.Matrix">Matrix (class in warp)</a>
+</li>
+      <li><a href="modules/functions.html#id13">matrix() (in module warp)</a>, <a href="modules/functions.html#warp.matrix">[1]</a>
 </li>
       <li><a href="modules/functions.html#id1">max() (in module warp)</a>, <a href="modules/functions.html#warp.max">[1]</a>
 </li>
@@ -548,10 +655,10 @@
 </li>
       <li><a href="modules/functions.html#warp.mesh_eval_face_normal">mesh_eval_face_normal() (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.mesh_eval_position">mesh_eval_position() (in module warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.mesh_eval_velocity">mesh_eval_velocity() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.mesh_get">mesh_get() (in module warp)</a>
@@ -580,7 +687,9 @@
 </li>
       <li><a href="modules/sim.html#warp.sim.ModelBuilder">ModelBuilder (class in warp.sim)</a>
 </li>
-      <li><a href="modules/functions.html#id77">mul() (in module warp)</a>, <a href="modules/functions.html#id78">[1]</a>, <a href="modules/functions.html#id79">[2]</a>, <a href="modules/functions.html#id80">[3]</a>, <a href="modules/functions.html#id81">[4]</a>, <a href="modules/functions.html#id82">[5]</a>, <a href="modules/functions.html#id83">[6]</a>, <a href="modules/functions.html#id84">[7]</a>, <a href="modules/functions.html#id85">[8]</a>, <a href="modules/functions.html#id86">[9]</a>, <a href="modules/functions.html#id87">[10]</a>, <a href="modules/functions.html#id88">[11]</a>, <a href="modules/functions.html#warp.mul">[12]</a>
+      <li><a href="modules/functions.html#id61">mul() (in module warp)</a>, <a href="modules/functions.html#id62">[1]</a>, <a href="modules/functions.html#id63">[2]</a>, <a href="modules/functions.html#id64">[3]</a>, <a href="modules/functions.html#id65">[4]</a>, <a href="modules/functions.html#id66">[5]</a>, <a href="modules/functions.html#id67">[6]</a>, <a href="modules/functions.html#id68">[7]</a>, <a href="modules/functions.html#id69">[8]</a>, <a href="modules/functions.html#id70">[9]</a>, <a href="modules/functions.html#id71">[10]</a>, <a href="modules/functions.html#id72">[11]</a>, <a href="modules/functions.html#warp.mul">[12]</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.muscle_count">muscle_count (warp.sim.Model attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -588,15 +697,17 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/functions.html#id92">neg() (in module warp)</a>, <a href="modules/functions.html#id93">[1]</a>, <a href="modules/functions.html#id94">[2]</a>, <a href="modules/functions.html#warp.neg">[3]</a>
+      <li><a href="modules/functions.html#id79">neg() (in module warp)</a>, <a href="modules/functions.html#id80">[1]</a>, <a href="modules/functions.html#id81">[2]</a>, <a href="modules/functions.html#warp.neg">[3]</a>
 </li>
-      <li><a href="modules/functions.html#id58">noise() (in module warp)</a>, <a href="modules/functions.html#id59">[1]</a>, <a href="modules/functions.html#id60">[2]</a>, <a href="modules/functions.html#warp.noise">[3]</a>
+      <li><a href="modules/functions.html#id42">noise() (in module warp)</a>, <a href="modules/functions.html#id43">[1]</a>, <a href="modules/functions.html#id44">[2]</a>, <a href="modules/functions.html#warp.noise">[3]</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.nonzero">nonzero() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#id5">normalize() (in module warp)</a>, <a href="modules/functions.html#warp.normalize">[1]</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.num_envs">num_envs (warp.sim.Model attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -612,27 +723,47 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/sim.html#warp.sim.Model.particle_adhesion">particle_adhesion (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.particle_cohesion">particle_cohesion (warp.sim.Model attribute)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.Model.particle_count">particle_count (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.particle_grid">particle_grid (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.particle_inv_mass">particle_inv_mass (warp.sim.Model attribute)</a>
 </li>
+      <li><a href="modules/sim.html#warp.sim.Model.particle_kd">particle_kd (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.particle_ke">particle_ke (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.particle_kf">particle_kf (warp.sim.Model attribute)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.Model.particle_mass">particle_mass (warp.sim.Model attribute)</a>
 </li>
+      <li><a href="modules/sim.html#warp.sim.Model.particle_mu">particle_mu (warp.sim.Model attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/sim.html#warp.sim.Model.particle_q">particle_q (warp.sim.Model attribute)</a>
 
       <ul>
         <li><a href="modules/sim.html#warp.sim.State.particle_q">(warp.sim.State attribute)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/sim.html#warp.sim.Model.particle_qd">particle_qd (warp.sim.Model attribute)</a>
 
       <ul>
         <li><a href="modules/sim.html#warp.sim.State.particle_qd">(warp.sim.State attribute)</a>
 </li>
       </ul></li>
-      <li><a href="modules/functions.html#id61">pnoise() (in module warp)</a>, <a href="modules/functions.html#id62">[1]</a>, <a href="modules/functions.html#id63">[2]</a>, <a href="modules/functions.html#warp.pnoise">[3]</a>
+      <li><a href="modules/sim.html#warp.sim.Model.particle_radius">particle_radius (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/functions.html#id45">pnoise() (in module warp)</a>, <a href="modules/functions.html#id46">[1]</a>, <a href="modules/functions.html#id47">[2]</a>, <a href="modules/functions.html#warp.pnoise">[3]</a>
+</li>
+      <li><a href="modules/functions.html#warp.poisson">poisson() (in module warp)</a>
+</li>
+      <li><a href="modules/functions.html#id76">pos() (in module warp)</a>, <a href="modules/functions.html#id77">[1]</a>, <a href="modules/functions.html#id78">[2]</a>, <a href="modules/functions.html#warp.pos">[3]</a>
 </li>
       <li><a href="modules/functions.html#warp.pow">pow() (in module warp)</a>
 </li>
@@ -648,8 +779,6 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.qr3">qr3() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#warp.quat">quat (class in warp)</a>
-</li>
       <li><a href="modules/functions.html#warp.quat_from_axis_angle">quat_from_axis_angle() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.quat_from_matrix">quat_from_matrix() (in module warp)</a>
@@ -662,10 +791,10 @@
 </li>
       <li><a href="modules/functions.html#warp.quat_rotate_inv">quat_rotate_inv() (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.quat_rpy">quat_rpy() (in module warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.quat_slerp">quat_slerp() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.quat_to_axis_angle">quat_to_axis_angle() (in module warp)</a>
@@ -674,7 +803,9 @@
 </li>
       <li><a href="modules/functions.html#warp.quatd">quatd (class in warp)</a>
 </li>
-      <li><a href="modules/functions.html#id10">quaternion() (in module warp)</a>, <a href="modules/functions.html#id11">[1]</a>, <a href="modules/functions.html#warp.quaternion">[2]</a>
+      <li><a href="modules/functions.html#warp.Quaternion">Quaternion (class in warp)</a>
+</li>
+      <li><a href="modules/functions.html#id14">quaternion() (in module warp)</a>, <a href="modules/functions.html#id15">[1]</a>, <a href="modules/functions.html#warp.quaternion">[2]</a>
 </li>
       <li><a href="modules/functions.html#warp.quatf">quatf (class in warp)</a>
 </li>
@@ -688,17 +819,25 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.radians">radians() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#id55">rand_init() (in module warp)</a>, <a href="modules/functions.html#warp.rand_init">[1]</a>
+      <li><a href="modules/functions.html#id39">rand_init() (in module warp)</a>, <a href="modules/functions.html#warp.rand_init">[1]</a>
 </li>
-      <li><a href="modules/functions.html#id57">randf() (in module warp)</a>, <a href="modules/functions.html#warp.randf">[1]</a>
+      <li><a href="modules/functions.html#id41">randf() (in module warp)</a>, <a href="modules/functions.html#warp.randf">[1]</a>
 </li>
-      <li><a href="modules/functions.html#id56">randi() (in module warp)</a>, <a href="modules/functions.html#warp.randi">[1]</a>
+      <li><a href="modules/functions.html#id40">randi() (in module warp)</a>, <a href="modules/functions.html#warp.randi">[1]</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.randn">randn() (in module warp)</a>
 </li>
       <li><a href="modules/runtime.html#warp.Mesh.refit">refit() (warp.Mesh method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/sim.html#warp.sim.Model.requires_grad">requires_grad (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.rigid_contact_margin">rigid_contact_margin (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.rigid_contact_rolling_friction">rigid_contact_rolling_friction (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.rigid_contact_torsional_friction">rigid_contact_torsional_friction (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/functions.html#warp.rint">rint() (in module warp)</a>
 </li>
@@ -730,21 +869,39 @@
 </li>
       <li><a href="modules/functions.html#warp.sample_unit_square">sample_unit_square() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#warp.select">select() (in module warp)</a>
+      <li><a href="modules/functions.html#warp.Scalar">Scalar (class in warp)</a>
+</li>
+      <li><a href="modules/runtime.html#warp.ScopedTimer">ScopedTimer (class in warp)</a>
+</li>
+      <li><a href="modules/functions.html#id21">select() (in module warp)</a>, <a href="modules/functions.html#warp.select">[1]</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.SemiImplicitIntegrator">SemiImplicitIntegrator (class in warp.sim)</a>
 </li>
+      <li><a href="modules/sim.html#warp.sim.ModelBuilder.set_ground_plane">set_ground_plane() (warp.sim.ModelBuilder method)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.Model.shape_body">shape_body (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.shape_collision_filter_pairs">shape_collision_filter_pairs (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.shape_collision_group">shape_collision_group (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.shape_collision_group_map">shape_collision_group_map (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.shape_collision_radius">shape_collision_radius (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.shape_contact_pairs">shape_contact_pairs (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.shape_count">shape_count (warp.sim.Model attribute)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.Model.shape_geo_scale">shape_geo_scale (warp.sim.Model attribute)</a>
-</li>
       <li><a href="modules/sim.html#warp.sim.Model.shape_geo_src">shape_geo_src (warp.sim.Model attribute)</a>
 </li>
-      <li><a href="modules/sim.html#warp.sim.Model.shape_geo_type">shape_geo_type (warp.sim.Model attribute)</a>
+      <li><a href="modules/sim.html#warp.sim.Model.shape_ground_collision">shape_ground_collision (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.shape_ground_contact_pairs">shape_ground_contact_pairs (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.shape_materials">shape_materials (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.shape_shape_geo">shape_shape_geo (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.shape_transform">shape_transform (warp.sim.Model attribute)</a>
 </li>
@@ -756,14 +913,26 @@
 </li>
       <li><a href="modules/functions.html#warp.skew">skew() (in module warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.smoothstep">smoothstep() (in module warp)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.soft_contact_distance">soft_contact_distance (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.soft_contact_kd">soft_contact_kd (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.soft_contact_ke">soft_contact_ke (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.soft_contact_kf">soft_contact_kf (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.soft_contact_margin">soft_contact_margin (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.soft_contact_mu">soft_contact_mu (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/functions.html#warp.spatial_adjoint">spatial_adjoint() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.spatial_bottom">spatial_bottom() (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.spatial_cross">spatial_cross() (in module warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.spatial_cross_dual">spatial_cross_dual() (in module warp)</a>
@@ -774,8 +943,6 @@
 </li>
       <li><a href="modules/functions.html#warp.spatial_mass">spatial_mass() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#warp.spatial_matrix">spatial_matrix (class in warp)</a>
-</li>
       <li><a href="modules/functions.html#warp.spatial_matrixd">spatial_matrixd (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.spatial_matrixf">spatial_matrixf (class in warp)</a>
@@ -783,8 +950,6 @@
       <li><a href="modules/functions.html#warp.spatial_matrixh">spatial_matrixh (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.spatial_top">spatial_top() (in module warp)</a>
-</li>
-      <li><a href="modules/functions.html#warp.spatial_vector">spatial_vector (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.spatial_vectord">spatial_vectord (class in warp)</a>
 </li>
@@ -812,7 +977,7 @@
 </li>
       <li><a href="modules/functions.html#warp.step">step() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#id73">sub() (in module warp)</a>, <a href="modules/functions.html#id74">[1]</a>, <a href="modules/functions.html#id75">[2]</a>, <a href="modules/functions.html#id76">[3]</a>, <a href="modules/functions.html#warp.sub">[4]</a>
+      <li><a href="modules/functions.html#id57">sub() (in module warp)</a>, <a href="modules/functions.html#id58">[1]</a>, <a href="modules/functions.html#id59">[2]</a>, <a href="modules/functions.html#id60">[3]</a>, <a href="modules/functions.html#warp.sub">[4]</a>
 </li>
       <li><a href="modules/functions.html#warp.svd3">svd3() (in module warp)</a>
 </li>
@@ -838,11 +1003,9 @@
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.tet_poses">tet_poses (warp.sim.Model attribute)</a>
 </li>
-      <li><a href="modules/functions.html#id14">tid() (in module warp)</a>, <a href="modules/functions.html#id15">[1]</a>, <a href="modules/functions.html#id16">[2]</a>, <a href="modules/functions.html#warp.tid">[3]</a>
+      <li><a href="modules/functions.html#id18">tid() (in module warp)</a>, <a href="modules/functions.html#id19">[1]</a>, <a href="modules/functions.html#id20">[2]</a>, <a href="modules/functions.html#warp.tid">[3]</a>
 </li>
       <li><a href="modules/functions.html#warp.trace">trace() (in module warp)</a>
-</li>
-      <li><a href="modules/functions.html#warp.transform">transform (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.transform_get_rotation">transform_get_rotation() (in module warp)</a>
 </li>
@@ -850,15 +1013,17 @@
 </li>
       <li><a href="modules/functions.html#warp.transform_identity">transform_identity() (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.transform_inverse">transform_inverse() (in module warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.transform_multiply">transform_multiply() (in module warp)</a>
 </li>
-      <li><a href="modules/functions.html#id12">transform_point() (in module warp)</a>, <a href="modules/functions.html#warp.transform_point">[1]</a>
+      <li><a href="modules/functions.html#id16">transform_point() (in module warp)</a>, <a href="modules/functions.html#warp.transform_point">[1]</a>
 </li>
-      <li><a href="modules/functions.html#id13">transform_vector() (in module warp)</a>, <a href="modules/functions.html#warp.transform_vector">[1]</a>
+      <li><a href="modules/functions.html#id17">transform_vector() (in module warp)</a>, <a href="modules/functions.html#warp.transform_vector">[1]</a>
+</li>
+      <li><a href="modules/functions.html#warp.Transformation">Transformation (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.transformation">transformation() (in module warp)</a>
 </li>
@@ -876,6 +1041,8 @@
 </li>
       <li><a href="modules/sim.html#warp.sim.Model.tri_indices">tri_indices (warp.sim.Model attribute)</a>
 </li>
+      <li><a href="modules/sim.html#warp.sim.Model.tri_materials">tri_materials (warp.sim.Model attribute)</a>
+</li>
       <li><a href="modules/sim.html#warp.sim.Model.tri_poses">tri_poses (warp.sim.Model attribute)</a>
 </li>
       <li><a href="modules/functions.html#warp.trunc">trunc() (in module warp)</a>
@@ -890,13 +1057,17 @@
 </li>
       <li><a href="modules/functions.html#warp.uint32">uint32 (class in warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.uint64">uint64 (class in warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/functions.html#warp.uint8">uint8 (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.unot">unot() (in module warp)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.up_axis">up_axis (warp.sim.Model attribute)</a>
+</li>
+      <li><a href="modules/sim.html#warp.sim.Model.up_vector">up_vector (warp.sim.Model attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -904,8 +1075,6 @@
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/functions.html#warp.vec2">vec2 (class in warp)</a>
-</li>
       <li><a href="modules/functions.html#warp.vec2d">vec2d (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.vec2f">vec2f (class in warp)</a>
@@ -913,8 +1082,6 @@
       <li><a href="modules/functions.html#warp.vec2h">vec2h (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.vec2ub">vec2ub (class in warp)</a>
-</li>
-      <li><a href="modules/functions.html#warp.vec3">vec3 (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.vec3d">vec3d (class in warp)</a>
 </li>
@@ -924,8 +1091,6 @@
 </li>
       <li><a href="modules/functions.html#warp.vec3ub">vec3ub (class in warp)</a>
 </li>
-      <li><a href="modules/functions.html#warp.vec4">vec4 (class in warp)</a>
-</li>
       <li><a href="modules/functions.html#warp.vec4d">vec4d (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.vec4f">vec4f (class in warp)</a>
@@ -934,10 +1099,12 @@
 </li>
       <li><a href="modules/functions.html#warp.vec4ub">vec4ub (class in warp)</a>
 </li>
+      <li><a href="modules/functions.html#warp.Vector">Vector (class in warp)</a>
+</li>
+      <li><a href="modules/functions.html#id12">vector() (in module warp)</a>, <a href="modules/functions.html#warp.vector">[1]</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/functions.html#id8">vector() (in module warp)</a>, <a href="modules/functions.html#warp.vector">[1]</a>
-</li>
       <li><a href="modules/runtime.html#warp.Volume">Volume (class in warp)</a>
 </li>
       <li><a href="modules/functions.html#warp.volume_index_to_world">volume_index_to_world() (in module warp)</a>

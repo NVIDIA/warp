@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## [0.8.0] - 2023-04-05
+
+- Add `Texture Write` node for updating dynamic RTX textures from Warp kernels / nodes
+- Add multi-dimensional kernel support to Warp Kernel Node
+- Add `wp.load_module()` to pre-load specific modules (pass `recursive=True` to load recursively)
+- Make `wp.capture_begin()` only force load the calling module (rather than all modules in the process)
+- Add `wp.poisson()` for sampling Poisson distributions
+- Add support for UsdPhysics schema see `warp.sim.parse_usd()`
+- Add XPBD rigid body implementation plus diff. simulation examples
+- Add support for custom functions registered to 
+- Add support for standalone CPU compilation (no host-compiler) with LLVM backed, enable with `--standalone` build option
+- Add support for per-timer color in `wp.Scopedtimer()`
+- Add support for row-based construction of matrix types outside of kernels
+- Add support for instantiate `wp.struct` types within kernels
+- Add support for indexed arrays, `slice = array[indices]` will now generate a sparse slice of array data
+- Add support for generic kernel params, use `def compute(param: Any):`
+- Add support for `with wp.ScopedDevice("cuda") as device` syntax (same for `wp.ScopedStream()`, `wp.Tape()`)
+- Add support for declaring custom vector/matrix types inside kernels, see `wp.vector()`, and `wp.matrix()`
+- Add support for initializating identity matrices in kernels with, e.g.: `I = wp.idenitity(n=3, dtype=float)`
+- Add support for unary plus operator (`pos()`)
+- Add support for `wp.constant` variables to be used directly in Python without having to use `.val` member
+- Add support for nested `wp.struct` types
+- Add `--quick` build for faster local dev. iteration (uses a reduced set of SASS arches)
+- Add support for Python vector and matrix constructors from columns
+- Add support for setting and getting row vectors for Python matrices, see `matrix.get_row()`, `matrix.set_row()`
+- Add optional `requires_grad` parameter to `wp.from_torch()` to override gradient allocation
+- Add type hints for generic vector / matrix types in Python stubs
+- Add support for custom user function recording in `wp.Tape()`
+- Add support for registering CUTLASS `wp.matmul()` with tape backward pass
+- Add CPU fallback for `wp.matmul()`
+- Optimizations for `wp.launch()`, up to 3x faster launches in common cases
+- Fix `wp.randf()` conversion to float to reduce bias for uniform sampling
+- Fix capture of `wp.func` and `wp.constant` types from inside Python closures
+- Fix for CUDA on WSL 
+- Fix for matrices in structs
+- Fix for tranpose indexing for some non-square matrices
+- Enable Python faulthandler by default
+- Update to VS2019
+
 ## [0.7.2] - 2023-02-15
 
 - Reduce test time for vec/math types

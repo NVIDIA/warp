@@ -21,51 +21,42 @@ Scalar Types
 .. class:: float32
 .. class:: float64
 
+
 Vector Types
 ------------
 .. class:: vec2ub
 .. class:: vec2h
 .. class:: vec2f
 .. class:: vec2d
-.. class:: vec2
 .. class:: vec3ub
 .. class:: vec3h
 .. class:: vec3f
 .. class:: vec3d
-.. class:: vec3
 .. class:: vec4ub
 .. class:: vec4h
 .. class:: vec4f
 .. class:: vec4d
-.. class:: vec4
 .. class:: mat22h
 .. class:: mat22f
 .. class:: mat22d
-.. class:: mat22
 .. class:: mat33h
 .. class:: mat33f
 .. class:: mat33d
-.. class:: mat33
 .. class:: mat44h
 .. class:: mat44f
 .. class:: mat44d
-.. class:: mat44
 .. class:: quath
 .. class:: quatf
 .. class:: quatd
-.. class:: quat
 .. class:: transformh
 .. class:: transformf
 .. class:: transformd
-.. class:: transform
 .. class:: spatial_vectorh
 .. class:: spatial_vectorf
 .. class:: spatial_vectord
-.. class:: spatial_vector
 .. class:: spatial_matrixh
 .. class:: spatial_matrixf
 .. class:: spatial_matrixd
-.. class:: spatial_matrix
 
 Generic Types
 -------------
@@ -219,23 +210,23 @@ Scalar Math
 .. function:: round(x: Float) -> Float
 
    Calculate the nearest integer value, rounding halfway cases away from zero.
-This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
+    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
+    Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
 
 
 .. function:: rint(x: Float) -> Float
 
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-It is generally faster than ``warp.round()``.
-Equivalent to ``numpy.rint()``.
+    It is generally faster than ``warp.round()``.
+    Equivalent to ``numpy.rint()``.
 
 
 .. function:: trunc(x: Float) -> Float
 
    Calculate the nearest integer that is closer to zero than x.
-In other words, it discards the fractional part of x.
-It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
+    In other words, it discards the fractional part of x.
+    It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+    Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 
 .. function:: floor(x: Float) -> Float
@@ -272,12 +263,12 @@ Vector Math
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: cross(x: Vector[Literal[3],Scalar], y: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
+.. function:: cross(x: Vector[3,Scalar], y: Vector[3,Scalar]) -> Vector[3,Scalar]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: skew(x: Vector[Literal[3],Scalar])
+.. function:: skew(x: Vector[3,Scalar])
 
    Compute the skew symmetric matrix for a 3d vector.
 
@@ -317,14 +308,34 @@ Vector Math
    Return the transpose of the matrix m
 
 
-.. function:: inverse(m: Matrix[Any,Any,Float]) -> Matrix[Any,Any,Float]
+.. function:: inverse(m: Matrix[2,2,Float]) -> Matrix[Any,Any,Float]
 
-   Return the inverse of the matrix m
+   Return the inverse of a 2x2 matrix m
 
 
-.. function:: determinant(m: Matrix[Any,Any,Scalar]) -> Scalar
+.. function:: inverse(m: Matrix[3,3,Float]) -> Matrix[Any,Any,Float]
 
-   Return the determinant of the matrix m
+   Return the inverse of a 3x3 matrix m
+
+
+.. function:: inverse(m: Matrix[4,4,Float]) -> Matrix[Any,Any,Float]
+
+   Return the inverse of a 4x4 matrix m
+
+
+.. function:: determinant(m: Matrix[2,2,Float]) -> Scalar
+
+   Return the determinant of a 2x2 matrix m
+
+
+.. function:: determinant(m: Matrix[3,3,Float]) -> Scalar
+
+   Return the determinant of a 3x3 matrix m
+
+
+.. function:: determinant(m: Matrix[4,4,Float]) -> Scalar
+
+   Return the determinant of a 4x4 matrix m
 
 
 .. function:: trace(m: Matrix[Any,Any,Scalar]) -> Scalar
@@ -332,7 +343,7 @@ Vector Math
    Return the trace of the matrix m
 
 
-.. function:: diag(d: Vector[Any,Scalar])
+.. function:: diag(d: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
    Returns a matrix with the components of the vector d on the diagonal
 
@@ -357,45 +368,45 @@ Vector Math
    Component wise division of two 2d vectors.
 
 
-.. function:: vector(w: Vector[Literal[3],Float], v: Vector[Literal[3],Float])
+.. function:: vector(w: Vector[3,Float], v: Vector[3,Float])
 
    Construct a 6d screw vector from two 3d vectors.
 
 
-.. function:: vector() -> Vector[Any,Scalar]
+.. function:: vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any,Scalar]
 
-   Construct a vector
+   Construct a vector of with given length and dtype.
 
 
-.. function:: matrix(pos: Vector[Literal[3],Float], rot: Quaternion[Float], scale: Vector[Literal[3],Float]) -> Matrix[Any,Any,Float]
+.. function:: matrix(pos: Vector[3,Float], rot: Quaternion[Float], scale: Vector[3,Float]) -> Matrix[Any,Any,Float]
 
    Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
 
-.. function:: matrix() -> Matrix[Any,Any,Scalar]
+.. function:: matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any,Any,Scalar]
 
-   Construct a matrix.
-
-
-.. function:: identity() -> Matrix[Any,Any,Scalar]
-
-   Create an identity matrix with shape=(n,n).
+   Construct a matrix, if positional args are not given then matrix will be zero-initialized.
 
 
-.. function:: svd3(A: Matrix[Literal[3],Literal[3],Float], U: Matrix[Literal[3],Literal[3],Float], sigma: Vector[Literal[3],Float], V: Matrix[Literal[3],Literal[3],Scalar]) -> None
+.. function:: identity(n: int32, dtype: Scalar) -> Matrix[Any,Any,Scalar]
+
+   Create an identity matrix with shape=(n,n) with the type given by ``dtype``.
+
+
+.. function:: svd3(A: Matrix[3,3,Float], U: Matrix[3,3,Float], sigma: Vector[3,Float], V: Matrix[3,3,Scalar]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: qr3(A: Matrix[Literal[3],Literal[3],Float], Q: Matrix[Literal[3],Literal[3],Float], R: Matrix[Literal[3],Literal[3],Float]) -> None
+.. function:: qr3(A: Matrix[3,3,Float], Q: Matrix[3,3,Float], R: Matrix[3,3,Float]) -> None
 
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
+   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returned in R.
 
 
-.. function:: eig3(A: Matrix[Literal[3],Literal[3],Float], Q: Matrix[Literal[3],Literal[3],Float], d: Vector[Literal[3],Float]) -> None
+.. function:: eig3(A: Matrix[3,3,Float], Q: Matrix[3,3,Float], d: Vector[3,Float]) -> None
 
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
+   Compute the eigendecomposition of a 3x3 matrix. The eigenvectors are returned as the columns of Q, while the corresponding eigenvalues are returned in d.
 
 
 
@@ -413,27 +424,27 @@ Quaternion Math
    Create a quaternion using the supplied components (type inferred from component type)
 
 
-.. function:: quaternion(i: Vector[Literal[3],Float], r: Float) -> Quaternion[Scalar]
+.. function:: quaternion(i: Vector[3,Float], r: Float) -> Quaternion[Scalar]
 
    Create a quaternion using the supplied vector/scalar (type inferred from scalar type)
 
 
-.. function:: quat_identity() -> Quaternion[Scalar]
+.. function:: quat_identity() -> quatf
 
    Construct an identity quaternion with zero imaginary part and real part of 1.0
 
 
-.. function:: quat_from_axis_angle(axis: Vector[Literal[3],Float], angle: Float) -> Quaternion[Scalar]
+.. function:: quat_from_axis_angle(axis: Vector[3,Float], angle: Float) -> Quaternion[Scalar]
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_to_axis_angle(q: Quaternion[Float], axis: Vector[Literal[3],Float], angle: Float) -> None
+.. function:: quat_to_axis_angle(q: Quaternion[Float], axis: Vector[3,Float], angle: Float) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_from_matrix(m: Matrix[Literal[3],Literal[3],Float]) -> Quaternion[Scalar]
+.. function:: quat_from_matrix(m: Matrix[3,3,Float]) -> Quaternion[Scalar]
 
    Construct a quaternion from a 3x3 matrix.
 
@@ -448,12 +459,12 @@ Quaternion Math
    Compute quaternion conjugate.
 
 
-.. function:: quat_rotate(q: Quaternion[Float], p: Vector[Literal[3],Float]) -> Vector[Literal[3],Scalar]
+.. function:: quat_rotate(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Scalar]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate_inv(q: Quaternion[Float], p: Vector[Literal[3],Float]) -> Vector[Literal[3],Scalar]
+.. function:: quat_rotate_inv(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Scalar]
 
    Rotate a vector the inverse of a quaternion.
 
@@ -463,7 +474,7 @@ Quaternion Math
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_to_matrix(q: Quaternion[Float]) -> Matrix[Literal[3],Literal[3],Scalar]
+.. function:: quat_to_matrix(q: Quaternion[Float]) -> Matrix[3,3,Scalar]
 
    Convert a quaternion to a 3x3 rotation matrix.
 
@@ -472,22 +483,17 @@ Quaternion Math
 
 Transformations
 ---------------
-.. function:: transformation(p: Vector[Literal[3],Float], q: Quaternion[Float]) -> Transformation[Scalar]
+.. function:: transformation(p: Vector[3,Float], q: Quaternion[Float]) -> Transformation[Scalar]
 
    Construct a rigid body transformation with translation part p and rotation q.
 
 
-.. function:: transform_identity() -> Transformation[float32]
+.. function:: transform_identity() -> transformf
 
    Construct an identity transform with zero translation and identity rotation.
 
 
-.. function:: transform_identity() -> Transformation[Scalar]
-
-   Construct an identity transform with zero translation and identity rotation.
-
-
-.. function:: transform_get_translation(t: Transformation[Float]) -> Vector[Literal[3],Scalar]
+.. function:: transform_get_translation(t: Transformation[Float]) -> Vector[3,Scalar]
 
    Return the translational part of a transform.
 
@@ -502,28 +508,28 @@ Transformations
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_point(t: Transformation[Scalar], p: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
+.. function:: transform_point(t: Transformation[Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(m: Matrix[Literal[4],Literal[4],Scalar], p: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
+.. function:: transform_point(m: Matrix[4,4,Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the tranformation matrix before calling this method.
+   then users should transpose the transformation matrix before calling this method.
 
 
-.. function:: transform_vector(t: Transformation[Scalar], v: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
+.. function:: transform_vector(t: Transformation[Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(m: Matrix[Literal[4],Literal[4],Scalar], v: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
+.. function:: transform_vector(m: Matrix[4,4,Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-   then users should transpose the tranformation matrix before calling this method.
+   then users should transpose the transformation matrix before calling this method.
 
 
 .. function:: transform_inverse(t: Transformation[Float]) -> Transformation[Float]
@@ -535,40 +541,40 @@ Transformations
 
 Spatial Math
 ---------------
-.. function:: spatial_adjoint(r: Matrix[Literal[3],Literal[3],Float], s: Matrix[Literal[3],Literal[3],Float]) -> Matrix[Literal[6],Literal[6],Scalar]
+.. function:: spatial_adjoint(r: Matrix[3,3,Float], s: Matrix[3,3,Float]) -> Matrix[6,6,Scalar]
 
    Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.
 
 
-.. function:: spatial_dot(a: Vector[Literal[6],Float], b: Vector[Literal[6],Float]) -> Scalar
+.. function:: spatial_dot(a: Vector[6,Float], b: Vector[6,Float]) -> Scalar
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: Vector[Literal[6],Float], b: Vector[Literal[6],Float]) -> Vector[Literal[6],Float]
+.. function:: spatial_cross(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: Vector[Literal[6],Float], b: Vector[Literal[6],Float]) -> Vector[Literal[6],Float]
+.. function:: spatial_cross_dual(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_top(a: Vector[Literal[6],Float])
+.. function:: spatial_top(a: Vector[6,Float])
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: Vector[Literal[6],Float])
+.. function:: spatial_bottom(a: Vector[6,Float])
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_jacobian(S: Array[Vector[Literal[6],Float]], joint_parents: Array[int32], joint_qd_start: Array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: Array[Float]) -> None
+.. function:: spatial_jacobian(S: Array[Vector[6,Float]], joint_parents: Array[int32], joint_qd_start: Array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: Array[Float]) -> None
 
 
-.. function:: spatial_mass(I_s: Array[Matrix[Literal[6],Literal[6],Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]) -> None
+.. function:: spatial_mass(I_s: Array[Matrix[6,6,Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]) -> None
 
 
 
@@ -710,121 +716,6 @@ Utility
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: expect_eq(arg1: int8, arg2: int8) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint8, arg2: uint8) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int16, arg2: int16) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint16, arg2: uint16) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int32, arg2: int32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint32, arg2: uint32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: int64, arg2: int64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: uint64, arg2: uint64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: float16, arg2: float16) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: float32, arg2: float32) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: float64, arg2: float64) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Quaternion[float16], arg2: Quaternion[float16]) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Quaternion[float32], arg2: Quaternion[float32]) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Quaternion[float64], arg2: Quaternion[float64]) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Quaternion[float32], arg2: Quaternion[float32]) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Transformation[float16], arg2: Transformation[float16]) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Transformation[float32], arg2: Transformation[float32]) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Transformation[float64], arg2: Transformation[float64]) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Transformation[float32], arg2: Transformation[float32]) -> None
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Vector[Any,Scalar], arg2: Vector[Any,Scalar])
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_eq(arg1: Matrix[Any,Any,Scalar], arg2: Matrix[Any,Any,Scalar])
-
-   Prints an error to stdout if arg1 and arg2 are not equal
-
-
-.. function:: expect_neq(arg1: Vector[Any,Scalar], arg2: Vector[Any,Scalar])
-
-   Prints an error to stdout if arg1 and arg2 are equal
-
-
-.. function:: expect_neq(arg1: Matrix[Any,Any,Scalar], arg2: Matrix[Any,Any,Scalar])
-
-   Prints an error to stdout if arg1 and arg2 are equal
-
-
 .. function:: lerp(a: Float, b: Float, t: Float) -> Float
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
@@ -860,7 +751,7 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
 
-.. function:: expect_near(arg1: Vector[Literal[3],float32], arg2: Vector[Literal[3],float32], tolerance: float32) -> None
+.. function:: expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32) -> None
 
    Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
 
@@ -869,7 +760,7 @@ Utility
 
 Geometry
 ---------------
-.. function:: bvh_query_aabb(id: uint64, lower: Vector[Literal[3],float32], upper: Vector[Literal[3],float32]) -> bvh_query_t
+.. function:: bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t
 
    Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
    inside a bvh. Returns an object that is used to track state during bvh traversal.
@@ -879,7 +770,7 @@ Geometry
    :param upper: The upper bound of the bounding box in bvh space
 
 
-.. function:: bvh_query_ray(id: uint64, start: Vector[Literal[3],float32], dir: Vector[Literal[3],float32]) -> bvh_query_t
+.. function:: bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t
 
    Construct a ray query against a bvh object. This query can be used to iterate over all bounds
    that intersect the ray. Returns an object that is used to track state during bvh traversal.
@@ -895,7 +786,7 @@ Geometry
    if there are no more overlapping bound.
 
 
-.. function:: mesh_query_point(id: uint64, point: Vector[Literal[3],float32], max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
+.. function:: mesh_query_point(id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
 
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -905,10 +796,10 @@ Geometry
    :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
-   :param bary_v: Retruns the barycentric v coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point
 
 
-.. function:: mesh_query_ray(id: uint64, start: Vector[Literal[3],float32], dir: Vector[Literal[3],float32], max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: Vector[Literal[3],float32], face: int32) -> bool
+.. function:: mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec3f, face: int32) -> bool
 
    Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
 
@@ -924,7 +815,7 @@ Geometry
    :param face: Returns the index of the hit face
 
 
-.. function:: mesh_query_aabb(id: uint64, lower: Vector[Literal[3],float32], upper: Vector[Literal[3],float32]) -> mesh_query_aabb_t
+.. function:: mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t
 
    Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
    inside a volume. Returns an object that is used to track state during mesh traversal.
@@ -940,17 +831,17 @@ Geometry
    if there are no more overlapping triangles.
 
 
-.. function:: mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> Vector[Literal[3],float32]
+.. function:: mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f
 
    Evaluates the position on the mesh given a face index, and barycentric coordinates.
 
 
-.. function:: mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> Vector[Literal[3],float32]
+.. function:: mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f
 
    Evaluates the velocity on the mesh given a face index, and barycentric coordinates.
 
 
-.. function:: hash_grid_query(id: uint64, point: Vector[Literal[3],float32], max_dist: float32) -> hash_grid_query_t
+.. function:: hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t
 
    Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
    fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
@@ -968,7 +859,7 @@ Geometry
    traversal occurs in a spatially coherent order.
 
 
-.. function:: intersect_tri_tri(v0: Vector[Literal[3],float32], v1: Vector[Literal[3],float32], v2: Vector[Literal[3],float32], u0: Vector[Literal[3],float32], u1: Vector[Literal[3],float32], u2: Vector[Literal[3],float32]) -> int
+.. function:: intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int
 
    Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.
 
@@ -978,17 +869,17 @@ Geometry
    Retrieves the mesh given its index.
 
 
-.. function:: mesh_eval_face_normal(id: uint64, face: int32) -> Vector[Literal[3],float32]
+.. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3f
 
    Evaluates the face normal the mesh given a face index.
 
 
-.. function:: mesh_get_point(id: uint64, index: int32) -> Vector[Literal[3],float32]
+.. function:: mesh_get_point(id: uint64, index: int32) -> vec3f
 
    Returns the point of the mesh given a index.
 
 
-.. function:: mesh_get_velocity(id: uint64, index: int32) -> Vector[Literal[3],float32]
+.. function:: mesh_get_velocity(id: uint64, index: int32) -> vec3f
 
    Returns the velocity of the mesh given a index.
 
@@ -998,7 +889,7 @@ Geometry
    Returns the point-index of the mesh given a face-vertex index.
 
 
-.. function:: closest_point_edge_edge(p1: Vector[Literal[3],float32], q1: Vector[Literal[3],float32], p2: Vector[Literal[3],float32], q2: Vector[Literal[3],float32], epsilon: float32) -> Vector[Literal[3],float32]
+.. function:: closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f
 
    Finds the closest points between two edges. Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
 
@@ -1014,7 +905,7 @@ Geometry
 
 Volumes
 ---------------
-.. function:: volume_sample_f(id: uint64, uvw: Vector[Literal[3],float32], sampling_mode: int32) -> float
+.. function:: volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float
 
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
@@ -1029,22 +920,22 @@ Volumes
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_sample_v(id: uint64, uvw: Vector[Literal[3],float32], sampling_mode: int32) -> Vector[Literal[3],float32]
+.. function:: volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f
 
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
-.. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> Vector[Literal[3],float32]
+.. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f
 
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
-.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: Vector[Literal[3],float32]) -> None
+.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f) -> None
 
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_sample_i(id: uint64, uvw: Vector[Literal[3],float32]) -> int
+.. function:: volume_sample_i(id: uint64, uvw: vec3f) -> int
 
    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
 
@@ -1059,22 +950,22 @@ Volumes
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_index_to_world(id: uint64, uvw: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
+.. function:: volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f
 
    Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_world_to_index(id: uint64, xyz: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
+.. function:: volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f
 
    Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_index_to_world_dir(id: uint64, uvw: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
+.. function:: volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f
 
    Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_world_to_index_dir(id: uint64, xyz: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
+.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f
 
    Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
 
@@ -1125,49 +1016,57 @@ Random
    Inverse transform sample a cumulative distribution function
 
 
-.. function:: sample_triangle(state: uint32) -> Vector[Literal[2],float32]
+.. function:: sample_triangle(state: uint32) -> vec2f
 
    Uniformly sample a triangle. Returns sample barycentric coordinates
 
 
-.. function:: sample_unit_ring(state: uint32) -> Vector[Literal[2],float32]
+.. function:: sample_unit_ring(state: uint32) -> vec2f
 
    Uniformly sample a ring in the xy plane
 
 
-.. function:: sample_unit_disk(state: uint32) -> Vector[Literal[2],float32]
+.. function:: sample_unit_disk(state: uint32) -> vec2f
 
    Uniformly sample a disk in the xy plane
 
 
-.. function:: sample_unit_sphere_surface(state: uint32) -> Vector[Literal[3],float32]
+.. function:: sample_unit_sphere_surface(state: uint32) -> vec3f
 
    Uniformly sample a unit sphere surface
 
 
-.. function:: sample_unit_sphere(state: uint32) -> Vector[Literal[3],float32]
+.. function:: sample_unit_sphere(state: uint32) -> vec3f
 
    Uniformly sample a unit sphere
 
 
-.. function:: sample_unit_hemisphere_surface(state: uint32) -> Vector[Literal[3],float32]
+.. function:: sample_unit_hemisphere_surface(state: uint32) -> vec3f
 
    Uniformly sample a unit hemisphere surface
 
 
-.. function:: sample_unit_hemisphere(state: uint32) -> Vector[Literal[3],float32]
+.. function:: sample_unit_hemisphere(state: uint32) -> vec3f
 
    Uniformly sample a unit hemisphere
 
 
-.. function:: sample_unit_square(state: uint32) -> Vector[Literal[2],float32]
+.. function:: sample_unit_square(state: uint32) -> vec2f
 
    Uniformly sample a unit square
 
 
-.. function:: sample_unit_cube(state: uint32) -> Vector[Literal[3],float32]
+.. function:: sample_unit_cube(state: uint32) -> vec3f
 
    Uniformly sample a unit cube
+
+
+.. function:: poisson(state: uint32, lam: float32) -> uint32
+
+   Generate a random sample from a Poisson distribution.
+    
+    :param state: RNG state
+    :param lam: The expected value of the distribution
 
 
 .. function:: noise(state: uint32, x: float32) -> float
@@ -1175,17 +1074,17 @@ Random
    Non-periodic Perlin-style noise in 1d.
 
 
-.. function:: noise(state: uint32, xy: Vector[Literal[2],float32]) -> float
+.. function:: noise(state: uint32, xy: vec2f) -> float
 
    Non-periodic Perlin-style noise in 2d.
 
 
-.. function:: noise(state: uint32, xyz: Vector[Literal[3],float32]) -> float
+.. function:: noise(state: uint32, xyz: vec3f) -> float
 
    Non-periodic Perlin-style noise in 3d.
 
 
-.. function:: noise(state: uint32, xyzt: Vector[Literal[4],float32]) -> float
+.. function:: noise(state: uint32, xyzt: vec4f) -> float
 
    Non-periodic Perlin-style noise in 4d.
 
@@ -1195,32 +1094,32 @@ Random
    Periodic Perlin-style noise in 1d.
 
 
-.. function:: pnoise(state: uint32, xy: Vector[Literal[2],float32], px: int32, py: int32) -> float
+.. function:: pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
 
    Periodic Perlin-style noise in 2d.
 
 
-.. function:: pnoise(state: uint32, xyz: Vector[Literal[3],float32], px: int32, py: int32, pz: int32) -> float
+.. function:: pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
 
    Periodic Perlin-style noise in 3d.
 
 
-.. function:: pnoise(state: uint32, xyzt: Vector[Literal[4],float32], px: int32, py: int32, pz: int32, pt: int32) -> float
+.. function:: pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
 
    Periodic Perlin-style noise in 4d.
 
 
-.. function:: curlnoise(state: uint32, xy: Vector[Literal[2],float32]) -> Vector[Literal[2],float32]
+.. function:: curlnoise(state: uint32, xy: vec2f) -> vec2f
 
    Divergence-free vector field based on the gradient of a Perlin noise function. [1]_
 
 
-.. function:: curlnoise(state: uint32, xyz: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
+.. function:: curlnoise(state: uint32, xyz: vec3f) -> vec3f
 
    Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
 
-.. function:: curlnoise(state: uint32, xyzt: Vector[Literal[4],float32]) -> Vector[Literal[3],float32]
+.. function:: curlnoise(state: uint32, xyzt: vec4f) -> vec3f
 
    Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 

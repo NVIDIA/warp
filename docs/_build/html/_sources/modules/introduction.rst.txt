@@ -43,13 +43,13 @@ To define a computational kernel use the following syntax with the ``@wp.kernel`
 
 Arrays can be allocated similar to PyTorch: ::
 
-    # allocate an uninitizalized array of vec3s
+    # allocate an uninitialized array of vec3s
     v = wp.empty(shape=n, dtype=wp.vec3, device="cuda")
 
     # allocate a zero-initialized array of quaternions    
     q = wp.zeros(shape=n, dtype=wp.quat, device="cuda")
 
-    # allocate and initialize an array from a numpy array
+    # allocate and initialize an array from a NumPy array
     # will be automatically transferred to the specified device
     a = np.ones((10, 3), dtype=np.float32)
     v = wp.from_numpy(a, dtype=wp.vec3, device="cuda")
@@ -71,7 +71,7 @@ Often we need to read data back to main (CPU) memory which can be done convenien
     # automatically bring data from device back to host
     view = device_array.numpy()
 
-This pattern will allocate a temporary CPU buffer, perform a copy from device->host memory, and return a numpy view onto it. To avoid allocating temporary buffers this process can be managed explicitly: ::
+This pattern will allocate a temporary CPU buffer, perform a copy from device->host memory, and return a NumPy view onto it. To avoid allocating temporary buffers this process can be managed explicitly: ::
 
     # manually bring data back to host
     wp.copy(dest=host_array, src=device_array)
@@ -92,7 +92,7 @@ Memory Model
 
 Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (``vec3``, ``matrix33``, etc).
 
-Arrays may be constructed from Python lists or numpy arrays; by default, data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the array constructor.
+Arrays may be constructed from Python lists or NumPy arrays; by default, data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the array constructor.
 
 Compilation Model
 -----------------
@@ -157,4 +157,3 @@ To achieve good performance on GPUs some dynamic language features are not suppo
 * Runtime evaluation of expressions, e.g.: eval()
 * Recursion
 * Dynamic allocation, lists, sets, dictionaries
-
