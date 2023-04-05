@@ -223,6 +223,8 @@ class OgnCloth:
                                 rot=(0.0, 0.0, 0.0, 1.0),
                                 scale=(1.0, 1.0, 1.0))
 
+                    builder.set_ground_plane(np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2])), 0.0)
+
                     # finalize sim model
                     model = builder.finalize()
                     
@@ -253,7 +255,6 @@ class OgnCloth:
 
                 # update dynamic properties
                 context.model.ground = db.inputs.ground
-                context.model.ground_plane = np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2], 0.0))
 
                 # stretch properties
                 context.model.gravity = db.inputs.gravity

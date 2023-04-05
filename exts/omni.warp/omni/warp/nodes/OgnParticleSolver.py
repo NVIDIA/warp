@@ -204,6 +204,8 @@ class OgnParticleSolver:
 
                             state.collider_xform = read_transform_bundle(db.inputs.collider)
 
+                    builder.set_ground_plane(np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2])), 0.0)
+
                     # finalize sim model
                     model = builder.finalize()
                     
@@ -225,7 +227,6 @@ class OgnParticleSolver:
                     
                 # update dynamic properties
                 state.model.ground = db.inputs.ground
-                state.model.ground_plane = np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2], 0.0))
 
                 state.model.gravity = db.inputs.gravity
 
