@@ -129,6 +129,23 @@ def test_func_closure_capture(test, device):
     wp.launch(cube_closure, dim=data.shape, inputs=[data, expected_cube], device=device)
 
 
+
+@wp.func
+def test_func(param1: wp.int32, param2: wp.int32, param3: wp.int32) -> wp.float32:
+    return 1.0
+
+@wp.kernel
+def test_return_kernel(test_data: wp.array(dtype=wp.float32)):
+    
+    tid = wp.tid()
+    test_data[tid] = wp.lerp(test_func(0, 1, 2), test_func(0, 1, 2), 0.5)
+
+def test_return_func(test, device):
+
+    test_data = wp.zeros(100, dtype=wp.float32, device=device)
+    wp.launch(kernel=test_return_kernel, dim=test_data.size, inputs=[test_data], device=device)
+
+
 def register(parent):
 
     devices = get_test_devices()
@@ -137,6 +154,7 @@ def register(parent):
         pass
 
     add_kernel_test(TestFunc, kernel=test_overload_func, name="test_overload_func", dim=1, devices=devices)
+    add_function_test(TestFunc, func=test_return_func, name="test_return_func",devices=devices)
     add_function_test(TestFunc, func=test_func_export, name="test_func_export", devices=["cpu"])
     add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
 
