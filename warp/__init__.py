@@ -39,7 +39,7 @@ from warp.context import is_cpu_available, is_cuda_available, is_device_availabl
 from warp.context import get_devices, get_preferred_device
 from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device
 from warp.context import get_device, set_device, synchronize_device
-from warp.context import zeros, zeros_like, clone, empty, empty_like, copy, from_numpy, launch, synchronize, force_load
+from warp.context import zeros, zeros_like, clone, empty, empty_like, copy, from_numpy, launch, synchronize, force_load, load_module
 from warp.context import set_module_options, get_module_options, get_module
 from warp.context import capture_begin, capture_end, capture_launch
 from warp.context import print_builtins, export_builtins, export_stubs

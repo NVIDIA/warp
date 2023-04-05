@@ -24,6 +24,8 @@ from typing import Union
 from typing import Mapping
 from typing import Optional
 
+from types import ModuleType
+
 from copy import copy as shallowcopy
 
 import warp
@@ -2701,8 +2703,12 @@ def synchronize_stream(stream_or_device=None):
     runtime.core.cuda_stream_synchronize(stream.device.context, stream.cuda_stream)
 
 
-def force_load(device:Union[Device, str]=None):
-    """Force all user-defined kernels to be compiled and loaded
+def force_load(device:Union[Device,str]=None, modules:List[Module]=None):
+    """Force user-defined kernels to be compiled and loaded
+
+    Args:
+        device: The device or list of devices to load the modules on.  If None, load on all devices.
+        modules: List of modules to load.  If None, load all imported modules.
     """
 
     if is_cuda_available():
@@ -2714,13 +2720,58 @@ def force_load(device:Union[Device, str]=None):
     else:
         devices = [get_device(device)]
 
+    if modules is None:
+        modules = user_modules.values()
+
     for d in devices:
-        for m in user_modules.values():
+        for m in modules:
             m.load(d)
 
     if is_cuda_available():
         # restore original context to avoid side effects
         runtime.core.cuda_context_set_current(saved_context)
+
+
+def load_module(module:Union[Module,ModuleType,str]=None, device:Union[Device,str]=None, recursive:bool=False):
+
+    """Force user-defined module to be compiled and loaded
+
+    Args:
+        module: The module to load.  If None, load the current module.
+        device: The device to load the modules on.  If None, load on all devices.
+        recursive: Whether to load submodules.  E.g., if the given module is `warp.sim`, this will also load `warp.sim.model`, `warp.sim.articulation`, etc.
+    
+    Note: A module must be imported before it can be loaded by this function.
+    """
+
+    if module is None:
+        # if module not specified, use the module that called us
+        module = inspect.getmodule(inspect.stack()[1][0])
+        module_name = module.__name__
+    elif isinstance(module, Module):
+        module_name = module.name
+    elif isinstance(module, ModuleType):
+        module_name = module.__name__
+    elif isinstance(module, str):
+        module_name = module
+    else:
+        raise TypeError(f"Argument must be a module, got {type(module)}")
+
+    modules = []
+
+    # add the given module, if found
+    m = user_modules.get(module_name)
+    if m is not None:
+        modules.append(m)
+
+    # add submodules, if recursive
+    if recursive:
+        prefix = module_name + "."
+        for name, mod in user_modules.items():
+            if name.startswith(prefix):
+                modules.append(mod)
+
+    force_load(device=device, modules=modules)
 
 
 def set_module_options(options: Dict[str, Any], module: Optional[Any] = None):
