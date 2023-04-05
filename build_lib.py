@@ -22,7 +22,7 @@ parser.add_argument('--verify_fp', type=bool, default=False, help="Verify kernel
 parser.add_argument('--fast_math', type=bool, default=False, help="Enable fast math on library, default False")
 parser.add_argument('--quick', action='store_true', help="Only generate PTX code, disable CUTLASS ops")
 parser.add_argument('--build_llvm', type=bool, default=False, help="Build a bundled Clang/LLVM compiler")
-parser.add_argument('--standalone', type=bool, default=False, help="Use standalone LLVM-based JIT")
+parser.add_argument('--standalone', type=bool, default=True, help="Use standalone LLVM-based JIT")
 args = parser.parse_args()
 
 # set build output path off this file
