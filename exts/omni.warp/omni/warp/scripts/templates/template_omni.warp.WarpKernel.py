@@ -24,10 +24,8 @@ from omni.warp.scripts.attributes import (
     get_attr_base_name,
     get_attr_name,
 )
-from omni.warp.scripts.nodes.kernel import (
-    EXPLICIT_SOURCE,
-    MAX_DIMENSIONS,
-)
+from omni.warp.scripts.nodes.common import MAX_DIMENSIONS
+from omni.warp.scripts.nodes.kernel import EXPLICIT_SOURCE
 from omni.warp.scripts.props.codefile import get_code_file_prop_builder
 from omni.warp.scripts.props.codestr import get_code_str_prop_builder
 from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
