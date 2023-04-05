@@ -6,64 +6,77 @@
 
 Kernel Reference
 ================
+
 Scalar Types
 ------------
-.. autoclass:: int8
-.. autoclass:: uint8
-.. autoclass:: int16
-.. autoclass:: uint16
-.. autoclass:: int32
-.. autoclass:: uint32
-.. autoclass:: int64
-.. autoclass:: uint64
-.. autoclass:: float16
-.. autoclass:: float32
-.. autoclass:: float64
+.. class:: int8
+.. class:: uint8
+.. class:: int16
+.. class:: uint16
+.. class:: int32
+.. class:: uint32
+.. class:: int64
+.. class:: uint64
+.. class:: float16
+.. class:: float32
+.. class:: float64
+
 Vector Types
 ------------
-.. autoclass:: vec2ub
-.. autoclass:: vec2h
-.. autoclass:: vec2f
-.. autoclass:: vec2d
-.. autoclass:: vec2
-.. autoclass:: vec3ub
-.. autoclass:: vec3h
-.. autoclass:: vec3f
-.. autoclass:: vec3d
-.. autoclass:: vec3
-.. autoclass:: vec4ub
-.. autoclass:: vec4h
-.. autoclass:: vec4f
-.. autoclass:: vec4d
-.. autoclass:: vec4
-.. autoclass:: mat22h
-.. autoclass:: mat22f
-.. autoclass:: mat22d
-.. autoclass:: mat22
-.. autoclass:: mat33h
-.. autoclass:: mat33f
-.. autoclass:: mat33d
-.. autoclass:: mat33
-.. autoclass:: mat44h
-.. autoclass:: mat44f
-.. autoclass:: mat44d
-.. autoclass:: mat44
-.. autoclass:: quath
-.. autoclass:: quatf
-.. autoclass:: quatd
-.. autoclass:: quat
-.. autoclass:: transformh
-.. autoclass:: transformf
-.. autoclass:: transformd
-.. autoclass:: transform
-.. autoclass:: spatial_vectorh
-.. autoclass:: spatial_vectorf
-.. autoclass:: spatial_vectord
-.. autoclass:: spatial_vector
-.. autoclass:: spatial_matrixh
-.. autoclass:: spatial_matrixf
-.. autoclass:: spatial_matrixd
-.. autoclass:: spatial_matrix
+.. class:: vec2ub
+.. class:: vec2h
+.. class:: vec2f
+.. class:: vec2d
+.. class:: vec2
+.. class:: vec3ub
+.. class:: vec3h
+.. class:: vec3f
+.. class:: vec3d
+.. class:: vec3
+.. class:: vec4ub
+.. class:: vec4h
+.. class:: vec4f
+.. class:: vec4d
+.. class:: vec4
+.. class:: mat22h
+.. class:: mat22f
+.. class:: mat22d
+.. class:: mat22
+.. class:: mat33h
+.. class:: mat33f
+.. class:: mat33d
+.. class:: mat33
+.. class:: mat44h
+.. class:: mat44f
+.. class:: mat44d
+.. class:: mat44
+.. class:: quath
+.. class:: quatf
+.. class:: quatd
+.. class:: quat
+.. class:: transformh
+.. class:: transformf
+.. class:: transformd
+.. class:: transform
+.. class:: spatial_vectorh
+.. class:: spatial_vectorf
+.. class:: spatial_vectord
+.. class:: spatial_vector
+.. class:: spatial_matrixh
+.. class:: spatial_matrixf
+.. class:: spatial_matrixd
+.. class:: spatial_matrix
+
+Generic Types
+-------------
+.. class:: Int
+.. class:: Float
+.. class:: Scalar
+.. class:: Vector
+.. class:: Matrix
+.. class:: Quaternion
+.. class:: Transformation
+.. class:: Array
 
 
 Scalar Math
@@ -73,7 +86,7 @@ Scalar Math
    Return the minimum of two scalars.
 
 
-.. function:: min(x: vec_t, y: vec_t) -> vec_t
+.. function:: min(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
    Return the element wise minimum of two vectors.
 
@@ -83,7 +96,7 @@ Scalar Math
    Return the maximum of two scalars.
 
 
-.. function:: max(x: vec_t, y: vec_t) -> vec_t
+.. function:: max(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
    Return the element wise maximum of two vectors.
 
@@ -239,148 +252,148 @@ Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
 
 Vector Math
 ---------------
-.. function:: dot(x: vec_t, y: vec_t) -> Scalar
+.. function:: dot(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Scalar
 
    Compute the dot product between two vectors.
 
 
-.. function:: dot(x: vec_t, y: vec_t) -> Scalar
+.. function:: dot(x: Quaternion[Float], y: Quaternion[Float]) -> Scalar
 
    Compute the dot product between two quaternions.
 
 
-.. function:: ddot(x: mat_t, y: mat_t) -> Scalar
+.. function:: ddot(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Scalar
 
    Compute the double dot product between two matrices.
 
 
-.. function:: outer(x: vec_t, y: vec_t) -> mat_t
+.. function:: outer(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
    Compute the outer product x*y^T for two vec2 objects.
 
 
-.. function:: cross(x: vec_t, y: vec_t) -> vec_t
+.. function:: cross(x: Vector[Literal[3],Scalar], y: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
 
    Compute the cross product of two 3d vectors.
 
 
-.. function:: skew(x: vec_t)
+.. function:: skew(x: Vector[Literal[3],Scalar])
 
    Compute the skew symmetric matrix for a 3d vector.
 
 
-.. function:: length(x: vec_t) -> Scalar
+.. function:: length(x: Vector[Any,Float]) -> Scalar
 
    Compute the length of a vector.
 
 
-.. function:: length(x: vec_t) -> Scalar
+.. function:: length(x: Quaternion[Float]) -> Scalar
 
    Compute the length of a quaternion.
 
 
-.. function:: length_sq(x: vec_t) -> Scalar
+.. function:: length_sq(x: Vector[Any,Scalar]) -> Scalar
 
    Compute the squared length of a 2d vector.
 
 
-.. function:: length_sq(x: vec_t) -> Scalar
+.. function:: length_sq(x: Quaternion[Scalar]) -> Scalar
 
    Compute the squared length of a quaternion.
 
 
-.. function:: normalize(x: vec_t) -> vec_t
+.. function:: normalize(x: Vector[Any,Float]) -> Vector[Any,Scalar]
 
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
 
 
-.. function:: normalize(x: vec_t) -> vec_t
+.. function:: normalize(x: Quaternion[Float]) -> Quaternion[Scalar]
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
 
-.. function:: transpose(m: mat_t)
+.. function:: transpose(m: Matrix[Any,Any,Scalar])
 
    Return the transpose of the matrix m
 
 
-.. function:: inverse(m: mat_t) -> mat_t
+.. function:: inverse(m: Matrix[Any,Any,Float]) -> Matrix[Any,Any,Float]
 
    Return the inverse of the matrix m
 
 
-.. function:: determinant(m: mat_t) -> Scalar
+.. function:: determinant(m: Matrix[Any,Any,Scalar]) -> Scalar
 
    Return the determinant of the matrix m
 
 
-.. function:: trace(m: mat_t) -> Scalar
+.. function:: trace(m: Matrix[Any,Any,Scalar]) -> Scalar
 
    Return the trace of the matrix m
 
 
-.. function:: diag(d: vec_t)
+.. function:: diag(d: Vector[Any,Scalar])
 
    Returns a matrix with the components of the vector d on the diagonal
 
 
-.. function:: cw_mul(x: vec_t, y: vec_t) -> vec_t
+.. function:: cw_mul(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_mul(x: mat_t, y: mat_t) -> mat_t
+.. function:: cw_mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
    Component wise multiply of two 2d vectors.
 
 
-.. function:: cw_div(x: vec_t, y: vec_t) -> vec_t
+.. function:: cw_div(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: cw_div(x: mat_t, y: mat_t) -> mat_t
+.. function:: cw_div(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
    Component wise division of two 2d vectors.
 
 
-.. function:: vector(w: vec_t, v: vec_t)
+.. function:: vector(w: Vector[Literal[3],Float], v: Vector[Literal[3],Float])
 
    Construct a 6d screw vector from two 3d vectors.
 
 
-.. function:: vector() -> vec_t
+.. function:: vector() -> Vector[Any,Scalar]
 
    Construct a vector
 
 
-.. function:: matrix(pos: vec_t, rot: vec_t, scale: vec_t) -> mat_t
+.. function:: matrix(pos: Vector[Literal[3],Float], rot: Quaternion[Float], scale: Vector[Literal[3],Float]) -> Matrix[Any,Any,Float]
 
    Construct a 4x4 transformation matrix that applies the transformations as Translation(pos)*Rotation(rot)*Scale(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
 
-.. function:: matrix() -> mat_t
+.. function:: matrix() -> Matrix[Any,Any,Scalar]
 
    Construct a matrix.
 
 
-.. function:: identity() -> mat_t
+.. function:: identity() -> Matrix[Any,Any,Scalar]
 
    Create an identity matrix with shape=(n,n).
 
 
-.. function:: svd3(A: mat_t, U: mat_t, sigma: vec_t, V: mat_t) -> None
+.. function:: svd3(A: Matrix[Literal[3],Literal[3],Float], U: Matrix[Literal[3],Literal[3],Float], sigma: Vector[Literal[3],Float], V: Matrix[Literal[3],Literal[3],Scalar]) -> None
 
    Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
    while the left and right basis vectors are returned in U and V.
 
 
-.. function:: qr3(A: mat_t, Q: mat_t, R: mat_t) -> None
+.. function:: qr3(A: Matrix[Literal[3],Literal[3],Float], Q: Matrix[Literal[3],Literal[3],Float], R: Matrix[Literal[3],Literal[3],Float]) -> None
 
    Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
 
 
-.. function:: eig3(A: mat_t, Q: mat_t, d: vec_t) -> None
+.. function:: eig3(A: Matrix[Literal[3],Literal[3],Float], Q: Matrix[Literal[3],Literal[3],Float], d: Vector[Literal[3],Float]) -> None
 
    Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
 
@@ -389,68 +402,68 @@ Vector Math
 
 Quaternion Math
 ---------------
-.. function:: quaternion() -> vec_t
+.. function:: quaternion() -> Quaternion[Scalar]
 
    Construct a zero-initialized quaternion, quaternions are laid out as
    [ix, iy, iz, r], where ix, iy, iz are the imaginary part, and r the real part.
 
 
-.. function:: quaternion(x: Float, y: Float, z: Float, w: Float) -> vec_t
+.. function:: quaternion(x: Float, y: Float, z: Float, w: Float) -> Quaternion[Scalar]
 
    Create a quaternion using the supplied components (type inferred from component type)
 
 
-.. function:: quaternion(i: vec_t, r: Float) -> vec_t
+.. function:: quaternion(i: Vector[Literal[3],Float], r: Float) -> Quaternion[Scalar]
 
    Create a quaternion using the supplied vector/scalar (type inferred from scalar type)
 
 
-.. function:: quat_identity() -> vec_t
+.. function:: quat_identity() -> Quaternion[Scalar]
 
    Construct an identity quaternion with zero imaginary part and real part of 1.0
 
 
-.. function:: quat_from_axis_angle(axis: vec_t, angle: Float) -> vec_t
+.. function:: quat_from_axis_angle(axis: Vector[Literal[3],Float], angle: Float) -> Quaternion[Scalar]
 
    Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. function:: quat_to_axis_angle(q: vec_t, axis: vec_t, angle: Float) -> None
+.. function:: quat_to_axis_angle(q: Quaternion[Float], axis: Vector[Literal[3],Float], angle: Float) -> None
 
    Extract the rotation axis and angle radians a quaternion represents.
 
 
-.. function:: quat_from_matrix(m: mat_t) -> vec_t
+.. function:: quat_from_matrix(m: Matrix[Literal[3],Literal[3],Float]) -> Quaternion[Scalar]
 
    Construct a quaternion from a 3x3 matrix.
 
 
-.. function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> vec_t
+.. function:: quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Scalar]
 
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
 
 
-.. function:: quat_inverse(q: vec_t) -> vec_t
+.. function:: quat_inverse(q: Quaternion[Float]) -> Quaternion[Scalar]
 
    Compute quaternion conjugate.
 
 
-.. function:: quat_rotate(q: vec_t, p: vec_t) -> vec_t
+.. function:: quat_rotate(q: Quaternion[Float], p: Vector[Literal[3],Float]) -> Vector[Literal[3],Scalar]
 
    Rotate a vector by a quaternion.
 
 
-.. function:: quat_rotate_inv(q: vec_t, p: vec_t) -> vec_t
+.. function:: quat_rotate_inv(q: Quaternion[Float], p: Vector[Literal[3],Float]) -> Vector[Literal[3],Scalar]
 
    Rotate a vector the inverse of a quaternion.
 
 
-.. function:: quat_slerp(q0: vec_t, q1: vec_t, t: Float) -> vec_t
+.. function:: quat_slerp(q0: Quaternion[Float], q1: Quaternion[Float], t: Float) -> Quaternion[Scalar]
 
    Linearly interpolate between two quaternions.
 
 
-.. function:: quat_to_matrix(q: vec_t) -> mat_t
+.. function:: quat_to_matrix(q: Quaternion[Float]) -> Matrix[Literal[3],Literal[3],Scalar]
 
    Convert a quaternion to a 3x3 rotation matrix.
 
@@ -459,56 +472,61 @@ Quaternion Math
 
 Transformations
 ---------------
-.. function:: transformation(p: vec_t, q: vec_t) -> transform_t
+.. function:: transformation(p: Vector[Literal[3],Float], q: Quaternion[Float]) -> Transformation[Scalar]
 
    Construct a rigid body transformation with translation part p and rotation q.
 
 
-.. function:: transform_identity() -> transform_t
+.. function:: transform_identity() -> Transformation[float32]
 
    Construct an identity transform with zero translation and identity rotation.
 
 
-.. function:: transform_get_translation(t: transform_t) -> vec_t
+.. function:: transform_identity() -> Transformation[Scalar]
+
+   Construct an identity transform with zero translation and identity rotation.
+
+
+.. function:: transform_get_translation(t: Transformation[Float]) -> Vector[Literal[3],Scalar]
 
    Return the translational part of a transform.
 
 
-.. function:: transform_get_rotation(t: transform_t) -> vec_t
+.. function:: transform_get_rotation(t: Transformation[Float]) -> Quaternion[Scalar]
 
    Return the rotational part of a transform.
 
 
-.. function:: transform_multiply(a: transform_t, b: transform_t) -> transform_t
+.. function:: transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Scalar]
 
    Multiply two rigid body transformations together.
 
 
-.. function:: transform_point(t: transform_t, p: vec_t) -> vec_t
+.. function:: transform_point(t: Transformation[Scalar], p: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
 
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
 
 
-.. function:: transform_point(m: mat_t, p: vec_t) -> vec_t
+.. function:: transform_point(m: Matrix[Literal[4],Literal[4],Scalar], p: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_vector(t: transform_t, v: vec_t) -> vec_t
+.. function:: transform_vector(t: Transformation[Scalar], v: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
 
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
 
 
-.. function:: transform_vector(m: mat_t, v: vec_t) -> vec_t
+.. function:: transform_vector(m: Matrix[Literal[4],Literal[4],Scalar], v: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
    then users should transpose the tranformation matrix before calling this method.
 
 
-.. function:: transform_inverse(t: transform_t) -> transform_t
+.. function:: transform_inverse(t: Transformation[Float]) -> Transformation[Float]
 
    Compute the inverse of the transform.
 
@@ -517,47 +535,47 @@ Transformations
 
 Spatial Math
 ---------------
-.. function:: spatial_adjoint(r: mat_t, s: mat_t) -> mat_t
+.. function:: spatial_adjoint(r: Matrix[Literal[3],Literal[3],Float], s: Matrix[Literal[3],Literal[3],Float]) -> Matrix[Literal[6],Literal[6],Scalar]
 
    Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.
 
 
-.. function:: spatial_dot(a: vec_t, b: vec_t) -> Scalar
+.. function:: spatial_dot(a: Vector[Literal[6],Float], b: Vector[Literal[6],Float]) -> Scalar
 
    Compute the dot product of two 6d screw vectors.
 
 
-.. function:: spatial_cross(a: vec_t, b: vec_t) -> vec_t
+.. function:: spatial_cross(a: Vector[Literal[6],Float], b: Vector[Literal[6],Float]) -> Vector[Literal[6],Float]
 
    Compute the cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_cross_dual(a: vec_t, b: vec_t) -> vec_t
+.. function:: spatial_cross_dual(a: Vector[Literal[6],Float], b: Vector[Literal[6],Float]) -> Vector[Literal[6],Float]
 
    Compute the dual cross-product of two 6d screw vectors.
 
 
-.. function:: spatial_top(a: vec_t)
+.. function:: spatial_top(a: Vector[Literal[6],Float])
 
    Return the top (first) part of a 6d screw vector.
 
 
-.. function:: spatial_bottom(a: vec_t)
+.. function:: spatial_bottom(a: Vector[Literal[6],Float])
 
    Return the bottom (second) part of a 6d screw vector.
 
 
-.. function:: spatial_jacobian(S: array[vec_t], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: array[Float]) -> None
+.. function:: spatial_jacobian(S: Array[Vector[Literal[6],Float]], joint_parents: Array[int32], joint_qd_start: Array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: Array[Float]) -> None
 
 
-.. function:: spatial_mass(I_s: array[mat_t], joint_start: int32, joint_count: int32, M_start: int32, M: array[Float]) -> None
+.. function:: spatial_mass(I_s: Array[Matrix[Literal[6],Literal[6],Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]) -> None
 
 
 
 
 Utility
 ---------------
-.. function:: mlp(weights: array[float32], bias: array[float32], activation: Callable, index: int32, x: array[float32], out: array[float32]) -> None
+.. function:: mlp(weights: Array[float32], bias: Array[float32], activation: Callable, index: int32, x: Array[float32], out: Array[float32]) -> None
 
    Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
 
@@ -607,82 +625,87 @@ Utility
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
 
 
-.. function:: atomic_add(a: array[Any], i: int32, value: Any)
+.. function:: select(arr: Array[Any], arg1: Any, arg2: Any)
+
+   Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: atomic_add(a: Array[Any], i: int32, value: Any)
 
    Atomically add ``value`` onto the array at location given by index.
 
 
-.. function:: atomic_add(a: array[Any], i: int32, j: int32, value: Any)
+.. function:: atomic_add(a: Array[Any], i: int32, j: int32, value: Any)
 
    Atomically add ``value`` onto the array at location given by indices.
 
 
-.. function:: atomic_add(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+.. function:: atomic_add(a: Array[Any], i: int32, j: int32, k: int32, value: Any)
 
    Atomically add ``value`` onto the array at location given by indices.
 
 
-.. function:: atomic_add(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. function:: atomic_add(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
 
    Atomically add ``value`` onto the array at location given by indices.
 
 
-.. function:: atomic_sub(a: array[Any], i: int32, value: Any)
+.. function:: atomic_sub(a: Array[Any], i: int32, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by index.
 
 
-.. function:: atomic_sub(a: array[Any], i: int32, j: int32, value: Any)
+.. function:: atomic_sub(a: Array[Any], i: int32, j: int32, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by indices.
 
 
-.. function:: atomic_sub(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+.. function:: atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by indices.
 
 
-.. function:: atomic_sub(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. function:: atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
 
    Atomically subtract ``value`` onto the array at location given by indices.
 
 
-.. function:: atomic_min(a: array[Any], i: int32, value: Any)
+.. function:: atomic_min(a: Array[Any], i: int32, value: Any)
 
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: atomic_min(a: array[Any], i: int32, j: int32, value: Any)
+.. function:: atomic_min(a: Array[Any], i: int32, j: int32, value: Any)
 
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: atomic_min(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+.. function:: atomic_min(a: Array[Any], i: int32, j: int32, k: int32, value: Any)
 
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: atomic_min(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. function:: atomic_min(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
 
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: atomic_max(a: array[Any], i: int32, value: Any)
+.. function:: atomic_max(a: Array[Any], i: int32, value: Any)
 
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: atomic_max(a: array[Any], i: int32, j: int32, value: Any)
+.. function:: atomic_max(a: Array[Any], i: int32, j: int32, value: Any)
 
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: atomic_max(a: array[Any], i: int32, j: int32, k: int32, value: Any)
+.. function:: atomic_max(a: Array[Any], i: int32, j: int32, k: int32, value: Any)
 
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
-.. function:: atomic_max(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
+.. function:: atomic_max(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
 
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
@@ -742,62 +765,62 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: quath, arg2: quath) -> None
+.. function:: expect_eq(arg1: Quaternion[float16], arg2: Quaternion[float16]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: quatf, arg2: quatf) -> None
+.. function:: expect_eq(arg1: Quaternion[float32], arg2: Quaternion[float32]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: quatd, arg2: quatd) -> None
+.. function:: expect_eq(arg1: Quaternion[float64], arg2: Quaternion[float64]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: quat, arg2: quat) -> None
+.. function:: expect_eq(arg1: Quaternion[float32], arg2: Quaternion[float32]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: transformh, arg2: transformh) -> None
+.. function:: expect_eq(arg1: Transformation[float16], arg2: Transformation[float16]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: transformf, arg2: transformf) -> None
+.. function:: expect_eq(arg1: Transformation[float32], arg2: Transformation[float32]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: transformd, arg2: transformd) -> None
+.. function:: expect_eq(arg1: Transformation[float64], arg2: Transformation[float64]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: transform, arg2: transform) -> None
+.. function:: expect_eq(arg1: Transformation[float32], arg2: Transformation[float32]) -> None
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: vec_t, arg2: vec_t)
+.. function:: expect_eq(arg1: Vector[Any,Scalar], arg2: Vector[Any,Scalar])
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_eq(arg1: mat_t, arg2: mat_t)
+.. function:: expect_eq(arg1: Matrix[Any,Any,Scalar], arg2: Matrix[Any,Any,Scalar])
 
    Prints an error to stdout if arg1 and arg2 are not equal
 
 
-.. function:: expect_neq(arg1: vec_t, arg2: vec_t)
+.. function:: expect_neq(arg1: Vector[Any,Scalar], arg2: Vector[Any,Scalar])
 
    Prints an error to stdout if arg1 and arg2 are equal
 
 
-.. function:: expect_neq(arg1: mat_t, arg2: mat_t)
+.. function:: expect_neq(arg1: Matrix[Any,Any,Scalar], arg2: Matrix[Any,Any,Scalar])
 
    Prints an error to stdout if arg1 and arg2 are equal
 
@@ -807,22 +830,22 @@ Utility
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec_t, b: vec_t, t: Float) -> vec_t
+.. function:: lerp(a: Vector[Any,Float], b: Vector[Any,Float], t: Float) -> Vector[Any,Float]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: mat_t, b: mat_t, t: Float) -> mat_t
+.. function:: lerp(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], t: Float) -> Matrix[Any,Any,Float]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: vec_t, b: vec_t, t: Float) -> vec_t
+.. function:: lerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
-.. function:: lerp(a: transform_t, b: transform_t, t: Float) -> transform_t
+.. function:: lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transformation[Float]
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
@@ -837,7 +860,7 @@ Utility
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
 
 
-.. function:: expect_near(arg1: vec3, arg2: vec3, tolerance: float32) -> None
+.. function:: expect_near(arg1: Vector[Literal[3],float32], arg2: Vector[Literal[3],float32], tolerance: float32) -> None
 
    Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
 
@@ -846,7 +869,7 @@ Utility
 
 Geometry
 ---------------
-.. function:: bvh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> bvh_query_t
+.. function:: bvh_query_aabb(id: uint64, lower: Vector[Literal[3],float32], upper: Vector[Literal[3],float32]) -> bvh_query_t
 
    Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
    inside a bvh. Returns an object that is used to track state during bvh traversal.
@@ -856,7 +879,7 @@ Geometry
    :param upper: The upper bound of the bounding box in bvh space
 
 
-.. function:: bvh_query_ray(id: uint64, start: vec3, dir: vec3) -> bvh_query_t
+.. function:: bvh_query_ray(id: uint64, start: Vector[Literal[3],float32], dir: Vector[Literal[3],float32]) -> bvh_query_t
 
    Construct a ray query against a bvh object. This query can be used to iterate over all bounds
    that intersect the ray. Returns an object that is used to track state during bvh traversal.
@@ -872,7 +895,7 @@ Geometry
    if there are no more overlapping bound.
 
 
-.. function:: mesh_query_point(id: uint64, point: vec3, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
+.. function:: mesh_query_point(id: uint64, point: Vector[Literal[3],float32], max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool
 
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -885,7 +908,7 @@ Geometry
    :param bary_v: Retruns the barycentric v coordinate of the closest point
 
 
-.. function:: mesh_query_ray(id: uint64, start: vec3, dir: vec3, max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec3, face: int32) -> bool
+.. function:: mesh_query_ray(id: uint64, start: Vector[Literal[3],float32], dir: Vector[Literal[3],float32], max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: Vector[Literal[3],float32], face: int32) -> bool
 
    Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
 
@@ -901,7 +924,7 @@ Geometry
    :param face: Returns the index of the hit face
 
 
-.. function:: mesh_query_aabb(id: uint64, lower: vec3, upper: vec3) -> mesh_query_aabb_t
+.. function:: mesh_query_aabb(id: uint64, lower: Vector[Literal[3],float32], upper: Vector[Literal[3],float32]) -> mesh_query_aabb_t
 
    Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
    inside a volume. Returns an object that is used to track state during mesh traversal.
@@ -917,17 +940,17 @@ Geometry
    if there are no more overlapping triangles.
 
 
-.. function:: mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3
+.. function:: mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> Vector[Literal[3],float32]
 
    Evaluates the position on the mesh given a face index, and barycentric coordinates.
 
 
-.. function:: mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3
+.. function:: mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> Vector[Literal[3],float32]
 
    Evaluates the velocity on the mesh given a face index, and barycentric coordinates.
 
 
-.. function:: hash_grid_query(id: uint64, point: vec3, max_dist: float32) -> hash_grid_query_t
+.. function:: hash_grid_query(id: uint64, point: Vector[Literal[3],float32], max_dist: float32) -> hash_grid_query_t
 
    Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
    fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
@@ -945,7 +968,7 @@ Geometry
    traversal occurs in a spatially coherent order.
 
 
-.. function:: intersect_tri_tri(v0: vec3, v1: vec3, v2: vec3, u0: vec3, u1: vec3, u2: vec3) -> int
+.. function:: intersect_tri_tri(v0: Vector[Literal[3],float32], v1: Vector[Literal[3],float32], v2: Vector[Literal[3],float32], u0: Vector[Literal[3],float32], u1: Vector[Literal[3],float32], u2: Vector[Literal[3],float32]) -> int
 
    Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.
 
@@ -955,17 +978,17 @@ Geometry
    Retrieves the mesh given its index.
 
 
-.. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3
+.. function:: mesh_eval_face_normal(id: uint64, face: int32) -> Vector[Literal[3],float32]
 
    Evaluates the face normal the mesh given a face index.
 
 
-.. function:: mesh_get_point(id: uint64, index: int32) -> vec3
+.. function:: mesh_get_point(id: uint64, index: int32) -> Vector[Literal[3],float32]
 
    Returns the point of the mesh given a index.
 
 
-.. function:: mesh_get_velocity(id: uint64, index: int32) -> vec3
+.. function:: mesh_get_velocity(id: uint64, index: int32) -> Vector[Literal[3],float32]
 
    Returns the velocity of the mesh given a index.
 
@@ -975,7 +998,7 @@ Geometry
    Returns the point-index of the mesh given a face-vertex index.
 
 
-.. function:: closest_point_edge_edge(p1: vec3, q1: vec3, p2: vec3, q2: vec3, epsilon: float32) -> vec3
+.. function:: closest_point_edge_edge(p1: Vector[Literal[3],float32], q1: Vector[Literal[3],float32], p2: Vector[Literal[3],float32], q2: Vector[Literal[3],float32], epsilon: float32) -> Vector[Literal[3],float32]
 
    Finds the closest points between two edges. Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
 
@@ -991,7 +1014,7 @@ Geometry
 
 Volumes
 ---------------
-.. function:: volume_sample_f(id: uint64, uvw: vec3, sampling_mode: int32) -> float
+.. function:: volume_sample_f(id: uint64, uvw: Vector[Literal[3],float32], sampling_mode: int32) -> float
 
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
@@ -1006,22 +1029,22 @@ Volumes
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_sample_v(id: uint64, uvw: vec3, sampling_mode: int32) -> vec3
+.. function:: volume_sample_v(id: uint64, uvw: Vector[Literal[3],float32], sampling_mode: int32) -> Vector[Literal[3],float32]
 
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
 
 
-.. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3
+.. function:: volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> Vector[Literal[3],float32]
 
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
 
 
-.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3) -> None
+.. function:: volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: Vector[Literal[3],float32]) -> None
 
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_sample_i(id: uint64, uvw: vec3) -> int
+.. function:: volume_sample_i(id: uint64, uvw: Vector[Literal[3],float32]) -> int
 
    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
 
@@ -1036,22 +1059,22 @@ Volumes
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
 
 
-.. function:: volume_index_to_world(id: uint64, uvw: vec3) -> vec3
+.. function:: volume_index_to_world(id: uint64, uvw: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
 
    Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_world_to_index(id: uint64, xyz: vec3) -> vec3
+.. function:: volume_world_to_index(id: uint64, xyz: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
 
    Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_index_to_world_dir(id: uint64, uvw: vec3) -> vec3
+.. function:: volume_index_to_world_dir(id: uint64, uvw: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
 
    Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.
 
 
-.. function:: volume_world_to_index_dir(id: uint64, xyz: vec3) -> vec3
+.. function:: volume_world_to_index_dir(id: uint64, xyz: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
 
    Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
 
@@ -1097,52 +1120,52 @@ Random
    Sample a normal distribution
 
 
-.. function:: sample_cdf(state: uint32, cdf: array[float32]) -> int
+.. function:: sample_cdf(state: uint32, cdf: Array[float32]) -> int
 
    Inverse transform sample a cumulative distribution function
 
 
-.. function:: sample_triangle(state: uint32) -> vec2
+.. function:: sample_triangle(state: uint32) -> Vector[Literal[2],float32]
 
    Uniformly sample a triangle. Returns sample barycentric coordinates
 
 
-.. function:: sample_unit_ring(state: uint32) -> vec2
+.. function:: sample_unit_ring(state: uint32) -> Vector[Literal[2],float32]
 
    Uniformly sample a ring in the xy plane
 
 
-.. function:: sample_unit_disk(state: uint32) -> vec2
+.. function:: sample_unit_disk(state: uint32) -> Vector[Literal[2],float32]
 
    Uniformly sample a disk in the xy plane
 
 
-.. function:: sample_unit_sphere_surface(state: uint32) -> vec3
+.. function:: sample_unit_sphere_surface(state: uint32) -> Vector[Literal[3],float32]
 
    Uniformly sample a unit sphere surface
 
 
-.. function:: sample_unit_sphere(state: uint32) -> vec3
+.. function:: sample_unit_sphere(state: uint32) -> Vector[Literal[3],float32]
 
    Uniformly sample a unit sphere
 
 
-.. function:: sample_unit_hemisphere_surface(state: uint32) -> vec3
+.. function:: sample_unit_hemisphere_surface(state: uint32) -> Vector[Literal[3],float32]
 
    Uniformly sample a unit hemisphere surface
 
 
-.. function:: sample_unit_hemisphere(state: uint32) -> vec3
+.. function:: sample_unit_hemisphere(state: uint32) -> Vector[Literal[3],float32]
 
    Uniformly sample a unit hemisphere
 
 
-.. function:: sample_unit_square(state: uint32) -> vec2
+.. function:: sample_unit_square(state: uint32) -> Vector[Literal[2],float32]
 
    Uniformly sample a unit square
 
 
-.. function:: sample_unit_cube(state: uint32) -> vec3
+.. function:: sample_unit_cube(state: uint32) -> Vector[Literal[3],float32]
 
    Uniformly sample a unit cube
 
@@ -1152,17 +1175,17 @@ Random
    Non-periodic Perlin-style noise in 1d.
 
 
-.. function:: noise(state: uint32, xy: vec2) -> float
+.. function:: noise(state: uint32, xy: Vector[Literal[2],float32]) -> float
 
    Non-periodic Perlin-style noise in 2d.
 
 
-.. function:: noise(state: uint32, xyz: vec3) -> float
+.. function:: noise(state: uint32, xyz: Vector[Literal[3],float32]) -> float
 
    Non-periodic Perlin-style noise in 3d.
 
 
-.. function:: noise(state: uint32, xyzt: vec4) -> float
+.. function:: noise(state: uint32, xyzt: Vector[Literal[4],float32]) -> float
 
    Non-periodic Perlin-style noise in 4d.
 
@@ -1172,32 +1195,32 @@ Random
    Periodic Perlin-style noise in 1d.
 
 
-.. function:: pnoise(state: uint32, xy: vec2, px: int32, py: int32) -> float
+.. function:: pnoise(state: uint32, xy: Vector[Literal[2],float32], px: int32, py: int32) -> float
 
    Periodic Perlin-style noise in 2d.
 
 
-.. function:: pnoise(state: uint32, xyz: vec3, px: int32, py: int32, pz: int32) -> float
+.. function:: pnoise(state: uint32, xyz: Vector[Literal[3],float32], px: int32, py: int32, pz: int32) -> float
 
    Periodic Perlin-style noise in 3d.
 
 
-.. function:: pnoise(state: uint32, xyzt: vec4, px: int32, py: int32, pz: int32, pt: int32) -> float
+.. function:: pnoise(state: uint32, xyzt: Vector[Literal[4],float32], px: int32, py: int32, pz: int32, pt: int32) -> float
 
    Periodic Perlin-style noise in 4d.
 
 
-.. function:: curlnoise(state: uint32, xy: vec2) -> vec2
+.. function:: curlnoise(state: uint32, xy: Vector[Literal[2],float32]) -> Vector[Literal[2],float32]
 
    Divergence-free vector field based on the gradient of a Perlin noise function. [1]_
 
 
-.. function:: curlnoise(state: uint32, xyz: vec3) -> vec3
+.. function:: curlnoise(state: uint32, xyz: Vector[Literal[3],float32]) -> Vector[Literal[3],float32]
 
    Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
 
-.. function:: curlnoise(state: uint32, xyzt: vec4) -> vec3
+.. function:: curlnoise(state: uint32, xyzt: Vector[Literal[4],float32]) -> Vector[Literal[3],float32]
 
    Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
@@ -1206,7 +1229,7 @@ Random
 
 Other
 ---------------
-.. function:: lower_bound(arr: array[Scalar], value: Scalar) -> int
+.. function:: lower_bound(arr: Array[Scalar], value: Scalar) -> int
 
    Search a sorted array for the closest element greater than or equal to value.
 
@@ -1218,70 +1241,70 @@ Operators
 .. function:: add(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: add(x: vec_t, y: vec_t) -> vec_t
+.. function:: add(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
 
-.. function:: add(x: vec_t, y: vec_t) -> vec_t
+.. function:: add(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
 
 
-.. function:: add(x: mat_t, y: mat_t) -> mat_t
+.. function:: add(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
 
-.. function:: add(x: transform_t, y: transform_t) -> transform_t
+.. function:: add(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
 
 
 .. function:: sub(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: sub(x: vec_t, y: vec_t) -> vec_t
+.. function:: sub(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
 
-.. function:: sub(x: mat_t, y: mat_t) -> mat_t
+.. function:: sub(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
 
-.. function:: sub(x: vec_t, y: vec_t) -> vec_t
+.. function:: sub(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
 
 
-.. function:: sub(x: transform_t, y: transform_t) -> transform_t
+.. function:: sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
 
 
 .. function:: mul(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: mul(x: vec_t, y: Scalar) -> vec_t
+.. function:: mul(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]
 
 
-.. function:: mul(x: Scalar, y: vec_t) -> vec_t
+.. function:: mul(x: Scalar, y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
 
-.. function:: mul(x: vec_t, y: Scalar) -> vec_t
+.. function:: mul(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]
 
 
-.. function:: mul(x: Scalar, y: vec_t) -> vec_t
+.. function:: mul(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]
 
 
-.. function:: mul(x: vec_t, y: vec_t) -> vec_t
+.. function:: mul(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
 
 
-.. function:: mul(x: Scalar, y: mat_t) -> mat_t
+.. function:: mul(x: Scalar, y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
 
-.. function:: mul(x: mat_t, y: Scalar) -> mat_t
+.. function:: mul(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]
 
 
-.. function:: mul(x: mat_t, y: vec_t) -> vec_t
+.. function:: mul(x: Matrix[Any,Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
 
-.. function:: mul(x: mat_t, y: mat_t)
+.. function:: mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar])
 
 
-.. function:: mul(x: transform_t, y: transform_t) -> transform_t
+.. function:: mul(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
 
 
-.. function:: mul(x: Scalar, y: transform_t) -> transform_t
+.. function:: mul(x: Scalar, y: Transformation[Scalar]) -> Transformation[Scalar]
 
 
-.. function:: mul(x: transform_t, y: Scalar) -> transform_t
+.. function:: mul(x: Transformation[Scalar], y: Scalar) -> Transformation[Scalar]
 
 
 .. function:: mod(x: Scalar, y: Scalar) -> Scalar
@@ -1290,28 +1313,40 @@ Operators
 .. function:: div(x: Scalar, y: Scalar) -> Scalar
 
 
-.. function:: div(x: vec_t, y: Scalar) -> vec_t
+.. function:: div(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]
 
 
-.. function:: div(x: mat_t, y: Scalar) -> mat_t
+.. function:: div(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]
 
 
-.. function:: div(x: vec_t, y: Scalar) -> vec_t
+.. function:: div(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]
 
 
 .. function:: floordiv(x: Scalar, y: Scalar) -> Scalar
 
 
+.. function:: pos(x: Scalar) -> Scalar
+
+
+.. function:: pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+
+
+.. function:: pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]
+
+
+.. function:: pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+
+
 .. function:: neg(x: Scalar) -> Scalar
 
 
-.. function:: neg(x: vec_t) -> vec_t
+.. function:: neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
 
 
-.. function:: neg(x: vec_t) -> vec_t
+.. function:: neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]
 
 
-.. function:: neg(x: mat_t) -> mat_t
+.. function:: neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
 
 
 .. function:: unot(b: bool) -> bool

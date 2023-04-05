@@ -3104,12 +3104,68 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
     wp.launch(kernel, dim=1, inputs=[m2, m3, m4, m5], device=device)
 
 
+
+# Test matrix constructors using explicit type (float16)
+# note that these tests are specifically not using generics / closure
+# args to create kernels dynamically (like the rest of this file)
+# as those use different code paths to resolve arg types which
+# has lead to regressions.
+@wp.kernel
+def test_constructors_explicit_precision():
+
+    # construction for custom matrix types
+    eye = wp.identity(dtype=wp.float16, n=2)
+    zeros = wp.matrix(shape=(2,2), dtype=wp.float16)
+    custom = wp.matrix(wp.float16(0.0), wp.float16(1.0),
+                           wp.float16(2.0), wp.float16(3.0), shape=(2,2))
+
+    for i in range(2):
+        for j in range(2):
+
+            if (i == j):
+                wp.expect_eq(eye[i,j], wp.float16(1.0))
+            else:
+                wp.expect_eq(eye[i,j], wp.float16(0.0))
+
+            wp.expect_eq(zeros[i,j], wp.float16(0.0))
+            wp.expect_eq(custom[i,j], wp.float16(i)*wp.float16(2.0) + wp.float16(j))
+
+
+# Same as above but with a default (float/int) type
+# which tests some different code paths that
+# need to ensure types are correctly canonicalized 
+# during codegen
+@wp.kernel
+def test_constructors_default_precision():
+
+    # construction for default (float) matrix types
+    eye = wp.identity(dtype=float, n=2)
+    zeros = wp.matrix(shape=(2,2), dtype=float)
+    custom = wp.matrix(0.0, 1.0,
+                           2.0, 3.0, shape=(2,2))
+
+    for i in range(2):
+        for j in range(2):
+
+            if (i == j):
+                wp.expect_eq(eye[i,j], 1.0)
+            else:
+                wp.expect_eq(eye[i,j], 0.0)
+
+            wp.expect_eq(zeros[i,j], 0.0)
+            wp.expect_eq(custom[i,j], float(i)*2.0 + float(j))
+
+
+
 def register(parent):
 
     devices = get_test_devices()
 
     class TestMat(parent):
         pass
+
+    add_kernel_test(TestMat, test_constructors_explicit_precision, dim=1, devices=devices)
+    add_kernel_test(TestMat, test_constructors_default_precision, dim=1, devices=devices)
 
     for dtype in np_signed_int_types + np_float_types:
         add_function_test_register_kernel(TestMat, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype)
