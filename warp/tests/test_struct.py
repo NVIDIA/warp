@@ -241,6 +241,27 @@ def test_struct_math_conversions(test, device):
     wp.launch(check_math_conversions, dim=1, inputs=[s])
 
 
+@wp.struct
+class ReturnStruct:
+
+    a: int
+    b: int
+
+@wp.func
+def test_return_func():
+
+    a = ReturnStruct(1, 2)
+    return a
+
+@wp.kernel
+def test_return():
+
+    t = test_return_func()
+    wp.expect_eq(t.a, 1)
+    wp.expect_eq(t.b, 2)
+    
+
+
 def register(parent):
     
     devices = get_test_devices()
@@ -252,6 +273,7 @@ def register(parent):
     add_function_test(TestStruct, "test_step_grad", test_step_grad, devices=devices)
     add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
     add_kernel_test(TestStruct, kernel=test_uninitialized, name="test_uninitialized", dim=1, inputs=[Uninitialized()], devices=devices)
+    add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
     add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
 

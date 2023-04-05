@@ -17,11 +17,12 @@
 - Add support for indexed arrays, `slice = array[indices]` will now generate a sparse slice of array data
 - Add support for generic kernel params, use `def compute(param: Any):`
 - Add support for `with wp.ScopedDevice("cuda") as device` syntax (same for `wp.ScopedStream()`, `wp.Tape()`)
-- Add support for declaring custom vector/matrix types inside kernels, see `wp.vector()`, and `wp.matrix()`
+- Add support for declaring custom length vector/matrices inside kernels, see `wp.vector()`, and `wp.matrix()`
 - Add support for initializating identity matrices in kernels with, e.g.: `I = wp.idenitity(n=3, dtype=float)`
 - Add support for unary plus operator (`pos()`)
 - Add support for `wp.constant` variables to be used directly in Python without having to use `.val` member
 - Add support for nested `wp.struct` types
+- Add support for returning `wp.struct` from functions
 - Add `--quick` build for faster local dev. iteration (uses a reduced set of SASS arches)
 - Add support for Python vector and matrix constructors from columns
 - Add support for setting and getting row vectors for Python matrices, see `matrix.get_row()`, `matrix.set_row()`

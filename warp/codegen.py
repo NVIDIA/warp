@@ -1642,6 +1642,8 @@ struct {name}
     {{
     }}
 
+    {name}& operator += (const {name}&) {{ return *this; }}
+
 }};
 
 static CUDA_CALLABLE void adj_{name}({reverse_args})
