@@ -7,6 +7,7 @@
 - Allow setting and getting row vectors for Python matrices
 - Add optional `requires_grad` parameter to `wp.from_torch()` to override gradient allocation
 - Optimized kernel launches with about 2-3x improvement in common cases
+- Added `wp.load_module()` to load specific modules
 
 
 ## [0.7.2] - 2023-02-15
