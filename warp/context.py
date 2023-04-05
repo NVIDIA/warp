@@ -37,6 +37,13 @@ import warp.config
 import numpy as np
 
 # represents either a built-in or user-defined function
+
+def create_value_func(type):
+    def value_func(args, kwds, templates):
+        return type
+    
+    return value_func
+
 class Function:
 
     def __init__(self,
@@ -99,9 +106,7 @@ class Function:
             for name, type in self.adj.arg_types.items():
                 
                 if name == "return":
-                    def value_func(args, kwds, templates):
-                        return type
-                    self.value_func = value_func
+                    self.value_func = create_value_func(type)
                 
                 else:
                     self.input_types[name] = type
