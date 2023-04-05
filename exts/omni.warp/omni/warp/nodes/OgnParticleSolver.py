@@ -286,6 +286,9 @@ class OgnParticleSolver:
                 if (use_graph):
                     if (state.capture == None):
 
+                        wp.load_module(device=state.device)
+                        wp.load_module(module=warp.sim, device=state.device, recursive=True)
+
                         wp.capture_begin()
 
                         # simulate

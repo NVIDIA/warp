@@ -2815,10 +2815,19 @@ def capture_begin(device:Devicelike=None, stream=None):
 
     Captures all subsequent kernel launches and memory operations on CUDA devices.
     This can be used to record large numbers of kernels and replay them with low-overhead.
+
+    Note that all kernels required during graph capture must be loaded first. See `wp.load_module()`
+    for more information.
     """
 
     if warp.config.verify_cuda == True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
+
+    # force load calling module's kernels only
+    # force loading the entire process's modules
+    # could result in compiling a large number of kernels
+    m = inspect.getmodule(inspect.stack()[1][0])
+    load_module(module=m, device=device)
 
     if stream is not None:
         device = stream.device
@@ -2826,11 +2835,7 @@ def capture_begin(device:Devicelike=None, stream=None):
         device = runtime.get_device(device)
         if not device.is_cuda:
             raise RuntimeError("Must be a CUDA device")
-
-    # ensure that all modules are loaded, this is necessary
-    # since cuLoadModule() is not permitted during capture
-    force_load(device)
-    
+   
     device.is_capturing = True
 
     with warp.ScopedStream(stream):

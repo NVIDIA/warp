@@ -141,8 +141,9 @@ class OgnCloth:
 
         timeline =  omni.timeline.get_timeline_interface()
         context = db.internal_state
+        device = "cuda:0"
 
-        with wp.ScopedDevice("cuda:0"):
+        with wp.ScopedDevice(device):
 
             # reset on stop
             if (timeline.is_stopped()):
@@ -321,6 +322,10 @@ class OgnCloth:
                 if (use_graph):
                     if (context.capture == None):
                         
+                        # load ourselves and simulation kernels before graph capture                       
+                        wp.load_module(device=device)
+                        wp.load_module(module=warp.sim, device=device, recursive=True)
+
                         wp.capture_begin()
 
                         # simulate
