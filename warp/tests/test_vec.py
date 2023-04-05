@@ -2438,6 +2438,44 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
     wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5], device=device)
 
 
+# Test matrix constructors using explicit type (float16)
+# note that these tests are specifically not using generics / closure
+# args to create kernels dynamically (like the rest of this file)
+# as those use different code paths to resolve arg types which
+# has lead to regressions.
+@wp.kernel
+def test_constructors_explicit_precision():
+
+    # construction for custom matrix types
+    ones = wp.vector(wp.float16(1.0), length=2)
+    zeros = wp.vector(length=2, dtype=wp.float16)
+    custom = wp.vector(wp.float16(0.0), wp.float16(1.0))
+
+    for i in range(2):
+        wp.expect_eq(ones[i], wp.float16(1.0))
+        wp.expect_eq(zeros[i], wp.float16(0.0))
+        wp.expect_eq(custom[i], wp.float16(i))
+
+
+# Same as above but with a default (float/int) type
+# which tests some different code paths that
+# need to ensure types are correctly canonicalized 
+# during codegen
+@wp.kernel
+def test_constructors_default_precision():
+
+    # construction for custom matrix types
+    ones = wp.vector(1.0, length=2)
+    zeros = wp.vector(length=2, dtype=float)
+    custom = wp.vector(0.0, 1.0)
+
+    for i in range(2):
+        wp.expect_eq(ones[i], 1.0)
+        wp.expect_eq(zeros[i], 0.0)
+        wp.expect_eq(custom[i], float(i))
+
+
+
 def register(parent):
 
     devices = get_test_devices()
@@ -2445,6 +2483,10 @@ def register(parent):
     class TestVec(parent):
         pass
     
+    add_kernel_test(TestVec, test_constructors_explicit_precision, dim=1, devices=devices)
+    add_kernel_test(TestVec, test_constructors_default_precision, dim=1, devices=devices)
+
+
     for dtype in np_unsigned_int_types:
         add_function_test_register_kernel(TestVec, f"test_subtraction_unsigned_{dtype.__name__}", test_subtraction_unsigned, devices=devices, dtype=dtype)
 

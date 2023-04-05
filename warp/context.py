@@ -2468,6 +2468,8 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
         adjoint: Whether to run forward or backward pass (typically use False)
     """
 
+    assert_initialized()
+
     # if stream is specified, use the associated device
     if stream is not None:
         device = stream.device
@@ -2989,17 +2991,37 @@ def type_str(t):
         return "Any"
     elif t == Callable:
         return "Callable"
+    elif t == Tuple[int, int]:
+        return "Tuple[int, int]"
+    elif isinstance(t, int):
+        return str(t)        
     elif isinstance(t, List):
         return "Tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
-        return f"array[{type_str(t.dtype)}]"
+        return f"Array[{type_str(t.dtype)}]"
     elif isinstance(t, warp.indexedarray):
-        return f"indexedarray[{type_str(t.dtype)}]"
+        return f"IndexedArray[{type_str(t.dtype)}]"
     elif hasattr(t, "_wp_generic_type_str_"):
-        if len(t._shape_) == 1:
-            return f"vec{t._shape_[0]}[{type_str(t._wp_scalar_type_)}]"
-        elif len(t._shape_) == 2:
-            return f"mat{t._shape_[0]}{t._shape_[1]}[{type_str(t._wp_scalar_type_)}]"
+        
+        generic_type = t._wp_generic_type_str_
+
+        # for concrete vec/mat types use the short name
+        if t in warp.types.vector_types:
+            return t.__name__
+
+        # for generic vector / matrix type use a Generic type hint
+        if generic_type == "vec_t":
+            #return f"Vector"
+            return f"Vector[{type_str(t._wp_type_params_[0])},{type_str(t._wp_scalar_type_)}]"
+        elif generic_type == "quat_t":
+            #return f"Quaternion"
+            return f"Quaternion[{type_str(t._wp_scalar_type_)}]"
+        elif generic_type == "mat_t":
+            #return f"Matrix"
+            return f"Matrix[{type_str(t._wp_type_params_[0])},{type_str(t._wp_type_params_[1])},{type_str(t._wp_scalar_type_)}]"
+        elif generic_type == "transform_t":
+            #return f"Transformation"
+            return f"Transformation[{type_str(t._wp_scalar_type_)}]"
         else:
             raise TypeError("Invalid vector or matrix dimensions")
     else:
@@ -3049,18 +3071,29 @@ def print_builtins(file):
     print(header, file=file)
 
     # type definitions of all functions by group
-    print("Scalar Types", file=file)
+    print("\nScalar Types", file=file)
     print("------------", file=file)
 
     for t in warp.types.scalar_types:
-        print(f".. autoclass:: {t.__name__}", file=file)
+        print(f".. class:: {t.__name__}", file=file)
 
     print("\n\nVector Types", file=file)
     print("------------", file=file)
 
     for t in warp.types.vector_types:
-        print(f".. autoclass:: {t.__name__}", file=file)
+        print(f".. class:: {t.__name__}", file=file)
 
+    print("\nGeneric Types", file=file)
+    print("-------------", file=file)
+
+    print(f".. class:: Int", file=file)
+    print(f".. class:: Float", file=file)
+    print(f".. class:: Scalar", file=file)
+    print(f".. class:: Vector", file=file)
+    print(f".. class:: Matrix", file=file)
+    print(f".. class:: Quaternion", file=file)
+    print(f".. class:: Transformation", file=file)
+    print(f".. class:: Array", file=file)
 
     # build dictionary of all functions by group
     groups = {}
@@ -3098,7 +3131,24 @@ def export_stubs(file):
     print("from typing import Any", file=file)
     print("from typing import Tuple", file=file)
     print("from typing import Callable", file=file)
-    print("from typing import overload", file=file)
+    print("from typing import TypeVar", file=file)
+    print("from typing import Generic", file=file)
+    print("from typing import overload as over", file=file)
+
+    # type hints, these need to be mirrored into the stubs file
+    print('Length = TypeVar("Length", bound=int)', file=file)
+    print('Rows = TypeVar("Rows", bound=int)', file=file)
+    print('Cols = TypeVar("Cols", bound=int)', file=file)
+    print('DType = TypeVar("DType")', file=file)
+
+    print('Int = TypeVar("Int")', file=file)
+    print('Float = TypeVar("Float")', file=file)
+    print('Scalar = TypeVar("Scalar")', file=file)
+    print('Vector = Generic[Length, Scalar]', file=file)
+    print('Matrix = Generic[Rows, Cols, Scalar]', file=file)
+    print('Quaternion = Generic[Float]', file=file)
+    print('Transformation = Generic[Float]', file=file)
+    print('Array = Generic[DType]', file=file)
 
     # prepend __init__.py
     with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:
@@ -3117,7 +3167,7 @@ def export_stubs(file):
 
             return_str = ""
 
-            if f.export == False or f.hidden == True or f.generic:
+            if f.export == False or f.hidden == True:# or f.generic:
                 continue
             
             try:
@@ -3131,7 +3181,7 @@ def export_stubs(file):
             except:
                 pass
 
-            print("@overload", file=file)
+            print("@over", file=file)
             print(f"def {f.key}({args}){return_str}:", file=file)
             print(f'   """', file=file)
             print(textwrap.indent(text=f.doc, prefix="   "), file=file)
@@ -3141,6 +3191,15 @@ def export_stubs(file):
 
 
 def export_builtins(file):
+
+    def ctype_str(t):
+        if isinstance(t, int):
+            return "int"
+        elif isinstance(t, float):
+            return "float"
+        else:
+            return t.__name__
+
 
     for k, g in builtin_functions.items():
 
@@ -3160,7 +3219,7 @@ def export_builtins(file):
             if not simple or f.variadic:
                 continue
 
-            args = ", ".join(f"{type_str(v)} {k}" for k,v in f.input_types.items())
+            args = ", ".join(f"{ctype_str(v)} {k}" for k,v in f.input_types.items())
             params = ", ".join(f.input_types.keys())
 
             return_type = ""
@@ -3168,9 +3227,9 @@ def export_builtins(file):
             try:
                 # todo: construct a default value for each of the functions args
                 # so we can generate the return type for overloaded functions
-                return_type = type_str(f.value_func(None, None, None))
+                return_type = ctype_str(f.value_func(None, None, None))
             except:
-                pass
+                continue
 
             if return_type.startswith("Tuple"):
                 continue
