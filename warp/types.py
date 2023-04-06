@@ -885,7 +885,7 @@ class array (Array):
 
         # convert shape to Tuple
         if shape == None:
-            shape = (length,)   
+            shape = tuple(length for _ in range(ndim or 1)) 
         elif isinstance(shape, int):
             shape = (shape,)
         elif isinstance(shape, List):

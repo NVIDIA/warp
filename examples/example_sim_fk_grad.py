@@ -14,7 +14,6 @@
 ###########################################################################
 
 import os
-import math
 
 import numpy as np
 
@@ -164,7 +163,7 @@ class Robot:
             # render
             self.renderer.begin_frame(render_time)
             self.renderer.render(self.state)
-            self.renderer.render_sphere(name="target", pos=TARGET.val, rot=wp.quat_identity(), radius=0.1)
+            self.renderer.render_sphere(name="target", pos=TARGET, rot=wp.quat_identity(), radius=0.1)
             self.renderer.end_frame()
 
 

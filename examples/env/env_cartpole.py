@@ -9,7 +9,7 @@
 # Cartpole environment
 #
 # Shows how to set up a simulation of a rigid-body cartpole articulation 
-# from a URDF using the wp.sim.ModelBuilder().
+# from a URDF using the Environment class.
 # Note this example does not include a trained policy.
 #
 ###########################################################################

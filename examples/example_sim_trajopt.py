@@ -25,8 +25,6 @@ from warp.optim import Adam
 
 import matplotlib.pyplot as plt
 
-from tqdm import trange
-
 wp.init()
 
 @wp.kernel
@@ -191,16 +189,16 @@ class Environment:
 
         optimizer = Adam([actions], lr=lr)
         loss = wp.zeros(1, dtype=wp.float32, device=self.device, requires_grad=True)
-        progress = trange(num_iter, desc="Optimizing")
 
         # optimize
-        for i in progress:
+        for i in range(1, num_iter+1):
             loss.zero_()
             tape = wp.Tape()
             with tape:
                 self.forward(actions, requires_grad=True, loss=loss)
 
-            progress.set_description(f"Optimizing, loss: {loss.numpy()[0]:.3f}")
+            if i % 10 == 0:
+                print(f"iter {i}/{num_iter} loss: {loss.numpy()[0]:.3f}")
 
             tape.backward(loss=loss)
             # print("action grad", actions.grad.numpy())
@@ -215,7 +213,6 @@ np.set_printoptions(precision=4, linewidth=2000, suppress=True)
 sim = Environment(device=wp.get_preferred_device())
 
 best_actions = sim.optimize(num_iter=250, lr=1e2)
-# print("best actions", best_actions.numpy())
 # render
 opt_traj = sim.forward(best_actions, render=True)
 
