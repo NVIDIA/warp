@@ -627,7 +627,7 @@ class launch_bounds_t(ctypes.Structure):
 
     _fields_ = [("shape", ctypes.c_int32*LAUNCH_MAX_DIMS),
                 ("ndim", ctypes.c_int32),
-                ("size", ctypes.c_int32)]
+                ("size", ctypes.c_size_t)]
   
     def __init__(self, shape):
 
@@ -866,7 +866,7 @@ class array (Array):
         and dtype parameter appropriately.
 
         Args:
-            data (Union[list, tuple, ndarray]) An object to construct the array from, can be a Tuple, List, or generally any type convertable to an np.array
+            data (Union[list, tuple, ndarray]) An object to construct the array from, can be a Tuple, List, or generally any type convertible to an np.array
             dtype (Union): One of the built-in types, e.g.: :class:`warp.mat33`, if dtype is Any and data an ndarray then it will be inferred from the array data type
             shape (tuple): Dimensions of the array
             strides (tuple): Number of bytes in each dimension between successive elements of the array
@@ -918,7 +918,7 @@ class array (Array):
                 # force convert tuples and lists (or any array type) to ndarray
                 arr = np.array(data, copy=False)
             except Exception as e:
-                raise RuntimeError("When constructing an array the data argument must be convertable to ndarray type type. Encountered an error while converting:" + str(e))
+                raise RuntimeError("When constructing an array the data argument must be convertible to ndarray type type. Encountered an error while converting:" + str(e))
             
             if dtype == Any:
                 # infer dtype from the source data array
@@ -1255,7 +1255,7 @@ class array (Array):
     def zero_(self):
 
         if not self.is_contiguous:
-            raise RuntimeError(f"Assigning to non-continuguous arrays is unsupported.")
+            raise RuntimeError(f"Assigning to non-contiguous arrays is unsupported.")
 
         if self.device is not None and self.ptr is not None:
             self.device.memset(ctypes.c_void_p(self.ptr), ctypes.c_int(0), ctypes.c_size_t(self.size*type_size_in_bytes(self.dtype)))
@@ -1264,7 +1264,7 @@ class array (Array):
     def fill_(self, value):
 
         if not self.is_contiguous:
-            raise RuntimeError(f"Assigning to non-continuguous arrays is unsupported.")
+            raise RuntimeError(f"Assigning to non-contiguous arrays is unsupported.")
 
         if self.device is not None and self.ptr is not None:
 
@@ -1369,7 +1369,7 @@ class array (Array):
     def flatten(self):
 
         if not self.is_contiguous:
-            raise RuntimeError(f"Flattening non-continuguous arrays is unsupported.")
+            raise RuntimeError(f"Flattening non-contiguous arrays is unsupported.")
 
         a = array(dtype=self.dtype,
                   shape=(self.size,),
@@ -1390,7 +1390,7 @@ class array (Array):
     def reshape(self, shape):
 
         if not self.is_contiguous:
-            raise RuntimeError(f"Reshaping non-continuguous arrays is unsupported.")
+            raise RuntimeError(f"Reshaping non-contiguous arrays is unsupported.")
 
         # convert shape to tuple
         if shape == None:

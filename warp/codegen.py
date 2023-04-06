@@ -1686,7 +1686,7 @@ cuda_kernel_template = '''
 
 extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 {{
-    int _idx = blockDim.x * blockIdx.x + threadIdx.x;
+    size_t _idx = grid_index();
     if (_idx >= dim.size) 
         return;
 
@@ -1697,7 +1697,7 @@ extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 
 extern "C" __global__ void {name}_cuda_kernel_backward({reverse_args})
 {{
-    int _idx = blockDim.x * blockIdx.x + threadIdx.x;
+    size_t _idx = grid_index();
     if (_idx >= dim.size) 
         return;
 
@@ -1750,7 +1750,7 @@ WP_API void {name}_cpu_forward({forward_args})
 {{
     set_launch_bounds(dim);
 
-    for (int i=0; i < dim.size; ++i)
+    for (size_t i=0; i < dim.size; ++i)
     {{
         s_threadIdx = i;
 
@@ -1762,7 +1762,7 @@ WP_API void {name}_cpu_backward({reverse_args})
 {{
     set_launch_bounds(dim);
 
-    for (int i=0; i < dim.size; ++i)
+    for (size_t i=0; i < dim.size; ++i)
     {{
         s_threadIdx = i;
 
@@ -2124,6 +2124,3 @@ def codegen_module(kernel, device='cpu'):
                         forward_params=indent(forward_params, 3),
                         reverse_params=indent(reverse_params, 3))
     return s
-
-
-
