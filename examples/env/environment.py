@@ -6,7 +6,6 @@ import argparse
 import os
 import numpy as np
 from enum import Enum
-from tqdm import trange
 from typing import Tuple
 
 wp.init()
@@ -182,6 +181,9 @@ class Environment:
 
         self.model.joint_attach_ke = self.joint_attach_ke
         self.model.joint_attach_kd = self.joint_attach_kd
+        
+        # ensure the module has been compiled before capturing a CUDA graph
+        wp.load_module(warp.sim, recursive=True, device=self.device)
 
         # set up current and next state to be used by the integrator
         self.state_0 = None
@@ -316,10 +318,7 @@ class Environment:
                         self.renderer.end_frame()
 
             while True:
-                if not self.continuous_tiny_render or self.render_mode != RenderMode.TINY:
-                    progress = trange(self.episode_frames)
-                else:
-                    progress = trange(self.episode_frames, leave=False)
+                progress = range(self.episode_frames)
                 for f in progress:
                     if self.use_graph_capture:
                         wp.capture_launch(graph)

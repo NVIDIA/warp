@@ -123,7 +123,7 @@ def parse_usd(
             return default
         val = attr.Get()
         if np.isfinite(val).all():
-            return np.array(val)
+            return np.array(val, dtype=np.float32)
         return default
 
     def parse_generic(prim, name, default=None):
@@ -133,7 +133,7 @@ def parse_usd(
         return attr.Get()
 
     def str2axis(s: str) -> np.ndarray:
-        axis = np.zeros(3)
+        axis = np.zeros(3, dtype=np.float32)
         axis["XYZ".index(s.upper())] = 1.0
         return axis
 
@@ -149,13 +149,13 @@ def parse_usd(
 
     def parse_xform(prim):
         xform = UsdGeom.Xform(prim)
-        mat = np.array(xform.GetLocalTransformation())
-        rot = wp.quat_from_matrix(mat[:3,:3])
+        mat = np.array(xform.GetLocalTransformation(), dtype=np.float32)
+        rot = wp.quat_from_matrix(wp.mat33(mat[:3,:3].flatten()))
         pos = mat[3, :3] * linear_unit
-        scale = np.ones(3)
+        scale = np.ones(3, dtype=np.float32)
         for op in xform.GetOrderedXformOps():
             if op.GetOpType() == UsdGeom.XformOp.TypeScale:
-                scale = np.array(op.Get())
+                scale = np.array(op.Get(), dtype=np.float32)
         return wp.transform(pos, rot), scale
 
     def parse_axis(prim, type, joint_data, is_angular, axis=None):
@@ -260,8 +260,8 @@ def parse_usd(
             # the type name can sometimes be "DistancePhysicsJoint" or "PhysicsDistanceJoint" ...
             type_name = type_name.replace("Physics", "").replace("Joint", "")
             child = str(prim.GetRelationship("physics:body1").GetTargets()[0])
-            pos0 = parse_vec(prim, "physics:localPos0", np.zeros(3)) * linear_unit
-            pos1 = parse_vec(prim, "physics:localPos1", np.zeros(3)) * linear_unit
+            pos0 = parse_vec(prim, "physics:localPos0", np.zeros(3, dtype=np.float32)) * linear_unit
+            pos1 = parse_vec(prim, "physics:localPos1", np.zeros(3, dtype=np.float32)) * linear_unit
             rot0 = parse_quat(prim, "physics:localRot0", wp.quat_identity())
             rot1 = parse_quat(prim, "physics:localRot1", wp.quat_identity())
             joint_data[child] = {
@@ -318,13 +318,13 @@ def parse_usd(
 
         elif type_name == "Material":
             material = {}
-            if prim.GetAttribute("physics:density").HasAuthoredValue():
-                material["density"] = parse_float(prim, "physics:density") * mass_unit / (linear_unit**3)
-            if prim.GetAttribute("physics:restitution").HasAuthoredValue():
+            if has_attribute(prim, "physics:density"):
+                material["density"] = parse_float(prim, "physics:density") * mass_unit #/ (linear_unit**3)
+            if has_attribute(prim, "physics:restitution"):
                 material["restitution"] = parse_float(prim, "physics:restitution", default_restitution)
-            if prim.GetAttribute("physics:staticFriction").HasAuthoredValue():
+            if has_attribute(prim, "physics:staticFriction"):
                 material["staticFriction"] = parse_float(prim, "physics:staticFriction", default_mu)
-            if prim.GetAttribute("physics:dynamicFriction").HasAuthoredValue():
+            if has_attribute(prim, "physics:dynamicFriction"):
                 material["dynamicFriction"] = parse_float(prim, "physics:dynamicFriction", default_mu)
             materials[path] = material
             
@@ -335,7 +335,7 @@ def parse_usd(
             if g_mag.HasAuthoredValue() and np.isfinite(g_mag.Get()):
                 builder.gravity = g_mag.Get() * linear_unit
             if g_vec.HasAuthoredValue() and np.linalg.norm(g_vec.Get()) > 0.0:
-                builder.up_vector = np.array(g_vec.Get())  # TODO flip sign?
+                builder.up_vector = np.array(g_vec.Get(), dtype=np.float32)  # TODO flip sign?
             else:
                 builder.up_vector = upaxis
 
@@ -362,7 +362,7 @@ def parse_usd(
         schemas = set(prim.GetAppliedSchemas())
         children_refs = prim.GetChildren()
 
-        prim_joint_xforms[path] = wp.transform_identity()
+        prim_joint_xforms[path] = wp.transform()
 
         local_xform, scale = parse_xform(prim)
         scale = incoming_scale*scale
@@ -371,12 +371,11 @@ def parse_usd(
         
         geo_tf = local_xform
         body_id = parent_body
-        is_rigid_body = "PhysicsRigidBodyAPI" in schemas
+        is_rigid_body = "PhysicsRigidBodyAPI" in schemas and parent_body == -1
         create_rigid_body = (is_rigid_body or path in joint_parents)
         if create_rigid_body:
             body_id = builder.add_body(
                 origin=xform,
-                # origin=wp.transform_identity(),
                 name=prim.GetName(),
             )
             path_body_map[path] = body_id
@@ -384,14 +383,11 @@ def parse_usd(
 
             parent_body = body_id        
 
-            geo_tf = wp.transform_identity()
+            geo_tf = wp.transform()
 
             # set up joints between rigid bodies after the children have been added
             if path in joint_data:
                 joint = joint_data[path]
-
-                q_p = wp.quat(*joint["parent_tf"].q)
-                q_c = wp.quat(*joint["child_tf"].q)
                 
                 joint_params = dict(
                     child=body_id,
@@ -406,13 +402,13 @@ def parse_usd(
                 parent_path = joint["parent"]
                 if parent_path is None:
                     joint_params["parent"] = -1
-                    parent_tf = wp.transform_identity()
+                    parent_tf = wp.transform()
                 else:
                     joint_params["parent"] = path_body_map[parent_path]
                     parent_tf = path_world_poses[parent_path]
 
                 # the joint to which we are connected will transform this body already
-                geo_tf = wp.transform_identity()
+                geo_tf = wp.transform()
 
                 if verbose:
                     print(f"Adding joint {joint['name']} between {joint['parent']} and {path}")
@@ -467,8 +463,8 @@ def parse_usd(
                 # free joint; we set joint_q/qd, not body_q/qd since eval_fk is used after model creation
                 builder.joint_q[-4:] = xform.q
                 builder.joint_q[-7:-4] = xform.p
-                linear_vel = parse_vec(prim, "physics:velocity", np.zeros(3)) * linear_unit
-                angular_vel = parse_vec(prim, "physics:angularVelocity", np.zeros(3)) * linear_unit
+                linear_vel = parse_vec(prim, "physics:velocity", np.zeros(3, dtype=np.float32)) * linear_unit
+                angular_vel = parse_vec(prim, "physics:angularVelocity", np.zeros(3, dtype=np.float32)) * linear_unit
                 builder.joint_qd[-6:-3] = angular_vel
                 builder.joint_qd[-3:] = linear_vel
 
@@ -486,9 +482,9 @@ def parse_usd(
         if material is not None:
             if "density" in material:
                 density = material["density"]
-        if prim.GetAttribute("physics:density").HasAuthoredValue():
+        if has_attribute(prim, "physics:density"):
             d = parse_float(prim, "physics:density")
-            density = d * mass_unit / (linear_unit**3)
+            density = d * mass_unit #/ (linear_unit**3)
 
         # assert prim.GetAttribute('orientation').Get() == "rightHanded", "Only right-handed orientations are supported."
         enabled = parse_generic(prim, "physics:rigidBodyEnabled", True)
@@ -507,10 +503,11 @@ def parse_usd(
             else:
                 density = 0.0
 
-        com = parse_vec(prim, "physics:centerOfMass", np.zeros(3))
-        i_diag = parse_vec(prim, "physics:diagonalInertia", np.zeros(3))
+        com = parse_vec(prim, "physics:centerOfMass", np.zeros(3, dtype=np.float32))
+        i_diag = parse_vec(prim, "physics:diagonalInertia", np.zeros(3, dtype=np.float32))
         i_rot = parse_quat(prim, "physics:principalAxes", wp.quat_identity())
         
+        # parse children
         if type_name == "Xform":
             if prim.IsInstance():
                 proto = prim.GetPrototype()
@@ -523,7 +520,7 @@ def parse_usd(
             for child in children_refs:
                 parse_prim(child, incoming_xform, incoming_scale, parent_body)
         elif type_name in shape_types:
-
+            # parse shapes
             shape_params = dict(
                 ke=default_ke, kd=default_kd, kf=default_kf, mu=default_mu,
                 restitution=default_restitution)
@@ -615,8 +612,8 @@ def parse_usd(
                     **shape_params)
             elif type_name == "Mesh":
                 mesh = UsdGeom.Mesh(prim)
-                points = np.array(mesh.GetPointsAttr().Get())
-                indices = np.array(mesh.GetFaceVertexIndicesAttr().Get())
+                points = np.array(mesh.GetPointsAttr().Get(), dtype=np.float32)
+                indices = np.array(mesh.GetFaceVertexIndicesAttr().Get(), dtype=np.float32)
                 counts = mesh.GetFaceVertexCountsAttr().Get()
                 faces = []
                 face_id = 0
@@ -630,7 +627,7 @@ def parse_usd(
                         # assert False, f"Error while parsing USD mesh {path}: encountered polygon with {count} vertices, but only triangles and quads are supported."
                         continue
                     face_id += count
-                m = wp.sim.Mesh(points, np.array(faces).flatten())
+                m = wp.sim.Mesh(points, np.array(faces, dtype=np.int32).flatten())
                 shape_id = builder.add_shape_mesh(
                     body_id, geo_tf.p, geo_tf.q,
                     scale=scale, mesh=m, density=density, thickness=default_thickness,
@@ -647,7 +644,7 @@ def parse_usd(
                 for other_path in other_paths:
                     path_collision_filters.add((path, str(other_path)))
 
-            if "PhysicsCollisionAPI" not in schemas:
+            if "PhysicsCollisionAPI" not in schemas or not parse_generic(prim, "physics:collisionEnabled", True):
                 no_collision_shapes.add(shape_id)
 
         else:
@@ -673,22 +670,22 @@ def parse_usd(
                 if builder.body_inertia[body_id].any():
                     builder.body_inv_inertia[body_id] = np.linalg.inv(builder.body_inertia[body_id])
                 else:
-                    builder.body_inv_inertia[body_id] = np.zeros((3, 3))
+                    builder.body_inv_inertia[body_id] = np.zeros((3, 3), dtype=np.float32)
 
             if np.linalg.norm(i_diag) > 0.0:
-                rot = np.array(wp.quat_to_matrix(i_rot)).reshape(3, 3)
+                rot = np.array(wp.quat_to_matrix(i_rot), dtype=np.float32).reshape(3, 3)
                 inertia = rot @ np.diag(i_diag) @ rot.T
                 builder.body_inertia[body_id] = inertia
                 if inertia.any():
                     builder.body_inv_inertia[body_id] = np.linalg.inv(inertia)
                 else:
-                    builder.body_inv_inertia[body_id] = np.zeros((3, 3))
+                    builder.body_inv_inertia[body_id] = np.zeros((3, 3), dtype=np.float32)
 
 
     parse_prim(
         stage.GetDefaultPrim(),
-        incoming_xform=wp.transform_identity(),
-        incoming_scale=np.ones(3) * linear_unit)
+        incoming_xform=wp.transform(),
+        incoming_scale=np.ones(3, dtype=np.float32) * linear_unit)
 
     shape_count = len(builder.shape_geo_type)
 

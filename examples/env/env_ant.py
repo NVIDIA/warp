@@ -9,7 +9,7 @@
 # Ant environment
 #
 # Shows how to set up a simulation of a rigid-body Ant articulation based on
-# the OpenAI gym environment using the wp.sim.ModelBuilder() and MCJF
+# the OpenAI gym environment using the Environment class and MCJF
 # importer. Note this example does not include a trained policy.
 #
 ###########################################################################

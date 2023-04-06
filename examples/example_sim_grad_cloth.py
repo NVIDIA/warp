@@ -20,8 +20,6 @@
 import os
 import math
 
-import numpy as np
-
 import warp as wp
 import warp.sim
 import warp.sim.render
@@ -75,6 +73,9 @@ class Cloth:
 
         self.model = builder.finalize(self.device)
         self.model.ground = False
+        
+        # ensure the module has been compiled before capturing a CUDA graph
+        wp.load_module(warp.sim, recursive=True, device=self.model.device)
         
         self.integrator = wp.sim.SemiImplicitIntegrator()
 

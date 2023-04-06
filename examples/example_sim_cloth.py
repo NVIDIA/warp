@@ -80,6 +80,9 @@ class Example:
         self.model = builder.finalize()
         self.model.ground = True
         self.model.soft_contact_kd = 1.e+2
+        
+        # ensure the module has been compiled before capturing a CUDA graph
+        wp.load_module(warp.sim, recursive=True, device=self.model.device)
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 

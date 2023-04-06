@@ -9,7 +9,7 @@
 # Humanoid environment
 #
 # Shows how to set up a simulation of a rigid-body Humanoid articulation based
-# on the OpenAI gym environment using the wp.sim.ModelBuilder() and MCJF
+# on the OpenAI gym environment using the Environment class and MCJF
 # importer. Note this example does not include a trained policy.
 #
 ###########################################################################

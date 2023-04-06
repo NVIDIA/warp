@@ -14,7 +14,6 @@
 #
 ###########################################################################
 
-import math
 import numpy as np
 import os
 
@@ -142,6 +141,9 @@ class Example:
         # finalize model
         self.model = builder.finalize()
         self.model.ground = False
+        
+        # ensure the module has been compiled before capturing a CUDA graph
+        wp.load_module(warp.sim, recursive=True, device=self.model.device)
 
         self.integrator = wp.sim.XPBDIntegrator(iterations=5)
 
