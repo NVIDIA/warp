@@ -182,9 +182,6 @@ class Environment:
         self.model.joint_attach_ke = self.joint_attach_ke
         self.model.joint_attach_kd = self.joint_attach_kd
         
-        # ensure the module has been compiled before capturing a CUDA graph
-        wp.load_module(warp.sim, recursive=True, device=self.device)
-
         # set up current and next state to be used by the integrator
         self.state_0 = None
         self.state_1 = None
