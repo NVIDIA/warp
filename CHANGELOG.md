@@ -5,7 +5,6 @@
 - Add `Texture Write` node for updating dynamic RTX textures from Warp kernels / nodes
 - Add multi-dimensional kernel support to Warp Kernel Node
 - Add `wp.load_module()` to pre-load specific modules (pass `recursive=True` to load recursively)
-- Make `wp.capture_begin()` only force load the calling module (rather than all modules in the process)
 - Add `wp.poisson()` for sampling Poisson distributions
 - Add support for UsdPhysics schema see `warp.sim.parse_usd()`
 - Add XPBD rigid body implementation plus diff. simulation examples
@@ -42,11 +41,10 @@
 Breaking Changes
 ----------------
 
-- `wp.vec()` and `wp.mat()` are now available via. `warp.types.vector()`, and `warp.types.matrix()` for defining new math types
-- `wp.capture_graph()` now only loads the calling module, users should use `wp.load_module(...)` to ensure all required kernels are loaded before CUDA graph capture
+- `wp.constant` variables can now be treated as their true type, accessing the underlying value through `constant.val` is no longer supported
 - `wp.sim.model.ground_plane` is now a `wp.array` to support gradient, users should call `builder.set_ground_plane()` to create the ground 
 - `wp.sim` capsule, cones, and cylinders are now aligned with the default USD up-axis
-- `wp.constant` variables can now be treated as their true type, accessing the underlying value through `constant.val` is no longer supported
+
   
 ## [0.7.2] - 2023-02-15
 

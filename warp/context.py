@@ -2815,24 +2815,22 @@ def get_module_options(module: Optional[Any] = None) -> Dict[str, Any]:
     return get_module(m.__name__).options
 
 
-def capture_begin(device:Devicelike=None, stream=None):
+def capture_begin(device:Devicelike=None, stream=None, force_module_load=True):
     """Begin capture of a CUDA graph
 
     Captures all subsequent kernel launches and memory operations on CUDA devices.
     This can be used to record large numbers of kernels and replay them with low-overhead.
 
-    Note that all kernels required during graph capture must be loaded first. See `wp.load_module()`
-    for more information.
+    Args:
+
+        device: The device to capture on, if None the current CUDA device will be used
+        stream: The CUDA stream to capture on
+        force_module_load: Whether or not to force loading of all kernels before capture, in general it is better to use :func:`~warp.load_module()` to selectively load kernels.
+
     """
 
     if warp.config.verify_cuda == True:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
-
-    # force load calling module's kernels only
-    # force loading the entire process's modules
-    # could result in compiling a large number of kernels
-    m = inspect.getmodule(inspect.stack()[1][0])
-    load_module(module=m, device=device)
 
     if stream is not None:
         device = stream.device
@@ -2841,6 +2839,9 @@ def capture_begin(device:Devicelike=None, stream=None):
         if not device.is_cuda:
             raise RuntimeError("Must be a CUDA device")
    
+    if force_module_load:
+        force_load(device)
+
     device.is_capturing = True
 
     with warp.ScopedStream(stream):
@@ -2876,7 +2877,7 @@ def capture_launch(graph:Graph, stream:Stream=None):
     """Launch a previously captured CUDA graph
 
     Args:
-        graph: A Graph as returned by :func:`~warp.capture_end`
+        graph: A Graph as returned by :func:`~warp.capture_end()`
         stream: A Stream to launch the graph on (optional)
     """
 

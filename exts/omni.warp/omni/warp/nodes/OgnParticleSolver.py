@@ -286,10 +286,11 @@ class OgnParticleSolver:
                 if (use_graph):
                     if (state.capture == None):
 
+                        # load ourselves and simulation kernels before graph capture                       
                         wp.load_module(device=state.device)
-                        wp.load_module(module=warp.sim, device=state.device, recursive=True)
+                        wp.load_module(device=state.device, module=warp.sim, recursive=True)
 
-                        wp.capture_begin()
+                        wp.capture_begin(force_module_load=False)
 
                         # simulate
                         sim_substeps = db.inputs.num_substeps
