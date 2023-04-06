@@ -252,9 +252,9 @@ void memcpy_peer(void* context, void* dest, void* src, size_t n)
     check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDefault, get_current_stream()));
 }
 
-__global__ void memset_kernel(int* dest, int value, int n)
+__global__ void memset_kernel(int* dest, int value, size_t n)
 {
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    const size_t tid = wp::grid_index();
     
     if (tid < n)
     {
@@ -274,7 +274,7 @@ void memset_device(void* context, void* dest, int value, size_t n)
     else
     {
         // custom kernel to support 4-byte values (and slightly lower host overhead)
-        const int num_words = n/4;
+        const size_t num_words = n/4;
         wp_launch_device(WP_CURRENT_CONTEXT, memset_kernel, num_words, ((int*)dest, value, num_words));
     }
 }
@@ -534,7 +534,7 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
 
 __global__ void memtile_kernel(char* dest, char* src, size_t srcsize, size_t n)
 {
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    const size_t tid = wp::grid_index();
     
     if (tid < n)
     {
@@ -1038,7 +1038,7 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     
     if (debug)
     {
-        opts.push_back("--define-macro=DEBUG");
+        opts.push_back("--define-macro=_DEBUG");
         opts.push_back("--generate-line-info");
         // disabling since it causes issues with `Unresolved extern function 'cudaGetParameterBufferV2'
         //opts.push_back("--device-debug");
@@ -1283,6 +1283,8 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
     ContextGuard guard(context);
 
     const int block_dim = 256;
+    // CUDA specs up to compute capability 9.0 says the max x-dim grid is 2**31-1, so
+    // grid_dim is fine as an int for the near future
     const int grid_dim = (dim + block_dim - 1)/block_dim;
 
     CUresult res = cuLaunchKernel_f(
@@ -1315,4 +1317,3 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
 
 //#include "spline.inl"
 //#include "volume.inl"
-

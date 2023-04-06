@@ -1062,7 +1062,7 @@ CUDA_CALLABLE inline T pos(const T& x) { return x; }
 template <typename T>
 CUDA_CALLABLE inline void adj_pos(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(adj_ret); }
 
-// unary negation implementated as negative multiply, not sure the fp implications of this
+// unary negation implemented as negative multiply, not sure the fp implications of this
 // may be better as 0.0 - x?
 template <typename T>
 CUDA_CALLABLE inline T neg(const T& x) { return T(0.0) - x; }
@@ -1077,9 +1077,9 @@ const int LAUNCH_MAX_DIMS = 4;   // should match types.py
 
 struct launch_bounds_t
 {
-    int shape[LAUNCH_MAX_DIMS];  // size of each dimension
+    int shape[LAUNCH_MAX_DIMS]; // size of each dimension
     int ndim;                   // number of valid dimension
-    int size;                   // total number of threads
+    size_t size;                // total number of threads
 };
 
 #ifdef __CUDACC__
@@ -1104,7 +1104,7 @@ __device__ inline void set_launch_bounds(const launch_bounds_t& b)
 // for single-threaded CPU we store launch
 // bounds in static memory to share globally
 static launch_bounds_t s_launchBounds;
-static int s_threadIdx;
+static size_t s_threadIdx;
 
 inline void set_launch_bounds(const launch_bounds_t& b)
 {
@@ -1112,20 +1112,34 @@ inline void set_launch_bounds(const launch_bounds_t& b)
 }
 #endif
 
-
-
-inline CUDA_CALLABLE int tid()
+inline CUDA_CALLABLE size_t grid_index()
 {
 #ifdef __CUDACC__
-    return blockDim.x * blockIdx.x + threadIdx.x;
+    // Need to cast at least one of the variables being multiplied so that type promotion happens before the multiplication
+    size_t grid_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+    return grid_index;
 #else
     return s_threadIdx;
 #endif
 }
 
+inline CUDA_CALLABLE int tid()
+{
+    const size_t index = grid_index();
+
+    // For the 1-D tid() we need to warn the user if we're about to provide a truncated index
+    // Only do this in _DEBUG when called from device to avoid excessive register allocation
+#if defined(_DEBUG) || !defined(__CUDA_ARCH__)
+    if (index > 2147483647) {
+        printf("Warp warning: tid() is returning an overflowed int\n");
+    }
+#endif
+    return static_cast<int>(index);
+}
+
 inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
 {
-    const int index = tid();
+    const size_t index = grid_index();
 
     const int n = s_launchBounds.shape[1];
 
@@ -1136,7 +1150,7 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
 
 inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
 {
-    const int index = tid();
+    const size_t index = grid_index();
 
     const int n = s_launchBounds.shape[1];
     const int o = s_launchBounds.shape[2];
@@ -1149,7 +1163,7 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
 
 inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
 {
-    const int index = tid();
+    const size_t index = grid_index();
 
     const int n = s_launchBounds.shape[1];
     const int o = s_launchBounds.shape[2];

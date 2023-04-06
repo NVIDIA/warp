@@ -84,8 +84,8 @@ void memset_host(void* dest, int value, size_t n)
     }
     else
     {
-        const int num_words = n/4;
-        for (int i=0; i < num_words; ++i)
+        const size_t num_words = n/4;
+        for (size_t i=0; i < num_words; ++i)
             ((int*)dest)[i] = value;
     }
 }
