@@ -61,6 +61,19 @@ def test_overload_func():
 
     noreturn(wp.vec3(1.0, 0.0, 0.0))
 
+@wp.func
+def foo(x: int):
+    # This shouldn't be picked up.
+    return x * 2
+
+@wp.func
+def foo(x: int):
+    return x * 3
+
+@wp.kernel
+def test_override_func():
+    i = foo(1)
+    wp.expect_eq(i, 3)
 
 def test_func_export(test, device):
     # tests calling native functions from Python
@@ -155,6 +168,7 @@ def register(parent):
 
     add_kernel_test(TestFunc, kernel=test_overload_func, name="test_overload_func", dim=1, devices=devices)
     add_function_test(TestFunc, func=test_return_func, name="test_return_func",devices=devices)
+    add_kernel_test(TestFunc, kernel=test_override_func, name="test_override_func", dim=1, devices=devices)
     add_function_test(TestFunc, func=test_func_export, name="test_func_export", devices=["cpu"])
     add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
 

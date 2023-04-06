@@ -1037,7 +1037,24 @@ class Module:
         if func.key not in self.functions:
             self.functions[func.key] = func
         else:
-            self.functions[func.key].add_overload(func)
+            # Check whether the new function's signature match any that has
+            # already been registered. If so, then we simply override it, as
+            # Python would do it, otherwise we register it as a new overload.
+            func_existing = self.functions[func.key]
+            sig = warp.types.get_signature(
+                func.input_types.values(),
+                func_name=func.key,
+                arg_names=list(func.input_types.keys()),
+            )
+            sig_existing = warp.types.get_signature(
+                func_existing.input_types.values(),
+                func_name=func_existing.key,
+                arg_names=list(func_existing.input_types.keys()),
+            )
+            if sig == sig_existing:
+                self.functions[func.key] = func
+            else:
+                func_existing.add_overload(func)
 
         self.find_references(func.adj)
 
