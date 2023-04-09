@@ -1075,8 +1075,10 @@ template <typename T>
 CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(-adj_ret); }
 
 // unary boolean negation
-CUDA_CALLABLE inline bool unot(const bool& b) { return !b; }
-CUDA_CALLABLE inline void adj_unot(const bool& b, bool& adj_b, const bool& adj_ret) { }
+template <typename T>
+CUDA_CALLABLE inline bool unot(const T& b) { return !b; }
+template <typename T>
+CUDA_CALLABLE inline void adj_unot(const T& b, T& adj_b, const bool& adj_ret) { }
 
 const int LAUNCH_MAX_DIMS = 4;   // should match types.py
 

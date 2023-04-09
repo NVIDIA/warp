@@ -2579,6 +2579,9 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                         except:
                             raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
 
+                elif isinstance(a, bool):
+                    params.append(ctypes.c_bool(a))
+
                 elif isinstance(a, arg_type):
                     try:
                         # try to pack as a scalar type

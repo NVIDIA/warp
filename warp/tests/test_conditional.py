@@ -125,6 +125,14 @@ def test_int_conditional_assign_overload():
 
     wp.expect_eq(x, 234)
 
+@wp.kernel
+def test_bool_param_conditional(foo: bool):
+
+    if foo:
+        x = 123
+
+    wp.expect_eq(x, 123)
+
 def register(parent):
 
     devices = get_test_devices()
@@ -139,6 +147,7 @@ def register(parent):
     add_kernel_test(TestConditional, kernel=test_boolean_compound, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_boolean_literal, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_int_conditional_assign_overload, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_bool_param_conditional, dim=1, inputs=[True], devices=devices)
 
     return TestConditional
 
