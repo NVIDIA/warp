@@ -1236,3 +1236,5 @@ add_builtin("neg", input_types={"x": quaternion(dtype=Scalar)}, value_func=samet
 add_builtin("neg", input_types={"x": matrix(shape=(Any,Any), dtype=Scalar)}, value_func=sametype_value_func(matrix(shape=(Any,Any), dtype=Scalar)), doc="", group="Operators")
 
 add_builtin("unot", input_types={"b": bool}, value_type=bool, doc="", group="Operators")
+for t in int_types:
+    add_builtin("unot", input_types={"b": t}, value_type=bool, doc="", group="Operators")
