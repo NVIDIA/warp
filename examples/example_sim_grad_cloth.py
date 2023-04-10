@@ -74,9 +74,6 @@ class Cloth:
         self.model = builder.finalize(self.device)
         self.model.ground = False
         
-        # ensure the module has been compiled before capturing a CUDA graph
-        wp.load_module(warp.sim, recursive=True, device=self.model.device)
-        
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         self.target = (8.0, 0.0, 0.0)

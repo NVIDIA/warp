@@ -85,9 +85,6 @@ class Example:
         self.model.joint_attach_ke = 1600.0
         self.model.joint_attach_kd = 20.0
 
-        # ensure the module has been compiled before capturing a CUDA graph
-        wp.load_module(warp.sim, recursive=True, device=self.model.device)
-
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         #-----------------------
