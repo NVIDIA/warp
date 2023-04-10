@@ -1,5 +1,51 @@
 # CHANGELOG
 
+## [0.8.0] - 2023-04-05
+
+- Add `Texture Write` node for updating dynamic RTX textures from Warp kernels / nodes
+- Add multi-dimensional kernel support to Warp Kernel Node
+- Add `wp.load_module()` to pre-load specific modules (pass `recursive=True` to load recursively)
+- Add `wp.poisson()` for sampling Poisson distributions
+- Add support for UsdPhysics schema see `warp.sim.parse_usd()`
+- Add XPBD rigid body implementation plus diff. simulation examples
+- Add support for standalone CPU compilation (no host-compiler) with LLVM backed, enable with `--standalone` build option
+- Add support for per-timer color in `wp.ScopedTimer()`
+- Add support for row-based construction of matrix types outside of kernels
+- Add support for setting and getting row vectors for Python matrices, see `matrix.get_row()`, `matrix.set_row()`
+- Add support for instantiating `wp.struct` types within kernels
+- Add support for indexed arrays, `slice = array[indices]` will now generate a sparse slice of array data
+- Add support for generic kernel params, use `def compute(param: Any):`
+- Add support for `with wp.ScopedDevice("cuda") as device:` syntax (same for `wp.ScopedStream()`, `wp.Tape()`)
+- Add support for creating custom length vector/matrices inside kernels, see `wp.vector()`, and `wp.matrix()`
+- Add support for creating identity matrices in kernels with, e.g.: `I = wp.identity(n=3, dtype=float)`
+- Add support for unary plus operator (`wp.pos()`)
+- Add support for `wp.constant` variables to be used directly in Python without having to use `.val` member
+- Add support for nested `wp.struct` types
+- Add support for returning `wp.struct` from functions
+- Add `--quick` build for faster local dev. iteration (uses a reduced set of SASS arches)
+- Add optional `requires_grad` parameter to `wp.from_torch()` to override gradient allocation
+- Add type hints for generic vector / matrix types in Python stubs
+- Add support for custom user function recording in `wp.Tape()`
+- Add support for registering CUTLASS `wp.matmul()` with tape backward pass
+- Add support for grids with > 2^31 threads (each dimension may be up to INT_MAX in length)
+- Add CPU fallback for `wp.matmul()`
+- Optimizations for `wp.launch()`, up to 3x faster launches in common cases
+- Fix `wp.randf()` conversion to float to reduce bias for uniform sampling
+- Fix capture of `wp.func` and `wp.constant` types from inside Python closures
+- Fix for CUDA on WSL 
+- Fix for matrices in structs
+- Fix for tranpose indexing for some non-square matrices
+- Enable Python faulthandler by default
+- Update to VS2019
+
+Breaking Changes
+----------------
+
+- `wp.constant` variables can now be treated as their true type, accessing the underlying value through `constant.val` is no longer supported
+- `wp.sim.model.ground_plane` is now a `wp.array` to support gradient, users should call `builder.set_ground_plane()` to create the ground 
+- `wp.sim` capsule, cones, and cylinders are now aligned with the default USD up-axis
+
+  
 ## [0.7.2] - 2023-02-15
 
 - Reduce test time for vec/math types

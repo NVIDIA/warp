@@ -18,9 +18,6 @@
 import matplotlib.pyplot as plt
 
 import warp as wp
-import numpy as np
-
-import os
 
 wp.init()
 

@@ -8,6 +8,7 @@
 
 #include "warp.h"
 #include "scan.h"
+#include "array.h"
 
 #include "stdlib.h"
 #include "string.h"
@@ -45,6 +46,21 @@ void shutdown()
 {
 }
 
+int is_cuda_enabled()
+{
+    return int(WP_ENABLE_CUDA);
+}
+
+int is_cuda_compatibility_enabled()
+{
+    return int(WP_ENABLE_CUDA_COMPATIBILITY);
+}
+
+int is_cutlass_enabled()
+{
+    return int(WP_ENABLE_CUTLASS);
+}
+
 void* alloc_host(size_t s)
 {
     return malloc(s);
@@ -68,8 +84,8 @@ void memset_host(void* dest, int value, size_t n)
     }
     else
     {
-        const int num_words = n/4;
-        for (int i=0; i < num_words; ++i)
+        const size_t num_words = n/4;
+        for (size_t i=0; i < num_words; ++i)
             ((int*)dest)[i] = value;
     }
 }
@@ -115,16 +131,135 @@ void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
 }
 
 
+static void array_copy_nd(void* dst, const void* src,
+                      const int* dst_strides, const int* src_strides,
+                      const int*const* dst_indices, const int*const* src_indices,
+                      const int* shape, int ndim, int elem_size)
+{
+    if (ndim == 1)
+    {
+        for (int i = 0; i < shape[0]; i++)
+        {
+            int src_idx = src_indices[0] ? src_indices[0][i] : i;
+            int dst_idx = dst_indices[0] ? dst_indices[0][i] : i;
+            const char* p = (const char*)src + src_idx * src_strides[0];
+            char* q = (char*)dst + dst_idx * dst_strides[0];
+            // copy element
+            memcpy(q, p, elem_size);
+        }
+    }
+    else
+    {
+        for (int i = 0; i < shape[0]; i++)
+        {
+            int src_idx = src_indices[0] ? src_indices[0][i] : i;
+            int dst_idx = dst_indices[0] ? dst_indices[0][i] : i;
+            const char* p = (const char*)src + src_idx * src_strides[0];
+            char* q = (char*)dst + dst_idx * dst_strides[0];
+            // recurse on next inner dimension
+            array_copy_nd(q, p, dst_strides + 1, src_strides + 1, dst_indices + 1, src_indices + 1, shape + 1, ndim - 1, elem_size);
+        }
+    }
+}
+
+
+WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, int elem_size)
+{
+    if (!src || !dst)
+        return 0;
+
+    const void* src_data = NULL;
+    void* dst_data = NULL;
+    int src_ndim = 0;
+    int dst_ndim = 0;
+    const int* src_shape = NULL;
+    const int* dst_shape = NULL;
+    const int* src_strides = NULL;
+    const int* dst_strides = NULL;
+    const int*const* src_indices = NULL;
+    const int*const* dst_indices = NULL;
+
+    const int* null_indices[wp::ARRAY_MAX_DIMS] = { NULL };
+
+    if (src_type == wp::ARRAY_TYPE_REGULAR)
+    {
+        const wp::array_t<void>& src_arr = *static_cast<const wp::array_t<void>*>(src);
+        src_data = src_arr.data;
+        src_ndim = src_arr.ndim;
+        src_shape = src_arr.shape.dims;
+        src_strides = src_arr.strides;
+        src_indices = null_indices;
+    }
+    else if (src_type == wp::ARRAY_TYPE_INDEXED)
+    {
+        const wp::indexedarray_t<void>& src_arr = *static_cast<const wp::indexedarray_t<void>*>(src);
+        src_data = src_arr.arr.data;
+        src_ndim = src_arr.arr.ndim;
+        src_shape = src_arr.shape.dims;
+        src_strides = src_arr.arr.strides;
+        src_indices = src_arr.indices;
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Invalid array type (%d)\n", src_type);
+        return 0;
+    }
+
+    if (dst_type == wp::ARRAY_TYPE_REGULAR)
+    {
+        const wp::array_t<void>& dst_arr = *static_cast<const wp::array_t<void>*>(dst);
+        dst_data = dst_arr.data;
+        dst_ndim = dst_arr.ndim;
+        dst_shape = dst_arr.shape.dims;
+        dst_strides = dst_arr.strides;
+        dst_indices = null_indices;
+    }
+    else if (dst_type == wp::ARRAY_TYPE_INDEXED)
+    {
+        const wp::indexedarray_t<void>& dst_arr = *static_cast<const wp::indexedarray_t<void>*>(dst);
+        dst_data = dst_arr.arr.data;
+        dst_ndim = dst_arr.arr.ndim;
+        dst_shape = dst_arr.shape.dims;
+        dst_strides = dst_arr.arr.strides;
+        dst_indices = dst_arr.indices;
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Invalid array type (%d)\n", dst_type);
+        return 0;
+    }
+
+    if (src_ndim != dst_ndim)
+    {
+        fprintf(stderr, "Warp error: Incompatible array dimensionalities (%d and %d)\n", src_ndim, dst_ndim);
+        return 0;
+    }
+
+    size_t n = 1;
+
+    for (int i = 0; i < src_ndim; i++)
+    {
+        if (src_shape[i] != dst_shape[i])
+        {
+            fprintf(stderr, "Warp error: Incompatible array shapes\n");
+            return 0;
+        }
+        n *= src_shape[i];
+    }
+
+    array_copy_nd(dst_data, src_data,
+              dst_strides, src_strides,
+              dst_indices, src_indices,
+              src_shape, src_ndim, elem_size);
+
+    return n;
+}
+
+
 // impl. files
-#include "cuda_util.cpp"
+// TODO: compile as separate translation units
 #include "bvh.cpp"
-#include "mesh.cpp"
-#include "hashgrid.cpp"
 #include "scan.cpp"
-#include "sort.cpp"
-#include "volume.cpp"
-#include "marching.cpp"
-#include "cutlass_gemm.cpp"
 
 
 // stubs for platforms where there is no CUDA
@@ -176,6 +311,11 @@ void memset_device(void* context, void* dest, int value, size_t n)
 
 void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t n)
 {
+}
+
+size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
+{
+    return 0;
 }
 
 WP_API int cuda_driver_version() { return 0; }

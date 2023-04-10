@@ -21,37 +21,50 @@ import warp as wp
 class Data:
     x: wp.array(dtype=int)
 
+@wp.func
+def increment(x: int):
+    # This shouldn't be picked up.
+    return x + 123
+
+@wp.func
+def increment(x: int):
+    return x + 1
+
 @wp.kernel
-def increment(data: Data):
-    data.x[0] = data.x[0] + 1
+def compute(data: Data):
+    data.x[0] = increment(data.x[0])
 """
 
 wp.init()
 
-def test_transient_module(test, device):
+def load_code_as_module(code, name):
     file, file_path = tempfile.mkstemp(suffix=".py")
 
     try:
-
-        # Save the embedded code into the temporary file.
         with os.fdopen(file, "w") as f:
-            f.write(CODE)
+            f.write(code)
 
-        spec = importlib.util.spec_from_file_location("", file_path)
+        spec = importlib.util.spec_from_file_location(name, file_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-
     finally:
-        os.remove(file_path)    
+        os.remove(file_path)
+
+    return module
+
+def test_transient_module(test, device):
+    module = load_code_as_module(CODE, "")
+    # Loading it a second time shouldn't be an issue.
+    module = load_code_as_module(CODE, "")
 
     data = module.Data()
     data.x = wp.array(123, dtype=int)
 
     wp.set_module_options({"foo": "bar"}, module=module)
     assert wp.get_module_options(module=module).get("foo") == "bar"
-    assert module.increment.module.options.get("foo") == "bar"
+    assert module.compute.module.options.get("foo") == "bar"
 
-    wp.launch(module.increment, dim=1, inputs=[data])
+    wp.launch(module.compute, dim=1, inputs=[data])
     assert_np_equal(data.x.numpy(), np.array([124]))
 
 def register(parent):

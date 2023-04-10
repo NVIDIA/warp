@@ -13,10 +13,8 @@
 #
 ###########################################################################
 
-import os
 import math
 
-import numpy as np
 import warp as wp
 import warp.render
 
@@ -209,7 +207,7 @@ class Example:
 
         self.device = wp.get_device()
 
-        shape = (grid_width.val, grid_height.val)
+        shape = (grid_width, grid_height)
 
         self.u0 = wp.zeros(shape, dtype=wp.vec2)
         self.u1 = wp.zeros(shape, dtype=wp.vec2)
@@ -246,7 +244,7 @@ class Example:
 
             for i in range(self.sim_substeps):
             
-                shape = (grid_width.val, grid_height.val)
+                shape = (grid_width, grid_height)
                 dt = self.sim_dt
 
                 speed = 400.0

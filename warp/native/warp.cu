@@ -252,9 +252,9 @@ void memcpy_peer(void* context, void* dest, void* src, size_t n)
     check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDefault, get_current_stream()));
 }
 
-__global__ void memset_kernel(int* dest, int value, int n)
+__global__ void memset_kernel(int* dest, int value, size_t n)
 {
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    const size_t tid = wp::grid_index();
     
     if (tid < n)
     {
@@ -274,14 +274,267 @@ void memset_device(void* context, void* dest, int value, size_t n)
     else
     {
         // custom kernel to support 4-byte values (and slightly lower host overhead)
-        const int num_words = n/4;
+        const size_t num_words = n/4;
         wp_launch_device(WP_CURRENT_CONTEXT, memset_kernel, num_words, ((int*)dest, value, num_words));
     }
 }
 
+
+static __global__ void array_copy_1d_kernel(void* dst, const void* src,
+                                        int dst_stride, int src_stride,
+                                        const int* dst_indices, const int* src_indices,
+                                        int n, int elem_size)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n)
+    {
+        int src_idx = src_indices ? src_indices[i] : i;
+        int dst_idx = dst_indices ? dst_indices[i] : i;
+        const char* p = (const char*)src + src_idx * src_stride;
+        char* q = (char*)dst + dst_idx * dst_stride;
+        memcpy(q, p, elem_size);
+    }
+}
+
+static __global__ void array_copy_2d_kernel(void* dst, const void* src,
+                                        wp::vec_t<2, int> dst_strides, wp::vec_t<2, int> src_strides,
+                                        wp::vec_t<2, const int*> dst_indices, wp::vec_t<2, const int*> src_indices,
+                                        wp::vec_t<2, int> shape, int elem_size)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int n = shape[1];
+    int i = tid / n;
+    int j = tid % n;
+    if (i < shape[0] /*&& j < shape[1]*/)
+    {
+        int src_idx0 = src_indices[0] ? src_indices[0][i] : i;
+        int dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
+        int src_idx1 = src_indices[1] ? src_indices[1][j] : j;
+        int dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
+        const char* p = (const char*)src + src_idx0 * src_strides[0] + src_idx1 * src_strides[1];
+        char* q = (char*)dst + dst_idx0 * dst_strides[0] + dst_idx1 * dst_strides[1];
+        memcpy(q, p, elem_size);
+    }
+}
+
+static __global__ void array_copy_3d_kernel(void* dst, const void* src,
+                                        wp::vec_t<3, int> dst_strides, wp::vec_t<3, int> src_strides,
+                                        wp::vec_t<3, const int*> dst_indices, wp::vec_t<3, const int*> src_indices,
+                                        wp::vec_t<3, int> shape, int elem_size)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int n = shape[1];
+    int o = shape[2];
+    int i = tid / (n * o);
+    int j = tid % (n * o) / o;
+    int k = tid % o;
+    if (i < shape[0] && j < shape[1] /*&& k < shape[2]*/)
+    {
+        int src_idx0 = src_indices[0] ? src_indices[0][i] : i;
+        int dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
+        int src_idx1 = src_indices[1] ? src_indices[1][j] : j;
+        int dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
+        int src_idx2 = src_indices[2] ? src_indices[2][k] : k;
+        int dst_idx2 = dst_indices[2] ? dst_indices[2][k] : k;
+        const char* p = (const char*)src + src_idx0 * src_strides[0]
+                                         + src_idx1 * src_strides[1]
+                                         + src_idx2 * src_strides[2];
+        char* q = (char*)dst + dst_idx0 * dst_strides[0]
+                             + dst_idx1 * dst_strides[1]
+                             + dst_idx2 * dst_strides[2];
+        memcpy(q, p, elem_size);
+    }
+}
+
+static __global__ void array_copy_4d_kernel(void* dst, const void* src,
+                                        wp::vec_t<4, int> dst_strides, wp::vec_t<4, int> src_strides,
+                                        wp::vec_t<4, const int*> dst_indices, wp::vec_t<4, const int*> src_indices,
+                                        wp::vec_t<4, int> shape, int elem_size)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int n = shape[1];
+    int o = shape[2];
+    int p = shape[3];
+    int i = tid / (n * o * p);
+    int j = tid % (n * o * p) / (o * p);
+    int k = tid % (o * p) / p;
+    int l = tid % p;
+    if (i < shape[0] && j < shape[1] && k < shape[2] /*&& l < shape[3]*/)
+    {
+        int src_idx0 = src_indices[0] ? src_indices[0][i] : i;
+        int dst_idx0 = dst_indices[0] ? dst_indices[0][i] : i;
+        int src_idx1 = src_indices[1] ? src_indices[1][j] : j;
+        int dst_idx1 = dst_indices[1] ? dst_indices[1][j] : j;
+        int src_idx2 = src_indices[2] ? src_indices[2][k] : k;
+        int dst_idx2 = dst_indices[2] ? dst_indices[2][k] : k;
+        int src_idx3 = src_indices[3] ? src_indices[3][l] : l;
+        int dst_idx3 = dst_indices[3] ? dst_indices[3][l] : l;
+        const char* p = (const char*)src + src_idx0 * src_strides[0]
+                                         + src_idx1 * src_strides[1]
+                                         + src_idx2 * src_strides[2]
+                                         + src_idx3 * src_strides[3];
+        char* q = (char*)dst + dst_idx0 * dst_strides[0]
+                             + dst_idx1 * dst_strides[1]
+                             + dst_idx2 * dst_strides[2]
+                             + dst_idx3 * dst_strides[3];
+        memcpy(q, p, elem_size);
+    }
+}
+
+
+WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
+{
+    if (!src || !dst)
+        return 0;
+
+    const void* src_data = NULL;
+    void* dst_data = NULL;
+    int src_ndim = 0;
+    int dst_ndim = 0;
+    const int* src_shape = NULL;
+    const int* dst_shape = NULL;
+    const int* src_strides = NULL;
+    const int* dst_strides = NULL;
+    const int*const* src_indices = NULL;
+    const int*const* dst_indices = NULL;
+
+    const int* null_indices[wp::ARRAY_MAX_DIMS] = { NULL };
+
+    if (src_type == wp::ARRAY_TYPE_REGULAR)
+    {
+        const wp::array_t<void>& src_arr = *static_cast<const wp::array_t<void>*>(src);
+        src_data = src_arr.data;
+        src_ndim = src_arr.ndim;
+        src_shape = src_arr.shape.dims;
+        src_strides = src_arr.strides;
+        src_indices = null_indices;
+    }
+    else if (src_type == wp::ARRAY_TYPE_INDEXED)
+    {
+        const wp::indexedarray_t<void>& src_arr = *static_cast<const wp::indexedarray_t<void>*>(src);
+        src_data = src_arr.arr.data;
+        src_ndim = src_arr.arr.ndim;
+        src_shape = src_arr.shape.dims;
+        src_strides = src_arr.arr.strides;
+        src_indices = src_arr.indices;
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Invalid array type (%d)\n", src_type);
+        return 0;
+    }
+
+    if (dst_type == wp::ARRAY_TYPE_REGULAR)
+    {
+        const wp::array_t<void>& dst_arr = *static_cast<const wp::array_t<void>*>(dst);
+        dst_data = dst_arr.data;
+        dst_ndim = dst_arr.ndim;
+        dst_shape = dst_arr.shape.dims;
+        dst_strides = dst_arr.strides;
+        dst_indices = null_indices;
+    }
+    else if (dst_type == wp::ARRAY_TYPE_INDEXED)
+    {
+        const wp::indexedarray_t<void>& dst_arr = *static_cast<const wp::indexedarray_t<void>*>(dst);
+        dst_data = dst_arr.arr.data;
+        dst_ndim = dst_arr.arr.ndim;
+        dst_shape = dst_arr.shape.dims;
+        dst_strides = dst_arr.arr.strides;
+        dst_indices = dst_arr.indices;
+    }
+    else
+    {
+        fprintf(stderr, "Warp error: Invalid array type (%d)\n", dst_type);
+        return 0;
+    }
+
+    if (src_ndim != dst_ndim)
+    {
+        fprintf(stderr, "Warp error: Incompatible array dimensionalities (%d and %d)\n", src_ndim, dst_ndim);
+        return 0;
+    }
+
+    size_t n = 1;
+
+    for (int i = 0; i < src_ndim; i++)
+    {
+        if (src_shape[i] != dst_shape[i])
+        {
+            fprintf(stderr, "Warp error: Incompatible array shapes\n");
+            return 0;
+        }
+        n *= src_shape[i];
+    }
+
+    ContextGuard guard(context);
+
+    switch (src_ndim)
+    {
+    case 1:
+    {
+        wp_launch_device(WP_CURRENT_CONTEXT, array_copy_1d_kernel, n, (dst_data, src_data,
+                                                                   dst_strides[0], src_strides[0],
+                                                                   dst_indices[0], src_indices[0],
+                                                                   src_shape[0], elem_size));
+        break;
+    }
+    case 2:
+    {
+        wp::vec_t<2, int> shape_v(src_shape[0], src_shape[1]);
+        wp::vec_t<2, int> src_strides_v(src_strides[0], src_strides[1]);
+        wp::vec_t<2, int> dst_strides_v(dst_strides[0], dst_strides[1]);
+        wp::vec_t<2, const int*> src_indices_v(src_indices[0], src_indices[1]);
+        wp::vec_t<2, const int*> dst_indices_v(dst_indices[0], dst_indices[1]);
+
+        wp_launch_device(WP_CURRENT_CONTEXT, array_copy_2d_kernel, n, (dst_data, src_data,
+                                                                   dst_strides_v, src_strides_v,
+                                                                   dst_indices_v, src_indices_v,
+                                                                   shape_v, elem_size));
+        break;
+    }
+    case 3:
+    {
+        wp::vec_t<3, int> shape_v(src_shape[0], src_shape[1], src_shape[2]);
+        wp::vec_t<3, int> src_strides_v(src_strides[0], src_strides[1], src_strides[2]);
+        wp::vec_t<3, int> dst_strides_v(dst_strides[0], dst_strides[1], dst_strides[2]);
+        wp::vec_t<3, const int*> src_indices_v(src_indices[0], src_indices[1], src_indices[2]);
+        wp::vec_t<3, const int*> dst_indices_v(dst_indices[0], dst_indices[1], dst_indices[2]);
+
+        wp_launch_device(WP_CURRENT_CONTEXT, array_copy_3d_kernel, n, (dst_data, src_data,
+                                                                   dst_strides_v, src_strides_v,
+                                                                   dst_indices_v, src_indices_v,
+                                                                   shape_v, elem_size));
+        break;
+    }
+    case 4:
+    {
+        wp::vec_t<4, int> shape_v(src_shape[0], src_shape[1], src_shape[2], src_shape[3]);
+        wp::vec_t<4, int> src_strides_v(src_strides[0], src_strides[1], src_strides[2], src_strides[3]);
+        wp::vec_t<4, int> dst_strides_v(dst_strides[0], dst_strides[1], dst_strides[2], dst_strides[3]);
+        wp::vec_t<4, const int*> src_indices_v(src_indices[0], src_indices[1], src_indices[2], src_indices[3]);
+        wp::vec_t<4, const int*> dst_indices_v(dst_indices[0], dst_indices[1], dst_indices[2], dst_indices[3]);
+
+        wp_launch_device(WP_CURRENT_CONTEXT, array_copy_4d_kernel, n, (dst_data, src_data,
+                                                                   dst_strides_v, src_strides_v,
+                                                                   dst_indices_v, src_indices_v,
+                                                                   shape_v, elem_size));
+        break;
+    }
+    default:
+        fprintf(stderr, "Warp error: invalid array dimensionality (%d)\n", src_ndim);
+        return 0;
+    }
+
+    if (check_cuda(cudaGetLastError()))
+        return n;
+    else
+        return 0;
+}
+
+
 __global__ void memtile_kernel(char* dest, char* src, size_t srcsize, size_t n)
 {
-    const int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    const size_t tid = wp::grid_index();
     
     if (tid < n)
     {
@@ -782,11 +1035,10 @@ size_t cuda_compile_program(const char* cuda_src, int arch, const char* include_
     opts.push_back("--device-as-default-execution-space");
     opts.push_back("--std=c++11");
     opts.push_back("--define-macro=WP_CUDA");
-    opts.push_back("--define-macro=WP_NO_CRT");
     
     if (debug)
     {
-        opts.push_back("--define-macro=DEBUG");
+        opts.push_back("--define-macro=_DEBUG");
         opts.push_back("--generate-line-info");
         // disabling since it causes issues with `Unresolved extern function 'cudaGetParameterBufferV2'
         //opts.push_back("--device-debug");
@@ -1031,6 +1283,8 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
     ContextGuard guard(context);
 
     const int block_dim = 256;
+    // CUDA specs up to compute capability 9.0 says the max x-dim grid is 2**31-1, so
+    // grid_dim is fine as an int for the near future
     const int grid_dim = (dim + block_dim - 1)/block_dim;
 
     CUresult res = cuLaunchKernel_f(
@@ -1057,8 +1311,9 @@ size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void** args)
 #include "marching.cu"
 #include "volume.cu"
 #include "volume_builder.cu"
-#include "cutlass_gemm.cu"
+#if WP_ENABLE_CUTLASS
+    #include "cutlass_gemm.cu"
+#endif
 
 //#include "spline.inl"
 //#include "volume.inl"
-

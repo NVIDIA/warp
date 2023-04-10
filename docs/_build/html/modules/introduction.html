@@ -34,7 +34,9 @@
         <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
         <script src="../_static/jquery.js"></script>
         <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
@@ -71,7 +73,7 @@
             
             
               <div class="version">
-                0.7.2
+                0.8.0
               </div>
             
           
@@ -183,16 +185,16 @@
            <div itemprop="articleBody">
             
   <div class="section" id="introduction">
-<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading">¶</a></h1>
 <p>Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.</p>
 <p>Warp is designed to make it easy to write programs for physics simulation, geometry processing, and procedural animation. Below are some examples of simulations implemented using Warp:</p>
 <img alt="../_images/header.png" src="../_images/header.png" />
 <div class="section" id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <p>Please see the Warp <a class="reference external" href="https://github.com/NVIDIA/warp">README.md</a> for building and installation instructions and where to download pre-built packages.</p>
 </div>
 <div class="section" id="example-usage">
-<h2>Example Usage<a class="headerlink" href="#example-usage" title="Permalink to this headline">¶</a></h2>
+<h2>Example Usage<a class="headerlink" href="#example-usage" title="Permalink to this heading">¶</a></h2>
 <p>Before use Warp should be explicitly initialized as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
 
@@ -220,13 +222,13 @@
 </pre></div>
 </div>
 <p>Arrays can be allocated similar to PyTorch:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># allocate an uninitizalized array of vec3s</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># allocate an uninitialized array of vec3s</span>
 <span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
 
 <span class="c1"># allocate a zero-initialized array of quaternions</span>
 <span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">quat</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
 
-<span class="c1"># allocate and initialize an array from a numpy array</span>
+<span class="c1"># allocate and initialize an array from a NumPy array</span>
 <span class="c1"># will be automatically transferred to the specified device</span>
 <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 <span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
@@ -245,7 +247,7 @@
 <span class="n">view</span> <span class="o">=</span> <span class="n">device_array</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>This pattern will allocate a temporary CPU buffer, perform a copy from device-&gt;host memory, and return a numpy view onto it. To avoid allocating temporary buffers this process can be managed explicitly:</p>
+<p>This pattern will allocate a temporary CPU buffer, perform a copy from device-&gt;host memory, and return a NumPy view onto it. To avoid allocating temporary buffers this process can be managed explicitly:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># manually bring data back to host</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">host_array</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">device_array</span><span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
@@ -263,25 +265,25 @@
 </div>
 </div>
 <div class="section" id="memory-model">
-<h2>Memory Model<a class="headerlink" href="#memory-model" title="Permalink to this headline">¶</a></h2>
+<h2>Memory Model<a class="headerlink" href="#memory-model" title="Permalink to this heading">¶</a></h2>
 <p>Memory allocations are exposed via the <code class="docutils literal notranslate"><span class="pre">warp.array</span></code> type. Arrays wrap an underlying memory allocation that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (<code class="docutils literal notranslate"><span class="pre">vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">matrix33</span></code>, etc).</p>
-<p>Arrays may be constructed from Python lists or numpy arrays; by default, data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the <code class="docutils literal notranslate"><span class="pre">copy=False</span></code> parameter to the array constructor.</p>
+<p>Arrays may be constructed from Python lists or NumPy arrays; by default, data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the <code class="docutils literal notranslate"><span class="pre">copy=False</span></code> parameter to the array constructor.</p>
 </div>
 <div class="section" id="compilation-model">
-<h2>Compilation Model<a class="headerlink" href="#compilation-model" title="Permalink to this headline">¶</a></h2>
+<h2>Compilation Model<a class="headerlink" href="#compilation-model" title="Permalink to this heading">¶</a></h2>
 <p>Warp uses a Python-&gt;C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries and PTX, the result is then cached between application restarts for fast startup times.</p>
 <p>Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> will be included in the shared library.</p>
 <img alt="../_images/compiler_pipeline.png" src="../_images/compiler_pipeline.png" />
 </div>
 <div class="section" id="language-details">
-<h2>Language Details<a class="headerlink" href="#language-details" title="Permalink to this headline">¶</a></h2>
+<h2>Language Details<a class="headerlink" href="#language-details" title="Permalink to this heading">¶</a></h2>
 <p>To support GPU computation and differentiability, there are some differences from the CPython runtime.</p>
 <div class="section" id="built-in-types">
-<h3>Built-in Types<a class="headerlink" href="#built-in-types" title="Permalink to this headline">¶</a></h3>
+<h3>Built-in Types<a class="headerlink" href="#built-in-types" title="Permalink to this heading">¶</a></h3>
 <p>Warp supports a number of built-in math types similar to high-level shading languages, for example <code class="docutils literal notranslate"><span class="pre">vec2,</span> <span class="pre">vec3,</span> <span class="pre">vec4,</span> <span class="pre">mat22,</span> <span class="pre">mat33,</span> <span class="pre">mat44,</span> <span class="pre">quat,</span> <span class="pre">array</span></code>. All built-in types have value semantics so that expressions such as <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">b</span></code> generate a copy of the variable b rather than a reference.</p>
 </div>
 <div class="section" id="strong-typing">
-<h3>Strong Typing<a class="headerlink" href="#strong-typing" title="Permalink to this headline">¶</a></h3>
+<h3>Strong Typing<a class="headerlink" href="#strong-typing" title="Permalink to this heading">¶</a></h3>
 <p>Unlike Python, in Warp all variables must be typed. Types are inferred from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span> <span class="nf">simple_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">vec3</span><span class="p">),</span>
@@ -299,7 +301,7 @@
 </div>
 </div>
 <div class="section" id="immutable-types">
-<h3>Immutable Types<a class="headerlink" href="#immutable-types" title="Permalink to this headline">¶</a></h3>
+<h3>Immutable Types<a class="headerlink" href="#immutable-types" title="Permalink to this heading">¶</a></h3>
 <p>Similar to Python tuples, built-in value types are immutable, and users should use construction syntax to mutate existing variables, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
 
@@ -312,7 +314,7 @@
 </div>
 </div>
 <div class="section" id="unsupported-features">
-<h3>Unsupported Features<a class="headerlink" href="#unsupported-features" title="Permalink to this headline">¶</a></h3>
+<h3>Unsupported Features<a class="headerlink" href="#unsupported-features" title="Permalink to this heading">¶</a></h3>
 <p>To achieve good performance on GPUs some dynamic language features are not supported:</p>
 <ul class="simple">
 <li><p>Array slicing notation</p></li>

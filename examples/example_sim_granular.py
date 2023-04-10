@@ -15,8 +15,6 @@
 
 import os
 
-import numpy as np
-
 import warp as wp
 import warp.sim
 import warp.sim.render
@@ -65,7 +63,7 @@ class Example:
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
     def update(self):
 

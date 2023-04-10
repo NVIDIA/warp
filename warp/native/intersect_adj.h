@@ -45,7 +45,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     bool var_11;
     bool var_12;
     bool var_13;
-    vec3 var_14;
+    // vec3 var_14;
     bool var_15;
     float32 var_16;
     float32 var_17;
@@ -102,7 +102,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     vec3 var_68;
     vec3 var_69;
     float32 var_70;
-    vec3 var_71;
+    // vec3 var_71;
     //---------
     // dual vars
     vec3 adj_0 = 0;
@@ -193,7 +193,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     var_12 = (var_4 <= var_epsilon);
     var_13 = var_11 && var_12;
     if (var_13) {
-    	var_14 = wp::vec3(var_7, var_8, var_10);
+    	// var_14 = wp::vec3(var_7, var_8, var_10);
     	goto label0;
     }
     var_15 = (var_3 <= var_epsilon);
@@ -269,7 +269,7 @@ static CUDA_CALLABLE void adj_closest_point_edge_edge(vec3 var_p1,
     var_68 = wp::add(var_p2, var_67);
     var_69 = wp::sub(var_68, var_65);
     var_70 = wp::length(var_69);
-    var_71 = wp::vec3(var_61, var_62, var_70);
+    // var_71 = wp::vec3(var_61, var_62, var_70);
     goto label1;
     //---------
     // reverse

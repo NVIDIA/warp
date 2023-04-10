@@ -10,14 +10,14 @@ models + state forward in time.
 
 """
 
-import math
-import time
-
-import numpy as np
 import warp as wp
 
-from . optimizer import Optimizer
-from . particles import eval_particle_forces
+from .model import ModelShapeMaterials, ModelShapeGeometry
+
+from .optimizer import Optimizer
+from .particles import eval_particle_forces
+from .collide import triangle_closest_point_barycentric
+from .utils import quat_decompose, quat_twist
 
 
 @wp.kernel
@@ -57,7 +57,9 @@ def integrate_bodies(body_q: wp.array(dtype=wp.transform),
                      inv_m: wp.array(dtype=float),
                      inv_I: wp.array(dtype=wp.mat33),
                      gravity: wp.vec3,
+                     angular_damping: float,
                      dt: float,
+                     # outputs
                      body_q_new: wp.array(dtype=wp.transform),
                      body_qd_new: wp.array(dtype=wp.spatial_vector)):
 
@@ -100,8 +102,8 @@ def integrate_bodies(body_q: wp.array(dtype=wp.transform),
     w1 = wp.quat_rotate(r0, wb + inv_inertia * tb * dt)
     r1 = wp.normalize(r0 + wp.quat(w1, 0.0) * r0 * 0.5 * dt)
 
-    # angular damping, todo: expose
-    w1 = w1*(1.0-0.1*dt)
+    # angular damping
+    w1 *= 1.0 - angular_damping*dt
 
     body_q_new[tid] = wp.transform(x1 - wp.quat_rotate(r1, body_com[tid]), r1)
     body_qd_new[tid] = wp.spatial_vector(w1, v1)
@@ -293,53 +295,6 @@ def eval_triangles(x: wp.array(dtype=wp.vec3),
     wp.atomic_sub(f, j, f1)
     wp.atomic_sub(f, k, f2)
 
-
-@wp.func
-def triangle_closest_point_barycentric(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
-    ab = b - a
-    ac = c - a
-    ap = p - a
-
-    d1 = wp.dot(ab, ap)
-    d2 = wp.dot(ac, ap)
-
-    if (d1 <= 0.0 and d2 <= 0.0):
-        return vec3(1.0, 0.0, 0.0)
-
-    bp = p - b
-    d3 = wp.dot(ab, bp)
-    d4 = wp.dot(ac, bp)
-
-    if (d3 >= 0.0 and d4 <= d3):
-        return vec3(0.0, 1.0, 0.0)
-
-    vc = d1 * d4 - d3 * d2
-    v = d1 / (d1 - d3)
-    if (vc <= 0.0 and d1 >= 0.0 and d3 <= 0.0):
-        return vec3(1.0 - v, v, 0.0)
-
-    cp = p - c
-    d5 = dot(ab, cp)
-    d6 = dot(ac, cp)
-
-    if (d6 >= 0.0 and d5 <= d6):
-        return vec3(0.0, 0.0, 1.0)
-
-    vb = d5 * d2 - d1 * d6
-    w = d2 / (d2 - d6)
-    if (vb <= 0.0 and d2 >= 0.0 and d6 <= 0.0):
-        return vec3(1.0 - w, 0.0, w)
-
-    va = d3 * d6 - d5 * d4
-    w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
-    if (va <= 0.0 and (d4 - d3) >= 0.0 and (d5 - d6) >= 0.0):
-        return vec3(0.0, w, 1.0 - w)
-
-    denom = 1.0 / (va + vb + vc)
-    v = vb * denom
-    w = vc * denom
-
-    return vec3(1.0 - v - w, v, w)
 
 # @wp.func
 # def triangle_closest_point(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
@@ -823,7 +778,7 @@ def eval_tetrahedra(x: wp.array(dtype=wp.vec3),
 
 
 @wp.kernel
-def eval_contacts(particle_x: wp.array(dtype=wp.vec3), particle_v: wp.array(dtype=wp.vec3), ke: float, kd: float, kf: float, mu: float, offset: float, ground: wp.vec4, f: wp.array(dtype=wp.vec3)):
+def eval_contacts(particle_x: wp.array(dtype=wp.vec3), particle_v: wp.array(dtype=wp.vec3), ke: float, kd: float, kf: float, mu: float, offset: float, ground: wp.array(dtype=float), f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()           
 
@@ -858,9 +813,6 @@ def eval_contacts(particle_x: wp.array(dtype=wp.vec3), particle_v: wp.array(dtyp
     f[tid] = f[tid] -n*fn - vt*ft
 
 
-
-
-
 @wp.kernel
 def eval_soft_contacts(
     particle_x: wp.array(dtype=wp.vec3), 
@@ -868,14 +820,16 @@ def eval_soft_contacts(
     body_q: wp.array(dtype=wp.transform),
     body_qd: wp.array(dtype=wp.spatial_vector),
     body_com: wp.array(dtype=wp.vec3),
-    ke: float,
-    kd: float, 
-    kf: float,
-    ka: float,
-    mu: float,
+    shape_body: wp.array(dtype=int),
+    shape_materials: ModelShapeMaterials,
+    particle_ke: float,
+    particle_kd: float,
+    particle_kf: float,
+    particle_mu: float,
+    particle_ka: float,
     contact_count: wp.array(dtype=int),
     contact_particle: wp.array(dtype=int),
-    contact_body: wp.array(dtype=int),
+    contact_shape: wp.array(dtype=int),
     contact_body_pos: wp.array(dtype=wp.vec3),
     contact_body_vel: wp.array(dtype=wp.vec3),
     contact_normal: wp.array(dtype=wp.vec3),
@@ -891,7 +845,8 @@ def eval_soft_contacts(
     if (tid >= count):
         return
         
-    body_index = contact_body[tid]
+    shape_index = contact_shape[tid]
+    body_index = shape_body[shape_index]
     particle_index = contact_particle[tid]
 
     px = particle_x[particle_index]
@@ -899,10 +854,12 @@ def eval_soft_contacts(
 
     X_wb = wp.transform_identity()
     X_com = wp.vec3()
+    body_v_s = wp.spatial_vector()
     
     if (body_index >= 0):
         X_wb = body_q[body_index]
         X_com = body_com[body_index]
+        body_v_s = body_qd[body_index]
 
     # body position in world space
     bx = wp.transform_point(X_wb, contact_body_pos[tid])
@@ -911,13 +868,14 @@ def eval_soft_contacts(
     n = contact_normal[tid]
     c = wp.dot(n, px-bx) - contact_distance
     
-    if (c > ka):
+    if (c > particle_ka):
         return
 
-    # body velocity
-    body_v_s = wp.spatial_vector()
-    if (body_index >= 0):
-        body_v_s = body_qd[body_index]
+    # take average material properties of shape and particle parameters
+    ke = 0.5 * (particle_ke + shape_materials.ke[shape_index])
+    kd = 0.5 * (particle_kd + shape_materials.kd[shape_index])
+    kf = 0.5 * (particle_kf + shape_materials.kf[shape_index])
+    mu = 0.5 * (particle_mu + shape_materials.mu[shape_index])
     
     body_w = wp.spatial_top(body_v_s)
     body_v = wp.spatial_bottom(body_v_s)
@@ -962,165 +920,144 @@ def eval_soft_contacts(
         wp.atomic_add(body_f, body_index, wp.spatial_vector(t_total, f_total))
 
 
-
 @wp.kernel
-def eval_body_contacts(body_q: wp.array(dtype=wp.transform),
-                       body_qd: wp.array(dtype=wp.spatial_vector),
-                       body_com: wp.array(dtype=wp.vec3),
-                       contact_body: wp.array(dtype=int),
-                       contact_point: wp.array(dtype=wp.vec3),
-                       contact_dist: wp.array(dtype=float),
-                       contact_mat: wp.array(dtype=int),
-                       materials: wp.array(dtype=wp.vec4),
-                       body_f: wp.array(dtype=wp.spatial_vector)):
+def eval_rigid_contacts(
+    body_q: wp.array(dtype=wp.transform),
+    body_qd: wp.array(dtype=wp.spatial_vector),
+    body_com: wp.array(dtype=wp.vec3),
+    shape_materials: ModelShapeMaterials,
+    geo: ModelShapeGeometry,
+    contact_count: wp.array(dtype=int),
+    contact_body0: wp.array(dtype=int),
+    contact_body1: wp.array(dtype=int),
+    contact_point0: wp.array(dtype=wp.vec3),
+    contact_point1: wp.array(dtype=wp.vec3),
+    contact_normal: wp.array(dtype=wp.vec3),
+    contact_shape0: wp.array(dtype=int),
+    contact_shape1: wp.array(dtype=int),
+    # outputs
+    body_f: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
-
-    c_body = contact_body[tid]
-    c_point = contact_point[tid]
-    c_dist = contact_dist[tid]
-    c_mat = contact_mat[tid]
-
-    X_wb = body_q[c_body]
-    v_wc = body_qd[c_body]
-
-    # unpack spatial twist
-    w = wp.spatial_top(v_wc)
-    v = wp.spatial_bottom(v_wc)
-
-    n = vec3(0.0, 1.0, 0.0)
-
-    # transform point to world space
-    cp = wp.transform_point(X_wb, c_point) - n * c_dist # add on 'thickness' of shape, e.g.: radius of sphere/capsule
-
-    # moment arm around center of mass
-    r = cp - wp.transform_point(X_wb, body_com[c_body])
-
-    # contact point velocity
-    dpdt = v + wp.cross(w, r)     
-
-    # check ground contact
-    c = wp.dot(n, cp)
-
-    if (c > 0.0):
+    if (contact_shape0[tid] == contact_shape1[tid]):
         return
 
-    # hard coded surface parameter tensor layout (ke, kd, kf, mu)
-    mat = materials[c_mat]
+    count = contact_count[0]
+    if (tid >= count):
+        return
 
-    ke = mat[0]       # restitution coefficient
-    kd = mat[1]       # damping coefficient
-    kf = mat[2]       # friction coefficient
-    mu = mat[3]       # coulomb friction
+    # retrieve contact thickness, compute average contact material properties    
+    ke = 0.0       # restitution coefficient
+    kd = 0.0       # damping coefficient
+    kf = 0.0       # friction coefficient
+    mu = 0.0       # coulomb friction
+    mat_nonzero = 0
+    thickness_a = 0.0
+    thickness_b = 0.0
+    shape_a = contact_shape0[tid]
+    shape_b = contact_shape1[tid]
+    if (shape_a >= 0):
+        mat_nonzero += 1
+        ke += shape_materials.ke[shape_a]
+        kd += shape_materials.kd[shape_a]
+        kf += shape_materials.kf[shape_a]
+        mu += shape_materials.mu[shape_a]
+        thickness_a = geo.thickness[shape_a]
+    if (shape_b >= 0):
+        mat_nonzero += 1
+        ke += shape_materials.ke[shape_b]
+        kd += shape_materials.kd[shape_b]
+        kf += shape_materials.kf[shape_b]
+        mu += shape_materials.mu[shape_b]
+        thickness_b = geo.thickness[shape_b]
+    if (mat_nonzero > 0):
+        ke = ke / float(mat_nonzero)
+        kd = kd / float(mat_nonzero)
+        kf = kf / float(mat_nonzero)
+        mu = mu / float(mat_nonzero)
+        
+    body_a = contact_body0[tid]
+    body_b = contact_body1[tid]
 
-    vn = wp.dot(n, dpdt)     
-    vt = dpdt - n * vn       
+    # body position in world space
+    n = contact_normal[tid]
+    bx_a = contact_point0[tid]
+    bx_b = contact_point1[tid]
+    if (body_a >= 0):
+        X_wb_a = body_q[body_a]
+        X_com_a = body_com[body_a]
+        bx_a = wp.transform_point(X_wb_a, bx_a) - thickness_a * n
+        r_a = bx_a - wp.transform_point(X_wb_a, X_com_a)
 
-    # normal force
-    fn = c * ke    
+    if (body_b >= 0):
+        X_wb_b = body_q[body_b]
+        X_com_b = body_com[body_b]
+        bx_b = wp.transform_point(X_wb_b, bx_b) + thickness_b * n
+        r_b = bx_b - wp.transform_point(X_wb_b, X_com_b)
+    
+    d = wp.dot(n, bx_a-bx_b)
+    
+    if (d >= 0.0):
+        return
 
-    # damping force
-    fd = wp.min(vn, 0.0) * kd * wp.step(c)       # again, velocity into the ground, negative
+
+    # compute contact point velocity
+    bv_a = wp.vec3(0.0)
+    bv_b = wp.vec3(0.0)
+    if (body_a >= 0):
+        body_v_s_a = body_qd[body_a]    
+        body_w_a = wp.spatial_top(body_v_s_a)
+        body_v_a = wp.spatial_bottom(body_v_s_a)
+        bv_a = body_v_a + wp.cross(body_w_a, r_a)
+
+    if (body_b >= 0):
+        body_v_s_b = body_qd[body_b]    
+        body_w_b = wp.spatial_top(body_v_s_b)
+        body_v_b = wp.spatial_bottom(body_v_s_b)
+        bv_b = body_v_b + wp.cross(body_w_b, r_b)
+
+    # relative velocity
+    v = bv_a - bv_b
+
+    # print(v)
+
+    # decompose relative velocity
+    vn = wp.dot(n, v)
+    vt = v - n * vn
+    
+    # contact elastic
+    fn = d * ke
+
+    # contact damping
+    fd = wp.min(vn, 0.0) * kd * wp.step(d)
 
     # viscous friction
-    #ft = vt*kf
+    # ft = vt*kf
 
-    # # Coulomb friction (box)
-    # lower = mu * (fn + fd)   # negative
-    # upper = 0.0 - lower      # positive, workaround for no unary ops
+    # Coulomb friction (box)
+    # lower = mu * d * ke
+    # upper = 0.0 - lower
 
-    # vx = wp.clamp(wp.dot(vec3(kf, 0.0, 0.0), vt), lower, upper)
-    # vz = wp.clamp(wp.dot(vec3(0.0, 0.0, kf), vt), lower, upper)
+    # vx = wp.clamp(wp.dot(wp.vec3(kf, 0.0, 0.0), vt), lower, upper)
+    # vz = wp.clamp(wp.dot(wp.vec3(0.0, 0.0, kf), vt), lower, upper)
 
-    # ft = wp.vec3(vx, 0.0, vz) * wp.step(c)
+    # ft = wp.vec3(vx, 0.0, vz)
 
     # Coulomb friction (smooth, but gradients are numerically unstable around |vt| = 0)
+    # ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), abs(mu*d*ke))
     ft = wp.normalize(vt)*wp.min(kf*wp.length(vt), 0.0 - mu*(fn + fd))
 
+    # f_total = fn + (fd + ft)
     f_total = n * (fn + fd) + ft
-    t_total = wp.cross(r, f_total)
+    # t_total = wp.cross(r, f_total)
 
-    wp.atomic_sub(body_f, c_body, wp.spatial_vector(t_total, f_total))
+    # print("apply contact force")
+    # print(f_total)
 
-# # Frank & Park definition 3.20, pg 100
-@wp.func
-def transform_twist(t: wp.transform, x: wp.spatial_vector):
-
-    q = transform_get_rotation(t)
-    p = transform_get_translation(t)
-
-    w = spatial_top(x)
-    v = spatial_bottom(x)
-
-    w = quat_rotate(q, w)
-    v = quat_rotate(q, v) + cross(p, w)
-
-    return wp.spatial_vector(w, v)
-
-
-@wp.func
-def transform_wrench(t: wp.transform, x: wp.spatial_vector):
-
-    q = transform_get_rotation(t)
-    p = transform_get_translation(t)
-
-    w = spatial_top(x)
-    v = spatial_bottom(x)
-
-    v = quat_rotate(q, v)
-    w = quat_rotate(q, w) + cross(p, v)
-
-    return wp.spatial_vector(w, v)
-
-
-# computes adj_t^-T*I*adj_t^-1 (tensor change of coordinates), Frank & Park, section 8.2.3, pg 290
-@wp.func
-def transform_inertia(t: wp.transform, I: wp.spatial_matrix):
-
-    t_inv = transform_inverse(t)
-
-    q = transform_get_rotation(t_inv)
-    p = transform_get_translation(t_inv)
-
-    r1 = quat_rotate(q, vec3(1.0, 0.0, 0.0))
-    r2 = quat_rotate(q, vec3(0.0, 1.0, 0.0))
-    r3 = quat_rotate(q, vec3(0.0, 0.0, 1.0))
-
-    R = mat33(r1, r2, r3)
-    S = mul(skew(p), R)
-
-    T = spatial_adjoint(R, S)
-    
-    return mul(mul(transpose(T), I), T)
-
-
-# returns the twist around an axis
-@wp.func
-def quat_twist(axis: wp.vec3, q: wp.quat):
-    
-    # project imaginary part onto axis
-    a = wp.vec3(q[0], q[1], q[2])
-    a = wp.dot(a, axis)*axis
-
-    return wp.normalize(wp.quat(a[0], a[1], a[2], q[3]))
-
-
-# decompose a quaternion into a sequence of 3 rotations around x,y',z' respectively, i.e.: q = q_z''q_y'q_x
-@wp.func
-def quat_decompose(q: wp.quat):
-
-    R = wp.mat33(
-            wp.quat_rotate(q, wp.vec3(1.0, 0.0, 0.0)),
-            wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0)),
-            wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0)))
-
-    # https://www.sedris.org/wg8home/Documents/WG80485.pdf
-    phi = wp.atan2(R[1, 2], R[2, 2])
-    theta = wp.asin(-R[0, 2])
-    psi = wp.atan2(R[0, 1], R[0, 0])
-
-    return -wp.vec3(phi, theta, psi)
-
+    if (body_a >= 0):
+        wp.atomic_sub(body_f, body_a, wp.spatial_vector(wp.cross(r_a, f_total), f_total))
+    if (body_b >= 0):
+        wp.atomic_add(body_f, body_b, wp.spatial_vector(wp.cross(r_b, f_total), f_total))
 
 @wp.func
 def eval_joint_force(q: float,
@@ -1157,10 +1094,14 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
                      joint_q_start: wp.array(dtype=int),
                      joint_qd_start: wp.array(dtype=int),
                      joint_type: wp.array(dtype=int),
+                     joint_enabled: wp.array(dtype=int),
+                     joint_child: wp.array(dtype=int),
                      joint_parent: wp.array(dtype=int),
                      joint_X_p: wp.array(dtype=wp.transform),
                      joint_X_c: wp.array(dtype=wp.transform),
                      joint_axis: wp.array(dtype=wp.vec3),
+                     joint_axis_start: wp.array(dtype=int),
+                     joint_axis_dim: wp.array(dtype=int, ndim=2),
                      joint_target: wp.array(dtype=float),
                      joint_act: wp.array(dtype=float),
                      joint_target_ke: wp.array(dtype=float),
@@ -1174,8 +1115,13 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
                      body_f: wp.array(dtype=wp.spatial_vector)):
 
     tid = wp.tid()
+    type = joint_type[tid]
+    
+    # early out for free joints
+    if (joint_enabled[tid] == 0 or type == wp.sim.JOINT_FREE):
+        return
 
-    c_child = tid
+    c_child = joint_child[tid]
     c_parent = joint_parent[tid]
 
     X_pj = joint_X_p[tid]
@@ -1197,7 +1143,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         v_p = wp.spatial_bottom(twist_p) + wp.cross(w_p, r_p)
 
     # child transform and moment arm
-    X_wc = body_q[c_child]#*X_cj
+    X_wc = body_q[c_child]*X_cj
     r_c = wp.transform_get_translation(X_wc) - wp.transform_point(body_q[c_child], body_com[c_child])
     
     twist_c = body_qd[c_child]
@@ -1208,16 +1154,15 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     # joint properties (for 1D joints)
     q_start = joint_q_start[tid]
     qd_start = joint_qd_start[tid]
-    type = joint_type[tid]
-    axis = joint_axis[tid]
+    axis_start = joint_axis_start[tid]
 
-    target = joint_target[qd_start]
-    target_ke = joint_target_ke[qd_start]
-    target_kd = joint_target_kd[qd_start]
-    limit_ke = joint_limit_ke[qd_start]
-    limit_kd = joint_limit_kd[qd_start]
-    limit_lower = joint_limit_lower[qd_start]
-    limit_upper = joint_limit_upper[qd_start]
+    target = joint_target[axis_start]
+    target_ke = joint_target_ke[axis_start]
+    target_kd = joint_target_kd[axis_start]
+    limit_ke = joint_limit_ke[axis_start]
+    limit_kd = joint_limit_kd[axis_start]
+    limit_lower = joint_limit_lower[axis_start]
+    limit_upper = joint_limit_upper[axis_start]
     
     act = joint_act[qd_start]
 
@@ -1240,9 +1185,6 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     # reduce angular damping stiffness for stability
     angular_damping_scale = 0.01
 
-    # early out for free joints
-    if (type == wp.sim.JOINT_FREE):
-        return
 
     if type == wp.sim.JOINT_FIXED:
 
@@ -1253,9 +1195,10 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     
 
     if type == wp.sim.JOINT_PRISMATIC:
+        axis = joint_axis[axis_start]
         
         # world space joint axis
-        axis_p = wp.transform_vector(X_wp, joint_axis[tid])
+        axis_p = wp.transform_vector(X_wp, axis)
 
         # evaluate joint coordinates
         q = wp.dot(x_err, axis_p)
@@ -1272,11 +1215,12 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
 
 
     if type == wp.sim.JOINT_REVOLUTE:
+        axis = joint_axis[axis_start]
         
         axis_p = wp.transform_vector(X_wp, axis)
         axis_c = wp.transform_vector(X_wc, axis)
 
-        # swing twist decomposition
+        # swing twist decomposition      
         twist = quat_twist(axis, r_err)
 
         q = wp.acos(twist[3])*2.0*wp.sign(wp.dot(axis, wp.vec3(twist[0], twist[1], twist[2])))
@@ -1301,36 +1245,7 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
     
     if type == wp.sim.JOINT_COMPOUND:
 
-        q_off = wp.transform_get_rotation(X_cj)
-        q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
-        
-        # decompose to a compound rotation each axis 
-        angles = quat_decompose(q_pc)
-
-        # reconstruct rotation axes
-        axis_0 = wp.vec3(1.0, 0.0, 0.0)
-        q_0 = wp.quat_from_axis_angle(axis_0, angles[0])
-
-        axis_1 = wp.quat_rotate(q_0, wp.vec3(0.0, 1.0, 0.0))
-        q_1 = wp.quat_from_axis_angle(axis_1, angles[1])
-
-        axis_2 = wp.quat_rotate(q_1*q_0, wp.vec3(0.0, 0.0, 1.0))
-        q_2 = wp.quat_from_axis_angle(axis_2, angles[2])
-
-        q_w = q_p*q_off
-
-        # joint dynamics
-        t_total = wp.vec3()
-        t_total += eval_joint_force(angles[0], wp.dot(wp.quat_rotate(q_w, axis_0), w_err), joint_target[qd_start+0], joint_target_ke[qd_start+0],joint_target_kd[qd_start+0], joint_act[qd_start+0], joint_limit_lower[qd_start+0], joint_limit_upper[qd_start+0], joint_limit_ke[qd_start+0], joint_limit_kd[qd_start+0], wp.quat_rotate(q_w, axis_0))
-        t_total += eval_joint_force(angles[1], wp.dot(wp.quat_rotate(q_w, axis_1), w_err), joint_target[qd_start+1], joint_target_ke[qd_start+1],joint_target_kd[qd_start+1], joint_act[qd_start+1], joint_limit_lower[qd_start+1], joint_limit_upper[qd_start+1], joint_limit_ke[qd_start+1], joint_limit_kd[qd_start+1], wp.quat_rotate(q_w, axis_1))
-        t_total += eval_joint_force(angles[2], wp.dot(wp.quat_rotate(q_w, axis_2), w_err), joint_target[qd_start+2], joint_target_ke[qd_start+2],joint_target_kd[qd_start+2], joint_act[qd_start+2], joint_limit_lower[qd_start+2], joint_limit_upper[qd_start+2], joint_limit_ke[qd_start+2], joint_limit_kd[qd_start+2], wp.quat_rotate(q_w, axis_2))
-        
-        f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
-
-    if type == wp.sim.JOINT_UNIVERSAL:
-
-        q_off = wp.transform_get_rotation(X_cj)
-        q_pc = wp.quat_inverse(q_off)*wp.quat_inverse(q_p)*q_c*q_off
+        q_pc = wp.quat_inverse(q_p)*q_c
        
         # decompose to a compound rotation each axis 
         angles = quat_decompose(q_pc)
@@ -1345,17 +1260,65 @@ def eval_body_joints(body_q: wp.array(dtype=wp.transform),
         axis_2 = wp.quat_rotate(q_1*q_0, wp.vec3(0.0, 0.0, 1.0))
         q_2 = wp.quat_from_axis_angle(axis_2, angles[2])
 
-        q_w = q_p*q_off
+        q_w = q_p
+
+        axis_0 = wp.transform_vector(X_wp, axis_0)
+        axis_1 = wp.transform_vector(X_wp, axis_1)
+        axis_2 = wp.transform_vector(X_wp, axis_2)
+
+        # joint dynamics
+        t_total = wp.vec3()
+        # # TODO remove wp.quat_rotate(q_w, ...)?
+        # t_total += eval_joint_force(angles[0], wp.dot(wp.quat_rotate(q_w, axis_0), w_err), joint_target[axis_start+0], joint_target_ke[axis_start+0],joint_target_kd[axis_start+0], joint_act[axis_start+0], joint_limit_lower[axis_start+0], joint_limit_upper[axis_start+0], joint_limit_ke[axis_start+0], joint_limit_kd[axis_start+0], wp.quat_rotate(q_w, axis_0))
+        # t_total += eval_joint_force(angles[1], wp.dot(wp.quat_rotate(q_w, axis_1), w_err), joint_target[axis_start+1], joint_target_ke[axis_start+1],joint_target_kd[axis_start+1], joint_act[axis_start+1], joint_limit_lower[axis_start+1], joint_limit_upper[axis_start+1], joint_limit_ke[axis_start+1], joint_limit_kd[axis_start+1], wp.quat_rotate(q_w, axis_1))
+        # t_total += eval_joint_force(angles[2], wp.dot(wp.quat_rotate(q_w, axis_2), w_err), joint_target[axis_start+2], joint_target_ke[axis_start+2],joint_target_kd[axis_start+2], joint_act[axis_start+2], joint_limit_lower[axis_start+2], joint_limit_upper[axis_start+2], joint_limit_ke[axis_start+2], joint_limit_kd[axis_start+2], wp.quat_rotate(q_w, axis_2))
+        
+        t_total += eval_joint_force(angles[0], wp.dot(axis_0, w_err), joint_target[axis_start+0], joint_target_ke[axis_start+0],joint_target_kd[axis_start+0], joint_act[axis_start+0], joint_limit_lower[axis_start+0], joint_limit_upper[axis_start+0], joint_limit_ke[axis_start+0], joint_limit_kd[axis_start+0], axis_0)
+        t_total += eval_joint_force(angles[1], wp.dot(axis_1, w_err), joint_target[axis_start+1], joint_target_ke[axis_start+1],joint_target_kd[axis_start+1], joint_act[axis_start+1], joint_limit_lower[axis_start+1], joint_limit_upper[axis_start+1], joint_limit_ke[axis_start+1], joint_limit_kd[axis_start+1], axis_1)
+        t_total += eval_joint_force(angles[2], wp.dot(axis_2, w_err), joint_target[axis_start+2], joint_target_ke[axis_start+2],joint_target_kd[axis_start+2], joint_act[axis_start+2], joint_limit_lower[axis_start+2], joint_limit_upper[axis_start+2], joint_limit_ke[axis_start+2], joint_limit_kd[axis_start+2], axis_2)
+        
+        f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
+
+    if type == wp.sim.JOINT_UNIVERSAL:
+
+        q_pc = wp.quat_inverse(q_p)*q_c
+       
+        # decompose to a compound rotation each axis 
+        angles = quat_decompose(q_pc)
+
+        # reconstruct rotation axes
+        axis_0 = wp.vec3(1.0, 0.0, 0.0)
+        q_0 = wp.quat_from_axis_angle(axis_0, angles[0])
+
+        axis_1 = wp.quat_rotate(q_0, wp.vec3(0.0, 1.0, 0.0))
+        q_1 = wp.quat_from_axis_angle(axis_1, angles[1])
+
+        axis_2 = wp.quat_rotate(q_1*q_0, wp.vec3(0.0, 0.0, 1.0))
+        q_2 = wp.quat_from_axis_angle(axis_2, angles[2])
+
+        q_w = q_p
+        
+        axis_0 = wp.transform_vector(X_wp, axis_0)
+        axis_1 = wp.transform_vector(X_wp, axis_1)
+        axis_2 = wp.transform_vector(X_wp, axis_2)
 
         # joint dynamics
         t_total = wp.vec3()
 
         # free axes
-        t_total += eval_joint_force(angles[0], wp.dot(wp.quat_rotate(q_w, axis_0), w_err), joint_target[qd_start+0], joint_target_ke[qd_start+0],joint_target_kd[qd_start+0], joint_act[qd_start+0], joint_limit_lower[qd_start+0], joint_limit_upper[qd_start+0], joint_limit_ke[qd_start+0], joint_limit_kd[qd_start+0], wp.quat_rotate(q_w, axis_0))
-        t_total += eval_joint_force(angles[1], wp.dot(wp.quat_rotate(q_w, axis_1), w_err), joint_target[qd_start+1], joint_target_ke[qd_start+1],joint_target_kd[qd_start+1], joint_act[qd_start+1], joint_limit_lower[qd_start+1], joint_limit_upper[qd_start+1], joint_limit_ke[qd_start+1], joint_limit_kd[qd_start+1], wp.quat_rotate(q_w, axis_1))
+        # # TODO remove wp.quat_rotate(q_w, ...)?
+        # t_total += eval_joint_force(angles[0], wp.dot(wp.quat_rotate(q_w, axis_0), w_err), joint_target[axis_start+0], joint_target_ke[axis_start+0],joint_target_kd[axis_start+0], joint_act[axis_start+0], joint_limit_lower[axis_start+0], joint_limit_upper[axis_start+0], joint_limit_ke[axis_start+0], joint_limit_kd[axis_start+0], wp.quat_rotate(q_w, axis_0))
+        # t_total += eval_joint_force(angles[1], wp.dot(wp.quat_rotate(q_w, axis_1), w_err), joint_target[axis_start+1], joint_target_ke[axis_start+1],joint_target_kd[axis_start+1], joint_act[axis_start+1], joint_limit_lower[axis_start+1], joint_limit_upper[axis_start+1], joint_limit_ke[axis_start+1], joint_limit_kd[axis_start+1], wp.quat_rotate(q_w, axis_1))
+        
+        # # last axis (fixed)
+        # t_total += eval_joint_force(angles[2], wp.dot(wp.quat_rotate(q_w, axis_2), w_err), 0.0, joint_attach_ke, joint_attach_kd*angular_damping_scale, 0.0, 0.0, 0.0, 0.0, 0.0, wp.quat_rotate(q_w, axis_2))
+
+        # TODO remove wp.quat_rotate(q_w, ...)?
+        t_total += eval_joint_force(angles[0], wp.dot(axis_0, w_err), joint_target[axis_start+0], joint_target_ke[axis_start+0],joint_target_kd[axis_start+0], joint_act[axis_start+0], joint_limit_lower[axis_start+0], joint_limit_upper[axis_start+0], joint_limit_ke[axis_start+0], joint_limit_kd[axis_start+0], axis_0)
+        t_total += eval_joint_force(angles[1], wp.dot(axis_1, w_err), joint_target[axis_start+1], joint_target_ke[axis_start+1],joint_target_kd[axis_start+1], joint_act[axis_start+1], joint_limit_lower[axis_start+1], joint_limit_upper[axis_start+1], joint_limit_ke[axis_start+1], joint_limit_kd[axis_start+1], axis_1)
         
         # last axis (fixed)
-        t_total += eval_joint_force(angles[2], wp.dot(wp.quat_rotate(q_w, axis_2), w_err), 0.0, joint_attach_ke, joint_attach_kd*angular_damping_scale, 0.0, 0.0, 0.0, 0.0, 0.0, wp.quat_rotate(q_w, axis_2))
+        t_total += eval_joint_force(angles[2], wp.dot(axis_2, w_err), 0.0, joint_attach_ke, joint_attach_kd*angular_damping_scale, 0.0, 0.0, 0.0, 0.0, 0.0, axis_2)
 
         f_total += x_err*joint_attach_ke + v_err*joint_attach_kd
 
@@ -1428,7 +1391,7 @@ def eval_muscles(
         compute_muscle_force(i, body_X_s, body_v_s, body_com, muscle_links, muscle_points, activation, body_f_s)
     
 
-def compute_forces(model, state, particle_f, body_f):
+def compute_forces(model, state, particle_f, body_f, requires_grad):
 
     # damped springs
     if (model.spring_count):
@@ -1513,58 +1476,65 @@ def compute_forces(model, state, particle_f, body_f):
                   outputs=[particle_f],
                   device=model.device)
 
-    if (model.body_count and model.contact_count > 0 and model.ground):
-
-        wp.launch(kernel=eval_body_contacts,
-                  dim=model.contact_count,
+    if (model.rigid_contact_max and (model.ground and model.shape_ground_contact_pair_count or model.shape_contact_pair_count)):
+        wp.launch(kernel=eval_rigid_contacts,
+                  dim=model.rigid_contact_max,
                   inputs=[
                       state.body_q,
                       state.body_qd,
                       model.body_com,
-                      model.contact_body0,
-                      model.contact_point0,
-                      model.contact_dist,
-                      model.contact_material,
-                      model.shape_materials
+                      model.shape_materials,
+                      model.shape_geo,                      
+                      model.rigid_contact_count,
+                      model.rigid_contact_body0,
+                      model.rigid_contact_body1,
+                      model.rigid_contact_point0,
+                      model.rigid_contact_point1,
+                      model.rigid_contact_normal,
+                      model.rigid_contact_shape0,
+                      model.rigid_contact_shape1,
                   ],
                   outputs=[
                       body_f
                   ],
                   device=model.device)
 
-    if (model.body_count):
-
+    if (model.joint_count):
         wp.launch(kernel=eval_body_joints,
-                  dim=model.body_count,
-                  inputs=[
-                      state.body_q,
-                      state.body_qd,
-                      model.body_com,
-                      model.joint_q_start,
-                      model.joint_qd_start,
-                      model.joint_type,
-                      model.joint_parent,
-                      model.joint_X_p,
-                      model.joint_X_c,
-                      model.joint_axis,
-                      model.joint_target,
-                      model.joint_act,
-                      model.joint_target_ke,
-                      model.joint_target_kd,
-                      model.joint_limit_lower,
-                      model.joint_limit_upper,
-                      model.joint_limit_ke,
-                      model.joint_limit_kd,
-                      model.joint_attach_ke,
-                      model.joint_attach_kd,
-                  ],
-                  outputs=[
-                      body_f
-                  ],
-                  device=model.device)
+                dim=model.joint_count,
+                inputs=[
+                    state.body_q,
+                    state.body_qd,
+                    model.body_com,
+                    model.joint_q_start,
+                    model.joint_qd_start,
+                    model.joint_type,
+                    model.joint_enabled,
+                    model.joint_child,
+                    model.joint_parent,
+                    model.joint_X_p,
+                    model.joint_X_c,
+                    model.joint_axis,
+                    model.joint_axis_start,
+                    model.joint_axis_dim,
+                    model.joint_target,
+                    model.joint_act,
+                    model.joint_target_ke,
+                    model.joint_target_kd,
+                    model.joint_limit_lower,
+                    model.joint_limit_upper,
+                    model.joint_limit_ke,
+                    model.joint_limit_kd,
+                    model.joint_attach_ke,
+                    model.joint_attach_kd,
+                ],
+                outputs=[
+                    body_f
+                ],
+                device=model.device)
 
     # particle shape contact
-    if (model.particle_count and model.shape_count):
+    if (model.particle_count and model.shape_count > 1):
         
         wp.launch(kernel=eval_soft_contacts,
                     dim=model.soft_contact_max,
@@ -1574,14 +1544,16 @@ def compute_forces(model, state, particle_f, body_f):
                         state.body_q,
                         state.body_qd,
                         model.body_com,
+                        model.shape_body,
+                        model.shape_materials,
                         model.soft_contact_ke,
-                        model.soft_contact_kd, 
-                        model.soft_contact_kf, 
-                        model.particle_adhesion,
+                        model.soft_contact_kd,
+                        model.soft_contact_kf,
                         model.soft_contact_mu,
+                        model.particle_adhesion,
                         model.soft_contact_count,
                         model.soft_contact_particle,
-                        model.soft_contact_body,
+                        model.soft_contact_shape,
                         model.soft_contact_body_pos,
                         model.soft_contact_body_vel,
                         model.soft_contact_normal,
@@ -1649,7 +1621,8 @@ def compute_forces(model, state, particle_f, body_f):
     #         device=model.device,
     #         preserve_output=True)
 
-
+    state.particle_f = particle_f
+    state.body_f = body_f
 
 
 
@@ -1665,21 +1638,24 @@ class SemiImplicitIntegrator:
 
     See: https://en.wikipedia.org/wiki/Semi-implicit_Euler_method
 
-    Example:
+    Example
+    -------
 
-        >>> integrator = wp.SemiImplicitIntegrator()
-        >>>
-        >>> # simulation loop
-        >>> for i in range(100):
-        >>>     state = integrator.simulate(model, state_in, state_out, dt)
+    .. code-block:: python
+
+        integrator = wp.SemiImplicitIntegrator()
+        
+        # simulation loop
+        for i in range(100):
+            state = integrator.simulate(model, state_in, state_out, dt)
 
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, angular_damping=0.05):
+        self.angular_damping = angular_damping
 
 
-    def simulate(self, model, state_in, state_out, dt):
+    def simulate(self, model, state_in, state_out, dt, requires_grad=False):
 
         with wp.ScopedTimer("simulate", False):
 
@@ -1692,7 +1668,7 @@ class SemiImplicitIntegrator:
             if state_in.body_count:
                 body_f = state_in.body_f
 
-            compute_forces(model, state_in, particle_f, body_f)
+            compute_forces(model, state_in, particle_f, body_f, requires_grad=requires_grad)
 
             #-------------------------------------
             # integrate bodies
@@ -1712,6 +1688,7 @@ class SemiImplicitIntegrator:
                         model.body_inv_mass,
                         model.body_inv_inertia,
                         model.gravity,
+                        self.angular_damping,
                         dt,
                     ],
                     outputs=[
@@ -1856,7 +1833,7 @@ class VariationalImplicitIntegrator:
         # allocate temporary space for evaluating particle forces
         self.particle_f = wp.zeros(model.particle_count, dtype=wp.vec3, device=model.device)
 
-    def simulate(self, model, state_in, state_out, dt): 
+    def simulate(self, model, state_in, state_out, dt, requires_grad=False): 
 
         if (state_in is state_out):
             raise RuntimeError("Implicit integrators require state objects to not alias each other")
@@ -1894,6 +1871,3 @@ class VariationalImplicitIntegrator:
   
 
             return state_out
-
-
-

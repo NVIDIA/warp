@@ -5,6 +5,7 @@ __pycache__
 *.prof
 warp/kernels
 warp.egg-info
+.[v]env
 .vscode
 archive
 *.o
@@ -24,3 +25,4 @@ exts/omni.warp/omni/warp/ogn/tests/usd
 build/lib/
 .venv/
 exts/omni.warp/config/extension.gen.toml
+/external/llvm-project

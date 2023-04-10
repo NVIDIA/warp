@@ -141,8 +141,9 @@ class OgnCloth:
 
         timeline =  omni.timeline.get_timeline_interface()
         context = db.internal_state
+        device = "cuda:0"
 
-        with wp.ScopedDevice("cuda:0"):
+        with wp.ScopedDevice(device):
 
             # reset on stop
             if (timeline.is_stopped()):
@@ -223,6 +224,8 @@ class OgnCloth:
                                 rot=(0.0, 0.0, 0.0, 1.0),
                                 scale=(1.0, 1.0, 1.0))
 
+                    builder.set_ground_plane(np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2])), 0.0)
+
                     # finalize sim model
                     model = builder.finalize()
                     
@@ -253,7 +256,6 @@ class OgnCloth:
 
                 # update dynamic properties
                 context.model.ground = db.inputs.ground
-                context.model.ground_plane = np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2], 0.0))
 
                 # stretch properties
                 context.model.gravity = db.inputs.gravity
@@ -320,7 +322,11 @@ class OgnCloth:
                 if (use_graph):
                     if (context.capture == None):
                         
-                        wp.capture_begin()
+                        # load ourselves and simulation kernels before graph capture                       
+                        wp.load_module(device=device)
+                        wp.load_module(device=device, module=warp.sim, recursive=True)
+
+                        wp.capture_begin(force_module_load=False)
 
                         # simulate
                         sim_substeps = db.inputs.num_substeps

@@ -204,6 +204,8 @@ class OgnParticleSolver:
 
                             state.collider_xform = read_transform_bundle(db.inputs.collider)
 
+                    builder.set_ground_plane(np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2])), 0.0)
+
                     # finalize sim model
                     model = builder.finalize()
                     
@@ -225,7 +227,6 @@ class OgnParticleSolver:
                     
                 # update dynamic properties
                 state.model.ground = db.inputs.ground
-                state.model.ground_plane = np.array((db.inputs.ground_plane[0], db.inputs.ground_plane[1], db.inputs.ground_plane[2], 0.0))
 
                 state.model.gravity = db.inputs.gravity
 
@@ -285,7 +286,11 @@ class OgnParticleSolver:
                 if (use_graph):
                     if (state.capture == None):
 
-                        wp.capture_begin()
+                        # load ourselves and simulation kernels before graph capture                       
+                        wp.load_module(device=state.device)
+                        wp.load_module(device=state.device, module=warp.sim, recursive=True)
+
+                        wp.capture_begin(force_module_load=False)
 
                         # simulate
                         sim_substeps = db.inputs.num_substeps

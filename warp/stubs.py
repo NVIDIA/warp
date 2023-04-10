@@ -3,12 +3,30 @@
 from typing import Any
 from typing import Tuple
 from typing import Callable
-from typing import overload
+from typing import TypeVar
+from typing import Generic
+from typing import overload as over
+Length = TypeVar("Length", bound=int)
+Rows = TypeVar("Rows", bound=int)
+Cols = TypeVar("Cols", bound=int)
+DType = TypeVar("DType")
+Int = TypeVar("Int")
+Float = TypeVar("Float")
+Scalar = TypeVar("Scalar")
+Vector = Generic[Length, Scalar]
+Matrix = Generic[Rows, Cols, Scalar]
+Quaternion = Generic[Float]
+Transformation = Generic[Float]
+Array = Generic[DType]
+
+import faulthandler;
+faulthandler.enable()
 
 
-from warp.types import array, array2d, array3d, array4d, constant
+from warp.types import array, array1d, array2d, array3d, array4d, constant
+from warp.types import indexedarray, indexedarray1d, indexedarray2d, indexedarray3d, indexedarray4d
+
 from warp.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float16, float32, float64
-from warp.types import vec, mat, quaternion
 from warp.types import vec2, vec2ub, vec2h, vec2f, vec2d
 from warp.types import vec3, vec3ub, vec3h, vec3f, vec3d
 from warp.types import vec4, vec4ub, vec4h, vec4f, vec4d
@@ -19,16 +37,18 @@ from warp.types import quat, quath, quatf, quatd
 from warp.types import transform, transformh, transformf, transformd
 from warp.types import spatial_vector, spatial_vectorh, spatial_vectorf, spatial_vectord
 from warp.types import spatial_matrix, spatial_matrixh, spatial_matrixf, spatial_matrixd
+
 from warp.types import Bvh, Mesh, HashGrid, Volume, MarchingCubes
 from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
-from warp.types import matmul, batched_matmul, from_ptr
 
-from warp.context import init, func, kernel, struct
+from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, from_ptr
+
+from warp.context import init, func, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
 from warp.context import get_cuda_devices, get_cuda_device_count, get_cuda_device, map_cuda_device, unmap_cuda_device
 from warp.context import get_device, set_device, synchronize_device
-from warp.context import zeros, zeros_like, clone, empty, empty_like, copy, from_numpy, launch, synchronize, force_load
+from warp.context import zeros, zeros_like, clone, empty, empty_like, copy, from_numpy, launch, synchronize, force_load, load_module
 from warp.context import set_module_options, get_module_options, get_module
 from warp.context import capture_begin, capture_end, capture_launch
 from warp.context import print_builtins, export_builtins, export_stubs
@@ -55,4341 +75,600 @@ from . import builtins, render
 
 
 
-@overload
-def min(x: uint32, y: uint32) -> uint32:
+@over
+def min(x: Scalar, y: Scalar) -> Scalar:
    """
    Return the minimum of two scalars.
    """
    ...
 
-@overload
-def min(x: int16, y: int16) -> int16:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: float64, y: float64) -> float64:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: int8, y: int8) -> int8:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: float16, y: float16) -> float16:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: uint16, y: uint16) -> uint16:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: int32, y: int32) -> int32:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: uint64, y: uint64) -> uint64:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: float32, y: float32) -> float32:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: int64, y: int64) -> int64:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: uint8, y: uint8) -> uint8:
-   """
-   Return the minimum of two scalars.
-   """
-   ...
-
-@overload
-def min(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
+@over
+def min(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
    Return the element wise minimum of two vectors.
    """
    ...
 
-@overload
-def min(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def min(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-   Return the element wise minimum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: uint32, y: uint32) -> uint32:
+@over
+def max(x: Scalar, y: Scalar) -> Scalar:
    """
    Return the maximum of two scalars.
    """
    ...
 
-@overload
-def max(x: int16, y: int16) -> int16:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: float64, y: float64) -> float64:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: int8, y: int8) -> int8:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: float16, y: float16) -> float16:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: uint16, y: uint16) -> uint16:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: int32, y: int32) -> int32:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: uint64, y: uint64) -> uint64:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: float32, y: float32) -> float32:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: int64, y: int64) -> int64:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: uint8, y: uint8) -> uint8:
-   """
-   Return the maximum of two scalars.
-   """
-   ...
-
-@overload
-def max(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
+@over
+def max(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
    Return the element wise maximum of two vectors.
    """
    ...
 
-@overload
-def max(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def max(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-   Return the element wise maximum of two vectors.
-   """
-   ...
-
-@overload
-def clamp(x: uint32, a: uint32, b: uint32) -> uint32:
+@over
+def clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar:
    """
    Clamp the value of x to the range [a, b].
    """
    ...
 
-@overload
-def clamp(x: int16, a: int16, b: int16) -> int16:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: float64, a: float64, b: float64) -> float64:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: int8, a: int8, b: int8) -> int8:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: float16, a: float16, b: float16) -> float16:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: uint16, a: uint16, b: uint16) -> uint16:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: int32, a: int32, b: int32) -> int32:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: uint64, a: uint64, b: uint64) -> uint64:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: float32, a: float32, b: float32) -> float32:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: int64, a: int64, b: int64) -> int64:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def clamp(x: uint8, a: uint8, b: uint8) -> uint8:
-   """
-   Clamp the value of x to the range [a, b].
-   """
-   ...
-
-@overload
-def abs(x: uint32) -> uint32:
+@over
+def abs(x: Scalar) -> Scalar:
    """
    Return the absolute value of x.
    """
    ...
 
-@overload
-def abs(x: int16) -> int16:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: float64) -> float64:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: int8) -> int8:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: float16) -> float16:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: uint16) -> uint16:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: int32) -> int32:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: uint64) -> uint64:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: float32) -> float32:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: int64) -> int64:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def abs(x: uint8) -> uint8:
-   """
-   Return the absolute value of x.
-   """
-   ...
-
-@overload
-def sign(x: uint32) -> uint32:
+@over
+def sign(x: Scalar) -> Scalar:
    """
    Return -1 if x < 0, return 1 otherwise.
    """
    ...
 
-@overload
-def sign(x: int16) -> int16:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: float64) -> float64:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: int8) -> int8:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: float16) -> float16:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: uint16) -> uint16:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: int32) -> int32:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: uint64) -> uint64:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: float32) -> float32:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: int64) -> int64:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def sign(x: uint8) -> uint8:
-   """
-   Return -1 if x < 0, return 1 otherwise.
-   """
-   ...
-
-@overload
-def step(x: uint32) -> uint32:
+@over
+def step(x: Scalar) -> Scalar:
    """
    Return 1.0 if x < 0.0, return 0.0 otherwise.
    """
    ...
 
-@overload
-def step(x: int16) -> int16:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: float64) -> float64:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: int8) -> int8:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: float16) -> float16:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: uint16) -> uint16:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: int32) -> int32:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: uint64) -> uint64:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: float32) -> float32:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: int64) -> int64:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def step(x: uint8) -> uint8:
-   """
-   Return 1.0 if x < 0.0, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: uint32) -> uint32:
+@over
+def nonzero(x: Scalar) -> Scalar:
    """
    Return 1.0 if x is not equal to zero, return 0.0 otherwise.
    """
    ...
 
-@overload
-def nonzero(x: int16) -> int16:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: float64) -> float64:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: int8) -> int8:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: float16) -> float16:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: uint16) -> uint16:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: int32) -> int32:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: uint64) -> uint64:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: float32) -> float32:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: int64) -> int64:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def nonzero(x: uint8) -> uint8:
-   """
-   Return 1.0 if x is not equal to zero, return 0.0 otherwise.
-   """
-   ...
-
-@overload
-def sin(x: float64) -> float64:
+@over
+def sin(x: Float) -> Float:
    """
    Return the sine of x in radians.
    """
    ...
 
-@overload
-def sin(x: float32) -> float32:
-   """
-   Return the sine of x in radians.
-   """
-   ...
-
-@overload
-def sin(x: float16) -> float16:
-   """
-   Return the sine of x in radians.
-   """
-   ...
-
-@overload
-def cos(x: float64) -> float64:
+@over
+def cos(x: Float) -> Float:
    """
    Return the cosine of x in radians.
    """
    ...
 
-@overload
-def cos(x: float32) -> float32:
-   """
-   Return the cosine of x in radians.
-   """
-   ...
-
-@overload
-def cos(x: float16) -> float16:
-   """
-   Return the cosine of x in radians.
-   """
-   ...
-
-@overload
-def acos(x: float64) -> float64:
+@over
+def acos(x: Float) -> Float:
    """
    Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
    """
    ...
 
-@overload
-def acos(x: float32) -> float32:
-   """
-   Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
-   """
-   ...
-
-@overload
-def acos(x: float16) -> float16:
-   """
-   Return arccos of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
-   """
-   ...
-
-@overload
-def asin(x: float64) -> float64:
+@over
+def asin(x: Float) -> Float:
    """
    Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
    """
    ...
 
-@overload
-def asin(x: float32) -> float32:
-   """
-   Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
-   """
-   ...
-
-@overload
-def asin(x: float16) -> float16:
-   """
-   Return arcsin of x in radians. Inputs are automatically clamped to [-1.0, 1.0].
-   """
-   ...
-
-@overload
-def sqrt(x: float64) -> float64:
+@over
+def sqrt(x: Float) -> Float:
    """
    Return the sqrt of x, where x is positive.
    """
    ...
 
-@overload
-def sqrt(x: float32) -> float32:
-   """
-   Return the sqrt of x, where x is positive.
-   """
-   ...
-
-@overload
-def sqrt(x: float16) -> float16:
-   """
-   Return the sqrt of x, where x is positive.
-   """
-   ...
-
-@overload
-def tan(x: float64) -> float64:
+@over
+def tan(x: Float) -> Float:
    """
    Return tangent of x in radians.
    """
    ...
 
-@overload
-def tan(x: float32) -> float32:
-   """
-   Return tangent of x in radians.
-   """
-   ...
-
-@overload
-def tan(x: float16) -> float16:
-   """
-   Return tangent of x in radians.
-   """
-   ...
-
-@overload
-def atan(x: float64) -> float64:
+@over
+def atan(x: Float) -> Float:
    """
    Return arctan of x.
    """
    ...
 
-@overload
-def atan(x: float32) -> float32:
-   """
-   Return arctan of x.
-   """
-   ...
-
-@overload
-def atan(x: float16) -> float16:
-   """
-   Return arctan of x.
-   """
-   ...
-
-@overload
-def atan2(y: float64, x: float64) -> float64:
+@over
+def atan2(y: Float, x: Float) -> Float:
    """
    Return atan2 of x.
    """
    ...
 
-@overload
-def atan2(y: float32, x: float32) -> float32:
-   """
-   Return atan2 of x.
-   """
-   ...
-
-@overload
-def atan2(y: float16, x: float16) -> float16:
-   """
-   Return atan2 of x.
-   """
-   ...
-
-@overload
-def sinh(x: float64) -> float64:
+@over
+def sinh(x: Float) -> Float:
    """
    Return the sinh of x.
    """
    ...
 
-@overload
-def sinh(x: float32) -> float32:
-   """
-   Return the sinh of x.
-   """
-   ...
-
-@overload
-def sinh(x: float16) -> float16:
-   """
-   Return the sinh of x.
-   """
-   ...
-
-@overload
-def cosh(x: float64) -> float64:
+@over
+def cosh(x: Float) -> Float:
    """
    Return the cosh of x.
    """
    ...
 
-@overload
-def cosh(x: float32) -> float32:
-   """
-   Return the cosh of x.
-   """
-   ...
-
-@overload
-def cosh(x: float16) -> float16:
-   """
-   Return the cosh of x.
-   """
-   ...
-
-@overload
-def tanh(x: float64) -> float64:
+@over
+def tanh(x: Float) -> Float:
    """
    Return the tanh of x.
    """
    ...
 
-@overload
-def tanh(x: float32) -> float32:
-   """
-   Return the tanh of x.
-   """
-   ...
-
-@overload
-def tanh(x: float16) -> float16:
-   """
-   Return the tanh of x.
-   """
-   ...
-
-@overload
-def degrees(x: float32) -> float:
+@over
+def degrees(x: Float) -> Float:
    """
    Convert radians into degrees.
    """
    ...
 
-@overload
-def radians(x: float32) -> float:
+@over
+def radians(x: Float) -> Float:
    """
    Convert degrees into radians.
    """
    ...
 
-@overload
-def log(x: float64) -> float64:
+@over
+def log(x: Float) -> Float:
    """
    Return the natural log (base-e) of x, where x is positive.
    """
    ...
 
-@overload
-def log(x: float32) -> float32:
-   """
-   Return the natural log (base-e) of x, where x is positive.
-   """
-   ...
-
-@overload
-def log(x: float16) -> float16:
-   """
-   Return the natural log (base-e) of x, where x is positive.
-   """
-   ...
-
-@overload
-def log2(x: float64) -> float64:
+@over
+def log2(x: Float) -> Float:
    """
    Return the natural log (base-2) of x, where x is positive.
    """
    ...
 
-@overload
-def log2(x: float32) -> float32:
-   """
-   Return the natural log (base-2) of x, where x is positive.
-   """
-   ...
-
-@overload
-def log2(x: float16) -> float16:
-   """
-   Return the natural log (base-2) of x, where x is positive.
-   """
-   ...
-
-@overload
-def log10(x: float64) -> float64:
+@over
+def log10(x: Float) -> Float:
    """
    Return the natural log (base-10) of x, where x is positive.
    """
    ...
 
-@overload
-def log10(x: float32) -> float32:
-   """
-   Return the natural log (base-10) of x, where x is positive.
-   """
-   ...
-
-@overload
-def log10(x: float16) -> float16:
-   """
-   Return the natural log (base-10) of x, where x is positive.
-   """
-   ...
-
-@overload
-def exp(x: float64) -> float64:
+@over
+def exp(x: Float) -> Float:
    """
    Return base-e exponential, e^x.
    """
    ...
 
-@overload
-def exp(x: float32) -> float32:
-   """
-   Return base-e exponential, e^x.
-   """
-   ...
-
-@overload
-def exp(x: float16) -> float16:
-   """
-   Return base-e exponential, e^x.
-   """
-   ...
-
-@overload
-def pow(x: float64, y: float64) -> float64:
+@over
+def pow(x: Float, y: Float) -> Float:
    """
    Return the result of x raised to power of y.
    """
    ...
 
-@overload
-def pow(x: float32, y: float32) -> float32:
-   """
-   Return the result of x raised to power of y.
-   """
-   ...
-
-@overload
-def pow(x: float16, y: float16) -> float16:
-   """
-   Return the result of x raised to power of y.
-   """
-   ...
-
-@overload
-def round(x: float64) -> float64:
+@over
+def round(x: Float) -> Float:
    """
    Calculate the nearest integer value, rounding halfway cases away from zero.
-   This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-   Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
+       This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
+       Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
    """
    ...
 
-@overload
-def round(x: float32) -> float32:
-   """
-   Calculate the nearest integer value, rounding halfway cases away from zero.
-   This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-   Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
-   """
-   ...
-
-@overload
-def round(x: float16) -> float16:
-   """
-   Calculate the nearest integer value, rounding halfway cases away from zero.
-   This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like ``warp.rint()``.
-   Differs from ``numpy.round()``, which behaves the same way as ``numpy.rint()``.
-   """
-   ...
-
-@overload
-def rint(x: float64) -> float64:
+@over
+def rint(x: Float) -> Float:
    """
    Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-   It is generally faster than ``warp.round()``.
-   Equivalent to ``numpy.rint()``.
+       It is generally faster than ``warp.round()``.
+       Equivalent to ``numpy.rint()``.
    """
    ...
 
-@overload
-def rint(x: float32) -> float32:
-   """
-   Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-   It is generally faster than ``warp.round()``.
-   Equivalent to ``numpy.rint()``.
-   """
-   ...
-
-@overload
-def rint(x: float16) -> float16:
-   """
-   Calculate the nearest integer value, rounding halfway cases to nearest even integer.
-   It is generally faster than ``warp.round()``.
-   Equivalent to ``numpy.rint()``.
-   """
-   ...
-
-@overload
-def trunc(x: float64) -> float64:
+@over
+def trunc(x: Float) -> Float:
    """
    Calculate the nearest integer that is closer to zero than x.
-   In other words, it discards the fractional part of x.
-   It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-   Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
+       In other words, it discards the fractional part of x.
+       It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
+       Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
    """
    ...
 
-@overload
-def trunc(x: float32) -> float32:
-   """
-   Calculate the nearest integer that is closer to zero than x.
-   In other words, it discards the fractional part of x.
-   It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-   Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
-   """
-   ...
-
-@overload
-def trunc(x: float16) -> float16:
-   """
-   Calculate the nearest integer that is closer to zero than x.
-   In other words, it discards the fractional part of x.
-   It is similar to casting ``float(int(x))``, but preserves the negative sign when x is in the range [-0.0, -1.0).
-   Equivalent to ``numpy.trunc()`` and ``numpy.fix()``.
-   """
-   ...
-
-@overload
-def floor(x: float64) -> float64:
+@over
+def floor(x: Float) -> Float:
    """
    Calculate the largest integer that is less than or equal to x.
    """
    ...
 
-@overload
-def floor(x: float32) -> float32:
-   """
-   Calculate the largest integer that is less than or equal to x.
-   """
-   ...
-
-@overload
-def floor(x: float16) -> float16:
-   """
-   Calculate the largest integer that is less than or equal to x.
-   """
-   ...
-
-@overload
-def ceil(x: float64) -> float64:
+@over
+def ceil(x: Float) -> Float:
    """
    Calculate the smallest integer that is greater than or equal to x.
    """
    ...
 
-@overload
-def ceil(x: float32) -> float32:
-   """
-   Calculate the smallest integer that is greater than or equal to x.
-   """
-   ...
-
-@overload
-def ceil(x: float16) -> float16:
-   """
-   Calculate the smallest integer that is greater than or equal to x.
-   """
-   ...
-
-@overload
-def dot(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> float64:
+@over
+def dot(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Scalar:
    """
    Compute the dot product between two vectors.
    """
    ...
 
-@overload
-def dot(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> float64:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> float64:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> uint8:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> uint8:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> uint8:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the dot product between two vectors.
-   """
-   ...
-
-@overload
-def dot(x: quaternion[<class 'warp.types.float64'>], y: quaternion[<class 'warp.types.float64'>]) -> float64:
+@over
+def dot(x: Quaternion[Float], y: Quaternion[Float]) -> Scalar:
    """
    Compute the dot product between two quaternions.
    """
    ...
 
-@overload
-def dot(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two quaternions.
-   """
-   ...
-
-@overload
-def dot(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two quaternions.
-   """
-   ...
-
-@overload
-def dot(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two quaternions.
-   """
-   ...
-
-@overload
-def dot(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product between two quaternions.
-   """
-   ...
-
-@overload
-def dot(x: quaternion[<class 'warp.types.float16'>], y: quaternion[<class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the dot product between two quaternions.
-   """
-   ...
-
-@overload
-def ddot(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> float64:
+@over
+def ddot(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Scalar:
    """
    Compute the double dot product between two matrices.
    """
    ...
 
-@overload
-def ddot(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> float64:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> float64:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def ddot(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the double dot product between two matrices.
-   """
-   ...
-
-@overload
-def outer(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
+@over
+def outer(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
    Compute the outer product x*y^T for two vec2 objects.
    """
    ...
 
-@overload
-def outer(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-   Compute the outer product x*y^T for two vec2 objects.
-   """
-   ...
-
-@overload
-def outer(x: spatial_vector_t[<class 'warp.types.float64'>], y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]:
-   """
-   Compute the outer product x*y^T for two spatial_vector objects.
-   """
-   ...
-
-@overload
-def outer(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two spatial_vector objects.
-   """
-   ...
-
-@overload
-def outer(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two spatial_vector objects.
-   """
-   ...
-
-@overload
-def outer(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two spatial_vector objects.
-   """
-   ...
-
-@overload
-def outer(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-   Compute the outer product x*y^T for two spatial_vector objects.
-   """
-   ...
-
-@overload
-def outer(x: spatial_vector_t[<class 'warp.types.float16'>], y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]:
-   """
-   Compute the outer product x*y^T for two spatial_vector objects.
-   """
-   ...
-
-@overload
-def cross(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def cross(x: Vector[3,Scalar], y: Vector[3,Scalar]) -> Vector[3,Scalar]:
    """
    Compute the cross product of two 3d vectors.
    """
    ...
 
-@overload
-def cross(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Compute the cross product of two 3d vectors.
-   """
-   ...
-
-@overload
-def cross(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Compute the cross product of two 3d vectors.
-   """
-   ...
-
-@overload
-def cross(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Compute the cross product of two 3d vectors.
-   """
-   ...
-
-@overload
-def cross(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Compute the cross product of two 3d vectors.
-   """
-   ...
-
-@overload
-def cross(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-   Compute the cross product of two 3d vectors.
-   """
-   ...
-
-@overload
-def cross(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Compute the cross product of two 3d vectors.
-   """
-   ...
-
-@overload
-def skew(x: vec[3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
+@over
+def skew(x: Vector[3,Scalar]):
    """
    Compute the skew symmetric matrix for a 3d vector.
    """
    ...
 
-@overload
-def skew(x: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Compute the skew symmetric matrix for a 3d vector.
-   """
-   ...
-
-@overload
-def skew(x: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Compute the skew symmetric matrix for a 3d vector.
-   """
-   ...
-
-@overload
-def skew(x: vec[3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Compute the skew symmetric matrix for a 3d vector.
-   """
-   ...
-
-@overload
-def length(x: vec[2, <class 'warp.types.float64'>]) -> float64:
+@over
+def length(x: Vector[Any,Float]) -> Scalar:
    """
    Compute the length of a vector.
    """
    ...
 
-@overload
-def length(x: vec[3, <class 'warp.types.float64'>]) -> float64:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[4, <class 'warp.types.float64'>]) -> float64:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[2, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[3, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: vec[4, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the length of a vector.
-   """
-   ...
-
-@overload
-def length(x: quaternion[<class 'warp.types.float64'>]) -> float64:
+@over
+def length(x: Quaternion[Float]) -> Scalar:
    """
    Compute the length of a quaternion.
    """
    ...
 
-@overload
-def length(x: quaternion[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the length of a quaternion.
-   """
-   ...
-
-@overload
-def length(x: quaternion[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the length of a quaternion.
-   """
-   ...
-
-@overload
-def length(x: quaternion[<class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the length of a quaternion.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[2, <class 'warp.types.float64'>]) -> float64:
+@over
+def length_sq(x: Vector[Any,Scalar]) -> Scalar:
    """
    Compute the squared length of a 2d vector.
    """
    ...
 
-@overload
-def length_sq(x: vec[3, <class 'warp.types.float64'>]) -> float64:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[4, <class 'warp.types.float64'>]) -> float64:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[2, <class 'warp.types.uint8'>]) -> uint8:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[3, <class 'warp.types.uint8'>]) -> uint8:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[4, <class 'warp.types.uint8'>]) -> uint8:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[2, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[3, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: vec[4, <class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the squared length of a 2d vector.
-   """
-   ...
-
-@overload
-def length_sq(x: quaternion[<class 'warp.types.float64'>]) -> float64:
+@over
+def length_sq(x: Quaternion[Scalar]) -> Scalar:
    """
    Compute the squared length of a quaternion.
    """
    ...
 
-@overload
-def length_sq(x: quaternion[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the squared length of a quaternion.
-   """
-   ...
-
-@overload
-def length_sq(x: quaternion[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the squared length of a quaternion.
-   """
-   ...
-
-@overload
-def length_sq(x: quaternion[<class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the squared length of a quaternion.
-   """
-   ...
-
-@overload
-def normalize(x: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
+@over
+def normalize(x: Vector[Any,Float]) -> Vector[Any,Scalar]:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
    """
    ...
 
-@overload
-def normalize(x: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero vector is returned.
-   """
-   ...
-
-@overload
-def normalize(x: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
+@over
+def normalize(x: Quaternion[Float]) -> Quaternion[Scalar]:
    """
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
    """
    ...
 
-@overload
-def normalize(x: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
-   """
-   ...
-
-@overload
-def normalize(x: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
-   """
-   ...
-
-@overload
-def normalize(x: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
-   """
-   Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
-   """
-   ...
-
-@overload
-def transpose(m: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
+@over
+def transpose(m: Matrix[Any,Any,Scalar]):
    """
    Return the transpose of the matrix m
    """
    ...
 
-@overload
-def transpose(m: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
+@over
+def inverse(m: Matrix[2,2,Float]) -> Matrix[Any,Any,Float]:
    """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-   Return the transpose of the matrix m
+   Return the inverse of a 2x2 matrix m
    """
    ...
 
-@overload
-def transpose(m: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
+@over
+def inverse(m: Matrix[3,3,Float]) -> Matrix[Any,Any,Float]:
    """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Return the transpose of the matrix m
+   Return the inverse of a 3x3 matrix m
    """
    ...
 
-@overload
-def transpose(m: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
+@over
+def inverse(m: Matrix[4,4,Float]) -> Matrix[Any,Any,Float]:
    """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Return the transpose of the matrix m
+   Return the inverse of a 4x4 matrix m
    """
    ...
 
-@overload
-def transpose(m: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
+@over
+def determinant(m: Matrix[2,2,Float]) -> Scalar:
    """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Return the transpose of the matrix m
+   Return the determinant of a 2x2 matrix m
    """
    ...
 
-@overload
-def transpose(m: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
+@over
+def determinant(m: Matrix[3,3,Float]) -> Scalar:
    """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Return the transpose of the matrix m
+   Return the determinant of a 3x3 matrix m
    """
    ...
 
-@overload
-def transpose(m: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
+@over
+def determinant(m: Matrix[4,4,Float]) -> Scalar:
    """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]:
-   """
-   Return the transpose of the matrix m
+   Return the determinant of a 4x4 matrix m
    """
    ...
 
-@overload
-def transpose(m: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def transpose(m: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]:
-   """
-   Return the transpose of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def inverse(m: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-   Return the inverse of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[2, 2, <class 'warp.types.float64'>]) -> float64:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[3, 3, <class 'warp.types.float64'>]) -> float64:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[4, 4, <class 'warp.types.float64'>]) -> float64:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[2, 2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[2, 2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[3, 3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[3, 3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[4, 4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[4, 4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[2, 2, <class 'warp.types.float16'>]) -> float16:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[3, 3, <class 'warp.types.float16'>]) -> float16:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def determinant(m: mat[4, 4, <class 'warp.types.float16'>]) -> float16:
-   """
-   Return the determinant of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[2, 2, <class 'warp.types.float64'>]) -> float64:
+@over
+def trace(m: Matrix[Any,Any,Scalar]) -> Scalar:
    """
    Return the trace of the matrix m
    """
    ...
 
-@overload
-def trace(m: mat[3, 3, <class 'warp.types.float64'>]) -> float64:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[4, 4, <class 'warp.types.float64'>]) -> float64:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[2, 2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[2, 2, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[3, 3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[3, 3, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[4, 4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[4, 4, <class 'warp.types.float32'>]) -> float32:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[2, 2, <class 'warp.types.float16'>]) -> float16:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[3, 3, <class 'warp.types.float16'>]) -> float16:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def trace(m: mat[4, 4, <class 'warp.types.float16'>]) -> float16:
-   """
-   Return the trace of the matrix m
-   """
-   ...
-
-@overload
-def diag(d: vec[2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
+@over
+def diag(d: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
    Returns a matrix with the components of the vector d on the diagonal
    """
    ...
 
-@overload
-def diag(d: vec[3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def diag(d: vec[4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-   Returns a matrix with the components of the vector d on the diagonal
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
+@over
+def cw_mul(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
    Component wise multiply of two 2d vectors.
    """
    ...
 
-@overload
-def cw_mul(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def cw_mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
    Component wise multiply of two 2d vectors.
    """
    ...
 
-@overload
-def cw_mul(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_mul(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-   Component wise multiply of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
+@over
+def cw_div(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
    Component wise division of two 2d vectors.
    """
    ...
 
-@overload
-def cw_div(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def cw_div(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
    Component wise division of two 2d vectors.
    """
    ...
 
-@overload
-def cw_div(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
+@over
+def quat_identity() -> quatf:
    """
-   Component wise division of two 2d vectors.
+   Construct an identity quaternion with zero imaginary part and real part of 1.0
    """
    ...
 
-@overload
-def cw_div(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def cw_div(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-   Component wise division of two 2d vectors.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float64'>], U: mat[3, 3, <class 'warp.types.float64'>], sigma: vec[3, <class 'warp.types.float64'>], V: mat[3, 3, <class 'warp.types.float64'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float16'>], U: mat[3, 3, <class 'warp.types.float16'>], sigma: vec[3, <class 'warp.types.float16'>], V: mat[3, 3, <class 'warp.types.float16'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def svd3(A: mat[3, 3, <class 'warp.types.float32'>], U: mat[3, 3, <class 'warp.types.float32'>], sigma: vec[3, <class 'warp.types.float32'>], V: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the SVD of a 3x3 matrix. The singular values are returned in sigma, 
-      while the left and right basis vectors are returned in U and V.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float64'>], Q: mat[3, 3, <class 'warp.types.float64'>], R: mat[3, 3, <class 'warp.types.float64'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], R: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def qr3(A: mat[3, 3, <class 'warp.types.float16'>], Q: mat[3, 3, <class 'warp.types.float16'>], R: mat[3, 3, <class 'warp.types.float16'>]):
-   """
-   Compute the QR decomposition of a 3x3 matrix. The orthogonal matrix is returned in Q, while the upper triangular matrix is returend in R.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float64'>], Q: mat[3, 3, <class 'warp.types.float64'>], d: vec[3, <class 'warp.types.float64'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float16'>], Q: mat[3, 3, <class 'warp.types.float16'>], d: vec[3, <class 'warp.types.float16'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def eig3(A: mat[3, 3, <class 'warp.types.float32'>], Q: mat[3, 3, <class 'warp.types.float32'>], d: vec[3, <class 'warp.types.float32'>]):
-   """
-   Compute the eigen decomposition of a 3x3 marix. The eigen vectors are returned as the columns of Q, while the corresponding eigen values are returned in d.
-   """
-   ...
-
-@overload
-def quat_identity() -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Construct a float32 identity quaternion with zero imaginary part and real part of 1.0
-   """
-   ...
-
-@overload
-def quat_from_axis_angle(axis: vec[3, <class 'warp.types.float64'>], angle: float64) -> quaternion[<class 'warp.types.float64'>]:
+@over
+def quat_from_axis_angle(axis: Vector[3,Float], angle: Float) -> Quaternion[Scalar]:
    """
    Construct a quaternion representing a rotation of angle radians around the given axis.
    """
    ...
 
-@overload
-def quat_from_axis_angle(axis: vec[3, <class 'warp.types.float16'>], angle: float16) -> quaternion[<class 'warp.types.float16'>]:
-   """
-   Construct a quaternion representing a rotation of angle radians around the given axis.
-   """
-   ...
-
-@overload
-def quat_from_axis_angle(axis: vec[3, <class 'warp.types.float32'>], angle: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Construct a quaternion representing a rotation of angle radians around the given axis.
-   """
-   ...
-
-@overload
-def quat_from_axis_angle(axis: vec[3, <class 'warp.types.float32'>], angle: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Construct a quaternion representing a rotation of angle radians around the given axis.
-   """
-   ...
-
-@overload
-def quat_to_axis_angle(q: quaternion[<class 'warp.types.float64'>], axis: vec[3, <class 'warp.types.float64'>], angle: float64):
+@over
+def quat_to_axis_angle(q: Quaternion[Float], axis: Vector[3,Float], angle: Float):
    """
    Extract the rotation axis and angle radians a quaternion represents.
    """
    ...
 
-@overload
-def quat_to_axis_angle(q: quaternion[<class 'warp.types.float32'>], axis: vec[3, <class 'warp.types.float32'>], angle: float32):
-   """
-   Extract the rotation axis and angle radians a quaternion represents.
-   """
-   ...
-
-@overload
-def quat_to_axis_angle(q: quaternion[<class 'warp.types.float32'>], axis: vec[3, <class 'warp.types.float32'>], angle: float32):
-   """
-   Extract the rotation axis and angle radians a quaternion represents.
-   """
-   ...
-
-@overload
-def quat_to_axis_angle(q: quaternion[<class 'warp.types.float32'>], axis: vec[3, <class 'warp.types.float32'>], angle: float32):
-   """
-   Extract the rotation axis and angle radians a quaternion represents.
-   """
-   ...
-
-@overload
-def quat_to_axis_angle(q: quaternion[<class 'warp.types.float32'>], axis: vec[3, <class 'warp.types.float32'>], angle: float32):
-   """
-   Extract the rotation axis and angle radians a quaternion represents.
-   """
-   ...
-
-@overload
-def quat_to_axis_angle(q: quaternion[<class 'warp.types.float16'>], axis: vec[3, <class 'warp.types.float16'>], angle: float16):
-   """
-   Extract the rotation axis and angle radians a quaternion represents.
-   """
-   ...
-
-@overload
-def quat_from_matrix(m: mat[3, 3, <class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
+@over
+def quat_from_matrix(m: Matrix[3,3,Float]) -> Quaternion[Scalar]:
    """
    Construct a quaternion from a 3x3 matrix.
    """
    ...
 
-@overload
-def quat_from_matrix(m: mat[3, 3, <class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Construct a quaternion from a 3x3 matrix.
-   """
-   ...
-
-@overload
-def quat_from_matrix(m: mat[3, 3, <class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Construct a quaternion from a 3x3 matrix.
-   """
-   ...
-
-@overload
-def quat_from_matrix(m: mat[3, 3, <class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
-   """
-   Construct a quaternion from a 3x3 matrix.
-   """
-   ...
-
-@overload
-def quat_rpy(roll: float64, pitch: float64, yaw: float64) -> quaternion[<class 'warp.types.float64'>]:
+@over
+def quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Scalar]:
    """
    Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
    """
    ...
 
-@overload
-def quat_rpy(roll: float32, pitch: float32, yaw: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
-   """
-   ...
-
-@overload
-def quat_rpy(roll: float16, pitch: float16, yaw: float16) -> quaternion[<class 'warp.types.float16'>]:
-   """
-   Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
-   """
-   ...
-
-@overload
-def quat_inverse(q: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
+@over
+def quat_inverse(q: Quaternion[Float]) -> Quaternion[Scalar]:
    """
    Compute quaternion conjugate.
    """
    ...
 
-@overload
-def quat_inverse(q: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Compute quaternion conjugate.
-   """
-   ...
-
-@overload
-def quat_inverse(q: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Compute quaternion conjugate.
-   """
-   ...
-
-@overload
-def quat_inverse(q: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
-   """
-   Compute quaternion conjugate.
-   """
-   ...
-
-@overload
-def quat_rotate(q: quaternion[<class 'warp.types.float64'>], p: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def quat_rotate(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Scalar]:
    """
    Rotate a vector by a quaternion.
    """
    ...
 
-@overload
-def quat_rotate(q: quaternion[<class 'warp.types.float16'>], p: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Rotate a vector by a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Rotate a vector by a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Rotate a vector by a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Rotate a vector by a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Rotate a vector by a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate_inv(q: quaternion[<class 'warp.types.float64'>], p: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def quat_rotate_inv(q: Quaternion[Float], p: Vector[3,Float]) -> Vector[3,Scalar]:
    """
    Rotate a vector the inverse of a quaternion.
    """
    ...
 
-@overload
-def quat_rotate_inv(q: quaternion[<class 'warp.types.float16'>], p: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Rotate a vector the inverse of a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate_inv(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Rotate a vector the inverse of a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate_inv(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Rotate a vector the inverse of a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate_inv(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Rotate a vector the inverse of a quaternion.
-   """
-   ...
-
-@overload
-def quat_rotate_inv(q: quaternion[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Rotate a vector the inverse of a quaternion.
-   """
-   ...
-
-@overload
-def quat_slerp(q0: quaternion[<class 'warp.types.float64'>], q1: quaternion[<class 'warp.types.float64'>], t: float64) -> quaternion[<class 'warp.types.float64'>]:
+@over
+def quat_slerp(q0: Quaternion[Float], q1: Quaternion[Float], t: Float) -> Quaternion[Scalar]:
    """
    Linearly interpolate between two quaternions.
    """
    ...
 
-@overload
-def quat_slerp(q0: quaternion[<class 'warp.types.float16'>], q1: quaternion[<class 'warp.types.float16'>], t: float16) -> quaternion[<class 'warp.types.float16'>]:
-   """
-   Linearly interpolate between two quaternions.
-   """
-   ...
-
-@overload
-def quat_slerp(q0: quaternion[<class 'warp.types.float32'>], q1: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate between two quaternions.
-   """
-   ...
-
-@overload
-def quat_slerp(q0: quaternion[<class 'warp.types.float32'>], q1: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate between two quaternions.
-   """
-   ...
-
-@overload
-def quat_slerp(q0: quaternion[<class 'warp.types.float32'>], q1: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate between two quaternions.
-   """
-   ...
-
-@overload
-def quat_slerp(q0: quaternion[<class 'warp.types.float32'>], q1: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate between two quaternions.
-   """
-   ...
-
-@overload
-def quat_to_matrix(q: quaternion[<class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
+@over
+def quat_to_matrix(q: Quaternion[Float]) -> Matrix[3,3,Scalar]:
    """
    Convert a quaternion to a 3x3 rotation matrix.
    """
    ...
 
-@overload
-def quat_to_matrix(q: quaternion[<class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
+@over
+def transform_identity() -> transformf:
    """
-   Convert a quaternion to a 3x3 rotation matrix.
-   """
-   ...
-
-@overload
-def quat_to_matrix(q: quaternion[<class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Convert a quaternion to a 3x3 rotation matrix.
+   Construct an identity transform with zero translation and identity rotation.
    """
    ...
 
-@overload
-def quat_to_matrix(q: quaternion[<class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Convert a quaternion to a 3x3 rotation matrix.
-   """
-   ...
-
-@overload
-def transform_identity() -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Construct a float32 identity transform with zero translation and identity rotation.
-   """
-   ...
-
-@overload
-def transform_get_translation(t: transform_t[<class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def transform_get_translation(t: Transformation[Float]) -> Vector[3,Scalar]:
    """
    Return the translational part of a transform.
    """
    ...
 
-@overload
-def transform_get_translation(t: transform_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the translational part of a transform.
-   """
-   ...
-
-@overload
-def transform_get_translation(t: transform_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the translational part of a transform.
-   """
-   ...
-
-@overload
-def transform_get_translation(t: transform_t[<class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Return the translational part of a transform.
-   """
-   ...
-
-@overload
-def transform_get_rotation(t: transform_t[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
+@over
+def transform_get_rotation(t: Transformation[Float]) -> Quaternion[Scalar]:
    """
    Return the rotational part of a transform.
    """
    ...
 
-@overload
-def transform_get_rotation(t: transform_t[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Return the rotational part of a transform.
-   """
-   ...
-
-@overload
-def transform_get_rotation(t: transform_t[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Return the rotational part of a transform.
-   """
-   ...
-
-@overload
-def transform_get_rotation(t: transform_t[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
-   """
-   Return the rotational part of a transform.
-   """
-   ...
-
-@overload
-def transform_multiply(a: transform_t[<class 'warp.types.float64'>], b: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]:
+@over
+def transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Scalar]:
    """
    Multiply two rigid body transformations together.
    """
    ...
 
-@overload
-def transform_multiply(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Multiply two rigid body transformations together.
-   """
-   ...
-
-@overload
-def transform_multiply(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Multiply two rigid body transformations together.
-   """
-   ...
-
-@overload
-def transform_multiply(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Multiply two rigid body transformations together.
-   """
-   ...
-
-@overload
-def transform_multiply(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Multiply two rigid body transformations together.
-   """
-   ...
-
-@overload
-def transform_multiply(a: transform_t[<class 'warp.types.float16'>], b: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]:
-   """
-   Multiply two rigid body transformations together.
-   """
-   ...
-
-@overload
-def transform_point(t: transform_t[<class 'warp.types.float64'>], p: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def transform_point(t: Transformation[Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]:
    """
    Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
    """
    ...
 
-@overload
-def transform_point(t: transform_t[<class 'warp.types.float16'>], p: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
-   """
-   ...
-
-@overload
-def transform_point(t: transform_t[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
-   """
-   ...
-
-@overload
-def transform_point(t: transform_t[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
-   """
-   ...
-
-@overload
-def transform_point(t: transform_t[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
-   """
-   ...
-
-@overload
-def transform_point(t: transform_t[<class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a point p treating the homogenous coordinate as w=1 (translation and rotation).
-   """
-   ...
-
-@overload
-def transform_point(m: mat[4, 4, <class 'warp.types.float64'>], p: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def transform_point(m: Matrix[4,4,Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]:
    """
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
+      then users should transpose the transformation matrix before calling this method.
    """
    ...
 
-@overload
-def transform_point(m: mat[4, 4, <class 'warp.types.float16'>], p: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_point(m: mat[4, 4, <class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_point(m: mat[4, 4, <class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_point(m: mat[4, 4, <class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_point(m: mat[4, 4, <class 'warp.types.float32'>], p: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_vector(t: transform_t[<class 'warp.types.float64'>], v: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def transform_vector(t: Transformation[Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]:
    """
    Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
    """
    ...
 
-@overload
-def transform_vector(t: transform_t[<class 'warp.types.float16'>], v: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
-   """
-   ...
-
-@overload
-def transform_vector(t: transform_t[<class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
-   """
-   ...
-
-@overload
-def transform_vector(t: transform_t[<class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
-   """
-   ...
-
-@overload
-def transform_vector(t: transform_t[<class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
-   """
-   ...
-
-@overload
-def transform_vector(t: transform_t[<class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a vector v treating the homogenous coordinate as w=0 (rotation only).
-   """
-   ...
-
-@overload
-def transform_vector(m: mat[4, 4, <class 'warp.types.float64'>], v: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def transform_vector(m: Matrix[4,4,Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]:
    """
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
       note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
+      then users should transpose the transformation matrix before calling this method.
    """
    ...
 
-@overload
-def transform_vector(m: mat[4, 4, <class 'warp.types.float16'>], v: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_vector(m: mat[4, 4, <class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_vector(m: mat[4, 4, <class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_vector(m: mat[4, 4, <class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_vector(m: mat[4, 4, <class 'warp.types.float32'>], v: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
-      note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
-      then users should transpose the tranformation matrix before calling this method.
-   """
-   ...
-
-@overload
-def transform_inverse(t: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]:
+@over
+def transform_inverse(t: Transformation[Float]) -> Transformation[Float]:
    """
    Compute the inverse of the transform.
    """
    ...
 
-@overload
-def transform_inverse(t: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Compute the inverse of the transform.
-   """
-   ...
-
-@overload
-def transform_inverse(t: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Compute the inverse of the transform.
-   """
-   ...
-
-@overload
-def transform_inverse(t: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]:
-   """
-   Compute the inverse of the transform.
-   """
-   ...
-
-@overload
-def spatial_dot(a: spatial_vector_t[<class 'warp.types.float64'>], b: spatial_vector_t[<class 'warp.types.float64'>]) -> float64:
+@over
+def spatial_dot(a: Vector[6,Float], b: Vector[6,Float]) -> Scalar:
    """
    Compute the dot product of two 6d screw vectors.
    """
    ...
 
-@overload
-def spatial_dot(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_dot(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_dot(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_dot(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> float32:
-   """
-   Compute the dot product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_dot(a: spatial_vector_t[<class 'warp.types.float16'>], b: spatial_vector_t[<class 'warp.types.float16'>]) -> float16:
-   """
-   Compute the dot product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross(a: spatial_vector_t[<class 'warp.types.float64'>], b: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]:
+@over
+def spatial_cross(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]:
    """
    Compute the cross-product of two 6d screw vectors.
    """
    ...
 
-@overload
-def spatial_cross(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Compute the cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Compute the cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Compute the cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Compute the cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross(a: spatial_vector_t[<class 'warp.types.float16'>], b: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]:
-   """
-   Compute the cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float64'>], b: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]:
+@over
+def spatial_cross_dual(a: Vector[6,Float], b: Vector[6,Float]) -> Vector[6,Float]:
    """
    Compute the dual cross-product of two 6d screw vectors.
    """
    ...
 
-@overload
-def spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Compute the dual cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Compute the dual cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Compute the dual cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Compute the dual cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_cross_dual(a: spatial_vector_t[<class 'warp.types.float16'>], b: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]:
-   """
-   Compute the dual cross-product of two 6d screw vectors.
-   """
-   ...
-
-@overload
-def spatial_top(a: spatial_vector_t[<class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def spatial_top(a: Vector[6,Float]):
    """
    Return the top (first) part of a 6d screw vector.
    """
    ...
 
-@overload
-def spatial_top(a: spatial_vector_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the top (first) part of a 6d screw vector.
-   """
-   ...
-
-@overload
-def spatial_top(a: spatial_vector_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the top (first) part of a 6d screw vector.
-   """
-   ...
-
-@overload
-def spatial_top(a: spatial_vector_t[<class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Return the top (first) part of a 6d screw vector.
-   """
-   ...
-
-@overload
-def spatial_bottom(a: spatial_vector_t[<class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def spatial_bottom(a: Vector[6,Float]):
    """
    Return the bottom (second) part of a 6d screw vector.
    """
    ...
 
-@overload
-def spatial_bottom(a: spatial_vector_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the bottom (second) part of a 6d screw vector.
-   """
-   ...
-
-@overload
-def spatial_bottom(a: spatial_vector_t[<class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Return the bottom (second) part of a 6d screw vector.
-   """
-   ...
-
-@overload
-def spatial_bottom(a: spatial_vector_t[<class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Return the bottom (second) part of a 6d screw vector.
-   """
-   ...
-
-@overload
-def spatial_jacobian(S: array[spatial_vector_t[~Float]], joint_parents: array[int32], joint_qd_start: array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: array[Float]):
+@over
+def spatial_jacobian(S: Array[Vector[6,Float]], joint_parents: Array[int32], joint_qd_start: Array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: Array[Float]):
    """
 
    """
    ...
 
-@overload
-def spatial_mass(I_s: array[spatial_matrix_t[~Float]], joint_start: int32, joint_count: int32, M_start: int32, M: array[Float]):
+@over
+def spatial_mass(I_s: Array[Matrix[6,6,Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]):
    """
 
    """
    ...
 
-@overload
-def mlp(weights: array[float32], bias: array[float32], activation: Callable, index: int32, x: array[float32], out: array[float32]):
+@over
+def mlp(weights: Array[float32], bias: Array[float32], activation: Callable, index: int32, x: Array[float32], out: Array[float32]):
    """
    Evaluate a multi-layer perceptron (MLP) layer in the form: ``out = act(weights*x + bias)``. 
 
@@ -4404,8 +683,8 @@ def mlp(weights: array[float32], bias: array[float32], activation: Callable, ind
    """
    ...
 
-@overload
-def bvh_query_aabb(id: uint64, lower: vec[3, <class 'warp.types.float32'>], upper: vec[3, <class 'warp.types.float32'>]) -> bvh_query_t:
+@over
+def bvh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> bvh_query_t:
    """
    Construct an axis-aligned bounding box query against a bvh object. This query can be used to iterate over all bounds
       inside a bvh. Returns an object that is used to track state during bvh traversal.
@@ -4416,8 +695,8 @@ def bvh_query_aabb(id: uint64, lower: vec[3, <class 'warp.types.float32'>], uppe
    """
    ...
 
-@overload
-def bvh_query_ray(id: uint64, start: vec[3, <class 'warp.types.float32'>], dir: vec[3, <class 'warp.types.float32'>]) -> bvh_query_t:
+@over
+def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> bvh_query_t:
    """
    Construct a ray query against a bvh object. This query can be used to iterate over all bounds
       that intersect the ray. Returns an object that is used to track state during bvh traversal.
@@ -4428,7 +707,7 @@ def bvh_query_ray(id: uint64, start: vec[3, <class 'warp.types.float32'>], dir: 
    """
    ...
 
-@overload
+@over
 def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
    """
    Move to the next bound returned by the query. The index of the current bound is stored in ``index``, returns ``False``
@@ -4436,8 +715,8 @@ def bvh_query_next(query: bvh_query_t, index: int32) -> bool:
    """
    ...
 
-@overload
-def mesh_query_point(id: uint64, point: vec[3, <class 'warp.types.float32'>], max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool:
+@over
+def mesh_query_point(id: uint64, point: vec3f, max_dist: float32, inside: float32, face: int32, bary_u: float32, bary_v: float32) -> bool:
    """
    Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
@@ -4447,12 +726,12 @@ def mesh_query_point(id: uint64, point: vec[3, <class 'warp.types.float32'>], ma
       :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
       :param face: Returns the index of the closest face
       :param bary_u: Returns the barycentric u coordinate of the closest point
-      :param bary_v: Retruns the barycentric v coordinate of the closest point
+      :param bary_v: Returns the barycentric v coordinate of the closest point
    """
    ...
 
-@overload
-def mesh_query_ray(id: uint64, start: vec[3, <class 'warp.types.float32'>], dir: vec[3, <class 'warp.types.float32'>], max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec[3, <class 'warp.types.float32'>], face: int32) -> bool:
+@over
+def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, t: float32, bary_u: float32, bary_v: float32, sign: float32, normal: vec3f, face: int32) -> bool:
    """
    Computes the closest ray hit on the mesh with identifier `id`, returns ``True`` if a point < ``max_t`` is found.
 
@@ -4469,8 +748,8 @@ def mesh_query_ray(id: uint64, start: vec[3, <class 'warp.types.float32'>], dir:
    """
    ...
 
-@overload
-def mesh_query_aabb(id: uint64, lower: vec[3, <class 'warp.types.float32'>], upper: vec[3, <class 'warp.types.float32'>]) -> mesh_query_aabb_t:
+@over
+def mesh_query_aabb(id: uint64, lower: vec3f, upper: vec3f) -> mesh_query_aabb_t:
    """
    Construct an axis-aligned bounding box query against a mesh object. This query can be used to iterate over all triangles
       inside a volume. Returns an object that is used to track state during mesh traversal.
@@ -4481,7 +760,7 @@ def mesh_query_aabb(id: uint64, lower: vec[3, <class 'warp.types.float32'>], upp
    """
    ...
 
-@overload
+@over
 def mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool:
    """
    Move to the next triangle overlapping the query bounding box. The index of the current face is stored in ``index``, returns ``False``
@@ -4489,29 +768,29 @@ def mesh_query_aabb_next(query: mesh_query_aabb_t, index: int32) -> bool:
    """
    ...
 
-@overload
-def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
    """
    Evaluates the position on the mesh given a face index, and barycentric coordinates.
    """
    ...
 
-@overload
-def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
    """
    Evaluates the velocity on the mesh given a face index, and barycentric coordinates.
    """
    ...
 
-@overload
-def hash_grid_query(id: uint64, point: vec[3, <class 'warp.types.float32'>], max_dist: float32) -> hash_grid_query_t:
+@over
+def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> hash_grid_query_t:
    """
    Construct a point query against a hash grid. This query can be used to iterate over all neighboring points withing a 
       fixed radius from the query point. Returns an object that is used to track state during neighbor traversal.
    """
    ...
 
-@overload
+@over
 def hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool:
    """
    Move to the next point in the hash grid query. The index of the current neighbor is stored in ``index``, returns ``False``
@@ -4519,7 +798,7 @@ def hash_grid_query_next(query: hash_grid_query_t, index: int32) -> bool:
    """
    ...
 
-@overload
+@over
 def hash_grid_point_id(id: uint64, index: int32) -> int:
    """
    Return the index of a point in the grid, this can be used to re-order threads such that grid 
@@ -4527,50 +806,50 @@ def hash_grid_point_id(id: uint64, index: int32) -> int:
    """
    ...
 
-@overload
-def intersect_tri_tri(v0: vec[3, <class 'warp.types.float32'>], v1: vec[3, <class 'warp.types.float32'>], v2: vec[3, <class 'warp.types.float32'>], u0: vec[3, <class 'warp.types.float32'>], u1: vec[3, <class 'warp.types.float32'>], u2: vec[3, <class 'warp.types.float32'>]) -> int:
+@over
+def intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int:
    """
    Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.
    """
    ...
 
-@overload
+@over
 def mesh_get(id: uint64) -> Mesh:
    """
    Retrieves the mesh given its index.
    """
    ...
 
-@overload
-def mesh_eval_face_normal(id: uint64, face: int32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def mesh_eval_face_normal(id: uint64, face: int32) -> vec3f:
    """
    Evaluates the face normal the mesh given a face index.
    """
    ...
 
-@overload
-def mesh_get_point(id: uint64, index: int32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def mesh_get_point(id: uint64, index: int32) -> vec3f:
    """
    Returns the point of the mesh given a index.
    """
    ...
 
-@overload
-def mesh_get_velocity(id: uint64, index: int32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def mesh_get_velocity(id: uint64, index: int32) -> vec3f:
    """
    Returns the velocity of the mesh given a index.
    """
    ...
 
-@overload
+@over
 def mesh_get_index(id: uint64, index: int32) -> int:
    """
    Returns the point-index of the mesh given a face-vertex index.
    """
    ...
 
-@overload
-def closest_point_edge_edge(p1: vec[3, <class 'warp.types.float32'>], q1: vec[3, <class 'warp.types.float32'>], p2: vec[3, <class 'warp.types.float32'>], q2: vec[3, <class 'warp.types.float32'>], epsilon: float32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f:
    """
    Finds the closest points between two edges. Returns barycentric weights to the points on each edge, as well as the closest distance between the edges.
 
@@ -4583,105 +862,105 @@ def closest_point_edge_edge(p1: vec[3, <class 'warp.types.float32'>], q1: vec[3,
    """
    ...
 
-@overload
-def volume_sample_f(id: uint64, uvw: vec[3, <class 'warp.types.float32'>], sampling_mode: int32) -> float:
+@over
+def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
    """
    Sample the volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
    """
    ...
 
-@overload
+@over
 def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
    """
    Returns the value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
    """
    ...
 
-@overload
+@over
 def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
    """
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
    """
    ...
 
-@overload
-def volume_sample_v(id: uint64, uvw: vec[3, <class 'warp.types.float32'>], sampling_mode: int32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
    """
    Sample the vector volume given by ``id`` at the volume local-space point ``uvw``. Interpolation should be ``wp.Volume.CLOSEST``, or ``wp.Volume.LINEAR.``
    """
    ...
 
-@overload
-def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
    """
    Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
    """
    ...
 
-@overload
-def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec[3, <class 'warp.types.float32'>]):
+@over
+def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f):
    """
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
    """
    ...
 
-@overload
-def volume_sample_i(id: uint64, uvw: vec[3, <class 'warp.types.float32'>]) -> int:
+@over
+def volume_sample_i(id: uint64, uvw: vec3f) -> int:
    """
    Sample the int32 volume given by ``id`` at the volume local-space point ``uvw``. 
    """
    ...
 
-@overload
+@over
 def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
    """
    Returns the int32 value of voxel with coordinates ``i``, ``j``, ``k``, if the voxel at this index does not exist this function returns the background value
    """
    ...
 
-@overload
+@over
 def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
    """
    Store the value at voxel with coordinates ``i``, ``j``, ``k``.
    """
    ...
 
-@overload
-def volume_index_to_world(id: uint64, uvw: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
    """
    Transform a point defined in volume index space to world space given the volume's intrinsic affine transformation.
    """
    ...
 
-@overload
-def volume_world_to_index(id: uint64, xyz: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f:
    """
    Transform a point defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
    """
    ...
 
-@overload
-def volume_index_to_world_dir(id: uint64, uvw: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
    """
    Transform a direction defined in volume index space to world space given the volume's intrinsic affine transformation.
    """
    ...
 
-@overload
-def volume_world_to_index_dir(id: uint64, xyz: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
    """
    Transform a direction defined in volume world space to the volume's index space, given the volume's intrinsic affine transformation.
    """
    ...
 
-@overload
+@over
 def rand_init(seed: int32) -> uint32:
    """
    Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state.
    """
    ...
 
-@overload
+@over
 def rand_init(seed: int32, offset: int32) -> uint32:
    """
    Initialize a new random number generator given a user-defined seed and an offset. 
@@ -4690,196 +969,206 @@ def rand_init(seed: int32, offset: int32) -> uint32:
    """
    ...
 
-@overload
+@over
 def randi(state: uint32) -> int:
    """
    Return a random integer between [0, 2^32)
    """
    ...
 
-@overload
+@over
 def randi(state: uint32, min: int32, max: int32) -> int:
    """
    Return a random integer between [min, max)
    """
    ...
 
-@overload
+@over
 def randf(state: uint32) -> float:
    """
    Return a random float between [0.0, 1.0)
    """
    ...
 
-@overload
+@over
 def randf(state: uint32, min: float32, max: float32) -> float:
    """
    Return a random float between [min, max)
    """
    ...
 
-@overload
+@over
 def randn(state: uint32) -> float:
    """
    Sample a normal distribution
    """
    ...
 
-@overload
-def sample_cdf(state: uint32, cdf: array[float32]) -> int:
+@over
+def sample_cdf(state: uint32, cdf: Array[float32]) -> int:
    """
    Inverse transform sample a cumulative distribution function
    """
    ...
 
-@overload
-def sample_triangle(state: uint32) -> vec[2, <class 'warp.types.float32'>]:
+@over
+def sample_triangle(state: uint32) -> vec2f:
    """
    Uniformly sample a triangle. Returns sample barycentric coordinates
    """
    ...
 
-@overload
-def sample_unit_ring(state: uint32) -> vec[2, <class 'warp.types.float32'>]:
+@over
+def sample_unit_ring(state: uint32) -> vec2f:
    """
    Uniformly sample a ring in the xy plane
    """
    ...
 
-@overload
-def sample_unit_disk(state: uint32) -> vec[2, <class 'warp.types.float32'>]:
+@over
+def sample_unit_disk(state: uint32) -> vec2f:
    """
    Uniformly sample a disk in the xy plane
    """
    ...
 
-@overload
-def sample_unit_sphere_surface(state: uint32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def sample_unit_sphere_surface(state: uint32) -> vec3f:
    """
    Uniformly sample a unit sphere surface
    """
    ...
 
-@overload
-def sample_unit_sphere(state: uint32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def sample_unit_sphere(state: uint32) -> vec3f:
    """
    Uniformly sample a unit sphere
    """
    ...
 
-@overload
-def sample_unit_hemisphere_surface(state: uint32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def sample_unit_hemisphere_surface(state: uint32) -> vec3f:
    """
    Uniformly sample a unit hemisphere surface
    """
    ...
 
-@overload
-def sample_unit_hemisphere(state: uint32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def sample_unit_hemisphere(state: uint32) -> vec3f:
    """
    Uniformly sample a unit hemisphere
    """
    ...
 
-@overload
-def sample_unit_square(state: uint32) -> vec[2, <class 'warp.types.float32'>]:
+@over
+def sample_unit_square(state: uint32) -> vec2f:
    """
    Uniformly sample a unit square
    """
    ...
 
-@overload
-def sample_unit_cube(state: uint32) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def sample_unit_cube(state: uint32) -> vec3f:
    """
    Uniformly sample a unit cube
    """
    ...
 
-@overload
+@over
+def poisson(state: uint32, lam: float32) -> uint32:
+   """
+   Generate a random sample from a Poisson distribution.
+    
+       :param state: RNG state
+       :param lam: The expected value of the distribution
+   """
+   ...
+
+@over
 def noise(state: uint32, x: float32) -> float:
    """
    Non-periodic Perlin-style noise in 1d.
    """
    ...
 
-@overload
-def noise(state: uint32, xy: vec[2, <class 'warp.types.float32'>]) -> float:
+@over
+def noise(state: uint32, xy: vec2f) -> float:
    """
    Non-periodic Perlin-style noise in 2d.
    """
    ...
 
-@overload
-def noise(state: uint32, xyz: vec[3, <class 'warp.types.float32'>]) -> float:
+@over
+def noise(state: uint32, xyz: vec3f) -> float:
    """
    Non-periodic Perlin-style noise in 3d.
    """
    ...
 
-@overload
-def noise(state: uint32, xyzt: vec[4, <class 'warp.types.float32'>]) -> float:
+@over
+def noise(state: uint32, xyzt: vec4f) -> float:
    """
    Non-periodic Perlin-style noise in 4d.
    """
    ...
 
-@overload
+@over
 def pnoise(state: uint32, x: float32, px: int32) -> float:
    """
    Periodic Perlin-style noise in 1d.
    """
    ...
 
-@overload
-def pnoise(state: uint32, xy: vec[2, <class 'warp.types.float32'>], px: int32, py: int32) -> float:
+@over
+def pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float:
    """
    Periodic Perlin-style noise in 2d.
    """
    ...
 
-@overload
-def pnoise(state: uint32, xyz: vec[3, <class 'warp.types.float32'>], px: int32, py: int32, pz: int32) -> float:
+@over
+def pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float:
    """
    Periodic Perlin-style noise in 3d.
    """
    ...
 
-@overload
-def pnoise(state: uint32, xyzt: vec[4, <class 'warp.types.float32'>], px: int32, py: int32, pz: int32, pt: int32) -> float:
+@over
+def pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float:
    """
    Periodic Perlin-style noise in 4d.
    """
    ...
 
-@overload
-def curlnoise(state: uint32, xy: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
+@over
+def curlnoise(state: uint32, xy: vec2f) -> vec2f:
    """
    Divergence-free vector field based on the gradient of a Perlin noise function.
    """
    ...
 
-@overload
-def curlnoise(state: uint32, xyz: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def curlnoise(state: uint32, xyz: vec3f) -> vec3f:
    """
    Divergence-free vector field based on the curl of three Perlin noise functions.
    """
    ...
 
-@overload
-def curlnoise(state: uint32, xyzt: vec[4, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def curlnoise(state: uint32, xyzt: vec4f) -> vec3f:
    """
    Divergence-free vector field based on the curl of three Perlin noise functions.
    """
    ...
 
-@overload
+@over
 def printf():
    """
    Allows printing formatted strings, using C-style format specifiers.
    """
    ...
 
-@overload
+@over
 def tid() -> int:
    """
    Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim) 
@@ -4887,4130 +1176,476 @@ def tid() -> int:
    """
    ...
 
-@overload
+@over
 def tid() -> Tuple[int, int]:
    """
    Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
    """
    ...
 
-@overload
+@over
 def tid() -> Tuple[int, int, int]:
    """
    Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
    """
    ...
 
-@overload
+@over
 def tid() -> Tuple[int, int, int, int]:
    """
    Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
    """
    ...
 
-@overload
+@over
 def select(cond: bool, arg1: Any, arg2: Any):
    """
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
    """
    ...
 
-@overload
-def atomic_add(a: array[Any], i: int32, value: Any):
+@over
+def select(arr: Array[Any], arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
+def atomic_add(a: Array[Any], i: int32, value: Any):
    """
    Atomically add ``value`` onto the array at location given by index.
    """
    ...
 
-@overload
-def atomic_add(a: array[Any], i: int32, j: int32, value: Any):
+@over
+def atomic_add(a: Array[Any], i: int32, j: int32, value: Any):
    """
    Atomically add ``value`` onto the array at location given by indices.
    """
    ...
 
-@overload
-def atomic_add(a: array[Any], i: int32, j: int32, k: int32, value: Any):
+@over
+def atomic_add(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
    """
    Atomically add ``value`` onto the array at location given by indices.
    """
    ...
 
-@overload
-def atomic_add(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+@over
+def atomic_add(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
    """
    Atomically add ``value`` onto the array at location given by indices.
    """
    ...
 
-@overload
-def atomic_sub(a: array[Any], i: int32, value: Any):
+@over
+def atomic_sub(a: Array[Any], i: int32, value: Any):
    """
    Atomically subtract ``value`` onto the array at location given by index.
    """
    ...
 
-@overload
-def atomic_sub(a: array[Any], i: int32, j: int32, value: Any):
+@over
+def atomic_sub(a: Array[Any], i: int32, j: int32, value: Any):
    """
    Atomically subtract ``value`` onto the array at location given by indices.
    """
    ...
 
-@overload
-def atomic_sub(a: array[Any], i: int32, j: int32, k: int32, value: Any):
+@over
+def atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
    """
    Atomically subtract ``value`` onto the array at location given by indices.
    """
    ...
 
-@overload
-def atomic_sub(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+@over
+def atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
    """
    Atomically subtract ``value`` onto the array at location given by indices.
    """
    ...
 
-@overload
-def atomic_min(a: array[Any], i: int32, value: Any):
+@over
+def atomic_min(a: Array[Any], i: int32, value: Any):
    """
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
-@overload
-def atomic_min(a: array[Any], i: int32, j: int32, value: Any):
+@over
+def atomic_min(a: Array[Any], i: int32, j: int32, value: Any):
    """
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
-@overload
-def atomic_min(a: array[Any], i: int32, j: int32, k: int32, value: Any):
+@over
+def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
    """
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
-@overload
-def atomic_min(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+@over
+def atomic_min(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
    """
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
-@overload
-def atomic_max(a: array[Any], i: int32, value: Any):
+@over
+def atomic_max(a: Array[Any], i: int32, value: Any):
    """
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
-@overload
-def atomic_max(a: array[Any], i: int32, j: int32, value: Any):
+@over
+def atomic_max(a: Array[Any], i: int32, j: int32, value: Any):
    """
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
-@overload
-def atomic_max(a: array[Any], i: int32, j: int32, k: int32, value: Any):
+@over
+def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, value: Any):
    """
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
-@overload
-def atomic_max(a: array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
+@over
+def atomic_max(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any):
    """
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
    """
    ...
 
-@overload
-def expect_eq(arg1: int8, arg2: int8):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: uint8, arg2: uint8):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: int16, arg2: int16):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: uint16, arg2: uint16):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: int32, arg2: int32):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: uint32, arg2: uint32):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: int64, arg2: int64):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: uint64, arg2: uint64):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: float16, arg2: float16):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: float32, arg2: float32):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: float64, arg2: float64):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: quaternion[<class 'warp.types.float16'>], arg2: quaternion[<class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: quaternion[<class 'warp.types.float32'>], arg2: quaternion[<class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: quaternion[<class 'warp.types.float64'>], arg2: quaternion[<class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: quaternion[<class 'warp.types.float32'>], arg2: quaternion[<class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: transform_t[<class 'warp.types.float16'>], arg2: transform_t[<class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: transform_t[<class 'warp.types.float32'>], arg2: transform_t[<class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: transform_t[<class 'warp.types.float64'>], arg2: transform_t[<class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: transform_t[<class 'warp.types.float32'>], arg2: transform_t[<class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[2, <class 'warp.types.float64'>], arg2: vec[2, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[3, <class 'warp.types.float64'>], arg2: vec[3, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[4, <class 'warp.types.float64'>], arg2: vec[4, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[2, <class 'warp.types.uint8'>], arg2: vec[2, <class 'warp.types.uint8'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[3, <class 'warp.types.uint8'>], arg2: vec[3, <class 'warp.types.uint8'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[4, <class 'warp.types.uint8'>], arg2: vec[4, <class 'warp.types.uint8'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[2, <class 'warp.types.float16'>], arg2: vec[2, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[3, <class 'warp.types.float16'>], arg2: vec[3, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: vec[4, <class 'warp.types.float16'>], arg2: vec[4, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[2, 2, <class 'warp.types.float64'>], arg2: mat[2, 2, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[3, 3, <class 'warp.types.float64'>], arg2: mat[3, 3, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[4, 4, <class 'warp.types.float64'>], arg2: mat[4, 4, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[2, 2, <class 'warp.types.float16'>], arg2: mat[2, 2, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[3, 3, <class 'warp.types.float16'>], arg2: mat[3, 3, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_eq(arg1: mat[4, 4, <class 'warp.types.float16'>], arg2: mat[4, 4, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are not equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[2, <class 'warp.types.float64'>], arg2: vec[2, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[3, <class 'warp.types.float64'>], arg2: vec[3, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[4, <class 'warp.types.float64'>], arg2: vec[4, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[2, <class 'warp.types.float32'>], arg2: vec[2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[4, <class 'warp.types.float32'>], arg2: vec[4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[2, <class 'warp.types.uint8'>], arg2: vec[2, <class 'warp.types.uint8'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[3, <class 'warp.types.uint8'>], arg2: vec[3, <class 'warp.types.uint8'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[4, <class 'warp.types.uint8'>], arg2: vec[4, <class 'warp.types.uint8'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[2, <class 'warp.types.float16'>], arg2: vec[2, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[3, <class 'warp.types.float16'>], arg2: vec[3, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: vec[4, <class 'warp.types.float16'>], arg2: vec[4, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[2, 2, <class 'warp.types.float64'>], arg2: mat[2, 2, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[3, 3, <class 'warp.types.float64'>], arg2: mat[3, 3, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[4, 4, <class 'warp.types.float64'>], arg2: mat[4, 4, <class 'warp.types.float64'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[2, 2, <class 'warp.types.float32'>], arg2: mat[2, 2, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[3, 3, <class 'warp.types.float32'>], arg2: mat[3, 3, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[4, 4, <class 'warp.types.float32'>], arg2: mat[4, 4, <class 'warp.types.float32'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[2, 2, <class 'warp.types.float16'>], arg2: mat[2, 2, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[3, 3, <class 'warp.types.float16'>], arg2: mat[3, 3, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def expect_neq(arg1: mat[4, 4, <class 'warp.types.float16'>], arg2: mat[4, 4, <class 'warp.types.float16'>]):
-   """
-   Prints an error to stdout if arg1 and arg2 are equal
-   """
-   ...
-
-@overload
-def lerp(a: float64, b: float64, t: float64) -> float64:
+@over
+def lerp(a: Float, b: Float, t: Float) -> Float:
    """
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """
    ...
 
-@overload
-def lerp(a: float32, b: float32, t: float32) -> float32:
+@over
+def lerp(a: Vector[Any,Float], b: Vector[Any,Float], t: Float) -> Vector[Any,Float]:
    """
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """
    ...
 
-@overload
-def lerp(a: float16, b: float16, t: float16) -> float16:
+@over
+def lerp(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], t: Float) -> Matrix[Any,Any,Float]:
    """
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """
    ...
 
-@overload
-def lerp(a: vec[2, <class 'warp.types.float16'>], b: vec[2, <class 'warp.types.float16'>], t: float16) -> vec[2, <class 'warp.types.float16'>]:
+@over
+def lerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
    """
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """
    ...
 
-@overload
-def lerp(a: vec[2, <class 'warp.types.float32'>], b: vec[2, <class 'warp.types.float32'>], t: float32) -> vec[2, <class 'warp.types.float32'>]:
+@over
+def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transformation[Float]:
    """
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
    """
    ...
 
-@overload
-def lerp(a: vec[2, <class 'warp.types.float64'>], b: vec[2, <class 'warp.types.float64'>], t: float64) -> vec[2, <class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[2, <class 'warp.types.float32'>], b: vec[2, <class 'warp.types.float32'>], t: float32) -> vec[2, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[3, <class 'warp.types.float16'>], b: vec[3, <class 'warp.types.float16'>], t: float16) -> vec[3, <class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[3, <class 'warp.types.float32'>], b: vec[3, <class 'warp.types.float32'>], t: float32) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[3, <class 'warp.types.float64'>], b: vec[3, <class 'warp.types.float64'>], t: float64) -> vec[3, <class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[3, <class 'warp.types.float32'>], b: vec[3, <class 'warp.types.float32'>], t: float32) -> vec[3, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[4, <class 'warp.types.float16'>], b: vec[4, <class 'warp.types.float16'>], t: float16) -> vec[4, <class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[4, <class 'warp.types.float32'>], b: vec[4, <class 'warp.types.float32'>], t: float32) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[4, <class 'warp.types.float64'>], b: vec[4, <class 'warp.types.float64'>], t: float64) -> vec[4, <class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: vec[4, <class 'warp.types.float32'>], b: vec[4, <class 'warp.types.float32'>], t: float32) -> vec[4, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[2, 2, <class 'warp.types.float16'>], b: mat[2, 2, <class 'warp.types.float16'>], t: float16) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[2, 2, <class 'warp.types.float32'>], b: mat[2, 2, <class 'warp.types.float32'>], t: float32) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[2, 2, <class 'warp.types.float64'>], b: mat[2, 2, <class 'warp.types.float64'>], t: float64) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[2, 2, <class 'warp.types.float32'>], b: mat[2, 2, <class 'warp.types.float32'>], t: float32) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[3, 3, <class 'warp.types.float16'>], b: mat[3, 3, <class 'warp.types.float16'>], t: float16) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[3, 3, <class 'warp.types.float32'>], b: mat[3, 3, <class 'warp.types.float32'>], t: float32) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[3, 3, <class 'warp.types.float64'>], b: mat[3, 3, <class 'warp.types.float64'>], t: float64) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[3, 3, <class 'warp.types.float32'>], b: mat[3, 3, <class 'warp.types.float32'>], t: float32) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[4, 4, <class 'warp.types.float16'>], b: mat[4, 4, <class 'warp.types.float16'>], t: float16) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[4, 4, <class 'warp.types.float32'>], b: mat[4, 4, <class 'warp.types.float32'>], t: float32) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[4, 4, <class 'warp.types.float64'>], b: mat[4, 4, <class 'warp.types.float64'>], t: float64) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: mat[4, 4, <class 'warp.types.float32'>], b: mat[4, 4, <class 'warp.types.float32'>], t: float32) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: quaternion[<class 'warp.types.float16'>], b: quaternion[<class 'warp.types.float16'>], t: float16) -> quaternion[<class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: quaternion[<class 'warp.types.float32'>], b: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: quaternion[<class 'warp.types.float64'>], b: quaternion[<class 'warp.types.float64'>], t: float64) -> quaternion[<class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: quaternion[<class 'warp.types.float32'>], b: quaternion[<class 'warp.types.float32'>], t: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: transform_t[<class 'warp.types.float16'>], b: transform_t[<class 'warp.types.float16'>], t: float16) -> transform_t[<class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>], t: float32) -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: transform_t[<class 'warp.types.float64'>], b: transform_t[<class 'warp.types.float64'>], t: float64) -> transform_t[<class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: transform_t[<class 'warp.types.float32'>], b: transform_t[<class 'warp.types.float32'>], t: float32) -> transform_t[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: spatial_vector_t[<class 'warp.types.float16'>], b: spatial_vector_t[<class 'warp.types.float16'>], t: float16) -> spatial_vector_t[<class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>], t: float32) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: spatial_vector_t[<class 'warp.types.float64'>], b: spatial_vector_t[<class 'warp.types.float64'>], t: float64) -> spatial_vector_t[<class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: spatial_vector_t[<class 'warp.types.float32'>], b: spatial_vector_t[<class 'warp.types.float32'>], t: float32) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: spatial_matrix_t[<class 'warp.types.float16'>], b: spatial_matrix_t[<class 'warp.types.float16'>], t: float16) -> spatial_matrix_t[<class 'warp.types.float16'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: spatial_matrix_t[<class 'warp.types.float32'>], b: spatial_matrix_t[<class 'warp.types.float32'>], t: float32) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: spatial_matrix_t[<class 'warp.types.float64'>], b: spatial_matrix_t[<class 'warp.types.float64'>], t: float64) -> spatial_matrix_t[<class 'warp.types.float64'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def lerp(a: spatial_matrix_t[<class 'warp.types.float32'>], b: spatial_matrix_t[<class 'warp.types.float32'>], t: float32) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-   Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
-   """
-   ...
-
-@overload
-def smoothstep(edge0: float64, edge1: float64, x: float64) -> float64:
+@over
+def smoothstep(edge0: Float, edge1: Float, x: Float) -> Float:
    """
    Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
    """
    ...
 
-@overload
-def smoothstep(edge0: float32, edge1: float32, x: float32) -> float32:
-   """
-   Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
-   """
-   ...
-
-@overload
-def smoothstep(edge0: float16, edge1: float16, x: float16) -> float16:
-   """
-   Smoothly interpolate between two values edge0 and edge1 using a factor x, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping
-   """
-   ...
-
-@overload
-def expect_near(arg1: float64, arg2: float64, tolerance: float64):
+@over
+def expect_near(arg1: Float, arg2: Float, tolerance: Float):
    """
    Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
    """
    ...
 
-@overload
-def expect_near(arg1: float32, arg2: float32, tolerance: float32):
-   """
-   Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
-   """
-   ...
-
-@overload
-def expect_near(arg1: float16, arg2: float16, tolerance: float16):
-   """
-   Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude
-   """
-   ...
-
-@overload
-def expect_near(arg1: vec[3, <class 'warp.types.float32'>], arg2: vec[3, <class 'warp.types.float32'>], tolerance: float32):
+@over
+def expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32):
    """
    Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
    """
    ...
 
-@overload
-def lower_bound(arr: array[Scalar], value: uint32) -> int:
+@over
+def lower_bound(arr: Array[Scalar], value: Scalar) -> int:
    """
    Search a sorted array for the closest element greater than or equal to value.
    """
    ...
 
-@overload
-def lower_bound(arr: array[Scalar], value: int16) -> int:
+@over
+def add(x: Scalar, y: Scalar) -> Scalar:
    """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: float64) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: int8) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: float16) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: uint16) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: int32) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: uint64) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: float32) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: int64) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def lower_bound(arr: array[Scalar], value: uint8) -> int:
-   """
-   Search a sorted array for the closest element greater than or equal to value.
-   """
-   ...
-
-@overload
-def add(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: int16, y: int16) -> int16:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: int8, y: int8) -> int8:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: uint16, y: uint16) -> uint16:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: float32, y: float32) -> float32:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: uint8, y: uint8) -> uint8:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: quaternion[<class 'warp.types.float64'>], y: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: quaternion[<class 'warp.types.float16'>], y: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_vector_t[<class 'warp.types.float64'>], y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_vector_t[<class 'warp.types.float16'>], y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_matrix_t[<class 'warp.types.float64'>], y: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: spatial_matrix_t[<class 'warp.types.float16'>], y: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: transform_t[<class 'warp.types.float64'>], y: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def add(x: transform_t[<class 'warp.types.float16'>], y: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: int16, y: int16) -> int16:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: int8, y: int8) -> int8:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: uint16, y: uint16) -> uint16:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: float32, y: float32) -> float32:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: uint8, y: uint8) -> uint8:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[2, <class 'warp.types.uint8'>], y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[3, <class 'warp.types.uint8'>], y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[4, <class 'warp.types.uint8'>], y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: vec[4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_vector_t[<class 'warp.types.float64'>], y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_vector_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_vector_t[<class 'warp.types.float16'>], y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_matrix_t[<class 'warp.types.float64'>], y: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: spatial_matrix_t[<class 'warp.types.float16'>], y: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: quaternion[<class 'warp.types.float64'>], y: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: quaternion[<class 'warp.types.float16'>], y: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: transform_t[<class 'warp.types.float64'>], y: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def sub(x: transform_t[<class 'warp.types.float16'>], y: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: int16, y: int16) -> int16:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: int8, y: int8) -> int8:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint16, y: uint16) -> uint16:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: float32) -> float32:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint8, y: uint8) -> uint8:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[2, <class 'warp.types.float64'>], y: float64) -> vec[2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[3, <class 'warp.types.float64'>], y: float64) -> vec[3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[4, <class 'warp.types.float64'>], y: float64) -> vec[4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[2, <class 'warp.types.float16'>], y: float16) -> vec[2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[3, <class 'warp.types.float16'>], y: float16) -> vec[3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[4, <class 'warp.types.float16'>], y: float16) -> vec[4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[2, <class 'warp.types.uint8'>], y: uint8) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[3, <class 'warp.types.uint8'>], y: uint8) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[4, <class 'warp.types.uint8'>], y: uint8) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[2, <class 'warp.types.float32'>], y: float32) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[2, <class 'warp.types.float32'>], y: float32) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[3, <class 'warp.types.float32'>], y: float32) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[3, <class 'warp.types.float32'>], y: float32) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[4, <class 'warp.types.float32'>], y: float32) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: vec[4, <class 'warp.types.float32'>], y: float32) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint8, y: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint8, y: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: uint8, y: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float64'>], y: float64) -> quaternion[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float16'>], y: float16) -> quaternion[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float32'>], y: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float32'>], y: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float64'>], y: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float32'>], y: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: quaternion[<class 'warp.types.float16'>], y: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float64'>], y: float64) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float64'>], y: float64) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float64'>], y: float64) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float16'>], y: float16) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float16'>], y: float16) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float16'>], y: float16) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: float32) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: float32) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: float32) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: float32) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: float32) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: float32) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float64'>], y: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float64'>], y: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float64'>], y: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float16'>], y: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float16'>], y: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float16'>], y: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float64'>], y: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float64'>], y: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float64'>], y: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float32'>], y: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float32'>], y: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float32'>], y: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[2, 2, <class 'warp.types.float16'>], y: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[3, 3, <class 'warp.types.float16'>], y: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: mat[4, 4, <class 'warp.types.float16'>], y: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_vector_t[<class 'warp.types.float64'>], y: float64) -> spatial_vector_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_vector_t[<class 'warp.types.float16'>], y: float16) -> spatial_vector_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_vector_t[<class 'warp.types.float32'>], y: float32) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_vector_t[<class 'warp.types.float32'>], y: float32) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float64'>], y: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float16'>], y: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float64'>], y: spatial_vector_t[<class 'warp.types.float64'>]) -> spatial_vector_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float16'>], y: spatial_vector_t[<class 'warp.types.float16'>]) -> spatial_vector_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: spatial_vector_t[<class 'warp.types.float32'>]) -> spatial_vector_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float64'>], y: float64) -> spatial_matrix_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float16'>], y: float16) -> spatial_matrix_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: float32) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: spatial_matrix_t[<class 'warp.types.float32'>], y: float32) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: spatial_matrix_t[<class 'warp.types.float64'>]) -> spatial_matrix_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: spatial_matrix_t[<class 'warp.types.float16'>]) -> spatial_matrix_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: spatial_matrix_t[<class 'warp.types.float32'>]) -> spatial_matrix_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float64'>], y: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float32'>], y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float16'>], y: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float64, y: transform_t[<class 'warp.types.float64'>]) -> transform_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float16, y: transform_t[<class 'warp.types.float16'>]) -> transform_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: float32, y: transform_t[<class 'warp.types.float32'>]) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float64'>], y: float64) -> transform_t[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float16'>], y: float16) -> transform_t[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float32'>], y: float32) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mul(x: transform_t[<class 'warp.types.float32'>], y: float32) -> transform_t[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: int16, y: int16) -> int16:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: int8, y: int8) -> int8:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: uint16, y: uint16) -> uint16:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: float32, y: float32) -> float32:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def mod(x: uint8, y: uint8) -> uint8:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: int16, y: int16) -> int16:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: int8, y: int8) -> int8:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: uint16, y: uint16) -> uint16:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: float32, y: float32) -> float32:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: uint8, y: uint8) -> uint8:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[2, <class 'warp.types.float64'>], y: float64) -> vec[2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[3, <class 'warp.types.float64'>], y: float64) -> vec[3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[4, <class 'warp.types.float64'>], y: float64) -> vec[4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[2, <class 'warp.types.float16'>], y: float16) -> vec[2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[3, <class 'warp.types.float16'>], y: float16) -> vec[3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[4, <class 'warp.types.float16'>], y: float16) -> vec[4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[2, <class 'warp.types.uint8'>], y: uint8) -> vec[2, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[3, <class 'warp.types.uint8'>], y: uint8) -> vec[3, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[4, <class 'warp.types.uint8'>], y: uint8) -> vec[4, <class 'warp.types.uint8'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[2, <class 'warp.types.float32'>], y: float32) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[2, <class 'warp.types.float32'>], y: float32) -> vec[2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[3, <class 'warp.types.float32'>], y: float32) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[3, <class 'warp.types.float32'>], y: float32) -> vec[3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[4, <class 'warp.types.float32'>], y: float32) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: vec[4, <class 'warp.types.float32'>], y: float32) -> vec[4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[2, 2, <class 'warp.types.float64'>], y: float64) -> mat[2, 2, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[3, 3, <class 'warp.types.float64'>], y: float64) -> mat[3, 3, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[4, 4, <class 'warp.types.float64'>], y: float64) -> mat[4, 4, <class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[2, 2, <class 'warp.types.float16'>], y: float16) -> mat[2, 2, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[3, 3, <class 'warp.types.float16'>], y: float16) -> mat[3, 3, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[4, 4, <class 'warp.types.float16'>], y: float16) -> mat[4, 4, <class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[2, 2, <class 'warp.types.float32'>], y: float32) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[2, 2, <class 'warp.types.float32'>], y: float32) -> mat[2, 2, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[3, 3, <class 'warp.types.float32'>], y: float32) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[3, 3, <class 'warp.types.float32'>], y: float32) -> mat[3, 3, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[4, 4, <class 'warp.types.float32'>], y: float32) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: mat[4, 4, <class 'warp.types.float32'>], y: float32) -> mat[4, 4, <class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: quaternion[<class 'warp.types.float64'>], y: float64) -> quaternion[<class 'warp.types.float64'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: quaternion[<class 'warp.types.float16'>], y: float16) -> quaternion[<class 'warp.types.float16'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: quaternion[<class 'warp.types.float32'>], y: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def div(x: quaternion[<class 'warp.types.float32'>], y: float32) -> quaternion[<class 'warp.types.float32'>]:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: uint32, y: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: int16, y: int16) -> int16:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: float64, y: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: int8, y: int8) -> int8:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: float16, y: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: uint16, y: uint16) -> uint16:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: int32, y: int32) -> int32:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: uint64, y: uint64) -> uint64:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: float32, y: float32) -> float32:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: int64, y: int64) -> int64:
-   """
-
-   """
-   ...
-
-@overload
-def floordiv(x: uint8, y: uint8) -> uint8:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: uint32) -> uint32:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: int16) -> int16:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: float64) -> float64:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: int8) -> int8:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: float16) -> float16:
-   """
-
-   """
-   ...
-
-@overload
-def neg(x: uint16) -> uint16:
-   """
 
    """
    ...
 
-@overload
-def neg(x: int32) -> int32:
+@over
+def add(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: uint64) -> uint64:
+@over
+def add(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: float32) -> float32:
+@over
+def add(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: int64) -> int64:
+@over
+def add(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: uint8) -> uint8:
+@over
+def sub(x: Scalar, y: Scalar) -> Scalar:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[2, <class 'warp.types.float64'>]) -> vec[2, <class 'warp.types.float64'>]:
+@over
+def sub(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[3, <class 'warp.types.float64'>]) -> vec[3, <class 'warp.types.float64'>]:
+@over
+def sub(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[4, <class 'warp.types.float64'>]) -> vec[4, <class 'warp.types.float64'>]:
+@over
+def sub(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
+@over
+def sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[2, <class 'warp.types.float32'>]) -> vec[2, <class 'warp.types.float32'>]:
+@over
+def mul(x: Scalar, y: Scalar) -> Scalar:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def mul(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[3, <class 'warp.types.float32'>]) -> vec[3, <class 'warp.types.float32'>]:
+@over
+def mul(x: Scalar, y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
+@over
+def mul(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[4, <class 'warp.types.float32'>]) -> vec[4, <class 'warp.types.float32'>]:
+@over
+def mul(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[2, <class 'warp.types.uint8'>]) -> vec[2, <class 'warp.types.uint8'>]:
+@over
+def mul(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[3, <class 'warp.types.uint8'>]) -> vec[3, <class 'warp.types.uint8'>]:
+@over
+def mul(x: Scalar, y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[4, <class 'warp.types.uint8'>]) -> vec[4, <class 'warp.types.uint8'>]:
+@over
+def mul(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[2, <class 'warp.types.float16'>]) -> vec[2, <class 'warp.types.float16'>]:
+@over
+def mul(x: Matrix[Any,Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[3, <class 'warp.types.float16'>]) -> vec[3, <class 'warp.types.float16'>]:
+@over
+def mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]):
    """
 
    """
    ...
 
-@overload
-def neg(x: vec[4, <class 'warp.types.float16'>]) -> vec[4, <class 'warp.types.float16'>]:
+@over
+def mul(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: quaternion[<class 'warp.types.float64'>]) -> quaternion[<class 'warp.types.float64'>]:
+@over
+def mul(x: Scalar, y: Transformation[Scalar]) -> Transformation[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
+@over
+def mul(x: Transformation[Scalar], y: Scalar) -> Transformation[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: quaternion[<class 'warp.types.float32'>]) -> quaternion[<class 'warp.types.float32'>]:
+@over
+def mod(x: Scalar, y: Scalar) -> Scalar:
    """
 
    """
    ...
 
-@overload
-def neg(x: quaternion[<class 'warp.types.float16'>]) -> quaternion[<class 'warp.types.float16'>]:
+@over
+def div(x: Scalar, y: Scalar) -> Scalar:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[2, 2, <class 'warp.types.float64'>]) -> mat[2, 2, <class 'warp.types.float64'>]:
+@over
+def div(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[3, 3, <class 'warp.types.float64'>]) -> mat[3, 3, <class 'warp.types.float64'>]:
+@over
+def div(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[4, 4, <class 'warp.types.float64'>]) -> mat[4, 4, <class 'warp.types.float64'>]:
+@over
+def div(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
+@over
+def floordiv(x: Scalar, y: Scalar) -> Scalar:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[2, 2, <class 'warp.types.float32'>]) -> mat[2, 2, <class 'warp.types.float32'>]:
+@over
+def pos(x: Scalar) -> Scalar:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
+@over
+def pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[3, 3, <class 'warp.types.float32'>]) -> mat[3, 3, <class 'warp.types.float32'>]:
+@over
+def pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
+@over
+def pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[4, 4, <class 'warp.types.float32'>]) -> mat[4, 4, <class 'warp.types.float32'>]:
+@over
+def neg(x: Scalar) -> Scalar:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[2, 2, <class 'warp.types.float16'>]) -> mat[2, 2, <class 'warp.types.float16'>]:
+@over
+def neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[3, 3, <class 'warp.types.float16'>]) -> mat[3, 3, <class 'warp.types.float16'>]:
+@over
+def neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
    """
 
    """
    ...
 
-@overload
-def neg(x: mat[4, 4, <class 'warp.types.float16'>]) -> mat[4, 4, <class 'warp.types.float16'>]:
+@over
+def neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
    """
 
    """
    ...
 
-@overload
+@over
 def unot(b: bool) -> bool:
    """
 

@@ -15,7 +15,6 @@
 
 
 import warp as wp
-import numpy as np
 
 import os
 import math

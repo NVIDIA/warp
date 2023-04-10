@@ -14,9 +14,6 @@
 ###########################################################################
 
 import os
-import math
-
-import numpy as np
 
 import warp as wp
 import warp.sim
@@ -58,8 +55,8 @@ class Example:
             k_lambda=20000.0,
             k_damp=0.0)
 
-        builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
-        builder.add_shape_sphere(body=0, radius=0.75, density=100.0)
+        b = builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
+        builder.add_shape_sphere(body=b, radius=0.75, density=100.0)
 
         self.model = builder.finalize()
         self.model.ground = True
@@ -73,9 +70,7 @@ class Example:
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.model.collide(self.state_0)
-
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=40.0)
 
     def update(self):
 

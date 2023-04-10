@@ -106,8 +106,12 @@ bool init_cuda_driver()
 #elif defined(__linux__)
     static void* hCudaDriver = dlopen("libcuda.so", RTLD_NOW);
     if (hCudaDriver == NULL) {
-        fprintf(stderr, "Warp CUDA error: Could not open libcuda.so.\n");
-        return false;
+        // WSL and possibly other systems might require the .1 suffix
+        hCudaDriver = dlopen("libcuda.so.1", RTLD_NOW);
+        if (hCudaDriver == NULL) {
+            fprintf(stderr, "Warp CUDA error: Could not open libcuda.so.\n");
+            return false;
+        }
     }
     pfn_cuGetProcAddress = (PFN_cuGetProcAddress)dlsym(hCudaDriver, "cuGetProcAddress");
 #endif
