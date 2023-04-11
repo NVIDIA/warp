@@ -2580,7 +2580,7 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
 
                         # ensure shape is correct
                         if v.shape != arg_type._shape_:
-                            raise TypeError(f"Invalid argument shape for param {arg_name}, expected {arg_type.shape}, got {v.shape}")
+                            raise TypeError(f"Invalid argument shape for param {arg_name}, expected {arg_type._shape_}, got {v.shape}")
 
                         params.append(arg_type(v))
 

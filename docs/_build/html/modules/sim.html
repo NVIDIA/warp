@@ -1263,7 +1263,7 @@ tetrahedral elements.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder.set_ground_plane">
-<span class="sig-name descname"><span class="pre">set_ground_plane</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">normal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.set_ground_plane" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">set_ground_plane</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.set_ground_plane" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates a ground plane for the world. If the normal is not specified,
 the up_vector of the ModelBuilder is used.</p>
 <dl class="field-list simple">
@@ -1281,7 +1281,7 @@ the up_vector of the ModelBuilder is used.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder.finalize">
-<span class="sig-name descname"><span class="pre">finalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.finalize" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">finalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.finalize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert this builder object to a concrete model for simulation.</p>
 <p>After building simulation elements this method should be called to transfer
 all data to device memory ready for simulation.</p>
