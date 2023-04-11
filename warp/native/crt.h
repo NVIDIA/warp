@@ -8,7 +8,29 @@
 
 #pragma once
 
-#ifndef WP_NO_CRT
+// This file declares a subset of the C runtime (CRT) functions and macros for
+// use by compute kernel modules. There are three environments in which this
+// file gets included:
+// - CUDA kernel modules (WP_NO_CRT and __CUDACC__). CUDA already has implicitly
+//   declared builtins for most functions. printf() and macro definitions are
+//   the notable exceptions.
+// - C++ kernel modules (WP_NO_CRT and !__CUDACC__). These can't use the CRT
+//   directly when using a standalone compiler. The functions get exported from
+//   the Warp runtime instead (warp.dll).
+// - Warp runtime (!WP_NO_CRT). When building warp.dll it's fine to include the
+//   standard C library headers, and it avoids mismatched redefinitions.
+
+#if !defined(__CUDA_ARCH__)
+    #if defined(_WIN32)
+        #define WP_API __declspec(dllexport)
+    #else
+        #define WP_API __attribute__ ((visibility ("default")))
+    #endif
+#else
+    #define WP_API
+#endif
+
+#if !defined(WP_NO_CRT)
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,8 +38,115 @@
 #include <math.h>
 #include <assert.h>
 #include <float.h>
+#include <string.h>
 
 #else
+
+#if defined(__CUDACC__)
+
+// stdio.h
+extern "C" __device__ int printf(const char* format, ... );
+
+#else
+
+extern "C" {
+
+// stdio.h
+int printf(const char * format, ... );
+
+// stdlib.h
+int abs(int);
+long long llabs(long long);
+
+// math.h
+float fmodf(float, float);
+double fmod(double, double);
+float logf(float);
+double log(double);
+float log2f(float);
+double log2(double);
+float log10f(float);
+double log10(double);
+float expf(float);
+double exp(double);
+float sqrtf(float);
+double sqrt(double);
+float powf(float, float);
+double pow(double, double);
+float floorf(float);
+double floor(double);
+float ceilf(float);
+double ceil(double);
+float fabsf(float);
+double fabs(double);
+float roundf(float);
+double round(double);
+float truncf(float);
+double trunc(double);
+float rintf(float);
+double rint(double);
+float acosf(float);
+double acos(double);
+float asinf(float);
+double asin(double);
+float atanf(float);
+double atan(double);
+float atan2f(float, float);
+double atan2(double, double);
+float cosf(float);
+double cos(double);
+float sinf(float);
+double sin(double);
+float tanf(float);
+double tan(double);
+float sinhf(float);
+double sinh(double);
+float coshf(float);
+double cosh(double);
+float tanhf(float);
+double tanh(double);
+float fmaf(float, float, float);
+
+// stddef.h
+#if defined(_MSC_VER)
+using size_t = unsigned __int64;
+#else
+using size_t = unsigned long;
+#endif
+
+// string.h
+void* memset(void*, int, size_t);
+void* memcpy(void*, const void*, size_t);
+
+// stdlib.h
+void* malloc(size_t);
+void free(void*);
+
+// Helper for implementing assert() macro
+WP_API void _wp_assert(const char* message, const char* file, unsigned int line);
+
+// Helper for implementing isfinite()
+WP_API int _wp_isfinite(double);
+
+}  // extern "C"
+
+// cmath
+inline bool isfinite(double x)
+{
+    return _wp_isfinite(x);
+}
+
+// assert.h
+#ifdef NDEBUG
+    #define assert(expression) ((void)0)
+#else
+    #define assert(expression) (void)(                                    \
+            (!!(expression)) ||                                           \
+            (_wp_assert((#expression), (__FILE__), (unsigned)(__LINE__)), 0) \
+        )
+#endif
+
+#endif  // !__CUDACC__
 
 // These definitions are taken from Jitify: https://github.com/NVIDIA/jitify
 
@@ -89,34 +218,34 @@ enum {
 #define ULLONG_MAX 18446744073709551615ULL
 
 
-/// stdint
+/// stdint.h
 typedef signed char      int8_t;
 typedef signed short     int16_t;
 typedef signed int       int32_t;
 typedef signed long long int64_t;
-typedef signed char      int_fast8_t;
-typedef signed short     int_fast16_t;
-typedef signed int       int_fast32_t;
-typedef signed long long int_fast64_t;
-typedef signed char      int_least8_t;
-typedef signed short     int_least16_t;
-typedef signed int       int_least32_t;
-typedef signed long long int_least64_t;
-typedef signed long long intmax_t;
-typedef signed long      intptr_t; 
+//typedef signed char      int_fast8_t;
+//typedef signed short     int_fast16_t;
+//typedef signed int       int_fast32_t;
+//typedef signed long long int_fast64_t;
+//typedef signed char      int_least8_t;
+//typedef signed short     int_least16_t;
+//typedef signed int       int_least32_t;
+//typedef signed long long int_least64_t;
+//typedef signed long long intmax_t;
+//typedef signed long      intptr_t; 
 typedef unsigned char      uint8_t;
 typedef unsigned short     uint16_t;
 typedef unsigned int       uint32_t;
 typedef unsigned long long uint64_t;
-typedef unsigned char      uint_fast8_t;
-typedef unsigned short     uint_fast16_t;
-typedef unsigned int       uint_fast32_t;
-typedef unsigned long long uint_fast64_t;
-typedef unsigned char      uint_least8_t;
-typedef unsigned short     uint_least16_t;
-typedef unsigned int       uint_least32_t;
-typedef unsigned long long uint_least64_t;
-typedef unsigned long long uintmax_t;
+//typedef unsigned char      uint_fast8_t;
+//typedef unsigned short     uint_fast16_t;
+//typedef unsigned int       uint_fast32_t;
+//typedef unsigned long long uint_fast64_t;
+//typedef unsigned char      uint_least8_t;
+//typedef unsigned short     uint_least16_t;
+//typedef unsigned int       uint_least32_t;
+//typedef unsigned long long uint_least64_t;
+//typedef unsigned long long uintmax_t;
 
 
 /// math.h
@@ -192,17 +321,4 @@ typedef unsigned long long uintmax_t;
 
 #define M_PI 3.14159265358979323846
 
-
-// stdio
-extern "C"
-{
-  __device__ int printf(const char * format, ... );
-}
-
-// assert.h
-//#ifndef __CUDACC__
-//#include <cassert>
-//#endif
-//#define assert(x) {}
-
-#endif // WP_CUDA
+#endif // WP_NO_CRT

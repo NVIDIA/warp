@@ -14,7 +14,6 @@
 ###########################################################################
 
 import os
-import math
 
 import numpy as np
 
@@ -68,25 +67,24 @@ class Robot:
                 parent = builder.joint_count-1
                 parent_joint_xform = wp.transform([chain_width, 0.0, 0.0], wp.quat_identity())
 
-            joint_type = wp.sim.JOINT_REVOLUTE
-            joint_axis=(0.0, 0.0, 1.0)
-            joint_limit_lower=-np.deg2rad(60.0)
-            joint_limit_upper=np.deg2rad(60.0)
-
             # create body
             b = builder.add_body(
-                    parent=parent,
                     origin=wp.transform([i, 0.0, 0.0], wp.quat_identity()),
-                    joint_xform=parent_joint_xform,
-                    joint_axis=joint_axis,
-                    joint_type=joint_type,
-                    joint_limit_lower=joint_limit_lower,
-                    joint_limit_upper=joint_limit_upper,
-                    joint_target_ke=0.0,
-                    joint_target_kd=0.0,
-                    joint_limit_ke=30.0,
-                    joint_limit_kd=30.0,
-                    joint_armature=0.1)
+                    armature=0.1)
+
+            builder.add_joint_revolute(
+                    parent=parent,
+                    child=b,
+                    axis=(0.0, 0.0, 1.0),
+                    parent_xform=parent_joint_xform,
+                    child_xform=wp.transform_identity(),
+                    limit_lower=-np.deg2rad(60.0),
+                    limit_upper=np.deg2rad(60.0),
+                    target_ke=0.0,
+                    target_kd=0.0,
+                    limit_ke=30.0,
+                    limit_kd=30.0,
+            )
 
             if i == chain_length-1:
 
@@ -119,8 +117,10 @@ class Robot:
 
         #-----------------------
         # set up Usd renderer
-        self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_fk_grad.usd"))
-
+        self.renderer = wp.sim.render.SimRenderer(
+            self.model,
+            os.path.join(os.path.dirname(__file__), "outputs/example_sim_fk_grad.usd"),
+            scaling=50.0)
 
     def run(self, render=True):
 
@@ -163,7 +163,7 @@ class Robot:
             # render
             self.renderer.begin_frame(render_time)
             self.renderer.render(self.state)
-            self.renderer.render_sphere(name="target", pos=TARGET.val, rot=wp.quat_identity(), radius=0.1)
+            self.renderer.render_sphere(name="target", pos=TARGET, rot=wp.quat_identity(), radius=0.1)
             self.renderer.end_frame()
 
 

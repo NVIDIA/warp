@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="warp-lang",
-    version="0.7.2",
+    version="0.8.0",
     author="NVIDIA",
     author_email="mmacklin@nvidia.com",
     description="A Python framework for high-performance simulation and graphics programming",
@@ -14,7 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     license="NVSCL",
     packages=setuptools.find_packages(),
-    package_data={"": ["native/*", "native/nanovdb/*", "tests/assets/*", "bin/*", "gen/*"]},
+    package_data={"": ["native/*", "native/nanovdb/*", "tests/assets/*", "bin/*"]},
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",

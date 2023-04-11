@@ -20,8 +20,8 @@
 import os
 
 import numpy as np
-
 import warp as wp
+
 import warp.sim
 import warp.sim.render
 
@@ -45,14 +45,20 @@ class Bounce:
     render_time = 0.0
 
     train_iters = 250
-    train_rate = 0.01
+    train_rate = 0.02
+
+    ke = 1.e+4
+    kf = 0.0
+    kd = 1.e+1
+    mu = 0.25
 
     def __init__(self, render=True, profile=False, adapter=None):
 
         builder = wp.sim.ModelBuilder()
 
         builder.add_particle(pos=(-0.5, 1.0, 0.0), vel=(5.0, -5.0, 0.0), mass=1.0)
-        builder.add_shape_box(body=-1, pos=(2.0, 1.0, 0.0), hx=0.25, hy=1.0, hz=1.0)
+        builder.add_shape_box(body=-1, pos=(2.0, 1.0, 0.0), hx=0.25, hy=1.0, hz=1.0, 
+                              ke=self.ke, kf=self.kf, kd=self.kd, mu=self.mu)
 
         self.device = wp.get_device(adapter)
         self.profile = profile
@@ -60,10 +66,10 @@ class Bounce:
         self.model = builder.finalize(self.device)
         self.model.ground = True
 
-        self.model.soft_contact_ke = 1.e+4
-        self.model.soft_contact_kf = 0.0
-        self.model.soft_contact_kd = 1.e+1
-        self.model.soft_contact_mu = 0.25
+        self.model.soft_contact_ke = self.ke
+        self.model.soft_contact_kf = self.kf
+        self.model.soft_contact_kd = self.kd
+        self.model.soft_contact_mu = self.mu
         self.model.soft_contact_margin = 10.0
                 
         self.integrator = wp.sim.SemiImplicitIntegrator()
@@ -79,8 +85,12 @@ class Bounce:
         # one-shot contact creation (valid if we're doing simple collision against a constant normal plane)
         wp.sim.collide(self.model, self.states[0])
 
-        if (self.render):
-            self.stage = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_bounce.usd"))
+        self.stage = None
+        if (render):
+            self.stage = wp.sim.render.SimRenderer(
+                self.model,
+                os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_bounce.usd"),
+                scaling=40.0)
 
 
     @wp.kernel
@@ -122,6 +132,9 @@ class Bounce:
         return self.loss
 
     def render(self, iter):
+
+        if self.stage is None:
+            return
 
         # render every 16 iters
         if iter % 16 > 0:

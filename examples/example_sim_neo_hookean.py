@@ -20,8 +20,6 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 
-import numpy as np
-
 wp.init()
 
 
@@ -82,13 +80,13 @@ class Example:
 
         self.volume = wp.zeros(1, dtype=wp.float32)
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
     def update(self):
 
         with wp.ScopedTimer("simulate"):
 
-            xform = (*(0.0, self.lift_speed*self.sim_time, 0.0), *wp.quat_from_axis_angle((0.0, 1.0, 0.0), self.rot_speed*self.sim_time))
+            xform = wp.transform((0.0, self.lift_speed*self.sim_time, 0.0), wp.quat_from_axis_angle((0.0, 1.0, 0.0), self.rot_speed*self.sim_time))
             wp.launch(kernel=self.twist_points, dim=len(self.state_0.particle_q), inputs=[self.rest.particle_q, self.state_0.particle_q, self.model.particle_mass, xform])
 
             for s in range(self.sim_substeps):

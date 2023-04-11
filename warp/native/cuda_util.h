@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "builtin.h"
+
 #if WP_ENABLE_CUDA
 
 #include <cudaTypedefs.h>

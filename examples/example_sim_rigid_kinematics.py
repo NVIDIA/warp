@@ -85,10 +85,13 @@ class Robot:
         #-----------------------
         # set up Usd renderer
         if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_kinematics.usd"))
+            self.renderer = wp.sim.render.SimRenderer(
+                self.model,
+                os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_kinematics.usd"),
+                scaling=50.0)
 
 
-    def run(self, render=True):
+    def run(self):
 
         #---------------
         # run simulation
@@ -118,6 +121,12 @@ class Robot:
 
         q_err = q_fk - q_ik.numpy()
         qd_err = qd_fk - qd_ik.numpy()
+
+        if (self.render):
+            self.renderer.begin_frame(self.render_time)
+            self.renderer.render(self.state)
+            self.renderer.end_frame()
+            self.renderer.save()
 
         print(q_err)
         print(qd_err)

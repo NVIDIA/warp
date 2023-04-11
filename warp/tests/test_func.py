@@ -61,12 +61,24 @@ def test_overload_func():
 
     noreturn(wp.vec3(1.0, 0.0, 0.0))
 
+@wp.func
+def foo(x: int):
+    # This shouldn't be picked up.
+    return x * 2
 
+@wp.func
+def foo(x: int):
+    return x * 3
+
+@wp.kernel
+def test_override_func():
+    i = foo(1)
+    wp.expect_eq(i, 3)
 
 def test_func_export(test, device):
     # tests calling native functions from Python
     
-    q = wp.quat_identity()
+    q = wp.quat(0.0,0.0,0.0,1.0)
     assert_np_equal(np.array([*q]), np.array([0.0, 0.0, 0.0, 1.0]))
 
     r = wp.quat_from_axis_angle((1.0, 0.0, 0.0), 2.0)
@@ -94,12 +106,57 @@ def test_func_export(test, device):
     test.assertEqual(m22[1,1], 8.0)
     test.assertEqual(str(m22), "[[2.0, 4.0],\n [6.0, 8.0]]")
 
-    t = wp.transform_identity()
+    t = wp.transform(
+        wp.vec3(0.0,0.0,0.0),
+        wp.quat(0.0,0.0,0.0,1.0),
+    )
     assert_np_equal(np.array([*t]), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
 
     f = wp.sin(math.pi*0.5)
     test.assertAlmostEqual(f, 1.0, places=3)
 
+
+def test_func_closure_capture(test, device):
+
+    def make_closure_kernel(func):
+        
+        def closure_kernel_fn(
+            data: wp.array(dtype=float),
+            expected: float
+        ):
+            f = func(data[wp.tid()])
+            wp.expect_eq(f, expected)
+
+        key = f"test_func_closure_capture_{func.key}"
+        return wp.Kernel(func=closure_kernel_fn, key=key, module=wp.get_module(closure_kernel_fn.__module__))
+
+
+    sqr_closure = make_closure_kernel(sqr)
+    cube_closure = make_closure_kernel(cube)
+
+    data = wp.array([2.0], dtype=float, device=device)
+    expected_sqr = 4.0
+    expected_cube = 8.0
+
+    wp.launch(sqr_closure, dim=data.shape, inputs=[data, expected_sqr], device=device)
+    wp.launch(cube_closure, dim=data.shape, inputs=[data, expected_cube], device=device)
+
+
+
+@wp.func
+def test_func(param1: wp.int32, param2: wp.int32, param3: wp.int32) -> wp.float32:
+    return 1.0
+
+@wp.kernel
+def test_return_kernel(test_data: wp.array(dtype=wp.float32)):
+    
+    tid = wp.tid()
+    test_data[tid] = wp.lerp(test_func(0, 1, 2), test_func(0, 1, 2), 0.5)
+
+def test_return_func(test, device):
+
+    test_data = wp.zeros(100, dtype=wp.float32, device=device)
+    wp.launch(kernel=test_return_kernel, dim=test_data.size, inputs=[test_data], device=device)
 
 
 def register(parent):
@@ -110,7 +167,10 @@ def register(parent):
         pass
 
     add_kernel_test(TestFunc, kernel=test_overload_func, name="test_overload_func", dim=1, devices=devices)
+    add_function_test(TestFunc, func=test_return_func, name="test_return_func",devices=devices)
+    add_kernel_test(TestFunc, kernel=test_override_func, name="test_override_func", dim=1, devices=devices)
     add_function_test(TestFunc, func=test_func_export, name="test_func_export", devices=["cpu"])
+    add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
 
     return TestFunc
 

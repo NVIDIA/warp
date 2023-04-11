@@ -17,6 +17,13 @@ extern "C"
     WP_API int init();
     //WP_API void shutdown();
 
+    // whether Warp was compiled with CUDA support
+    WP_API int is_cuda_enabled();
+    // whether Warp was compiled with enhanced CUDA compatibility
+    WP_API int is_cuda_compatibility_enabled();
+    // whether Warp was compiled with CUTLASS support
+    WP_API int is_cutlass_enabled();
+
     WP_API uint16_t float_to_half_bits(float x);
 
     WP_API void* alloc_host(size_t s);
@@ -72,7 +79,7 @@ extern "C"
 
     WP_API bool cutlass_gemm(int compute_capability, int m, int n, int k, const char* datatype,
                              const void* a, const void* b, const void* c, void* d, float alpha, float beta,
-                             bool allow_tf32x3_arith, int batch_count);
+                             bool row_major_a, bool row_major_b, bool allow_tf32x3_arith, int batch_count);
 
     WP_API uint64_t volume_create_host(void* buf, uint64_t size);
     WP_API void volume_get_buffer_info_host(uint64_t id, void** buf, uint64_t* size);
@@ -93,6 +100,10 @@ extern "C"
     WP_API void marching_cubes_destroy_device(uint64_t id);
     WP_API int marching_cubes_surface_device(uint64_t id, const float* field, int nx, int ny, int nz, float threshold, wp::vec3* verts, int* triangles, int max_verts, int max_tris, int* out_num_verts, int* out_num_tris);
 
+    // generic copy supporting non-contiguous arrays
+    WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, int elem_size);
+    WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size);
+
     WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
     WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
 
@@ -104,6 +115,7 @@ extern "C"
 
     WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive);
     WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive);
+
     WP_API int cuda_driver_version();   // CUDA driver version
     WP_API int cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
 

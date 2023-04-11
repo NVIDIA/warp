@@ -9,7 +9,7 @@
 #include "builtin.h"
 
 // stubs for platforms where there is no CUDA
-#if !WP_ENABLE_CUDA
+#if !WP_ENABLE_CUDA || !WP_ENABLE_CUTLASS
 
 extern "C"
 {
@@ -21,12 +21,14 @@ bool cutlass_gemm(
                   const char* datatype_str,
                   const void* a, const void* b, const void* c, void* d,
                   float alpha, float beta,
+                  bool row_major_a, bool row_major_b,
                   bool allow_tf32x3_arith,
                   int batch_count)
 {
+    printf("CUDA is disabled and/or CUTLASS is disabled.\n");
     return false;
 }
 
 } // extern "C"
 
-#endif // !WP_ENABLE_CUDA
+#endif // !WP_ENABLE_CUDA || !WP_ENABLE_CUTLASS

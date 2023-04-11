@@ -9,7 +9,7 @@ Runtime Reference
 Initialization
 --------------
 
-Before use Warp should be explicitly initialized with the ``wp.init()`` method::
+Warp should be explicitly initialized with the ``wp.init()`` method before use::
 
    import warp as wp
 
@@ -82,7 +82,7 @@ Arrays can also be constructed directly from ``numpy`` ndarrays as follows: ::
    # copy to Warp owned array
    a = wp.array(r, dtype=float, device="cpu")
 
-   # return a Warp array wrapper around the numpy data (zero-copy)
+   # return a Warp array wrapper around the NumPy data (zero-copy)
    a = wp.array(r, dtype=float, copy=False, device="cpu")
 
    # return a Warp copy of the array data on the GPU
@@ -136,7 +136,7 @@ To create an array slice use the following syntax, where the number of indices i
    # returns an 1d array slice representing a row of the 2d array
    row = input[i]
 
-Slice operators can be concatenated, e.g.: via. ``s = array[i][j][k]``. Slices can be passed to ``wp.func`` user functions provided
+Slice operators can be concatenated, e.g.: ``s = array[i][j][k]``. Slices can be passed to ``wp.func`` user functions provided
 the function also declares the expected array dimension. Currently only single-index slicing is supported.
 
 .. note:: 
@@ -195,46 +195,294 @@ The following scalar storage types are supported for array structures:
 
 Warp supports ``float`` and ``int`` as aliases for ``wp.float32`` and ``wp.int32`` respectively.
 
-.. note:: 
-   Currently Warp treats ``int32`` and ``float32`` as the two basic scalar *compute types*, and all other types as *storage types*. Storage types can be loaded and stored to arrays, but not participate in arithmetic operations directly. Users should cast storage types to a compute type (``int`` or ``float``) to perform computations.
 
-
-Vector Types
-############
+Vectors
+#######
 
 Warp provides built-in math and geometry types for common simulation and graphics problems. A full reference for operators and functions for these types is available in the :any:`functions`.
 
+Warp supports vectors of numbers with an arbitrary length/numeric type. The built in concrete types are as follows:
 
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| vec2            | 2d vector of floats                                                                                                             |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| vec3            | 3d vector of floats                                                                                                             |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| vec4            | 4d vector of floats                                                                                                             |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| mat22           | 2x2 matrix of floats                                                                                                            |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| mat33           | 3x3 matrix of floats                                                                                                            |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| mat44           | 4x4 matrix of floats                                                                                                            |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| quat            | Quaternion in form i,j,k,w where w is the real part                                                                             |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| transform       | 7d vector of floats representing a spatial rigid body transformation in format (p, q) where p is a vec3, and q is a quaternion  |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| spatial_vector  | 6d vector of floats, see wp.spatial_top(), wp.spatial_bottom(), useful for representing rigid body twists                       |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
-| spatial_matrix  | 6x6 matrix of floats used to represent spatial inertia matrices                                                                 |
-+-----------------+---------------------------------------------------------------------------------------------------------------------------------+
++-----------------------+------------------------------------------------+
+| vec2 vec3 vec4        | 2d, 3d, 4d vector of default precision floats  |
++-----------------------+------------------------------------------------+
+| vec2f vec3f vec4f     | 2d, 3d, 4d vector of single precision floats   |
++-----------------------+------------------------------------------------+
+| vec2d vec3d vec4d     | 2d, 3d, 4d vector of double precision floats   |
++-----------------------+------------------------------------------------+
+| vec2h vec3h vec4h     | 2d, 3d, 4d vector of half precision floats     |
++-----------------------+------------------------------------------------+
+| vec2ub vec3ub vec4ub  | 2d, 3d, 4d vector of half precision floats     |
++-----------------------+------------------------------------------------+
+| spatial_vector        | 6d vector of single precision floats           |
++-----------------------+------------------------------------------------+
+| spatial_vectorf       | 6d vector of single precision floats           |
++-----------------------+------------------------------------------------+
+| spatial_vectord       | 6d vector of double precision floats           |
++-----------------------+------------------------------------------------+
+| spatial_vectorh       | 6d vector of half precision floats             |
++-----------------------+------------------------------------------------+
 
+Vectors support most standard linear algebra operations, e.g.: ::
+
+   @wp.kernel
+   def compute( ... ):
+      
+      # basis vectors
+      a = wp.vec3(1.0, 0.0, 0.0)
+      b = wp.vec3(0.0, 1.0, 0.0)
+
+      # take the cross product
+      c = wp.cross(a, b)
+
+      # compute 
+      r = wp.dot(c, c)
+
+      ...
+
+
+It's possible to declare additional vector types with different lengths and data types. This is done in outside of kernels in *Python scope* using ``warp.types.vector()``, for example: ::
+
+   # declare a new vector type for holding 5 double precision floats:
+   vec5d = wp.types.vector(length=5, dtype=wp.float64)
+
+Once declared, the new type can be used when allocating arrays or inside kernels: ::
+
+   # create an array of vec5d
+   arr = wp.zeros(10, dtype=vec5d)
+
+   # use inside a kernel
+   @wp.kernel
+   def compute( ... ):
+      
+      # zero initialize a custom named vector type
+      v = vec5d()
+      ...
+
+      # component-wise initialize a named vector type
+      v = vec5d(wp.float64(1.0),
+                wp.float64(2.0),
+                wp.float64(3.0),
+                wp.float64(4.0),
+                wp.float64(5.0))
+      ...
+
+In addition, it's possible to directly create *anonymously* typed instances of these vectors without declaring their type in advance. In this case the type will be inferred by the constructor arguments. For example: ::
+
+   @wp.kernel
+   def compute( ... ):
+
+      # zero initialize vector of 5 doubles:
+      v = wp.vector(dtype=wp.float64, length=5)
+
+      # scalar initialize a vector of 5 doubles to the same value:
+      v = wp.vector(wp.float64(1.0), length=5)
+
+      # component-wise initialize a vector of 5 doubles
+      v = wp.vector(wp.float64(1.0),
+                    wp.float64(2.0),
+                    wp.float64(3.0),
+                    wp.float64(4.0),
+                    wp.float64(5.0))
+
+
+These can be used with all the standard vector arithmetic operators, e.g.: ``+``, ``-``, scalar multiplication, and can also be transformed using matrices with compatible dimensions, potentially returning vectors with a different length.
+
+Matrices
+########
+
+Matrices with arbitrary shapes/numeric types are also supported. The built in concrete matrix types are as follows:
+
++--------------------------+-----------------------------------------------------+
+| mat22 mat33 mat44        | 2,3 and 4d square matrix of default precision       |
++--------------------------+-----------------------------------------------------+
+| mat22f mat33f mat44f     | 2,3 and 4d square matrix of single precision floats |
++--------------------------+-----------------------------------------------------+
+| mat22d mat33d mat44d     | 2,3 and 4d square matrix of double precision floats |
++--------------------------+-----------------------------------------------------+
+| mat22h mat33h mat44h     | 2,3 and 4d square matrix of half precision floats   |
++--------------------------+-----------------------------------------------------+
+| spatial_matrix           | 6x6 matrix of single precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixf          | 6x6 matrix of single precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixd          | 6x6 matrix of double precision floats               |
++--------------------------+-----------------------------------------------------+
+| spatial_matrixh          | 6x6 matrix of half precision floats                 |
++--------------------------+-----------------------------------------------------+
+
+Matrices are stored in row-major format and support most standard linear algebra operations: ::
+
+   @wp.kernel
+   def compute( ... ):
+      
+      # initialize matrix
+      m = wp.mat22(1.0, 2.0,
+                   3.0, 4.0)
+
+      # compute inverse
+      minv = wp.inverse(m)
+
+      # transform vector
+      v = minv * wp.vec2(0.5, 0.3)
+
+      ...
+
+
+In a similar manner to vectors, it's possible to declare new matrix types with arbitrary shapes and data types using ``wp.types.matrix()``, for example: ::
+
+   # declare a new 3x2 half precision float matrix type:
+   mat32h = wp.types.matrix(shape=(3,2), dtype=wp.float64)
+
+   # create an array of this type
+   a = wp.zeros(10, dtype=mat32h)
+
+These can be used inside a kernel: ::
+
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # initialize a mat32h matrix 
+      m = mat32h(wp.float16(1.0), wp.float16(2.0),
+                 wp.float16(3.0), wp.float16(4.0),
+                 wp.float16(5.0), wp.float16(6.0))
+
+      # declare a 2 component half precision vector
+      v2 = wp.vec2h(wp.float16(1.0), wp.float16(1.0))
+
+      # multiply by the matrix, returning a 3 component vector:
+      v3 = m * v2
+      ...
+
+It's also possible to directly create anonymously typed instances inside kernels where the type is inferred from constructor arguments as follows: ::
+
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # create a 3x2 half precision matrix from components (row major ordering):
+      m = wp.matrix(
+            wp.float16(1.0), wp.float16(2.0),
+            wp.float16(1.0), wp.float16(2.0),
+            wp.float16(1.0), wp.float16(2.0),
+            shape=(3,2))
+   
+      # zero initialize a 3x2 half precision matrix:
+      m = wp.matrix(wp.float16(0.0),shape=(3,2))
+
+      # create a 5x5 double precision identity matrix:
+      m = wp.identity(n=5, dtype=wp.float64)
+
+As with vectors, you can do standard matrix arithmetic with these variables, along with multiplying matrices with compatible shapes and potentially returning a matrix with a new shape.
+
+Quaternions
+###########
+
+Warp supports quaternions in form i,j,k,w where w is the real part. Here are the built in concrete quaternion types:
+
++-----------------+-----------------------------------------------+
+| quat            | Default precision floating point quaternion   |
++-----------------+-----------------------------------------------+
+| quatf           | Single precision floating point quaternion    |
++-----------------+-----------------------------------------------+
+| quatd           | Double precision floating point quaternion    |
++-----------------+-----------------------------------------------+
+| quath           | Half precision floating point quaternion      |
++-----------------+-----------------------------------------------+
+
+Quaternions can be used to transform vectors as follows: ::
+
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # construct a 30 degree rotation around the x-axis
+      q = wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), wp.degrees(30.0))
+
+      # rotate an axis by this quaternion
+      v = wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0))
+
+
+As with vectors and matrices, you can declare quaternion types with an arbitrary numeric type like so: ::
+
+   quatd = wp.types.quaternion(dtype=wp.float64)
+
+You can also create identity quaternion and anonymously typed instances inside a kernel like so: ::
+
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # create a double precision identity quaternion:
+      qd = wp.quat_identity(dtype=wp.float64)
+      
+      # precision defaults to wp.float32 so this creates a single precision identity quaternion:
+      qf = wp.quat_identity()
+
+      # create a half precision quaternion from components, or a vector/scalar:
+      qh = wp.quaternion(wp.float16(0.0),
+                         wp.float16(0.0),
+                         wp.float16(0.0),
+                         wp.float16(1.0))
+
+
+      qh = wp.quaternion(
+         wp.vector(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0)),
+         wp.float16(1.0))
+
+Transforms
+##########
+
+Transforms are 7d vectors of floats representing a spatial rigid body transformation in format (p, q) where p is a 3d vector, and q is a quaternion.
+
++-----------------+--------------------------------------------+
+| transform       | Default precision floating point transform |
++-----------------+--------------------------------------------+
+| transformf      | Single precision floating point transform  |
++-----------------+--------------------------------------------+
+| transformd      | Double precision floating point transform  |
++-----------------+--------------------------------------------+
+| transformh      | Half precision floating point transform    |
++-----------------+--------------------------------------------+
+
+Transforms can be constructed inside kernels from translation and rotation parts: ::
+
+   @wp.kernel
+   def compute( ... ):
+      ...
+
+      # create a transform from a vector/quaternion:
+      t = wp.transform(
+             wp.vec3(1.0, 2.0, 3.0),
+             wp.quat_from_axis_angle(0.0, 1.0, 0.0, wp.degrees(30.0)))
+
+      # transform a point 
+      p = wp.transform_point(t, wp.vec3(10.0, 0.5, 1.0))
+
+      # transform a vector (ignore translation)
+      p = wp.transform_vector(t, wp.vec3(10.0, 0.5, 1.0))
+
+
+As with vectors and matrices, you can declare transform types with an arbitrary numeric type using ``warp.types.transformation()``, for example: ::
+
+   transformd = wp.types.transformation(dtype=wp.float64)
+
+You can also create identity transforms and anonymously typed instances inside a kernel like so: ::
+
+   @wp.kernel
+   def compute( ... ):
+
+      # create double precision identity transform:
+      qd = wp.transform_identity(dtype=wp.float64)
+      
+   
 Type Conversions
 ################
 
-Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetric operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error. This can be surprising for users that are accustomed to C-type conversions but avoids a class of common bugs that result from implicit conversions.
+Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetic operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error. This can be surprising for users that are accustomed to C-type conversions but avoids a class of common bugs that result from implicit conversions.
 
-In addition, users should always cast storage types to a compute type (``int`` or ``float``) before computation. Compute types can be converted back to storage types through explicit casting, e.g.: ``byte_array[index] = wp.uint8(i)``.
-
-.. note:: Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using ``int()`` or ``float()`` constructors.
+.. note:: Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using constructors like ``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()`` etc.
 
 Constants
 ---------
@@ -319,7 +567,7 @@ Arithmetic Operators
 +-----------+--------------------------+
 
 .. note::
-   Arguments types to operators should match since implicit conversions are not performed, users should use the type constructors ``float()``, ``int()`` to cast variables to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar multiplication and matrix multiplication. Currently the ``@`` operator is not supported in this version.
+   Arguments types to operators should match since implicit conversions are not performed, users should use the type constructors like ``float()``, ``int()``, ``wp.int64()`` etc to cast variables to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar multiplication and matrix multiplication. Currently the ``@`` operator is not supported in this version.
 
 Meshes
 ------
@@ -457,7 +705,7 @@ Where ``p`` is an array of ``warp.vec3`` point positions, and ``r`` is the radiu
 
       output[tid] = sum
 
-.. note:: The HashGrid query will give back all points in *cells* that fall inside the query radius. When there are hash conflicts it means that some points outside of query radius will be returned, and users should check the distance themselves inside their kernels. The reason the query doesn't do the check itself for each returned point is because it's common for kernels to compute the distance themselves, so it would redundant to check/compute the distance twice.
+.. note:: The ``HashGrid`` query will give back all points in *cells* that fall inside the query radius. When there are hash conflicts it means that some points outside of query radius will be returned, and users should check the distance themselves inside their kernels. The reason the query doesn't do the check itself for each returned point is because it's common for kernels to compute the distance themselves, so it would redundant to check/compute the distance twice.
 
 
 .. autoclass:: HashGrid
@@ -466,7 +714,7 @@ Where ``p`` is an array of ``warp.vec3`` point positions, and ``r`` is the radiu
 Differentiability
 -----------------
 
-By default Warp generates a foward and backward (adjoint) version of each kernel definition. Buffers that participate in the chain of computation should be created with ``requires_grad=True``, for example::
+By default Warp generates a forward and backward (adjoint) version of each kernel definition. Buffers that participate in the chain of computation should be created with ``requires_grad=True``, for example::
 
    a = wp.zeros(1024, dtype=wp.vec3, device="cuda", requires_grad=True)
 
@@ -494,7 +742,7 @@ Note that gradients are accumulated on the participating buffers, so if you wish
 
 .. note:: 
 
-   Warp uses a source-code transformation approach to auto-differentiation. In this approach the backwards pass must keep a record of intermediate values computed during the foward pass. This imposes some restrictions on what kernels can do and still be differentiable:
+   Warp uses a source-code transformation approach to auto-differentiation. In this approach the backwards pass must keep a record of intermediate values computed during the forward pass. This imposes some restrictions on what kernels can do and still be differentiable:
 
    * Dynamic loops should not mutate any previously declared local variable. This means the loop must be side-effect free. A simple way to ensure this is to move the loop body into a separate function. Static loops that are unrolled at compile time do not have this restriction and can perform any computation.
          
@@ -507,7 +755,7 @@ To compute the Jacobian matrix :math:`J\in\mathbb{R}^{m\times n}` of a multi-val
 In Warp, instead of passing a scalar loss buffer to the ``tape.backward()`` method, we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}` having the same type::
 
    # compute the Jacobian for a function of single output
-   jacobian = np.empty((ouput_dim, input_dim), dtype=np.float32)
+   jacobian = np.empty((output_dim, input_dim), dtype=np.float32)
    tape = wp.Tape()
    with tape:
       output_buffer = launch_kernels_to_be_differentiated(input_buffer)
@@ -525,7 +773,7 @@ In Warp, instead of passing a scalar loss buffer to the ``tape.backward()`` meth
 When we run simulations independently in parallel, the Jacobian corresponding to the entire system dynamics is a block-diagonal matrix. In this case, we can compute the Jacobian in parallel for all environments by choosing a selection vector that has the output indices active for all environment copies. For example, to get the first rows of the Jacobians of all environments, :math:`\mathbf{e}=[\begin{smallmatrix}1 & 0 & 0 & \dots & 1 & 0 & 0 & \dots\end{smallmatrix}]^\top`, to compute the second rows, :math:`\mathbf{e}=[\begin{smallmatrix}0 & 1 & 0 & \dots & 0 & 1 & 0 & \dots\end{smallmatrix}]^\top`, etc.::
 
    # compute the Jacobian for a function over multiple environments in parallel
-   jacobians = np.empty((num_envs, ouput_dim, input_dim), dtype=np.float32)
+   jacobians = np.empty((num_envs, output_dim, input_dim), dtype=np.float32)
    tape = wp.Tape()
    with tape:
       output_buffer = launch_kernels_to_be_differentiated(input_buffer)
@@ -571,7 +819,7 @@ Note that only launch calls are recorded in the graph, any Python executed outsi
 .. autofunction:: capture_end
 .. autofunction:: capture_launch
 
-Interopability
+Interoperability
 -----------------
 
 Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.
@@ -628,7 +876,7 @@ Often one of the best debugging methods is to simply print values from kernels. 
 
    print(v)   
 
-In addition, formatted C-style printing is available through the ``printf()`` function, e.g.::
+In addition, formatted C-style printing is available through the ``wp.printf()`` function, e.g.::
 
    x = 1.0
    i = 2
@@ -827,3 +1075,48 @@ In either case, mapping the custom CUDA context allows us to target the context 
    with wp.ScopedDevice("foo"):
       a = wp.zeros(n)
       wp.launch(kernel, dim=a.size, inputs=[a])
+
+Application Profiling
+---------------------
+
+``wp.ScopedTimer`` objects can be used to gain some basic insight into the performance of Warp applications::
+
+   with wp.ScopedTimer("grid build"):
+      self.grid.build(self.x, self.point_radius)
+
+This results in a printout at runtime to the standard output stream like::
+
+   grid build took 0.06 ms
+
+The ``wp.ScopedTimer`` object does not synchronize (e.g. by calling ``wp.synchronize()``)
+upon exiting the ``with`` statement, so this can lead to misleading numbers if the body
+of the ``with`` statement launches device kernels.
+
+When a ``wp.ScopedTimer`` object is passed ``use_nvtx=True`` as an argument, the timing functionality is replaced by calls
+to ``nvtx.start_range()`` and ``nvtx.end_range()``::
+
+   with wp.ScopedTimer("grid build", use_nvtx=True, color="cyan"):
+      self.grid.build(self.x, self.point_radius)
+
+These range annotations can then be collected by a tool like `NVIDIA Nsight Systems <https://developer.nvidia.com/nsight-systems>`_
+for visualization on a timeline, e.g.::
+
+   nsys profile python warp_application.py
+
+This code snippet also demonstrates the use of the ``color`` argument to specify a color
+for the range, which may be a number representing the ARGB value or a recognized string
+(refer to `colors.py <https://github.com/NVIDIA/NVTX/blob/release-v3/python/nvtx/colors.py>`_ for
+additional color examples).
+The `nvtx module <https://github.com/NVIDIA/NVTX>`_ must be
+installed in the Python environment for this capability to work.
+An equivalent way to create an NVTX range without using ``wp.ScopedTimer`` is::
+
+   import nvtx
+
+   with nvtx.annotate("grid build", color="cyan"):
+      self.grid.build(self.x, self.point_radius)
+
+This form may be more convenient if the user does not need to frequently switch
+between timer and NVTX capabilities of ``wp.ScopedTimer``. 
+
+.. autoclass:: ScopedTimer

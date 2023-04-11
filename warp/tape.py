@@ -25,6 +25,8 @@ class Tape:
 
         wp.context.runtime.tape = self
 
+        return self
+
     def __exit__(self, exc_type, exc_value, traceback):
         if (wp.context.runtime.tape == None):
             raise RuntimeError("Warp: Error, ended tape capture, but tape not present")            
@@ -62,57 +64,72 @@ class Tape:
         # run launches backwards
         for launch in reversed(self.launches):
 
-            kernel = launch[0]
-            dim = launch[1]
-            inputs = launch[2]
-            outputs = launch[3]
-            device = launch[4]
+            if callable(launch):
+                launch()
+        
+            else:
+                kernel = launch[0]
+                dim = launch[1]
+                inputs = launch[2]
+                outputs = launch[3]
+                device = launch[4]
 
-            adj_inputs = []
-            adj_outputs = []
+                adj_inputs = []
+                adj_outputs = []
 
-            # lookup adjoint inputs
-            for a in inputs:
-                adj_inputs.append(self.get_adjoint(a))
+                # lookup adjoint inputs
+                for a in inputs:
+                    adj_inputs.append(self.get_adjoint(a))
 
-            # lookup adjoint outputs, todo: only allocate outputs if necessary
-            for a in outputs:
-                adj_outputs.append(self.get_adjoint(a))
+                # lookup adjoint outputs, todo: only allocate outputs if necessary
+                for a in outputs:
+                    adj_outputs.append(self.get_adjoint(a))
 
-            wp.launch(
-                kernel=kernel, 
-                dim=dim, 
-                inputs=inputs, 
-                outputs=outputs,
-                adj_inputs=adj_inputs,
-                adj_outputs=adj_outputs,
-                device=device,
-                adjoint=True)
+                wp.launch(
+                    kernel=kernel, 
+                    dim=dim, 
+                    inputs=inputs, 
+                    outputs=outputs,
+                    adj_inputs=adj_inputs,
+                    adj_outputs=adj_outputs,
+                    device=device,
+                    adjoint=True)
 
 
     # record a kernel launch on the tape
-    def record(self, kernel, dim, inputs, outputs, device):
+    def record_launch(self, kernel, dim, inputs, outputs, device):
         self.launches.append([kernel, dim, inputs, outputs, device])
 
+    # records a custom function for the backward pass, can be any
+    # Callable python object. Callee should also pass arrays that 
+    # take part in the function for gradient tracking.
+    def record_func(self, backward, arrays):
+        self.launches.append(backward)
+
+        for a in arrays:
+            if isinstance(a, wp.array) and a.grad:
+                self.gradients[a] = a.grad
+            else:
+                raise RuntimeError(f"Array {a} is not of type wp.array or is missing a gradient array. Set array parameter requires_grad=True during instantiation.")
 
     # returns the adjoint of a kernel parameter
     def get_adjoint(self, a):
 
 
-        if isinstance(a, wp.array) == False and isinstance(a, wp.codegen.StructInstance) == False:
+        if not wp.types.is_array(a) and not isinstance(a, wp.codegen.StructInstance):
             # if input is a simple type (e.g.: float, vec3, etc) then
             # no gradient needed (we only return gradients through arrays and structs)
             return a
 
-        elif isinstance(a, wp.array) and a.grad:
+        elif wp.types.is_array(a) and a.grad:
             # keep track of all gradients used by the tape (for zeroing)
             # ignore the scalar loss since we don't want to clear its grad
             self.gradients[a] = a.grad
             return a.grad
 
         elif isinstance(a, wp.codegen.StructInstance):
-            adj = wp.codegen.StructInstance(a._struct_)
-            for name in a.__dict__:
+            adj = a._struct_()
+            for name, _ in a._struct_.ctype._fields_:
                 if name.startswith("_"):
                     continue
                 if isinstance(a._struct_.vars[name].type, wp.array):
@@ -123,7 +140,7 @@ class Tape:
                         grad = None
                     setattr(adj, name, grad)
                 else:
-                    setattr(adj, name, a.__dict__[name])
+                    setattr(adj, name, getattr(a, name))
 
             self.gradients[a] = adj
             return adj
@@ -145,4 +162,3 @@ class Tape:
                             getattr(g, name).zero_()
                 else:
                     g.zero_()
-

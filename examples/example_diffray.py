@@ -493,7 +493,7 @@ class Example:
 
 if __name__ == '__main__':
 
-    output_dir = "./outputs"
+    output_dir = os.path.join(os.path.dirname(__file__), "outputs")
     
     example = Example()
 

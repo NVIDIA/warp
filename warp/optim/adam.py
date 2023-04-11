@@ -102,12 +102,14 @@ class Adam:
                 kernel=adam_step_kernel_float,
                 dim=len(params),
                 inputs=kernel_inputs,
+                device=params.device,
             )
         elif(params.dtype == wp.types.vec3):
             wp.launch(
                 kernel=adam_step_kernel_vec3,
                 dim=len(params),
                 inputs=kernel_inputs,
+                device=params.device,
             )
         else:
             raise RuntimeError("Params data type not supported in Adam step kernels.")

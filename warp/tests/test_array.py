@@ -393,6 +393,13 @@ def test_slicing(test, device):
     assert_array_equal(index_c, wp.array(np_arr[1, :], dtype=float, device=device))
     wp.launch(kernel=compare_stepped_window_b, dim=1, inputs=[index_d], device=device)
 
+    np_arr = np.zeros(10, dtype=int)
+    wp_arr = wp.array(np_arr, dtype=int, device=device)
+
+    assert_array_equal(wp_arr[:5], wp.array(np_arr[:5], dtype=int, device=device))
+    assert_array_equal(wp_arr[1:5], wp.array(np_arr[1:5], dtype=int, device=device))
+    assert_array_equal(wp_arr[-9:-5:1], wp.array(np_arr[-9:-5:1], dtype=int, device=device))
+    assert_array_equal(wp_arr[:5,], wp.array(np_arr[:5], dtype=int, device=device))
 
 def test_view(test, device):
 
@@ -415,7 +422,62 @@ def test_view(test, device):
     assert np.array_equal(np_arr_d.view(dtype=np.uint16), wp_arr_d.view(dtype=wp.uint16).numpy())
     assert_array_equal(wp_arr_e.view(dtype=wp.quat), wp_arr_f)
 
+
+@wp.kernel
+def compare_2darrays(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), z: wp.array2d(dtype=int)):
+    i,j = wp.tid()
+
+    if x[i,j] == y[i,j]:
+        z[i,j] = 1
+
+
+@wp.kernel
+def compare_3darrays(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float), z: wp.array3d(dtype=int)):
+    i,j,k = wp.tid()
+
+    if x[i,j,k] == y[i,j,k]:
+        z[i,j,k] = 1
+
+
+def test_transpose(test, device):
     
+    # test default transpose in non-square 2d case
+    # wp does not support copying from/to non-contiguous arrays so check in kernel
+    np_arr = np.array([[1, 2], [3, 4], [5, 6]], dtype=float)
+    arr = wp.array(np_arr, dtype=float, device=device)
+    arr_transpose = arr.transpose()
+    arr_compare = wp.array(np_arr.transpose(), dtype=float, device=device)
+    check = wp.zeros(shape=(2, 3), dtype=int, device=device)
+
+    wp.launch(compare_2darrays, dim=(2, 3), inputs=[arr_transpose, arr_compare, check], device=device)
+    assert np.array_equal(check.numpy(), np.ones((2, 3), dtype=int))
+
+    # test transpose in square 3d case
+    # wp does not support copying from/to non-contiguous arrays so check in kernel
+    np_arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]], dtype=float)
+    arr = wp.array3d(np_arr, dtype=float, shape=np_arr.shape, device=device, requires_grad=True)
+    arr_transpose = arr.transpose((0, 2, 1))
+    arr_compare = wp.array3d(np_arr.transpose((0, 2, 1)), dtype=float, device=device)
+    check = wp.zeros(shape=(3, 2, 2), dtype=int, device=device)
+
+    wp.launch(compare_3darrays, dim=(3, 2, 2), inputs=[arr_transpose, arr_compare, check], device=device)
+    assert np.array_equal(check.numpy(), np.ones((3, 2, 2), dtype=int))
+
+    # test transpose in square 3d case without axes supplied
+    arr_transpose = arr.transpose()
+    arr_compare = wp.array3d(np_arr.transpose(), dtype=float, device=device)
+    check = wp.zeros(shape=(2, 2, 3), dtype=int, device=device)
+
+    wp.launch(compare_3darrays, dim=(2, 2, 3), inputs=[arr_transpose, arr_compare, check], device=device)
+    assert np.array_equal(check.numpy(), np.ones((2, 2, 3), dtype=int))
+
+    # test transpose in 1d case (should be noop)
+    np_arr = np.array([1, 2, 3], dtype=float)
+    arr = wp.array(np_arr, dtype=float, device=device)
+
+    assert np.array_equal(np_arr.transpose(), arr.transpose().numpy())
+
+
 def test_fill_zero(test, device):
 
     dim_x = 4
@@ -444,10 +506,10 @@ def test_fill_zero(test, device):
         assert_np_equal(a4.numpy(), np.zeros_like(a4.numpy()))
 
         # test some vector types too:
-        v1 = wp.zeros(dim_x, dtype=wp.vec(3,wptype), device=device)
-        v2 = wp.zeros((dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
-        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
-        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+        v1 = wp.zeros(dim_x, dtype=wp.types.vector(3,wptype), device=device)
+        v2 = wp.zeros((dim_x,dim_x), dtype=wp.types.vector(3,wptype), device=device)
+        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.types.vector(3,wptype), device=device)
+        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.types.vector(3,wptype), device=device)
 
         v1.fill_(127)
         v2.fill_(127)
@@ -483,10 +545,10 @@ def test_fill_zero(test, device):
         assert_np_equal(a4.numpy(), 127 * np.ones_like(a4.numpy()))
         
         # test some vector types too:
-        v1 = wp.zeros(dim_x, dtype=wp.vec(3,wptype), device=device)
-        v2 = wp.zeros((dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
-        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
-        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.vec(3,wptype), device=device)
+        v1 = wp.zeros(dim_x, dtype=wp.types.vector(3,wptype), device=device)
+        v2 = wp.zeros((dim_x,dim_x), dtype=wp.types.vector(3,wptype), device=device)
+        v3 = wp.zeros((dim_x,dim_x,dim_x), dtype=wp.types.vector(3,wptype), device=device)
+        v4 = wp.zeros((dim_x,dim_x,dim_x,dim_x), dtype=wp.types.vector(3,wptype), device=device)
 
         v1.fill_(127)
         v2.fill_(127)
@@ -501,7 +563,7 @@ def test_fill_zero(test, device):
     # test fill with vector constant:
     for nptype,wptype in wp.types.np_dtype_to_warp_type.items():
         
-        vectype = wp.vec(3,wptype)
+        vectype = wp.types.vector(3,wptype)
 
         vecvalue = vectype(1,2,3)
 
@@ -531,7 +593,7 @@ def test_fill_zero(test, device):
 
         wptype = wp.types.np_dtype_to_warp_type[nptype]
         
-        vectype = wp.vec(3,wptype)
+        vectype = wp.types.vector(3,wptype)
 
         vecvalue = vectype(1.25,2.5,3.75)
 
@@ -577,11 +639,48 @@ def test_round_trip(test, device):
 
         assert_np_equal(a.numpy(), a_np)
 
-        v_np = np.random.randn(dim_x,3).astype(nptype)
-        v = wp.array(v_np,dtype=wp.vec(3,wptype),device=device)
+        v_np = np.random.randn(dim_x, 3).astype(nptype)
+        v = wp.array(v_np,dtype=wp.types.vector(3, wptype),device=device)
 
         assert_np_equal(v.numpy(), v_np)
 
+def test_large_arrays_slow(test, device):
+    # The goal of this test is to use arrays just large enough to know
+    # if there's a flaw in handling arrays with more than 2**31-1 elements
+    # Unfortunately, it takes a long time to run so it won't be run automatically
+    # without changes to support how frequently a test may be run
+    total_elements = 2**31 + 8
+
+    # 1-D to 4-D arrays: test zero_, fill_, then zero_ for scalar data types:
+    for total_dims in range(1, 5):
+        dim_x = math.ceil(total_elements**(1/total_dims))
+        shape_tuple = tuple([dim_x] * total_dims)
+
+        for nptype,wptype in wp.types.np_dtype_to_warp_type.items():
+            a1 = wp.zeros(shape_tuple, dtype=wptype, device=device)
+            assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
+
+            a1.fill_(127)
+            assert_np_equal(a1.numpy(), 127 * np.ones_like(a1.numpy()))
+
+            a1.zero_()
+            assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
+
+def test_large_arrays_fast(test, device):
+    # A truncated version of test_large_arrays_slow meant to catch basic errors
+    total_elements = 2**31 + 8
+
+    nptype = np.dtype(np.int8)
+    wptype = wp.types.np_dtype_to_warp_type[nptype]
+
+    a1 = wp.zeros((total_elements,), dtype=wptype, device=device)
+    assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
+
+    a1.fill_(127)
+    assert_np_equal(a1.numpy(), 127 * np.ones_like(a1.numpy()))
+
+    a1.zero_()
+    assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
 
 def register(parent):
 
@@ -594,6 +693,7 @@ def register(parent):
     add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
     add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
     add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
+    add_function_test(TestArray, "test_transpose", test_transpose, devices=devices)
     add_function_test(TestArray, "test_view", test_view, devices=devices)
 
     add_function_test(TestArray, "test_1d_array", test_1d, devices=devices)
@@ -604,6 +704,7 @@ def register(parent):
     add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
     add_function_test(TestArray, "test_fill_zero", test_fill_zero, devices=devices)
     add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
+    add_function_test(TestArray, "test_large_arrays_fast", test_large_arrays_fast, devices=devices)
 
     return TestArray
 

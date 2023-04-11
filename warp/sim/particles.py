@@ -40,13 +40,14 @@ def particle_force(n: wp.vec3,
 def eval_particle_forces_kernel(grid : wp.uint64,
                  particle_x: wp.array(dtype=wp.vec3),
                  particle_v: wp.array(dtype=wp.vec3),
-                 particle_f: wp.array(dtype=wp.vec3),
                  radius: float,
                  k_contact: float,
                  k_damp: float,
                  k_friction: float,
                  k_mu: float,
-                 k_cohesion: float):
+                 k_cohesion: float,
+                 # outputs
+                 particle_f: wp.array(dtype=wp.vec3)):
 
     tid = wp.tid()
 
@@ -96,12 +97,14 @@ def eval_particle_forces(model, state, forces):
                 model.particle_grid.id,
                 state.particle_q,
                 state.particle_qd,
-                forces,
                 model.particle_radius,
                 model.particle_ke,
                 model.particle_kd,
                 model.particle_kf,
                 model.particle_mu,
                 model.particle_cohesion
+            ],
+            outputs=[
+                forces
             ],
             device=model.device)

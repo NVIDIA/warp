@@ -14,9 +14,6 @@
 ###########################################################################
 
 import os
-import math
-
-import numpy as np
 
 import warp as wp
 import warp.sim
@@ -29,35 +26,27 @@ class Example:
 
     def __init__(self, stage):
 
-        self.sim_width = 8
-        self.sim_height = 8
-
         self.sim_fps = 60.0
-        self.sim_substeps = 64
+        self.sim_substeps = 5
         self.sim_duration = 5.0
         self.sim_frames = int(self.sim_duration*self.sim_fps)
         self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
         self.sim_time = 0.0
-        self.sim_render = True
-        self.sim_iterations = 1
-        self.sim_relaxation = 1.0
 
         builder = wp.sim.ModelBuilder()
 
-        builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
-        builder.add_shape_box(body=0, hx=0.5, hy=0.5, hz=0.5, density=1000.0, ke=2.e+5, kd=1.e+4)
+        b = builder.add_body(origin=wp.transform((0.0, 2.0, 0.0), wp.quat_identity()))
+        builder.add_shape_box(body=b, hx=0.5, hy=0.5, hz=0.5, density=1000.0)
 
         self.model = builder.finalize()
         self.model.ground = True
 
-        self.integrator = wp.sim.SemiImplicitIntegrator()
+        self.integrator = wp.sim.XPBDIntegrator()
 
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.model.collide(self.state_0)
-
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
     def update(self):
 

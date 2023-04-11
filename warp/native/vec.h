@@ -8,25 +8,19 @@
 
 #pragma once
 
-#if !defined(__CUDACC__)
-#include <initializer_list>
-#include "string.h" // memset
-#endif
+#include "initializer_array.h"
 
 namespace wp
 {
 
     template <unsigned Length, typename Type>
-    struct vec
+    struct vec_t
     {
-        Type c[Length];
+        Type c[Length] = {};
 
-        inline CUDA_CALLABLE vec()
-        {
-            memset(c, 0, Length * sizeof(Type));
-        }
+        inline vec_t() = default;
 
-        inline CUDA_CALLABLE vec(Type s)
+        inline CUDA_CALLABLE vec_t(Type s)
         {
             for (unsigned i = 0; i < Length; ++i)
             {
@@ -34,20 +28,14 @@ namespace wp
             }
         }
 
-        // Implementing constructors with fixed argument lists.
-
-        // I wonder if not having these for Length > 4 will cause
-        // problems... These things are immutable in kernels aren't
-        // they so you need these constructors to acutally put data
-        // in them...
-        inline CUDA_CALLABLE vec(Type x, Type y)
+        inline CUDA_CALLABLE vec_t(Type x, Type y)
         {
             assert(Length == 2);
             c[0] = x;
             c[1] = y;
         }
 
-        inline CUDA_CALLABLE vec(Type x, Type y, Type z)
+        inline CUDA_CALLABLE vec_t(Type x, Type y, Type z)
         {
             assert(Length == 3);
             c[0] = x;
@@ -55,7 +43,7 @@ namespace wp
             c[2] = z;
         }
 
-        inline CUDA_CALLABLE vec(Type x, Type y, Type z, Type w)
+        inline CUDA_CALLABLE vec_t(Type x, Type y, Type z, Type w)
         {
             assert(Length == 4);
             c[0] = x;
@@ -64,15 +52,23 @@ namespace wp
             c[3] = w;
         }
 
-        inline CUDA_CALLABLE vec(std::initializer_list<Type> l)
+        inline CUDA_CALLABLE vec_t(const initializer_array<Length, Type> &l)
         {
-            assert(l.size() == Length);
-            auto src = l.begin();
-            auto end = l.end();
-            for (auto dst = c; src != end; ++src, ++dst)
+            for (unsigned i = 0; i < Length; ++i)
             {
-                *dst = *src;
+                c[i] = l[i];
             }
+        }
+
+        // special screw vector constructor for spatial_vectors:
+        inline CUDA_CALLABLE vec_t(vec_t<3, Type> w, vec_t<3, Type> v)
+        {
+            c[0] = w[0];
+            c[1] = w[1];
+            c[2] = w[2];
+            c[3] = v[0];
+            c[4] = v[1];
+            c[5] = v[2];
         }
 
         inline CUDA_CALLABLE Type operator[](int index) const
@@ -97,11 +93,11 @@ namespace wp
 
     // negation:
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> operator-(vec<Length, Type> a)
+    inline CUDA_CALLABLE vec_t<Length, Type> operator-(vec_t<Length, Type> a)
     {
         // NB: this constructor will initialize all ret's components to 0, which is
         // unnecessary...
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = -a[i];
@@ -112,32 +108,38 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    CUDA_CALLABLE inline vec<Length, Type> neg(const vec<Length, Type> &x)
+    CUDA_CALLABLE inline vec_t<Length, Type> pos(const vec_t<Length, Type> &x)
+    {
+        return x;
+    }
+
+    template <unsigned Length, typename Type>
+    CUDA_CALLABLE inline vec_t<Length, Type> neg(const vec_t<Length, Type> &x)
     {
         return -x;
     }
 
     template <typename Type>
-    CUDA_CALLABLE inline vec<3, Type> neg(const vec<3, Type> &x)
+    CUDA_CALLABLE inline vec_t<3, Type> neg(const vec_t<3, Type> &x)
     {
-        return vec<3, Type>(-x.c[0], -x.c[1], -x.c[2]);
+        return vec_t<3, Type>(-x.c[0], -x.c[1], -x.c[2]);
     }
 
     template <typename Type>
-    CUDA_CALLABLE inline vec<2, Type> neg(const vec<2, Type> &x)
+    CUDA_CALLABLE inline vec_t<2, Type> neg(const vec_t<2, Type> &x)
     {
-        return vec<2, Type>(-x.c[0], -x.c[1]);
+        return vec_t<2, Type>(-x.c[0], -x.c[1]);
     }
 
     template <unsigned Length, typename Type>
-    CUDA_CALLABLE inline void adj_neg(const vec<Length, Type> &x, vec<Length, Type> &adj_x, const vec<Length, Type> &adj_ret)
+    CUDA_CALLABLE inline void adj_neg(const vec_t<Length, Type> &x, vec_t<Length, Type> &adj_x, const vec_t<Length, Type> &adj_ret)
     {
         adj_x -= adj_ret;
     }
 
     // equality:
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE bool operator==(const vec<Length, Type> &a, const vec<Length, Type> &b)
+    inline CUDA_CALLABLE bool operator==(const vec_t<Length, Type> &a, const vec_t<Length, Type> &b)
     {
         for (unsigned i = 0; i < Length; ++i)
         {
@@ -151,9 +153,9 @@ namespace wp
 
     // scalar multiplication:
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> mul(vec<Length, Type> a, Type s)
+    inline CUDA_CALLABLE vec_t<Length, Type> mul(vec_t<Length, Type> a, Type s)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = a[i] * s;
@@ -162,40 +164,40 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<3, Type> mul(vec<3, Type> a, Type s)
+    inline CUDA_CALLABLE vec_t<3, Type> mul(vec_t<3, Type> a, Type s)
     {
-        return vec<3, Type>(a.c[0] * s, a.c[1] * s, a.c[2] * s);
+        return vec_t<3, Type>(a.c[0] * s, a.c[1] * s, a.c[2] * s);
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<2, Type> mul(vec<2, Type> a, Type s)
+    inline CUDA_CALLABLE vec_t<2, Type> mul(vec_t<2, Type> a, Type s)
     {
-        return vec<2, Type>(a.c[0] * s, a.c[1] * s);
+        return vec_t<2, Type>(a.c[0] * s, a.c[1] * s);
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> mul(Type s, vec<Length, Type> a)
-    {
-        return mul(a, s);
-    }
-
-    template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> operator*(Type s, vec<Length, Type> a)
+    inline CUDA_CALLABLE vec_t<Length, Type> mul(Type s, vec_t<Length, Type> a)
     {
         return mul(a, s);
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> operator*(vec<Length, Type> a, Type s)
+    inline CUDA_CALLABLE vec_t<Length, Type> operator*(Type s, vec_t<Length, Type> a)
+    {
+        return mul(a, s);
+    }
+
+    template <unsigned Length, typename Type>
+    inline CUDA_CALLABLE vec_t<Length, Type> operator*(vec_t<Length, Type> a, Type s)
     {
         return mul(a, s);
     }
 
     // component wise multiplication:
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> cw_mul(vec<Length, Type> a, vec<Length, Type> b)
+    inline CUDA_CALLABLE vec_t<Length, Type> cw_mul(vec_t<Length, Type> a, vec_t<Length, Type> b)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = a[i] * b[i];
@@ -205,9 +207,9 @@ namespace wp
 
     // division
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> div(vec<Length, Type> a, Type s)
+    inline CUDA_CALLABLE vec_t<Length, Type> div(vec_t<Length, Type> a, Type s)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = a[i] / s;
@@ -216,28 +218,28 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<3, Type> div(vec<3, Type> a, Type s)
+    inline CUDA_CALLABLE vec_t<3, Type> div(vec_t<3, Type> a, Type s)
     {
-        return vec<3, Type>(a.c[0] / s, a.c[1] / s, a.c[2] / s);
+        return vec_t<3, Type>(a.c[0] / s, a.c[1] / s, a.c[2] / s);
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<2, Type> div(vec<2, Type> a, Type s)
+    inline CUDA_CALLABLE vec_t<2, Type> div(vec_t<2, Type> a, Type s)
     {
-        return vec<2, Type>(a.c[0] / s, a.c[1] / s);
+        return vec_t<2, Type>(a.c[0] / s, a.c[1] / s);
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> operator/(vec<Length, Type> a, Type s)
+    inline CUDA_CALLABLE vec_t<Length, Type> operator/(vec_t<Length, Type> a, Type s)
     {
         return div(a, s);
     }
 
     // component wise division
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> cw_div(vec<Length, Type> a, vec<Length, Type> b)
+    inline CUDA_CALLABLE vec_t<Length, Type> cw_div(vec_t<Length, Type> a, vec_t<Length, Type> b)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = a[i] / b[i];
@@ -247,9 +249,9 @@ namespace wp
 
     // addition
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> add(vec<Length, Type> a, vec<Length, Type> b)
+    inline CUDA_CALLABLE vec_t<Length, Type> add(vec_t<Length, Type> a, vec_t<Length, Type> b)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = a[i] + b[i];
@@ -258,22 +260,22 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<2, Type> add(vec<2, Type> a, vec<2, Type> b)
+    inline CUDA_CALLABLE vec_t<2, Type> add(vec_t<2, Type> a, vec_t<2, Type> b)
     {
-        return vec<2, Type>(a.c[0] + b.c[0], a.c[1] + b.c[1]);
+        return vec_t<2, Type>(a.c[0] + b.c[0], a.c[1] + b.c[1]);
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<3, Type> add(vec<3, Type> a, vec<3, Type> b)
+    inline CUDA_CALLABLE vec_t<3, Type> add(vec_t<3, Type> a, vec_t<3, Type> b)
     {
-        return vec<3, Type>(a.c[0] + b.c[0], a.c[1] + b.c[1], a.c[2] + b.c[2]);
+        return vec_t<3, Type>(a.c[0] + b.c[0], a.c[1] + b.c[1], a.c[2] + b.c[2]);
     }
 
     // subtraction
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> sub(vec<Length, Type> a, vec<Length, Type> b)
+    inline CUDA_CALLABLE vec_t<Length, Type> sub(vec_t<Length, Type> a, vec_t<Length, Type> b)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = Type(a[i] - b[i]);
@@ -282,20 +284,20 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<2, Type> sub(vec<2, Type> a, vec<2, Type> b)
+    inline CUDA_CALLABLE vec_t<2, Type> sub(vec_t<2, Type> a, vec_t<2, Type> b)
     {
-        return vec<2, Type>(a.c[0] - b.c[0], a.c[1] - b.c[1]);
+        return vec_t<2, Type>(a.c[0] - b.c[0], a.c[1] - b.c[1]);
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<3, Type> sub(vec<3, Type> a, vec<3, Type> b)
+    inline CUDA_CALLABLE vec_t<3, Type> sub(vec_t<3, Type> a, vec_t<3, Type> b)
     {
-        return vec<3, Type>(a.c[0] - b.c[0], a.c[1] - b.c[1], a.c[2] - b.c[2]);
+        return vec_t<3, Type>(a.c[0] - b.c[0], a.c[1] - b.c[1], a.c[2] - b.c[2]);
     }
 
     // dot product:
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE Type dot(vec<Length, Type> a, vec<Length, Type> b)
+    inline CUDA_CALLABLE Type dot(vec_t<Length, Type> a, vec_t<Length, Type> b)
     {
         Type ret(0);
         for (unsigned i = 0; i < Length; ++i)
@@ -306,26 +308,26 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE Type dot(vec<2, Type> a, vec<2, Type> b)
+    inline CUDA_CALLABLE Type dot(vec_t<2, Type> a, vec_t<2, Type> b)
     {
         return a.c[0] * b.c[0] + a.c[1] * b.c[1];
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE Type dot(vec<3, Type> a, vec<3, Type> b)
+    inline CUDA_CALLABLE Type dot(vec_t<3, Type> a, vec_t<3, Type> b)
     {
         return a.c[0] * b.c[0] + a.c[1] * b.c[1] + a.c[2] * b.c[2];
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE Type tensordot(vec<Length, Type> a, vec<Length, Type> b)
+    inline CUDA_CALLABLE Type tensordot(vec_t<Length, Type> a, vec_t<Length, Type> b)
     {
         // corresponds to `np.tensordot()` with all axes being contracted
         return dot(a, b);
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE Type index(const vec<Length, Type> &a, int idx)
+    inline CUDA_CALLABLE Type index(const vec_t<Length, Type> &a, int idx)
     {
 #if FP_CHECK
         if (idx < 0 || idx > Length)
@@ -339,61 +341,61 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE Type length(vec<Length, Type> a)
+    inline CUDA_CALLABLE Type length(vec_t<Length, Type> a)
     {
         return sqrt(dot(a, a));
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE Type length_sq(vec<Length, Type> a)
+    inline CUDA_CALLABLE Type length_sq(vec_t<Length, Type> a)
     {
         return dot(a, a);
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE Type length(vec<2, Type> a)
+    inline CUDA_CALLABLE Type length(vec_t<2, Type> a)
     {
         return sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1]);
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE Type length(vec<3, Type> a)
+    inline CUDA_CALLABLE Type length(vec_t<3, Type> a)
     {
         return sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1] + a.c[2] * a.c[2]);
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> normalize(vec<Length, Type> a)
+    inline CUDA_CALLABLE vec_t<Length, Type> normalize(vec_t<Length, Type> a)
     {
         Type l = length(a);
         if (l > Type(kEps))
             return div(a, l);
         else
-            return vec<Length, Type>();
+            return vec_t<Length, Type>();
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<2, Type> normalize(vec<2, Type> a)
+    inline CUDA_CALLABLE vec_t<2, Type> normalize(vec_t<2, Type> a)
     {
         Type l = sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1]);
         if (l > Type(kEps))
-            return vec<2, Type>(a.c[0] / l, a.c[1] / l);
+            return vec_t<2, Type>(a.c[0] / l, a.c[1] / l);
         else
-            return vec<2, Type>();
+            return vec_t<2, Type>();
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<3, Type> normalize(vec<3, Type> a)
+    inline CUDA_CALLABLE vec_t<3, Type> normalize(vec_t<3, Type> a)
     {
         Type l = sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1] + a.c[2] * a.c[2]);
         if (l > Type(kEps))
-            return vec<3, Type>(a.c[0] / l, a.c[1] / l, a.c[2] / l);
+            return vec_t<3, Type>(a.c[0] / l, a.c[1] / l, a.c[2] / l);
         else
-            return vec<3, Type>();
+            return vec_t<3, Type>();
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE vec<3, Type> cross(vec<3, Type> a, vec<3, Type> b)
+    inline CUDA_CALLABLE vec_t<3, Type> cross(vec_t<3, Type> a, vec_t<3, Type> b)
     {
         return {
             Type(a[1] * b[2] - a[2] * b[1]),
@@ -402,7 +404,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline bool CUDA_CALLABLE isfinite(vec<Length, Type> x)
+    inline bool CUDA_CALLABLE isfinite(vec_t<Length, Type> x)
     {
         for (unsigned i = 0; i < Length; ++i)
         {
@@ -416,9 +418,9 @@ namespace wp
 
     // These two functions seem to compile very slowly
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> min(vec<Length, Type> a, vec<Length, Type> b)
+    inline CUDA_CALLABLE vec_t<Length, Type> min(vec_t<Length, Type> a, vec_t<Length, Type> b)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = a[i] < b[i] ? a[i] : b[i];
@@ -427,9 +429,9 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> max(vec<Length, Type> a, vec<Length, Type> b)
+    inline CUDA_CALLABLE vec_t<Length, Type> max(vec_t<Length, Type> a, vec_t<Length, Type> b)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = a[i] > b[i] ? a[i] : b[i];
@@ -460,7 +462,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void expect_near(const vec<Length, Type> &actual, const vec<Length, Type> &expected, const Type &tolerance)
+    inline CUDA_CALLABLE void expect_near(const vec_t<Length, Type> &actual, const vec_t<Length, Type> &expected, const Type &tolerance)
     {
         const Type diff(0);
         for (size_t i = 0; i < Length; ++i)
@@ -479,32 +481,31 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_expect_near(const vec<Length, Type> &actual, const vec<Length, Type> &expected, Type tolerance, vec<Length, Type> &adj_actual, vec<Length, Type> &adj_expected, Type adj_tolerance)
+    inline CUDA_CALLABLE void adj_expect_near(const vec_t<Length, Type> &actual, const vec_t<Length, Type> &expected, Type tolerance, vec_t<Length, Type> &adj_actual, vec_t<Length, Type> &adj_expected, Type adj_tolerance)
     {
         // nop
     }
 
-    // adjoint for the initializer_list constructor:
+    // adjoint for the initializer_array constructor:
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_vec(std::initializer_list<Type> cmps, std::initializer_list<Type *> adj_cmps, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_vec_t(const initializer_array<Length, Type> &cmps, const initializer_array<Length, Type *> &adj_cmps, const vec_t<Length, Type> &adj_ret)
     {
-        auto it = adj_cmps.begin();
-        for (unsigned i = 0; i < Length; ++i, ++it)
+        for (unsigned i = 0; i < Length; ++i)
         {
-            *(*it) += adj_ret[i];
+            *(adj_cmps[i]) += adj_ret[i];
         }
     }
 
     // adjoint for the component constructors:
     template <typename Type>
-    inline CUDA_CALLABLE void adj_vec(Type cmpx, Type cmpy, Type &adj_cmpx, Type &adj_cmpy, const vec<2, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_vec_t(Type cmpx, Type cmpy, Type &adj_cmpx, Type &adj_cmpy, const vec_t<2, Type> &adj_ret)
     {
         adj_cmpx += adj_ret.c[0];
         adj_cmpy += adj_ret.c[1];
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_vec(Type cmpx, Type cmpy, Type cmpz, Type &adj_cmpx, Type &adj_cmpy, Type &adj_cmpz, const vec<3, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_vec_t(Type cmpx, Type cmpy, Type cmpz, Type &adj_cmpx, Type &adj_cmpy, Type &adj_cmpz, const vec_t<3, Type> &adj_ret)
     {
         adj_cmpx += adj_ret.c[0];
         adj_cmpy += adj_ret.c[1];
@@ -512,7 +513,7 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_vec(Type cmpx, Type cmpy, Type cmpz, Type cmpw, Type &adj_cmpx, Type &adj_cmpy, Type &adj_cmpz, Type &adj_cmpw, const vec<4, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_vec_t(Type cmpx, Type cmpy, Type cmpz, Type cmpw, Type &adj_cmpx, Type &adj_cmpy, Type &adj_cmpz, Type &adj_cmpw, const vec_t<4, Type> &adj_ret)
     {
         adj_cmpx += adj_ret.c[0];
         adj_cmpy += adj_ret.c[1];
@@ -522,7 +523,7 @@ namespace wp
 
     // adjoint for the constant constructor:
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_vec(Type s, Type &adj_s, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_vec_t(Type s, Type &adj_s, const vec_t<Length, Type> &adj_ret)
     {
         for (unsigned i = 0; i < Length; ++i)
         {
@@ -530,8 +531,19 @@ namespace wp
         }
     }
 
+    template <typename Type>
+    CUDA_CALLABLE inline void adj_vec_t(const vec_t<3, Type> &w, const vec_t<3, Type> &v, vec_t<3, Type> &adj_w, vec_t<3, Type> &adj_v, const vec_t<6, Type> &adj_ret)
+    {
+        adj_w[0] += adj_ret[0];
+        adj_w[1] += adj_ret[1];
+        adj_w[2] += adj_ret[2];
+        adj_v[0] += adj_ret[3];
+        adj_v[1] += adj_ret[4];
+        adj_v[2] += adj_ret[5];
+    }
+
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_mul(vec<Length, Type> a, Type s, vec<Length, Type> &adj_a, Type &adj_s, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_mul(vec_t<Length, Type> a, Type s, vec_t<Length, Type> &adj_a, Type &adj_s, const vec_t<Length, Type> &adj_ret)
     {
         for (unsigned i = 0; i < Length; ++i)
         {
@@ -551,20 +563,20 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_mul(Type s, vec<Length, Type> a, Type &adj_s, vec<Length, Type> &adj_a, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_mul(Type s, vec_t<Length, Type> a, Type &adj_s, vec_t<Length, Type> &adj_a, const vec_t<Length, Type> &adj_ret)
     {
         adj_mul(a, s, adj_a, adj_s, adj_ret);
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_cw_mul(vec<Length, Type> a, vec<Length, Type> b, vec<Length, Type> &adj_a, vec<Length, Type> &adj_b, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_cw_mul(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type> &adj_a, vec_t<Length, Type> &adj_b, const vec_t<Length, Type> &adj_ret)
     {
         adj_a += cw_mul(b, adj_ret);
         adj_b += cw_mul(a, adj_ret);
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_div(vec<Length, Type> a, Type s, vec<Length, Type> &adj_a, Type &adj_s, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_div(vec_t<Length, Type> a, Type s, vec_t<Length, Type> &adj_a, Type &adj_s, const vec_t<Length, Type> &adj_ret)
     {
 
         adj_s -= dot(a, adj_ret) / (s * s); // - a / s^2
@@ -585,21 +597,21 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_cw_div(vec<Length, Type> a, vec<Length, Type> b, vec<Length, Type> &adj_a, vec<Length, Type> &adj_b, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_cw_div(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type> &adj_a, vec_t<Length, Type> &adj_b, const vec_t<Length, Type> &adj_ret)
     {
         adj_a += cw_div(adj_ret, b);
         adj_b -= cw_mul(adj_ret, cw_div(cw_div(a, b), b));
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_add(vec<Length, Type> a, vec<Length, Type> b, vec<Length, Type> &adj_a, vec<Length, Type> &adj_b, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_add(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type> &adj_a, vec_t<Length, Type> &adj_b, const vec_t<Length, Type> &adj_ret)
     {
         adj_a += adj_ret;
         adj_b += adj_ret;
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_add(vec<2, Type> a, vec<2, Type> b, vec<2, Type> &adj_a, vec<2, Type> &adj_b, const vec<2, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_add(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type> &adj_a, vec_t<2, Type> &adj_b, const vec_t<2, Type> &adj_ret)
     {
         adj_a.c[0] += adj_ret.c[0];
         adj_a.c[1] += adj_ret.c[1];
@@ -608,7 +620,7 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_add(vec<3, Type> a, vec<3, Type> b, vec<3, Type> &adj_a, vec<3, Type> &adj_b, const vec<3, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_add(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type> &adj_a, vec_t<3, Type> &adj_b, const vec_t<3, Type> &adj_ret)
     {
         adj_a.c[0] += adj_ret.c[0];
         adj_a.c[1] += adj_ret.c[1];
@@ -619,14 +631,14 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_sub(vec<Length, Type> a, vec<Length, Type> b, vec<Length, Type> &adj_a, vec<Length, Type> &adj_b, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_sub(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type> &adj_a, vec_t<Length, Type> &adj_b, const vec_t<Length, Type> &adj_ret)
     {
         adj_a += adj_ret;
         adj_b -= adj_ret;
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_sub(vec<2, Type> a, vec<2, Type> b, vec<2, Type> &adj_a, vec<2, Type> &adj_b, const vec<2, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_sub(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type> &adj_a, vec_t<2, Type> &adj_b, const vec_t<2, Type> &adj_ret)
     {
         adj_a.c[0] += adj_ret.c[0];
         adj_a.c[1] += adj_ret.c[1];
@@ -635,7 +647,7 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_sub(vec<3, Type> a, vec<3, Type> b, vec<3, Type> &adj_a, vec<3, Type> &adj_b, const vec<3, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_sub(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type> &adj_a, vec_t<3, Type> &adj_b, const vec_t<3, Type> &adj_ret)
     {
         adj_a.c[0] += adj_ret.c[0];
         adj_a.c[1] += adj_ret.c[1];
@@ -646,7 +658,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_dot(vec<Length, Type> a, vec<Length, Type> b, vec<Length, Type> &adj_a, vec<Length, Type> &adj_b, const Type adj_ret)
+    inline CUDA_CALLABLE void adj_dot(vec_t<Length, Type> a, vec_t<Length, Type> b, vec_t<Length, Type> &adj_a, vec_t<Length, Type> &adj_b, const Type adj_ret)
     {
         adj_a += b * adj_ret;
         adj_b += a * adj_ret;
@@ -662,7 +674,7 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_dot(vec<2, Type> a, vec<2, Type> b, vec<2, Type> &adj_a, vec<2, Type> &adj_b, const Type adj_ret)
+    inline CUDA_CALLABLE void adj_dot(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type> &adj_a, vec_t<2, Type> &adj_b, const Type adj_ret)
     {
         adj_a.c[0] += b.c[0] * adj_ret;
         adj_a.c[1] += b.c[1] * adj_ret;
@@ -672,7 +684,7 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_dot(vec<3, Type> a, vec<3, Type> b, vec<3, Type> &adj_a, vec<3, Type> &adj_b, const Type adj_ret)
+    inline CUDA_CALLABLE void adj_dot(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type> &adj_a, vec_t<3, Type> &adj_b, const Type adj_ret)
     {
         adj_a.c[0] += b.c[0] * adj_ret;
         adj_a.c[1] += b.c[1] * adj_ret;
@@ -684,7 +696,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_index(const vec<Length, Type> &a, int idx, vec<Length, Type> &adj_a, int &adj_idx, Type &adj_ret)
+    inline CUDA_CALLABLE void adj_index(const vec_t<Length, Type> &a, int idx, vec_t<Length, Type> &adj_a, int &adj_idx, Type &adj_ret)
     {
 #if FP_CHECK
         if (idx < 0 || idx > Length)
@@ -698,7 +710,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_length(vec<Length, Type> a, vec<Length, Type> &adj_a, const Type adj_ret)
+    inline CUDA_CALLABLE void adj_length(vec_t<Length, Type> a, vec_t<Length, Type> &adj_a, const Type adj_ret)
     {
         adj_a += normalize(a) * adj_ret;
 
@@ -713,7 +725,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_length_sq(vec<Length, Type> a, vec<Length, Type> &adj_a, const Type adj_ret)
+    inline CUDA_CALLABLE void adj_length_sq(vec_t<Length, Type> a, vec_t<Length, Type> &adj_a, const Type adj_ret)
     {
         adj_a += Type(2.0) * a * adj_ret;
 
@@ -728,7 +740,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_normalize(vec<Length, Type> a, vec<Length, Type> &adj_a, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_normalize(vec_t<Length, Type> a, vec_t<Length, Type> &adj_a, const vec_t<Length, Type> &adj_ret)
     {
         Type d = length(a);
 
@@ -736,7 +748,7 @@ namespace wp
         {
             Type invd = Type(1.0f) / d;
 
-            vec<Length, Type> ahat = normalize(a);
+            vec_t<Length, Type> ahat = normalize(a);
 
             adj_a += (adj_ret * invd - ahat * (dot(ahat, adj_ret)) * invd);
 
@@ -752,7 +764,7 @@ namespace wp
     }
 
     template <typename Type>
-    inline CUDA_CALLABLE void adj_cross(vec<3, Type> a, vec<3, Type> b, vec<3, Type> &adj_a, vec<3, Type> &adj_b, const vec<3, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_cross(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type> &adj_a, vec_t<3, Type> &adj_b, const vec_t<3, Type> &adj_ret)
     {
         // todo: sign check
         adj_a += cross(b, adj_ret);
@@ -760,7 +772,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_min(const vec<Length, Type> &a, const vec<Length, Type> &b, vec<Length, Type> &adj_a, vec<Length, Type> &adj_b, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_min(const vec_t<Length, Type> &a, const vec_t<Length, Type> &b, vec_t<Length, Type> &adj_a, vec_t<Length, Type> &adj_b, const vec_t<Length, Type> &adj_ret)
     {
         for (unsigned i = 0; i < Length; ++i)
         {
@@ -772,7 +784,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_max(const vec<Length, Type> &a, const vec<Length, Type> &b, vec<Length, Type> &adj_a, vec<Length, Type> &adj_b, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_max(const vec_t<Length, Type> &a, const vec_t<Length, Type> &b, vec_t<Length, Type> &adj_a, vec_t<Length, Type> &adj_b, const vec_t<Length, Type> &adj_ret)
     {
         for (unsigned i = 0; i < Length; ++i)
         {
@@ -788,35 +800,24 @@ namespace wp
     {
         for (unsigned i = 0; i < Length; ++i)
         {
-            if (a[i] > Type(0))
-                adj_a[i] += adj_ret[i];
-            else if (a[i] < Type(0))
+            if (a[i] < Type(0))
                 adj_a[i] -= adj_ret[i];
             else
-                adj_a[i] += Type(0); // derivative of abs(x) at x=0 is not defined, we take 0 here
+                adj_a[i] += adj_ret[i];
         }
     }
 
     template <unsigned Length, typename Type>
     inline CUDA_CALLABLE void adj_sign(const vec<Length, Type> &a, vec<Length, Type> &adj_a, const vec<Length, Type> &adj_ret)
     {
-        for (unsigned i = 0; i < Length; ++i)
-        {
-            if (a[i] > Type(0))
-                adj_a[i] += adj_ret[i];
-            else if (a[i] < Type(0))
-                adj_a[i] -= adj_ret[i];
-            else
-                adj_a[i] += Type(0); // derivative of sign(x) at x=0 is not defined, we take 0 here
-        }
     }
 
     // Do I need to specialize these for different lengths?
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> atomic_add(vec<Length, Type> *addr, vec<Length, Type> value)
+    inline CUDA_CALLABLE vec_t<Length, Type> atomic_add(vec_t<Length, Type> *addr, vec_t<Length, Type> value)
     {
 
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = atomic_add(&(addr->c[i]), value[i]);
@@ -826,10 +827,10 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> atomic_min(vec<Length, Type> *addr, vec<Length, Type> value)
+    inline CUDA_CALLABLE vec_t<Length, Type> atomic_min(vec_t<Length, Type> *addr, vec_t<Length, Type> value)
     {
 
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = atomic_min(&(addr->c[i]), value[i]);
@@ -839,10 +840,10 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> atomic_max(vec<Length, Type> *addr, vec<Length, Type> value)
+    inline CUDA_CALLABLE vec_t<Length, Type> atomic_max(vec_t<Length, Type> *addr, vec_t<Length, Type> value)
     {
 
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = atomic_max(&(addr->c[i]), value[i]);
@@ -857,7 +858,7 @@ namespace wp
     // but you often use it for ray tracing where it does. Not sure if the
     // fabs() incurs a performance hit...
     template <unsigned Length, typename Type>
-    CUDA_CALLABLE inline int longest_axis(const vec<Length, Type> &v)
+    CUDA_CALLABLE inline int longest_axis(const vec_t<Length, Type> &v)
     {
         Type lmax = fabs(v[0]);
         int ret(0);
@@ -874,13 +875,13 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    CUDA_CALLABLE inline vec<Length, Type> lerp(const vec<Length, Type> &a, const vec<Length, Type> &b, Type t)
+    CUDA_CALLABLE inline vec_t<Length, Type> lerp(const vec_t<Length, Type> &a, const vec_t<Length, Type> &b, Type t)
     {
         return a * (Type(1) - t) + b * t;
     }
 
     template <unsigned Length, typename Type>
-    CUDA_CALLABLE inline void adj_lerp(const vec<Length, Type> &a, const vec<Length, Type> &b, Type t, vec<Length, Type> &adj_a, vec<Length, Type> &adj_b, Type &adj_t, const vec<Length, Type> &adj_ret)
+    CUDA_CALLABLE inline void adj_lerp(const vec_t<Length, Type> &a, const vec_t<Length, Type> &b, Type t, vec_t<Length, Type> &adj_a, vec_t<Length, Type> &adj_b, Type &adj_t, const vec_t<Length, Type> &adj_ret)
     {
         adj_a += adj_ret * (Type(1) - t);
         adj_b += adj_ret * t;
@@ -889,21 +890,21 @@ namespace wp
 
     // for integral types we do not accumulate gradients
     template <unsigned Length>
-    CUDA_CALLABLE inline void adj_atomic_add(vec<Length, int8> *buf, const vec<Length, int8> &value) {}
+    CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int8> *buf, const vec_t<Length, int8> &value) {}
     template <unsigned Length>
-    CUDA_CALLABLE inline void adj_atomic_add(vec<Length, uint8> *buf, const vec<Length, uint8> &value) {}
+    CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint8> *buf, const vec_t<Length, uint8> &value) {}
     template <unsigned Length>
-    CUDA_CALLABLE inline void adj_atomic_add(vec<Length, int16> *buf, const vec<Length, int16> &value) {}
+    CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int16> *buf, const vec_t<Length, int16> &value) {}
     template <unsigned Length>
-    CUDA_CALLABLE inline void adj_atomic_add(vec<Length, uint16> *buf, const vec<Length, uint16> &value) {}
+    CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint16> *buf, const vec_t<Length, uint16> &value) {}
     template <unsigned Length>
-    CUDA_CALLABLE inline void adj_atomic_add(vec<Length, int32> *buf, const vec<Length, int32> &value) {}
+    CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int32> *buf, const vec_t<Length, int32> &value) {}
     template <unsigned Length>
-    CUDA_CALLABLE inline void adj_atomic_add(vec<Length, uint32> *buf, const vec<Length, uint32> &value) {}
+    CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint32> *buf, const vec_t<Length, uint32> &value) {}
     template <unsigned Length>
-    CUDA_CALLABLE inline void adj_atomic_add(vec<Length, int64> *buf, const vec<Length, int64> &value) {}
+    CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int64> *buf, const vec_t<Length, int64> &value) {}
     template <unsigned Length>
-    CUDA_CALLABLE inline void adj_atomic_add(vec<Length, uint64> *buf, const vec<Length, uint64> &value) {}
+    CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint64> *buf, const vec_t<Length, uint64> &value) {}
 
     using vec2ub = vec<2, uint8>;
     using vec3ub = vec<3, uint8>;
@@ -949,12 +950,12 @@ namespace wp
 
     inline CUDA_CALLABLE void adj_vec3(float s, float &adj_s, const vec3 &adj_ret)
     {
-        adj_vec(s, adj_s, adj_ret);
+        adj_vec_t(s, adj_s, adj_ret);
     }
 
     inline CUDA_CALLABLE void adj_vec4(float s, float &adj_s, const vec4 &adj_ret)
     {
-        adj_vec(s, adj_s, adj_ret);
+        adj_vec_t(s, adj_s, adj_ret);
     }
 
 } // namespace wp

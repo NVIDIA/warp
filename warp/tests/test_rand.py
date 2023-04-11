@@ -178,6 +178,58 @@ def test_sampling_methods(test, device):
     test.assertTrue((np.linalg.norm(hemisphere_samples.numpy(), axis=1) <= 1.0 + 1e6).all())
 
 
+@wp.kernel
+def sample_poisson_kernel(
+    kernel_seed: int, 
+    poisson_samples_low: wp.array(dtype=wp.uint32), 
+    poisson_samples_high: wp.array(dtype=wp.uint32)):
+
+    tid = wp.tid()
+    state = wp.rand_init(kernel_seed, tid)
+    
+    x = wp.poisson(state, 3.0)
+    y = wp.poisson(state, 42.0)
+
+    poisson_samples_low[tid] = x
+    poisson_samples_high[tid] = y
+
+
+def test_poisson(test, device):
+    seed = 13
+    N = 20000
+    poisson_low = wp.zeros(N, dtype=wp.uint32, device=device)
+    poisson_high = wp.zeros(N, dtype=wp.uint32, device=device)
+
+    wp.launch(kernel=sample_poisson_kernel, dim=N, inputs=[seed, poisson_low, poisson_high], device=device)
+
+    # bins = np.arange(100)
+    # _ = plt.hist(poisson_high.numpy(), bins)
+    # plt.show()
+
+    np.random.default_rng(seed)
+
+    np_poisson_low = np.random.poisson(3.0, N)
+    np_poisson_high = np.random.poisson(42.0, N)
+    
+    poisson_low_mean = np.mean(poisson_low.numpy())
+    np_poisson_low_mean = np.mean(np_poisson_low)
+
+    poisson_high_mean = np.mean(poisson_high.numpy())
+    np_poisson_high_mean = np.mean(np_poisson_high)
+
+    poisson_low_std = np.std(poisson_low.numpy())
+    np_poisson_low_std = np.std(np_poisson_low)
+
+    poisson_high_std = np.std(poisson_high.numpy())
+    np_poisson_high_std = np.std(np_poisson_high)
+
+    # compare basic distribution characteristics
+    test.assertTrue(np.abs(poisson_low_mean - np_poisson_low_mean) <= 5e-1)
+    test.assertTrue(np.abs(poisson_high_mean - np_poisson_high_mean) <= 5e-1)
+    test.assertTrue(np.abs(poisson_low_std - np_poisson_low_std) <= 2e-1)
+    test.assertTrue(np.abs(poisson_high_std - np_poisson_high_std) <= 2e-1)
+
+
 def register(parent):
 
     devices = get_test_devices()
@@ -188,6 +240,7 @@ def register(parent):
     add_function_test(TestNoise, "test_rand", test_rand, devices=devices)
     add_function_test(TestNoise, "test_sample_cdf", test_sample_cdf, devices=devices)
     add_function_test(TestNoise, "test_sampling_methods", test_sampling_methods, devices=devices)
+    add_function_test(TestNoise, "test_poisson", test_poisson, devices=devices)
 
     return TestNoise
 

@@ -14,16 +14,6 @@
 
 #include "crt.h"
 
-#if !defined(__CUDA_ARCH__)
-    #if defined(_WIN32)
-        #define WP_API __declspec(dllexport)
-    #else
-        #define WP_API __attribute__ ((visibility ("default")))
-    #endif
-#else
-    #define WP_API
-#endif
-
 #ifdef _WIN32
 #define __restrict__ __restrict
 #endif
@@ -71,7 +61,7 @@ typedef uint64_t uint64;
 
 
 // matches Python string type for constant strings
-typedef char* str;
+typedef const char* str;
 
 
 
@@ -369,7 +359,7 @@ inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { }
 inline CUDA_CALLABLE int8 abs(int8 x) { return ::abs(x); }
 inline CUDA_CALLABLE int16 abs(int16 x) { return ::abs(x); }
 inline CUDA_CALLABLE int32 abs(int32 x) { return ::abs(x); }
-inline CUDA_CALLABLE int64 abs(int64 x) { return ::abs(x); }
+inline CUDA_CALLABLE int64 abs(int64 x) { return ::llabs(x); }
 inline CUDA_CALLABLE uint8 abs(uint8 x) { return x; }
 inline CUDA_CALLABLE uint16 abs(uint16 x) { return x; }
 inline CUDA_CALLABLE uint32 abs(uint32 x) { return x; }
@@ -1067,7 +1057,12 @@ CUDA_CALLABLE inline T operator+(const T& a, const T& b) { return add(a, b); }
 template <typename T>
 CUDA_CALLABLE inline T operator-(const T& a, const T& b) { return sub(a, b); }
 
-// unary negation implementated as negative multiply, not sure the fp implications of this
+template <typename T>
+CUDA_CALLABLE inline T pos(const T& x) { return x; }
+template <typename T>
+CUDA_CALLABLE inline void adj_pos(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(adj_ret); }
+
+// unary negation implemented as negative multiply, not sure the fp implications of this
 // may be better as 0.0 - x?
 template <typename T>
 CUDA_CALLABLE inline T neg(const T& x) { return T(0.0) - x; }
@@ -1082,9 +1077,9 @@ const int LAUNCH_MAX_DIMS = 4;   // should match types.py
 
 struct launch_bounds_t
 {
-    int shape[LAUNCH_MAX_DIMS];  // size of each dimension
+    int shape[LAUNCH_MAX_DIMS]; // size of each dimension
     int ndim;                   // number of valid dimension
-    int size;                   // total number of threads
+    size_t size;                // total number of threads
 };
 
 #ifdef __CUDACC__
@@ -1109,28 +1104,42 @@ __device__ inline void set_launch_bounds(const launch_bounds_t& b)
 // for single-threaded CPU we store launch
 // bounds in static memory to share globally
 static launch_bounds_t s_launchBounds;
-static int s_threadIdx;
+static size_t s_threadIdx;
 
-void set_launch_bounds(const launch_bounds_t& b)
+inline void set_launch_bounds(const launch_bounds_t& b)
 {
     s_launchBounds = b;
 }
 #endif
 
-
-
-inline CUDA_CALLABLE int tid()
+inline CUDA_CALLABLE size_t grid_index()
 {
 #ifdef __CUDACC__
-    return blockDim.x * blockIdx.x + threadIdx.x;
+    // Need to cast at least one of the variables being multiplied so that type promotion happens before the multiplication
+    size_t grid_index = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+    return grid_index;
 #else
     return s_threadIdx;
 #endif
 }
 
+inline CUDA_CALLABLE int tid()
+{
+    const size_t index = grid_index();
+
+    // For the 1-D tid() we need to warn the user if we're about to provide a truncated index
+    // Only do this in _DEBUG when called from device to avoid excessive register allocation
+#if defined(_DEBUG) || !defined(__CUDA_ARCH__)
+    if (index > 2147483647) {
+        printf("Warp warning: tid() is returning an overflowed int\n");
+    }
+#endif
+    return static_cast<int>(index);
+}
+
 inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
 {
-    const int index = tid();
+    const size_t index = grid_index();
 
     const int n = s_launchBounds.shape[1];
 
@@ -1141,7 +1150,7 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j)
 
 inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
 {
-    const int index = tid();
+    const size_t index = grid_index();
 
     const int n = s_launchBounds.shape[1];
     const int o = s_launchBounds.shape[2];
@@ -1154,7 +1163,7 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k)
 
 inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
 {
-    const int index = tid();
+    const size_t index = grid_index();
 
     const int n = s_launchBounds.shape[1];
     const int o = s_launchBounds.shape[2];
@@ -1391,7 +1400,7 @@ inline CUDA_CALLABLE void print(unsigned long long i)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void print(vec<Length, Type> v)
+inline CUDA_CALLABLE void print(vec_t<Length, Type> v)
 {
     for( unsigned i=0; i < Length; ++i )
     {
@@ -1401,13 +1410,13 @@ inline CUDA_CALLABLE void print(vec<Length, Type> v)
 }
 
 template<typename Type>
-inline CUDA_CALLABLE void print(quaternion<Type> i)
+inline CUDA_CALLABLE void print(quat_t<Type> i)
 {
     printf("%g %g %g %g\n", float(i.x), float(i.y), float(i.z), float(i.w));
 }
 
 template<unsigned Rows,unsigned Cols,typename Type>
-inline CUDA_CALLABLE void print(const mat<Rows,Cols,Type> &m)
+inline CUDA_CALLABLE void print(const mat_t<Rows,Cols,Type> &m)
 {
     for( unsigned i=0; i< Rows; ++i )
     {
@@ -1425,30 +1434,6 @@ inline CUDA_CALLABLE void print(transform_t<Type> t)
     printf("(%g %g %g) (%g %g %g %g)\n", float(t.p[0]), float(t.p[1]), float(t.p[2]), float(t.q.x), float(t.q.y), float(t.q.z), float(t.q.w));
 }
 
-template<typename Type>
-inline CUDA_CALLABLE void print(spatial_vector_t<Type> v)
-{
-    printf("(%g %g %g) (%g %g %g)\n", float(v.w[0]), float(v.w[1]), float(v.w[2]), float(v.v[0]), float(v.v[1]), float(v.v[2]));
-}
-
-template<typename Type>
-inline CUDA_CALLABLE void print(spatial_matrix_t<Type> m)
-{
-    printf("%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n"
-           "%g %g %g %g %g %g\n", 
-           float(m.data[0][0]), float(m.data[0][1]), float(m.data[0][2]), float(m.data[0][3]), float(m.data[0][4]), float(m.data[0][5]), 
-           float(m.data[1][0]), float(m.data[1][1]), float(m.data[1][2]), float(m.data[1][3]), float(m.data[1][4]), float(m.data[1][5]), 
-           float(m.data[2][0]), float(m.data[2][1]), float(m.data[2][2]), float(m.data[2][3]), float(m.data[2][4]), float(m.data[2][5]), 
-           float(m.data[3][0]), float(m.data[3][1]), float(m.data[3][2]), float(m.data[3][3]), float(m.data[3][4]), float(m.data[3][5]), 
-           float(m.data[4][0]), float(m.data[4][1]), float(m.data[4][2]), float(m.data[4][3]), float(m.data[4][4]), float(m.data[4][5]), 
-           float(m.data[5][0]), float(m.data[5][1]), float(m.data[5][2]), float(m.data[5][3]), float(m.data[5][4]), float(m.data[5][5]));
-}
-
-
 inline CUDA_CALLABLE void adj_print(int i, int adj_i) { printf("%d adj: %d\n", i, adj_i); }
 inline CUDA_CALLABLE void adj_print(float f, float adj_f) { printf("%g adj: %g\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(short f, short adj_f) { printf("%hd adj: %hd\n", f, adj_f); }
@@ -1459,18 +1444,20 @@ inline CUDA_CALLABLE void adj_print(unsigned short f, unsigned short adj_f) { pr
 inline CUDA_CALLABLE void adj_print(unsigned long f, unsigned long adj_f) { printf("%lu adj: %lu\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(unsigned long long f, unsigned long long adj_f) { printf("%llu adj: %llu\n", f, adj_f); }
 inline CUDA_CALLABLE void adj_print(half h, half adj_h) { printf("%g adj: %g\n", half_to_float(h), half_to_float(adj_h)); }
+inline CUDA_CALLABLE void adj_print(double f, double adj_f) { printf("%g adj: %g\n", f, adj_f); }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_print(vec<Length, Type> v, vec<Length, Type>& adj_v) { printf("%g %g adj: %g %g \n", v[0], v[1], adj_v[0], adj_v[1]); }
-
-inline CUDA_CALLABLE void adj_print(quat q, quat& adj_q) { printf("%g %g %g %g adj: %g %g %g %g\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
+inline CUDA_CALLABLE void adj_print(vec_t<Length, Type> v, vec_t<Length, Type>& adj_v) { printf("%g %g adj: %g %g \n", v[0], v[1], adj_v[0], adj_v[1]); }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_print(mat<Rows, Cols, Type> m, mat<Rows, Cols, Type>& adj_m) { }
+inline CUDA_CALLABLE void adj_print(mat_t<Rows, Cols, Type> m, mat_t<Rows, Cols, Type>& adj_m) { }
 
-inline CUDA_CALLABLE void adj_print(transform t, transform& adj_t) {}
-inline CUDA_CALLABLE void adj_print(spatial_vector t, spatial_vector& adj_t) {}
-inline CUDA_CALLABLE void adj_print(spatial_matrix t, spatial_matrix& adj_t) {}
+template<typename Type>
+inline CUDA_CALLABLE void adj_print(quat_t<Type> q, quat_t<Type>& adj_q) { printf("%g %g %g %g adj: %g %g %g %g\n", q.x, q.y, q.z, q.w, adj_q.x, adj_q.y, adj_q.z, adj_q.w); }
+
+template<typename Type>
+inline CUDA_CALLABLE void adj_print(transform_t<Type> t, transform_t<Type>& adj_t) {}
+
 inline CUDA_CALLABLE void adj_print(str t, str& adj_t) {}
 
 

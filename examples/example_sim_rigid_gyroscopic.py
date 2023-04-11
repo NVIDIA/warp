@@ -14,9 +14,6 @@
 ###########################################################################
 
 import os
-import math
-
-import numpy as np
 
 import warp as wp
 import warp.sim
@@ -37,9 +34,7 @@ class Example:
 
         builder = wp.sim.ModelBuilder()
 
-        builder.add_body(
-            parent=-1,
-            origin=wp.transform_identity())    
+        b = builder.add_body()    
 
         # axis shape
         builder.add_shape_box( 
@@ -48,7 +43,7 @@ class Example:
             hy=0.1*self.scale,
             hz=0.1*self.scale,
             density=100.0,
-            body=0)
+            body=b)
 
         # tip shape
         builder.add_shape_box(
@@ -57,19 +52,19 @@ class Example:
             hy=0.2*self.scale,
             hz=1.0*self.scale,
             density=100.0,
-            body=0)
+            body=b)
 
         # initial spin 
         builder.body_qd[0] = (25.0, 0.01, 0.01, 0.0, 0.0, 0.0)
 
+        builder.gravity = 0.0
         self.model = builder.finalize()
-        self.model.gravity[1] = 0.0
         self.model.ground = False
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
         self.state = self.model.state()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage)
+        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=100.0)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):
@@ -97,6 +92,3 @@ if __name__ == '__main__':
         example.render()
 
     example.renderer.save()
-
-
-
