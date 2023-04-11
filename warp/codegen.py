@@ -120,7 +120,7 @@ def _fmt_struct_instance_repr(inst: StructInstance, depth: int) -> str:
         if field_name == "_dummy_":
             continue
 
-        field_value = getattr(inst, field_name)
+        field_value = getattr(inst, field_name, None)
 
         if isinstance(field_value, StructInstance):
             field_value = _fmt_struct_instance_repr(field_value, depth + 1)
