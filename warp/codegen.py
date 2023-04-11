@@ -312,7 +312,11 @@ class Adjoint:
         if overload_annotations is None:
             # use source-level argument annotations
             if len(argspec.annotations) < len(argspec.args):
-                raise RuntimeError(f"Incomplete argument annotations on function {adj.fun_name}")
+                if not (
+                    len(argspec.annotations) == len(argspec.args) - 1
+                    and argspec.args[0] == "self"
+                ):
+                    raise RuntimeError(f"Incomplete argument annotations on function {adj.fun_name}")
             adj.arg_types = argspec.annotations
         else:
             # use overload argument annotations
