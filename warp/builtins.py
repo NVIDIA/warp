@@ -117,8 +117,8 @@ add_builtin("ddot", input_types={"x": matrix(shape=(Any,Any), dtype=Scalar), "y"
 
 add_builtin("min", input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)}, value_func=sametype_value_func(vector(length=Any, dtype=Scalar)), doc="Return the element wise minimum of two vectors.", group="Vector Math")
 add_builtin("max", input_types={"x": vector(length=Any, dtype=Scalar), "y": vector(length=Any, dtype=Scalar)}, value_func=sametype_value_func(vector(length=Any, dtype=Scalar)), doc="Return the element wise maximum of two vectors.", group="Vector Math")
-add_builtin("abs", input_types={"x": vec(length=Any, dtype=Scalar)}, value_func=sametype_value_func(vec(length=Any, dtype=Scalar)), doc="Return the element wise absolute value of a vector.", group="Vector Math")
-add_builtin("sign", input_types={"x": vec(length=Any, dtype=Scalar)}, value_func=sametype_value_func(vec(length=Any, dtype=Scalar)), doc="Return the element wise sign of a vector.", group="Vector Math")
+add_builtin("abs", input_types={"x": vector(length=Any, dtype=Scalar)}, value_func=sametype_value_func(vector(length=Any, dtype=Scalar)), doc="Return the element wise absolute value of a vector.", group="Vector Math")
+add_builtin("sign", input_types={"x": vector(length=Any, dtype=Scalar)}, value_func=sametype_value_func(vector(length=Any, dtype=Scalar)), doc="Return the element wise sign of a vector.", group="Vector Math")
 
 
 def value_func_outer(args, kwds, _):

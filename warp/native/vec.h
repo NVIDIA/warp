@@ -84,6 +84,26 @@ namespace wp
         }
     };
 
+    using vec2ub = vec_t<2, uint8>;
+    using vec3ub = vec_t<3, uint8>;
+    using vec4ub = vec_t<4, uint8>;
+
+    using vec2h = vec_t<2, half>;
+    using vec3h = vec_t<3, half>;
+    using vec4h = vec_t<4, half>;
+
+    using vec2 = vec_t<2, float>;
+    using vec3 = vec_t<3, float>;
+    using vec4 = vec_t<4, float>;
+
+    using vec2f = vec_t<2, float>;
+    using vec3f = vec_t<3, float>;
+    using vec4f = vec_t<4, float>;
+
+    using vec2d = vec_t<2, double>;
+    using vec3d = vec_t<3, double>;
+    using vec4d = vec_t<4, double>;
+
     //--------------
     // vec<Length, Type> methods
 
@@ -440,9 +460,9 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> abs(vec<Length, Type> a)
+    inline CUDA_CALLABLE vec_t<Length, Type> abs(vec_t<Length, Type> a)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = abs(a[i]);
@@ -451,9 +471,9 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE vec<Length, Type> sign(vec<Length, Type> a)
+    inline CUDA_CALLABLE vec_t<Length, Type> sign(vec_t<Length, Type> a)
     {
-        vec<Length, Type> ret;
+        vec_t<Length, Type> ret;
         for (unsigned i = 0; i < Length; ++i)
         {
             ret[i] = sign(a[i]);
@@ -796,7 +816,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_abs(const vec<Length, Type> &a, vec<Length, Type> &adj_a, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_abs(const vec_t<Length, Type> &a, vec_t<Length, Type> &adj_a, const vec_t<Length, Type> &adj_ret)
     {
         for (unsigned i = 0; i < Length; ++i)
         {
@@ -808,7 +828,7 @@ namespace wp
     }
 
     template <unsigned Length, typename Type>
-    inline CUDA_CALLABLE void adj_sign(const vec<Length, Type> &a, vec<Length, Type> &adj_a, const vec<Length, Type> &adj_ret)
+    inline CUDA_CALLABLE void adj_sign(const vec_t<Length, Type> &a, vec_t<Length, Type> &adj_a, const vec_t<Length, Type> &adj_ret)
     {
     }
 
@@ -905,26 +925,6 @@ namespace wp
     CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int64> *buf, const vec_t<Length, int64> &value) {}
     template <unsigned Length>
     CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint64> *buf, const vec_t<Length, uint64> &value) {}
-
-    using vec2ub = vec<2, uint8>;
-    using vec3ub = vec<3, uint8>;
-    using vec4ub = vec<4, uint8>;
-
-    using vec2h = vec<2, half>;
-    using vec3h = vec<3, half>;
-    using vec4h = vec<4, half>;
-
-    using vec2 = vec<2, float>;
-    using vec3 = vec<3, float>;
-    using vec4 = vec<4, float>;
-
-    using vec2f = vec<2, float>;
-    using vec3f = vec<3, float>;
-    using vec4f = vec<4, float>;
-
-    using vec2d = vec<2, double>;
-    using vec3d = vec<3, double>;
-    using vec4d = vec<4, double>;
 
     // adjoints for some of the constructors, used in intersect.h
     inline CUDA_CALLABLE void adj_vec2(float x, float y, float &adj_x, float &adj_y, const vec2 &adj_ret)
