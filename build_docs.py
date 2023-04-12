@@ -21,6 +21,7 @@ try:
     if os.name == 'nt':
         subprocess.check_output("make.bat html", cwd="docs", shell=True)
     else:
+        subprocess.run("make clean", cwd="docs", shell=True)
         subprocess.check_output("make html", cwd="docs", shell=True)
 except subprocess.CalledProcessError as e:
     print(e.output.decode())
