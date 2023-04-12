@@ -100,7 +100,7 @@ def _get_struct_instance_ctype(
                 setattr(inst_ctype, field_name, value)
             else:
                 # conversion from list/tuple, ndarray, etc.
-                setattr(inst_ctype, field_name, var_type(*value))
+                setattr(inst_ctype, field_name, var_type(value))
         else:
             # primitive type
             setattr(inst_ctype, field_name, var_type._type_(value))

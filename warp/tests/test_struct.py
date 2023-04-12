@@ -216,6 +216,9 @@ class MathThings:
     m1: wp.mat22
     m2: wp.mat22
     m3: wp.mat22
+    m4: wp.mat22
+    m5: wp.mat22
+    m6: wp.mat22
 
 @wp.kernel
 def check_math_conversions(s: MathThings):
@@ -225,18 +228,26 @@ def check_math_conversions(s: MathThings):
     wp.expect_eq(s.m1, wp.mat22(1.0, 2.0, 3.0, 4.0))
     wp.expect_eq(s.m2, wp.mat22(10.0, 20.0, 30.0, 40.0))
     wp.expect_eq(s.m3, wp.mat22(100.0, 200.0, 300.0, 400.0))
+    wp.expect_eq(s.m4, wp.mat22(1.0, 2.0, 3.0, 4.0))
+    wp.expect_eq(s.m5, wp.mat22(10.0, 20.0, 30.0, 40.0))
+    wp.expect_eq(s.m6, wp.mat22(100.0, 200.0, 300.0, 400.0))
 
 def test_struct_math_conversions(test, device):
 
     s = MathThings()
 
-    # test assigning various iterables to vector and matrix attributes
+    # test assigning various containers to vector and matrix attributes
     s.v1 = (1, 2, 3)
     s.v2 = [10, 20, 30]
     s.v3 = np.array([100, 200, 300])
+    # 2d containers for matrices
     s.m1 = ((1, 2), (3, 4))
     s.m2 = [[10, 20], [30, 40]]
     s.m3 = np.array([[100, 200], [300, 400]])
+    # 1d containers for matrices
+    s.m4 = (1, 2, 3, 4)
+    s.m5 = [10, 20, 30, 40]
+    s.m6 = np.array([100, 200, 300, 400])
 
     wp.launch(check_math_conversions, dim=1, inputs=[s])
 
