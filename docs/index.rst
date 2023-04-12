@@ -29,7 +29,6 @@ User's Guide
    quickstart
    primer
    debugging
-   profiling
    faq
 
 API Reference

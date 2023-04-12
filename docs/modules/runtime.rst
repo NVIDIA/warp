@@ -7,6 +7,7 @@ Runtime Reference
    :maxdepth: 2
 
    devices
+   profiling
 
 Kernels
 -------
