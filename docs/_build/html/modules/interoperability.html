@@ -1,0 +1,509 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Simulation Reference" href="sim.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
+        <title>Interoperability - Warp 0.8.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  --color-admonition-title-background--note: #76b900;
+  --color-admonition-title--note: #ffffff;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">Warp 0.8.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo-light-mode.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Warp 0.8.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Basics</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../primer.html">Warp Primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="runtime.html">Runtime Reference</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="devices.html">Devices</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="functions.html">Kernel Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Interoperability</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="interoperability">
+<h1>Interoperability<a class="headerlink" href="#interoperability" title="Permalink to this heading">#</a></h1>
+<p>Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.</p>
+<section id="numpy">
+<h2>NumPy<a class="headerlink" href="#numpy" title="Permalink to this heading">#</a></h2>
+<p>Warp arrays may be converted to a NumPy array through the <code class="docutils literal notranslate"><span class="pre">warp.array.numpy()</span></code> method. When the Warp array lives on
+the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> device this will return a zero-copy view onto the underlying Warp allocation. If the array lives on a
+<code class="docutils literal notranslate"><span class="pre">cuda</span></code> device then it will first be copied back to a temporary buffer and copied to NumPy.</p>
+<p>Warp CPU arrays also implement  the <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> protocol and so can be used to construct NumPy arrays
+directly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="o">&gt;</span> <span class="p">[</span><span class="mf">1.</span> <span class="mf">2.</span> <span class="mf">3.</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="pytorch">
+<span id="pytorch-interop"></span><h2>PyTorch<a class="headerlink" href="#pytorch" title="Permalink to this heading">#</a></h2>
+<p>Warp provides helper functions to convert arrays to/from PyTorch. Please see the <code class="docutils literal notranslate"><span class="pre">warp.torch</span></code> module for more details. Example usage is shown below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp.torch</span>
+
+<span class="n">w</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="c1"># convert to Torch tensor</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">warp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+
+<span class="c1"># convert from Torch tensor</span>
+<span class="n">w</span> <span class="o">=</span> <span class="n">warp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</pre></div>
+</div>
+<span class="target" id="module-warp.torch"></span><dl class="py function">
+<dt class="sig sig-object py" id="warp.torch.device_from_torch">
+<span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">device_from_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">torch_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.device_from_torch" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.torch.device_to_torch">
+<span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">device_to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.device_to_torch" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.torch.dtype_from_torch">
+<span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">dtype_from_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">torch_dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.dtype_from_torch" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.torch.dtype_is_compatible">
+<span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">dtype_is_compatible</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">torch_dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warp_dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.dtype_is_compatible" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.torch.from_torch">
+<span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">from_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.from_torch" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.torch.to_torch">
+<span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.to_torch" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.torch.stream_from_torch">
+<span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">stream_from_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream_or_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.stream_from_torch" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.torch.stream_to_torch">
+<span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">stream_to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream_or_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.stream_to_torch" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="cupy-numba">
+<h2>CuPy/Numba<a class="headerlink" href="#cupy-numba" title="Permalink to this heading">#</a></h2>
+<p>Warp GPU arrays support the <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol for sharing data with other Python GPU frameworks.
+Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the
+<code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol, but not the other way around.</p>
+</section>
+<section id="jax">
+<h2>JAX<a class="headerlink" href="#jax" title="Permalink to this heading">#</a></h2>
+<p>Interop with JAX arrays is not currently well supported, although it is possible to first convert arrays to a Torch
+tensor and then to JAX via. the dlpack mechanism.</p>
+<span class="target" id="module-warp.jax"></span><dl class="py function">
+<dt class="sig sig-object py" id="warp.jax.device_to_jax">
+<span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">device_to_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.jax.device_to_jax" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.jax.device_from_jax">
+<span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">device_from_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jax_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.jax.device_from_jax" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.jax.to_jax">
+<span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">to_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_array</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.jax.to_jax" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.jax.from_jax">
+<span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">from_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jax_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.jax.from_jax" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-warp.dlpack">
+<span id="dlpack"></span><h2>DLPack<a class="headerlink" href="#module-warp.dlpack" title="Permalink to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.device_to_dlpack">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">device_to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.device_to_dlpack" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>DLDevice</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.dtype_to_dlpack">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">dtype_to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.dtype_to_dlpack" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>DLDataType</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.dtype_from_dlpack">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">dtype_from_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dl_dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.dtype_from_dlpack" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.device_from_dlpack">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">device_from_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dl_device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.device_from_dlpack" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.shape_to_dlpack">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">shape_to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.shape_to_dlpack" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.strides_to_dlpack">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">strides_to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strides</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.strides_to_dlpack" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.to_dlpack">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_array</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.to_dlpack" title="Permalink to this definition">#</a></dt>
+<dd><p>Convert a Warp array to another type of dlpack compatible array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>np_array</strong> (<em>np.ndarray</em>) – The source numpy array that will be converted.</p></li>
+<li><p><strong>wp_array</strong> (<a class="reference internal" href="runtime.html#warp.array" title="warp.types.array"><em>array</em></a>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>pycapsule</strong> – A pycapsule containing a DLManagedTensor that can be converted
+to other array formats without copying the underlying memory.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PyCapsule</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.dtype_is_compatible">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">dtype_is_compatible</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dl_dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wp_dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.dtype_is_compatible" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="warp.dlpack.from_dlpack">
+<span class="sig-prename descclassname"><span class="pre">warp.dlpack.</span></span><span class="sig-name descname"><span class="pre">from_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pycapsule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.dlpack.from_dlpack" title="Permalink to this definition">#</a></dt>
+<dd><p>Convert a dlpack tensor into a numpy array without copying.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>pycapsule</strong> (<em>PyCapsule</em>) – A pycapsule wrapping a dlpack tensor that will be converted.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>np_array</strong> – A new numpy array that uses the same underlying memory as the input
+pycapsule.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="sim.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Simulation Reference</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022, NVIDIA
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/NVIDIA/warp" aria-label="GitHub">
+            <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+        </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Interoperability</a><ul>
+<li><a class="reference internal" href="#numpy">NumPy</a></li>
+<li><a class="reference internal" href="#pytorch">PyTorch</a><ul>
+<li><a class="reference internal" href="#warp.torch.device_from_torch"><code class="docutils literal notranslate"><span class="pre">device_from_torch()</span></code></a></li>
+<li><a class="reference internal" href="#warp.torch.device_to_torch"><code class="docutils literal notranslate"><span class="pre">device_to_torch()</span></code></a></li>
+<li><a class="reference internal" href="#warp.torch.dtype_from_torch"><code class="docutils literal notranslate"><span class="pre">dtype_from_torch()</span></code></a></li>
+<li><a class="reference internal" href="#warp.torch.dtype_is_compatible"><code class="docutils literal notranslate"><span class="pre">dtype_is_compatible()</span></code></a></li>
+<li><a class="reference internal" href="#warp.torch.from_torch"><code class="docutils literal notranslate"><span class="pre">from_torch()</span></code></a></li>
+<li><a class="reference internal" href="#warp.torch.to_torch"><code class="docutils literal notranslate"><span class="pre">to_torch()</span></code></a></li>
+<li><a class="reference internal" href="#warp.torch.stream_from_torch"><code class="docutils literal notranslate"><span class="pre">stream_from_torch()</span></code></a></li>
+<li><a class="reference internal" href="#warp.torch.stream_to_torch"><code class="docutils literal notranslate"><span class="pre">stream_to_torch()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#cupy-numba">CuPy/Numba</a></li>
+<li><a class="reference internal" href="#jax">JAX</a><ul>
+<li><a class="reference internal" href="#warp.jax.device_to_jax"><code class="docutils literal notranslate"><span class="pre">device_to_jax()</span></code></a></li>
+<li><a class="reference internal" href="#warp.jax.device_from_jax"><code class="docutils literal notranslate"><span class="pre">device_from_jax()</span></code></a></li>
+<li><a class="reference internal" href="#warp.jax.to_jax"><code class="docutils literal notranslate"><span class="pre">to_jax()</span></code></a></li>
+<li><a class="reference internal" href="#warp.jax.from_jax"><code class="docutils literal notranslate"><span class="pre">from_jax()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-warp.dlpack">DLPack</a><ul>
+<li><a class="reference internal" href="#warp.dlpack.device_to_dlpack"><code class="docutils literal notranslate"><span class="pre">device_to_dlpack()</span></code></a></li>
+<li><a class="reference internal" href="#warp.dlpack.dtype_to_dlpack"><code class="docutils literal notranslate"><span class="pre">dtype_to_dlpack()</span></code></a></li>
+<li><a class="reference internal" href="#warp.dlpack.dtype_from_dlpack"><code class="docutils literal notranslate"><span class="pre">dtype_from_dlpack()</span></code></a></li>
+<li><a class="reference internal" href="#warp.dlpack.device_from_dlpack"><code class="docutils literal notranslate"><span class="pre">device_from_dlpack()</span></code></a></li>
+<li><a class="reference internal" href="#warp.dlpack.shape_to_dlpack"><code class="docutils literal notranslate"><span class="pre">shape_to_dlpack()</span></code></a></li>
+<li><a class="reference internal" href="#warp.dlpack.strides_to_dlpack"><code class="docutils literal notranslate"><span class="pre">strides_to_dlpack()</span></code></a></li>
+<li><a class="reference internal" href="#warp.dlpack.to_dlpack"><code class="docutils literal notranslate"><span class="pre">to_dlpack()</span></code></a></li>
+<li><a class="reference internal" href="#warp.dlpack.dtype_is_compatible"><code class="docutils literal notranslate"><span class="pre">dtype_is_compatible()</span></code></a></li>
+<li><a class="reference internal" href="#warp.dlpack.from_dlpack"><code class="docutils literal notranslate"><span class="pre">from_dlpack()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/scripts/furo.js"></script>
+    </body>
+</html>

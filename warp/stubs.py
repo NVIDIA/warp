@@ -43,6 +43,9 @@ from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
 
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, from_ptr
 
+from warp.types import vector as vec
+from warp.types import matrix as mat
+
 from warp.context import init, func, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device

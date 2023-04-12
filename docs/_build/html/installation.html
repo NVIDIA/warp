@@ -2,9 +2,12 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="#" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Quickstart" href="quickstart.html" /><link rel="prev" title="NVIDIA Warp Documentation" href="index.html" />
 
-    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 --><title>Search - Warp 0.8.0</title><link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
+        <title>Installation - Warp 0.8.0</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
     
@@ -133,7 +136,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -151,15 +154,15 @@
   
   <span class="sidebar-brand-text">Warp 0.8.0</span>
   
-</a><form class="sidebar-search-container" method="get" action="#" role="search">
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Basics</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="primer.html">Warp Primer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
@@ -202,31 +205,110 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          
-<noscript>
-<div class="admonition error">
-  <p class="admonition-title">Error</p>
-  <p>
-    Please activate JavaScript to enable the search functionality.
-  </p>
+          <section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h1>
+<section id="python-version">
+<h2>Python Version<a class="headerlink" href="#python-version" title="Permalink to this heading">#</a></h2>
+<p>Warp supports Python versions 3.7 and newer.</p>
+</section>
+<section id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this heading">#</a></h2>
+<p>Warp requires the following dependencies to be installed:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://numpy.org">NumPy</a></p></li>
+</ul>
+<section id="optional-dependencies">
+<h3>Optional dependencies<a class="headerlink" href="#optional-dependencies" title="Permalink to this heading">#</a></h3>
+<p>The following dependencies may be required to enable certain features:</p>
+<ul class="simple">
+<li><p>JAX</p></li>
+<li><p>PyTorch: Required for PyTorch interoperability (see <a class="reference internal" href="modules/interoperability.html#pytorch-interop"><span class="std std-ref">PyTorch</span></a>)</p></li>
+<li><p>NVTX for Python</p></li>
+</ul>
+<p>Building the Warp documentation requires the following dependencies:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://www.sphinx-doc.org">Sphinx</a></p></li>
+<li><p><a class="reference external" href="https://github.com/pradyunsg/furo">Furo</a></p></li>
+</ul>
+</section>
+</section>
+<section id="installing-from-pypi">
+<h2>Installing from PyPI<a class="headerlink" href="#installing-from-pypi" title="Permalink to this heading">#</a></h2>
+<p>The easiest way is to install from PyPI:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>warp-lang
+</pre></div>
 </div>
-</noscript>
-
-<div id="search-results"></div>
+<p>Pre-built binary packages for Windows and Linux are also available on the Releases page.
+To install in your local Python environment extract the archive and run the following command from the root directory:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+</section>
+<section id="building-and-installing-from-source">
+<h2>Building and Installing from Source<a class="headerlink" href="#building-and-installing-from-source" title="Permalink to this heading">#</a></h2>
+<p>For developers who want to build the library themselves the following
+tools are required:</p>
+<ul class="simple">
+<li><p>Microsoft Visual Studio 2019 upwards (Windows)</p></li>
+<li><p>GCC 7.2 upwards (Linux)</p></li>
+<li><p>CUDA Toolkit 11.5 or higher</p></li>
+<li><p>Git LFS installed (<a class="reference external" href="https://git-lfs.github.com/">https://git-lfs.github.com/</a>)</p></li>
+</ul>
+<p>After cloning the repository, users should run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">build_lib</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>This will generate the <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> / <code class="docutils literal notranslate"><span class="pre">warp.so</span></code> core library
+respectively. When building manually users should ensure that their
+CUDA_PATH environment variable is set, otherwise Warp will be built
+without CUDA support. Alternatively, the path to the CUDA toolkit can be
+passed to the build command as <code class="docutils literal notranslate"><span class="pre">--cuda_path=&quot;...&quot;</span></code>. After building the
+Warp package should be installed using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="o">.</span>
+</pre></div>
+</div>
+<p>Which ensures that subsequent modifications to the library will be
+reflected in the Python package.</p>
+<p>If you are cloning from Windows, please first ensure that you have
+enabled “Developer Mode” in Windows settings and symlinks in git:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">config</span> <span class="o">--</span><span class="k">global</span> <span class="n">core</span><span class="o">.</span><span class="n">symlinks</span> <span class="n">true</span>
+</pre></div>
+</div>
+<p>This will ensure symlinks inside <code class="docutils literal notranslate"><span class="pre">exts/omni.warp</span></code> work upon cloning.</p>
+</section>
+</section>
 
         </article>
       </div>
       <footer>
         
         <div class="related-pages">
-          
-          
+          <a class="next-page" href="quickstart.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Quickstart</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -252,8 +334,33 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Installation</a><ul>
+<li><a class="reference internal" href="#python-version">Python Version</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a><ul>
+<li><a class="reference internal" href="#optional-dependencies">Optional dependencies</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#installing-from-pypi">Installing from PyPI</a></li>
+<li><a class="reference internal" href="#building-and-installing-from-source">Building and Installing from Source</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>
@@ -262,8 +369,5 @@
     <script src="_static/doctools.js"></script>
     <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/scripts/furo.js"></script>
-    
-<script src="_static/searchtools.js"></script>
-<script src="_static/language_data.js"></script>
-<script src="searchindex.js"></script></body>
+    </body>
 </html>

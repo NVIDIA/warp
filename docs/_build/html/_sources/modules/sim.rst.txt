@@ -3,7 +3,8 @@ Simulation Reference
 
 .. currentmodule:: warp.sim
 
-.. toctree::
+..
+   .. toctree::
    :maxdepth: 2
 
 Warp includes a simulation module ``warp.sim`` that includes many common physical simulation models, and integrators for explicit and implicit time-stepping.
@@ -12,7 +13,7 @@ Warp includes a simulation module ``warp.sim`` that includes many common physica
 
 
 Model
---------------
+-----
 
 .. autoclass:: ModelBuilder
    :members:
