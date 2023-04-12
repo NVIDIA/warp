@@ -93,17 +93,25 @@ def _get_struct_instance_ctype(
                 assert value.dtype == var_type.dtype, "assign to struct member variable {} failed, expected type {}, got type {}".format(field_name, var_type.dtype, value.dtype)
                 setattr(inst_ctype, field_name, value.__ctype__())
         elif isinstance(var_type, Struct):
-            _get_struct_instance_ctype(value, inst_ctype, field_name)
+            if value is None:
+                _get_struct_instance_ctype(StructInstance(var_type), inst_ctype, field_name)
+            else:
+                _get_struct_instance_ctype(value, inst_ctype, field_name)
         elif issubclass(var_type, ctypes.Array):
             # vector/matrix type, e.g. vec3
-            if types_equal(type(value), var_type):
+            if value is None:
+                setattr(inst_ctype, field_name, var_type())
+            elif types_equal(type(value), var_type):
                 setattr(inst_ctype, field_name, value)
             else:
                 # conversion from list/tuple, ndarray, etc.
                 setattr(inst_ctype, field_name, var_type(value))
         else:
             # primitive type
-            setattr(inst_ctype, field_name, var_type._type_(value))
+            if value is None:
+                setattr(inst_ctype, field_name, var_type._type_())
+            else:
+                setattr(inst_ctype, field_name, var_type._type_(value))
 
     return inst_ctype
 

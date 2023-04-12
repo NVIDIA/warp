@@ -272,6 +272,35 @@ def test_return():
     wp.expect_eq(t.b, 2)
     
 
+@wp.struct
+class DefaultAttribNested:
+    f: float
+
+@wp.struct
+class DefaultAttribStruct:
+    i: int
+    d: wp.float64
+    v: wp.vec3
+    m: wp.mat22
+    a: wp.array(dtype=wp.int32)
+    s: DefaultAttribNested
+
+@wp.kernel
+def check_default_attributes(data: DefaultAttribStruct):
+    wp.expect_eq(data.i, wp.int32(0))
+    wp.expect_eq(data.d, wp.float64(0))
+    wp.expect_eq(data.v, wp.vec3(0.0, 0.0, 0.0))
+    wp.expect_eq(data.m, wp.mat22(0.0, 0.0, 0.0, 0.0))
+    wp.expect_eq(data.a.shape[0], 0)
+    wp.expect_eq(data.s.f, wp.float32(0.0))
+
+def test_struct_default_attributes(test, device):
+
+    # do not initialize any struct attributes and check default values in kernel
+    s = DefaultAttribStruct()
+
+    wp.launch(check_default_attributes, dim=1, inputs=[s])
+
 
 def register(parent):
     
@@ -287,6 +316,7 @@ def register(parent):
     add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
     add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
+    add_function_test(TestStruct, "test_struct_default_attributes", test_struct_default_attributes, devices=devices)
 
     for device in devices:
         add_kernel_test(TestStruct, kernel=test_struct_instantiate, name="test_struct_instantiate", dim=1, inputs=[wp.array([1], dtype=int, device=device)], devices=[device])
