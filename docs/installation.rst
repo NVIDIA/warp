@@ -9,7 +9,7 @@ Warp supports Python versions 3.7 and newer.
 Dependencies
 ------------
 
-Warp will not function without the following dependencies:
+Warp requires the following dependencies to be installed:
 
 * `NumPy`_
 
@@ -47,3 +47,43 @@ To install in your local Python environment extract the archive and run the foll
 .. code-block:: sh
 
     $ pip install .
+
+Building and Installing from Source
+-----------------------------------
+
+For developers who want to build the library themselves the following
+tools are required:
+
+-  Microsoft Visual Studio 2019 upwards (Windows)
+-  GCC 7.2 upwards (Linux)
+-  CUDA Toolkit 11.5 or higher
+-  Git LFS installed (https://git-lfs.github.com/)
+
+After cloning the repository, users should run:
+
+::
+
+   python build_lib.py
+
+This will generate the ``warp.dll`` / ``warp.so`` core library
+respectively. When building manually users should ensure that their
+CUDA_PATH environment variable is set, otherwise Warp will be built
+without CUDA support. Alternatively, the path to the CUDA toolkit can be
+passed to the build command as ``--cuda_path="..."``. After building the
+Warp package should be installed using:
+
+::
+
+   pip install -e .
+
+Which ensures that subsequent modifications to the library will be
+reflected in the Python package.
+
+If you are cloning from Windows, please first ensure that you have
+enabled “Developer Mode” in Windows settings and symlinks in git:
+
+::
+
+   git config --global core.symlinks true
+
+This will ensure symlinks inside ``exts/omni.warp`` work upon cloning.

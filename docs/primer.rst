@@ -1,13 +1,34 @@
 Warp Primer
 ===========
 
-Before use Warp should be explicitly initialized as follows: ::
+Initialization
+--------------
+
+Before use Warp should be explicitly initialized with the ``wp.init()`` method as follows::
 
     import warp as wp
 
     wp.init()
 
-To define a computational kernel use the following syntax with the ``@wp.kernel`` decorator. Note that all input arguments must be typed, and that the function cannot access any global state::
+Devices
+-------
+
+Users can query the supported compute devices using the ``wp.get_devices()`` method::
+
+   print(wp.get_devices())
+
+   >> ['cpu', 'cuda:0']
+
+These device strings can then be used to allocate memory and launch kernels. 
+More information about working with devices is available in :ref:`devices`.
+
+Kernels
+-------
+
+In Warp, kernels are defined as Python functions, decorated with the ``@warp.kernel`` decorator.
+Note that all input arguments must be typed, and that the function cannot access any global state.
+Kernels have a 1:1 correspondence with CUDA kernels, and may be launched with any number of parallel
+execution threads::
 
     @wp.kernel
     def simple_kernel(a: wp.array(dtype=wp.vec3),
@@ -27,7 +48,7 @@ To define a computational kernel use the following syntax with the ``@wp.kernel`
         # write result back to memory
         c[tid] = r
 
-Arrays can be allocated similar to PyTorch: ::
+Arrays can be allocated similar to PyTorch::
 
     # allocate an uninitialized array of vec3s
     v = wp.empty(shape=n, dtype=wp.vec3, device="cuda")
@@ -41,7 +62,7 @@ Arrays can be allocated similar to PyTorch: ::
     v = wp.from_numpy(a, dtype=wp.vec3, device="cuda")
 
 
-To launch a kernel use the following syntax: ::
+To launch a kernel use the following syntax::
 
     wp.launch(kernel=simple_kernel, # kernel to launch
               dim=1024,             # number of threads
@@ -51,12 +72,13 @@ To launch a kernel use the following syntax: ::
 
 Note that all input and output buffers must exist on the same device as the one specified for execution.
 
-Often we need to read data back to main (CPU) memory which can be done conveniently as follows: ::
+Often we need to read data back to main (CPU) memory which can be done conveniently as follows::
 
     # automatically bring data from device back to host
     view = device_array.numpy()
 
-This pattern will allocate a temporary CPU buffer, perform a copy from device->host memory, and return a NumPy view onto it. To avoid allocating temporary buffers this process can be managed explicitly: ::
+This pattern will allocate a temporary CPU buffer, perform a copy from device->host memory, and return a NumPy view onto
+it. To avoid allocating temporary buffers this process can be managed explicitly::
 
     # manually bring data back to host
     wp.copy(dest=host_array, src=device_array)
@@ -64,7 +86,8 @@ This pattern will allocate a temporary CPU buffer, perform a copy from device->h
 
     view = host_array.numpy()
 
-All copy operations are performed asynchronously and must be synchronized explicitly to ensure data is visible. For best performance multiple copies should be queued together: ::
+All copy operations are performed asynchronously and must be synchronized explicitly to ensure data is visible.
+For best performance multiple copies should be queued together::
 
     # launch multiple copy operations asynchronously
     wp.copy(dest=host_array_0, src=device_array_0)
@@ -75,9 +98,24 @@ All copy operations are performed asynchronously and must be synchronized explic
 Memory Model
 ------------
 
-Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures (``vec3``, ``matrix33``, etc).
+Memory allocations are exposed via the ``warp.array`` type. Arrays wrap an underlying memory allocation that may live in
+either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures
+(``vec3``, ``matrix33``, etc).
 
-Arrays may be constructed from Python lists or NumPy arrays; by default, data will be copied to new memory for the device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the array constructor.
+Arrays may be constructed from Python lists or NumPy arrays; by default, data will be copied to new memory for the
+device specified. However, it is possible for arrays to alias user memory using the ``copy=False`` parameter to the
+array constructor.
+
+User Functions
+--------------
+
+Users can write their own functions using the ``wp.func`` decorator, for example::
+
+   @wp.func
+   def square(x: float):
+      return x*x
+
+User functions can be called freely from within kernels inside the same module and accept arrays as inputs. 
 
 Compilation Model
 -----------------
@@ -87,6 +125,19 @@ Warp uses a Python->C++/CUDA compilation model that generates kernel code from P
 Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with ``@wp.kernel`` will be included in the shared library.
 
 .. image:: ./img/compiler_pipeline.png
+
+Omniverse
+---------
+
+A Warp Omniverse extension is available in the extension registry inside
+Omniverse Kit or Create:
+
+Enabling the extension will automatically install and initialize the
+Warp Python module inside the Kit Python environment. Please see the
+`Omniverse Warp
+Documentation <http://docs.omniverse.nvidia.com/extensions/warp.html>`__
+for more details on how to use Warp in Omniverse.
+
 
 Language Details
 ----------------
