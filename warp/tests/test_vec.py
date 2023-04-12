@@ -2438,6 +2438,40 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
     wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5], device=device)
 
 
+def test_conversions(test, device, dtype, register_kernels=False):
+
+    def check_vectors_equal(
+        v0: wp.vec3,
+        v1: wp.vec3,
+        v2: wp.vec3,
+        v3: wp.vec3,
+    ):
+        wp.expect_eq(v1, v0)
+        wp.expect_eq(v2, v0)
+        wp.expect_eq(v3, v0)
+
+    kernel = getkernel(check_vectors_equal, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    v0 = wp.vec3(1, 2, 3)
+
+    # test explicit conversions - constructing vectors from different containers
+    v1 = wp.vec3((1, 2, 3))
+    v2 = wp.vec3([1, 2, 3])
+    v3 = wp.vec3(np.array([1, 2, 3], dtype=dtype))
+
+    wp.launch(kernel, dim=1, inputs=[v0, v1, v2, v3], device=device)
+
+    # test implicit conversions - passing different containers as vectors to wp.launch()
+    v1 = (1, 2, 3)
+    v2 = [1, 2, 3]
+    v3 = np.array([1, 2, 3], dtype=dtype)
+
+    wp.launch(kernel, dim=1, inputs=[v0, v1, v2, v3], device=device)
+
+
 # Test matrix constructors using explicit type (float16)
 # note that these tests are specifically not using generics / closure
 # args to create kernels dynamically (like the rest of this file)
@@ -2513,6 +2547,7 @@ def register(parent):
         add_function_test_register_kernel(TestVec, f"test_addition_{dtype.__name__}", test_addition, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestVec, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestVec, f"test_equivalent_types_{dtype.__name__}", test_equivalent_types, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestVec, f"test_conversions_{dtype.__name__}", test_conversions, devices=devices, dtype=dtype)
 
         # the kernels in this test compile incredibly slowly...
         # add_function_test_register_kernel(TestVec, f"test_minmax_{dtype.__name__}", test_minmax, devices=devices, dtype=dtype)

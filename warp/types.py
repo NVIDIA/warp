@@ -99,7 +99,6 @@ def vector(length, dtype):
         _wp_type_params_ = [length, dtype]
         _wp_generic_type_str_ = "vec_t"
         _wp_constructor_ = "vector"
-        
 
         def __init__(self, *args):
 
@@ -131,7 +130,7 @@ def vector(length, dtype):
                 for i in range(self._length_):
                     super().__setitem__(i, scalar_value(args[i]))
             else:
-                raise ValueError("Invalid number of arguments in vector constructor")
+                raise ValueError(f"Invalid number of arguments in vector constructor, expected {self._length_} elements, got {num_args}")
 
         def __add__(self, y):
             return warp.add(self, y)
@@ -226,12 +225,12 @@ def matrix(shape, dtype):
                 # row vectors
                 for i, row in enumerate(args):
                     if not hasattr(row, "__len__") or len(row) != self._shape_[1]:
-                        raise TypeError(f"Invalid argument in matrix constructor: {row}")
+                        raise TypeError(f"Invalid argument in matrix constructor, expected row of length {self._shape_[1]}, got {row}")
                     offset = i * self._shape_[1]
                     for i in range(self._shape_[1]):
                         super().__setitem__(offset + i, scalar_value(row[i]))
             else:
-                raise ValueError("Invalid number of arguments in matrix constructor")
+                raise ValueError(f"Invalid number of arguments in matrix constructor, expected {self._length_} elements, got {num_args}")
 
         def __add__(self, y):
             return warp.add(self, y)
