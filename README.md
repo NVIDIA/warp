@@ -85,7 +85,7 @@ This will generate the `warp.dll` / `warp.so` core library respectively. When bu
 
     pip install -e .
 
-Which ensures that subsequent modifications to the libary will be reflected in the Python package.
+Which ensures that subsequent modifications to the library will be reflected in the Python package.
 
 If you are cloning from Windows, please first ensure that you have enabled "Developer Mode" in Windows settings and symlinks in git:
 
@@ -138,7 +138,7 @@ howpublished = {\url{https://github.com/nvidia/warp}}
 
 Warp is inspired by many of these projects, and is closely related to Numba and Taichi which both expose kernel programming to Python. These frameworks map to traditional GPU programming models, so many of the  high-level concepts are similar, however there are some functionality and implementation differences.
 
-Compared to Numba, Warp supports a smaller subset of Python, but offering auto-differentiation of kernel programs, which is useful for machine learning. Compared to Taichi Warp uses C++/CUDA as an intermediate representation, which makes it convenient to implement and expose low-level routines. In addition, we are building in datastructures to support geometry processing (meshes, sparse volumes, point clouds, USD data) as first-class citizens that are not exposed in other runtimes.
+Compared to Numba, Warp supports a smaller subset of Python, but offering auto-differentiation of kernel programs, which is useful for machine learning. Compared to Taichi Warp uses C++/CUDA as an intermediate representation, which makes it convenient to implement and expose low-level routines. In addition, we are building in data structures to support geometry processing (meshes, sparse volumes, point clouds, USD data) as first-class citizens that are not exposed in other runtimes.
 
 Warp does not offer a full tensor-based programming model like PyTorch and JAX, but is designed to work well with these frameworks through data sharing mechanisms like `__cuda_array_interface__`. For computations that map well to tensors (e.g.: neural-network inference) it makes sense to use these existing tools. For problems with a lot of e.g.: sparsity, conditional logic, hetergenous workloads (like the ones we often find in simulation and graphics), then the kernel-based programming model like the one in Warp are often more convenient since users have control over individual threads.
 
@@ -195,7 +195,7 @@ Yes! Since version `0.4.0` we support allocating, launching, and copying between
 ### Should I switch to Warp over IsaacGym / PhysX?
 -------
 
-Warp is not a replacement for IsaacGym, IsaacSim, or PhysX - while Warp does offer some physical simulation capabilities this is primarily aimed at developers who need differentiable physics, rather than a fully featured physics engine. Warp is also integrated with IsaacGym and is great for performing auxilary tasks such as reward and observation computations for reinforcement learning.
+Warp is not a replacement for IsaacGym, IsaacSim, or PhysX - while Warp does offer some physical simulation capabilities this is primarily aimed at developers who need differentiable physics, rather than a fully featured physics engine. Warp is also integrated with IsaacGym and is great for performing auxiliary tasks such as reward and observation computations for reinforcement learning.
 
 
 
