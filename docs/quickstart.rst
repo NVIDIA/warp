@@ -37,7 +37,8 @@ An example first program that computes the lengths of random 3D vectors is given
 
 Additional Examples
 -------------------
-The ``examples`` directory contains a number of scripts that show how to
+The ``examples`` directory in the Github repository contains a number of scripts
+that show how to
 implement different simulation methods using the Warp API. Most examples
 will generate USD files containing time-sampled animations in the
 ``examples/outputs`` directory. Before running examples users should
