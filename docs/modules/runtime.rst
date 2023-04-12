@@ -3,7 +3,8 @@ Runtime Reference
 
 .. currentmodule:: warp
 
-.. toctree::
+..
+   .. toctree::
    :maxdepth: 2
 
 Initialization
@@ -836,6 +837,7 @@ Warp CPU arrays also implement  the ``__array_interface__`` protocol and so can 
    print(a)   
    > [1. 2. 3.]
 
+.. _pytorch-interop:
 
 PyTorch
 #######
