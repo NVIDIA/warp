@@ -27,7 +27,7 @@ User's Guide
 
    installation
    quickstart
-   basics
+   primer
 
 API Reference
 -------------

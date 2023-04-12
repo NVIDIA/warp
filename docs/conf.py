@@ -69,6 +69,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #
 html_theme = "furo"
 
+html_title = f'Warp {version}'
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -80,6 +82,8 @@ html_theme_options = {
         "color-admonition-title-background--note": "#76b900",
         "color-admonition-title--note": "#ffffff",
     },
+    "light_logo": "logo-light-mode.png",
+    "dark_logo": "logo-dark-mode.png",
     "footer_icons": [
     {
         "name": "GitHub",
@@ -93,6 +97,3 @@ html_theme_options = {
     },
 ],
 }
-
-#html_style = "css/nvidia.css"
-#html_logo = "_static/logo.png"

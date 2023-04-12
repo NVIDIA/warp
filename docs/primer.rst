@@ -1,5 +1,5 @@
-Warp Language Basics
-====================
+Warp Primer
+===========
 
 Before use Warp should be explicitly initialized as follows: ::
 
