@@ -1,8 +1,8 @@
 Quickstart
 ==========
 
-A Basic Example
----------------
+Basic example
+-------------
 
 An example first program that computes the lengths of random 3D vectors is given below::
 
@@ -35,7 +35,7 @@ An example first program that computes the lengths of random 3D vectors is given
 
     print(lengths)
 
-Additional Examples
+Additional examples
 -------------------
 The `examples <https://github.com/NVIDIA/warp/tree/main/examples>`__ directory in
 the Github repository contains a number of scripts that show how to

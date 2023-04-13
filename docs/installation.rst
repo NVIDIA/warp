@@ -1,7 +1,7 @@
 Installation
 ============
 
-Python Version
+Python version
 --------------
 
 Warp supports Python versions 3.7 and newer.
@@ -48,7 +48,7 @@ To install in your local Python environment extract the archive and run the foll
 
     $ pip install .
 
-Building and Installing from Source
+Building from source
 -----------------------------------
 
 For developers who want to build the library themselves the following
@@ -56,8 +56,8 @@ tools are required:
 
 -  Microsoft Visual Studio 2019 upwards (Windows)
 -  GCC 7.2 upwards (Linux)
--  CUDA Toolkit 11.5 or higher
--  Git LFS installed (https://git-lfs.github.com/)
+-  `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`__ 11.5 or higher
+-  `Git Large File Storage <https://git-lfs.com>`__
 
 After cloning the repository, users should run:
 
