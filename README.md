@@ -62,7 +62,7 @@ The `examples` directory contains a number of scripts that show how to implement
 
     pip install usd-core
     
-USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/nvidia-omniverse-platform), Pixar's UsdView, and Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
+USD files can be viewed or rendered inside NVIDIA [Omniverse](https://developer.nvidia.com/omniverse), Pixar's UsdView, and Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
 
 Built-in unit tests can be run from the command-line as follows:
 
