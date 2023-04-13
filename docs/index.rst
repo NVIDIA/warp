@@ -18,6 +18,50 @@ Warp is provided under the NVIDIA Source Code License (NVSCL), please see
 `LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_ for the full license text.
 Note that the license currently allows only non-commercial use of this code.
 
+Learn More
+----------
+
+Please see the following resources for additional background on Warp:
+
+-  `GTC 2022
+   Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599>`__
+-  `GTC 2021
+   Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838>`__
+-  `SIGGRAPH Asia 2021 Differentiable Simulation
+   Course <https://dl.acm.org/doi/abs/10.1145/3476117.3483433>`__
+
+The underlying technology in Warp has been used in a number of research
+projects at NVIDIA including the following publications:
+
+-  Accelerated Policy Learning with Parallel Differentiable Simulation -
+   Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg,
+   A., & Macklin, M.
+   `(2022) <https://short-horizon-actor-critic.github.io>`__
+-  DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E.,
+   Macklin, M., Narang, Y., Fox, D., Garg, A., & Ramos, F
+   `(2021) <https://github.com/NVlabs/DiSECt>`__
+-  gradSim: Differentiable Simulation for System Identification and
+   Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian
+   Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
+   Considine et
+   al. `(2021) <https://gradsim.github.io>`__
+
+Citing
+------
+
+If you use Warp in your research please use the following citation:
+
+.. code:: bibtex
+
+   @misc{warp2022,
+   title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
+   author = {Miles Macklin},
+   month = {March},
+   year = {2022},
+   note= {NVIDIA GPU Technology Conference (GTC)},
+   howpublished = {\url{https://github.com/nvidia/warp}}
+   }
+
 User's Guide
 ------------
 
@@ -44,47 +88,3 @@ API Reference
    modules/interoperability
    genindex
    ..modindex
-
-Learn More
-----------
-
-Please see the following resources for additional background on Warp:
-
--  `GTC 2022
-   Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599/>`__.
--  `GTC 2021
-   Presentation <https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838/>`__
--  `SIGGRAPH Asia 2021 Differentiable Simulation
-   Course <https://dl.acm.org/doi/abs/10.1145/3476117.3483433>`__
-
-The underlying technology in Warp has been used in a number of research
-projects at NVIDIA including the following publications:
-
--  Accelerated Policy Learning with Parallel Differentiable Simulation -
-   Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg,
-   A., & Macklin, M.
-   `(2022) <https://short-horizon-actor-critic.github.io/>`__
--  DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E.,
-   Macklin, M., Narang, Y., Fox, D., Garg, A., & Ramos, F
-   `(2021) <https://github.com/NVlabs/DiSECt>`__
--  gradSim: Differentiable Simulation for System Identification and
-   Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian
-   Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
-   Considine et
-   al. `(2021) <https://krrish94.github.io/publication/2021-gradsim/>`__
-
-Citing
-------
-
-If you use Warp in your research please use the following citation:
-
-.. code:: bibtex
-
-   @misc{warp2022,
-   title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
-   author = {Miles Macklin},
-   month = {March},
-   year = {2022},
-   note= {NVIDIA GPU Technology Conference (GTC)},
-   howpublished = {\url{https://github.com/nvidia/warp}}
-   }
