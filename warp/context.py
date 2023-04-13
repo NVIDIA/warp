@@ -2568,21 +2568,14 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):
 
-                    if hasattr(a, "_wp_generic_type_str_"):
-                        # a Warp vector/matrix type
-                        if warp.types.types_equal(type(a), arg_type):
-                            params.append(a)
-                        else:
-                            raise TypeError(f"Invalid argument type for param {arg_name}, expected {type_str(arg_type)}, got {type_str(type(a))}")
+                    if warp.types.types_equal(type(a), arg_type):
+                        params.append(a)
                     else:
-                        # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
-                        v = np.array(a)
-
-                        # ensure shape is correct
-                        if v.shape != arg_type._shape_:
-                            raise TypeError(f"Invalid argument shape for param {arg_name}, expected {arg_type._shape_}, got {v.shape}")
-
-                        params.append(arg_type(v))
+                        # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
+                        try:
+                            params.append(arg_type(a))
+                        except:
+                            raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
 
                 elif isinstance(a, arg_type):
                     try:
