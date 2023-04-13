@@ -43,7 +43,7 @@ extensions = [
 # put type hints inside the description instead of the signature (easier to read)
 autodoc_typehints = 'description'
 # document class *and* __init__ methods
-autoclass_content = 'both' # 
+autoclass_content = 'both'
 
 autodoc_member_order = 'bysource'
 
@@ -51,6 +51,7 @@ autodoc_member_order = 'bysource'
 #add_module_names = False
 
 todo_include_todos = True
+todo_emit_warnings = True
 
 intersphinx_mapping = {
     'python': ("https://docs.python.org/3", None),

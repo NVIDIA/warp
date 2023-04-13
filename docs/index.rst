@@ -42,13 +42,8 @@ API Reference
    modules/functions
    modules/sim
    modules/interoperability
-
-Indices and tables
-------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   genindex
+   ..modindex
 
 Learn More
 ----------
