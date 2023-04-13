@@ -87,4 +87,5 @@ API Reference
    modules/sim
    modules/interoperability
    genindex
-   ..modindex
+
+..modindex
