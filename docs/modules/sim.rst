@@ -9,7 +9,7 @@ Simulation Reference
 
 Warp includes a simulation module ``warp.sim`` that includes many common physical simulation models, and integrators for explicit and implicit time-stepping.
 
-.. note:: The simulation model is under construction and should be expected to change rapidly, pelase treat this section as work in progress.
+.. note:: The simulation model is under construction and should be expected to change rapidly, please treat this section as work in progress.
 
 
 Model
