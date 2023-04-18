@@ -1752,6 +1752,8 @@ class Runtime:
 
         self.core.float_to_half_bits.argtypes = [ctypes.c_float]
         self.core.float_to_half_bits.restype = ctypes.c_uint16
+        self.core.half_bits_to_float.argtypes = [ctypes.c_uint16]
+        self.core.half_bits_to_float.restype = ctypes.c_float
 
         self.core.free_host.argtypes = [ctypes.c_void_p]
         self.core.free_host.restype = None

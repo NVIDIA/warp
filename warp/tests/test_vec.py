@@ -247,18 +247,31 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
             tape.zero()
 
 
-def test_float_int_in_kernel(test, device, register_kernels=False):
-    """
-    vecX = wp.types.vector(length=4, dtype=wp.float32)
-    cTest = vecX( 1.0, 2.0, 3.0, 4.0 )
-    And then try to access an entry of that vector in a kernel:
-    t = cTest[0]
-    """
-    raise RuntimeError("fuck you")
+def test_constants(test, device, dtype, register_kernels=False):
 
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
 
-def test_vector_constants(test, device, dtype, register_kernels=False):
-    raise RuntimeError("fuck you")
+    cv2 = wp.constant(vec2(1, 2))
+    cv3 = wp.constant(vec3(1, 2, 3))
+    cv4 = wp.constant(vec4(1, 2, 3, 4))
+    cv5 = wp.constant(vec5(1, 2, 3, 4, 5))
+
+    def check_vector_constants():
+        wp.expect_eq(cv2, vec2(wptype(1), wptype(2)))
+        wp.expect_eq(cv3, vec3(wptype(1), wptype(2), wptype(3)))
+        wp.expect_eq(cv4, vec4(wptype(1), wptype(2), wptype(3), wptype(4)))
+        wp.expect_eq(cv5, vec5(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
+
+    kernel = getkernel(check_vector_constants, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    wp.launch(kernel, dim=1, inputs=[])
 
 
 def test_constructors(test, device, dtype, register_kernels=False):
@@ -2548,6 +2561,7 @@ def register(parent):
         add_function_test_register_kernel(TestVec, f"test_dotproduct_{dtype.__name__}", test_dotproduct, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestVec, f"test_equivalent_types_{dtype.__name__}", test_equivalent_types, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestVec, f"test_conversions_{dtype.__name__}", test_conversions, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestVec, f"test_constants_{dtype.__name__}", test_constants, devices=devices, dtype=dtype)
 
         # the kernels in this test compile incredibly slowly...
         # add_function_test_register_kernel(TestVec, f"test_minmax_{dtype.__name__}", test_minmax, devices=devices, dtype=dtype)

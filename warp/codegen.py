@@ -1809,18 +1809,36 @@ WP_API void {name}_cpu_backward({reverse_args});
 # converts a constant Python value to equivalent C-repr
 def constant_str(value):
     
-    if type(value) == bool:
+    value_type = type(value)
+
+    if value_type == bool:
         if value:
             return "true"
         else:
             return "false"
 
-    elif type(value) == str:
+    elif value_type == str:
         # ensure constant strings are correctly escaped
         return "\"" + str(value.encode("unicode-escape").decode()) + "\""
 
     elif isinstance(value, ctypes.Array):
-        return "{" + ", ".join(map(str, value)) + "}"
+        if value_type._wp_scalar_type_ == float16:
+            # special case for float16, which is stored as uint16 in the ctypes.Array
+            from warp.context import runtime
+            scalar_value = runtime.core.half_bits_to_float
+        else:
+            scalar_value = lambda x: x
+
+        # list of scalar initializer values
+        initlist = []
+        for i in range(value._length_):
+            x = ctypes.Array.__getitem__(value, i)
+            initlist.append(str(scalar_value(x)))
+
+        dtypestr = f"wp::initializer_array<{value._length_},wp::{value._wp_scalar_type_.__name__}>"
+
+        # construct value from initializer array, e.g. wp::initializer_array<4,wp::float32>{1.0, 2.0, 3.0, 4.0}
+        return f"{dtypestr}{{{', '.join(initlist)}}}"
 
     else:
         # otherwise just convert constant to string
