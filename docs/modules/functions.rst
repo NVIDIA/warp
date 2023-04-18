@@ -78,7 +78,6 @@ Scalar Math
 
 
 .. function:: min(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-   :noindex:
 
    Return the element wise minimum of two vectors.
 
@@ -89,7 +88,6 @@ Scalar Math
 
 
 .. function:: max(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-   :noindex:
 
    Return the element wise maximum of two vectors.
 
@@ -251,7 +249,6 @@ Vector Math
 
 
 .. function:: dot(x: Quaternion[Float], y: Quaternion[Float]) -> Scalar
-   :noindex:
 
    Compute the dot product between two quaternions.
 
@@ -282,7 +279,6 @@ Vector Math
 
 
 .. function:: length(x: Quaternion[Float]) -> Scalar
-   :noindex:
 
    Compute the length of a quaternion.
 
@@ -293,7 +289,6 @@ Vector Math
 
 
 .. function:: length_sq(x: Quaternion[Scalar]) -> Scalar
-   :noindex:
 
    Compute the squared length of a quaternion.
 
@@ -304,7 +299,6 @@ Vector Math
 
 
 .. function:: normalize(x: Quaternion[Float]) -> Quaternion[Scalar]
-   :noindex:
 
    Compute the normalized value of x, if length(x) is 0 then the zero quat is returned.
 
@@ -320,13 +314,11 @@ Vector Math
 
 
 .. function:: inverse(m: Matrix[3,3,Float]) -> Matrix[Any,Any,Float]
-   :noindex:
 
    Return the inverse of a 3x3 matrix m
 
 
 .. function:: inverse(m: Matrix[4,4,Float]) -> Matrix[Any,Any,Float]
-   :noindex:
 
    Return the inverse of a 4x4 matrix m
 
@@ -337,13 +329,11 @@ Vector Math
 
 
 .. function:: determinant(m: Matrix[3,3,Float]) -> Scalar
-   :noindex:
 
    Return the determinant of a 3x3 matrix m
 
 
 .. function:: determinant(m: Matrix[4,4,Float]) -> Scalar
-   :noindex:
 
    Return the determinant of a 4x4 matrix m
 
@@ -364,7 +354,6 @@ Vector Math
 
 
 .. function:: cw_mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
    Component wise multiply of two 2d vectors.
 
@@ -375,7 +364,6 @@ Vector Math
 
 
 .. function:: cw_div(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
    Component wise division of two 2d vectors.
 
@@ -386,7 +374,6 @@ Vector Math
 
 
 .. function:: vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any,Scalar]
-   :noindex:
 
    Construct a vector of with given length and dtype.
 
@@ -397,7 +384,6 @@ Vector Math
 
 
 .. function:: matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
    Construct a matrix, if positional args are not given then matrix will be zero-initialized.
 
@@ -434,13 +420,11 @@ Quaternion Math
 
 
 .. function:: quaternion(x: Float, y: Float, z: Float, w: Float) -> Quaternion[Scalar]
-   :noindex:
 
    Create a quaternion using the supplied components (type inferred from component type)
 
 
 .. function:: quaternion(i: Vector[3,Float], r: Float) -> Quaternion[Scalar]
-   :noindex:
 
    Create a quaternion using the supplied vector/scalar (type inferred from scalar type)
 
@@ -530,7 +514,6 @@ Transformations
 
 
 .. function:: transform_point(m: Matrix[4,4,Scalar], p: Vector[3,Scalar]) -> Vector[3,Scalar]
-   :noindex:
 
    Apply the transform to a point ``p`` treating the homogenous coordinate as w=1. The transformation is applied treating ``p`` as a column vector, e.g.: ``y = M*p``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = p^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -543,7 +526,6 @@ Transformations
 
 
 .. function:: transform_vector(m: Matrix[4,4,Scalar], v: Vector[3,Scalar]) -> Vector[3,Scalar]
-   :noindex:
 
    Apply the transform to a vector ``v`` treating the homogenous coordinate as w=0. The transformation is applied treating ``v`` as a column vector, e.g.: ``y = M*v``
    note this is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = v^T*M^T``. If the transform is coming from a library that uses row-vectors
@@ -630,19 +612,16 @@ Utility
 
 
 .. function:: tid() -> Tuple[int, int]
-   :noindex:
 
    Return the current thread indices for a 2d kernel launch. Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
 
 
 .. function:: tid() -> Tuple[int, int, int]
-   :noindex:
 
    Return the current thread indices for a 3d kernel launch. Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
 
 
 .. function:: tid() -> Tuple[int, int, int, int]
-   :noindex:
 
    Return the current thread indices for a 4d kernel launch. Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
 
@@ -653,7 +632,6 @@ Utility
 
 
 .. function:: select(arr: Array[Any], arg1: Any, arg2: Any)
-   :noindex:
 
    Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``
 
@@ -664,19 +642,16 @@ Utility
 
 
 .. function:: atomic_add(a: Array[Any], i: int32, j: int32, value: Any)
-   :noindex:
 
    Atomically add ``value`` onto the array at location given by indices.
 
 
 .. function:: atomic_add(a: Array[Any], i: int32, j: int32, k: int32, value: Any)
-   :noindex:
 
    Atomically add ``value`` onto the array at location given by indices.
 
 
 .. function:: atomic_add(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
-   :noindex:
 
    Atomically add ``value`` onto the array at location given by indices.
 
@@ -687,19 +662,16 @@ Utility
 
 
 .. function:: atomic_sub(a: Array[Any], i: int32, j: int32, value: Any)
-   :noindex:
 
    Atomically subtract ``value`` onto the array at location given by indices.
 
 
 .. function:: atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, value: Any)
-   :noindex:
 
    Atomically subtract ``value`` onto the array at location given by indices.
 
 
 .. function:: atomic_sub(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
-   :noindex:
 
    Atomically subtract ``value`` onto the array at location given by indices.
 
@@ -710,19 +682,16 @@ Utility
 
 
 .. function:: atomic_min(a: Array[Any], i: int32, j: int32, value: Any)
-   :noindex:
 
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
 .. function:: atomic_min(a: Array[Any], i: int32, j: int32, k: int32, value: Any)
-   :noindex:
 
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
 .. function:: atomic_min(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
-   :noindex:
 
    Compute the minimum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
@@ -733,19 +702,16 @@ Utility
 
 
 .. function:: atomic_max(a: Array[Any], i: int32, j: int32, value: Any)
-   :noindex:
 
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
 .. function:: atomic_max(a: Array[Any], i: int32, j: int32, k: int32, value: Any)
-   :noindex:
 
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
 
 .. function:: atomic_max(a: Array[Any], i: int32, j: int32, k: int32, l: int32, value: Any)
-   :noindex:
 
    Compute the maximum of ``value`` and ``array[index]`` and atomically update the array. Note that for vectors and matrices the operation is only atomic on a per-component basis.
 
@@ -756,25 +722,21 @@ Utility
 
 
 .. function:: lerp(a: Vector[Any,Float], b: Vector[Any,Float], t: Float) -> Vector[Any,Float]
-   :noindex:
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
 .. function:: lerp(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], t: Float) -> Matrix[Any,Any,Float]
-   :noindex:
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
 .. function:: lerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]
-   :noindex:
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
 
 .. function:: lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transformation[Float]
-   :noindex:
 
    Linearly interpolate two values a and b using factor t, computed as ``a*(1-t) + b*t``
 
@@ -790,7 +752,6 @@ Utility
 
 
 .. function:: expect_near(arg1: vec3f, arg2: vec3f, tolerance: float32) -> None
-   :noindex:
 
    Prints an error to stdout if any element of arg1 and arg2 are not closer than tolerance in magnitude
 
@@ -1019,7 +980,6 @@ Random
 
 
 .. function:: rand_init(seed: int32, offset: int32) -> uint32
-   :noindex:
 
    Initialize a new random number generator given a user-defined seed and an offset. 
    This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
@@ -1032,7 +992,6 @@ Random
 
 
 .. function:: randi(state: uint32, min: int32, max: int32) -> int
-   :noindex:
 
    Return a random integer between [min, max)
 
@@ -1043,7 +1002,6 @@ Random
 
 
 .. function:: randf(state: uint32, min: float32, max: float32) -> float
-   :noindex:
 
    Return a random float between [min, max)
 
@@ -1117,19 +1075,16 @@ Random
 
 
 .. function:: noise(state: uint32, xy: vec2f) -> float
-   :noindex:
 
    Non-periodic Perlin-style noise in 2d.
 
 
 .. function:: noise(state: uint32, xyz: vec3f) -> float
-   :noindex:
 
    Non-periodic Perlin-style noise in 3d.
 
 
 .. function:: noise(state: uint32, xyzt: vec4f) -> float
-   :noindex:
 
    Non-periodic Perlin-style noise in 4d.
 
@@ -1140,19 +1095,16 @@ Random
 
 
 .. function:: pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
-   :noindex:
 
    Periodic Perlin-style noise in 2d.
 
 
 .. function:: pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
-   :noindex:
 
    Periodic Perlin-style noise in 3d.
 
 
 .. function:: pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
-   :noindex:
 
    Periodic Perlin-style noise in 4d.
 
@@ -1163,13 +1115,11 @@ Random
 
 
 .. function:: curlnoise(state: uint32, xyz: vec3f) -> vec3f
-   :noindex:
 
    Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
 
 .. function:: curlnoise(state: uint32, xyzt: vec4f) -> vec3f
-   :noindex:
 
    Divergence-free vector field based on the curl of three Perlin noise functions. [1]_
 
@@ -1191,89 +1141,69 @@ Operators
 
 
 .. function:: add(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-   :noindex:
 
 
 .. function:: add(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
-   :noindex:
 
 
 .. function:: add(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
 
 .. function:: add(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
-   :noindex:
 
 
 .. function:: sub(x: Scalar, y: Scalar) -> Scalar
 
 
 .. function:: sub(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-   :noindex:
 
 
 .. function:: sub(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
 
 .. function:: sub(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
-   :noindex:
 
 
 .. function:: sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Scalar, y: Scalar) -> Scalar
 
 
 .. function:: mul(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Scalar, y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Scalar, y: Quaternion[Scalar]) -> Quaternion[Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Quaternion[Scalar], y: Quaternion[Scalar]) -> Quaternion[Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Scalar, y: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Matrix[Any,Any,Scalar], y: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar])
-   :noindex:
 
 
 .. function:: mul(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Scalar, y: Transformation[Scalar]) -> Transformation[Scalar]
-   :noindex:
 
 
 .. function:: mul(x: Transformation[Scalar], y: Scalar) -> Transformation[Scalar]
-   :noindex:
 
 
 .. function:: mod(x: Scalar, y: Scalar) -> Scalar
@@ -1283,15 +1213,12 @@ Operators
 
 
 .. function:: div(x: Vector[Any,Scalar], y: Scalar) -> Vector[Any,Scalar]
-   :noindex:
 
 
 .. function:: div(x: Matrix[Any,Any,Scalar], y: Scalar) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
 
 .. function:: div(x: Quaternion[Scalar], y: Scalar) -> Quaternion[Scalar]
-   :noindex:
 
 
 .. function:: floordiv(x: Scalar, y: Scalar) -> Scalar
@@ -1301,30 +1228,24 @@ Operators
 
 
 .. function:: pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-   :noindex:
 
 
 .. function:: pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]
-   :noindex:
 
 
 .. function:: pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
 
 .. function:: neg(x: Scalar) -> Scalar
 
 
 .. function:: neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
-   :noindex:
 
 
 .. function:: neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]
-   :noindex:
 
 
 .. function:: neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
-   :noindex:
 
 
 .. function:: unot(b: bool) -> bool

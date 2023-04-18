@@ -1,5 +1,5 @@
-Warp Primer
-===========
+Basics
+======
 
 Initialization
 --------------

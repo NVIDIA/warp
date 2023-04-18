@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'Warp'
-copyright = '2022, NVIDIA'
+copyright = '2023, NVIDIA'
 author = 'NVIDIA'
 
 version = '0.8.0'
@@ -76,12 +76,13 @@ html_title = f'Warp {version}'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_css_files = ['custom.css']
 
 html_theme_options = {
     "top_of_page_button": None,
     "light_css_variables": {
         "color-admonition-title-background--note": "#76b900",
-        "color-admonition-title--note": "#ffffff",
+        "color-admonition-title--note": "#ffffff",        
     },
     "light_logo": "logo-light-mode.png",
     "dark_logo": "logo-dark-mode.png",

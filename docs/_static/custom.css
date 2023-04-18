@@ -1,0 +1,22 @@
+/* hides the TOC caption from the main page since we already have an H1 heading */
+.section .caption-text {
+    display: none;
+}
+
+/* note title text in white */
+.admonition-title {
+    color: white;
+}
+
+/* left align tables */
+table.docutils {
+    margin-left: 1em;
+    font-family: monospace;
+}
+
+/* inline code snippets #E74C3C var(--color-link)*/
+code.literal {
+    color: #E74C3C;
+    font-family: monospace;
+    font-size: var(--font-size-normal);
+}

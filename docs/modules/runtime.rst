@@ -3,11 +3,13 @@ Runtime Reference
 
 .. currentmodule:: warp
 
-.. toctree::
-   :maxdepth: 2
+.. .. toctree::
+..    :maxdepth: 2
 
-   devices
-   profiling
+..    self
+..    devices
+..    profiling
+
 
 Kernels
 -------
@@ -115,9 +117,12 @@ The following construction methods are provided for allocating zero-initialized 
 .. autofunction:: zeros_like
 .. autofunction:: empty
 .. autofunction:: empty_like
-
+.. autofunction:: copy
+.. autofunction:: clone
+   
 .. autoclass:: array
-
+   :members:
+   
 Data Types
 ----------
 
@@ -703,6 +708,9 @@ Note that gradients are accumulated on the participating buffers, so if you wish
          
    * Kernels should not overwrite any previously used array values except to perform simple linear add/subtract operations (e.g.: via ``wp.atomic_add()``)
 
+.. autoclass:: Tape
+   :members:
+
 Jacobians
 #########
 
@@ -743,8 +751,6 @@ When we run simulations independently in parallel, the Jacobian corresponding to
       jacobians[:, output_index, :] = q_grad_i.numpy().reshape(num_envs, input_dim)
       tape.zero()
 
-.. autoclass:: Tape
-   :members:
 
 Graphs
 -----------

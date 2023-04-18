@@ -11,13 +11,6 @@ Below are some examples of simulations implemented using Warp:
 
 .. image:: ./img/header.png
 
-License
--------
-
-Warp is provided under the NVIDIA Source Code License (NVSCL), please see
-`LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_ for the full license text.
-Note that the license currently allows only non-commercial use of this code.
-
 Learn More
 ----------
 
@@ -62,17 +55,28 @@ If you use Warp in your research please use the following citation:
    howpublished = {\url{https://github.com/nvidia/warp}}
    }
 
+License
+-------
+
+Warp is provided under the NVIDIA Source Code License (NVSCL), please see
+`LICENSE.md <https://github.com/NVIDIA/warp/blob/main/LICENSE.md>`_ for the full license text.
+
+Please contact `omniverse-license-questions@nvidia.com <mailto:omniverse-license-questions@nvidia.com>`_ for
+commercial licensing inquires.
+
 User's Guide
 ------------
 
 .. toctree::
    :maxdepth: 2
-   :caption: Basics
+   :caption: User's Guide
 
    installation
    quickstart
    primer
    debugging
+   modules/profiling
+   modules/devices
    faq
 
 API Reference
@@ -81,11 +85,10 @@ API Reference
 .. toctree::
    :maxdepth: 2
    :caption: API Reference
-
+   
    modules/runtime
    modules/functions
    modules/sim
    modules/interoperability
    genindex
-
-..modindex
+   
