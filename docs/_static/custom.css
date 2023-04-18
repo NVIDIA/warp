@@ -25,3 +25,6 @@ code.literal {
     text-align: center;
     margin: 0 0;
 }
+
+/* normalize size across Firefox / Chrome */
+html { font-size: 100%; }
