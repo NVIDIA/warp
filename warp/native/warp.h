@@ -25,6 +25,7 @@ extern "C"
     WP_API int is_cutlass_enabled();
 
     WP_API uint16_t float_to_half_bits(float x);
+    WP_API float half_bits_to_float(uint16_t u);
 
     WP_API void* alloc_host(size_t s);
     WP_API void* alloc_pinned(size_t s);
