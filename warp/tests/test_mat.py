@@ -106,6 +106,37 @@ def test_arrays(test, device,dtype):
     assert_np_equal(v3.numpy(), v3_np, tol=1.e-6)
     assert_np_equal(v4.numpy(), v4_np, tol=1.e-6)
 
+
+def test_constants(test, device, dtype, register_kernels=False):
+
+    wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    mat22 = wp.types.matrix(shape=(2,2), dtype=wptype)
+    mat33 = wp.types.matrix(shape=(3,3), dtype=wptype)
+    mat44 = wp.types.matrix(shape=(4,4), dtype=wptype)
+    mat55 = wp.types.matrix(shape=(5,5), dtype=wptype)
+    mat32 = wp.types.matrix(shape=(3,2), dtype=wptype)
+
+    cm22 = wp.constant(mat22(22))
+    cm33 = wp.constant(mat33(33))
+    cm44 = wp.constant(mat44(44))
+    cm55 = wp.constant(mat55(55))
+    cm32 = wp.constant(mat32(32))
+
+    def check_matrix_constants():
+        wp.expect_eq(cm22, mat22(wptype(22)))
+        wp.expect_eq(cm33, mat33(wptype(33)))
+        wp.expect_eq(cm44, mat44(wptype(44)))
+        wp.expect_eq(cm55, mat55(wptype(55)))
+        wp.expect_eq(cm32, mat32(wptype(32)))
+
+    kernel = getkernel(check_matrix_constants, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    wp.launch(kernel, dim=1, inputs=[])
+
+
 def test_constructors(test, device,dtype, register_kernels=False):
 
     np.random.seed(123)
@@ -3105,6 +3136,52 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
 
 
 
+def test_conversions(test, device, dtype, register_kernels=False):
+
+    def check_matrices_equal(
+        m0: wp.mat22,
+        m1: wp.mat22,
+        m2: wp.mat22,
+        m3: wp.mat22,
+        m4: wp.mat22,
+        m5: wp.mat22,
+        m6: wp.mat22,
+    ):
+        wp.expect_eq(m1, m0)
+        wp.expect_eq(m2, m0)
+        wp.expect_eq(m3, m0)
+        wp.expect_eq(m4, m0)
+        wp.expect_eq(m5, m0)
+        wp.expect_eq(m6, m0)
+
+    kernel = getkernel(check_matrices_equal, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    m0 = wp.mat22(1, 2, 3, 4)
+
+    # test explicit conversions - constructing matrices from different containers
+    m1 = wp.mat22(((1, 2), (3, 4)))  # nested tuples
+    m2 = wp.mat22([[1, 2], [3, 4]])  # nested lists
+    m3 = wp.mat22(np.array([[1, 2], [3, 4]], dtype=dtype))  # 2d array
+    m4 = wp.mat22((1, 2, 3, 4))  # flat tuple
+    m5 = wp.mat22([1, 2, 3, 4])  # flat list
+    m6 = wp.mat22(np.array([1, 2, 3, 4], dtype=dtype))  # 1d array
+
+    wp.launch(kernel, dim=1, inputs=[m0, m1, m2, m3, m4, m5, m6], device=device)
+
+    # test implicit conversions - passing different containers as matrices to wp.launch()
+    m1 = ((1, 2), (3, 4))  # nested tuples
+    m2 = [[1, 2], [3, 4]]  # nested lists
+    m3 = np.array([[1, 2], [3, 4]], dtype=dtype)  # 2d array
+    m4 = (1, 2, 3, 4)  # flat tuple
+    m5 = [1, 2, 3, 4]  # flat list
+    m6 = np.array([1, 2, 3, 4], dtype=dtype)  # 1d array
+
+    wp.launch(kernel, dim=1, inputs=[m0, m1, m2, m3, m4, m5, m6], device=device)
+
+
 # Test matrix constructors using explicit type (float16)
 # note that these tests are specifically not using generics / closure
 # args to create kernels dynamically (like the rest of this file)
@@ -3191,6 +3268,8 @@ def register(parent):
         add_function_test_register_kernel(TestMat, f"test_trace_{dtype.__name__}", test_trace, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestMat, f"test_diag_{dtype.__name__}", test_diag, devices=devices, dtype=dtype)
         add_function_test_register_kernel(TestMat, f"test_equivalent_types_{dtype.__name__}", test_equivalent_types, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_conversions_{dtype.__name__}", test_conversions, devices=devices, dtype=dtype)
+        add_function_test_register_kernel(TestMat, f"test_constants_{dtype.__name__}", test_constants, devices=devices, dtype=dtype)
     
     for dtype in np_float_types:
         add_function_test_register_kernel(TestMat, f"test_quat_constructor_{dtype.__name__}", test_quat_constructor, devices=devices, dtype=dtype)

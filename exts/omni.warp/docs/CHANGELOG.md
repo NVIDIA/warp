@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [0.8.1] - 2023-04-13
+
+- Fix for regression when passing flattened numeric lists as matrix arguments to kernels
+- Fix for regressions when passing wp.struct types with uninitialized (None) member attributes
+
 ## [0.8.0] - 2023-04-05
 
 - Add `Texture Write` node for updating dynamic RTX textures from Warp kernels / nodes

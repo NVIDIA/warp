@@ -32,6 +32,13 @@ uint16_t float_to_half_bits(float x)
     return wp::half(x).u;
 }
 
+float half_bits_to_float(uint16_t u)
+{
+    wp::half h;
+    h.u = u;
+    return half_to_float(h);
+}
+
 int init()
 {
 #if WP_ENABLE_CUDA
