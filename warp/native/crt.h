@@ -108,7 +108,7 @@ double tanh(double);
 float fmaf(float, float, float);
 
 // stddef.h
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 using size_t = unsigned __int64;
 #else
 using size_t = unsigned long;
