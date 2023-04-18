@@ -339,7 +339,7 @@ As with vectors, you can do standard matrix arithmetic with these variables, alo
 Quaternions
 ###########
 
-Warp supports quaternions in form i,j,k,w where w is the real part. Here are the built in concrete quaternion types:
+Warp supports quaternions with the layout ``i, j, k, w`` where ``w`` is the real part. Here are the built in concrete quaternion types:
 
 +-----------------+-----------------------------------------------+
 | quat            | Default precision floating point quaternion   |
@@ -440,7 +440,7 @@ You can also create identity transforms and anonymously typed instances inside a
 Type Conversions
 ################
 
-Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetic operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error. This can be surprising for users that are accustomed to C-type conversions but avoids a class of common bugs that result from implicit conversions.
+Warp is particularly strict regarding type conversions and does not perform *any* implicit conversion between numeric types. The user is responsible for ensuring types for most arithmetic operators match, e.g.: ``x = float(0.0) + int(4)`` will result in an error. This can be surprising for users that are accustomed to C-style conversions but avoids a class of common bugs that result from implicit conversions.
 
 .. note:: Warp does not currently perform implicit type conversions between numeric types. Users should explicitly cast variables to compatible types using constructors like ``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()`` etc.
 
@@ -449,7 +449,7 @@ Constants
 
 In general, Warp kernels cannot access variables in the global Python interpreter state. One exception to this is for compile-time constants, which may be declared globally (or as class attributes) and folded into the kernel definition.
 
-Constants are defined using the ``warp.constant`` type. An example is shown below::
+Constants are defined using the ``warp.constant()`` function. An example is shown below::
 
    TYPE_SPHERE = wp.constant(0)
    TYPE_CUBE = wp.constant(1)
@@ -527,7 +527,7 @@ Arithmetic Operators
 +-----------+--------------------------+
 
 .. note::
-   Arguments types to operators should match since implicit conversions are not performed, users should use the type constructors like ``float()``, ``int()``, ``wp.int64()`` etc to cast variables to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar multiplication and matrix multiplication. Currently the ``@`` operator is not supported in this version.
+   Since implicit conversions are not performed arguments types to operators should match. Users should use type constructors, e.g.: ``float()``, ``int()``, ``wp.int64(), etc`` to cast variables to the correct type. Also note that the multiplication expression ``a * b`` is used to represent scalar multiplication and matrix multiplication. Currently the ``@`` operator is not supported in this version.
 
 Meshes
 ------
@@ -549,12 +549,12 @@ Meshes can be passed to kernels using their ``id`` attribute which uniquely iden
 
       tid = wp.tid()
 
-      t = float(0.0)                   # hit distance along ray
-      u = float(0.0)                   # hit face barycentric u
-      v = float(0.0)                   # hit face barycentric v
-      sign = float(0.0)                # hit face sign
+      t = float(0.0)      # hit distance along ray
+      u = float(0.0)      # hit face barycentric u
+      v = float(0.0)      # hit face barycentric v
+      sign = float(0.0)   # hit face sign
       n = wp.vec3()       # hit face normal
-      f = int(0)                       # hit face index
+      f = int(0)          # hit face index
 
       color = wp.vec3()
 
@@ -609,6 +609,7 @@ To sample the volume inside a kernel we pass a reference to it by id, and use th
 
       # transform position to the volume's local-space
       q = wp.volume_world_to_index(volume, p)
+      
       # sample volume with trilinear interpolation     
       f = wp.volume_sample_f(volume, q, wp.Volume.LINEAR)
 

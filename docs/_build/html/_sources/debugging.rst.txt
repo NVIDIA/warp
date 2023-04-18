@@ -36,9 +36,20 @@ It is possible to attach IDE debuggers such as Visual Studio to Warp processes t
 Users should first compile the kernels in debug mode by setting ``wp.config.mode = "debug"``.
 
 This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
-the debugger should be attached, and a breakpoint inserted into the generated code (exported in the ``warp/gen`` folder).
+the debugger should be attached, and a breakpoint inserted into the generated code.
 
 .. note:: Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.
+
+Generated Code
+--------------
+
+The generated code for kernels is stored in a central cache location in the user's home directory, the cache location is printed at startup when ``wp.init()`` is called, for example::
+
+   Devices:
+     "cpu"    | i386
+   Kernel cache: /Users/lucasw/Library/Caches/warp/0.8.0
+
+The kernel cache has ``gen`` and ``bin`` folders that contain the generated C++/CUDA code and the compiled binaries respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.
 
 Bounds Checking
 ---------------

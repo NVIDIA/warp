@@ -2,14 +2,15 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Warp Primer" href="primer.html" /><link rel="prev" title="Installation" href="installation.html" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Basics" href="primer.html" /><link rel="prev" title="Installation" href="installation.html" />
 
-    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
+    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
         <title>Quickstart - Warp 0.8.0</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
     
     
 
@@ -18,6 +19,12 @@
   body {
     --color-code-background: #f8f8f8;
   --color-code-foreground: black;
+  --admonition-title-font-size: 100%;
+  --admonition-font-size: 100%;
+  --color-api-pre-name: #4e9a06;
+  --color-api-name: #4e9a06;
+  --color-admonition-title--seealso: #ffffff;
+  --color-admonition-title-background--seealso: #448aff;
   --color-admonition-title-background--note: #76b900;
   --color-admonition-title--note: #ffffff;
   
@@ -160,24 +167,23 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Basics</span></p>
+  <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">Warp Primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="primer.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html">Devices</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -213,8 +219,8 @@
         <article role="main">
           <section id="quickstart">
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this heading">#</a></h1>
-<section id="a-basic-example">
-<h2>A Basic Example<a class="headerlink" href="#a-basic-example" title="Permalink to this heading">#</a></h2>
+<section id="basic-example">
+<h2>Basic example<a class="headerlink" href="#basic-example" title="Permalink to this heading">#</a></h2>
 <p>An example first program that computes the lengths of random 3D vectors is given below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -248,8 +254,9 @@
 </div>
 </section>
 <section id="additional-examples">
-<h2>Additional Examples<a class="headerlink" href="#additional-examples" title="Permalink to this heading">#</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">examples</span></code> directory contains a number of scripts that show how to
+<h2>Additional examples<a class="headerlink" href="#additional-examples" title="Permalink to this heading">#</a></h2>
+<p>The <a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/examples">examples</a> directory in
+the Github repository contains a number of scripts that show how to
 implement different simulation methods using the Warp API. Most examples
 will generate USD files containing time-sampled animations in the
 <code class="docutils literal notranslate"><span class="pre">examples/outputs</span></code> directory. Before running examples users should
@@ -258,7 +265,7 @@ ensure that the <code class="docutils literal notranslate"><span class="pre">usd
 </pre></div>
 </div>
 <p>USD files can be viewed or rendered inside NVIDIA
-<a class="reference external" href="https://developer.nvidia.com/nvidia-omniverse-platform">Omniverse</a>,
+<a class="reference external" href="https://developer.nvidia.com/omniverse">Omniverse</a>,
 Pixar’s UsdView, and Blender. Note that Preview in macOS is not
 recommended as it has limited support for time-sampled animations.</p>
 <p>Built-in unit tests can be run from the command-line as follows:</p>
@@ -278,7 +285,7 @@ recommended as it has limited support for time-sampled animations.</p>
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Warp Primer</div>
+                <div class="title">Basics</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -297,7 +304,7 @@ recommended as it has limited support for time-sampled animations.</p>
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, NVIDIA
+                Copyright &#169; 2023, NVIDIA
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -331,8 +338,8 @@ recommended as it has limited support for time-sampled animations.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Quickstart</a><ul>
-<li><a class="reference internal" href="#a-basic-example">A Basic Example</a></li>
-<li><a class="reference internal" href="#additional-examples">Additional Examples</a></li>
+<li><a class="reference internal" href="#basic-example">Basic example</a></li>
+<li><a class="reference internal" href="#additional-examples">Additional examples</a></li>
 </ul>
 </li>
 </ul>
@@ -345,6 +352,9 @@ recommended as it has limited support for time-sampled animations.</p>
     </aside>
   </div>
 </div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/scripts/furo.js"></script>

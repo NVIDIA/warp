@@ -81,6 +81,12 @@ html_css_files = ['custom.css']
 html_theme_options = {
     "top_of_page_button": None,
     "light_css_variables": {
+        "admonition-title-font-size": "100%",
+        "admonition-font-size": "100%",
+        "color-api-pre-name": "#4e9a06",#"#76b900",
+        "color-api-name": "#4e9a06",#"#76b900",
+        "color-admonition-title--seealso": "#ffffff",
+        "color-admonition-title-background--seealso": "#448aff",
         "color-admonition-title-background--note": "#76b900",
         "color-admonition-title--note": "#ffffff",        
     },

@@ -2,14 +2,15 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Installation" href="installation.html" />
 
-    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
+    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
         <title>Warp 0.8.0</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
     
     
 
@@ -18,6 +19,12 @@
   body {
     --color-code-background: #f8f8f8;
   --color-code-foreground: black;
+  --admonition-title-font-size: 100%;
+  --admonition-font-size: 100%;
+  --color-api-pre-name: #4e9a06;
+  --color-api-name: #4e9a06;
+  --color-admonition-title--seealso: #ffffff;
+  --color-admonition-title-background--seealso: #448aff;
   --color-admonition-title-background--note: #76b900;
   --color-admonition-title--note: #ffffff;
   
@@ -160,24 +167,23 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Basics</span></p>
+  <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">Warp Primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="primer.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html">Devices</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -219,30 +225,73 @@ processing, and procedural animation. In addition, Warp kernels are differentiab
 machine-learning training pipelines with other frameworks such as PyTorch.</p>
 <p>Below are some examples of simulations implemented using Warp:</p>
 <img alt="_images/header.png" src="_images/header.png" />
+<section id="learn-more">
+<h2>Learn More<a class="headerlink" href="#learn-more" title="Permalink to this heading">#</a></h2>
+<p>Please see the following resources for additional background on Warp:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599">GTC 2022
+Presentation</a></p></li>
+<li><p><a class="reference external" href="https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838">GTC 2021
+Presentation</a></p></li>
+<li><p><a class="reference external" href="https://dl.acm.org/doi/abs/10.1145/3476117.3483433">SIGGRAPH Asia 2021 Differentiable Simulation
+Course</a></p></li>
+</ul>
+<p>The underlying technology in Warp has been used in a number of research
+projects at NVIDIA including the following publications:</p>
+<ul class="simple">
+<li><p>Accelerated Policy Learning with Parallel Differentiable Simulation -
+Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg,
+A., &amp; Macklin, M.
+<a class="reference external" href="https://short-horizon-actor-critic.github.io">(2022)</a></p></li>
+<li><p>DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E.,
+Macklin, M., Narang, Y., Fox, D., Garg, A., &amp; Ramos, F
+<a class="reference external" href="https://github.com/NVlabs/DiSECt">(2021)</a></p></li>
+<li><p>gradSim: Differentiable Simulation for System Identification and
+Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian
+Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
+Considine et
+al. <a class="reference external" href="https://gradsim.github.io">(2021)</a></p></li>
+</ul>
+</section>
+<section id="citing">
+<h2>Citing<a class="headerlink" href="#citing" title="Permalink to this heading">#</a></h2>
+<p>If you use Warp in your research please use the following citation:</p>
+<div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="nc">@misc</span><span class="p">{</span><span class="nl">warp2022</span><span class="p">,</span>
+<span class="w">   </span><span class="na">title</span><span class="p">=</span><span class="w"> </span><span class="s">{Warp: A High-performance Python Framework for GPU Simulation and Graphics}</span><span class="p">,</span>
+<span class="w">   </span><span class="na">author</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{Miles Macklin}</span><span class="p">,</span>
+<span class="w">   </span><span class="na">month</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{March}</span><span class="p">,</span>
+<span class="w">   </span><span class="na">year</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{2022}</span><span class="p">,</span>
+<span class="w">   </span><span class="na">note</span><span class="p">=</span><span class="w"> </span><span class="s">{NVIDIA GPU Technology Conference (GTC)}</span><span class="p">,</span>
+<span class="w">   </span><span class="na">howpublished</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{\url{https://github.com/nvidia/warp}}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
 <section id="license">
 <h2>License<a class="headerlink" href="#license" title="Permalink to this heading">#</a></h2>
 <p>Warp is provided under the NVIDIA Source Code License (NVSCL), please see
-<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/LICENSE.md">LICENSE.md</a> for the full license text.
-Note that the license currently allows only non-commercial use of this code.</p>
+<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/LICENSE.md">LICENSE.md</a> for the full license text.</p>
+<p>Please contact <a class="reference external" href="mailto:omniverse-license-questions&#37;&#52;&#48;nvidia&#46;com">omniverse-license-questions<span>&#64;</span>nvidia<span>&#46;</span>com</a> for
+commercial licensing inquires.</p>
 </section>
 <section id="user-s-guide">
 <h2>User’s Guide<a class="headerlink" href="#user-s-guide" title="Permalink to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Basics</span></p>
+<p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#python-version">Python Version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#python-version">Python version</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#installing-from-pypi">Installing from PyPI</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#building-and-installing-from-source">Building and Installing from Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#building-from-source">Building from source</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#a-basic-example">A Basic Example</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#additional-examples">Additional Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#basic-example">Basic example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#additional-examples">Additional examples</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">Warp Primer</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="primer.html">Basics</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="primer.html#initialization">Initialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="primer.html#devices">Devices</a></li>
 <li class="toctree-l2"><a class="reference internal" href="primer.html#kernels">Kernels</a></li>
@@ -257,12 +306,21 @@ Note that the license currently allows only non-commercial use of this code.</p>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#printing-values">Printing Values</a></li>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#printing-launches">Printing Launches</a></li>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#step-through-debugging">Step-Through Debugging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="debugging.html#generated-code">Generated Code</a></li>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#bounds-checking">Bounds Checking</a></li>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#cuda-verification">CUDA Verification</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="profiling.html#warp.ScopedTimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/profiling.html#warp.ScopedTimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#default-device">Default Device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#scoped-devices">Scoped Devices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#current-cuda-device">Current CUDA Device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#device-synchronization">Device Synchronization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#custom-cuda-contexts-advanced">Custom CUDA Contexts (Advanced)</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a><ul>
@@ -283,7 +341,6 @@ Note that the license currently allows only non-commercial use of this code.</p>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html">Devices</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#kernels">Kernels</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#arrays">Arrays</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/runtime.html#data-types">Data Types</a></li>
@@ -327,57 +384,8 @@ Note that the license currently allows only non-commercial use of this code.</p>
 <li class="toctree-l2"><a class="reference internal" href="modules/interoperability.html#module-warp.dlpack">DLPack</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 </ul>
-</div>
-</section>
-<section id="indices-and-tables">
-<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading">#</a></h2>
-<ul class="simple">
-<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
-<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
-<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
-</ul>
-</section>
-<section id="learn-more">
-<h2>Learn More<a class="headerlink" href="#learn-more" title="Permalink to this heading">#</a></h2>
-<p>Please see the following resources for additional background on Warp:</p>
-<ul class="simple">
-<li><p><a class="reference external" href="https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599/">GTC 2022
-Presentation</a>.</p></li>
-<li><p><a class="reference external" href="https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838/">GTC 2021
-Presentation</a></p></li>
-<li><p><a class="reference external" href="https://dl.acm.org/doi/abs/10.1145/3476117.3483433">SIGGRAPH Asia 2021 Differentiable Simulation
-Course</a></p></li>
-</ul>
-<p>The underlying technology in Warp has been used in a number of research
-projects at NVIDIA including the following publications:</p>
-<ul class="simple">
-<li><p>Accelerated Policy Learning with Parallel Differentiable Simulation -
-Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg,
-A., &amp; Macklin, M.
-<a class="reference external" href="https://short-horizon-actor-critic.github.io/">(2022)</a></p></li>
-<li><p>DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E.,
-Macklin, M., Narang, Y., Fox, D., Garg, A., &amp; Ramos, F
-<a class="reference external" href="https://github.com/NVlabs/DiSECt">(2021)</a></p></li>
-<li><p>gradSim: Differentiable Simulation for System Identification and
-Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian
-Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
-Considine et
-al. <a class="reference external" href="https://krrish94.github.io/publication/2021-gradsim/">(2021)</a></p></li>
-</ul>
-</section>
-<section id="citing">
-<h2>Citing<a class="headerlink" href="#citing" title="Permalink to this heading">#</a></h2>
-<p>If you use Warp in your research please use the following citation:</p>
-<div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="nc">@misc</span><span class="p">{</span><span class="nl">warp2022</span><span class="p">,</span>
-<span class="na">title</span><span class="p">=</span><span class="w"> </span><span class="s">{Warp: A High-performance Python Framework for GPU Simulation and Graphics}</span><span class="p">,</span>
-<span class="na">author</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{Miles Macklin}</span><span class="p">,</span>
-<span class="na">month</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{March}</span><span class="p">,</span>
-<span class="na">year</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{2022}</span><span class="p">,</span>
-<span class="na">note</span><span class="p">=</span><span class="w"> </span><span class="s">{NVIDIA GPU Technology Conference (GTC)}</span><span class="p">,</span>
-<span class="na">howpublished</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{\url{https://github.com/nvidia/warp}}</span>
-<span class="p">}</span>
-</pre></div>
 </div>
 </section>
 </section>
@@ -401,7 +409,7 @@ al. <a class="reference external" href="https://krrish94.github.io/publication/
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, NVIDIA
+                Copyright &#169; 2023, NVIDIA
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -435,12 +443,11 @@ al. <a class="reference external" href="https://krrish94.github.io/publication/
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">NVIDIA Warp Documentation</a><ul>
+<li><a class="reference internal" href="#learn-more">Learn More</a></li>
+<li><a class="reference internal" href="#citing">Citing</a></li>
 <li><a class="reference internal" href="#license">License</a></li>
 <li><a class="reference internal" href="#user-s-guide">User’s Guide</a></li>
 <li><a class="reference internal" href="#api-reference">API Reference</a></li>
-<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
-<li><a class="reference internal" href="#learn-more">Learn More</a></li>
-<li><a class="reference internal" href="#citing">Citing</a></li>
 </ul>
 </li>
 </ul>
@@ -453,6 +460,9 @@ al. <a class="reference external" href="https://krrish94.github.io/publication/
     </aside>
   </div>
 </div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/scripts/furo.js"></script>

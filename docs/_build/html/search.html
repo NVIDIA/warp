@@ -4,9 +4,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="#" />
 
-    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 --><title>Search - Warp 0.8.0</title><link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 --><title>Search - Warp 0.8.0</title><link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
     
     
 
@@ -15,6 +16,12 @@
   body {
     --color-code-background: #f8f8f8;
   --color-code-foreground: black;
+  --admonition-title-font-size: 100%;
+  --admonition-font-size: 100%;
+  --color-api-pre-name: #4e9a06;
+  --color-api-name: #4e9a06;
+  --color-admonition-title--seealso: #ffffff;
+  --color-admonition-title-background--seealso: #448aff;
   --color-admonition-title-background--note: #76b900;
   --color-admonition-title--note: #ffffff;
   
@@ -157,24 +164,23 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Basics</span></p>
+  <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">Warp Primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="primer.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html">Devices</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/runtime.html">Runtime Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/functions.html">Kernel Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -231,7 +237,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, NVIDIA
+                Copyright &#169; 2023, NVIDIA
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -259,6 +265,9 @@
     </aside>
   </div>
 </div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/scripts/furo.js"></script>

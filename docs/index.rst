@@ -47,12 +47,12 @@ If you use Warp in your research please use the following citation:
 .. code:: bibtex
 
    @misc{warp2022,
-   title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
-   author = {Miles Macklin},
-   month = {March},
-   year = {2022},
-   note= {NVIDIA GPU Technology Conference (GTC)},
-   howpublished = {\url{https://github.com/nvidia/warp}}
+      title= {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
+      author = {Miles Macklin},
+      month = {March},
+      year = {2022},
+      note= {NVIDIA GPU Technology Conference (GTC)},
+      howpublished = {\url{https://github.com/nvidia/warp}}
    }
 
 License

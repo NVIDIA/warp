@@ -16,7 +16,12 @@ table.docutils {
 
 /* inline code snippets #E74C3C var(--color-link)*/
 code.literal {
-    color: #E74C3C;
+    color: #4e9a06;
     font-family: monospace;
     font-size: var(--font-size-normal);
+}
+
+.sidebar-brand-text {
+    text-align: center;
+    margin: 0 0;
 }
