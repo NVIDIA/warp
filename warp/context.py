@@ -3050,10 +3050,21 @@ def type_str(t):
     else:
         return t.__name__
 
-def print_function(f, file):
+def print_function(f, file, noentry=False):
+    """Writes a function definition to a file for use in reST documentation
+
+    Args:
+        f: The function being written
+        file: The file object for output
+        noentry: If True, then the :noindex: and :nocontentsentry: directive
+          options will be added
+    
+    Returns:
+        A bool indicating True if f was written to file
+    """
 
     if f.hidden:
-        return
+        return False
 
     args = ", ".join(f"{k}: {type_str(v)}" for k,v in f.input_types.items())
 
@@ -3068,6 +3079,9 @@ def print_function(f, file):
         pass
 
     print(f".. function:: {f.key}({args}){return_type}", file=file)
+    if noentry:
+        print("   :noindex:", file=file)
+        print("   :nocontentsentry:", file=file)
     print("", file=file)
     
     if (f.doc != ""):
@@ -3079,6 +3093,7 @@ def print_function(f, file):
 
     print(file=file)
     
+    return True
 
 def print_builtins(file):
 
@@ -3131,13 +3146,21 @@ def print_builtins(file):
         for o in f.overloads:
             groups[f.group].append(o)
 
+    # Keep track of what function names have been written
+    written_functions = {}
+
     for k, g in groups.items():
         print("\n", file=file)
         print(k, file=file)
         print("---------------", file=file)
 
         for f in g:
-            print_function(f, file=file)
+            if f.key in written_functions:
+                # Add :noindex: + :nocontentsentry: since Sphinx gets confused
+                print_function(f, file=file, noentry=True)
+            else:
+                if print_function(f, file=file):
+                    written_functions[f.key] = []
 
     # footnotes
     print(".. rubric:: Footnotes", file=file)
