@@ -14,7 +14,7 @@ table.docutils {
     font-family: monospace;
 }
 
-/* inline code snippets #E74C3C var(--color-link)*/
+/* inline code snippets #E74C3C, var(--color-link), #4e9a06 */
 code.literal {
     color: #4e9a06;
     font-family: monospace;

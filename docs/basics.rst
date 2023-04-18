@@ -126,18 +126,6 @@ Note that compilation is triggered on the first kernel launch for that module. A
 
 .. image:: ./img/compiler_pipeline.png
 
-Omniverse
----------
-
-A Warp Omniverse extension is available in the extension registry inside
-Omniverse Kit or Create:
-
-Enabling the extension will automatically install and initialize the
-Warp Python module inside the Kit Python environment. Please see the
-`Omniverse Warp
-Documentation <http://docs.omniverse.nvidia.com/extensions/warp.html>`__
-for more details on how to use Warp in Omniverse.
-
 
 Language Details
 ----------------
