@@ -167,9 +167,15 @@ WP_API int load_obj(const char* object_file, const char* module_name)
 
     // Define symbols for Warp's CRT functions subset
     {
+        #if defined(__APPLE__)
+            #define MANGLING_PREFIX "_"
+        #else
+            #define MANGLING_PREFIX ""
+        #endif
+        
         const auto flags = llvm::JITSymbolFlags::Exported | llvm::JITSymbolFlags::Absolute;
-        #define SYMBOL(sym) { jit->getExecutionSession().intern(#sym), { llvm::pointerToJITTargetAddress(&::sym), flags} }
-        #define SYMBOL_T(sym, T) { jit->getExecutionSession().intern(#sym), { llvm::pointerToJITTargetAddress(static_cast<T>(&::sym)), flags} }
+        #define SYMBOL(sym) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(&::sym), flags} }
+        #define SYMBOL_T(sym, T) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(static_cast<T>(&::sym)), flags} }
 
         auto error = dll->define(llvm::orc::absoluteSymbols({
             SYMBOL(printf),
