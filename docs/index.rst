@@ -165,3 +165,12 @@ API Reference
    modules/interoperability
    genindex
    
+
+.. toctree::
+   :hidden:
+   :caption: Project Links
+
+   GitHub <https://github.com/NVIDIA/warp>
+   PyPI <https://pypi.org/project/warp-lang>
+   Discord <https://discord.com/channels/827959428476174346/953756751977648148>
+   

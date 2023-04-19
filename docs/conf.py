@@ -91,6 +91,10 @@ html_theme_options = {
         "color-admonition-title-background--note": "#76b900",
         "color-admonition-title--note": "#ffffff",        
     },
+    "dark_css_variables": {
+        "color-admonition-title-background--note": "#535353",
+        "color-admonition-title--note": "#ffffff",        
+    },
     "light_logo": "logo-light-mode.png",
     "dark_logo": "logo-dark-mode.png",
     "footer_icons": [
