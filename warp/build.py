@@ -5,10 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
 import os
 import sys
-import importlib
 import subprocess
 import ctypes
 import _ctypes
@@ -371,13 +369,18 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
     else:
 
-        # try loading clang.so, except when we're building clang.so or warp.so
         clang = None
-        if os.path.basename(dll_path) != "clang.so" and os.path.basename(dll_path) != "warp.so":
-            try:
-                clang = warp.build.load_dll(f"{warp_home_path}/bin/clang.so")
-            except RuntimeError as e:
-                clang = None
+        try:
+            if sys.platform == "darwin":
+                # try loading libclang.dylib, except when we're building libclang.dylib or libwarp.dylib
+                if os.path.basename(dll_path) != "libclang.dylib" and os.path.basename(dll_path) != "libwarp.dylib":
+                    clang = warp.build.load_dll(f"{warp_home_path}/bin/libclang.dylib")
+            else:  # Linux
+                # try loading clang.so, except when we're building clang.so or warp.so
+                if os.path.basename(dll_path) != "clang.so" and os.path.basename(dll_path) != "warp.so":
+                    clang = warp.build.load_dll(f"{warp_home_path}/bin/clang.so")
+        except RuntimeError as e:
+            clang = None
 
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'
@@ -437,7 +440,8 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         with ScopedTimer("link", active=warp.config.verbose):
             # Link into a DLL, unless we have LLVM to load the object code directly
             if not clang:
-                link_cmd = f"g++ -shared -Wl,-rpath,'$ORIGIN' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+                origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
+                link_cmd = f"g++ -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
                 run_cmd(link_cmd)
 
     
