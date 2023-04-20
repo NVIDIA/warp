@@ -461,14 +461,14 @@ def create_soft_contacts(
     shape_body: wp.array(dtype=int),
     geo: ModelShapeGeometry,
     margin: float,
+    soft_contact_max: int,
     # outputs
     soft_contact_count: wp.array(dtype=int),
     soft_contact_particle: wp.array(dtype=int),
     soft_contact_shape: wp.array(dtype=int),
     soft_contact_body_pos: wp.array(dtype=wp.vec3),
     soft_contact_body_vel: wp.array(dtype=wp.vec3),
-    soft_contact_normal: wp.array(dtype=wp.vec3),
-    soft_contact_max: int):
+    soft_contact_normal: wp.array(dtype=wp.vec3)):
     
     particle_index, shape_index = wp.tid()
     rigid_index = shape_body[shape_index]
@@ -1298,7 +1298,7 @@ def collide(model, state, edge_sdf_iter: int = 10):
     """
 
     
-    # generate soft contacts for particles and shapes exept ground plane (last shape)
+    # generate soft contacts for particles and shapes except ground plane (last shape)
     if (model.particle_count and model.shape_count > 1):
         # clear old count
         model.soft_contact_count.zero_()
@@ -1312,6 +1312,7 @@ def collide(model, state, edge_sdf_iter: int = 10):
                 model.shape_body,
                 model.shape_geo,
                 model.soft_contact_margin,
+                model.soft_contact_max
             ],
             outputs = [
                 model.soft_contact_count,
@@ -1319,8 +1320,7 @@ def collide(model, state, edge_sdf_iter: int = 10):
                 model.soft_contact_shape,
                 model.soft_contact_body_pos,
                 model.soft_contact_body_vel,
-                model.soft_contact_normal,
-                model.soft_contact_max
+                model.soft_contact_normal
             ],
             device=model.device)
 
