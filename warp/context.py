@@ -2920,7 +2920,7 @@ def copy(dest:warp.array, src:warp.array, dest_offset:int=0, src_offset:int=0, c
     if not warp.types.is_array(src) or not warp.types.is_array(dest):
         raise RuntimeError("Copy source and destination must be arrays")
 
-    # backwards compatability, if count is zero then copy entire src array
+    # backwards compatibility, if count is zero then copy entire src array
     if count <= 0:
         count = src.size
 

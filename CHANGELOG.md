@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- Add `ModelBuilder.soft_contact_max` to control the maximum number of soft contacts that can be registered. Use `Model.allocate_soft_contacts(new_count)` to change that on existing `Model`s.
+
 ## [0.8.1] - 2023-04-13
 
 - Fix for regression when passing flattened numeric lists as matrix arguments to kernels

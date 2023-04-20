@@ -590,15 +590,13 @@ class Model:
 
         return s
 
-    def allocate_soft_contacts(self, count=None, requires_grad=False):        
-        if count is not None:
-            self.soft_contact_max = count
+    def allocate_soft_contacts(self, count, requires_grad=False):        
         self.soft_contact_count = wp.zeros(1, dtype=wp.int32, device=self.device)
-        self.soft_contact_particle = wp.zeros(self.soft_contact_max, dtype=int, device=self.device)
-        self.soft_contact_shape = wp.zeros(self.soft_contact_max, dtype=int, device=self.device)
-        self.soft_contact_body_pos = wp.zeros(self.soft_contact_max, dtype=wp.vec3, device=self.device, requires_grad=requires_grad)
-        self.soft_contact_body_vel = wp.zeros(self.soft_contact_max, dtype=wp.vec3, device=self.device, requires_grad=requires_grad)
-        self.soft_contact_normal = wp.zeros(self.soft_contact_max, dtype=wp.vec3, device=self.device, requires_grad=requires_grad)
+        self.soft_contact_particle = wp.zeros(count, dtype=int, device=self.device)
+        self.soft_contact_shape = wp.zeros(count, dtype=int, device=self.device)
+        self.soft_contact_body_pos = wp.zeros(count, dtype=wp.vec3, device=self.device, requires_grad=requires_grad)
+        self.soft_contact_body_vel = wp.zeros(count, dtype=wp.vec3, device=self.device, requires_grad=requires_grad)
+        self.soft_contact_normal = wp.zeros(count, dtype=wp.vec3, device=self.device, requires_grad=requires_grad)
 
     def find_shape_contact_pairs(self):
         # find potential contact pairs based on collision groups and collision mask (pairwise filtering)
@@ -728,6 +726,11 @@ class Model:
     def collide(self, state: State):
         import warnings
         warnings.warn("Model.collide() is not needed anymore and will be removed in a future Warp version.", DeprecationWarning, stacklevel=2)
+
+    @property
+    def soft_contact_max(self):
+        """Maximum number of soft contacts that can be registered"""
+        return len(self.soft_contact_particle)
 
 
 class ModelBuilder:
@@ -936,6 +939,9 @@ class ModelBuilder:
             kf=self.default_shape_kf,
             mu=self.default_shape_mu,
             restitution=self.default_shape_restitution)
+
+        # Maximum number of soft contacts that can be registered
+        self.soft_contact_max = 64 * 1024
 
         # contacts to be generated within the given distance margin to be generated at
         # every simulation substep (can be 0 if only one PBD solver iteration is used)
@@ -2111,10 +2117,10 @@ class ModelBuilder:
 
     def add_triangle(self, i : int, j : int, k : int, tri_ke : float=default_tri_ke, tri_ka : float=default_tri_ka, tri_kd :float=default_tri_kd, tri_drag : float=default_tri_drag, tri_lift : float = default_tri_lift) -> float:
 
-        """Adds a trianglular FEM element between three particles in the system. 
+        """Adds a triangular FEM element between three particles in the system. 
 
         Triangles are modeled as viscoelastic elements with elastic stiffness and damping
-        Parameters specfied on the model. See model.tri_ke, model.tri_kd.
+        Parameters specified on the model. See model.tri_ke, model.tri_kd.
 
         Args:
             i: The index of the first particle
@@ -2129,7 +2135,7 @@ class ModelBuilder:
             between the particles in their initial configuration.
 
         Todo:
-            * Expose elastic paramters on a per-element basis
+            * Expose elastic parameters on a per-element basis
 
         """      
         # compute basis for 2D rest pose
@@ -2169,10 +2175,10 @@ class ModelBuilder:
 
     def add_triangles(self, i:List[int], j:List[int], k:List[int], tri_ke : Optional[List[float]] = None, tri_ka : Optional[List[float]] = None, tri_kd :Optional[List[float]] = None, tri_drag :Optional[List[float]] = None, tri_lift :Optional[List[float]] = None) -> List[float]:
 
-        """Adds trianglular FEM elements between groups of three particles in the system. 
+        """Adds triangular FEM elements between groups of three particles in the system. 
 
         Triangles are modeled as viscoelastic elements with elastic stiffness and damping
-        Parameters specfied on the model. See model.tri_ke, model.tri_kd.
+        Parameters specified on the model. See model.tri_ke, model.tri_kd.
 
         Args:
             i: The indices of the first particle
@@ -2247,7 +2253,7 @@ class ModelBuilder:
     def add_tetrahedron(self, i: int, j: int, k: int, l: int, k_mu: float=1.e+3, k_lambda: float=1.e+3, k_damp: float=0.0) -> float:
         """Adds a tetrahedral FEM element between four particles in the system. 
 
-        Tetrahdera are modeled as viscoelastic elements with a NeoHookean energy
+        Tetrahedra are modeled as viscoelastic elements with a NeoHookean energy
         density based on [Smith et al. 2018].
 
         Args:
@@ -2626,7 +2632,7 @@ class ModelBuilder:
                       tri_lift: float=default_tri_lift):
         """Helper to create a rectangular tetrahedral FEM grid
 
-        Creates a regular grid of FEM tetrhedra and surface triangles. Useful for example
+        Creates a regular grid of FEM tetrahedra and surface triangles. Useful for example
         to create beams and sheets. Each hexahedral cell is decomposed into 5 
         tetrahedral elements.
 
@@ -3075,8 +3081,8 @@ class ModelBuilder:
             m.articulation_count = len(self.articulation_start)
 
             # contacts
-            if (m.particle_count):
-                m.allocate_soft_contacts(1*1024, requires_grad=requires_grad)
+            if m.particle_count:
+                m.allocate_soft_contacts(self.soft_contact_max, requires_grad=requires_grad)
             m.find_shape_contact_pairs()
             if self.num_rigid_contacts_per_env is None:
                 contact_count = m.count_contact_points()
