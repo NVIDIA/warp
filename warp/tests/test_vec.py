@@ -2533,7 +2533,6 @@ def register(parent):
     add_kernel_test(TestVec, test_constructors_explicit_precision, dim=1, devices=devices)
     add_kernel_test(TestVec, test_constructors_default_precision, dim=1, devices=devices)
 
-
     for dtype in np_unsigned_int_types:
         add_function_test_register_kernel(TestVec, f"test_subtraction_unsigned_{dtype.__name__}", test_subtraction_unsigned, devices=devices, dtype=dtype)
 

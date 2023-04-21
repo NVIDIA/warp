@@ -1681,6 +1681,34 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
         tape.zero()
 
 
+# Same as above but with a default (float) type
+# which tests some different code paths that
+# need to ensure types are correctly canonicalized 
+# during codegen
+@wp.kernel
+def test_constructor_default():
+
+    qzero = wp.quat()   
+    wp.expect_eq(qzero[0], 0.0)
+    wp.expect_eq(qzero[1], 0.0)
+    wp.expect_eq(qzero[2], 0.0)
+    wp.expect_eq(qzero[3], 0.0)
+
+    qval = wp.quat(1.0, 2.0, 3.0, 4.0)
+    wp.expect_eq(qval[0], 1.0)
+    wp.expect_eq(qval[1], 2.0)
+    wp.expect_eq(qval[2], 3.0)
+    wp.expect_eq(qval[3], 4.0)
+
+    qval = wp.quat(1.0, 2.0, 3.0, 4.0)
+    wp.expect_eq(qval[0], 1.0)
+    wp.expect_eq(qval[1], 2.0)
+    wp.expect_eq(qval[2], 3.0)
+    wp.expect_eq(qval[3], 4.0)
+
+
+
+
 def register(parent):
 
     devices = get_test_devices()
@@ -1688,6 +1716,8 @@ def register(parent):
     class TestQuat(parent):
         pass
     
+    add_kernel_test(TestQuat, test_constructor_default, dim=1, devices=devices)
+
     for dtype in np_float_types:
 
         add_function_test_register_kernel(TestQuat, f"test_constructors_{dtype.__name__}", test_constructors, devices=devices, dtype=dtype)
