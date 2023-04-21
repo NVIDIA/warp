@@ -487,6 +487,15 @@ class vec3d(vector(length=3, dtype=float64)):
 class vec4d(vector(length=4, dtype=float64)):
     pass
 
+class vec2b(vector(length=2, dtype=int8)):
+    pass
+
+class vec3b(vector(length=3, dtype=int8)):
+    pass
+
+class vec4b(vector(length=4, dtype=int8)):
+    pass
+
 class vec2ub(vector(length=2, dtype=uint8)):
     pass
     
@@ -496,6 +505,60 @@ class vec3ub(vector(length=3, dtype=uint8)):
 class vec4ub(vector(length=4, dtype=uint8)):
     pass
     
+class vec2s(vector(length=2, dtype=int16)):
+    pass
+
+class vec3s(vector(length=3, dtype=int16)):
+    pass
+
+class vec4s(vector(length=4, dtype=int16)):
+    pass
+
+class vec2us(vector(length=2, dtype=uint16)):
+    pass
+
+class vec3us(vector(length=3, dtype=uint16)):
+    pass
+
+class vec4us(vector(length=4, dtype=uint16)):
+    pass
+
+class vec2i(vector(length=2, dtype=int32)):
+    pass
+
+class vec3i(vector(length=3, dtype=int32)):
+    pass
+
+class vec4i(vector(length=4, dtype=int32)):
+    pass
+
+class vec2ui(vector(length=2, dtype=uint32)):
+    pass
+
+class vec3ui(vector(length=3, dtype=uint32)):
+    pass
+
+class vec4ui(vector(length=4, dtype=uint32)):
+    pass
+
+class vec2l(vector(length=2, dtype=int64)):
+    pass
+
+class vec3l(vector(length=3, dtype=int64)):
+    pass
+
+class vec4l(vector(length=4, dtype=int64)):
+    pass
+
+class vec2ul(vector(length=2, dtype=uint64)):
+    pass
+
+class vec3ul(vector(length=3, dtype=uint64)):
+    pass
+
+class vec4ul(vector(length=4, dtype=uint64)):
+    pass
+
 class mat22h(matrix(shape=(2,2), dtype=float16)):
     pass
     
@@ -560,9 +623,9 @@ float_types = [float16, float32, float64]
 scalar_types = int_types + float_types
 
 vector_types = [
-    vec2ub, vec2h, vec2f, vec2d,
-    vec3ub, vec3h, vec3f, vec3d,
-    vec4ub, vec4h, vec4f, vec4d,
+    vec2b, vec2ub, vec2s, vec2us, vec2i, vec2ui, vec2l, vec2ul, vec2h, vec2f, vec2d,
+    vec3b, vec3ub, vec3s, vec3us, vec3i, vec3ui, vec3l, vec3ul, vec3h, vec3f, vec3d,
+    vec4b, vec4ub, vec4s, vec4us, vec4i, vec4ui, vec4l, vec4ul, vec4h, vec4f, vec4d,
     mat22h, mat22f, mat22d,
     mat33h, mat33f, mat33d,
     mat44h, mat44f, mat44d,
