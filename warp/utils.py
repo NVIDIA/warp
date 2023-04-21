@@ -610,7 +610,7 @@ class ScopedTimer:
 
     enabled = True
 
-    def __init__(self, name, active=True, print=True, detailed=False, dict=None, use_nvtx=False, color='rapids'):
+    def __init__(self, name, active=True, print=True, detailed=False, dict=None, use_nvtx=False, color='rapids', synchronize=False):
         """ Context manager object for a timer
             
         Parameters:
@@ -621,6 +621,7 @@ class ScopedTimer:
             dict (dict): A dictionary of lists to which the elapsed time will be appended using ``name`` as a key 
             use_nvtx (bool): If true, timing functionality is replaced by an NVTX range
             color (int or str): ARGB value (e.g. 0x00FFFF) or color name (e.g. 'cyan') associated with the NVTX range
+            synchronize (bool): Synchronize the CPU thread with any outstanding CUDA work to return accurate timings
 
         Attributes:
             elapsed (float): The duration of the ``with`` block used with this object
@@ -632,6 +633,7 @@ class ScopedTimer:
         self.dict = dict
         self.use_nvtx = use_nvtx
         self.color = color
+        self.synchronize = synchronize
         self.elapsed = 0.0
 
         if self.dict is not None:
@@ -641,6 +643,9 @@ class ScopedTimer:
     def __enter__(self):
 
         if (self.active):
+            if self.synchronize:
+                wp.synchronize()
+
             if (self.use_nvtx):
                 import nvtx
                 self.nvtx_range_id = nvtx.start_range(self.name, color=self.color)
@@ -660,6 +665,9 @@ class ScopedTimer:
     def __exit__(self, exc_type, exc_value, traceback):
 
         if (self.active):
+            if self.synchronize:
+                wp.synchronize()
+
             if (self.use_nvtx):
                 import nvtx
                 nvtx.end_range(self.nvtx_range_id)
