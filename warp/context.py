@@ -1726,7 +1726,7 @@ class Runtime:
         elif sys.platform == "darwin":
 
             warp_lib = os.path.join(bin_path, "libwarp.dylib")
-            llvm_lib = None
+            llvm_lib = os.path.join(bin_path, "libclang.dylib")
 
         else:
 
@@ -1752,6 +1752,8 @@ class Runtime:
 
         self.core.float_to_half_bits.argtypes = [ctypes.c_float]
         self.core.float_to_half_bits.restype = ctypes.c_uint16
+        self.core.half_bits_to_float.argtypes = [ctypes.c_uint16]
+        self.core.half_bits_to_float.restype = ctypes.c_float
 
         self.core.free_host.argtypes = [ctypes.c_void_p]
         self.core.free_host.restype = None
@@ -2568,21 +2570,17 @@ def launch(kernel, dim: Tuple[int], inputs:List, outputs:List=[], adj_inputs:Lis
                 # try to convert to a value type (vec3, mat33, etc)
                 elif issubclass(arg_type, ctypes.Array):
 
-                    if hasattr(a, "_wp_generic_type_str_"):
-                        # a Warp vector/matrix type
-                        if warp.types.types_equal(type(a), arg_type):
-                            params.append(a)
-                        else:
-                            raise TypeError(f"Invalid argument type for param {arg_name}, expected {type_str(arg_type)}, got {type_str(type(a))}")
+                    if warp.types.types_equal(type(a), arg_type):
+                        params.append(a)
                     else:
-                        # force conversion to ndarray first (handles tuple / list, Gf.Vec3 case)
-                        v = np.array(a)
+                        # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
+                        try:
+                            params.append(arg_type(a))
+                        except:
+                            raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
 
-                        # ensure shape is correct
-                        if v.shape != arg_type._shape_:
-                            raise TypeError(f"Invalid argument shape for param {arg_name}, expected {arg_type._shape_}, got {v.shape}")
-
-                        params.append(arg_type(v))
+                elif isinstance(a, bool):
+                    params.append(ctypes.c_bool(a))
 
                 elif isinstance(a, arg_type):
                     try:
@@ -2925,7 +2923,7 @@ def copy(dest:warp.array, src:warp.array, dest_offset:int=0, src_offset:int=0, c
     if not warp.types.is_array(src) or not warp.types.is_array(dest):
         raise RuntimeError("Copy source and destination must be arrays")
 
-    # backwards compatability, if count is zero then copy entire src array
+    # backwards compatibility, if count is zero then copy entire src array
     if count <= 0:
         count = src.size
 
@@ -3055,10 +3053,21 @@ def type_str(t):
     else:
         return t.__name__
 
-def print_function(f, file):
+def print_function(f, file, noentry=False):
+    """Writes a function definition to a file for use in reST documentation
+
+    Args:
+        f: The function being written
+        file: The file object for output
+        noentry: If True, then the :noindex: and :nocontentsentry: directive
+          options will be added
+    
+    Returns:
+        A bool indicating True if f was written to file
+    """
 
     if f.hidden:
-        return
+        return False
 
     args = ", ".join(f"{k}: {type_str(v)}" for k,v in f.input_types.items())
 
@@ -3073,6 +3082,9 @@ def print_function(f, file):
         pass
 
     print(f".. function:: {f.key}({args}){return_type}", file=file)
+    if noentry:
+        print("   :noindex:", file=file)
+        print("   :nocontentsentry:", file=file)
     print("", file=file)
     
     if (f.doc != ""):
@@ -3084,6 +3096,7 @@ def print_function(f, file):
 
     print(file=file)
     
+    return True
 
 def print_builtins(file):
 
@@ -3136,13 +3149,21 @@ def print_builtins(file):
         for o in f.overloads:
             groups[f.group].append(o)
 
+    # Keep track of what function names have been written
+    written_functions = {}
+
     for k, g in groups.items():
         print("\n", file=file)
         print(k, file=file)
         print("---------------", file=file)
 
         for f in g:
-            print_function(f, file=file)
+            if f.key in written_functions:
+                # Add :noindex: + :nocontentsentry: since Sphinx gets confused
+                print_function(f, file=file, noentry=True)
+            else:
+                if print_function(f, file=file):
+                    written_functions[f.key] = []
 
     # footnotes
     print(".. rubric:: Footnotes", file=file)

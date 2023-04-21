@@ -73,7 +73,7 @@
             
             
               <div class="version">
-                0.8.0
+                0.8.2
               </div>
             
           
@@ -254,6 +254,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#warp.sim.Model.state"><code class="docutils literal notranslate"><span class="pre">Model.state()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#warp.sim.Model.count_contact_points"><code class="docutils literal notranslate"><span class="pre">Model.count_contact_points()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#warp.sim.Model.flatten"><code class="docutils literal notranslate"><span class="pre">Model.flatten()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#warp.sim.Model.soft_contact_max"><code class="docutils literal notranslate"><span class="pre">Model.soft_contact_max</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -973,9 +974,9 @@ between the particles in their initial configuration.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder.add_triangle">
 <span class="sig-name descname"><span class="pre">add_triangle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_ka</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_drag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_lift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_triangle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds a trianglular FEM element between three particles in the system.</p>
+<dd><p>Adds a triangular FEM element between three particles in the system.</p>
 <p>Triangles are modeled as viscoelastic elements with elastic stiffness and damping
-Parameters specfied on the model. See model.tri_ke, model.tri_kd.</p>
+Parameters specified on the model. See model.tri_ke, model.tri_kd.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -1004,7 +1005,7 @@ between the particles in their initial configuration.</p>
 <div class="admonition-todo admonition" id="id1">
 <p class="admonition-title">Todo</p>
 <ul class="simple">
-<li><p>Expose elastic paramters on a per-element basis</p></li>
+<li><p>Expose elastic parameters on a per-element basis</p></li>
 </ul>
 </div>
 </dd></dl>
@@ -1012,9 +1013,9 @@ between the particles in their initial configuration.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder.add_triangles">
 <span class="sig-name descname"><span class="pre">add_triangles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_ka</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_drag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_lift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_triangles" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds trianglular FEM elements between groups of three particles in the system.</p>
+<dd><p>Adds triangular FEM elements between groups of three particles in the system.</p>
 <p>Triangles are modeled as viscoelastic elements with elastic stiffness and damping
-Parameters specfied on the model. See model.tri_ke, model.tri_kd.</p>
+Parameters specified on the model. See model.tri_ke, model.tri_kd.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -1046,7 +1047,7 @@ between the particles in their initial configuration.</p>
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder.add_tetrahedron">
 <span class="sig-name descname"><span class="pre">add_tetrahedron</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_lambda</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_damp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_tetrahedron" title="Permalink to this definition">¶</a></dt>
 <dd><p>Adds a tetrahedral FEM element between four particles in the system.</p>
-<p>Tetrahdera are modeled as viscoelastic elements with a NeoHookean energy
+<p>Tetrahedra are modeled as viscoelastic elements with a NeoHookean energy
 density based on [Smith et al. 2018].</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -1201,7 +1202,7 @@ and edge in the input triangle mesh</p>
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder.add_soft_grid">
 <span class="sig-name descname"><span class="pre">add_soft_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_lambda</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_damp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_left</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_right</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_top</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_bottom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_ka</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_drag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tri_lift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.add_soft_grid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Helper to create a rectangular tetrahedral FEM grid</p>
-<p>Creates a regular grid of FEM tetrhedra and surface triangles. Useful for example
+<p>Creates a regular grid of FEM tetrahedra and surface triangles. Useful for example
 to create beams and sheets. Each hexahedral cell is decomposed into 5
 tetrahedral elements.</p>
 <dl class="field-list simple">
@@ -1263,7 +1264,7 @@ tetrahedral elements.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder.set_ground_plane">
-<span class="sig-name descname"><span class="pre">set_ground_plane</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.set_ground_plane" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">set_ground_plane</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">normal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restitution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.set_ground_plane" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates a ground plane for the world. If the normal is not specified,
 the up_vector of the ModelBuilder is used.</p>
 <dl class="field-list simple">
@@ -1281,7 +1282,7 @@ the up_vector of the ModelBuilder is used.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.sim.ModelBuilder.finalize">
-<span class="sig-name descname"><span class="pre">finalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.finalize" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">finalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.sim.ModelBuilder.finalize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert this builder object to a concrete model for simulation.</p>
 <p>After building simulation elements this method should be called to transfer
 all data to device memory ready for simulation.</p>
@@ -2550,6 +2551,12 @@ the model description.</p>
 <dd><p>Returns a list of Tensors stored by the model</p>
 <p>This function is intended to be used internal-only but can be used to obtain
 a set of all tensors owned by the model.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.sim.Model.soft_contact_max">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">soft_contact_max</span></span><a class="headerlink" href="#warp.sim.Model.soft_contact_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum number of soft contacts that can be registered</p>
 </dd></dl>
 
 </dd></dl>

@@ -43,6 +43,9 @@ from warp.types import bvh_query_t, mesh_query_aabb_t, hash_grid_query_t
 
 from warp.types import matmul, adj_matmul, batched_matmul, adj_batched_matmul, from_ptr
 
+from warp.types import vector as vec
+from warp.types import matrix as mat
+
 from warp.context import init, func, kernel, struct, overload
 from warp.context import is_cpu_available, is_cuda_available, is_device_available
 from warp.context import get_devices, get_preferred_device
@@ -1205,6 +1208,62 @@ def select(cond: bool, arg1: Any, arg2: Any):
    ...
 
 @over
+def select(cond: int8, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
+def select(cond: uint8, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
+def select(cond: int16, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
+def select(cond: uint16, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
+def select(cond: int32, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
+def select(cond: uint32, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
+def select(cond: int64, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
+def select(cond: uint64, arg1: Any, arg2: Any):
+   """
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+   """
+   ...
+
+@over
 def select(arr: Array[Any], arg1: Any, arg2: Any):
    """
    Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``
@@ -1647,6 +1706,62 @@ def neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]:
 
 @over
 def unot(b: bool) -> bool:
+   """
+
+   """
+   ...
+
+@over
+def unot(b: int8) -> bool:
+   """
+
+   """
+   ...
+
+@over
+def unot(b: uint8) -> bool:
+   """
+
+   """
+   ...
+
+@over
+def unot(b: int16) -> bool:
+   """
+
+   """
+   ...
+
+@over
+def unot(b: uint16) -> bool:
+   """
+
+   """
+   ...
+
+@over
+def unot(b: int32) -> bool:
+   """
+
+   """
+   ...
+
+@over
+def unot(b: uint32) -> bool:
+   """
+
+   """
+   ...
+
+@over
+def unot(b: int64) -> bool:
+   """
+
+   """
+   ...
+
+@over
+def unot(b: uint64) -> bool:
    """
 
    """
