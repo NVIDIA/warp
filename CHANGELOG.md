@@ -1,6 +1,12 @@
 # CHANGELOG
 
-- Add `ModelBuilder.soft_contact_max` to control the maximum number of soft contacts that can be registered. Use `Model.allocate_soft_contacts(new_count)` to change that on existing `Model`s.
+## [0.8.2] - 2023-04-21
+
+- Add `ModelBuilder.soft_contact_max` to control the maximum number of soft contacts that can be registered. Use `Model.allocate_soft_contacts(new_count)` to change count on existing `Model` objects.
+- Add support for `bool` parameters 
+- Add support for logical boolean operators with `int` types
+- Fix for `wp.quat()` default constructor
+- Fix Conditional Reassignments
 
 ## [0.8.1] - 2023-04-13
 
