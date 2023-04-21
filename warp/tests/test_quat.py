@@ -1700,11 +1700,12 @@ def test_constructor_default():
     wp.expect_eq(qval[2], 3.0)
     wp.expect_eq(qval[3], 4.0)
 
-    qval = wp.quat(1.0, 2.0, 3.0, 4.0)
-    wp.expect_eq(qval[0], 1.0)
-    wp.expect_eq(qval[1], 2.0)
-    wp.expect_eq(qval[2], 3.0)
-    wp.expect_eq(qval[3], 4.0)
+    qeye = wp.quat_identity()
+    wp.expect_eq(qeye[0], 0.0)
+    wp.expect_eq(qeye[1], 0.0)
+    wp.expect_eq(qeye[2], 0.0)
+    wp.expect_eq(qeye[3], 1.0)
+
 
 
 
