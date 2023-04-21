@@ -455,7 +455,7 @@ def quaternion_value_func(args, kwds, templates):
         templates.append(dtype)
     else:
         # if constructing predeclared type then check args match expectation
-        if infer_scalar_type(args) != templates[0]:
+        if len(args) > 0 and infer_scalar_type(args) != templates[0]:
             raise RuntimeError("Wrong scalar type for quat {} constructor".format( ",".join(map(str,templates)) ))
 
     return quaternion(dtype=templates[0])
