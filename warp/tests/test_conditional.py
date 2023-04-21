@@ -114,6 +114,33 @@ def test_boolean_literal():
 
     wp.expect_eq(r, -1.0)
 
+@wp.kernel
+def test_int_logical_not():
+
+    x = 0
+    if not 123:
+        x = 123
+
+    wp.expect_eq(x, 0)
+
+@wp.kernel
+def test_int_conditional_assign_overload():
+
+    if 123:
+        x = 123
+
+    if 234:
+        x = 234
+
+    wp.expect_eq(x, 234)
+
+@wp.kernel
+def test_bool_param_conditional(foo: bool):
+
+    if foo:
+        x = 123
+
+    wp.expect_eq(x, 123)
 
 def register(parent):
 
@@ -128,6 +155,9 @@ def register(parent):
     add_kernel_test(TestConditional, kernel=test_boolean_or, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_boolean_compound, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_boolean_literal, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_int_logical_not, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_int_conditional_assign_overload, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_bool_param_conditional, dim=1, inputs=[True], devices=devices)
 
     return TestConditional
 

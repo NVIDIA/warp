@@ -1016,13 +1016,18 @@ DECLARE_ADJOINTS(float16)
 DECLARE_ADJOINTS(float32)
 DECLARE_ADJOINTS(float64)
 
-template <typename T>
-CUDA_CALLABLE inline T select(bool cond, const T& a, const T& b) { return cond?b:a; }
-
-template <typename T>
-CUDA_CALLABLE inline void adj_select(bool cond, const T& a, const T& b, bool& adj_cond, T& adj_a, T& adj_b, const T& adj_ret)
+template <typename C, typename T>
+CUDA_CALLABLE inline T select(const C& cond, const T& a, const T& b)
 {
-    if (cond)
+    // The double NOT operator !! casts to bool without compiler warnings.
+    return (!!cond) ? b : a;
+}
+
+template <typename C, typename T>
+CUDA_CALLABLE inline void adj_select(const C& cond, const T& a, const T& b, C& adj_cond, T& adj_a, T& adj_b, const T& adj_ret)
+{
+    // The double NOT operator !! casts to bool without compiler warnings.
+    if (!!cond)
         adj_b += adj_ret;
     else
         adj_a += adj_ret;
@@ -1070,8 +1075,10 @@ template <typename T>
 CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(-adj_ret); }
 
 // unary boolean negation
-CUDA_CALLABLE inline bool unot(const bool& b) { return !b; }
-CUDA_CALLABLE inline void adj_unot(const bool& b, bool& adj_b, const bool& adj_ret) { }
+template <typename T>
+CUDA_CALLABLE inline bool unot(const T& b) { return !b; }
+template <typename T>
+CUDA_CALLABLE inline void adj_unot(const T& b, T& adj_b, const bool& adj_ret) { }
 
 const int LAUNCH_MAX_DIMS = 4;   // should match types.py
 

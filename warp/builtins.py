@@ -955,6 +955,8 @@ add_builtin("tid", input_types={}, value_type=[int, int, int, int], group="Utili
 
 add_builtin("copy", variadic=True, hidden=True, export=False, group="Utility")
 add_builtin("select", input_types={"cond": bool, "arg1": Any, "arg2": Any}, value_func=lambda args, kwds, _: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
+for t in int_types:
+    add_builtin("select", input_types={"cond": t, "arg1": Any, "arg2": Any}, value_func=lambda args, kwds, _: args[1].type, doc="Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``", group="Utility")
 add_builtin("select", input_types={"arr": array(dtype=Any), "arg1": Any, "arg2": Any}, value_func=lambda args, kwds, _: args[1].type, doc="Select between two arguments, if array is null then return ``arg1``, otherwise return ``arg2``", group="Utility")
 
 # does argument checking and type propagation for load()
@@ -1234,3 +1236,5 @@ add_builtin("neg", input_types={"x": quaternion(dtype=Scalar)}, value_func=samet
 add_builtin("neg", input_types={"x": matrix(shape=(Any,Any), dtype=Scalar)}, value_func=sametype_value_func(matrix(shape=(Any,Any), dtype=Scalar)), doc="", group="Operators")
 
 add_builtin("unot", input_types={"b": bool}, value_type=bool, doc="", group="Operators")
+for t in int_types:
+    add_builtin("unot", input_types={"b": t}, value_type=bool, doc="", group="Operators")
