@@ -17,6 +17,7 @@ from omni.kit.property.usd.usd_property_widget_builder import UsdPropertiesWidge
 from omni.kit.window.property.templates import HORIZONTAL_SPACING
 import omni.ui as ui
 
+
 def get_code_file_prop_builder(layout: Any) -> Callable:
     """Builds the function used to create the property."""
 

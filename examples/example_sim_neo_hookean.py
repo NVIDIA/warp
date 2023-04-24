@@ -24,47 +24,46 @@ wp.init()
 
 
 class Example:
-
     def __init__(self, stage):
-        
         self.sim_width = 8
         self.sim_height = 8
 
         self.sim_fps = 60.0
         self.sim_substeps = 64
         self.sim_duration = 5.0
-        self.sim_frames = int(self.sim_duration*self.sim_fps)
-        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_frames = int(self.sim_duration * self.sim_fps)
+        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
         self.sim_time = 0.0
         self.sim_render = True
         self.sim_iterations = 1
         self.sim_relaxation = 1.0
-        self.lift_speed = 2.5/self.sim_duration*2.0 # from Smith et al.
-        self.rot_speed = math.pi/self.sim_duration
+        self.lift_speed = 2.5 / self.sim_duration * 2.0  # from Smith et al.
+        self.rot_speed = math.pi / self.sim_duration
 
         builder = wp.sim.ModelBuilder()
 
         cell_dim = 15
-        cell_size = 2.0/cell_dim
+        cell_size = 2.0 / cell_dim
 
-        center = cell_size*cell_dim*0.5
+        center = cell_size * cell_dim * 0.5
 
         builder.add_soft_grid(
-            pos=(-center, 0.0, -center), 
-            rot=wp.quat_identity(), 
-            vel=(0.0, 0.0, 0.0), 
-            dim_x=cell_dim, 
-            dim_y=cell_dim, 
+            pos=(-center, 0.0, -center),
+            rot=wp.quat_identity(),
+            vel=(0.0, 0.0, 0.0),
+            dim_x=cell_dim,
+            dim_y=cell_dim,
             dim_z=cell_dim,
-            cell_x=cell_size, 
+            cell_x=cell_size,
             cell_y=cell_size,
             cell_z=cell_size,
-            density=100.0, 
+            density=100.0,
             fix_bottom=True,
             fix_top=True,
-            k_mu=1000.0, 
+            k_mu=1000.0,
             k_lambda=5000.0,
-            k_damp=0.0)
+            k_damp=0.0,
+        )
 
         self.model = builder.finalize()
         self.model.ground = False
@@ -73,7 +72,7 @@ class Example:
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         self.rest = self.model.state()
-        self.rest_vol = (cell_size*cell_dim)**3
+        self.rest_vol = (cell_size * cell_dim) ** 3
 
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
@@ -83,14 +82,18 @@ class Example:
         self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
     def update(self):
-
         with wp.ScopedTimer("simulate"):
-
-            xform = wp.transform((0.0, self.lift_speed*self.sim_time, 0.0), wp.quat_from_axis_angle((0.0, 1.0, 0.0), self.rot_speed*self.sim_time))
-            wp.launch(kernel=self.twist_points, dim=len(self.state_0.particle_q), inputs=[self.rest.particle_q, self.state_0.particle_q, self.model.particle_mass, xform])
+            xform = wp.transform(
+                (0.0, self.lift_speed * self.sim_time, 0.0),
+                wp.quat_from_axis_angle((0.0, 1.0, 0.0), self.rot_speed * self.sim_time),
+            )
+            wp.launch(
+                kernel=self.twist_points,
+                dim=len(self.state_0.particle_q),
+                inputs=[self.rest.particle_q, self.state_0.particle_q, self.model.particle_mass, xform],
+            )
 
             for s in range(self.sim_substeps):
-
                 self.state_0.clear_forces()
                 self.state_1.clear_forces()
 
@@ -101,10 +104,13 @@ class Example:
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
             self.volume.zero_()
-            wp.launch(kernel=self.compute_volume, dim=self.model.tet_count, inputs=[self.state_0.particle_q, self.model.tet_indices, self.volume])
+            wp.launch(
+                kernel=self.compute_volume,
+                dim=self.model.tet_count,
+                inputs=[self.state_0.particle_q, self.model.tet_indices, self.volume],
+            )
 
     def render(self, is_live=False):
-            
         with wp.ScopedTimer("render"):
             time = 0.0 if is_live else self.sim_time
 
@@ -113,11 +119,9 @@ class Example:
             self.renderer.end_frame()
 
     @wp.kernel
-    def twist_points(rest: wp.array(dtype=wp.vec3),
-                    points: wp.array(dtype=wp.vec3),
-                    mass: wp.array(dtype=float),
-                    xform: wp.transform):
-
+    def twist_points(
+        rest: wp.array(dtype=wp.vec3), points: wp.array(dtype=wp.vec3), mass: wp.array(dtype=float), xform: wp.transform
+    ):
         tid = wp.tid()
 
         r = rest[tid]
@@ -125,20 +129,17 @@ class Example:
         m = mass[tid]
 
         # twist the top layer of particles in the beam
-        if (m == 0 and p[1] != 0.0):
+        if m == 0 and p[1] != 0.0:
             points[tid] = wp.transform_point(xform, r)
 
     @wp.kernel
-    def compute_volume(points: wp.array(dtype=wp.vec3),
-                    indices: wp.array2d(dtype=int),
-                    volume: wp.array(dtype=float)):
-
+    def compute_volume(points: wp.array(dtype=wp.vec3), indices: wp.array2d(dtype=int), volume: wp.array(dtype=float)):
         tid = wp.tid()
 
-        i = indices[tid,0]
-        j = indices[tid,1]
-        k = indices[tid,2]
-        l = indices[tid,3]
+        i = indices[tid, 0]
+        j = indices[tid, 1]
+        k = indices[tid, 2]
+        l = indices[tid, 3]
 
         x0 = points[i]
         x1 = points[j]
@@ -149,12 +150,12 @@ class Example:
         x20 = x2 - x0
         x30 = x3 - x0
 
-        v = wp.dot(x10, wp.cross(x20, x30))/6.0
+        v = wp.dot(x10, wp.cross(x20, x30)) / 6.0
 
         wp.atomic_add(volume, 0, v)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_neo_hookean.usd")
 
     example = Example(stage_path)

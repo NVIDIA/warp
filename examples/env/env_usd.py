@@ -44,22 +44,21 @@ class UsdEnvironment(Environment):
     plot_body_coords = False
 
     def create_articulation(self, builder):
-
         settings = wp.sim.parse_usd(
             "http://omniverse-content-staging.s3-us-west-2.amazonaws.com/Assets/Isaac/2022.2.1/Isaac/Robots/Franka/franka_instanceable.usd",
             builder,
             default_thickness=0.01,
             # ignore collision meshes from Franka robot
             ignore_paths=[".*collisions.*"],
-            default_ke=1e6
+            default_ke=1e6,
         )
-    
+
         self.frame_dt = 1.0 / settings["fps"]
         if settings["duration"] > 0.0:
             self.episode_duration = settings["duration"]
         self.sim_substeps = 10
         self.sim_dt = self.frame_dt / self.sim_substeps
-        self.episode_frames = int(self.episode_duration/self.frame_dt)
+        self.episode_frames = int(self.episode_duration / self.frame_dt)
         self.sim_steps = int(self.episode_duration / self.sim_dt)
         self.sim_time = 0.0
         self.render_time = 0.0
@@ -89,6 +88,7 @@ class UsdEnvironment(Environment):
             print("Mass", self.model.body_mass.numpy())
             print("Inertia", self.model.body_inertia.numpy())
             print("body_q", self.state.body_q.numpy())
+
 
 if __name__ == "__main__":
     run_env(UsdEnvironment)

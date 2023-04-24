@@ -20,6 +20,7 @@ from omni.kit.property.usd.usd_property_widget_builder import UsdPropertiesWidge
 from omni.kit.window.property.templates import HORIZONTAL_SPACING
 import omni.ui as ui
 
+
 def get_source_picker_prop_builder(
     layout: Any,
     sources: Sequence[str],
@@ -27,9 +28,7 @@ def get_source_picker_prop_builder(
     """Builds the function used to create the property."""
 
     def fn(ui_prop: UsdPropertyUiEntry, *args):
-
         class _Model(TfTokenAttributeModel):
-
             def _get_allowed_tokens(self, _) -> Tuple[str]:
                 return tuple(sources)
 
@@ -38,9 +37,11 @@ def get_source_picker_prop_builder(
             # the code in `UsdPropertiesWidgetBuilder._tftoken_builder()` exits
             # before attempting to call our custom model.
             metadata = ui_prop.metadata.copy()
-            metadata.update({
-                "allowedTokens": ("dummy",),
-            })
+            metadata.update(
+                {
+                    "allowedTokens": ("dummy",),
+                }
+            )
 
             UsdPropertiesWidgetBuilder.build(
                 layout.compute_node_widget.stage,

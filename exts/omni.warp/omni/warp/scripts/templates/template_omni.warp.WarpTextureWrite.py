@@ -21,6 +21,7 @@ from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
 from omni.warp.scripts.nodes.common import MAX_DIMENSIONS
 
+
 def find_prop(
     props: Sequence[UsdPropertyUiEntry],
     name: str,
@@ -30,6 +31,7 @@ def find_prop(
         return next(p for p in props if p.prop_name == name)
     except StopIteration:
         return None
+
 
 class CustomLayout:
     """Custom UI for the kernel node."""
@@ -45,9 +47,7 @@ class CustomLayout:
             self.node,
         )
 
-        self.dim_count_attr.register_value_changed_callback(
-            self._handle_dim_count_value_changed
-        )
+        self.dim_count_attr.register_value_changed_callback(self._handle_dim_count_value_changed)
 
     def _handle_dim_count_value_changed(self, attr: og.Attribute) -> None:
         """Callback for the dimension count attribute value having changed."""
@@ -94,9 +94,7 @@ class CustomLayout:
                     if prop is not None:
                         CustomLayoutProperty(
                             prop.prop_name,
-                            display_name=(
-                                prop.metadata["customData"]["uiName"]
-                            ),
+                            display_name=(prop.metadata["customData"]["uiName"]),
                         )
 
                 prop = find_prop(props, "inputs:pixelFormat")

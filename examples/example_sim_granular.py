@@ -23,15 +23,13 @@ wp.init()
 
 
 class Example:
-
     def __init__(self, stage):
-
-        self.frame_dt = 1.0/60
+        self.frame_dt = 1.0 / 60
         self.frame_count = 400
 
         self.sim_substeps = 64
-        self.sim_dt = self.frame_dt/self.sim_substeps
-        self.sim_steps = self.frame_count*self.sim_substeps
+        self.sim_dt = self.frame_dt / self.sim_substeps
+        self.sim_steps = self.frame_count * self.sim_substeps
         self.sim_time = 0.0
 
         self.radius = 0.1
@@ -42,14 +40,15 @@ class Example:
             dim_x=16,
             dim_y=32,
             dim_z=16,
-            cell_x=self.radius*2.0,
-            cell_y=self.radius*2.0,
-            cell_z=self.radius*2.0,
+            cell_x=self.radius * 2.0,
+            cell_y=self.radius * 2.0,
+            cell_z=self.radius * 2.0,
             pos=(0.0, 1.0, 0.0),
             rot=wp.quat_identity(),
             vel=(5.0, 0.0, 0.0),
             mass=0.1,
-            jitter=self.radius*0.1)
+            jitter=self.radius * 0.1,
+        )
 
         self.model = builder.finalize()
         self.model.particle_radius = self.radius
@@ -66,13 +65,10 @@ class Example:
         self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
     def update(self):
-
         with wp.ScopedTimer("simulate", active=True):
-
-            self.model.particle_grid.build(self.state_0.particle_q, self.radius*2.0)
+            self.model.particle_grid.build(self.state_0.particle_q, self.radius * 2.0)
 
             for s in range(self.sim_substeps):
-
                 self.state_0.clear_forces()
 
                 self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
@@ -81,7 +77,6 @@ class Example:
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
     def render(self, is_live=False):
-
         with wp.ScopedTimer("render", active=True):
             time = 0.0 if is_live else self.sim_time
 
@@ -92,7 +87,7 @@ class Example:
         self.sim_time += self.frame_dt
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_granular.usd")
 
     example = Example(stage_path)

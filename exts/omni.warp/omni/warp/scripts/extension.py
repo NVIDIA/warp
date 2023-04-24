@@ -33,17 +33,20 @@ KERNEL_NODE_OPT_IN_SETTING = "/app/omni.warp.kernel/opt_in"
 KERNEL_NODE_ENABLE_OPT_IN_SETTING = "/app/omni.warp.kernel/enable_opt_in"
 OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so that nodes have been instantiated
 
+
 def open_file(filename):
     if sys.platform == "win32":
         os.startfile(filename)
     else:
         subprocess.call(["xdg-open", filename])
 
+
 def set_all_graphs_enabled(enable: bool) -> None:
     """Set the enabled state of all OmniGraphs"""
     graphs = og.get_all_graphs()
     for graph in graphs:
         graph.set_disabled(not enable)
+
 
 def is_kernel_node_check_enabled() -> bool:
     """Check whether the kernel node opt-in is enabled"""
@@ -62,12 +65,14 @@ def is_kernel_node_check_enabled() -> bool:
     # the enable-setting is present and True, enable the check
     return True
 
+
 VERIFY_KERNEL_NODE_LOAD_MSG = """This stage contains Warp kernel nodes.
 
 There is currently no limitation on what code can be executed by this node. This means that graphs that contain these nodes should only be used when the author of the graph is trusted.
 
 Do you want to enable the Warp kernel node functionality for this session?
 """
+
 
 def verify_kernel_node_load(nodes: Sequence[og.Node]):
     """Confirm the user wants to run the nodes for the current session."""
@@ -82,7 +87,6 @@ def verify_kernel_node_load(nodes: Sequence[og.Node]):
         settings = carb.settings.get_settings()
         settings.set(KERNEL_NODE_OPT_IN_SETTING, True)
         dialog.hide()
-
 
     dialog = MessageDialog(
         title="Warning",
@@ -101,6 +105,7 @@ def verify_kernel_node_load(nodes: Sequence[og.Node]):
         dialog.show()
 
     asyncio.ensure_future(show_async())
+
 
 def check_for_kernel_nodes() -> None:
     """Check for kernel node instances and confirm user wants to run them."""
@@ -123,10 +128,7 @@ def check_for_kernel_nodes() -> None:
 
     graphs = og.get_all_graphs()
     nodes = tuple(
-        n
-        for g in graphs
-        for n in g.get_nodes()
-        if n.get_node_type().get_node_type() == "omni.warp.WarpKernel"
+        n for g in graphs for n in g.get_nodes() if n.get_node_type().get_node_type() == "omni.warp.WarpKernel"
     )
 
     if not nodes:
@@ -137,9 +139,11 @@ def check_for_kernel_nodes() -> None:
     set_all_graphs_enabled(False)
     verify_kernel_node_load(nodes)
 
+
 def on_attach(*args, **kwargs) -> None:
     """Called when USD stage is attached"""
     check_for_kernel_nodes()
+
 
 def on_kernel_opt_in_setting_change(
     item: carb.dictionary.Item,
@@ -153,8 +157,8 @@ def on_kernel_opt_in_setting_change(
     if settings.get(KERNEL_NODE_OPT_IN_SETTING):
         set_all_graphs_enabled(True)
 
-class OmniWarpExtension(omni.ext.IExt):
 
+class OmniWarpExtension(omni.ext.IExt):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._stage_subscription = None
@@ -162,33 +166,34 @@ class OmniWarpExtension(omni.ext.IExt):
 
         with suppress(ImportError):
             import omni.kit.app
+
             app = omni.kit.app.get_app()
             manager = app.get_extension_manager()
             if manager.is_extension_enabled("omni.graph.ui"):
                 import omni.graph.ui
+
                 omni.graph.ui.ComputeNodeWidget.get_instance().add_template_path(__file__)
 
     def on_startup(self, ext_id):
         log_info("OmniWarpExtension startup")
-        
+
         wp.init()
 
         self._is_live = True
         self._ext_name = omni.ext.get_extension_name(ext_id)
-    
+
         self._register_actions()
         self._menu = WarpMenu()
 
         try:
-            importlib.import_module("omni.kit.browser.sample").register_sample_folder(
-                SCENES_PATH,
-                "Warp"
-            )
+            importlib.import_module("omni.kit.browser.sample").register_sample_folder(SCENES_PATH, "Warp")
         except ImportError as e:
             print("Warning: sample browser not enabled.")
 
         self._update_event_stream = omni.kit.app.get_app_interface().get_update_event_stream()
-        self._stage_event_sub = omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)
+        self._stage_event_sub = (
+            omni.usd.get_context().get_stage_event_stream().create_subscription_to_pop(self._on_stage_event)
+        )
 
         stage_update = omni.stageupdate.get_stage_update_interface()
 
@@ -217,9 +222,7 @@ class OmniWarpExtension(omni.ext.IExt):
         self._deregister_actions()
 
         try:
-            importlib.import_module("omni.kit.browser.sample").unregister_sample_folder(
-                SCENES_PATH
-            )
+            importlib.import_module("omni.kit.browser.sample").unregister_sample_folder(SCENES_PATH)
         except ImportError as e:
             print(e)
 
@@ -229,7 +232,6 @@ class OmniWarpExtension(omni.ext.IExt):
         self._opt_in_setting_sub = None
 
     def _register_actions(self):
-
         action_registry = omni.kit.actions.core.get_action_registry()
         actions_tag = "Warp menu actions"
 
@@ -240,7 +242,7 @@ class OmniWarpExtension(omni.ext.IExt):
             lambda: self._on_scene_menu_click(menu_common.SCENE_CLOTH),
             display_name="Warp->Cloth Simulation",
             description="",
-            tag=actions_tag
+            tag=actions_tag,
         )
 
         action_registry.register_action(
@@ -249,7 +251,7 @@ class OmniWarpExtension(omni.ext.IExt):
             lambda: self._on_scene_menu_click(menu_common.SCENE_DEFORM),
             display_name="Warp->Simple Deformer",
             description="",
-            tag=actions_tag
+            tag=actions_tag,
         )
 
         action_registry.register_action(
@@ -258,8 +260,8 @@ class OmniWarpExtension(omni.ext.IExt):
             lambda: self._on_scene_menu_click(menu_common.SCENE_PARTICLES),
             display_name="Warp->Particle Simulation",
             description="",
-            tag=actions_tag
-        )        
+            tag=actions_tag,
+        )
 
         action_registry.register_action(
             self._ext_name,
@@ -267,7 +269,7 @@ class OmniWarpExtension(omni.ext.IExt):
             lambda: self._on_scene_menu_click(menu_common.SCENE_WAVE),
             display_name="Warp->Wave Pool",
             description="",
-            tag=actions_tag
+            tag=actions_tag,
         )
 
         action_registry.register_action(
@@ -276,7 +278,7 @@ class OmniWarpExtension(omni.ext.IExt):
             lambda: self._on_scene_menu_click(menu_common.SCENE_MARCHING),
             display_name="Warp->Marching Cubes",
             description="",
-            tag=actions_tag
+            tag=actions_tag,
         )
 
         action_registry.register_action(
@@ -285,8 +287,8 @@ class OmniWarpExtension(omni.ext.IExt):
             lambda: self._on_getting_started_click(),
             display_name="Warp->Getting Started",
             description="",
-            tag=actions_tag
-        )       
+            tag=actions_tag,
+        )
 
         action_registry.register_action(
             self._ext_name,
@@ -294,7 +296,7 @@ class OmniWarpExtension(omni.ext.IExt):
             lambda: self._on_documentation_click(),
             display_name="Warp->Documentation",
             description="",
-            tag=actions_tag
+            tag=actions_tag,
         )
 
         action_registry.register_action(
@@ -303,7 +305,7 @@ class OmniWarpExtension(omni.ext.IExt):
             lambda: self._on_browse_scenes_click(),
             display_name="Warp->Browse Scenes",
             description="",
-            tag=actions_tag
+            tag=actions_tag,
         )
 
     def _deregister_actions(self):
@@ -311,7 +313,6 @@ class OmniWarpExtension(omni.ext.IExt):
         action_registry.deregister_all_actions_for_extension(self._ext_name)
 
     def _on_update(self, event):
-
         timeline = omni.timeline.get_timeline_interface()
         if timeline.is_playing() and self._example is not None:
             with wp.ScopedDevice("cuda:0"):
@@ -319,14 +320,12 @@ class OmniWarpExtension(omni.ext.IExt):
                 self._example.render(is_live=self._is_live)
 
     def _on_stage_event(self, event):
-
         if event.type == int(omni.usd.StageEventType.CLOSED):
             self._refresh_example()
         if event.type == int(omni.usd.StageEventType.OPENED):
             self._refresh_example()
 
     def _reset_example(self):
-
         if self._example is not None:
             stage = omni.usd.get_context().get_stage()
             stage.GetRootLayer().Clear()
@@ -335,14 +334,11 @@ class OmniWarpExtension(omni.ext.IExt):
                 self._example.render(is_live=self._is_live)
 
     def _refresh_example(self):
-
         self._example = None
         self._update_event_sub = None
 
     def _on_script_menu_click(self, script_name):
-
         def new_stage():
-            
             new_stage = omni.usd.get_context().new_stage()
             if new_stage:
                 stage = omni.usd.get_context().get_stage()
@@ -358,13 +354,13 @@ class OmniWarpExtension(omni.ext.IExt):
             if self._example is None:
                 log_error("Problem loading example module")
                 return
-            if not hasattr(self._example, 'init'):
+            if not hasattr(self._example, "init"):
                 log_error("Example missing init() function")
                 return
-            if not hasattr(self._example, 'update'):
+            if not hasattr(self._example, "update"):
                 log_error("Example missing update() function")
                 return
-            if not hasattr(self._example, 'render'):
+            if not hasattr(self._example, "render"):
                 log_error("Example missing render() function")
                 return
 
@@ -373,7 +369,9 @@ class OmniWarpExtension(omni.ext.IExt):
                 self._example.render(is_live=self._is_live)
 
             # focus camera
-            omni.usd.get_context().get_selection().set_selected_prim_paths([stage.GetDefaultPrim().GetPath().pathString], False)
+            omni.usd.get_context().get_selection().set_selected_prim_paths(
+                [stage.GetDefaultPrim().GetPath().pathString], False
+            )
             viewport_window = omni.kit.viewport_legacy.get_viewport_interface().get_viewport_window()
             if viewport_window:
                 viewport_window.focus_on_selected()
@@ -384,7 +382,6 @@ class OmniWarpExtension(omni.ext.IExt):
         omni.kit.window.file.prompt_if_unsaved_stage(new_stage)
 
     def _on_scene_menu_click(self, scene_name):
-        
         def new_stage():
             stage_path = os.path.normpath(os.path.join(SCENES_PATH, scene_name))
             omni.usd.get_context().open_stage(stage_path)

@@ -9,6 +9,7 @@ import warp as wp
 from warp.tests.test_base import *
 
 import numpy as np
+
 # import matplotlib.pyplot as plt
 
 wp.init()
@@ -16,13 +17,8 @@ wp.init()
 
 @wp.kernel
 def pnoise(
-    kernel_seed: int,
-    W: int,
-    px: int,
-    py: int,
-    noise_values: wp.array(dtype=float),
-    pixel_values: wp.array(dtype=float)):
-
+    kernel_seed: int, W: int, px: int, py: int, noise_values: wp.array(dtype=float), pixel_values: wp.array(dtype=float)
+):
     tid = wp.tid()
 
     state = wp.rand_init(kernel_seed)
@@ -39,12 +35,7 @@ def pnoise(
 
 
 @wp.kernel
-def curlnoise(
-    kernel_seed: int,
-    W: int,
-    noise_coords: wp.array(dtype=wp.vec2),
-    noise_vectors: wp.array(dtype=wp.vec2)):
-
+def curlnoise(kernel_seed: int, W: int, noise_coords: wp.array(dtype=wp.vec2), noise_vectors: wp.array(dtype=wp.vec2)):
     tid = wp.tid()
 
     state = wp.rand_init(kernel_seed)
@@ -73,13 +64,7 @@ def test_pnoise(test, device):
     noise_values = wp.zeros(N, dtype=float, device=device)
     pixel_values = wp.zeros(N, dtype=float, device=device)
 
-    wp.launch(
-        kernel=pnoise,
-        dim=N,
-        inputs=[seed, W, px, py, noise_values, pixel_values],
-        outputs=[],
-        device=device
-    )
+    wp.launch(kernel=pnoise, dim=N, inputs=[seed, W, px, py, noise_values, pixel_values], outputs=[], device=device)
 
     # Perlin theoretical range is [-0.5*sqrt(n), 0.5*sqrt(n)] for n dimensions
     n = noise_values.numpy()
@@ -119,13 +104,7 @@ def test_curlnoise(test, device):
     quiver_arrows_host = wp.zeros(N, dtype=wp.vec2, device="cpu")
     quiver_arrows = wp.zeros(N, dtype=wp.vec2, device=device)
 
-    wp.launch(
-        kernel=curlnoise,
-        dim=N,
-        inputs=[seed, W, quiver_coords, quiver_arrows],
-        outputs=[],
-        device=device
-    )
+    wp.launch(kernel=curlnoise, dim=N, inputs=[seed, W, quiver_coords, quiver_arrows], outputs=[], device=device)
 
     wp.copy(quiver_coords_host, quiver_coords)
     wp.copy(quiver_arrows_host, quiver_arrows)
@@ -136,13 +115,13 @@ def test_curlnoise(test, device):
     uv_coords = quiver_arrows_host.numpy()
 
     # normalize
-    norms = uv_coords[:,0] * uv_coords[:,0] + uv_coords[:,1] * uv_coords[:,1]
+    norms = uv_coords[:, 0] * uv_coords[:, 0] + uv_coords[:, 1] * uv_coords[:, 1]
     uv_coords = uv_coords / np.sqrt(np.max(norms))
 
-    X = xy_coords[:,0]
-    Y = xy_coords[:,1]
-    U = uv_coords[:,0]
-    V = uv_coords[:,1]
+    X = xy_coords[:, 0]
+    Y = xy_coords[:, 1]
+    U = uv_coords[:, 0]
+    V = uv_coords[:, 1]
 
     ### Figure viewing ###
     # fig, ax = plt.subplots(figsize=(25,25))
@@ -167,8 +146,8 @@ def noise_loss_kernel(
     kernel_seed: int,
     query_positions: wp.array(dtype=wp.vec2),
     noise_values: wp.array(dtype=float),
-    noise_loss: wp.array(dtype=float)):
-
+    noise_loss: wp.array(dtype=float),
+):
     tid = wp.tid()
     state = wp.rand_init(kernel_seed)
 
@@ -181,16 +160,12 @@ def noise_loss_kernel(
 
 
 @wp.kernel
-def noise_cd(
-    kernel_seed: int,
-    query_positions: wp.array(dtype=wp.vec2),
-    gradients: wp.array(dtype=wp.vec2)):
-    
+def noise_cd(kernel_seed: int, query_positions: wp.array(dtype=wp.vec2), gradients: wp.array(dtype=wp.vec2)):
     tid = wp.tid()
     state = wp.rand_init(kernel_seed)
     p = query_positions[tid]
 
-    eps = 1.e-3
+    eps = 1.0e-3
 
     pl = wp.vec2(p[0] - eps, p[1])
     pr = wp.vec2(p[0] + eps, p[1])
@@ -202,8 +177,8 @@ def noise_cd(
     nd = wp.noise(state, pd)
     nu = wp.noise(state, pu)
 
-    gx = (nr - nl) / (2.0*eps)
-    gy = (nu - nd) / (2.0*eps)
+    gx = (nr - nl) / (2.0 * eps)
+    gy = (nu - nd) / (2.0 * eps)
 
     gradients[tid] = wp.vec2(gx, gy)
 
@@ -217,38 +192,44 @@ def test_adj_noise(test, device):
 
     positions = np.array(
         [
-            [-0.1, -0.1], [0.0, -0.1], [0.1, -0.1],
-            [-0.1,  0.0], [0.0,  0.0], [0.1,  0.0],
-            [-0.1,  0.1], [0.0,  0.1], [0.1,  0.1]
+            [-0.1, -0.1],
+            [0.0, -0.1],
+            [0.1, -0.1],
+            [-0.1, 0.0],
+            [0.0, 0.0],
+            [0.1, 0.0],
+            [-0.1, 0.1],
+            [0.0, 0.1],
+            [0.1, 0.1],
         ]
     )
 
     with tape:
-
         query_positions = wp.array(positions, dtype=wp.vec2, device=device, requires_grad=True)
         noise_values = wp.zeros(N, dtype=float, device=device)
         noise_loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
 
-        wp.launch(kernel=noise_loss_kernel, dim=N, inputs=[seed, query_positions, noise_values, noise_loss], device=device)
+        wp.launch(
+            kernel=noise_loss_kernel, dim=N, inputs=[seed, query_positions, noise_values, noise_loss], device=device
+        )
 
     # analytic
     tape.backward(loss=noise_loss)
-    analytic = tape.gradients[query_positions].numpy().reshape((3,3,2))
+    analytic = tape.gradients[query_positions].numpy().reshape((3, 3, 2))
 
     # central difference
     gradients = wp.zeros(N, dtype=wp.vec2, device=device)
     wp.launch(kernel=noise_cd, dim=N, inputs=[seed, query_positions, gradients], device=device)
 
-    gradients_host = gradients.numpy().reshape((3,3,2))
+    gradients_host = gradients.numpy().reshape((3, 3, 2))
     diff = analytic - gradients_host
     result = np.sum(diff * diff, axis=2)
 
-    err = np.where(result > 1.e-3, result, 0).sum()
-    test.assertTrue(err < 1.e-8)
+    err = np.where(result > 1.0e-3, result, 0).sum()
+    test.assertTrue(err < 1.0e-8)
 
 
 def register(parent):
-
     devices = get_test_devices()
 
     class TestNoise(parent):
@@ -261,6 +242,6 @@ def register(parent):
     return TestNoise
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

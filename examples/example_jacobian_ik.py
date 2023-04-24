@@ -29,8 +29,7 @@ wp.init()
 
 
 class Robot:
-
-    frame_dt = 1.0/60.0
+    frame_dt = 1.0 / 60.0
 
     render_time = 0.0
 
@@ -38,7 +37,6 @@ class Robot:
     step_size = 0.1
 
     def __init__(self, render=True, num_envs=1, device=None):
-
         builder = wp.sim.ModelBuilder()
 
         self.render = render
@@ -48,19 +46,22 @@ class Robot:
 
         articulation_builder = wp.sim.ModelBuilder()
 
-        wp.sim.parse_urdf(os.path.join(os.path.dirname(__file__), "assets/cartpole.urdf"), articulation_builder,
-                          xform=wp.transform_identity(),
-                          floating=False,
-                          density=0,
-                          armature=0.1,
-                          stiffness=0.0,
-                          damping=0.0,
-                          shape_ke=1.e+4,
-                          shape_kd=1.e+2,
-                          shape_kf=1.e+2,
-                          shape_mu=1.0,
-                          limit_ke=1.e+4,
-                          limit_kd=1.e+1)
+        wp.sim.parse_urdf(
+            os.path.join(os.path.dirname(__file__), "assets/cartpole.urdf"),
+            articulation_builder,
+            xform=wp.transform_identity(),
+            floating=False,
+            density=0,
+            armature=0.1,
+            stiffness=0.0,
+            damping=0.0,
+            shape_ke=1.0e4,
+            shape_kd=1.0e2,
+            shape_kf=1.0e2,
+            shape_mu=1.0,
+            limit_ke=1.0e4,
+            limit_kd=1.0e1,
+        )
 
         builder = wp.sim.ModelBuilder()
 
@@ -75,8 +76,9 @@ class Robot:
         for i in range(num_envs):
             builder.add_builder(
                 articulation_builder,
-                xform=wp.transform(np.array(
-                    (i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi*0.5))
+                xform=wp.transform(
+                    np.array((i * 2.0, 4.0, 0.0)), wp.quat_from_axis_angle((1.0, 0.0, 0.0), -math.pi * 0.5)
+                ),
             )
             self.target_origin.append((i * 2.0, 4.0, 0.0))
             # joint initial positions
@@ -97,45 +99,34 @@ class Robot:
 
         # -----------------------
         # set up Usd renderer
-        if (self.render):
-            self.renderer = wp.sim.render.SimRenderer(self.model, os.path.join(
-                os.path.dirname(__file__), "outputs/example_jacobian_ik.usd"))
+        if self.render:
+            self.renderer = wp.sim.render.SimRenderer(
+                self.model, os.path.join(os.path.dirname(__file__), "outputs/example_jacobian_ik.usd")
+            )
 
-        self.ee_pos = wp.zeros(self.num_envs, dtype=wp.vec3,
-                               device=device, requires_grad=True)
+        self.ee_pos = wp.zeros(self.num_envs, dtype=wp.vec3, device=device, requires_grad=True)
 
     @wp.kernel
     def compute_endeffector_position(
-            body_q: wp.array(dtype=wp.transform),
-            num_links: int,
-            ee_link_index: int,
-            ee_link_offset: wp.vec3,
-            ee_pos: wp.array(dtype=wp.vec3)):
+        body_q: wp.array(dtype=wp.transform),
+        num_links: int,
+        ee_link_index: int,
+        ee_link_offset: wp.vec3,
+        ee_pos: wp.array(dtype=wp.vec3),
+    ):
         tid = wp.tid()
-        ee_pos[tid] = wp.transform_point(
-            body_q[tid*num_links + ee_link_index], ee_link_offset)
+        ee_pos[tid] = wp.transform_point(body_q[tid * num_links + ee_link_index], ee_link_offset)
 
     def compute_ee_position(self):
         # computes the end-effector position from the current joint angles
-        wp.sim.eval_fk(
-            self.model,
-            self.model.joint_q,
-            self.model.joint_qd,
-            None,
-            self.state)
+        wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state)
         wp.launch(
             self.compute_endeffector_position,
             dim=self.num_envs,
-            inputs=[
-                self.state.body_q,
-                self.num_links,
-                self.ee_link_index,
-                self.ee_link_offset
-            ],
-            outputs=[
-                self.ee_pos
-            ],
-            device=self.device)
+            inputs=[self.state.body_q, self.num_links, self.ee_link_index, self.ee_link_offset],
+            outputs=[self.ee_pos],
+            device=self.device,
+        )
         return self.ee_pos
 
     def compute_jacobian(self):
@@ -148,12 +139,10 @@ class Robot:
             # select which row of the Jacobian we want to compute
             select_index = np.zeros(3)
             select_index[output_index] = 1.0
-            e = wp.array(np.tile(select_index, self.num_envs),
-                         dtype=wp.vec3, device=self.device)
+            e = wp.array(np.tile(select_index, self.num_envs), dtype=wp.vec3, device=self.device)
             tape.backward(grads={self.ee_pos: e})
             q_grad_i = tape.gradients[self.model.joint_q]
-            jacobians[:, output_index, :] = q_grad_i.numpy().reshape(
-                self.num_envs, self.dof)
+            jacobians[:, output_index, :] = q_grad_i.numpy().reshape(self.num_envs, self.dof)
             tape.zero()
         return jacobians
 
@@ -163,19 +152,18 @@ class Robot:
         for e in range(self.num_envs):
             for i in range(self.dof):
                 q = q0.copy()
-                q[e*self.dof + i] += eps
+                q[e * self.dof + i] += eps
                 self.model.joint_q.assign(q)
                 self.compute_ee_position()
                 f_plus = self.ee_pos.numpy()[e].copy()
-                q[e*self.dof + i] -= 2*eps
+                q[e * self.dof + i] -= 2 * eps
                 self.model.joint_q.assign(q)
                 self.compute_ee_position()
                 f_minus = self.ee_pos.numpy()[e].copy()
-                jacobians[e, :, i] = (f_plus - f_minus) / (2*eps)
+                jacobians[e, :, i] = (f_plus - f_minus) / (2 * eps)
         return jacobians
 
     def run(self, render=True):
-
         profiler = {}
 
         self.state = self.model.state(requires_grad=True)
@@ -189,8 +177,7 @@ class Robot:
         for _ in range(5):
             # select new random target points
             targets = self.target_origin.copy()
-            targets[:,
-                    1:] += np.random.uniform(-0.5, 0.5, size=(self.num_envs, 2))
+            targets[:, 1:] += np.random.uniform(-0.5, 0.5, size=(self.num_envs, 2))
 
             for iter in range(50):
                 with wp.ScopedTimer("jacobian", print=False, active=True, dict=profiler):
@@ -206,17 +193,20 @@ class Robot:
                 # compute Jacobian transpose update
                 delta_q = np.matmul(jacobians.transpose(0, 2, 1), error)
 
-                self.model.joint_q = wp.array(self.model.joint_q.numpy(
-                ) + self.step_size * delta_q.flatten(), dtype=wp.float32, device=self.device, requires_grad=True)
+                self.model.joint_q = wp.array(
+                    self.model.joint_q.numpy() + self.step_size * delta_q.flatten(),
+                    dtype=wp.float32,
+                    device=self.device,
+                    requires_grad=True,
+                )
 
                 # render
-                if (render):
+                if render:
                     self.render_time += self.frame_dt
 
                     self.renderer.begin_frame(self.render_time)
                     self.renderer.render(self.state)
-                    self.renderer.render_points(
-                        "targets", targets, radius=0.05)
+                    self.renderer.render_points("targets", targets, radius=0.05)
                     self.renderer.render_points("ee_pos", ee_pos, radius=0.05)
                     self.renderer.end_frame()
 
@@ -225,24 +215,21 @@ class Robot:
                     print("iter:", iter, "error:", error.mean())
 
         avg_time = np.array(profiler["jacobian"]).mean()
-        avg_steps_second = 1000.0*float(self.num_envs)/avg_time
+        avg_steps_second = 1000.0 * float(self.num_envs) / avg_time
 
-        print(
-            f"envs: {self.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
+        print(f"envs: {self.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
 
-        return 1000.0*float(self.num_envs)/avg_time
+        return 1000.0 * float(self.num_envs) / avg_time
 
 
 profile = False
 
 if profile:
-
     env_count = 2
     env_times = []
     env_size = []
 
     for i in range(12):
-
         robot = Robot(render=False, num_envs=env_count)
         steps_per_second = robot.run(render=False)
 
@@ -260,13 +247,12 @@ if profile:
 
     plt.figure(1)
     plt.plot(env_size, env_times)
-    plt.xscale('log')
+    plt.xscale("log")
     plt.xlabel("Number of Envs")
-    plt.yscale('log')
+    plt.yscale("log")
     plt.ylabel("Steps/Second")
     plt.show()
 
 else:
-
     robot = Robot(render=True, num_envs=10)
     robot.run()

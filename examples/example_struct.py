@@ -17,6 +17,7 @@ import warp as wp
 
 wp.init()
 
+
 @wp.struct
 class TestStruct:
     x: wp.vec3
@@ -32,13 +33,12 @@ def test_kernel(s: TestStruct):
 
 
 @wp.kernel
-def loss_kernel(s: TestStruct, 
-                loss: wp.array(dtype=float)):
-    
+def loss_kernel(s: TestStruct, loss: wp.array(dtype=float)):
     tid = wp.tid()
-    
+
     v = s.b[tid]
     wp.atomic_add(loss, 0, float(tid + 1) * (v[0] + 2.0 * v[1] + 3.0 * v[2]))
+
 
 # create struct
 ts = TestStruct()

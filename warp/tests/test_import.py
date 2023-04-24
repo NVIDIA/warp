@@ -16,12 +16,12 @@ import unittest
 
 wp.init()
 
-#from test_func import sqr
+# from test_func import sqr
 import warp.tests.test_func as test_func
+
 
 @wp.kernel
 def test_import_func():
-
     # test a cross-module function reference is resolved correctly
     x = test_func.sqr(2.0)
     y = test_func.cube(2.0)
@@ -30,9 +30,7 @@ def test_import_func():
     wp.expect_eq(y, 8.0)
 
 
-
 def register(parent):
-
     devices = get_test_devices()
 
     class TestImport(parent):
@@ -42,12 +40,13 @@ def register(parent):
 
     return TestImport
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
-    #unittest.main(verbosity=2)
+    # unittest.main(verbosity=2)
 
     wp.force_load()
-    
+
     loader = unittest.defaultTestLoader
     testSuite = loader.loadTestsFromTestCase(c)
     testSuite.debug()

@@ -23,17 +23,15 @@ wp.init()
 
 
 class Example:
-
     def __init__(self, stage):
-
         self.sim_width = 8
         self.sim_height = 8
 
         self.sim_fps = 60.0
         self.sim_substeps = 32
         self.sim_duration = 5.0
-        self.sim_frames = int(self.sim_duration*self.sim_fps)
-        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_frames = int(self.sim_duration * self.sim_fps)
+        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
         self.sim_time = 0.0
         self.sim_iterations = 1
         self.sim_relaxation = 1.0
@@ -41,19 +39,20 @@ class Example:
         builder = wp.sim.ModelBuilder()
 
         builder.add_soft_grid(
-            pos=(0.0, 0.0, 0.0), 
-            rot=wp.quat_identity(), 
-            vel=(0.0, 0.0, 0.0), 
-            dim_x=20, 
-            dim_y=10, 
+            pos=(0.0, 0.0, 0.0),
+            rot=wp.quat_identity(),
+            vel=(0.0, 0.0, 0.0),
+            dim_x=20,
+            dim_y=10,
             dim_z=10,
-            cell_x=0.1, 
+            cell_x=0.1,
             cell_y=0.1,
             cell_z=0.1,
-            density=100.0, 
-            k_mu=50000.0, 
+            density=100.0,
+            k_mu=50000.0,
             k_lambda=20000.0,
-            k_damp=0.0)
+            k_damp=0.0,
+        )
 
         b = builder.add_body(origin=wp.transform((0.5, 2.5, 0.5), wp.quat_identity()))
         builder.add_shape_sphere(body=b, radius=0.75, density=100.0)
@@ -61,9 +60,9 @@ class Example:
         self.model = builder.finalize()
         self.model.ground = True
         self.model.soft_contact_distance = 0.01
-        self.model.soft_contact_ke = 1.e+3
+        self.model.soft_contact_ke = 1.0e3
         self.model.soft_contact_kd = 0.0
-        self.model.soft_contact_kf = 1.e+3
+        self.model.soft_contact_kf = 1.0e3
 
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
@@ -73,10 +72,8 @@ class Example:
         self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=40.0)
 
     def update(self):
-
         with wp.ScopedTimer("simulate", active=True):
             for s in range(self.sim_substeps):
-
                 wp.sim.collide(self.model, self.state_0)
 
                 self.state_0.clear_forces()
@@ -89,8 +86,7 @@ class Example:
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
     def render(self, is_live=False):
-
-        with wp.ScopedTimer("render", active=True): 
+        with wp.ScopedTimer("render", active=True):
             time = 0.0 if is_live else self.sim_time
 
             self.renderer.begin_frame(time)
@@ -98,7 +94,7 @@ class Example:
             self.renderer.end_frame()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_fem.usd")
 
     example = Example(stage_path)

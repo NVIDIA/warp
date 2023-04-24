@@ -15,20 +15,24 @@ import unittest
 
 wp.init()
 
+
 @wp.kernel
 def mul_1d(a: wp.array1d(dtype=float), s: float):
     i = wp.tid()
     a[i] = a[i] * s
+
 
 @wp.kernel
 def mul_2d(a: wp.array2d(dtype=float), s: float):
     i, j = wp.tid()
     a[i, j] = a[i, j] * s
 
+
 @wp.kernel
 def mul_3d(a: wp.array3d(dtype=float), s: float):
     i, j, k = wp.tid()
     a[i, j, k] = a[i, j, k] * s
+
 
 @wp.kernel
 def mul_4d(a: wp.array4d(dtype=float), s: float):
@@ -37,9 +41,7 @@ def mul_4d(a: wp.array4d(dtype=float), s: float):
 
 
 def test_copy_strided(test, device):
-
     with wp.ScopedDevice(device):
-
         np_data1 = np.arange(10, dtype=np.float32)
         np_data2 = np.arange(100, dtype=np.float32).reshape((10, 10))
         np_data3 = np.arange(1000, dtype=np.float32).reshape((10, 10, 10))
@@ -116,9 +118,7 @@ def test_copy_strided(test, device):
 
 
 def test_copy_indexed(test, device):
-
     with wp.ScopedDevice(device):
-
         np_data1 = np.arange(10, dtype=np.float32)
         np_data2 = np.arange(100, dtype=np.float32).reshape((10, 10))
         np_data3 = np.arange(1000, dtype=np.float32).reshape((10, 10, 10))
@@ -134,11 +134,11 @@ def test_copy_indexed(test, device):
 
         # Note: Indexing using multiple index arrays works differently
         #       in Numpy and Warp, so the syntax is different.
-        
+
         expected1 = np_data1[np_indices]
-        expected2 = np_data2[np_indices][:,np_indices]
-        expected3 = np_data3[np_indices][:,np_indices][:,:,np_indices]
-        expected4 = np_data4[np_indices][:,np_indices][:,:,np_indices][:,:,:,np_indices]
+        expected2 = np_data2[np_indices][:, np_indices]
+        expected3 = np_data3[np_indices][:, np_indices][:, :, np_indices]
+        expected4 = np_data4[np_indices][:, np_indices][:, :, np_indices][:, :, :, np_indices]
 
         a1 = wp_data1[wp_indices]
         a2 = wp_data2[wp_indices, wp_indices]
@@ -201,7 +201,6 @@ def test_copy_indexed(test, device):
 
 
 def register(parent):
-
     devices = get_test_devices()
 
     class TestCopy(parent):
@@ -213,6 +212,6 @@ def register(parent):
     return TestCopy
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

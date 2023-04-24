@@ -26,6 +26,7 @@ class Foobar:
     ONE = wp.constant(1)
     TWO = wp.constant(2)
 
+
 @wp.kernel
 def test_constants_int(a: int):
     if Foobar.ONE > 0:
@@ -33,6 +34,7 @@ def test_constants_int(a: int):
     else:
         a = 456 + LOCAL_ONE
     expect_eq(a, 124)
+
 
 @wp.kernel
 def test_constants_float(x: float):
@@ -43,26 +45,23 @@ def test_constants_float(x: float):
     approx_one = wp.dot(UNIT_VEC, UNIT_VEC)
     expect_near(approx_one, 1.0, 1e-6)
 
-def test_constant_math(test, device):
 
+def test_constant_math(test, device):
     # test doing math with Python defined constants in *Python* scope
-    twopi = wp.pi*2.0
+    twopi = wp.pi * 2.0
 
     import math
-    test.assertEqual(twopi, math.pi*2.0)
+
+    test.assertEqual(twopi, math.pi * 2.0)
+
 
 def test_constant_closure_capture(test, device):
-
     def make_closure_kernel(cst):
-        
-        def closure_kernel_fn(
-            expected: int
-        ):
+        def closure_kernel_fn(expected: int):
             wp.expect_eq(cst, expected)
 
         key = f"test_constant_closure_capture_{cst}"
         return wp.Kernel(func=closure_kernel_fn, key=key, module=wp.get_module(closure_kernel_fn.__module__))
-
 
     one_closure = make_closure_kernel(Foobar.ONE)
     two_closure = make_closure_kernel(Foobar.TWO)
@@ -71,9 +70,7 @@ def test_constant_closure_capture(test, device):
     wp.launch(two_closure, dim=(1), inputs=[2], device=device)
 
 
-
 def register(parent):
-
     class TestConstants(parent):
         pass
 
@@ -90,6 +87,7 @@ def register(parent):
 
     return TestConstants
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)
