@@ -1233,15 +1233,22 @@ class Module:
 
             module_name = "wp_" + self.name
             module_path = os.path.join(build_path, module_name)
+            obj_path = os.path.join(gen_path, module_name)
             module_hash = self.hash_module()
 
             builder = ModuleBuilder(self, self.options)
 
             if device.is_cpu:
-                if os.name == "nt":
-                    dll_path = module_path + ".dll"
+                if runtime.llvm:
+                    if os.name == "nt":
+                        dll_path = obj_path + ".cpp.obj"
+                    else:
+                        dll_path = obj_path + ".cpp.o"
                 else:
-                    dll_path = module_path + ".so"
+                    if os.name == "nt":
+                        dll_path = module_path + ".dll"
+                    else:
+                        dll_path = module_path + ".so"
 
                 cpu_hash_path = module_path + ".cpu.hash"
 
@@ -1251,9 +1258,14 @@ class Module:
                         cache_hash = f.read()
 
                     if cache_hash == module_hash:
-                        self.dll = warp.build.load_dll(dll_path)
-                        if self.dll is not None:
+                        if runtime.llvm:
+                            runtime.llvm.load_obj(dll_path.encode("utf-8"), module_name.encode("utf-8"))
+                            self.cpu_module = module_name
                             return True
+                        else:
+                            self.dll = warp.build.load_dll(dll_path)
+                            if self.dll is not None:
+                                return True
 
                 # build
                 try:
