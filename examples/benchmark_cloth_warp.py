@@ -12,14 +12,15 @@ wp.build.clear_kernel_cache()
 
 
 @wp.kernel
-def eval_springs(x: wp.array(dtype=wp.vec3),
-                 v: wp.array(dtype=wp.vec3),
-                 spring_indices: wp.array(dtype=int),
-                 spring_rest_lengths: wp.array(dtype=float),
-                 spring_stiffness: wp.array(dtype=float),
-                 spring_damping: wp.array(dtype=float),
-                 f: wp.array(dtype=wp.vec3)):
-
+def eval_springs(
+    x: wp.array(dtype=wp.vec3),
+    v: wp.array(dtype=wp.vec3),
+    spring_indices: wp.array(dtype=int),
+    spring_rest_lengths: wp.array(dtype=float),
+    spring_stiffness: wp.array(dtype=float),
+    spring_damping: wp.array(dtype=float),
+    f: wp.array(dtype=wp.vec3),
+):
     tid = wp.tid()
 
     i = spring_indices[tid * 2 + 0]
@@ -55,12 +56,13 @@ def eval_springs(x: wp.array(dtype=wp.vec3),
 
 
 @wp.kernel
-def integrate_particles(x: wp.array(dtype=wp.vec3),
-                        v: wp.array(dtype=wp.vec3),
-                        f: wp.array(dtype=wp.vec3),
-                        w: wp.array(dtype=float),
-                        dt: float):
-
+def integrate_particles(
+    x: wp.array(dtype=wp.vec3),
+    v: wp.array(dtype=wp.vec3),
+    f: wp.array(dtype=wp.vec3),
+    w: wp.array(dtype=float),
+    dt: float,
+):
     tid = wp.tid()
 
     x0 = x[tid]
@@ -71,7 +73,7 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
     g = wp.vec3()
 
     # treat particles with inv_mass == 0 as kinematic
-    if (inv_mass > 0.0):
+    if inv_mass > 0.0:
         g = wp.vec3(0.0, 0.0 - 9.81, 0.0)
 
     # simple semi-implicit Euler. v1 = v0 + a dt, x1 = x0 + v1 dt
@@ -86,9 +88,7 @@ def integrate_particles(x: wp.array(dtype=wp.vec3),
 
 
 class WpIntegrator:
-
     def __init__(self, cloth, device):
-
         self.device = wp.get_device(device)
 
         with wp.ScopedDevice(self.device):
@@ -106,45 +106,41 @@ class WpIntegrator:
 
         self.cloth = cloth
 
-
     def simulate(self, dt, substeps):
+        sim_dt = dt / substeps
 
-        sim_dt = dt/substeps
-        
         for s in range(substeps):
-
             wp.launch(
-                kernel=eval_springs, 
-                dim=self.cloth.num_springs, 
-                inputs=[self.positions, 
-                        self.velocities,
-                        self.spring_indices,
-                        self.spring_lengths,
-                        self.spring_stiffness,
-                        self.spring_damping,
-                        self.forces], 
+                kernel=eval_springs,
+                dim=self.cloth.num_springs,
+                inputs=[
+                    self.positions,
+                    self.velocities,
+                    self.spring_indices,
+                    self.spring_lengths,
+                    self.spring_stiffness,
+                    self.spring_damping,
+                    self.forces,
+                ],
                 outputs=[],
-                device=self.device)
+                device=self.device,
+            )
 
-            # integrate 
+            # integrate
             wp.launch(
-                kernel=integrate_particles, 
-                dim=self.cloth.num_particles, 
-                inputs=[self.positions,
-                        self.velocities,
-                        self.forces,
-                        self.invmass,
-                        sim_dt], 
+                kernel=integrate_particles,
+                dim=self.cloth.num_particles,
+                inputs=[self.positions, self.velocities, self.forces, self.invmass, sim_dt],
                 outputs=[],
-                device=self.device)
-
+                device=self.device,
+            )
 
         # copy data back to host
         if self.device.is_cuda:
             wp.copy(self.positions_host, self.positions)
             wp.synchronize()
-    
+
             return self.positions_host.numpy()
-        
+
         else:
             return self.positions.numpy()

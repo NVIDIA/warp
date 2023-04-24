@@ -36,10 +36,8 @@ arrs = []
 
 # loop over all devices
 for device in devices:
-
     # use a ScopedDevice to set the target device
     with wp.ScopedDevice(device):
-
         # allocate array
         a = wp.zeros(250 * 1024 * 1024, dtype=float)
         arrs.append(a)

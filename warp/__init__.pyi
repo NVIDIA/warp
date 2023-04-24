@@ -1,1 +1,1 @@
-from . stubs import *
+from .stubs import *

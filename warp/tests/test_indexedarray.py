@@ -19,7 +19,6 @@ wp.init()
 
 @wp.kernel
 def kernel_1d(a: wp.indexedarray(dtype=float), expected: wp.array(dtype=float)):
-
     i = wp.tid()
 
     wp.expect_eq(a[i], expected[i])
@@ -32,7 +31,6 @@ def kernel_1d(a: wp.indexedarray(dtype=float), expected: wp.array(dtype=float)):
 
 
 def test_indexedarray_1d(test, device):
-
     values = np.arange(10, dtype=np.float32)
     arr = wp.array(data=values, device=device)
 
@@ -52,7 +50,6 @@ def test_indexedarray_1d(test, device):
 
 @wp.kernel
 def kernel_2d(a: wp.indexedarray2d(dtype=float), expected: wp.array2d(dtype=float)):
-
     i, j = wp.tid()
 
     # check expected values
@@ -69,7 +66,6 @@ def kernel_2d(a: wp.indexedarray2d(dtype=float), expected: wp.array2d(dtype=floa
 
 
 def test_indexedarray_2d(test, device):
-
     values = np.arange(100, dtype=np.float32).reshape((10, 10))
     arr = wp.array(data=values, device=device)
 
@@ -83,10 +79,7 @@ def test_indexedarray_2d(test, device):
     test.assertEqual(iarr.shape, (2, 3))
     test.assertEqual(iarr.size, 6)
 
-    expected_values = [
-        [12, 14, 18],
-        [32, 34, 38]
-    ]
+    expected_values = [[12, 14, 18], [32, 34, 38]]
     expected_arr = wp.array(data=expected_values, dtype=float, device=device)
 
     wp.launch(kernel_2d, dim=iarr.shape, inputs=[iarr, expected_arr], device=device)
@@ -94,7 +87,6 @@ def test_indexedarray_2d(test, device):
 
 @wp.kernel
 def kernel_3d(a: wp.indexedarray3d(dtype=float), expected: wp.array3d(dtype=float)):
-
     i, j, k = wp.tid()
 
     # check expected values
@@ -113,7 +105,6 @@ def kernel_3d(a: wp.indexedarray3d(dtype=float), expected: wp.array3d(dtype=floa
 
 
 def test_indexedarray_3d(test, device):
-
     values = np.arange(1000, dtype=np.float32).reshape((10, 10, 10))
     arr = wp.array(data=values, device=device)
 
@@ -129,12 +120,8 @@ def test_indexedarray_3d(test, device):
     test.assertEqual(iarr.size, 12)
 
     expected_values = [
-        [[120, 125],
-         [140, 145],
-         [180, 185]],
-        [[320, 325],
-         [340, 345],
-         [380, 385]],
+        [[120, 125], [140, 145], [180, 185]],
+        [[320, 325], [340, 345], [380, 385]],
     ]
     expected_arr = wp.array(data=expected_values, dtype=float, device=device)
 
@@ -143,7 +130,6 @@ def test_indexedarray_3d(test, device):
 
 @wp.kernel
 def kernel_4d(a: wp.indexedarray4d(dtype=float), expected: wp.array4d(dtype=float)):
-
     i, j, k, l = wp.tid()
 
     # check expected values
@@ -163,7 +149,6 @@ def kernel_4d(a: wp.indexedarray4d(dtype=float), expected: wp.array4d(dtype=floa
 
 
 def test_indexedarray_4d(test, device):
-
     values = np.arange(10000, dtype=np.float32).reshape((10, 10, 10, 10))
     arr = wp.array(data=values, device=device)
 
@@ -180,26 +165,23 @@ def test_indexedarray_4d(test, device):
     test.assertEqual(iarr.size, 36)
 
     expected_values = [
-        [[[1206, 1207, 1209],
-          [1256, 1257, 1259]],
-         [[1406, 1407, 1409],
-          [1456, 1457, 1459]],
-         [[1806, 1807, 1809],
-          [1856, 1857, 1859]]],
-        [[[3206, 3207, 3209],
-          [3256, 3257, 3259]],
-         [[3406, 3407, 3409],
-          [3456, 3457, 3459]],
-         [[3806, 3807, 3809],
-          [3856, 3857, 3859]]]
-    ]    
+        [
+            [[1206, 1207, 1209], [1256, 1257, 1259]],
+            [[1406, 1407, 1409], [1456, 1457, 1459]],
+            [[1806, 1807, 1809], [1856, 1857, 1859]],
+        ],
+        [
+            [[3206, 3207, 3209], [3256, 3257, 3259]],
+            [[3406, 3407, 3409], [3456, 3457, 3459]],
+            [[3806, 3807, 3809], [3856, 3857, 3859]],
+        ],
+    ]
     expected_arr = wp.array(data=expected_values, dtype=float, device=device)
 
     wp.launch(kernel_4d, dim=iarr.shape, inputs=[iarr, expected_arr], device=device)
 
 
 def test_indexedarray_mixed(test, device):
-
     # [[[ 0,  1,  2,  3],
     #   [ 4,  5,  6,  7],
     #   [ 8,  9, 10, 11],
@@ -220,7 +202,7 @@ def test_indexedarray_mixed(test, device):
 
     indices = wp.array([0, 3], dtype=int, device=device)
 
-    #-----
+    # -----
 
     arr = wp.array(data=values, device=device)
     iarr = wp.indexedarray(arr, [indices, None, None])
@@ -230,20 +212,14 @@ def test_indexedarray_mixed(test, device):
     test.assertEqual(iarr.size, 32)
 
     expected_values = [
-        [[ 0,  1,  2,  3],
-         [ 4,  5,  6,  7],
-         [ 8,  9, 10, 11],
-         [12, 13, 14, 15]],
-        [[48, 49, 50, 51],
-         [52, 53, 54, 55],
-         [56, 57, 58, 59],
-         [60, 61, 62, 63]]
+        [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]],
+        [[48, 49, 50, 51], [52, 53, 54, 55], [56, 57, 58, 59], [60, 61, 62, 63]],
     ]
     expected_arr = wp.array(data=expected_values, dtype=float, device=device)
 
     wp.launch(kernel_3d, dim=iarr.shape, inputs=[iarr, expected_arr], device=device)
 
-    #-----
+    # -----
 
     arr = wp.array(data=values, device=device)
     iarr = wp.indexedarray(arr, [indices, indices, None])
@@ -252,17 +228,12 @@ def test_indexedarray_mixed(test, device):
     test.assertEqual(iarr.shape, (2, 2, 4))
     test.assertEqual(iarr.size, 16)
 
-    expected_values = [
-        [[ 0,  1,  2,  3],
-         [12, 13, 14, 15]],
-        [[48, 49, 50, 51],
-         [60, 61, 62, 63]]
-    ]
+    expected_values = [[[0, 1, 2, 3], [12, 13, 14, 15]], [[48, 49, 50, 51], [60, 61, 62, 63]]]
     expected_arr = wp.array(data=expected_values, dtype=float, device=device)
 
     wp.launch(kernel_3d, dim=iarr.shape, inputs=[iarr, expected_arr], device=device)
 
-    #-----
+    # -----
 
     arr = wp.array(data=values, device=device)
     iarr = wp.indexedarray(arr, [indices, None, indices])
@@ -271,21 +242,12 @@ def test_indexedarray_mixed(test, device):
     test.assertEqual(iarr.shape, (2, 4, 2))
     test.assertEqual(iarr.size, 16)
 
-    expected_values = [
-        [[ 0,  3],
-         [ 4,  7],
-         [ 8, 11],
-         [12, 15]],
-        [[48, 51],
-         [52, 55],
-         [56, 59],
-         [60, 63]]
-    ]
+    expected_values = [[[0, 3], [4, 7], [8, 11], [12, 15]], [[48, 51], [52, 55], [56, 59], [60, 63]]]
     expected_arr = wp.array(data=expected_values, dtype=float, device=device)
 
     wp.launch(kernel_3d, dim=iarr.shape, inputs=[iarr, expected_arr], device=device)
 
-    #-----
+    # -----
 
     arr = wp.array(data=values, device=device)
     iarr = wp.indexedarray(arr, [None, indices, indices])
@@ -294,16 +256,7 @@ def test_indexedarray_mixed(test, device):
     test.assertEqual(iarr.shape, (4, 2, 2))
     test.assertEqual(iarr.size, 16)
 
-    expected_values = [
-        [[ 0,  3],
-         [12, 15]],
-        [[16, 19],
-         [28, 31]],
-        [[32, 35],
-         [44, 47]],
-        [[48, 51],
-         [60, 63]]
-    ]
+    expected_values = [[[0, 3], [12, 15]], [[16, 19], [28, 31]], [[32, 35], [44, 47]], [[48, 51], [60, 63]]]
     expected_arr = wp.array(data=expected_values, dtype=float, device=device)
 
     wp.launch(kernel_3d, dim=iarr.shape, inputs=[iarr, expected_arr], device=device)
@@ -313,14 +266,14 @@ vec2i = wp.types.vector(length=2, dtype=wp.int32)
 vec3i = wp.types.vector(length=3, dtype=wp.int32)
 vec4i = wp.types.vector(length=4, dtype=wp.int32)
 
+
 @wp.kernel
 def shape_kernel_1d(arr: wp.indexedarray1d(dtype=float), expected: int):
-
     wp.expect_eq(arr.shape[0], expected)
+
 
 @wp.kernel
 def shape_kernel_2d(arr: wp.indexedarray2d(dtype=float), expected: vec2i):
-
     wp.expect_eq(arr.shape[0], expected[0])
     wp.expect_eq(arr.shape[1], expected[1])
 
@@ -328,9 +281,9 @@ def shape_kernel_2d(arr: wp.indexedarray2d(dtype=float), expected: vec2i):
     view = arr[0]
     wp.expect_eq(view.shape[0], expected[1])
 
+
 @wp.kernel
 def shape_kernel_3d(arr: wp.indexedarray3d(dtype=float), expected: vec3i):
-
     wp.expect_eq(arr.shape[0], expected[0])
     wp.expect_eq(arr.shape[1], expected[1])
     wp.expect_eq(arr.shape[2], expected[2])
@@ -344,9 +297,9 @@ def shape_kernel_3d(arr: wp.indexedarray3d(dtype=float), expected: vec3i):
     view1 = arr[0, 0]
     wp.expect_eq(view1.shape[0], expected[2])
 
+
 @wp.kernel
 def shape_kernel_4d(arr: wp.indexedarray4d(dtype=float), expected: vec4i):
-
     wp.expect_eq(arr.shape[0], expected[0])
     wp.expect_eq(arr.shape[1], expected[1])
     wp.expect_eq(arr.shape[2], expected[2])
@@ -369,9 +322,7 @@ def shape_kernel_4d(arr: wp.indexedarray4d(dtype=float), expected: vec4i):
 
 
 def test_indexedarray_shape(test, device):
-
     with wp.ScopedDevice(device):
-
         data1 = wp.zeros(10, dtype=float)
         data2 = wp.zeros((10, 20), dtype=float)
         data3 = wp.zeros((10, 20, 30), dtype=float)
@@ -420,12 +371,10 @@ def test_indexedarray_shape(test, device):
 
 
 def test_indexedarray_getitem(test, device):
-
     with wp.ScopedDevice(device):
+        data = wp.array(data=np.arange(1000, dtype=np.int32).reshape((10, 10, 10)))
 
-        data = wp.array(data=np.arange(1000, dtype=np.int32).reshape((10,10,10)))
-
-        I = wp.array(data=[0,1,2], dtype=int)
+        I = wp.array(data=[0, 1, 2], dtype=int)
 
         # use constructor
         a1 = wp.indexedarray(data, [None, None, I])
@@ -437,13 +386,13 @@ def test_indexedarray_getitem(test, device):
         a7 = wp.indexedarray(data, [I, I, I])
 
         # use array.__getitem__()
-        b1 = data[:,:,I]
-        b2 = data[:,I]
-        b3 = data[:,I,I]
+        b1 = data[:, :, I]
+        b2 = data[:, I]
+        b3 = data[:, I, I]
         b4 = data[I]
-        b5 = data[I,:,I]
-        b6 = data[I,I]
-        b7 = data[I,I,I]
+        b5 = data[I, :, I]
+        b6 = data[I, I]
+        b7 = data[I, I, I]
 
         test.assertEqual(type(a1), type(b1))
         test.assertEqual(type(a2), type(b2))
@@ -463,23 +412,29 @@ def test_indexedarray_getitem(test, device):
 
 
 def test_indexedarray_slicing(test, device):
-
     with wp.ScopedDevice(device):
-
-        data = wp.array(data=np.arange(1000, dtype=np.int32).reshape((10,10,10)))
+        data = wp.array(data=np.arange(1000, dtype=np.int32).reshape((10, 10, 10)))
 
         # test equivalence of slicing and indexing the same range
         s = slice(0, 3)
-        I = wp.array(data=[0,1,2], dtype=int)
+        I = wp.array(data=[0, 1, 2], dtype=int)
 
-        a0 = data[s,s,s];  test.assertEqual(type(a0), wp.array)
-        a1 = data[s,s,I];  test.assertEqual(type(a1), wp.indexedarray)
-        a2 = data[s,I,s];  test.assertEqual(type(a2), wp.indexedarray)
-        a3 = data[s,I,I];  test.assertEqual(type(a3), wp.indexedarray)
-        a4 = data[I,s,s];  test.assertEqual(type(a4), wp.indexedarray)
-        a5 = data[I,s,I];  test.assertEqual(type(a5), wp.indexedarray)
-        a6 = data[I,I,s];  test.assertEqual(type(a6), wp.indexedarray)
-        a7 = data[I,I,I];  test.assertEqual(type(a7), wp.indexedarray)
+        a0 = data[s, s, s]
+        test.assertEqual(type(a0), wp.array)
+        a1 = data[s, s, I]
+        test.assertEqual(type(a1), wp.indexedarray)
+        a2 = data[s, I, s]
+        test.assertEqual(type(a2), wp.indexedarray)
+        a3 = data[s, I, I]
+        test.assertEqual(type(a3), wp.indexedarray)
+        a4 = data[I, s, s]
+        test.assertEqual(type(a4), wp.indexedarray)
+        a5 = data[I, s, I]
+        test.assertEqual(type(a5), wp.indexedarray)
+        a6 = data[I, I, s]
+        test.assertEqual(type(a6), wp.indexedarray)
+        a7 = data[I, I, I]
+        test.assertEqual(type(a7), wp.indexedarray)
 
         expected = a0.numpy()
 
@@ -498,20 +453,24 @@ def inc_1d(a: Any):
     i = wp.tid()
     a[i] = a[i] + 1
 
+
 @wp.kernel
 def inc_2d(a: Any):
     i, j = wp.tid()
     a[i, j] = a[i, j] + 1
+
 
 @wp.kernel
 def inc_3d(a: Any):
     i, j, k = wp.tid()
     a[i, j, k] = a[i, j, k] + 1
 
+
 @wp.kernel
 def inc_4d(a: Any):
     i, j, k, l = wp.tid()
     a[i, j, k, l] = a[i, j, k, l] + 1
+
 
 # optional overloads to avoid module reloading
 wp.overload(inc_1d, [wp.array1d(dtype=int)])
@@ -526,9 +485,7 @@ wp.overload(inc_4d, [wp.indexedarray4d(dtype=int)])
 
 
 def test_indexedarray_generics(test, device):
-
     with wp.ScopedDevice(device):
-
         data1 = wp.zeros((5,), dtype=int)
         data2 = wp.zeros((5, 5), dtype=int)
         data3 = wp.zeros((5, 5, 5), dtype=int)
@@ -556,18 +513,38 @@ def test_indexedarray_generics(test, device):
         expected1[4] = 2
 
         expected2 = np.ones((5, 5), dtype=np.int32)
-        expected2[0,0] = 2; expected2[0,4] = 2
-        expected2[4,0] = 2; expected2[4,4] = 2
+        expected2[0, 0] = 2
+        expected2[0, 4] = 2
+        expected2[4, 0] = 2
+        expected2[4, 4] = 2
 
         expected3 = np.ones((5, 5, 5), dtype=np.int32)
-        expected3[0,0,0] = 2; expected3[0,0,4] = 2; expected3[0,4,0] = 2; expected3[0,4,4] = 2
-        expected3[4,0,0] = 2; expected3[4,0,4] = 2; expected3[4,4,0] = 2; expected3[4,4,4] = 2
+        expected3[0, 0, 0] = 2
+        expected3[0, 0, 4] = 2
+        expected3[0, 4, 0] = 2
+        expected3[0, 4, 4] = 2
+        expected3[4, 0, 0] = 2
+        expected3[4, 0, 4] = 2
+        expected3[4, 4, 0] = 2
+        expected3[4, 4, 4] = 2
 
         expected4 = np.ones((5, 5, 5, 5), dtype=np.int32)
-        expected4[0,0,0,0] = 2; expected4[0,0,0,4] = 2; expected4[0,0,4,0] = 2; expected4[0,0,4,4] = 2
-        expected4[0,4,0,0] = 2; expected4[0,4,0,4] = 2; expected4[0,4,4,0] = 2; expected4[0,4,4,4] = 2
-        expected4[4,0,0,0] = 2; expected4[4,0,0,4] = 2; expected4[4,0,4,0] = 2; expected4[4,0,4,4] = 2
-        expected4[4,4,0,0] = 2; expected4[4,4,0,4] = 2; expected4[4,4,4,0] = 2; expected4[4,4,4,4] = 2
+        expected4[0, 0, 0, 0] = 2
+        expected4[0, 0, 0, 4] = 2
+        expected4[0, 0, 4, 0] = 2
+        expected4[0, 0, 4, 4] = 2
+        expected4[0, 4, 0, 0] = 2
+        expected4[0, 4, 0, 4] = 2
+        expected4[0, 4, 4, 0] = 2
+        expected4[0, 4, 4, 4] = 2
+        expected4[4, 0, 0, 0] = 2
+        expected4[4, 0, 0, 4] = 2
+        expected4[4, 0, 4, 0] = 2
+        expected4[4, 0, 4, 4] = 2
+        expected4[4, 4, 0, 0] = 2
+        expected4[4, 4, 0, 4] = 2
+        expected4[4, 4, 4, 0] = 2
+        expected4[4, 4, 4, 4] = 2
 
         assert_np_equal(data1.numpy(), expected1)
         assert_np_equal(data2.numpy(), expected2)
@@ -579,21 +556,18 @@ def test_indexedarray_generics(test, device):
         assert_np_equal(ia3.numpy(), np.full((2, 2, 2), 2, dtype=np.int32))
         assert_np_equal(ia4.numpy(), np.full((2, 2, 2, 2), 2, dtype=np.int32))
 
-@wp.kernel
-def for_loop_grad(n: int, 
-                  x: wp.indexedarray(dtype=float),
-                  s: wp.array(dtype=float)):
 
+@wp.kernel
+def for_loop_grad(n: int, x: wp.indexedarray(dtype=float), s: wp.array(dtype=float)):
     sum = float(0.0)
 
     for i in range(n):
-        sum = sum + x[i]*2.0
+        sum = sum + x[i] * 2.0
 
     s[0] = sum
 
 
 def test_indexedarray_for_loop_grad(test, device):
-
     data = wp.array(data=np.ones(32, dtype=np.float32), device=device)
     indices = wp.array(data=[0, 3, 4, 10, 12, 17, 22, 25, 29, 31], dtype=int, device=device)
     n = indices.size
@@ -606,12 +580,12 @@ def test_indexedarray_for_loop_grad(test, device):
     tape = wp.Tape()
     with tape:
         wp.launch(for_loop_grad, dim=1, inputs=[n, x, sum], device=device)
-   
+
     # ensure forward pass outputs correct
     test.assertEqual(sum.numpy()[0], 2.0 * indices.size)
 
     tape.backward(loss=sum)
-    
+
     # ensure forward pass outputs persist
     test.assertEqual(sum.numpy()[0], 2.0 * indices.size)
     # ensure gradients correct
@@ -619,7 +593,6 @@ def test_indexedarray_for_loop_grad(test, device):
 
 
 def register(parent):
-
     devices = get_test_devices()
 
     class TestIndexedArray(parent):
@@ -634,10 +607,13 @@ def register(parent):
     add_function_test(TestIndexedArray, "test_indexedarray_getitem", test_indexedarray_getitem, devices=devices)
     add_function_test(TestIndexedArray, "test_indexedarray_slicing", test_indexedarray_slicing, devices=devices)
     add_function_test(TestIndexedArray, "test_indexedarray_generics", test_indexedarray_generics, devices=devices)
-    add_function_test(TestIndexedArray, "test_indexedarray_for_loop_grad", test_indexedarray_for_loop_grad, devices=devices)
+    add_function_test(
+        TestIndexedArray, "test_indexedarray_for_loop_grad", test_indexedarray_for_loop_grad, devices=devices
+    )
 
     return TestIndexedArray
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)
