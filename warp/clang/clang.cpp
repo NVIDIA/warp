@@ -35,6 +35,8 @@
 
 #if defined(_WIN64)
     extern "C" void __chkstk();
+#elif defined(__APPLE__)
+    extern "C" void __bzero(void*, size_t);
 #endif
 
 namespace wp {
@@ -213,6 +215,8 @@ WP_API int load_obj(const char* object_file, const char* module_name)
             // __chkstk() to linearly touch each memory page. This grows the stack without
             // triggering the stack overflow guards.
             SYMBOL(__chkstk),
+        #elif defined(__APPLE__)
+            SYMBOL(__bzero),
         #endif
         }));
 
