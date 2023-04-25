@@ -12,9 +12,10 @@ import re
 import warp as wp
 from . import ModelBuilder
 
+
 def parse_usd(
-    filename, 
-    builder: ModelBuilder, 
+    filename,
+    builder: ModelBuilder,
     default_density=1.0e3,
     only_load_enabled_rigid_bodies=False,
     only_load_enabled_joints=True,
@@ -27,16 +28,17 @@ def parse_usd(
     joint_limit_ke=100.0,
     joint_limit_kd=10.0,
     verbose=False,
-    ignore_paths=[]):
-
+    ignore_paths=[],
+):
     try:
         from pxr import Usd, UsdGeom, UsdPhysics
     except ImportError:
         raise ImportError("Failed to import pxr. Please install USD.")
-    
+
     if filename.startswith("http://") or filename.startswith("https://"):
         # download file
         import requests, os, datetime
+
         response = requests.get(filename, allow_redirects=True)
         if response.status_code != 200:
             raise RuntimeError(f"Failed to download USD file. Status code: {response.status_code}")
@@ -51,7 +53,7 @@ def parse_usd(
         target_filename = os.path.join(folder_name, base)
         with open(target_filename, "wb") as f:
             f.write(file)
-        
+
         stage = Usd.Stage.Open(target_filename, Usd.Stage.LoadNone)
         stage_str = stage.GetRootLayer().ExportToString()
         # with open(os.path.join(folder_name, base_name + ".usda"), "w") as f:
@@ -83,16 +85,16 @@ def parse_usd(
                 print(f"Failed to download {refname}.")
 
         filename = target_filename
-    
+
     def get_attribute(prim, name):
         if "*" in name:
-            regex = name.replace('*', '.*')
+            regex = name.replace("*", ".*")
             for attr in prim.GetAttributes():
                 if re.match(regex, attr.GetName()):
                     return attr
         else:
             return prim.GetAttribute(name)
-        
+
     def has_attribute(prim, name):
         attr = get_attribute(prim, name)
         return attr.IsValid() and attr.HasAuthoredValue()
@@ -150,7 +152,7 @@ def parse_usd(
     def parse_xform(prim):
         xform = UsdGeom.Xform(prim)
         mat = np.array(xform.GetLocalTransformation(), dtype=np.float32)
-        rot = wp.quat_from_matrix(wp.mat33(mat[:3,:3].flatten()))
+        rot = wp.quat_from_matrix(wp.mat33(mat[:3, :3].flatten()))
         pos = mat[3, :3] * linear_unit
         scale = np.ones(3, dtype=np.float32)
         for op in xform.GetOrderedXformOps():
@@ -294,9 +296,11 @@ def parse_usd(
             else:
                 joint_data[child]["lowerLimit"] = np.deg2rad(lower) if np.isfinite(lower) else lower
                 joint_data[child]["upperLimit"] = np.deg2rad(upper) if np.isfinite(upper) else upper
-                
+
             if joint_data[child]["lowerLimit"] > joint_data[child]["upperLimit"]:
-                joint_data[child]["lowerLimit"] = (joint_data[child]["lowerLimit"] + joint_data[child]["upperLimit"]) / 2
+                joint_data[child]["lowerLimit"] = (
+                    joint_data[child]["lowerLimit"] + joint_data[child]["upperLimit"]
+                ) / 2
                 joint_data[child]["upperLimit"] = joint_data[child]["lowerLimit"]
             parents = prim.GetRelationship("physics:body0").GetTargets()
             if len(parents) > 0:
@@ -305,7 +309,7 @@ def parse_usd(
                 joint_parents.add(parent_path)
             else:
                 joint_data[child]["parent"] = None
-            
+
             # parse joint drive
             parse_axis(prim, "angular", joint_data[child], is_angular=True)
             parse_axis(prim, "rotX", joint_data[child], is_angular=True, axis=(1.0, 0.0, 0.0))
@@ -319,7 +323,7 @@ def parse_usd(
         elif type_name == "Material":
             material = {}
             if has_attribute(prim, "physics:density"):
-                material["density"] = parse_float(prim, "physics:density") * mass_unit #/ (linear_unit**3)
+                material["density"] = parse_float(prim, "physics:density") * mass_unit  # / (linear_unit**3)
             if has_attribute(prim, "physics:restitution"):
                 material["restitution"] = parse_float(prim, "physics:restitution", default_restitution)
             if has_attribute(prim, "physics:staticFriction"):
@@ -327,7 +331,7 @@ def parse_usd(
             if has_attribute(prim, "physics:dynamicFriction"):
                 material["dynamicFriction"] = parse_float(prim, "physics:dynamicFriction", default_mu)
             materials[path] = material
-            
+
         elif type_name == "PhysicsScene":
             scene = UsdPhysics.Scene(prim)
             g_vec = scene.GetGravityDirectionAttr()
@@ -356,7 +360,12 @@ def parse_usd(
                 return
 
         type_name = str(prim.GetTypeName())
-        if type_name.endswith("Joint") or type_name.endswith("Light") or type_name.endswith("Scene") or type_name.endswith("Material"):
+        if (
+            type_name.endswith("Joint")
+            or type_name.endswith("Light")
+            or type_name.endswith("Scene")
+            or type_name.endswith("Material")
+        ):
             return
 
         schemas = set(prim.GetAppliedSchemas())
@@ -365,14 +374,14 @@ def parse_usd(
         prim_joint_xforms[path] = wp.transform()
 
         local_xform, scale = parse_xform(prim)
-        scale = incoming_scale*scale
+        scale = incoming_scale * scale
         xform = wp.mul(incoming_xform, local_xform)
         path_world_poses[path] = xform
-        
+
         geo_tf = local_xform
         body_id = parent_body
         is_rigid_body = "PhysicsRigidBodyAPI" in schemas and parent_body == -1
-        create_rigid_body = (is_rigid_body or path in joint_parents)
+        create_rigid_body = is_rigid_body or path in joint_parents
         if create_rigid_body:
             body_id = builder.add_body(
                 origin=xform,
@@ -381,14 +390,14 @@ def parse_usd(
             path_body_map[path] = body_id
             body_density[body_id] = 0.0
 
-            parent_body = body_id        
+            parent_body = body_id
 
             geo_tf = wp.transform()
 
             # set up joints between rigid bodies after the children have been added
             if path in joint_data:
                 joint = joint_data[path]
-                
+
                 joint_params = dict(
                     child=body_id,
                     linear_axes=joint["linear_axes"],
@@ -396,9 +405,9 @@ def parse_usd(
                     name=joint["name"],
                     enabled=joint["enabled"],
                     parent_xform=joint["parent_tf"],
-                    child_xform=joint["child_tf"]
+                    child_xform=joint["child_tf"],
                 )
-                
+
                 parent_path = joint["parent"]
                 if parent_path is None:
                     joint_params["parent"] = -1
@@ -426,7 +435,9 @@ def parse_usd(
                                 limit_lower=joint["lowerLimit"],
                                 limit_upper=joint["upperLimit"],
                                 limit_ke=joint_limit_ke,
-                                limit_kd=joint_limit_kd))
+                                limit_kd=joint_limit_kd,
+                            )
+                        )
                 elif joint["type"] == "Prismatic":
                     joint_params["joint_type"] = wp.sim.JOINT_PRISMATIC
                     if len(joint_params["linear_axes"]) == 0:
@@ -436,7 +447,9 @@ def parse_usd(
                                 limit_lower=joint["lowerLimit"],
                                 limit_upper=joint["upperLimit"],
                                 limit_ke=joint_limit_ke,
-                                limit_kd=joint_limit_kd))
+                                limit_kd=joint_limit_kd,
+                            )
+                        )
                 elif joint["type"] == "Spherical":
                     joint_params["joint_type"] = wp.sim.JOINT_BALL
                 elif joint["type"] == "Fixed":
@@ -450,14 +463,16 @@ def parse_usd(
                             limit_lower=joint["lowerLimit"],
                             limit_upper=joint["upperLimit"],
                             limit_ke=joint_limit_ke,
-                            limit_kd=joint_limit_kd))
+                            limit_kd=joint_limit_kd,
+                        )
+                    )
                 elif joint["type"] == "":
                     joint_params["joint_type"] = wp.sim.JOINT_D6
                 else:
                     print(f"Warning: unsupported joint type {joint['type']} for {path}")
 
                 builder.add_joint(**joint_params)
-                
+
             elif is_rigid_body:
                 builder.add_joint_free(child=body_id)
                 # free joint; we set joint_q/qd, not body_q/qd since eval_fk is used after model creation
@@ -471,7 +486,6 @@ def parse_usd(
         if verbose:
             print(f"added {type_name} body {body_id} ({path}) at {xform}")
 
-        
         density = None
 
         material = None
@@ -484,7 +498,7 @@ def parse_usd(
                 density = material["density"]
         if has_attribute(prim, "physics:density"):
             d = parse_float(prim, "physics:density")
-            density = d * mass_unit #/ (linear_unit**3)
+            density = d * mass_unit  # / (linear_unit**3)
 
         # assert prim.GetAttribute('orientation').Get() == "rightHanded", "Only right-handed orientations are supported."
         enabled = parse_generic(prim, "physics:rigidBodyEnabled", True)
@@ -506,7 +520,7 @@ def parse_usd(
         com = parse_vec(prim, "physics:centerOfMass", np.zeros(3, dtype=np.float32))
         i_diag = parse_vec(prim, "physics:diagonalInertia", np.zeros(3, dtype=np.float32))
         i_rot = parse_quat(prim, "physics:principalAxes", wp.quat_identity())
-        
+
         # parse children
         if type_name == "Xform":
             if prim.IsInstance():
@@ -522,8 +536,8 @@ def parse_usd(
         elif type_name in shape_types:
             # parse shapes
             shape_params = dict(
-                ke=default_ke, kd=default_kd, kf=default_kf, mu=default_mu,
-                restitution=default_restitution)
+                ke=default_ke, kd=default_kd, kf=default_kf, mu=default_mu, restitution=default_restitution
+            )
             if material is not None:
                 if "restitution" in material:
                     shape_params["restitution"] = material["restitution"]
@@ -543,10 +557,16 @@ def parse_usd(
                 else:
                     extents = scale * size
                 shape_id = builder.add_shape_box(
-                    body_id, geo_tf.p, geo_tf.q,
-                    hx=extents[0]/2, hy=extents[1]/2, hz=extents[2]/2,
-                    density=density, thickness=default_thickness,
-                    **shape_params)
+                    body_id,
+                    geo_tf.p,
+                    geo_tf.q,
+                    hx=extents[0] / 2,
+                    hy=extents[1] / 2,
+                    hz=extents[2] / 2,
+                    density=density,
+                    thickness=default_thickness,
+                    **shape_params,
+                )
             elif type_name == "Sphere":
                 if not (scale[0] == scale[1] == scale[2]):
                     print("Warning: Non-uniform scaling of spheres is not supported.")
@@ -561,9 +581,8 @@ def parse_usd(
                 else:
                     radius = parse_float(prim, "radius", 1.0) * scale[0]
                 shape_id = builder.add_shape_sphere(
-                    body_id, geo_tf.p, geo_tf.q,
-                    radius, density=density,
-                    **shape_params)
+                    body_id, geo_tf.p, geo_tf.q, radius, density=density, **shape_params
+                )
             elif type_name == "Plane":
                 normal_str = parse_generic(prim, "axis", "Z").upper()
                 geo_rot = geo_tf.q
@@ -576,40 +595,59 @@ def parse_usd(
                 width = parse_float(prim, "width", 0.0) * scale[0]
                 length = parse_float(prim, "length", 0.0) * scale[1]
                 shape_id = builder.add_shape_plane(
-                    body=body_id, pos=geo_tf.p, rot=geo_rot,
-                    width=width, length=length,
+                    body=body_id,
+                    pos=geo_tf.p,
+                    rot=geo_rot,
+                    width=width,
+                    length=length,
                     thickness=default_thickness,
-                    **shape_params)
+                    **shape_params,
+                )
             elif type_name == "Capsule":
                 axis_str = parse_generic(prim, "axis", "Z").upper()
                 radius = parse_float(prim, "radius", 0.5) * scale[0]
                 half_height = parse_float(prim, "height", 2.0) / 2 * scale[1]
                 assert not has_attribute(prim, "extents"), "Capsule extents are not supported."
                 shape_id = builder.add_shape_capsule(
-                    body_id, geo_tf.p, geo_tf.q,
-                    radius, half_height, density=density,
+                    body_id,
+                    geo_tf.p,
+                    geo_tf.q,
+                    radius,
+                    half_height,
+                    density=density,
                     up_axis="XYZ".index(axis_str),
-                    **shape_params)
+                    **shape_params,
+                )
             elif type_name == "Cylinder":
                 axis_str = parse_generic(prim, "axis", "Z").upper()
                 radius = parse_float(prim, "radius", 0.5) * scale[0]
                 half_height = parse_float(prim, "height", 2.0) / 2 * scale[1]
                 assert not has_attribute(prim, "extents"), "Cylinder extents are not supported."
                 shape_id = builder.add_shape_cylinder(
-                    body_id, geo_tf.p, geo_tf.q,
-                    radius, half_height, density=density,
+                    body_id,
+                    geo_tf.p,
+                    geo_tf.q,
+                    radius,
+                    half_height,
+                    density=density,
                     up_axis="XYZ".index(axis_str),
-                    **shape_params)
+                    **shape_params,
+                )
             elif type_name == "Cone":
                 axis_str = parse_generic(prim, "axis", "Z").upper()
                 radius = parse_float(prim, "radius", 0.5) * scale[0]
                 half_height = parse_float(prim, "height", 2.0) / 2 * scale[1]
                 assert not has_attribute(prim, "extents"), "Cone extents are not supported."
                 shape_id = builder.add_shape_cone(
-                    body_id, geo_tf.p, geo_tf.q,
-                    radius, half_height, density=density,
+                    body_id,
+                    geo_tf.p,
+                    geo_tf.q,
+                    radius,
+                    half_height,
+                    density=density,
                     up_axis="XYZ".index(axis_str),
-                    **shape_params)
+                    **shape_params,
+                )
             elif type_name == "Mesh":
                 mesh = UsdGeom.Mesh(prim)
                 points = np.array(mesh.GetPointsAttr().Get(), dtype=np.float32)
@@ -619,19 +657,25 @@ def parse_usd(
                 face_id = 0
                 for count in counts:
                     if count == 3:
-                        faces.append(indices[face_id:face_id+3])
+                        faces.append(indices[face_id : face_id + 3])
                     elif count == 4:
-                        faces.append(indices[face_id:face_id+3])
-                        faces.append(indices[[face_id,face_id+2,face_id+3]])
+                        faces.append(indices[face_id : face_id + 3])
+                        faces.append(indices[[face_id, face_id + 2, face_id + 3]])
                     else:
                         # assert False, f"Error while parsing USD mesh {path}: encountered polygon with {count} vertices, but only triangles and quads are supported."
                         continue
                     face_id += count
                 m = wp.sim.Mesh(points, np.array(faces, dtype=np.int32).flatten())
                 shape_id = builder.add_shape_mesh(
-                    body_id, geo_tf.p, geo_tf.q,
-                    scale=scale, mesh=m, density=density, thickness=default_thickness,
-                    **shape_params)
+                    body_id,
+                    geo_tf.p,
+                    geo_tf.q,
+                    scale=scale,
+                    mesh=m,
+                    density=density,
+                    thickness=default_thickness,
+                    **shape_params,
+                )
             else:
                 print(f"Warning: Unsupported geometry type {type_name} at {path}.")
                 return
@@ -681,11 +725,9 @@ def parse_usd(
                 else:
                     builder.body_inv_inertia[body_id] = np.zeros((3, 3), dtype=np.float32)
 
-
     parse_prim(
-        stage.GetDefaultPrim(),
-        incoming_xform=wp.transform(),
-        incoming_scale=np.ones(3, dtype=np.float32) * linear_unit)
+        stage.GetDefaultPrim(), incoming_xform=wp.transform(), incoming_scale=np.ones(3, dtype=np.float32) * linear_unit
+    )
 
     shape_count = len(builder.shape_geo_type)
 
@@ -705,5 +747,5 @@ def parse_usd(
     return {
         "fps": stage.GetFramesPerSecond(),
         "duration": stage.GetEndTimeCode() - stage.GetStartTimeCode(),
-        "up_axis": UsdGeom.GetStageUpAxis(stage).lower()
+        "up_axis": UsdGeom.GetStageUpAxis(stage).lower(),
     }

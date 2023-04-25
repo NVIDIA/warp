@@ -413,7 +413,7 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 }
 
 
-// determine if a point is inside (ret >0 ) or outside the mesh (ret < 0)
+// determine if a point is inside (ret < 0 ) or outside the mesh (ret > 0)
 CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
 {
     float t, u, v, sign;

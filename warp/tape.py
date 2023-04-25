@@ -8,19 +8,17 @@
 import numpy as np
 import warp as wp
 
+
 class Tape:
-
     def __init__(self):
-
         self.gradients = {}
         self.const_gradients = set()
         self.launches = []
 
         self.loss = None
 
-
-    def __enter__(self):      
-        if (wp.context.runtime.tape != None):
+    def __enter__(self):
+        if wp.context.runtime.tape != None:
             raise RuntimeError("Warp: Error, entering a tape while one is already active")
 
         wp.context.runtime.tape = self
@@ -28,8 +26,8 @@ class Tape:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if (wp.context.runtime.tape == None):
-            raise RuntimeError("Warp: Error, ended tape capture, but tape not present")            
+        if wp.context.runtime.tape == None:
+            raise RuntimeError("Warp: Error, ended tape capture, but tape not present")
 
         wp.context.runtime.tape = None
 
@@ -38,21 +36,21 @@ class Tape:
     #
     #  adj_tensor = tape.gradients[tensor]
     #
-    def backward(self, loss: wp.array=None, grads: dict=None):
-
+    def backward(self, loss: wp.array = None, grads: dict = None):
         # if scalar loss is specified then initialize
         # a 'seed' array for it, with gradient of one
         if loss:
-            
             if loss.size > 1 or wp.types.type_length(loss.dtype) > 1:
                 raise RuntimeError("Can only return gradients for scalar loss functions.")
 
             if loss.requires_grad == False:
-                raise RuntimeError("Scalar loss arrays should have requires_grad=True set before calling Tape.backward()")
+                raise RuntimeError(
+                    "Scalar loss arrays should have requires_grad=True set before calling Tape.backward()"
+                )
 
             # set the seed grad to 1.0
             loss.grad.fill_(1.0)
-            
+
         # simply apply dict grads to objects
         # this is just for backward compat. with
         # existing code before we added wp.array.grad attribute
@@ -63,10 +61,9 @@ class Tape:
 
         # run launches backwards
         for launch in reversed(self.launches):
-
             if callable(launch):
                 launch()
-        
+
             else:
                 kernel = launch[0]
                 dim = launch[1]
@@ -86,22 +83,22 @@ class Tape:
                     adj_outputs.append(self.get_adjoint(a))
 
                 wp.launch(
-                    kernel=kernel, 
-                    dim=dim, 
-                    inputs=inputs, 
+                    kernel=kernel,
+                    dim=dim,
+                    inputs=inputs,
                     outputs=outputs,
                     adj_inputs=adj_inputs,
                     adj_outputs=adj_outputs,
                     device=device,
-                    adjoint=True)
-
+                    adjoint=True,
+                )
 
     # record a kernel launch on the tape
     def record_launch(self, kernel, dim, inputs, outputs, device):
         self.launches.append([kernel, dim, inputs, outputs, device])
 
     # records a custom function for the backward pass, can be any
-    # Callable python object. Callee should also pass arrays that 
+    # Callable python object. Callee should also pass arrays that
     # take part in the function for gradient tracking.
     def record_func(self, backward, arrays):
         self.launches.append(backward)
@@ -110,12 +107,12 @@ class Tape:
             if isinstance(a, wp.array) and a.grad:
                 self.gradients[a] = a.grad
             else:
-                raise RuntimeError(f"Array {a} is not of type wp.array or is missing a gradient array. Set array parameter requires_grad=True during instantiation.")
+                raise RuntimeError(
+                    f"Array {a} is not of type wp.array or is missing a gradient array. Set array parameter requires_grad=True during instantiation."
+                )
 
     # returns the adjoint of a kernel parameter
     def get_adjoint(self, a):
-
-
         if not wp.types.is_array(a) and not isinstance(a, wp.codegen.StructInstance):
             # if input is a simple type (e.g.: float, vec3, etc) then
             # no gradient needed (we only return gradients through arrays and structs)
@@ -148,12 +145,10 @@ class Tape:
         return None
 
     def reset(self):
-        
         self.launches = []
         self.zero()
 
     def zero(self):
-
         for a, g in self.gradients.items():
             if a not in self.const_gradients:
                 if isinstance(a, wp.codegen.StructInstance):

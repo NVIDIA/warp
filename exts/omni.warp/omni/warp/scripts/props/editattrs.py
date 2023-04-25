@@ -33,6 +33,7 @@ from omni.warp.scripts.widgets.attributeeditor import AttributeEditor
 
 _BUTTON_WIDTH = 100
 
+
 class _State:
     """State object shared across the various handlers."""
 
@@ -40,6 +41,7 @@ class _State:
         self.layout = layout
         self.dialog = None
         self.remove_attr_menu = None
+
 
 def _add_user_attribute_desc(state: _State, desc: UserAttributeDesc) -> None:
     data = og.Controller.get(state.layout.user_attr_descs_attr)
@@ -49,6 +51,7 @@ def _add_user_attribute_desc(state: _State, desc: UserAttributeDesc) -> None:
 
     data = serialize_user_attribute_descs(descs)
     og.Controller.set(state.layout.user_attr_descs_attr, data, update_usd=True)
+
 
 def _remove_user_attribute_desc(
     state: _State,
@@ -64,17 +67,11 @@ def _remove_user_attribute_desc(
     data = serialize_user_attribute_descs(descs)
     og.Controller.set(state.layout.user_attr_descs_attr, data, update_usd=True)
 
-def _get_attribute_creation_handler(state: _State) -> Callable:
 
+def _get_attribute_creation_handler(state: _State) -> Callable:
     def fn(attr_desc: UserAttributeDesc):
-        if any(
-            get_attr_name(x) == attr_desc.name
-            for x in state.layout.node.get_attributes()
-        ):
-            raise RuntimeError(
-                "The attribute '{}' already exists on the node."
-                .format(attr_desc.name)
-            )
+        if any(get_attr_name(x) == attr_desc.name for x in state.layout.node.get_attributes()):
+            raise RuntimeError("The attribute '{}' already exists on the node.".format(attr_desc.name))
 
         if attr_desc.array_format == ArrayAttributeFormat.RAW:
             attr_type = attr_desc.type
@@ -92,10 +89,7 @@ def _get_attribute_creation_handler(state: _State) -> Callable:
             attr_desc.port_type,
         )
         if attr is None:
-            raise RuntimeError(
-                "Failed to create the attribute '{}'."
-                .format(attr_desc.name)
-            )
+            raise RuntimeError("Failed to create the attribute '{}'.".format(attr_desc.name))
 
         attr.is_optional_for_compute = attr_desc.optional
 
@@ -112,8 +106,8 @@ def _get_attribute_creation_handler(state: _State) -> Callable:
 
     return fn
 
-def _get_attribute_removal_handler(state: _State) -> Callable:
 
+def _get_attribute_removal_handler(state: _State) -> Callable:
     def fn(attr):
         port_type = attr.get_port_type()
         name = get_attr_name(attr)
@@ -134,11 +128,11 @@ def _get_attribute_removal_handler(state: _State) -> Callable:
 
     return fn
 
+
 def _get_add_btn_clicked_handler(
     state: _State,
     supported_types: Sequence[str],
 ) -> Callable:
-
     def fn():
         dialog = AttributeEditor(
             supported_types,
@@ -151,13 +145,10 @@ def _get_add_btn_clicked_handler(
 
     return fn
 
-def _get_remove_btn_clicked_handler(state: _State) -> Callable:
 
+def _get_remove_btn_clicked_handler(state: _State) -> Callable:
     def fn():
-        attrs = tuple(
-            x for x in state.layout.node.get_attributes()
-            if x.is_dynamic()
-        )
+        attrs = tuple(x for x in state.layout.node.get_attributes() if x.is_dynamic())
         if not attrs:
             return
 
@@ -179,6 +170,7 @@ def _get_remove_btn_clicked_handler(state: _State) -> Callable:
         state.remove_attr_menu = menu
 
     return fn
+
 
 def get_edit_attrs_prop_builder(
     layout: Any,

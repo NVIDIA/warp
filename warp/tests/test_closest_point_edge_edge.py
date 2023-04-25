@@ -15,6 +15,7 @@ from warp.tests.test_base import *
 wp.init()
 epsilon = 0.00001
 
+
 @wp.kernel
 def closest_point_edge_edge_kernel(
     p1: wp.array(dtype=wp.vec3),
@@ -45,6 +46,7 @@ def closest_point_edge_edge_launch(p1, q1, p2, q2, epsilon, st0, c1, c2, device)
         device=device,
     )
 
+
 def run_closest_point_edge_edge(p1_h, q1_h, p2_h, q2_h, device):
     p1 = wp.array(p1_h, dtype=wp.vec3, device=device)
     q1 = wp.array(q1_h, dtype=wp.vec3, device=device)
@@ -54,13 +56,12 @@ def run_closest_point_edge_edge(p1_h, q1_h, p2_h, q2_h, device):
     c1 = wp.empty_like(p1)
     c2 = wp.empty_like(p1)
 
-    closest_point_edge_edge_launch(
-        p1, q1, p2, q2, epsilon, st0, c1, c2, device
-    )
+    closest_point_edge_edge_launch(p1, q1, p2, q2, epsilon, st0, c1, c2, device)
 
     wp.synchronize()
     view = st0.numpy()
     return view
+
 
 def test_edge_edge_middle_crossing(test, device):
     p1_h = np.array([[0, 0, 0]])
@@ -73,6 +74,7 @@ def test_edge_edge_middle_crossing(test, device):
     test.assertAlmostEqual(st0[0], 0.5)  # s value
     test.assertAlmostEqual(st0[1], 0.5)  # t value
 
+
 def test_edge_edge_parallel_s1_t0(test, device):
     p1_h = np.array([[0, 0, 0]])
     q1_h = np.array([[1, 1, 0]])
@@ -83,6 +85,7 @@ def test_edge_edge_parallel_s1_t0(test, device):
     st0 = res[0]
     test.assertAlmostEqual(st0[0], 1.0)  # s value
     test.assertAlmostEqual(st0[1], 0.0)  # t value
+
 
 def test_edge_edge_parallel_s0_t1(test, device):
     p1_h = np.array([[0, 0, 0]])
@@ -95,6 +98,7 @@ def test_edge_edge_parallel_s0_t1(test, device):
     test.assertAlmostEqual(st0[0], 0.0)  # s value
     test.assertAlmostEqual(st0[1], 1.0)  # t value
 
+
 def test_edge_edge_both_degenerate_case(test, device):
     p1_h = np.array([[0, 0, 0]])
     q1_h = np.array([[0, 0, 0]])
@@ -105,6 +109,7 @@ def test_edge_edge_both_degenerate_case(test, device):
     st0 = res[0]
     test.assertAlmostEqual(st0[0], 0.0)  # s value
     test.assertAlmostEqual(st0[1], 0.0)  # t value
+
 
 def test_edge_edge_degenerate_first_edge(test, device):
     p1_h = np.array([[0, 0, 0]])
@@ -117,6 +122,7 @@ def test_edge_edge_degenerate_first_edge(test, device):
     test.assertAlmostEqual(st0[0], 0.0)  # s value
     test.assertAlmostEqual(st0[1], 0.5)  # t value
 
+
 def test_edge_edge_degenerate_second_edge(test, device):
     p1_h = np.array([[1, 0, 0]])
     q1_h = np.array([[0, 1, 0]])
@@ -127,6 +133,7 @@ def test_edge_edge_degenerate_second_edge(test, device):
     st0 = res[0]
     test.assertAlmostEqual(st0[0], 0.5)  # s value
     test.assertAlmostEqual(st0[1], 0.0)  # t value
+
 
 def test_edge_edge_parallel(test, device):
     p1_h = np.array([[0, 0, 0]])
@@ -139,6 +146,7 @@ def test_edge_edge_parallel(test, device):
     test.assertAlmostEqual(st0[0], 0.0)  # s value
     test.assertAlmostEqual(st0[1], 0.5)  # t value
 
+
 def test_edge_edge_perpendicular_s1_t0(test, device):
     p1_h = np.array([[0, 0, 0]])
     q1_h = np.array([[1, 1, 0]])
@@ -150,6 +158,7 @@ def test_edge_edge_perpendicular_s1_t0(test, device):
     test.assertAlmostEqual(st0[0], 1.0)  # s value
     test.assertAlmostEqual(st0[1], 0.0)  # t value
 
+
 def test_edge_edge_perpendicular_s0_t1(test, device):
     p1_h = np.array([[0, 0, 0]])
     q1_h = np.array([[1, 1, 0]])
@@ -159,28 +168,64 @@ def test_edge_edge_perpendicular_s0_t1(test, device):
     res = run_closest_point_edge_edge(p1_h, q1_h, p2_h, q2_h, device)
     st0 = res[0]
     test.assertAlmostEqual(st0[0], 0.0)  # s value
-    test.assertAlmostEqual(st0[1], 1.0)  # t value    
+    test.assertAlmostEqual(st0[1], 1.0)  # t value
 
 
 def register(parent):
-        
     devices = get_test_devices()
 
     class TestClosestPointEdgeEdgeMethods(parent):
         pass
 
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_middle_crossing", test_edge_edge_middle_crossing, devices=devices)
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel_s1_t0", test_edge_edge_parallel_s1_t0, devices=devices)
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel_s0_t1", test_edge_edge_parallel_s0_t1, devices=devices)
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_both_degenerate_case", test_edge_edge_both_degenerate_case, devices=devices)
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_degenerate_first_edge", test_edge_edge_degenerate_first_edge, devices=devices)
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_degenerate_second_edge", test_edge_edge_degenerate_second_edge, devices=devices)
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel", test_edge_edge_parallel, devices=devices)
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_perpendicular_s1_t0", test_edge_edge_perpendicular_s1_t0, devices=devices)
-    add_function_test(TestClosestPointEdgeEdgeMethods, "test_edge_edge_perpendicular_s0_t1", test_edge_edge_perpendicular_s0_t1, devices=devices)
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods,
+        "test_edge_edge_middle_crossing",
+        test_edge_edge_middle_crossing,
+        devices=devices,
+    )
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel_s1_t0", test_edge_edge_parallel_s1_t0, devices=devices
+    )
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel_s0_t1", test_edge_edge_parallel_s0_t1, devices=devices
+    )
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods,
+        "test_edge_edge_both_degenerate_case",
+        test_edge_edge_both_degenerate_case,
+        devices=devices,
+    )
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods,
+        "test_edge_edge_degenerate_first_edge",
+        test_edge_edge_degenerate_first_edge,
+        devices=devices,
+    )
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods,
+        "test_edge_edge_degenerate_second_edge",
+        test_edge_edge_degenerate_second_edge,
+        devices=devices,
+    )
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods, "test_edge_edge_parallel", test_edge_edge_parallel, devices=devices
+    )
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods,
+        "test_edge_edge_perpendicular_s1_t0",
+        test_edge_edge_perpendicular_s1_t0,
+        devices=devices,
+    )
+    add_function_test(
+        TestClosestPointEdgeEdgeMethods,
+        "test_edge_edge_perpendicular_s0_t1",
+        test_edge_edge_perpendicular_s0_t1,
+        devices=devices,
+    )
 
     return TestClosestPointEdgeEdgeMethods
 
-if __name__ == '__main__':    
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

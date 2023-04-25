@@ -23,14 +23,12 @@ def dec_kernel(a: wp.array(dtype=float)):
 
 
 def test_allocs(n, device, do_sync=False):
-
     arrs = [None] * n
 
     with wp.ScopedTimer("allocs"):
-
         for i in range(n):
             arrs[i] = wp.zeros(1, device=device)
-    
+
         if do_sync:
             wp.synchronize()
 
@@ -38,14 +36,12 @@ def test_allocs(n, device, do_sync=False):
 
 
 def test_allocs_v2(n, device, do_sync=False):
-
     arrs = [None] * n
 
     with wp.ScopedTimer("allocs_v2"), wp.ScopedDevice(device):
-
         for i in range(n):
             arrs[i] = wp.zeros(1)
-    
+
         if do_sync:
             wp.synchronize()
 
@@ -53,12 +49,10 @@ def test_allocs_v2(n, device, do_sync=False):
 
 
 def test_launches(n, device, do_sync=False):
-
     arr = wp.zeros(1, dtype=wp.float32, device=device)
     wp.synchronize()
-    
-    with wp.ScopedTimer("launches"):
 
+    with wp.ScopedTimer("launches"):
         for _ in range(n):
             wp.launch(inc_kernel, dim=arr.size, inputs=[arr], device=device)
             wp.launch(dec_kernel, dim=arr.size, inputs=[arr], device=device)
@@ -68,12 +62,10 @@ def test_launches(n, device, do_sync=False):
 
 
 def test_launches_v2(n, device, do_sync=False):
-
     arr = wp.zeros(1, dtype=wp.float32, device=device)
     wp.synchronize()
 
     with wp.ScopedTimer("launches_v2"), wp.ScopedDevice(device):
-
         for _ in range(n):
             wp.launch(inc_kernel, dim=arr.size, inputs=[arr])
             wp.launch(dec_kernel, dim=arr.size, inputs=[arr])
@@ -83,7 +75,6 @@ def test_launches_v2(n, device, do_sync=False):
 
 
 def test_copies(n, do_sync=False):
-    
     a = wp.zeros(1, dtype=wp.float32, device="cpu")
     b = wp.zeros(1, dtype=wp.float32, device="cuda")
     c = wp.zeros(1, dtype=wp.float32, device="cuda")
@@ -91,7 +82,6 @@ def test_copies(n, do_sync=False):
     wp.synchronize()
 
     with wp.ScopedTimer("copies"):
-
         for _ in range(n):
             wp.copy(b, a)
             wp.copy(c, b)
@@ -102,7 +92,6 @@ def test_copies(n, do_sync=False):
 
 
 def test_graphs(n, device, do_sync=False):
-
     arr = wp.zeros(1, dtype=wp.float32, device=device)
     wp.synchronize()
 
@@ -113,7 +102,6 @@ def test_graphs(n, device, do_sync=False):
     wp.synchronize()
 
     with wp.ScopedTimer("graphs"):
-
         for _ in range(n):
             wp.capture_launch(graph)
 
@@ -159,7 +147,7 @@ wp.synchronize()
 gc.collect()
 
 
-#========= profiling ==========#
+# ========= profiling ==========#
 
 # import cProfile
 # cProfile.run('test_allocs(n, device)')

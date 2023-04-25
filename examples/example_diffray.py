@@ -26,15 +26,18 @@ import math
 
 wp.init()
 
+
 class RenderMode:
     """Rendering modes
     grayscale: lambertian shading from multiple directional lights
     texture: 2D texture map
     normal_map: mesh normal computed from interpolated vertex normals
     """
+
     grayscale = 0
     texture = 1
     normal_map = 2
+
 
 @wp.struct
 class RenderMesh:
@@ -42,6 +45,7 @@ class RenderMesh:
     Assumes a triangle mesh as input.
     Per-vertex normals are computed with compute_vertex_normals()
     """
+
     id: wp.uint64
     vertices: wp.array(dtype=wp.vec3)
     indices: wp.array(dtype=int)
@@ -51,10 +55,11 @@ class RenderMesh:
     pos: wp.array(dtype=wp.vec3)
     rot: wp.array(dtype=wp.quat)
 
+
 @wp.struct
 class Camera:
-    """Basic camera for ray tracing
-    """
+    """Basic camera for ray tracing"""
+
     horizontal: float
     vertical: float
     aspect: float
@@ -63,17 +68,19 @@ class Camera:
     pos: wp.vec3
     rot: wp.quat
 
-@wp.struct        
+
+@wp.struct
 class DirectionalLights:
-    """Stores arrays of directional light directions and intensities.
-    """
+    """Stores arrays of directional light directions and intensities."""
+
     dirs: wp.array(dtype=wp.vec3)
     intensities: wp.array(dtype=float)
     num_lights: int
 
+
 class Example:
     """A basic differentiable ray tracer
-    
+
     Non-differentiable variables:
     camera.horizontal: camera horizontal aperture size
     camera.vertical: camera vertical aperture size
@@ -87,17 +94,16 @@ class Example:
     directional_lights: characterized by intensity (scalar) and direction (vec3)
     render_mesh.indices: mesh vertex indices
     render_mesh.tex_indices: texture indices
-    
+
     Differentiable variables:
     render_mesh.pos: parent transform displacement
     render_mesh.quat: parent transform rotation (quaternion)
     render_mesh.vertices: mesh vertex positions
     render_mesh.vertex_normals: mesh vertex normals
-    render_mesh.tex_coords: 2D texture coordinates 
+    render_mesh.tex_coords: 2D texture coordinates
     """
 
     def __init__(self):
-
         cam_pos = wp.vec3(0.0, 0.75, 7.0)
         cam_rot = wp.quat(0.0, 0.0, 0.0, 1.0)
         horizontal_aperture = 36.0
@@ -144,12 +150,10 @@ class Example:
         self.images = np.zeros((self.height, self.width, 3, int(self.train_iters / self.period)))
 
         with wp.ScopedDevice(device="cuda:0"):
-            
             # construct RenderMesh
             self.render_mesh = RenderMesh()
             self.mesh = wp.Mesh(
-                points=wp.array(points, dtype=wp.vec3, requires_grad=True),
-                indices=wp.array(indices, dtype=int)
+                points=wp.array(points, dtype=wp.vec3, requires_grad=True), indices=wp.array(indices, dtype=int)
             )
             self.render_mesh.id = self.mesh.id
             self.render_mesh.vertices = self.mesh.points
@@ -160,16 +164,18 @@ class Example:
             self.render_mesh.vertex_normals = wp.zeros(num_points, dtype=wp.vec3, requires_grad=True)
             self.render_mesh.pos = wp.zeros(1, dtype=wp.vec3, requires_grad=True)
             self.render_mesh.rot = wp.array(np.array([0.0, 0.0, 0.0, 1.0]), dtype=wp.quat, requires_grad=True)
-            
+
             # compute vertex normals
             wp.launch(
                 kernel=Example.vertex_normal_sum_kernel,
                 dim=num_faces,
-                inputs=[self.render_mesh.vertices, self.render_mesh.indices, self.normal_sums])
+                inputs=[self.render_mesh.vertices, self.render_mesh.indices, self.normal_sums],
+            )
             wp.launch(
                 kernel=Example.normalize_kernel,
                 dim=num_points,
-                inputs=[self.normal_sums, self.render_mesh.vertex_normals])
+                inputs=[self.normal_sums, self.render_mesh.vertex_normals],
+            )
 
             # construct camera
             self.camera = Camera()
@@ -201,15 +207,13 @@ class Example:
             self.target_pixels = wp.zeros(self.num_pixels, dtype=wp.vec3)
 
             # loss array
-            self.loss = wp.zeros(1, dtype=float, requires_grad=True)  
+            self.loss = wp.zeros(1, dtype=float, requires_grad=True)
 
     def update(self):
         pass
 
     def render(self, is_live=False):
-
         with wp.ScopedDevice("cuda:0"):
-
             # raycast
             wp.launch(
                 kernel=Example.draw_kernel,
@@ -222,28 +226,26 @@ class Example:
                     self.rays_height,
                     self.rays,
                     self.lights,
-                    self.render_mode
-                ])
+                    self.render_mode,
+                ],
+            )
 
             # downsample
             wp.launch(
                 kernel=Example.downsample_kernel,
                 dim=self.num_pixels,
-                inputs=[self.rays, self.pixels, self.rays_width, pow(2, self.num_samples)]
+                inputs=[self.rays, self.pixels, self.rays_width, pow(2, self.num_samples)],
             )
 
     @wp.kernel
     def vertex_normal_sum_kernel(
-            verts: wp.array(dtype=wp.vec3),
-            indices: wp.array(dtype=int),
-            normal_sums: wp.array(dtype=wp.vec3)
-            ):
-
+        verts: wp.array(dtype=wp.vec3), indices: wp.array(dtype=int), normal_sums: wp.array(dtype=wp.vec3)
+    ):
         tid = wp.tid()
 
-        i = indices[tid*3]
-        j = indices[tid*3 + 1]
-        k = indices[tid*3 + 2]
+        i = indices[tid * 3]
+        j = indices[tid * 3 + 1]
+        k = indices[tid * 3 + 2]
 
         a = verts[i]
         b = verts[j]
@@ -259,22 +261,18 @@ class Example:
 
     @wp.kernel
     def normalize_kernel(
-            normal_sums: wp.array(dtype=wp.vec3),
-            vertex_normals: wp.array(dtype=wp.vec3),
-            ):
-
+        normal_sums: wp.array(dtype=wp.vec3),
+        vertex_normals: wp.array(dtype=wp.vec3),
+    ):
         tid = wp.tid()
         vertex_normals[tid] = wp.normalize(normal_sums[tid])
 
     @wp.func
-    def texture_interpolation(
-            tex_interp: wp.vec2,
-            texture: wp.array2d(dtype=wp.vec3)):
-        
+    def texture_interpolation(tex_interp: wp.vec2, texture: wp.array2d(dtype=wp.vec3)):
         tex_width = texture.shape[1]
         tex_height = texture.shape[0]
         tex = wp.vec2(tex_interp[0] * float(tex_width - 1), (1.0 - tex_interp[1]) * float(tex_height - 1))
-        
+
         x0 = int(tex[0])
         x1 = x0 + 1
         alpha_x = tex[0] - float(x0)
@@ -293,26 +291,28 @@ class Example:
 
     @wp.kernel
     def draw_kernel(
-            mesh: RenderMesh,
-            camera: Camera,
-            texture: wp.array2d(dtype=wp.vec3),
-            rays_width: int,
-            rays_height: int,
-            rays: wp.array(dtype=wp.vec3),
-            lights: DirectionalLights,
-            mode: int):
-        
+        mesh: RenderMesh,
+        camera: Camera,
+        texture: wp.array2d(dtype=wp.vec3),
+        rays_width: int,
+        rays_height: int,
+        rays: wp.array(dtype=wp.vec3),
+        lights: DirectionalLights,
+        mode: int,
+    ):
         tid = wp.tid()
 
         x = tid % rays_width
         y = rays_height - tid // rays_width
-        
-        sx = 2.0*float(x)/float(rays_width) - 1.0
-        sy = 2.0*float(y)/float(rays_height) - 1.0
+
+        sx = 2.0 * float(x) / float(rays_width) - 1.0
+        sy = 2.0 * float(y) / float(rays_height) - 1.0
 
         # compute view ray in world space
         ro_world = camera.pos
-        rd_world = wp.normalize(wp.quat_rotate(camera.rot, wp.vec3(sx * camera.tan * camera.aspect, sy * camera.tan, -1.0)))
+        rd_world = wp.normalize(
+            wp.quat_rotate(camera.rot, wp.vec3(sx * camera.tan * camera.aspect, sy * camera.tan, -1.0))
+        )
 
         # compute view ray in mesh space
         inv = wp.transform_inverse(wp.transform(mesh.pos[0], mesh.rot[0]))
@@ -328,11 +328,11 @@ class Example:
 
         color = wp.vec3(0.0, 0.0, 0.0)
 
-        if wp.mesh_query_ray(mesh.id, ro, rd, 1.e+6, t, ur, vr, sign, n, f):
-            i = mesh.indices[f*3]
-            j = mesh.indices[f*3 + 1]
-            k = mesh.indices[f*3 + 2]
-            
+        if wp.mesh_query_ray(mesh.id, ro, rd, 1.0e6, t, ur, vr, sign, n, f):
+            i = mesh.indices[f * 3]
+            j = mesh.indices[f * 3 + 1]
+            k = mesh.indices[f * 3 + 2]
+
             a = mesh.vertices[i]
             b = mesh.vertices[j]
             c = mesh.vertices[k]
@@ -340,9 +340,9 @@ class Example:
             p = wp.mesh_eval_position(mesh.id, f, ur, vr)
 
             # barycentric coordinates
-            tri_area = wp.length(wp.cross(b-a, c-a))
-            w = wp.length(wp.cross(b-a, p-a)) / tri_area
-            v = wp.length(wp.cross(p-a, c-a)) / tri_area
+            tri_area = wp.length(wp.cross(b - a, c - a))
+            w = wp.length(wp.cross(b - a, p - a)) / tri_area
+            v = wp.length(wp.cross(p - a, c - a)) / tri_area
             u = 1.0 - w - v
 
             a_n = mesh.vertex_normals[i]
@@ -353,14 +353,13 @@ class Example:
             normal = u * a_n + v * b_n + w * c_n
 
             if mode == 0 or mode == 1:
-
                 if mode == 0:  # grayscale
                     color = wp.vec3(1.0)
 
                 elif mode == 1:  # texture interpolation
-                    tex_a = mesh.tex_coords[mesh.tex_indices[f*3]]
-                    tex_b = mesh.tex_coords[mesh.tex_indices[f*3 + 1]]
-                    tex_c = mesh.tex_coords[mesh.tex_indices[f*3 + 2]]
+                    tex_a = mesh.tex_coords[mesh.tex_indices[f * 3]]
+                    tex_b = mesh.tex_coords[mesh.tex_indices[f * 3 + 1]]
+                    tex_c = mesh.tex_coords[mesh.tex_indices[f * 3 + 2]]
 
                     tex = u * tex_a + v * tex_b + w * tex_c
 
@@ -376,31 +375,30 @@ class Example:
                     lambert = lambert + val
 
                 color = lambert * color
-            
-            elif mode == 2:  # normal map
 
+            elif mode == 2:  # normal map
                 color = normal * 0.5 + wp.vec3(0.5, 0.5, 0.5)
 
-            if (color[0] > 1.0): color = wp.vec3(1.0, color[1], color[2])
-            if (color[1] > 1.0): color = wp.vec3(color[0], 1.0, color[2])
-            if (color[2] > 1.0): color = wp.vec3(color[0], color[1], 1.0)
+            if color[0] > 1.0:
+                color = wp.vec3(1.0, color[1], color[2])
+            if color[1] > 1.0:
+                color = wp.vec3(color[0], 1.0, color[2])
+            if color[2] > 1.0:
+                color = wp.vec3(color[0], color[1], 1.0)
 
         rays[tid] = color
 
     @wp.kernel
     def downsample_kernel(
-            rays: wp.array(dtype=wp.vec3),
-            pixels: wp.array(dtype=wp.vec3),
-            rays_width: int,
-            num_samples: int):
-
+        rays: wp.array(dtype=wp.vec3), pixels: wp.array(dtype=wp.vec3), rays_width: int, num_samples: int
+    ):
         tid = wp.tid()
 
         pixels_width = rays_width / num_samples
         px = tid % pixels_width
         py = tid // pixels_width
         start_idx = py * num_samples * rays_width + px * num_samples
-        
+
         color = wp.vec3(0.0, 0.0, 0.0)
 
         for i in range(0, num_samples):
@@ -414,16 +412,14 @@ class Example:
 
     @wp.kernel
     def loss_kernel(
-            pixels: wp.array(dtype=wp.vec3),
-            target_pixels: wp.array(dtype=wp.vec3),
-            loss: wp.array(dtype=float)):
-
+        pixels: wp.array(dtype=wp.vec3), target_pixels: wp.array(dtype=wp.vec3), loss: wp.array(dtype=float)
+    ):
         tid = wp.tid()
 
         pixel = pixels[tid]
         target_pixel = target_pixels[tid]
 
-        diff = (target_pixel - pixel)
+        diff = target_pixel - pixel
 
         # pseudo Huber loss
         delta = 1.0
@@ -435,10 +431,7 @@ class Example:
         wp.atomic_add(loss, 0, sum)
 
     @wp.kernel
-    def step_kernel(x: wp.array(dtype=wp.quat),
-                    grad: wp.array(dtype=wp.quat),
-                    alpha: float):
-
+    def step_kernel(x: wp.array(dtype=wp.quat), grad: wp.array(dtype=wp.quat), alpha: float):
         tid = wp.tid()
 
         # projected gradient descent
@@ -449,7 +442,6 @@ class Example:
         wp.launch(self.loss_kernel, dim=self.num_pixels, inputs=[self.pixels, self.target_pixels, self.loss])
 
     def train_graph(self):
-
         with wp.ScopedDevice("cuda:0"):
             # capture graph
             wp.capture_begin()
@@ -468,9 +460,9 @@ class Example:
 
                 if i % self.period == 0:
                     print(f"Iter: {i} Loss: {self.loss}")
-                    self.images[:,:,:,image_counter] = self.get_image()
+                    self.images[:, :, :, image_counter] = self.get_image()
                     image_counter += 1
-                
+
                 tape.zero()
                 self.loss.zero_()
 
@@ -479,22 +471,22 @@ class Example:
 
     def get_animation(self):
         fig, ax = plt.subplots()
-        plt.axis('off')
+        plt.axis("off")
         plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
-        plt.margins(0,0)
+        plt.margins(0, 0)
 
         frames = []
         for i in range(self.images.shape[3]):
-            frame = ax.imshow(self.images[:,:,:,i], animated=True)
+            frame = ax.imshow(self.images[:, :, :, i], animated=True)
             frames.append([frame])
 
         ani = animation.ArtistAnimation(fig, frames, interval=50, blit=True, repeat_delay=1000)
         return ani
 
-if __name__ == '__main__':
 
+if __name__ == "__main__":
     output_dir = os.path.join(os.path.dirname(__file__), "outputs")
-    
+
     example = Example()
 
     # render target rotation
@@ -506,7 +498,13 @@ if __name__ == '__main__':
 
     # offset mesh rotation
     with wp.ScopedDevice(device="cuda:0"):
-        example.render_mesh.rot = wp.array(np.array([0.0, (math.sqrt(3) - 1) / (2.0 * math.sqrt(2.0)), 0.0, (math.sqrt(3) + 1) / (2.0 * math.sqrt(2.0))]), dtype=wp.quat, requires_grad=True)
+        example.render_mesh.rot = wp.array(
+            np.array(
+                [0.0, (math.sqrt(3) - 1) / (2.0 * math.sqrt(2.0)), 0.0, (math.sqrt(3) + 1) / (2.0 * math.sqrt(2.0))]
+            ),
+            dtype=wp.quat,
+            requires_grad=True,
+        )
 
     # recover target rotation
     example.train_graph()
@@ -515,4 +513,3 @@ if __name__ == '__main__':
 
     video = example.get_animation()
     video.save(output_dir + "/animation.gif", dpi=300, writer=animation.PillowWriter(fps=15))
-    

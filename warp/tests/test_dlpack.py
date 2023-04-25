@@ -18,13 +18,11 @@ wp.init()
 
 @wp.kernel
 def inc(a: wp.array(dtype=float)):
-
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 
 
 def test_dlpack_warp_to_warp(test, device):
-
     a1 = wp.array(data=np.arange(10, dtype=np.float32), device=device)
 
     a2 = wp.from_dlpack(wp.to_dlpack(a1))
@@ -43,7 +41,6 @@ def test_dlpack_warp_to_warp(test, device):
 
 
 def test_dlpack_dtypes_and_shapes(test, device):
-
     # automatically determine scalar dtype
     def wrap_scalar_tensor_implicit(dtype):
         a1 = wp.zeros(10, dtype=dtype, device=device)
@@ -157,7 +154,6 @@ def test_dlpack_dtypes_and_shapes(test, device):
 
 
 def test_dlpack_warp_to_torch(test, device):
-
     import torch.utils.dlpack
 
     a = wp.array(data=np.arange(10, dtype=np.float32), device=device)
@@ -184,7 +180,6 @@ def test_dlpack_warp_to_torch(test, device):
 
 
 def test_dlpack_torch_to_warp(test, device):
-
     import torch
     import torch.utils.dlpack
 
@@ -212,7 +207,6 @@ def test_dlpack_torch_to_warp(test, device):
 
 
 def test_dlpack_warp_to_jax(test, device):
-
     import jax
     import jax.dlpack
 
@@ -247,12 +241,10 @@ def test_dlpack_warp_to_jax(test, device):
 
 
 def test_dlpack_jax_to_warp(test, device):
-
     import jax
     import jax.dlpack
 
     with jax.default_device(wp.device_to_jax(device)):
-
         j = jax.numpy.arange(10, dtype=jax.numpy.float32)
 
         # use generic dlpack conversion
@@ -283,7 +275,6 @@ def test_dlpack_jax_to_warp(test, device):
 
 
 def register(parent):
-
     class TestDLPack(parent):
         pass
 
@@ -310,8 +301,12 @@ def register(parent):
                 print(f"Skipping Torch DLPack tests on device '{d}' due to exception: {e}")
 
         if torch_compatible_devices:
-            add_function_test(TestDLPack, "test_dlpack_warp_to_torch", test_dlpack_warp_to_torch, devices=torch_compatible_devices)
-            add_function_test(TestDLPack, "test_dlpack_torch_to_warp", test_dlpack_torch_to_warp, devices=torch_compatible_devices)
+            add_function_test(
+                TestDLPack, "test_dlpack_warp_to_torch", test_dlpack_warp_to_torch, devices=torch_compatible_devices
+            )
+            add_function_test(
+                TestDLPack, "test_dlpack_torch_to_warp", test_dlpack_torch_to_warp, devices=torch_compatible_devices
+            )
 
     except Exception as e:
         print(f"Skipping Torch DLPack tests due to exception: {e}")
@@ -335,8 +330,12 @@ def register(parent):
                 print(f"Skipping Jax DLPack tests on device '{d}' due to exception: {e}")
 
         if jax_compatible_devices:
-            add_function_test(TestDLPack, "test_dlpack_warp_to_jax", test_dlpack_warp_to_jax, devices=jax_compatible_devices)
-            add_function_test(TestDLPack, "test_dlpack_jax_to_warp", test_dlpack_jax_to_warp, devices=jax_compatible_devices)
+            add_function_test(
+                TestDLPack, "test_dlpack_warp_to_jax", test_dlpack_warp_to_jax, devices=jax_compatible_devices
+            )
+            add_function_test(
+                TestDLPack, "test_dlpack_jax_to_warp", test_dlpack_jax_to_warp, devices=jax_compatible_devices
+            )
 
     except Exception as e:
         print(f"Skipping Jax DLPack tests due to exception: {e}")
@@ -344,6 +343,6 @@ def register(parent):
     return TestDLPack
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

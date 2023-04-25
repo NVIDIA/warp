@@ -6,7 +6,7 @@
 - Add support for `bool` parameters 
 - Add support for logical boolean operators with `int` types
 - Fix for `wp.quat()` default constructor
-- Fix Conditional Reassignments
+- Fix conditional reassignments
 
 ## [0.8.1] - 2023-04-13
 

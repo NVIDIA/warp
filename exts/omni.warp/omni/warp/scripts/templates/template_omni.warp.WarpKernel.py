@@ -31,6 +31,7 @@ from omni.warp.scripts.props.codestr import get_code_str_prop_builder
 from omni.warp.scripts.props.editattrs import get_edit_attrs_prop_builder
 from omni.warp.scripts.props.sourcepicker import get_source_picker_prop_builder
 
+
 def find_prop(
     props: Sequence[UsdPropertyUiEntry],
     name: str,
@@ -40,6 +41,7 @@ def find_prop(
         return next(p for p in props if p.prop_name == name)
     except StopIteration:
         return None
+
 
 class CustomLayout:
     """Custom UI for the kernel node."""
@@ -71,21 +73,11 @@ class CustomLayout:
             self.node,
         )
 
-        self.node.register_on_connected_callback(
-            self._handle_node_attr_connected
-        )
-        self.node.register_on_disconnected_callback(
-            self._handle_node_attr_disconnected
-        )
-        self.dim_source_attr.register_value_changed_callback(
-            self._handle_dim_source_value_changed
-        )
-        self.dim_count_attr.register_value_changed_callback(
-            self._handle_dim_count_value_changed
-        )
-        self.code_provider_attr.register_value_changed_callback(
-            self._handle_code_provider_value_changed
-        )
+        self.node.register_on_connected_callback(self._handle_node_attr_connected)
+        self.node.register_on_disconnected_callback(self._handle_node_attr_disconnected)
+        self.dim_source_attr.register_value_changed_callback(self._handle_dim_source_value_changed)
+        self.dim_count_attr.register_value_changed_callback(self._handle_dim_count_value_changed)
+        self.code_provider_attr.register_value_changed_callback(self._handle_code_provider_value_changed)
 
     def _handle_node_attr_connected(
         self,
@@ -140,10 +132,7 @@ class CustomLayout:
                 and x.get_resolved_type().array_depth > 0
             )
         )
-        dim_sources = (
-            (EXPLICIT_SOURCE,)
-            + tuple(get_attr_base_name(x) for x in input_array_attrs)
-        )
+        dim_sources = (EXPLICIT_SOURCE,) + tuple(get_attr_base_name(x) for x in input_array_attrs)
 
         frame = CustomLayoutFrame(hide_extra=True)
 
@@ -235,8 +224,6 @@ class CustomLayout:
                             ),
                         )
                 else:
-                    raise RuntimeError(
-                        "Unexpected code provider '{}'".format(code_provider)
-                    )
+                    raise RuntimeError("Unexpected code provider '{}'".format(code_provider))
 
         return frame.apply(props)

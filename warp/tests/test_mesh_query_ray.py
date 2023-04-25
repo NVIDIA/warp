@@ -26,23 +26,24 @@ def triangulate(face_counts, face_indices):
     wedgeIdx = 0
 
     for nb in face_counts:
-        for i in range(nb-2):
+        for i in range(nb - 2):
             tri_indices[ctr] = face_indices[wedgeIdx]
             tri_indices[ctr + 1] = face_indices[wedgeIdx + i + 1]
             tri_indices[ctr + 2] = face_indices[wedgeIdx + i + 2]
-            ctr+=3
-        wedgeIdx+=nb
+            ctr += 3
+        wedgeIdx += nb
 
     return tri_indices
 
 
 @wp.kernel
-def mesh_query_ray_loss(mesh: wp.uint64,
-                query_points: wp.array(dtype=wp.vec3),
-                query_dirs: wp.array(dtype=wp.vec3),
-                intersection_points: wp.array(dtype=wp.vec3),
-                loss: wp.array(dtype=float)):
-
+def mesh_query_ray_loss(
+    mesh: wp.uint64,
+    query_points: wp.array(dtype=wp.vec3),
+    query_dirs: wp.array(dtype=wp.vec3),
+    intersection_points: wp.array(dtype=wp.vec3),
+    loss: wp.array(dtype=float),
+):
     tid = wp.tid()
 
     p = query_points[tid]
@@ -67,7 +68,6 @@ def mesh_query_ray_loss(mesh: wp.uint64,
 
 
 def test_mesh_query_ray_grad(test, device):
-
     from pxr import Usd, UsdGeom, Gf, Sdf
 
     # test tri
@@ -90,22 +90,23 @@ def test_mesh_query_ray_grad(test, device):
     D = wp.vec3(0.0, -1.0, 0.0)
 
     # create mesh
-    mesh = wp.Mesh(
-        points=mesh_points, 
-        velocities=None,
-        indices=mesh_indices)
+    mesh = wp.Mesh(points=mesh_points, velocities=None, indices=mesh_indices)
 
     tape = wp.Tape()
 
     # analytic gradients
     with tape:
-
         query_points = wp.array(p, dtype=wp.vec3, device=device, requires_grad=True)
         query_dirs = wp.array(D, dtype=wp.vec3, device=device, requires_grad=True)
         intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
         loss = wp.zeros(n=1, dtype=float, device=device, requires_grad=True)
 
-        wp.launch(kernel=mesh_query_ray_loss, dim=1, inputs=[mesh.id, query_points, query_dirs, intersection_points, loss], device=device)
+        wp.launch(
+            kernel=mesh_query_ray_loss,
+            dim=1,
+            inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
+            device=device,
+        )
 
     tape.backward(loss=loss)
     q = intersection_points.numpy().flatten()
@@ -115,14 +116,18 @@ def test_mesh_query_ray_grad(test, device):
     # numeric gradients
 
     # ray origin
-    eps = 1.e-3
+    eps = 1.0e-3
     loss_values_p = []
     numeric_p = np.zeros(3)
 
     offset_query_points = [
-        wp.vec3(p[0] - eps, p[1], p[2]), wp.vec3(p[0] + eps, p[1], p[2]),
-        wp.vec3(p[0], p[1] - eps, p[2]), wp.vec3(p[0], p[1] + eps, p[2]),
-        wp.vec3(p[0], p[1], p[2] - eps), wp.vec3(p[0], p[1], p[2] + eps)]
+        wp.vec3(p[0] - eps, p[1], p[2]),
+        wp.vec3(p[0] + eps, p[1], p[2]),
+        wp.vec3(p[0], p[1] - eps, p[2]),
+        wp.vec3(p[0], p[1] + eps, p[2]),
+        wp.vec3(p[0], p[1], p[2] - eps),
+        wp.vec3(p[0], p[1], p[2] + eps),
+    ]
 
     for i in range(6):
         q = offset_query_points[i]
@@ -132,14 +137,19 @@ def test_mesh_query_ray_grad(test, device):
         intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
         loss = wp.zeros(n=1, dtype=float, device=device)
 
-        wp.launch(kernel=mesh_query_ray_loss, dim=1, inputs=[mesh.id, query_points, query_dirs, intersection_points, loss], device=device)
+        wp.launch(
+            kernel=mesh_query_ray_loss,
+            dim=1,
+            inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
+            device=device,
+        )
 
         loss_values_p.append(loss.numpy()[0])
 
     for i in range(3):
-        l_0 = loss_values_p[i*2]
-        l_1 = loss_values_p[i*2+1]
-        gradient = (l_1 - l_0) / (2.0*eps)
+        l_0 = loss_values_p[i * 2]
+        l_1 = loss_values_p[i * 2 + 1]
+        gradient = (l_1 - l_0) / (2.0 * eps)
         numeric_p[i] = gradient
 
     # ray dir
@@ -147,9 +157,13 @@ def test_mesh_query_ray_grad(test, device):
     numeric_D = np.zeros(3)
 
     offset_query_dirs = [
-        wp.vec3(D[0] - eps, D[1], D[2]), wp.vec3(D[0] + eps, D[1], D[2]),
-        wp.vec3(D[0], D[1] - eps, D[2]), wp.vec3(D[0], D[1] + eps, D[2]),
-        wp.vec3(D[0], D[1], D[2] - eps), wp.vec3(D[0], D[1], D[2] + eps)]
+        wp.vec3(D[0] - eps, D[1], D[2]),
+        wp.vec3(D[0] + eps, D[1], D[2]),
+        wp.vec3(D[0], D[1] - eps, D[2]),
+        wp.vec3(D[0], D[1] + eps, D[2]),
+        wp.vec3(D[0], D[1], D[2] - eps),
+        wp.vec3(D[0], D[1], D[2] + eps),
+    ]
 
     for i in range(6):
         q = offset_query_dirs[i]
@@ -159,39 +173,44 @@ def test_mesh_query_ray_grad(test, device):
         intersection_points = wp.zeros(n=1, dtype=wp.vec3, device=device)
         loss = wp.zeros(n=1, dtype=float, device=device)
 
-        wp.launch(kernel=mesh_query_ray_loss, dim=1, inputs=[mesh.id, query_points, query_dirs, intersection_points, loss], device=device)
+        wp.launch(
+            kernel=mesh_query_ray_loss,
+            dim=1,
+            inputs=[mesh.id, query_points, query_dirs, intersection_points, loss],
+            device=device,
+        )
 
         loss_values_D.append(loss.numpy()[0])
 
     for i in range(3):
-        l_0 = loss_values_D[i*2]
-        l_1 = loss_values_D[i*2+1]
-        gradient = (l_1 - l_0) / (2.0*eps)
+        l_0 = loss_values_D[i * 2]
+        l_1 = loss_values_D[i * 2 + 1]
+        gradient = (l_1 - l_0) / (2.0 * eps)
         numeric_D[i] = gradient
-    
+
     error_p = ((analytic_p - numeric_p) * (analytic_p - numeric_p)).sum(axis=0)
     error_D = ((analytic_D - numeric_D) * (analytic_D - numeric_D)).sum(axis=0)
 
-    tolerance = 1.e-3
+    tolerance = 1.0e-3
     test.assertTrue(error_p < tolerance, f"error is {error_p} which is >= {tolerance}")
     test.assertTrue(error_D < tolerance, f"error is {error_D} which is >= {tolerance}")
 
 
-
 @wp.kernel
-def raycast_kernel(mesh: wp.uint64,
-                ray_starts: wp.array(dtype=wp.vec3),
-                ray_directions: wp.array(dtype=wp.vec3),
-                ray_hits: wp.array(dtype=wp.vec3),
-                count: wp.array(dtype=int)):
-
-    t = float(0.0)                   # hit distance along ray
-    u = float(0.0)                   # hit face barycentric u
-    v = float(0.0)                   # hit face barycentric v
-    sign = float(0.0)                # hit face sign
-    n = wp.vec3()                    # hit face normal
-    f = int(0)                       # hit face index
-    max_dist = 1e6                   # max raycast disance
+def raycast_kernel(
+    mesh: wp.uint64,
+    ray_starts: wp.array(dtype=wp.vec3),
+    ray_directions: wp.array(dtype=wp.vec3),
+    ray_hits: wp.array(dtype=wp.vec3),
+    count: wp.array(dtype=int),
+):
+    t = float(0.0)  # hit distance along ray
+    u = float(0.0)  # hit face barycentric u
+    v = float(0.0)  # hit face barycentric v
+    sign = float(0.0)  # hit face sign
+    n = wp.vec3()  # hit face normal
+    f = int(0)  # hit face index
+    max_dist = 1e6  # max raycast disance
 
     # ray cast against the mesh
     tid = wp.tid()
@@ -204,8 +223,8 @@ def raycast_kernel(mesh: wp.uint64,
 # with rays exactly falling on the edge, tests that
 # there are no leaks
 
-def test_mesh_query_ray_edge(test, device):
 
+def test_mesh_query_ray_edge(test, device):
     # Create raycast starts and directions
     xx, yy = np.meshgrid(np.arange(0.1, 0.4, 0.01), np.arange(0.1, 0.4, 0.01))
     xx = xx.flatten().reshape(-1, 1)
@@ -216,40 +235,31 @@ def test_mesh_query_ray_edge(test, device):
     ray_dirs = np.zeros_like(ray_starts)
     ray_dirs[:, 2] = -1.0
 
-
     # Create simple square mesh
-    vertices = np.array([[0., 0., 0.],
-                        [0., 0.5, 0.],
-                        [0.5, 0., 0.],
-                        [0.5, 0.5, 0.]], dtype=np.float32)
+    vertices = np.array([[0.0, 0.0, 0.0], [0.0, 0.5, 0.0], [0.5, 0.0, 0.0], [0.5, 0.5, 0.0]], dtype=np.float32)
 
-    triangles = np.array([[1, 0, 2],
-                          [1, 2, 3]], dtype=np.int32)
+    triangles = np.array([[1, 0, 2], [1, 2, 3]], dtype=np.int32)
 
-
-    mesh = wp.Mesh(points=wp.array(vertices, dtype=wp.vec3, device=device),
-                indices=wp.array(triangles.flatten(), dtype=int, device=device))
-    
+    mesh = wp.Mesh(
+        points=wp.array(vertices, dtype=wp.vec3, device=device),
+        indices=wp.array(triangles.flatten(), dtype=int, device=device),
+    )
 
     counts = wp.zeros(1, dtype=int, device=device)
 
     n = len(ray_starts)
-    
+
     ray_starts = wp.array(ray_starts, shape=(n,), dtype=wp.vec3, device=device)
     ray_dirs = wp.array(ray_dirs, shape=(n,), dtype=wp.vec3, device=device)
-    ray_hits = wp.zeros((n, ), dtype=wp.vec3, device=device)
-    
-    wp.launch(kernel=raycast_kernel,
-            dim=n,
-            inputs=[mesh.id, ray_starts, ray_dirs, ray_hits, counts],
-            device=device)
+    ray_hits = wp.zeros((n,), dtype=wp.vec3, device=device)
+
+    wp.launch(kernel=raycast_kernel, dim=n, inputs=[mesh.id, ray_starts, ray_dirs, ray_hits, counts], device=device)
     wp.synchronize()
 
     test.assertEqual(counts.numpy()[0], n)
 
 
 def register(parent):
-
     devices = get_test_devices()
 
     class TestMeshQueryRay(parent):
@@ -260,6 +270,7 @@ def register(parent):
     # USD import failures should not count as a test failure
     try:
         from pxr import Usd, UsdGeom
+
         have_usd = True
     except:
         have_usd = False
@@ -269,6 +280,7 @@ def register(parent):
 
     return TestMeshQueryRay
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

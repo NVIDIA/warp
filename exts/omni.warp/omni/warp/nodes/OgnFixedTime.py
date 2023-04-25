@@ -18,36 +18,32 @@ import omni.timeline
 
 
 class OgnFixedTimeState:
-
     def __init__(self):
         self.time = 0.0
         self.initialized = False
 
+
 class OgnFixedTime:
-    """
-    """
-
-
+    """ """
 
     @staticmethod
     def internal_state():
-
         return OgnFixedTimeState()
 
     @staticmethod
     def compute(db) -> bool:
         """Compute the outputs from the current input"""
 
-        timeline =  omni.timeline.get_timeline_interface()
+        timeline = omni.timeline.get_timeline_interface()
         context = db.internal_state
 
-        if (context.initialized == False):
+        if context.initialized == False:
             context.time = db.inputs.start
             context.initialized = True
 
-        db.outputs.time  = context.time
+        db.outputs.time = context.time
 
-        if (timeline.is_playing()):
-            context.time += 1.0/db.inputs.fps
+        if timeline.is_playing():
+            context.time += 1.0 / db.inputs.fps
 
         return True

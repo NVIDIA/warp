@@ -11,44 +11,42 @@ from warp.tests.test_base import *
 
 wp.init()
 
+
 @wp.func
 def mlp_activation(z: float):
     return wp.tanh(z)
 
 
 @wp.kernel
-def mlp_kernel(weights: wp.array2d(dtype=float),
-               bias: wp.array(dtype=float),
-               x: wp.array2d(dtype=float),
-               y: wp.array2d(dtype=float)):
-
-
+def mlp_kernel(
+    weights: wp.array2d(dtype=float),
+    bias: wp.array(dtype=float),
+    x: wp.array2d(dtype=float),
+    y: wp.array2d(dtype=float),
+):
     wp.mlp(weights, bias, mlp_activation, wp.tid(), x, y)
-    
+
 
 @wp.kernel
-def loss_kernel(x: wp.array2d(dtype=float),
-                loss: wp.array(dtype=float)):
-
+def loss_kernel(x: wp.array2d(dtype=float), loss: wp.array(dtype=float)):
     i, j = wp.tid()
-        
-    wp.atomic_add(loss, 0, x[i,j]*x[i,j])
+
+    wp.atomic_add(loss, 0, x[i, j] * x[i, j])
 
 
 def test_mlp(test, device):
-
     np.random.seed(0)
 
     m = 10
     n = 200
 
     batches = 20000
-    
-    weights = wp.array(np.random.rand(m, n)*0.5 - 0.5, dtype=float, device=device)
-    bias = wp.array(np.random.rand(m)*0.5 - 0.5, dtype=float, device=device)
+
+    weights = wp.array(np.random.rand(m, n) * 0.5 - 0.5, dtype=float, device=device)
+    bias = wp.array(np.random.rand(m) * 0.5 - 0.5, dtype=float, device=device)
 
     x = wp.array(np.random.rand(n, batches), dtype=float, device=device)
-    y = wp.zeros(shape=(m,batches), device=device)
+    y = wp.zeros(shape=(m, batches), device=device)
 
     with wp.ScopedTimer("warp", active=False):
         wp.launch(mlp_kernel, dim=batches, inputs=[weights, bias, x, y], device=device)
@@ -56,28 +54,27 @@ def test_mlp(test, device):
 
     # A*x + b
     with wp.ScopedTimer("numpy", active=False):
-        expect = np.tanh(weights.numpy().reshape(m,n)@x.numpy().reshape(-1, batches) + bias.numpy().reshape(m, 1))
+        expect = np.tanh(weights.numpy().reshape(m, n) @ x.numpy().reshape(-1, batches) + bias.numpy().reshape(m, 1))
 
     result = y.numpy().reshape(-1, batches)
 
-    assert_np_equal(result, expect, tol=1.e-6)
+    assert_np_equal(result, expect, tol=1.0e-6)
 
 
 def create_mlp(m, n):
-
     import torch
+
     torch.manual_seed(0)
 
     class FeedForward(torch.nn.Module):
-
         def __init__(self, input_size, hidden_size):
             super(FeedForward, self).__init__()
 
             self.input_size = input_size
-            self.hidden_size  = hidden_size
+            self.hidden_size = hidden_size
             self.fc1 = torch.nn.Linear(self.input_size, self.hidden_size)
             self.act = torch.nn.Tanh()
-        
+
         def forward(self, x):
             out = self.fc1(x)
             out = self.act(out)
@@ -87,7 +84,6 @@ def create_mlp(m, n):
 
 
 def create_golden():
-
     import torch
 
     input_size = 32
@@ -117,16 +113,15 @@ def create_golden():
     results["loss"] = loss.cpu().detach().numpy()
 
     np.save(os.path.join(os.path.dirname(__file__), "assets/mlp_golden.npy"), results, allow_pickle=True)
-    
+
+
 def load_golden():
-    
     return np.load(os.path.join(os.path.dirname(__file__), "assets/mlp_golden.npy"), allow_pickle=True).item()
 
 
 def test_mlp_grad(test, device):
-
     # uncomment to re-build golden files
-    #create_golden()
+    # create_golden()
 
     results = load_golden()
 
@@ -161,20 +156,17 @@ def test_mlp_grad(test, device):
     tape.backward(loss=loss)
 
     # check forward result
-    assert_np_equal(y.numpy().reshape(-1, b), torch_y, tol=1.e-1)
-    assert_np_equal(loss.numpy(), torch_loss, tol=1.e-1)
+    assert_np_equal(y.numpy().reshape(-1, b), torch_y, tol=1.0e-1)
+    assert_np_equal(loss.numpy(), torch_loss, tol=1.0e-1)
 
     # check backward result
-    assert_np_equal(tape.gradients[weights].numpy().reshape(m, n), torch_weights_grad, tol=1.e-1)
-    assert_np_equal(tape.gradients[bias].numpy(), torch_bias_grad, tol=1.e-1)
-    assert_np_equal(tape.gradients[x].numpy().reshape(n, b), torch_x_grad, tol=1.e-1)
-    assert_np_equal(tape.gradients[y].numpy().reshape(m, b), torch_y_grad, tol=1.e-1)
-
-    
+    assert_np_equal(tape.gradients[weights].numpy().reshape(m, n), torch_weights_grad, tol=1.0e-1)
+    assert_np_equal(tape.gradients[bias].numpy(), torch_bias_grad, tol=1.0e-1)
+    assert_np_equal(tape.gradients[x].numpy().reshape(n, b), torch_x_grad, tol=1.0e-1)
+    assert_np_equal(tape.gradients[y].numpy().reshape(m, b), torch_y_grad, tol=1.0e-1)
 
 
 def profile_mlp_torch(device):
-
     import torch
 
     m = 128
@@ -182,32 +174,29 @@ def profile_mlp_torch(device):
 
     steps = 20
 
-    for i in range(steps):       
-
+    for i in range(steps):
         b = 2**i
 
         network = create_mlp(m, n)
-          
+
         x = torch.Tensor(np.random.rand(b, m))
 
         with wp.ScopedTimer("torch_forward" + str(b)):
             y = network.forward(x)
             torch.cuda.synchronize()
 
-
-    for i in range(steps):       
-
+    for i in range(steps):
         b = 2**i
 
         network = create_mlp(m, n)
-          
+
         x = torch.Tensor(np.random.rand(b, m))
         y = network.forward(x)
 
         loss = torch.norm(y)
 
         # run once to alloc all gradients
-        loss.backward(retain_graph=True)        
+        loss.backward(retain_graph=True)
 
         with wp.ScopedTimer("torch-backward" + str(b)):
             loss.backward()
@@ -215,36 +204,32 @@ def profile_mlp_torch(device):
 
 
 def profile_mlp_warp(device):
-
     m = 128
     n = 64
 
     steps = 20
 
     for i in range(steps):
-
         b = 2**i
-        
-        weights = wp.array(np.random.rand(m, n)*0.5 - 0.5, dtype=float, device=device)
-        bias = wp.array(np.random.rand(m)*0.5 - 0.5, dtype=float, device=device)
+
+        weights = wp.array(np.random.rand(m, n) * 0.5 - 0.5, dtype=float, device=device)
+        bias = wp.array(np.random.rand(m) * 0.5 - 0.5, dtype=float, device=device)
 
         x = wp.array(np.random.rand(n, b), dtype=float, device=device)
-        y = wp.zeros(shape=(m,b), device=device)
+        y = wp.zeros(shape=(m, b), device=device)
 
         with wp.ScopedTimer("warp-forward" + str(b)):
             wp.launch(mlp_kernel, dim=b, inputs=[weights, bias, x, y], device=device)
             wp.synchronize()
 
-
     for i in range(steps):
-
         b = 2**i
 
-        weights = wp.array(np.random.rand(m, n)*0.5 - 0.5, dtype=float, device=device, requires_grad=True)
-        bias = wp.array(np.random.rand(m)*0.5 - 0.5, dtype=float, device=device, requires_grad=True)
+        weights = wp.array(np.random.rand(m, n) * 0.5 - 0.5, dtype=float, device=device, requires_grad=True)
+        bias = wp.array(np.random.rand(m) * 0.5 - 0.5, dtype=float, device=device, requires_grad=True)
 
         x = wp.array(np.random.rand(n, b), dtype=float, device=device, requires_grad=True)
-        y = wp.zeros(shape=(m,b), device=device, requires_grad=True)
+        y = wp.zeros(shape=(m, b), device=device, requires_grad=True)
 
         loss = wp.zeros(1, dtype=float, device=device)
 
@@ -265,18 +250,19 @@ def profile_mlp_warp(device):
 # profile_mlp_warp("cuda")
 # profile_mlp_torch("cuda")
 
-def register(parent):
 
+def register(parent):
     devices = get_test_devices()
 
     class TestMLP(parent):
         pass
-    
+
     add_function_test(TestMLP, "test_mlp", test_mlp, devices=devices)
     add_function_test(TestMLP, "test_mlp_grad", test_mlp_grad, devices=devices)
-    
+
     return TestMLP
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)

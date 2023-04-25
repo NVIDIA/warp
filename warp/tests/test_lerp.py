@@ -14,6 +14,7 @@ import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
+
 @dataclass
 class TestData:
     a: Any
@@ -25,11 +26,8 @@ class TestData:
     expected_adj_t: float = None
 
     def check_backwards(self):
-        return (
-            self.expected_adj_a is not None
-            and self.expected_adj_b is not None
-            and self.expected_adj_t is not None
-        )
+        return self.expected_adj_a is not None and self.expected_adj_b is not None and self.expected_adj_t is not None
+
 
 TEST_DATA = {
     wp.float32: (
@@ -135,35 +133,40 @@ TEST_DATA = {
     ),
     wp.spatial_matrix: (
         TestData(
-            a=[[1, 2, 3, 4, 5, 6],
-               [6, 1, 2, 3, 4, 5],
-               [5, 6, 1, 2, 3, 4],
-               [4, 5, 6, 1, 2, 3],
-               [3, 4, 5, 6, 1, 2],
-               [2, 3, 4, 5, 6, 1]],
-            b=[[3, 4, 5, 6, 7, 8],
-               [8, 3, 4, 5, 6, 7],
-               [7, 8, 3, 4, 5, 6],
-               [6, 7, 8, 3, 4, 5],
-               [5, 6, 7, 8, 3, 4],
-               [4, 5, 6, 7, 8, 3]],
+            a=[
+                [1, 2, 3, 4, 5, 6],
+                [6, 1, 2, 3, 4, 5],
+                [5, 6, 1, 2, 3, 4],
+                [4, 5, 6, 1, 2, 3],
+                [3, 4, 5, 6, 1, 2],
+                [2, 3, 4, 5, 6, 1],
+            ],
+            b=[
+                [3, 4, 5, 6, 7, 8],
+                [8, 3, 4, 5, 6, 7],
+                [7, 8, 3, 4, 5, 6],
+                [6, 7, 8, 3, 4, 5],
+                [5, 6, 7, 8, 3, 4],
+                [4, 5, 6, 7, 8, 3],
+            ],
             t=0.5,
-            expected=[[2, 3, 4, 5, 6, 7],
-                      [7, 2, 3, 4, 5, 6],
-                      [6, 7, 2, 3, 4, 5],
-                      [5, 6, 7, 2, 3, 4],
-                      [4, 5, 6, 7, 2, 3],
-                      [3, 4, 5, 6, 7, 2]],
+            expected=[
+                [2, 3, 4, 5, 6, 7],
+                [7, 2, 3, 4, 5, 6],
+                [6, 7, 2, 3, 4, 5],
+                [5, 6, 7, 2, 3, 4],
+                [4, 5, 6, 7, 2, 3],
+                [3, 4, 5, 6, 7, 2],
+            ],
         ),
     ),
 }
 
 wp.init()
 
+
 def test_lerp(test, device):
-
     def make_kernel_fn(data_type):
-
         def fn(
             a: wp.array(dtype=data_type),
             b: wp.array(dtype=data_type),
@@ -243,6 +246,7 @@ def test_lerp(test, device):
                     tol=1e-6,
                 )
 
+
 def register(parent):
     devices = get_test_devices()
 
@@ -251,6 +255,7 @@ def register(parent):
 
     add_function_test(TestLerp, "test_lerp", test_lerp, devices=devices)
     return TestLerp
+
 
 if __name__ == "__main__":
     _ = register(unittest.TestCase)

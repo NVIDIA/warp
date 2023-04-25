@@ -28,10 +28,10 @@ def device_to_torch(wp_device):
 
 
 def dtype_from_torch(torch_dtype):
-
     # initialize lookup table on first call to defer torch import
     if dtype_from_torch.type_map is None:
         import torch
+
         dtype_from_torch.type_map = {
             torch.float64: warp.float64,
             torch.float32: warp.float32,
@@ -55,14 +55,15 @@ def dtype_from_torch(torch_dtype):
     else:
         raise TypeError(f"Invalid or unsupported data type: {torch_dtype}")
 
+
 dtype_from_torch.type_map = None
 
 
 def dtype_is_compatible(torch_dtype, warp_dtype):
-
     # initialize lookup table on first call to defer torch import
     if dtype_is_compatible.compatible_sets is None:
         import torch
+
         dtype_is_compatible.compatible_sets = {
             torch.float64: {warp.float64},
             # float32 can be used for scalars and vector/matrix types
@@ -88,12 +89,12 @@ def dtype_is_compatible(torch_dtype, warp_dtype):
     else:
         raise TypeError(f"Invalid or unsupported data type: {torch_dtype}")
 
+
 dtype_is_compatible.compatible_sets = None
 
 
 # wrap a torch tensor to a wp array, data is not copied
 def from_torch(t, dtype=None, requires_grad=None):
-
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
@@ -112,22 +113,25 @@ def from_torch(t, dtype=None, requires_grad=None):
     # then check if trailing dimensions match
     # the target type and update the shape
     if hasattr(dtype, "_shape_"):
-
         dtype_shape = dtype._shape_
         dtype_dims = len(dtype._shape_)
         if dtype_dims > len(shape) or dtype_shape != shape[-dtype_dims:]:
-            raise RuntimeError(f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}")
+            raise RuntimeError(
+                f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}"
+            )
 
         # ensure the inner strides are contiguous
         stride = 4
         for i in range(dtype_dims):
             if strides[-i - 1] != stride:
-                raise RuntimeError(f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous")
+                raise RuntimeError(
+                    f"Could not convert Torch tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous"
+                )
             stride *= dtype_shape[-i - 1]
 
         shape = tuple(shape[:-dtype_dims])
         strides = tuple(strides[:-dtype_dims])
-    
+
     a = warp.types.array(
         ptr=t.data_ptr(),
         dtype=dtype,
@@ -136,7 +140,8 @@ def from_torch(t, dtype=None, requires_grad=None):
         copy=False,
         owner=False,
         requires_grad=requires_grad,
-        device=device_from_torch(t.device))
+        device=device_from_torch(t.device),
+    )
 
     # save a reference to the source tensor, otherwise it will be deallocated
     a.tensor = t
@@ -144,11 +149,10 @@ def from_torch(t, dtype=None, requires_grad=None):
 
 
 def to_torch(a):
-
     import torch
 
     if a.device.is_cpu:
-        # Torch has an issue wrapping CPU objects 
+        # Torch has an issue wrapping CPU objects
         # that support the __array_interface__ protocol
         # in this case we need to workaround by going
         # to an ndarray first, see https://pearu.github.io/array_interface_pytorch.html
@@ -159,13 +163,12 @@ def to_torch(a):
         # correctly, but we must be sure to maintain a reference
         # to the owning object to prevent memory allocs going out of scope
         return torch.as_tensor(a, device=device_to_torch(a.device))
-    
+
     else:
         raise RuntimeError("Unsupported device")
 
 
 def stream_from_torch(stream_or_device=None):
-
     import torch
 
     if isinstance(stream_or_device, torch.cuda.Stream):
@@ -185,7 +188,6 @@ def stream_from_torch(stream_or_device=None):
 
 
 def stream_to_torch(stream_or_device=None):
-
     import torch
 
     if isinstance(stream_or_device, warp.Stream):

@@ -15,9 +15,11 @@ from warp.tests.test_base import *
 
 wp.init()
 
+
 class ScalarFloatValues(NamedTuple):
     degrees: wp.float32 = None
     radians: wp.float32 = None
+
 
 @wp.kernel
 def scalar_float_kernel(
@@ -29,6 +31,7 @@ def scalar_float_kernel(
         out[0] = wp.degrees(x[0])
     elif i == 1:
         out[0] = wp.radians(x[0])
+
 
 def test_scalar_math(test, device):
     float_values = ScalarFloatValues(
@@ -80,6 +83,7 @@ def test_scalar_math(test, device):
             tol=1e-6,
         )
 
+
 def register(parent):
     devices = get_test_devices()
 
@@ -88,6 +92,7 @@ def register(parent):
 
     add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
     return TestMath
+
 
 if __name__ == "__main__":
     _ = register(unittest.TestCase)

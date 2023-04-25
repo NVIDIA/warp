@@ -61,21 +61,25 @@ EXPLICIT_SOURCE = "explicit"
 #   User Attribute Events
 # ------------------------------------------------------------------------------
 
+
 class UserAttributesEvent(IntFlag):
     """User attributes event."""
 
-    NONE    = 0
+    NONE = 0
     CREATED = 1 << 0
     REMOVED = 1 << 1
+
 
 #   User Attributes Description
 # ------------------------------------------------------------------------------
 
+
 class ArrayAttributeFormat(IntEnum):
     """Format describing how attribute arrays are defined on the node."""
 
-    RAW    = (0, "raw")
+    RAW = (0, "raw")
     BUNDLE = (1, "bundle")
+
 
 class UserAttributeDesc(NamedTuple):
     """Description of an attribute added dynamically by users through the UI.
@@ -95,7 +99,7 @@ class UserAttributeDesc(NamedTuple):
     @classmethod
     def deserialize(
         cls,
-        data: Mapping[str: Any],
+        data: Mapping[str:Any],
     ) -> Optional[UserAttributeDesc]:
         """Creates a new instance based on a serialized representation."""
         # Retrieve the port type. It's invalid not to have any set.
@@ -112,9 +116,7 @@ class UserAttributeDesc(NamedTuple):
         values = {
             "array_format": ArrayAttributeFormat.RAW,
             "array_shape_source": (
-                OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL
-                if port_type == _ATTR_PORT_TYPE_OUTPUT
-                else None
+                OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL if port_type == _ATTR_PORT_TYPE_OUTPUT else None
             ),
             "optional": False,
         }
@@ -123,14 +125,17 @@ class UserAttributeDesc(NamedTuple):
         values.update({k: v for k, v in data.items() if k in cls._fields})
 
         # Ensure that the member values are set using their rightful types.
-        values.update({
-            "port_type": port_type,
-            "array_format": ArrayAttributeFormat(values["array_format"]),
-            "array_shape_source": (
-                None if values["array_shape_source"] is None
-                else OutputArrayShapeSource(values["array_shape_source"])
-            ),
-        })
+        values.update(
+            {
+                "port_type": port_type,
+                "array_format": ArrayAttributeFormat(values["array_format"]),
+                "array_shape_source": (
+                    None
+                    if values["array_shape_source"] is None
+                    else OutputArrayShapeSource(values["array_shape_source"])
+                ),
+            }
+        )
 
         try:
             # This might error in case some members are still missing.
@@ -156,24 +161,22 @@ class UserAttributeDesc(NamedTuple):
 
         return self.data_type_name
 
-    def serialize(self) -> Mapping[str: Any]:
+    def serialize(self) -> Mapping[str:Any]:
         """Converts this instance into a serialized representation."""
         return self._replace(
             port_type=int(self.port_type),
         )._asdict()
 
+
 def deserialize_user_attribute_descs(
     data: str,
 ) -> Mapping[str, UserAttributeDesc]:
     """Deserializes a string into a mapping of (name, desc)."""
-    descs = {
-        join_attr_name(x["port_type"], x["base_name"]):
-            UserAttributeDesc.deserialize(x)
-        for x in json.loads(data)
-    }
+    descs = {join_attr_name(x["port_type"], x["base_name"]): UserAttributeDesc.deserialize(x) for x in json.loads(data)}
 
     # Filter out any invalid description.
     return {k: v for k, v in descs.items() if v is not None}
+
 
 def serialize_user_attribute_descs(
     descs: Mapping[str, UserAttributeDesc],
@@ -181,8 +184,10 @@ def serialize_user_attribute_descs(
     """Serializes a mapping of (name, desc) into a string."""
     return json.dumps(tuple(x.serialize() for x in descs.values()))
 
+
 #   User Attributes Information
 # ------------------------------------------------------------------------------
+
 
 def gather_attribute_infos(
     node: og.Node,
@@ -213,17 +218,12 @@ def gather_attribute_infos(
         if attr.get_port_type() != _ATTR_PORT_TYPE_INPUT:
             continue
 
-        (name, base_name, og_type, is_array) = (
-            extract_partial_info_from_attr(attr)
-        )
+        (name, base_name, og_type, is_array) = extract_partial_info_from_attr(attr)
 
         if og_type == BUNDLE_ATTR_TYPE:
             bundle = getattr(db_inputs, base_name)
             bundle_type_attr = bundle.attribute_by_name(BUNDLE_TYPE_ATTR_NAME)
-            if (
-                bundle_type_attr is not None
-                and bundle_type_attr.cpu_value == ArrayAccessor.BUNDLE_TYPE
-            ):
+            if bundle_type_attr is not None and bundle_type_attr.cpu_value == ArrayAccessor.BUNDLE_TYPE:
                 # We make a special case for array bundles by interpreting them
                 # as standard arrays, so that they can then be exposed as
                 # `wp.array` within the kernel.
@@ -260,42 +260,28 @@ def gather_attribute_infos(
         if attr.get_port_type() != _ATTR_PORT_TYPE_OUTPUT:
             continue
 
-        (name, base_name, og_type, is_array) = (
-            extract_partial_info_from_attr(attr)
-        )
+        (name, base_name, og_type, is_array) = extract_partial_info_from_attr(attr)
 
         desc = attr_descs.get(name)
         if desc is None:
             # Fallback for nodes created before the attribute description
             # feature was implemented.
-            array_shape_source = (
-                OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL
-            )
+            array_shape_source = OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL
         else:
             array_shape_source = desc.array_shape_source
 
-        if (
-            array_shape_source
-            == OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL
-        ):
+        if array_shape_source == OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL:
             # Check if we have an input attribute with a matching name,
             # in which case we use its array dimension count.
             try:
-                dim_count = next(
-                    x.dim_count
-                    for x in input_attr_infos
-                    if x.base_name == base_name
-                )
+                dim_count = next(x.dim_count for x in input_attr_infos if x.base_name == base_name)
             except StopIteration:
                 # Fallback to using the kernel's dimension count.
                 dim_count = kernel_dim_count
         elif array_shape_source == OutputArrayShapeSource.AS_KERNEL:
             dim_count = kernel_dim_count
         else:
-            assert False, (
-                "Unexpected array shape source method '{}'."
-                .format(array_shape_source)
-            )
+            assert False, "Unexpected array shape source method '{}'.".format(array_shape_source)
 
         og_data_type = og.Type(
             og_type.base_type,
@@ -325,6 +311,7 @@ def gather_attribute_infos(
         _ATTR_PORT_TYPE_OUTPUT: tuple(output_attr_infos),
     }
 
+
 #   Kernel Code
 # ------------------------------------------------------------------------------
 
@@ -332,6 +319,7 @@ _STRUCT_DECLARATION_CODE_TEMPLATE = """@wp.struct
 class {name}:
 {members}
 """
+
 
 def _generate_struct_declaration_code(warp_struct: wp.struct) -> str:
     """Generates the code declaring a Warp struct."""
@@ -357,6 +345,7 @@ def _generate_struct_declaration_code(warp_struct: wp.struct) -> str:
         members="\n".join(lines),
     )
 
+
 _HEADER_CODE_TEMPLATE = """import warp as wp
 {declarations}
 @wp.struct
@@ -370,30 +359,20 @@ class Outputs:
     pass
 """
 
+
 def _generate_header_code(
     attr_infos: Mapping[og.AttributePortType, Tuple[AttributeInfo, ...]],
 ) -> str:
     """Generates the code header based on the node's attributes."""
     # Retrieve all the Warp struct types corresponding to bundle attributes.
-    struct_types = {
-        x.warp_type_name: x.warp_type
-        for _, v in attr_infos.items()
-        for x in v
-        if x.is_bundle
-    }
+    struct_types = {x.warp_type_name: x.warp_type for _, v in attr_infos.items() for x in v if x.is_bundle}
 
     # Generate the code that declares the Warp structs found.
     declarations = [""]
-    declarations.extend(
-        _generate_struct_declaration_code(x)
-        for _, x in struct_types.items()
-    )
+    declarations.extend(_generate_struct_declaration_code(x) for _, x in struct_types.items())
 
     # Generate the lines of code declaring the members for each port type.
-    lines = {
-        k: tuple("    {}: {}".format(x.base_name, x.warp_type_name) for x in v)
-        for k, v in attr_infos.items()
-    }
+    lines = {k: tuple("    {}: {}".format(x.base_name, x.warp_type_name) for x in v) for k, v in attr_infos.items()}
 
     # Return the template code populated with the members.
     return _HEADER_CODE_TEMPLATE.format(
@@ -401,6 +380,7 @@ def _generate_header_code(
         inputs="\n".join(lines.get(_ATTR_PORT_TYPE_INPUT, ())),
         outputs="\n".join(lines.get(_ATTR_PORT_TYPE_OUTPUT, ())),
     )
+
 
 def _get_user_code(code_provider: str, code_str: str, code_file: str) -> str:
     """Retrieves the code provided by the user."""
@@ -413,8 +393,10 @@ def _get_user_code(code_provider: str, code_str: str, code_file: str) -> str:
 
     assert False, "Unexpected code provider '{}'.".format(code_provider)
 
+
 #   Kernel Module
 # ------------------------------------------------------------------------------
+
 
 def _load_code_as_module(code: str, name: str) -> Any:
     """Loads a Python module from the given source code."""
@@ -449,6 +431,7 @@ def _load_code_as_module(code: str, name: str) -> Any:
 
     return module
 
+
 def initialize_kernel_module(
     attr_infos: Mapping[og.AttributePortType, Tuple[AttributeInfo, ...]],
     code_provider: str,
@@ -457,16 +440,11 @@ def initialize_kernel_module(
 ) -> wp.context.Module:
     # Ensure that all output parameters are arrays. Writing to non-array
     # types is not supported as per CUDA's design.
-    invalid_attrs = tuple(
-        x.name
-        for x in attr_infos[_ATTR_PORT_TYPE_OUTPUT]
-        if not x.is_array and not x.is_bundle
-    )
+    invalid_attrs = tuple(x.name for x in attr_infos[_ATTR_PORT_TYPE_OUTPUT] if not x.is_array and not x.is_bundle)
     if invalid_attrs:
         raise RuntimeError(
             "Output attributes are required to be arrays or bundles but "
-            "the following attributes are not: {}."
-            .format(", ".join(invalid_attrs))
+            "the following attributes are not: {}.".format(", ".join(invalid_attrs))
         )
 
     # Retrieve the kernel code to evaluate.
@@ -483,21 +461,19 @@ def initialize_kernel_module(
 
     # Validate the module's contents.
     if not hasattr(kernel_module, "compute"):
-        raise RuntimeError(
-            "The code must define a kernel function named 'compute'."
-        )
+        raise RuntimeError("The code must define a kernel function named 'compute'.")
     if not isinstance(kernel_module.compute, wp.context.Kernel):
-        raise RuntimeError(
-            "The 'compute' function must be decorated with '@wp.kernel'."
-        )
+        raise RuntimeError("The 'compute' function must be decorated with '@wp.kernel'.")
 
     # Configure warp to only compute the forward pass.
     wp.set_module_options({"enable_backward": False}, module=kernel_module)
 
     return kernel_module
 
+
 #   Data I/O
 # ------------------------------------------------------------------------------
+
 
 def _infer_output_array_shape(
     attr_info: AttributeInfo,
@@ -505,79 +481,55 @@ def _infer_output_array_shape(
     kernel_inputs: Any,
     kernel_shape: Sequence[int],
 ) -> Tuple[int, ...]:
-    if (
-        attr_info.output.array_shape_source
-        == OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL
-    ):
+    if attr_info.output.array_shape_source == OutputArrayShapeSource.AS_INPUT_OR_AS_KERNEL:
         # Check if we have an input attribute with a matching name,
         # in which case we use its array shape.
         try:
             ref_attr_base_name = next(
                 x.base_name
                 for x in input_attr_infos
-                if (
-                    x.base_name == attr_info.base_name
-                    and x.is_array
-                    and x.dim_count == attr_info.dim_count
-                )
+                if (x.base_name == attr_info.base_name and x.is_array and x.dim_count == attr_info.dim_count)
             )
             return getattr(kernel_inputs, ref_attr_base_name).shape
         except StopIteration:
             # Fallback to using the kernel's shape.
             return tuple(kernel_shape)
 
-    if (
-        attr_info.output.array_shape_source
-        == OutputArrayShapeSource.AS_KERNEL
-    ):
+    if attr_info.output.array_shape_source == OutputArrayShapeSource.AS_KERNEL:
         return tuple(kernel_shape)
 
-    assert False, (
-        "Unexpected array shape source method '{}'."
-        .format(attr_info.output.array_shape_source)
-    )
+    assert False, "Unexpected array shape source method '{}'.".format(attr_info.output.array_shape_source)
+
 
 def _infer_output_bundle_type(
     attr_info: AttributeInfo,
     input_bundle_types: Mapping[str, str],
 ) -> str:
-    if (
-        attr_info.output.bundle_type_source
-        == OutputBundleTypeSource.AS_INPUT_OR_EXPLICIT
-    ):
+    if attr_info.output.bundle_type_source == OutputBundleTypeSource.AS_INPUT_OR_EXPLICIT:
         return input_bundle_types.get(
             attr_info.base_name,
             attr_info.output.bundle_type_explicit,
         )
 
-    if (
-        attr_info.output.bundle_type_source
-        == OutputBundleTypeSource.AS_INPUT
-    ):
+    if attr_info.output.bundle_type_source == OutputBundleTypeSource.AS_INPUT:
         bundle_type = input_bundle_types.get(attr_info.base_name)
         if bundle_type is None:
             raise RuntimeError(
-                "Could not find a matching input attribute to infer "
-                "the bundle type of '{}'."
-                .format(attr_info.name)
+                "Could not find a matching input attribute to infer " "the bundle type of '{}'.".format(attr_info.name)
             )
 
-    if (
-        attr_info.output.bundle_type_source
-        == OutputBundleTypeSource.EXPLICIT
-    ):
+    if attr_info.output.bundle_type_source == OutputBundleTypeSource.EXPLICIT:
         return attr_info.output.bundle_type_explicit
 
-    assert False, (
-        "Unexpected bundle type source method '{}'."
-        .format(attr_info.output.bundle_type_source)
-    )
+    assert False, "Unexpected bundle type source method '{}'.".format(attr_info.output.bundle_type_source)
+
 
 class KernelArgsConfig(NamedTuple):
     """Configuration for resolving kernel arguments."""
 
     input_bundle_handlers: Optional[Mapping[str, Callable]] = None
     output_bundle_handlers: Optional[Mapping[str, Callable]] = None
+
 
 def get_kernel_args(
     db_inputs: Any,
@@ -620,24 +572,17 @@ def get_kernel_args(
             bundle = getattr(db_inputs, info.base_name)
             bundle_type_attr = bundle.attribute_by_name(BUNDLE_TYPE_ATTR_NAME)
             if bundle_type_attr is None:
-                raise RuntimeError(
-                    "Unsupported bundle for the attribute '{}'."
-                    .format(info.name)
-                )
+                raise RuntimeError("Unsupported bundle for the attribute '{}'.".format(info.name))
 
             bundle_type = bundle_type_attr.cpu_value
             if bundle_type == ArrayAccessor.BUNDLE_TYPE:
                 accessor = array_read_bundle(bundle)
                 value = accessor.data
-            elif (
-                config.input_bundle_handlers is not None
-                and bundle_type in config.input_bundle_handlers
-            ):
+            elif config.input_bundle_handlers is not None and bundle_type in config.input_bundle_handlers:
                 value = config.input_bundle_handlers[bundle_type](bundle)
             else:
                 raise RuntimeError(
-                    "Unsupported bundle type '{}' for the attribute '{}'."
-                    .format(bundle_type, info.name)
+                    "Unsupported bundle type '{}' for the attribute '{}'.".format(bundle_type, info.name)
                 )
             input_bundle_types[info.base_name] = bundle_type
         else:
@@ -683,25 +628,20 @@ def get_kernel_args(
                 )
                 accessor = array_create_bundle(bundle, info.og_data_type, shape)
                 value = accessor.data
-            elif (
-                config.output_bundle_handlers is not None
-                and bundle_type in config.output_bundle_handlers
-            ):
+            elif config.output_bundle_handlers is not None and bundle_type in config.output_bundle_handlers:
                 value = config.output_bundle_handlers[bundle_type](bundle)
             else:
                 raise RuntimeError(
-                    "Unsupported bundle type '{}' for the attribute '{}'."
-                    .format(bundle_type, info.name)
+                    "Unsupported bundle type '{}' for the attribute '{}'.".format(bundle_type, info.name)
                 )
         else:
-            assert False, (
-                "Output attributes are expected to be arrays or bundles."
-            )
+            assert False, "Output attributes are expected to be arrays or bundles."
 
         # Store the result in the outputs struct.
         setattr(outputs, info.base_name, value)
 
     return (inputs, outputs)
+
 
 def write_output_attrs(
     db_outputs: Any,
@@ -721,8 +661,10 @@ def write_output_attrs(
         value = getattr(kernel_outputs, info.base_name)
         setattr(db_outputs, info.base_name, value)
 
+
 #   Validation
 # ------------------------------------------------------------------------------
+
 
 def validate_input_arrays(
     node: og.Node,
@@ -739,13 +681,12 @@ def validate_input_arrays(
         # unless they are set as being optional.
         attr = og.Controller.attribute(info.name, node)
         if not attr.is_optional_for_compute and not value.ptr:
-            raise RuntimeError(
-                "Empty value for non-optional attribute '{}'."
-                .format(info.name)
-            )
+            raise RuntimeError("Empty value for non-optional attribute '{}'.".format(info.name))
+
 
 #   Node's Internal State
 # ------------------------------------------------------------------------------
+
 
 class InternalStateBase:
     """Base class for the node's internal state."""
@@ -771,10 +712,7 @@ class InternalStateBase:
             # If everything is in order, we only need to recompile the kernel
             # when attributes are removed, since adding new attributes is not
             # a breaking change.
-            if (
-                self.kernel_module is None
-                or UserAttributesEvent.REMOVED & db.state.userAttrsEvent
-            ):
+            if self.kernel_module is None or UserAttributesEvent.REMOVED & db.state.userAttrsEvent:
                 return True
         else:
             # If something previously went wrong, we always recompile the kernel
@@ -793,21 +731,12 @@ class InternalStateBase:
             if self._code_str != db.inputs.codeStr:
                 return True
         elif self._code_provider == "file":
-            if (
-                self._code_file != db.inputs.codeFile
-                or (
-                    check_file_modified_time
-                    and (
-                        self._code_file_timestamp
-                        != os.path.getmtime(self._code_file)
-                    )
-                )
+            if self._code_file != db.inputs.codeFile or (
+                check_file_modified_time and (self._code_file_timestamp != os.path.getmtime(self._code_file))
             ):
                 return True
         else:
-            assert False, (
-                "Unexpected code provider '{}'.".format(self._code_provider),
-            )
+            assert False, ("Unexpected code provider '{}'.".format(self._code_provider),)
 
         return False
 

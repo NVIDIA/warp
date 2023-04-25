@@ -67,7 +67,6 @@ import warp.tests.test_copy
 
 
 def register_tests(parent):
-
     tests = []
 
     tests.append(warp.tests.test_codegen.register(parent))
@@ -187,9 +186,8 @@ class TeamCityTestRunner(unittest.TextTestRunner):
 
 
 def run():
-
     test_suite = unittest.TestSuite()
-    
+
     tests = register_tests(unittest.TestCase)
 
     for test in tests:
@@ -207,10 +205,9 @@ def run():
     return ret
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     ret = run()
 
     import sys
-    sys.exit(ret)
 
+    sys.exit(ret)

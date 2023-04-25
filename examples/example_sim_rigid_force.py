@@ -23,14 +23,12 @@ wp.init()
 
 
 class Example:
-
     def __init__(self, stage):
-
         self.sim_fps = 60.0
         self.sim_substeps = 5
         self.sim_duration = 5.0
-        self.sim_frames = int(self.sim_duration*self.sim_fps)
-        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_frames = int(self.sim_duration * self.sim_fps)
+        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
         self.sim_time = 0.0
 
         builder = wp.sim.ModelBuilder()
@@ -49,17 +47,18 @@ class Example:
         self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=20.0)
 
     def update(self):
-
         with wp.ScopedTimer("simulate"):
-
             for s in range(self.sim_substeps):
-
                 wp.sim.collide(self.model, self.state_0)
 
                 self.state_0.clear_forces()
                 self.state_1.clear_forces()
 
-                self.state_0.body_f.assign([ [0.0, 0.0, -3000.0, 0.0, 0.0, 0.0], ])
+                self.state_0.body_f.assign(
+                    [
+                        [0.0, 0.0, -3000.0, 0.0, 0.0, 0.0],
+                    ]
+                )
 
                 self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt)
                 self.sim_time += self.sim_dt
@@ -68,7 +67,6 @@ class Example:
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
     def render(self, is_live=False):
-
         with wp.ScopedTimer("render"):
             time = 0.0 if is_live else self.sim_time
 
@@ -77,7 +75,7 @@ class Example:
             self.renderer.end_frame()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_rigid_force.usd")
 
     example = Example(stage_path)

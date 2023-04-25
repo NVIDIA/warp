@@ -9,7 +9,6 @@ import warp
 
 
 def device_to_jax(wp_device):
-
     import jax
 
     d = warp.get_device(wp_device)
@@ -27,7 +26,6 @@ def device_to_jax(wp_device):
 
 
 def device_from_jax(jax_device):
-
     if jax_device.platform == "cpu":
         return warp.get_device("cpu")
     elif jax_device.platform == "gpu":
@@ -37,14 +35,12 @@ def device_from_jax(jax_device):
 
 
 def to_jax(wp_array):
-
     import jax.dlpack
 
     return jax.dlpack.from_dlpack(warp.to_dlpack(wp_array))
 
 
 def from_jax(jax_array, dtype=None):
-
     import jax.dlpack
 
     return warp.from_dlpack(jax.dlpack.to_dlpack(jax_array), dtype=dtype)

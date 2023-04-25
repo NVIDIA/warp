@@ -11,9 +11,11 @@
 
 import warp as wp
 
+
 @wp.struct
 class S0:
     pass
+
 
 @wp.struct
 class Sf:
@@ -21,11 +23,13 @@ class Sf:
     y: float
     z: float
 
+
 @wp.struct
 class Sv:
     u: wp.vec3
     v: wp.vec3
     w: wp.vec3
+
 
 @wp.struct
 class Sm:
@@ -33,11 +37,13 @@ class Sm:
     N: wp.mat33
     O: wp.mat33
 
+
 @wp.struct
 class Sa:
     a: wp.array(dtype=float)
     b: wp.array(dtype=float)
     c: wp.array(dtype=float)
+
 
 @wp.struct
 class Sz:
@@ -56,47 +62,66 @@ class Sz:
 def k0():
     tid = wp.tid()
 
+
 @wp.kernel
 def kf(x: float, y: float, z: float):
     tid = wp.tid()
+
 
 @wp.kernel
 def kv(u: wp.vec3, v: wp.vec3, w: wp.vec3):
     tid = wp.tid()
 
+
 @wp.kernel
 def km(M: wp.mat33, N: wp.mat33, O: wp.mat33):
     tid = wp.tid()
+
 
 @wp.kernel
 def ka(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):
     tid = wp.tid()
 
+
 @wp.kernel
-def kz(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float),
-       x: float, y: float, z: float,
-       u: wp.vec3, v: wp.vec3,  w: wp.vec3):
+def kz(
+    a: wp.array(dtype=float),
+    b: wp.array(dtype=float),
+    c: wp.array(dtype=float),
+    x: float,
+    y: float,
+    z: float,
+    u: wp.vec3,
+    v: wp.vec3,
+    w: wp.vec3,
+):
     tid = wp.tid()
+
 
 @wp.kernel
 def ks0(s: S0):
     tid = wp.tid()
 
+
 @wp.kernel
 def ksf(s: Sf):
     tid = wp.tid()
+
 
 @wp.kernel
 def ksv(s: Sv):
     tid = wp.tid()
 
+
 @wp.kernel
 def ksm(s: Sm):
     tid = wp.tid()
 
+
 @wp.kernel
 def ksa(s: Sa):
     tid = wp.tid()
+
 
 @wp.kernel
 def ksz(s: Sz):
@@ -112,7 +137,6 @@ num_launches = 100000
 
 for device in devices:
     with wp.ScopedDevice(device):
-
         print(f"\n=================== Device '{device}' ===================")
 
         wp.force_load(device)
