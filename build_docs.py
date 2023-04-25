@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 
 import warp as wp
@@ -30,5 +31,8 @@ except subprocess.CalledProcessError as e:
 stub_file = open("warp/stubs.py","w")
 wp.export_stubs(stub_file)
 stub_file.close()
+
+# code formatting
+subprocess.run([sys.executable, "-m", "black", "warp/stubs.py"])
 
 print("Finished")
