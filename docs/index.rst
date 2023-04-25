@@ -147,9 +147,9 @@ User's Guide
 
    installation
    basics
-   debugging
-   modules/profiling
    modules/devices
+   modules/profiling
+   debugging
    faq
 
 API Reference
