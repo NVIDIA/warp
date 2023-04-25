@@ -11,6 +11,80 @@ Below are some examples of simulations implemented using Warp:
 
 .. image:: ./img/header.png
 
+Quickstart
+==========
+
+Basic example
+-------------
+
+An example first program that computes the lengths of random 3D vectors is given below::
+
+    import warp as wp
+    import numpy as np
+
+    wp.init()
+
+    num_points = 1024
+
+    @wp.kernel
+    def length(points: wp.array(dtype=wp.vec3),
+            lengths: wp.array(dtype=float)):
+
+        # thread index
+        tid = wp.tid()
+        
+        # compute distance of each point from origin
+        lengths[tid] = wp.length(points[tid])
+
+
+    # allocate an array of 3d points
+    points = wp.array(np.random.rand(num_points, 3), dtype=wp.vec3)
+    lengths = wp.zeros(num_points, dtype=float)
+
+    # launch kernel
+    wp.launch(kernel=length,
+            dim=len(points),
+            inputs=[points, lengths])
+
+    print(lengths)
+
+Additional examples
+-------------------
+The `examples <https://github.com/NVIDIA/warp/tree/main/examples>`__ directory in
+the Github repository contains a number of scripts that show how to
+implement different simulation methods using the Warp API. Most examples
+will generate USD files containing time-sampled animations in the
+``examples/outputs`` directory. Before running examples users should
+ensure that the ``usd-core`` package is installed using:
+
+::
+
+   pip install usd-core
+
+USD files can be viewed or rendered inside NVIDIA
+`Omniverse <https://developer.nvidia.com/omniverse>`__,
+Pixar's UsdView, and Blender. Note that Preview in macOS is not
+recommended as it has limited support for time-sampled animations.
+
+Built-in unit tests can be run from the command-line as follows:
+
+::
+
+   python -m warp.tests
+
+Omniverse
+---------
+
+A Warp Omniverse extension is available in the extension registry inside
+Omniverse Kit or Create:
+
+Enabling the extension will automatically install and initialize the
+Warp Python module inside the Kit Python environment. Please see the
+`Omniverse Warp
+Documentation <http://docs.omniverse.nvidia.com/extensions/warp.html>`__
+for more details on how to use Warp in Omniverse.
+
+
 Learn More
 ----------
 
@@ -72,11 +146,10 @@ User's Guide
    :caption: User's Guide
 
    installation
-   quickstart
-   primer
-   debugging
-   modules/profiling
+   basics
    modules/devices
+   modules/profiling
+   debugging
    faq
 
 API Reference
@@ -91,4 +164,13 @@ API Reference
    modules/sim
    modules/interoperability
    genindex
+   
+
+.. toctree::
+   :hidden:
+   :caption: Project Links
+
+   GitHub <https://github.com/NVIDIA/warp>
+   PyPI <https://pypi.org/project/warp-lang>
+   Discord <https://discord.com/channels/827959428476174346/953756751977648148>
    

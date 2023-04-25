@@ -2,11 +2,10 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Installation" href="installation.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Installation" href="installation.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Warp 0.8.0</title>
+        <title>Warp 0.8.2</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -33,12 +32,16 @@
     body[data-theme="dark"] {
       --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-admonition-title-background--note: #535353;
+  --color-admonition-title--note: #ffffff;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
         --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-admonition-title-background--note: #535353;
+  --color-admonition-title--note: #ffffff;
   
       }
     }
@@ -132,7 +135,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">Warp 0.8.0</div></a>
+      <a href="#"><div class="brand">Warp 0.8.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -143,7 +146,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -159,7 +162,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.8.0</span>
+  <span class="sidebar-brand-text">Warp 0.8.2</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -170,11 +173,10 @@
   <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">Basics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -184,6 +186,12 @@
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://discord.com/channels/827959428476174346/953756751977648148">Discord</a></li>
 </ul>
 
 </div>
@@ -211,13 +219,13 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="nvidia-warp-documentation">
+          <div class="section" id="nvidia-warp-documentation">
 <h1>NVIDIA Warp Documentation<a class="headerlink" href="#nvidia-warp-documentation" title="Permalink to this heading">#</a></h1>
 <p>Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.</p>
 <p>Warp is comes with a rich set of primitives that make it easy to write programs for physics simulation, geometry
@@ -225,7 +233,74 @@ processing, and procedural animation. In addition, Warp kernels are differentiab
 machine-learning training pipelines with other frameworks such as PyTorch.</p>
 <p>Below are some examples of simulations implemented using Warp:</p>
 <img alt="_images/header.png" src="_images/header.png" />
-<section id="learn-more">
+</div>
+<div class="section" id="quickstart">
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this heading">#</a></h1>
+<div class="section" id="basic-example">
+<h2>Basic example<a class="headerlink" href="#basic-example" title="Permalink to this heading">#</a></h2>
+<p>An example first program that computes the lengths of random 3D vectors is given below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="n">num_points</span> <span class="o">=</span> <span class="mi">1024</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span> <span class="nf">length</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">),</span>
+        <span class="n">lengths</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+
+    <span class="c1"># thread index</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="c1"># compute distance of each point from origin</span>
+    <span class="n">lengths</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+
+
+<span class="c1"># allocate an array of 3d points</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">lengths</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="c1"># launch kernel</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">length</span><span class="p">,</span>
+        <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">),</span>
+        <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">points</span><span class="p">,</span> <span class="n">lengths</span><span class="p">])</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="additional-examples">
+<h2>Additional examples<a class="headerlink" href="#additional-examples" title="Permalink to this heading">#</a></h2>
+<p>The <a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/examples">examples</a> directory in
+the Github repository contains a number of scripts that show how to
+implement different simulation methods using the Warp API. Most examples
+will generate USD files containing time-sampled animations in the
+<code class="docutils literal notranslate"><span class="pre">examples/outputs</span></code> directory. Before running examples users should
+ensure that the <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> package is installed using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">usd</span><span class="o">-</span><span class="n">core</span>
+</pre></div>
+</div>
+<p>USD files can be viewed or rendered inside NVIDIA
+<a class="reference external" href="https://developer.nvidia.com/omniverse">Omniverse</a>,
+Pixar’s UsdView, and Blender. Note that Preview in macOS is not
+recommended as it has limited support for time-sampled animations.</p>
+<p>Built-in unit tests can be run from the command-line as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">warp</span><span class="o">.</span><span class="n">tests</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="omniverse">
+<h2>Omniverse<a class="headerlink" href="#omniverse" title="Permalink to this heading">#</a></h2>
+<p>A Warp Omniverse extension is available in the extension registry inside
+Omniverse Kit or Create:</p>
+<p>Enabling the extension will automatically install and initialize the
+Warp Python module inside the Kit Python environment. Please see the
+<a class="reference external" href="http://docs.omniverse.nvidia.com/extensions/warp.html">Omniverse Warp
+Documentation</a>
+for more details on how to use Warp in Omniverse.</p>
+</div>
+<div class="section" id="learn-more">
 <h2>Learn More<a class="headerlink" href="#learn-more" title="Permalink to this heading">#</a></h2>
 <p>Please see the following resources for additional background on Warp:</p>
 <ul class="simple">
@@ -252,8 +327,8 @@ Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan
 Considine et
 al. <a class="reference external" href="https://gradsim.github.io">(2021)</a></p></li>
 </ul>
-</section>
-<section id="citing">
+</div>
+<div class="section" id="citing">
 <h2>Citing<a class="headerlink" href="#citing" title="Permalink to this heading">#</a></h2>
 <p>If you use Warp in your research please use the following citation:</p>
 <div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="nc">@misc</span><span class="p">{</span><span class="nl">warp2022</span><span class="p">,</span>
@@ -266,15 +341,15 @@ al. <a class="reference external" href="https://gradsim.github.io">(2021)</a></
 <span class="p">}</span>
 </pre></div>
 </div>
-</section>
-<section id="license">
+</div>
+<div class="section" id="license">
 <h2>License<a class="headerlink" href="#license" title="Permalink to this heading">#</a></h2>
 <p>Warp is provided under the NVIDIA Source Code License (NVSCL), please see
 <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/LICENSE.md">LICENSE.md</a> for the full license text.</p>
 <p>Please contact <a class="reference external" href="mailto:omniverse-license-questions&#37;&#52;&#48;nvidia&#46;com">omniverse-license-questions<span>&#64;</span>nvidia<span>&#46;</span>com</a> for
 commercial licensing inquires.</p>
-</section>
-<section id="user-s-guide">
+</div>
+<div class="section" id="user-s-guide">
 <h2>User’s Guide<a class="headerlink" href="#user-s-guide" title="Permalink to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
@@ -286,20 +361,26 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#building-from-source">Building from source</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#basic-example">Basic example</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#additional-examples">Additional examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#initialization">Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#devices">Devices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#kernels">Kernels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#memory-model">Memory Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#user-functions">User Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#compilation-model">Compilation Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#language-details">Language Details</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="primer.html">Basics</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#initialization">Initialization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#devices">Devices</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#kernels">Kernels</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#memory-model">Memory Model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#user-functions">User Functions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#compilation-model">Compilation Model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#omniverse">Omniverse</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primer.html#language-details">Language Details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#default-device">Default Device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#scoped-devices">Scoped Devices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#current-cuda-device">Current CUDA Device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#device-synchronization">Device Synchronization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#custom-cuda-contexts-advanced">Custom CUDA Contexts (Advanced)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/profiling.html#warp.ScopedTimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a><ul>
@@ -309,18 +390,6 @@ commercial licensing inquires.</p>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#generated-code">Generated Code</a></li>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#bounds-checking">Bounds Checking</a></li>
 <li class="toctree-l2"><a class="reference internal" href="debugging.html#cuda-verification">CUDA Verification</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/profiling.html#warp.ScopedTimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#default-device">Default Device</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#scoped-devices">Scoped Devices</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#current-cuda-device">Current CUDA Device</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#device-synchronization">Device Synchronization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/devices.html#custom-cuda-contexts-advanced">Custom CUDA Contexts (Advanced)</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a><ul>
@@ -334,8 +403,8 @@ commercial licensing inquires.</p>
 </li>
 </ul>
 </div>
-</section>
-<section id="api-reference">
+</div>
+<div class="section" id="api-reference">
 <h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -387,8 +456,10 @@ commercial licensing inquires.</p>
 <li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 </ul>
 </div>
-</section>
-</section>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+</div>
 
         </article>
       </div>
@@ -411,8 +482,7 @@ commercial licensing inquires.</p>
             <div class="copyright">
                 Copyright &#169; 2023, NVIDIA
             </div>
-            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+            Made with 
             <a href="https://github.com/pradyunsg/furo">Furo</a>
             
           </div>
@@ -430,31 +500,8 @@ commercial licensing inquires.</p>
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">NVIDIA Warp Documentation</a><ul>
-<li><a class="reference internal" href="#learn-more">Learn More</a></li>
-<li><a class="reference internal" href="#citing">Citing</a></li>
-<li><a class="reference internal" href="#license">License</a></li>
-<li><a class="reference internal" href="#user-s-guide">User’s Guide</a></li>
-<li><a class="reference internal" href="#api-reference">API Reference</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>

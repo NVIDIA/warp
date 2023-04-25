@@ -2,11 +2,10 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Simulation Reference" href="sim.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Simulation Reference" href="sim.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Interoperability - Warp 0.8.0</title>
+        <title>Interoperability - Warp 0.8.2</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -33,12 +32,16 @@
     body[data-theme="dark"] {
       --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-admonition-title-background--note: #535353;
+  --color-admonition-title--note: #ffffff;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
         --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-admonition-title-background--note: #535353;
+  --color-admonition-title--note: #ffffff;
   
       }
     }
@@ -132,7 +135,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">Warp 0.8.0</div></a>
+      <a href="../index.html"><div class="brand">Warp 0.8.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -159,7 +162,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.8.0</span>
+  <span class="sidebar-brand-text">Warp 0.8.2</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -170,11 +173,10 @@
   <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../primer.html">Basics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -184,6 +186,12 @@
 <li class="toctree-l1"><a class="reference internal" href="sim.html">Simulation Reference</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://discord.com/channels/827959428476174346/953756751977648148">Discord</a></li>
 </ul>
 
 </div>
@@ -217,10 +225,10 @@
           </label>
         </div>
         <article role="main">
-          <section id="interoperability">
+          <div class="section" id="interoperability">
 <h1>Interoperability<a class="headerlink" href="#interoperability" title="Permalink to this heading">#</a></h1>
 <p>Warp can interop with other Python-based frameworks such as NumPy through standard interface protocols.</p>
-<section id="numpy">
+<div class="section" id="numpy">
 <h2>NumPy<a class="headerlink" href="#numpy" title="Permalink to this heading">#</a></h2>
 <p>Warp arrays may be converted to a NumPy array through the <code class="docutils literal notranslate"><span class="pre">warp.array.numpy()</span></code> method. When the Warp array lives on
 the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> device this will return a zero-copy view onto the underlying Warp allocation. If the array lives on a
@@ -233,8 +241,8 @@ directly:</p>
 <span class="o">&gt;</span> <span class="p">[</span><span class="mf">1.</span> <span class="mf">2.</span> <span class="mf">3.</span><span class="p">]</span>
 </pre></div>
 </div>
-</section>
-<section id="pytorch">
+</div>
+<div class="section" id="pytorch">
 <span id="pytorch-interop"></span><h2>PyTorch<a class="headerlink" href="#pytorch" title="Permalink to this heading">#</a></h2>
 <p>Warp provides helper functions to convert arrays to/from PyTorch. Please see the <code class="docutils literal notranslate"><span class="pre">warp.torch</span></code> module for more details. Example usage is shown below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp.torch</span>
@@ -288,14 +296,14 @@ directly:</p>
 <span class="sig-prename descclassname"><span class="pre">warp.torch.</span></span><span class="sig-name descname"><span class="pre">stream_to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream_or_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.torch.stream_to_torch" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
-</section>
-<section id="cupy-numba">
+</div>
+<div class="section" id="cupy-numba">
 <h2>CuPy/Numba<a class="headerlink" href="#cupy-numba" title="Permalink to this heading">#</a></h2>
 <p>Warp GPU arrays support the <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol for sharing data with other Python GPU frameworks.
 Currently this is one-directional, so that Warp arrays can be used as input to any framework that also supports the
 <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocol, but not the other way around.</p>
-</section>
-<section id="jax">
+</div>
+<div class="section" id="jax">
 <h2>JAX<a class="headerlink" href="#jax" title="Permalink to this heading">#</a></h2>
 <p>Interop with JAX arrays is not currently well supported, although it is possible to first convert arrays to a Torch
 tensor and then to JAX via. the dlpack mechanism.</p>
@@ -319,8 +327,8 @@ tensor and then to JAX via. the dlpack mechanism.</p>
 <span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">from_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jax_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#warp.jax.from_jax" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
 
-</section>
-<section id="module-warp.dlpack">
+</div>
+<div class="section" id="module-warp.dlpack">
 <span id="dlpack"></span><h2>DLPack<a class="headerlink" href="#module-warp.dlpack" title="Permalink to this heading">#</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.dlpack.device_to_dlpack">
@@ -406,8 +414,8 @@ pycapsule.</p>
 </dl>
 </dd></dl>
 
-</section>
-</section>
+</div>
+</div>
 
         </article>
       </div>
@@ -432,8 +440,7 @@ pycapsule.</p>
             <div class="copyright">
                 Copyright &#169; 2023, NVIDIA
             </div>
-            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+            Made with 
             <a href="https://github.com/pradyunsg/furo">Furo</a>
             
           </div>

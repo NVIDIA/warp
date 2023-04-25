@@ -2,11 +2,10 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Debugging" href="debugging.html" /><link rel="prev" title="Quickstart" href="quickstart.html" />
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Devices" href="modules/devices.html" /><link rel="prev" title="Installation" href="installation.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
-        <title>Basics - Warp 0.8.0</title>
+        <title>Basics - Warp 0.8.2</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -33,12 +32,16 @@
     body[data-theme="dark"] {
       --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-admonition-title-background--note: #535353;
+  --color-admonition-title--note: #ffffff;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
         --color-code-background: #202020;
   --color-code-foreground: #d0d0d0;
+  --color-admonition-title-background--note: #535353;
+  --color-admonition-title--note: #ffffff;
   
       }
     }
@@ -132,7 +135,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Warp 0.8.0</div></a>
+      <a href="index.html"><div class="brand">Warp 0.8.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -159,7 +162,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark-mode.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Warp 0.8.0</span>
+  <span class="sidebar-brand-text">Warp 0.8.2</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -170,11 +173,10 @@
   <p class="caption" role="heading"><span class="caption-text">User's Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Basics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -184,6 +186,12 @@
 <li class="toctree-l1"><a class="reference internal" href="modules/sim.html">Simulation Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/interoperability.html">Interoperability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://discord.com/channels/827959428476174346/953756751977648148">Discord</a></li>
 </ul>
 
 </div>
@@ -217,9 +225,9 @@
           </label>
         </div>
         <article role="main">
-          <section id="basics">
+          <div class="section" id="basics">
 <h1>Basics<a class="headerlink" href="#basics" title="Permalink to this heading">#</a></h1>
-<section id="initialization">
+<div class="section" id="initialization">
 <h2>Initialization<a class="headerlink" href="#initialization" title="Permalink to this heading">#</a></h2>
 <p>Before use Warp should be explicitly initialized with the <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> method as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warp</span> <span class="k">as</span> <span class="nn">wp</span>
@@ -227,8 +235,8 @@
 <span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 </pre></div>
 </div>
-</section>
-<section id="devices">
+</div>
+<div class="section" id="devices">
 <h2>Devices<a class="headerlink" href="#devices" title="Permalink to this heading">#</a></h2>
 <p>Users can query the supported compute devices using the <code class="docutils literal notranslate"><span class="pre">wp.get_devices()</span></code> method:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_devices</span><span class="p">())</span>
@@ -238,8 +246,8 @@
 </div>
 <p>These device strings can then be used to allocate memory and launch kernels.
 More information about working with devices is available in <a class="reference internal" href="modules/devices.html#devices"><span class="std std-ref">Devices</span></a>.</p>
-</section>
-<section id="kernels">
+</div>
+<div class="section" id="kernels">
 <h2>Kernels<a class="headerlink" href="#kernels" title="Permalink to this heading">#</a></h2>
 <p>In Warp, kernels are defined as Python functions, decorated with the <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code> decorator.
 Note that all input arguments must be typed, and that the function cannot access any global state.
@@ -308,8 +316,8 @@ For best performance multiple copies should be queued together:</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
 </pre></div>
 </div>
-</section>
-<section id="memory-model">
+</div>
+<div class="section" id="memory-model">
 <h2>Memory Model<a class="headerlink" href="#memory-model" title="Permalink to this heading">#</a></h2>
 <p>Memory allocations are exposed via the <code class="docutils literal notranslate"><span class="pre">warp.array</span></code> type. Arrays wrap an underlying memory allocation that may live in
 either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a linear sequence of built-in structures
@@ -317,8 +325,8 @@ either host (CPU), or device (GPU) memory. Arrays are strongly typed and store a
 <p>Arrays may be constructed from Python lists or NumPy arrays; by default, data will be copied to new memory for the
 device specified. However, it is possible for arrays to alias user memory using the <code class="docutils literal notranslate"><span class="pre">copy=False</span></code> parameter to the
 array constructor.</p>
-</section>
-<section id="user-functions">
+</div>
+<div class="section" id="user-functions">
 <h2>User Functions<a class="headerlink" href="#user-functions" title="Permalink to this heading">#</a></h2>
 <p>Users can write their own functions using the <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> decorator, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
@@ -327,31 +335,21 @@ array constructor.</p>
 </pre></div>
 </div>
 <p>User functions can be called freely from within kernels inside the same module and accept arrays as inputs.</p>
-</section>
-<section id="compilation-model">
+</div>
+<div class="section" id="compilation-model">
 <h2>Compilation Model<a class="headerlink" href="#compilation-model" title="Permalink to this heading">#</a></h2>
 <p>Warp uses a Python-&gt;C++/CUDA compilation model that generates kernel code from Python function definitions. All kernels belonging to a Python module are runtime compiled into dynamic libraries and PTX, the result is then cached between application restarts for fast startup times.</p>
 <p>Note that compilation is triggered on the first kernel launch for that module. Any kernels registered in the module with <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> will be included in the shared library.</p>
 <img alt="_images/compiler_pipeline.png" src="_images/compiler_pipeline.png" />
-</section>
-<section id="omniverse">
-<h2>Omniverse<a class="headerlink" href="#omniverse" title="Permalink to this heading">#</a></h2>
-<p>A Warp Omniverse extension is available in the extension registry inside
-Omniverse Kit or Create:</p>
-<p>Enabling the extension will automatically install and initialize the
-Warp Python module inside the Kit Python environment. Please see the
-<a class="reference external" href="http://docs.omniverse.nvidia.com/extensions/warp.html">Omniverse Warp
-Documentation</a>
-for more details on how to use Warp in Omniverse.</p>
-</section>
-<section id="language-details">
+</div>
+<div class="section" id="language-details">
 <h2>Language Details<a class="headerlink" href="#language-details" title="Permalink to this heading">#</a></h2>
 <p>To support GPU computation and differentiability, there are some differences from the CPython runtime.</p>
-<section id="built-in-types">
+<div class="section" id="built-in-types">
 <h3>Built-in Types<a class="headerlink" href="#built-in-types" title="Permalink to this heading">#</a></h3>
 <p>Warp supports a number of built-in math types similar to high-level shading languages, for example <code class="docutils literal notranslate"><span class="pre">vec2,</span> <span class="pre">vec3,</span> <span class="pre">vec4,</span> <span class="pre">mat22,</span> <span class="pre">mat33,</span> <span class="pre">mat44,</span> <span class="pre">quat,</span> <span class="pre">array</span></code>. All built-in types have value semantics so that expressions such as <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">b</span></code> generate a copy of the variable b rather than a reference.</p>
-</section>
-<section id="strong-typing">
+</div>
+<div class="section" id="strong-typing">
 <h3>Strong Typing<a class="headerlink" href="#strong-typing" title="Permalink to this heading">#</a></h3>
 <p>Unlike Python, in Warp all variables must be typed. Types are inferred from source expressions and function signatures using the Python typing extensions. All kernel parameters must be annotated with the appropriate type, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
@@ -368,8 +366,8 @@ for more details on how to use Warp in Omniverse.</p>
 <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
 </pre></div>
 </div>
-</section>
-<section id="immutable-types">
+</div>
+<div class="section" id="immutable-types">
 <h3>Immutable Types<a class="headerlink" href="#immutable-types" title="Permalink to this heading">#</a></h3>
 <p>Similar to Python tuples, built-in value types are immutable, and users should use construction syntax to mutate existing variables, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
@@ -381,8 +379,8 @@ for more details on how to use Warp in Omniverse.</p>
 <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
 </pre></div>
 </div>
-</section>
-<section id="unsupported-features">
+</div>
+<div class="section" id="unsupported-features">
 <h3>Unsupported Features<a class="headerlink" href="#unsupported-features" title="Permalink to this heading">#</a></h3>
 <p>To achieve good performance on GPUs some dynamic language features are not supported:</p>
 <ul class="simple">
@@ -394,32 +392,32 @@ for more details on how to use Warp in Omniverse.</p>
 <li><p>Recursion</p></li>
 <li><p>Dynamic allocation, lists, sets, dictionaries</p></li>
 </ul>
-</section>
-</section>
-</section>
+</div>
+</div>
+</div>
 
         </article>
       </div>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="debugging.html">
+          <a class="next-page" href="modules/devices.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Debugging</div>
+                <div class="title">Devices</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="quickstart.html">
+          <a class="prev-page" href="installation.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Quickstart</div>
+                <div class="title">Installation</div>
                 
               </div>
             </a>
@@ -429,8 +427,7 @@ for more details on how to use Warp in Omniverse.</p>
             <div class="copyright">
                 Copyright &#169; 2023, NVIDIA
             </div>
-            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
-            
+            Made with 
             <a href="https://github.com/pradyunsg/furo">Furo</a>
             
           </div>
@@ -467,7 +464,6 @@ for more details on how to use Warp in Omniverse.</p>
 <li><a class="reference internal" href="#memory-model">Memory Model</a></li>
 <li><a class="reference internal" href="#user-functions">User Functions</a></li>
 <li><a class="reference internal" href="#compilation-model">Compilation Model</a></li>
-<li><a class="reference internal" href="#omniverse">Omniverse</a></li>
 <li><a class="reference internal" href="#language-details">Language Details</a><ul>
 <li><a class="reference internal" href="#built-in-types">Built-in Types</a></li>
 <li><a class="reference internal" href="#strong-typing">Strong Typing</a></li>

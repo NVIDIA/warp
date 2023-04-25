@@ -45,9 +45,13 @@ Generated Code
 
 The generated code for kernels is stored in a central cache location in the user's home directory, the cache location is printed at startup when ``wp.init()`` is called, for example::
 
-   Devices:
-     "cpu"    | i386
-   Kernel cache: /Users/lucasw/Library/Caches/warp/0.8.0
+   Warp 0.8.1 initialized:
+      CUDA Toolkit: 11.8, Driver: 11.8
+      Devices:
+      "cpu"    | AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD
+      "cuda:0" | NVIDIA GeForce RTX 3090 (sm_86)
+      "cuda:1" | NVIDIA GeForce RTX 2080 Ti (sm_75)
+      Kernel cache: C:\Users\LukasW\AppData\Local\NVIDIA Corporation\warp\Cache\0.8.1
 
 The kernel cache has ``gen`` and ``bin`` folders that contain the generated C++/CUDA code and the compiled binaries respectively. Occasionally it can be useful to inspect the generated code for debugging / profiling.
 
