@@ -5,6 +5,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import sys
+
+if hasattr(sys.stderr, "fileno"):
+    import faulthandler
+
+    faulthandler.enable()
+
 # for autocomplete on builtins
 # from warp.stubs import *
 
