@@ -607,7 +607,7 @@ class ScopedTimer:
             dict (dict): A dictionary of lists to which the elapsed time will be appended using ``name`` as a key
             use_nvtx (bool): If true, timing functionality is replaced by an NVTX range
             color (int or str): ARGB value (e.g. 0x00FFFF) or color name (e.g. 'cyan') associated with the NVTX range
-            synchronize (bool): Synchronize the CPU thread with any outstanding CUDA work to return accurate timings
+            synchronize (bool): Synchronize the CPU thread with any outstanding CUDA work to return accurate GPU timings
 
         Attributes:
             elapsed (float): The duration of the ``with`` block used with this object

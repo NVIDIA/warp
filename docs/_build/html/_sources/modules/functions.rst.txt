@@ -24,15 +24,36 @@ Scalar Types
 
 Vector Types
 ------------
+.. class:: vec2b
 .. class:: vec2ub
+.. class:: vec2s
+.. class:: vec2us
+.. class:: vec2i
+.. class:: vec2ui
+.. class:: vec2l
+.. class:: vec2ul
 .. class:: vec2h
 .. class:: vec2f
 .. class:: vec2d
+.. class:: vec3b
 .. class:: vec3ub
+.. class:: vec3s
+.. class:: vec3us
+.. class:: vec3i
+.. class:: vec3ui
+.. class:: vec3l
+.. class:: vec3ul
 .. class:: vec3h
 .. class:: vec3f
 .. class:: vec3d
+.. class:: vec4b
 .. class:: vec4ub
+.. class:: vec4s
+.. class:: vec4us
+.. class:: vec4i
+.. class:: vec4ui
+.. class:: vec4l
+.. class:: vec4ul
 .. class:: vec4h
 .. class:: vec4f
 .. class:: vec4d
