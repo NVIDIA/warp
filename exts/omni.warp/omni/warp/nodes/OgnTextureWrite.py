@@ -19,6 +19,7 @@ from omni.warp.scripts.nodes.common import MAX_DIMENSIONS
 #   Compute
 # ------------------------------------------------------------------------------
 
+
 def compute(db: OgnTextureWriteDatabase) -> None:
     """Evaluates the node."""
     if not db.inputs.data.memory:
@@ -29,17 +30,11 @@ def compute(db: OgnTextureWriteDatabase) -> None:
         return
 
     dim_count = min(max(db.inputs.dimCount, 0), MAX_DIMENSIONS)
-    resolution = tuple(
-        max(getattr(db.inputs, "dim{}".format(i + 1)), 0)
-        for i in range(dim_count)
-    )
+    resolution = tuple(max(getattr(db.inputs, "dim{}".format(i + 1)), 0) for i in range(dim_count))
 
     # We need to dereference OG's attribute pointer to get the actual pointer
     # to the data.
-    data_ptr = ctypes.cast(
-        db.inputs.data.memory,
-        ctypes.POINTER(ctypes.c_size_t)
-    ).contents.value
+    data_ptr = ctypes.cast(db.inputs.data.memory, ctypes.POINTER(ctypes.c_size_t)).contents.value
 
     # Write the texture to the provider.
     provider = ui.DynamicTextureProvider(uri[10:])
@@ -49,8 +44,10 @@ def compute(db: OgnTextureWriteDatabase) -> None:
         format=ui.TextureFormat.RGBA32_SFLOAT,
     )
 
+
 #   Node Entry Point
 # ------------------------------------------------------------------------------
+
 
 class OgnTextureWrite:
     """Dynamic texture write node."""

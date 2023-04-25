@@ -9,16 +9,15 @@ from warp.tests.test_base import *
 
 wp.init()
 
-@wp.kernel
-def load_store_half(f32: wp.array(dtype=wp.float32),
-            f16: wp.array(dtype=wp.float16)):
 
+@wp.kernel
+def load_store_half(f32: wp.array(dtype=wp.float32), f16: wp.array(dtype=wp.float16)):
     tid = wp.tid()
 
     # check conversion from f32->f16
     a = wp.float16(f32[tid])
     b = f16[tid]
-    
+
     wp.expect_eq(a, b)
 
     # check stores
@@ -26,7 +25,6 @@ def load_store_half(f32: wp.array(dtype=wp.float32),
 
 
 def test_fp16_conversion(test, device):
-        
     s = [1.0, 2.0, 3.0, -3.14159]
 
     np_f32 = np.array(s, dtype=np.float32)
@@ -45,13 +43,11 @@ def test_fp16_conversion(test, device):
 
 
 @wp.kernel
-def mul_half(input: wp.array(dtype=wp.float16),
-             output: wp.array(dtype=wp.float16)):
-
+def mul_half(input: wp.array(dtype=wp.float16), output: wp.array(dtype=wp.float16)):
     tid = wp.tid()
 
     # convert to compute type fp32
-    x = wp.float(input[tid])*2.0
+    x = wp.float(input[tid]) * 2.0
 
     # store back as fp16
     output[tid] = wp.float16(x)
@@ -74,15 +70,14 @@ def test_fp16_grad(test, device):
     ones = wp.array(np.ones(len(output)), dtype=wp.float16, device=device)
 
     tape.backward(grads={output: ones})
-    
-    assert_np_equal(input.grad.numpy(), np.ones(len(s))*2.0)
+
+    assert_np_equal(input.grad.numpy(), np.ones(len(s)) * 2.0)
 
 
 def register(parent):
-
     class TestFp16(parent):
         pass
-    
+
     devices = []
     if wp.is_cpu_available():
         devices.append("cpu")
@@ -96,8 +91,6 @@ def register(parent):
     return TestFp16
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)
-
-

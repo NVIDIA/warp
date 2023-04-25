@@ -31,6 +31,7 @@ def basic(x: wp.array(dtype=float)):
     tid = wp.tid()
     x[tid] = float(tid)
 
+
 device = "cpu"
 n = 10
 x = wp.zeros(n, dtype=float, device=device)

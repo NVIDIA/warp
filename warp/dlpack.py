@@ -8,13 +8,21 @@
 import warp
 import ctypes
 
-from warp.thirdparty.dlpack import DLManagedTensor, DLDevice, DLDeviceType, DLDataType, DLDataTypeCode, DLTensor, _c_str_dltensor
+from warp.thirdparty.dlpack import (
+    DLManagedTensor,
+    DLDevice,
+    DLDeviceType,
+    DLDataType,
+    DLDataTypeCode,
+    DLTensor,
+    _c_str_dltensor,
+)
 
 ctypes.pythonapi.PyMem_RawMalloc.restype = ctypes.c_void_p
 ctypes.pythonapi.PyMem_RawFree.argtypes = [ctypes.c_void_p]
 
-ctypes.pythonapi.PyCapsule_New.restype=ctypes.py_object
-ctypes.pythonapi.PyCapsule_New.argtypes=[ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
+ctypes.pythonapi.PyCapsule_New.restype = ctypes.py_object
+ctypes.pythonapi.PyCapsule_New.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
 
 ctypes.pythonapi.PyCapsule_IsValid.restype = ctypes.c_int
 ctypes.pythonapi.PyCapsule_IsValid.argtypes = [ctypes.py_object, ctypes.c_char_p]
@@ -24,7 +32,6 @@ ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_cha
 
 
 class _Holder:
-
     def __init__(self, wp_array) -> None:
         self.wp_array = wp_array
 
@@ -41,9 +48,7 @@ def _warp_array_deleter(handle: ctypes.c_void_p) -> None:
     """A function to deallocate the memory of a Warp array."""
 
     dl_managed_tensor = DLManagedTensor.from_address(handle)
-    py_obj_ptr = ctypes.cast(
-        dl_managed_tensor.manager_ctx, ctypes.POINTER(ctypes.py_object)
-    )
+    py_obj_ptr = ctypes.cast(dl_managed_tensor.manager_ctx, ctypes.POINTER(ctypes.py_object))
     py_obj = py_obj_ptr.contents
     ctypes.pythonapi.Py_DecRef(py_obj)
     ctypes.pythonapi.Py_DecRef(ctypes.py_object(py_obj_ptr))
@@ -56,9 +61,7 @@ def _warp_pycapsule_deleter(handle: ctypes.c_void_p) -> None:
 
     pycapsule: ctypes.py_object = ctypes.cast(handle, ctypes.py_object)
     if ctypes.pythonapi.PyCapsule_IsValid(pycapsule, _c_str_dltensor):
-        dl_managed_tensor = ctypes.pythonapi.PyCapsule_GetPointer(
-            pycapsule, _c_str_dltensor
-        )
+        dl_managed_tensor = ctypes.pythonapi.PyCapsule_GetPointer(pycapsule, _c_str_dltensor)
         _warp_array_deleter(dl_managed_tensor)
         ctypes.pythonapi.PyCapsule_SetDestructor(pycapsule, None)
 
@@ -81,8 +84,8 @@ def device_to_dlpack(wp_device) -> DLDevice:
 
     return dl_device
 
+
 def dtype_to_dlpack(wp_dtype) -> DLDataType:
-    
     if wp_dtype == warp.int8:
         return (DLDataTypeCode.kDLInt, 8, 1)
     elif wp_dtype == warp.uint8:
@@ -113,7 +116,6 @@ def dtype_to_dlpack(wp_dtype) -> DLDataType:
 
 
 def dtype_from_dlpack(dl_dtype):
-
     # unpack to tuple for easier comparison
     dl_dtype = (dl_dtype.type_code.value, dl_dtype.bits)
 
@@ -150,28 +152,29 @@ def dtype_from_dlpack(dl_dtype):
 
 
 def device_from_dlpack(dl_device):
-    
     if dl_device.device_type.value == DLDeviceType.kDLCPU or dl_device.device_type.value == DLDeviceType.kDLCUDAHost:
         return "cpu"
-    elif dl_device.device_type.value == DLDeviceType.kDLCUDA or dl_device.device_type.value == DLDeviceType.kDLCUDAManaged:
+    elif (
+        dl_device.device_type.value == DLDeviceType.kDLCUDA
+        or dl_device.device_type.value == DLDeviceType.kDLCUDAManaged
+    ):
         return f"cuda:{dl_device.device_id}"
     else:
         raise RuntimeError(f"Unknown device type from dlpack: {dl_device.device_type.value}")
 
 
 def shape_to_dlpack(shape):
-    a = (ctypes.c_int64*len(shape))(*shape)
+    a = (ctypes.c_int64 * len(shape))(*shape)
     return a
 
 
 def strides_to_dlpack(strides, dtype):
-
-    # convert from byte count to element count    
+    # convert from byte count to element count
     s = []
     for i in range(len(strides)):
-        s.append(int(int(strides[i])/int(warp.types.type_size_in_bytes(dtype))))
+        s.append(int(int(strides[i]) / int(warp.types.type_size_in_bytes(dtype))))
 
-    a = (ctypes.c_int64*len(strides))(*s)
+    a = (ctypes.c_int64 * len(strides))(*s)
     return a
 
 
@@ -193,9 +196,7 @@ def to_dlpack(wp_array: warp.array):
 
     # allocate DLManagedTensor
     size = ctypes.c_size_t(ctypes.sizeof(DLManagedTensor))
-    dl_managed_tensor = DLManagedTensor.from_address(
-        ctypes.pythonapi.PyMem_RawMalloc(size)    
-    )
+    dl_managed_tensor = DLManagedTensor.from_address(ctypes.pythonapi.PyMem_RawMalloc(size))
 
     # handle vector types
     if wp_array.dtype in warp.types.vector_types:
@@ -242,10 +243,9 @@ def to_dlpack(wp_array: warp.array):
 
 
 def dtype_is_compatible(dl_dtype, wp_dtype):
-
     if dl_dtype.bits % 8 != 0:
         raise RuntimeError("Data types with less than 8 bits are not supported")
-    
+
     if dl_dtype.type_code.value == DLDataTypeCode.kDLFloat:
         if dl_dtype.bits == 16:
             return wp_dtype == warp.float16
@@ -286,9 +286,7 @@ def from_dlpack(pycapsule, dtype=None) -> warp.array:
     """
 
     assert ctypes.pythonapi.PyCapsule_IsValid(pycapsule, _c_str_dltensor)
-    dl_managed_tensor = ctypes.pythonapi.PyCapsule_GetPointer(
-        pycapsule, _c_str_dltensor
-    )
+    dl_managed_tensor = ctypes.pythonapi.PyCapsule_GetPointer(pycapsule, _c_str_dltensor)
     dl_managed_tensor_ptr = ctypes.cast(dl_managed_tensor, ctypes.POINTER(DLManagedTensor))
     dl_managed_tensor = dl_managed_tensor_ptr.contents
 
@@ -323,14 +321,18 @@ def from_dlpack(pycapsule, dtype=None) -> warp.array:
             dtype_shape = dtype._shape_
             dtype_dims = len(dtype._shape_)
             if dtype_dims > len(shape) or dtype_shape != shape[-dtype_dims:]:
-                raise RuntimeError(f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}")
+                raise RuntimeError(
+                    f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, ensure that source inner shape is {dtype_shape}"
+                )
 
             if strides is not None:
                 # ensure the inner strides are contiguous
                 stride = 4
                 for i in range(dtype_dims):
                     if strides[-i - 1] != stride:
-                        raise RuntimeError(f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous")
+                        raise RuntimeError(
+                            f"Could not convert DLPack tensor with shape {shape} to Warp array with dtype={dtype}, because the source inner strides are not contiguous"
+                        )
                     stride *= dtype_shape[-i - 1]
                 strides = tuple(strides[:-dtype_dims])
 
@@ -339,16 +341,10 @@ def from_dlpack(pycapsule, dtype=None) -> warp.array:
     else:
         # incompatible dtype requested
         raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
-    
+
     a = warp.types.array(
-        ptr=dlt.data,
-        dtype=dtype,
-        shape=shape,
-        strides=strides,
-        copy=False,
-        owner=False,
-        device=device,
-        pinned=pinned)
+        ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, owner=False, device=device, pinned=pinned
+    )
 
     # keep a reference to the capsule so it doesn't get deleted
     a._pycapsule = pycapsule

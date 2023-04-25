@@ -1,0 +1,105 @@
+[flake8]
+max-line-length = 120
+docstring-convention = google
+select =
+    # pycodestyle
+    E,W,
+    # flake8-docstrings
+    D3,
+    # pyflakes
+    F,
+    # pep8-naming
+    N,
+    # pycodestyle
+    A,
+    # flake8-bugbear
+    B,
+    # flake8-comprehensions
+    C,
+    # flake8-return
+    R,
+    # flake8-pep3101
+    S001,
+    # flake8-pylint
+    PL,
+    # flake8-simplify
+    SIM,
+
+ignore =
+    # line break before/after binary operator. Black formats it differently: https://stackoverflow.com/a/57074422
+    W503,
+    W504,
+
+; Omniverse ignores
+;
+;     # do not assign a lambda expression, use a def
+;     E731,
+    # whitespace before ':' - considered good style
+    # https://www.python.org/dev/peps/pep-0008/#whitespace-in-expressions-and-statements
+    E203,
+    # line too long (134 > 120 characters) - Black will take care of most of these. Any it cannot handle will
+    # be spurious warnings so they can be turned off by default
+    E501,
+;     # 'from module import *' used; unable to detect undefined names
+;     F403,
+;     # Name may be undefined, or defined from star imports: module (F405)
+    F405,
+;     # Import outside toplevel (import-outside-toplevel). We want that to save on import times sometimes.
+;     PLC0415,
+;     # Formatting a regular string which could be a f-string (consider-using-f-string)
+;     # (anov): I don't know, I feel "".format() is some times more applicable. Open to reconsider.
+;     PLC0209,
+;     # Constant name "_autoload_exts" doesn't conform to UPPER_CASE naming style (invalid-name)
+;     PLC0103,
+;     # Unnecessary variable assignment before return statement. Doesn't work correctly when `global` is used.
+;     R504,
+;     # ignore multiple with statements (for omni.ui)
+;     SIM117,
+;     # Missing function or method docstring (missing-function-docstring)
+;     PLC0116,
+;     # Method could be a function (no-self-use)
+;     PLR0201,
+;     # Line too long (107/100) (line-too-long) # we already have another plugin that check that
+;     PLC0301,
+;     # Unable to import
+;     PLE0401,
+;     # Use 'from omni import ui' instead (consider-using-from-import)
+;     PLR0402,
+;     # Missing module docstring (missing-module-docstring)
+;     PLC0114,
+;     # Unused argument 'item' (unused-argument) # we already have another plugin that check that
+;     PLW0613,
+;     # Too few public method, too many....
+;     PLR09,
+;     # Using the global statement (global-statement)
+;     PLW0603,
+;     # Unnecessary pass statement (unnecessary-pass)
+;     # PLW0107,
+;     # Missing class docstring (missing-class-docstring)
+;     PLC0115,
+;     # ignore todo
+;     PLW0511,
+;     # No name 'RiggedVehicleCore' in module 'core.core' (no-name-in-module)
+;     PLE0611,
+;     # Anomalous backslash in string: '\S'.
+;     # PLW1401,
+;     # Attribute 'bla' defined outside __init__
+;     # PLW0201,
+;     # Access to member 'bla' before its definition line
+;     # PLE0203,
+;     # Instance of 'SetupUI' has no '' member (no-member)
+;     # PLE1101,
+;     # Unused private member `ContentItem.__background_image` (unused-private-member)
+;     # PLW0238,
+;     # Method should have "self" as first argument (no-self-argument)  # we already have N805
+;     PLE0213,
+;     # Import "import omni.ui as ui" should be placed at the top of the module (wrong-import-position) (with use isort)
+;     PLC0413,
+;     # Unused import asyncio (unused-import), we use F401
+;     PLW0611,
+;     # No value for argument 'is_item_expanded_fn' in constructor call (no-value-for-parameter)
+;     # PLE1120
+
+per-file-ignores =
+    */__init__.py: F401,
+    */stubs.py: F401

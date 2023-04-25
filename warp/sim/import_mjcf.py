@@ -35,7 +35,6 @@ def parse_mjcf(
     parse_meshes=False,
     enable_self_collisions=True,
 ):
-
     file = ET.parse(filename)
     root = file.getroot()
 
@@ -61,6 +60,7 @@ def parse_mjcf(
 
     def parse_mesh(geom):
         import trimesh
+
         faces = []
         vertices = []
         stl_file = next(
@@ -84,15 +84,12 @@ def parse_mjcf(
         return Mesh(vertices, faces), m.scale
 
     def parse_body(body, parent):
-
         body_name = body.attrib["name"]
         body_pos = parse_vec(body, "pos", (0.0, 0.0, 0.0))
         body_ori_euler = parse_vec(body, "euler", (0.0, 0.0, 0.0))
         if len(np.nonzero(body_ori_euler)[0]) > 0:
             body_axis = tuple(np.sign(body_ori_euler))
-            body_angle = (
-                body_ori_euler[np.nonzero(body_ori_euler)[0].item()] / 180 * np.pi
-            )
+            body_angle = body_ori_euler[np.nonzero(body_ori_euler)[0].item()] / 180 * np.pi
             body_ori = wp.utils.quat_from_axis_angle(body_axis, body_angle)
         else:
             body_ori = wp.quat_identity()
@@ -100,7 +97,7 @@ def parse_mjcf(
         joint_armature = []
         joint_name = []
         joint_pos = []
-        
+
         linear_axes = []
         angular_axes = []
         joint_type = None
@@ -115,14 +112,12 @@ def parse_mjcf(
             joint_pos.append(parse_vec(joint, "pos", (0.0, 0.0, 0.0)))
             # TODO parse joint (child transform) rotation?
             joint_range = parse_vec(joint, "range", (-3.0, 3.0))
-            joint_armature.append(
-                parse_float(joint, "armature", armature) * armature_scale
-            )
-            
+            joint_armature.append(parse_float(joint, "armature", armature) * armature_scale)
+
             if joint.attrib["type"].lower() == "free":
                 joint_type = wp.sim.JOINT_FREE
                 break
-            is_angular = (joint.attrib["type"].lower() == "hinge")
+            is_angular = joint.attrib["type"].lower() == "hinge"
             mode = wp.sim.JOINT_MODE_LIMIT
             if stiffness > 0.0 or "stiffness" in joint.attrib:
                 mode = wp.sim.JOINT_MODE_TARGET_POSITION
@@ -132,7 +127,8 @@ def parse_mjcf(
                 limit_upper=(np.deg2rad(joint_range[1]) if is_angular else joint_range[1]),
                 target_ke=parse_float(joint, "stiffness", stiffness),
                 target_kd=parse_float(joint, "damping", damping),
-                limit_ke=limit_ke, limit_kd=limit_kd,
+                limit_ke=limit_ke,
+                limit_kd=limit_kd,
                 mode=mode,
             )
             if is_angular:
@@ -176,7 +172,6 @@ def parse_mjcf(
         # add shapes
 
         for geom in body.findall("geom"):
-
             geom_name = geom.attrib["name"]
             geom_type = geom.attrib["type"]
 
@@ -186,7 +181,6 @@ def parse_mjcf(
             geom_density = parse_float(geom, "density", density)
 
             if geom_type == "sphere":
-
                 builder.add_shape_sphere(
                     link,
                     pos=geom_pos,
@@ -218,11 +212,8 @@ def parse_mjcf(
                 )
 
             elif geom_type in {"capsule", "cylinder"}:
-
                 if "fromto" in geom.attrib:
-                    geom_fromto = parse_vec(
-                        geom, "fromto", (0.0, 0.0, 0.0, 1.0, 0.0, 0.0)
-                    )
+                    geom_fromto = parse_vec(geom, "fromto", (0.0, 0.0, 0.0, 1.0, 0.0, 0.0))
 
                     start = geom_fromto[0:3]
                     end = geom_fromto[3:6]
@@ -239,7 +230,6 @@ def parse_mjcf(
                     geom_height = np.linalg.norm(end - start) * 0.5
 
                 else:
-
                     geom_radius = geom_size[0]
                     geom_height = geom_size[1]
                     geom_pos = parse_vec(geom, "pos", (0.0, 0.0, 0.0))

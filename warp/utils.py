@@ -14,6 +14,7 @@ from typing import Union
 
 import warp as wp
 
+
 def length(a):
     return np.linalg.norm(a)
 
@@ -23,9 +24,7 @@ def length_sq(a):
 
 
 def cross(a, b):
-    return np.array((a[1]*b[2] - a[2]*b[1],
-                     a[2]*b[0] - a[0]*b[2],
-                     a[0]*b[1] - a[1]*b[0]), dtype=np.float32)
+    return np.array((a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]), dtype=np.float32)
 
 
 # NumPy has no normalize() method..
@@ -37,7 +36,6 @@ def normalize(v):
 
 
 def skew(v):
-
     return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
 
 
@@ -65,14 +63,16 @@ def quat_from_axis_angle(axis, angle):
 
     return np.array((v[0], v[1], v[2], w))
 
+
 def quat_to_axis_angle(quat):
     w2 = quat[3] * quat[3]
-    if w2 > 1-1e-7:
+    if w2 > 1 - 1e-7:
         return np.zeros(3), 0.0
 
     angle = 2 * np.arccos(quat[3])
     xyz = quat[:3] / np.sqrt(1 - w2)
     return xyz, angle
+
 
 # quat_rotate a vector
 def quat_rotate(q, x):
@@ -83,16 +83,18 @@ def quat_rotate(q, x):
 
 # multiply two quats
 def quat_multiply(a, b):
-
-    return np.array((a[3] * b[0] + b[3] * a[0] + a[1] * b[2] - b[1] * a[2],
-                     a[3] * b[1] + b[3] * a[1] + a[2] * b[0] - b[2] * a[0],
-                     a[3] * b[2] + b[3] * a[2] + a[0] * b[1] - b[0] * a[1],
-                     a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]))
+    return np.array(
+        (
+            a[3] * b[0] + b[3] * a[0] + a[1] * b[2] - b[1] * a[2],
+            a[3] * b[1] + b[3] * a[1] + a[2] * b[0] - b[2] * a[0],
+            a[3] * b[2] + b[3] * a[2] + a[0] * b[1] - b[0] * a[1],
+            a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+        )
+    )
 
 
 # convert to mat33
 def quat_to_matrix(q):
-
     c1 = quat_rotate(q, np.array((1.0, 0.0, 0.0)))
     c2 = quat_rotate(q, np.array((0.0, 1.0, 0.0)))
     c3 = quat_rotate(q, np.array((0.0, 0.0, 1.0)))
@@ -101,7 +103,6 @@ def quat_to_matrix(q):
 
 
 def quat_rpy(roll, pitch, yaw):
-
     cy = math.cos(yaw * 0.5)
     sy = math.sin(yaw * 0.5)
     cr = math.cos(roll * 0.5)
@@ -109,21 +110,19 @@ def quat_rpy(roll, pitch, yaw):
     cp = math.cos(pitch * 0.5)
     sp = math.sin(pitch * 0.5)
 
-    w = (cy * cr * cp + sy * sr * sp)
-    x = (cy * sr * cp - sy * cr * sp)
-    y = (cy * cr * sp + sy * sr * cp)
-    z = (sy * cr * cp - cy * sr * sp)
+    w = cy * cr * cp + sy * sr * sp
+    x = cy * sr * cp - sy * cr * sp
+    y = cy * cr * sp + sy * sr * cp
+    z = sy * cr * cp - cy * sr * sp
 
     return (x, y, z, w)
 
 
 def quat_from_matrix(m):
-
     tr = m[0, 0] + m[1, 1] + m[2, 2]
     h = 0.0
 
-    if(tr >= 0.0):
-
+    if tr >= 0.0:
         h = math.sqrt(tr + 1.0)
         w = 0.5 * h
         h = 0.5 / h
@@ -133,15 +132,13 @@ def quat_from_matrix(m):
         z = (m[1, 0] - m[0, 1]) * h
 
     else:
-
         i = 0
-        if(m[1, 1] > m[0, 0]):
+        if m[1, 1] > m[0, 0]:
             i = 1
-        if(m[2, 2] > m[i, i]):
+        if m[2, 2] > m[i, i]:
             i = 2
 
-        if (i == 0):
-
+        if i == 0:
             h = math.sqrt((m[0, 0] - (m[1, 1] + m[2, 2])) + 1.0)
             x = 0.5 * h
             h = 0.5 / h
@@ -150,8 +147,7 @@ def quat_from_matrix(m):
             z = (m[2, 0] + m[0, 2]) * h
             w = (m[2, 1] - m[1, 2]) * h
 
-        elif (i == 1):
-
+        elif i == 1:
             h = math.sqrt((m[1, 1] - (m[2, 2] + m[0, 0])) + 1.0)
             y = 0.5 * h
             h = 0.5 / h
@@ -160,8 +156,7 @@ def quat_from_matrix(m):
             x = (m[0, 1] + m[1, 0]) * h
             w = (m[0, 2] - m[2, 0]) * h
 
-        elif (i == 2):
-
+        elif i == 2:
             h = math.sqrt((m[2, 2] - (m[0, 0] + m[1, 1])) + 1.0)
             z = 0.5 * h
             h = 0.5 / h
@@ -169,7 +164,6 @@ def quat_from_matrix(m):
             x = (m[2, 0] + m[0, 2]) * h
             y = (m[1, 2] + m[2, 1]) * h
             w = (m[1, 0] - m[0, 1]) * h
-
 
     return normalize(np.array([x, y, z, w]))
 
@@ -187,11 +181,10 @@ def transform_identity():
 
 # se(3) -> SE(3), Park & Lynch pg. 105, screw in [w, v] normalized form
 def transform_exp(s, angle):
-
     w = np.array(s[0:3])
     v = np.array(s[3:6])
 
-    if (length(w) < 1.0):
+    if length(w) < 1.0:
         r = quat_identity()
     else:
         r = quat_from_axis_angle(w, angle)
@@ -238,6 +231,7 @@ def transform_expand_list(xforms):
     exp = lambda t: transform_expand(t)
     return list(map(exp, xforms))
 
+
 def transform_inertia(m, I, p, q):
     R = quat_to_matrix(q)
 
@@ -250,7 +244,6 @@ def transform_inertia(m, I, p, q):
 
 # AdT
 def spatial_adjoint(t):
-
     R = quat_to_matrix(t.q)
     w = skew(t.p)
 
@@ -264,7 +257,6 @@ def spatial_adjoint(t):
 
 # (AdT)^-T
 def spatial_adjoint_dual(t):
-
     R = quat_to_matrix(t.q)
     w = skew(t.p)
 
@@ -288,13 +280,11 @@ def transform_wrench(t_ab, f_b):
 
 # transform spatial inertia (6x6) in b frame to a frame
 def transform_spatial_inertia(t_ab, I_b):
-
     t_ba = transform_inverse(t_ab)
 
     # todo: write specialized method
     I_a = np.dot(np.dot(spatial_adjoint(t_ba).T, I_b), spatial_adjoint(t_ba))
     return I_a
-
 
 
 def translate_twist(p_ab, s_b):
@@ -344,7 +334,6 @@ def spatial_outer(a, b):
 
 
 def spatial_matrix_from_inertia(I, m):
-
     G = spatial_matrix()
 
     G[0:3, 0:3] = I
@@ -360,15 +349,16 @@ def spatial_solve(I, b):
     return np.dot(np.linalg.inv(I), b)
 
 
-
 # helper to retrive body angular velocity from a twist v_s in se(3)
 def get_body_angular_velocity(v_s):
     return v_s[0:3]
+
 
 # helper to compute velocity of a point p on a body given it's spatial twist v_s
 def get_body_linear_velocity(v_s, p):
     dpdt = v_s[3:6] + np.cross(v_s[0:3], p)
     return dpdt
+
 
 # helper to build a body twist given the angular and linear velocity of
 # the center of mass specified in the world frame, returns the body
@@ -378,8 +368,7 @@ def get_body_twist(w_m, v_m, p_m):
     return (*w_m, *lin)
 
 
-def array_scan(in_array, out_array, inclusive = True):
-
+def array_scan(in_array, out_array, inclusive=True):
     if in_array.device != out_array.device:
         raise RuntimeError("Array storage devices do not match")
 
@@ -390,6 +379,7 @@ def array_scan(in_array, out_array, inclusive = True):
         raise RuntimeError("Array data types do not match")
 
     from warp.context import runtime
+
     if in_array.device == "cpu":
         if in_array.dtype == wp.int32:
             runtime.core.array_scan_int_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
@@ -404,6 +394,7 @@ def array_scan(in_array, out_array, inclusive = True):
             runtime.core.array_scan_float_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         else:
             raise RuntimeError("Unsupported data type")
+
 
 # code snippet for invoking cProfile
 # cp = cProfile.Profile()
@@ -420,17 +411,16 @@ def array_scan(in_array, out_array, inclusive = True):
 # winding is such that first tri can be reconstructed as {v0, v1, o0}, and second tri as { v1, v0, o1 }
 class MeshEdge:
     def __init__(self, v0, v1, o0, o1, f0, f1):
-        self.v0 = v0         # vertex 0
-        self.v1 = v1         # vertex 1
-        self.o0 = o0         # opposite vertex 1
-        self.o1 = o1         # opposite vertex 2
-        self.f0 = f0         # index of tri1
-        self.f1 = f1         # index of tri2
+        self.v0 = v0  # vertex 0
+        self.v1 = v1  # vertex 1
+        self.o0 = o0  # opposite vertex 1
+        self.o1 = o1  # opposite vertex 2
+        self.f0 = f0  # index of tri1
+        self.f1 = f1  # index of tri2
 
 
 class MeshAdjacency:
     def __init__(self, indices, num_tris):
-
         # map edges (v0, v1) to faces (f0, f1)
         self.edges = {}
         self.indices = indices
@@ -441,15 +431,13 @@ class MeshAdjacency:
             self.add_edge(tri[2], tri[0], tri[1], index)
 
     def add_edge(self, i0, i1, o, f):  # index1, index2, index3, index of triangle
-
         key = (min(i0, i1), max(i0, i1))
         edge = None
 
         if key in self.edges:
-
             edge = self.edges[key]
 
-            if (edge.f1 != -1):
+            if edge.f1 != -1:
                 print("Detected non-manifold edge")
                 return
             else:
@@ -466,18 +454,15 @@ class MeshAdjacency:
         pass
 
 
-
-
 def mem_report():
-
     def _mem_report(tensors, mem_type):
-        '''Print the selected tensors of type
+        """Print the selected tensors of type
         There are two major storage types in our major concern:
             - GPU: tensors transferred to CUDA devices
             - CPU: tensors remaining on the system memory (usually unimportant)
         Args:
             - tensors: the tensors of specified type
-            - mem_type: 'CPU' or 'GPU' in current implementation '''
+            - mem_type: 'CPU' or 'GPU' in current implementation"""
         total_numel = 0
         total_mem = 0
         visited_data = []
@@ -493,7 +478,7 @@ def mem_report():
             numel = tensor.storage().size()
             total_numel += numel
             element_size = tensor.storage().element_size()
-            mem = numel*element_size /1024/1024 # 32bit=4Byte, MByte
+            mem = numel * element_size / 1024 / 1024  # 32bit=4Byte, MByte
             total_mem += mem
             element_type = type(tensor).__name__
             size = tuple(tensor.size())
@@ -502,7 +487,7 @@ def mem_report():
             #     element_type,
             #     size,
             #     mem) )
-        print('Type: %s Total Tensors: %d \tUsed Memory Space: %.2f MBytes' % (mem_type, total_numel, total_mem) )
+        print("Type: %s Total Tensors: %d \tUsed Memory Space: %.2f MBytes" % (mem_type, total_numel, total_mem))
 
     import gc
     import torch
@@ -511,29 +496,29 @@ def mem_report():
 
     LEN = 65
     objects = gc.get_objects()
-    #print('%s\t%s\t\t\t%s' %('Element type', 'Size', 'Used MEM(MBytes)') )
+    # print('%s\t%s\t\t\t%s' %('Element type', 'Size', 'Used MEM(MBytes)') )
     tensors = [obj for obj in objects if torch.is_tensor(obj)]
     cuda_tensors = [t for t in tensors if t.is_cuda]
     host_tensors = [t for t in tensors if not t.is_cuda]
-    _mem_report(cuda_tensors, 'GPU')
-    _mem_report(host_tensors, 'CPU')
-    print('='*LEN)
+    _mem_report(cuda_tensors, "GPU")
+    _mem_report(host_tensors, "CPU")
+    print("=" * LEN)
 
 
 def lame_parameters(E, nu):
-
-    l = (E*nu)/((1.0 + nu)*(1.0-2.0*nu))
-    mu = E/(2.0*(1.0+nu))
+    l = (E * nu) / ((1.0 + nu) * (1.0 - 2.0 * nu))
+    mu = E / (2.0 * (1.0 + nu))
 
     return (l, mu)
+
 
 # **Deprecated: use ScopedDevice instead
 # ensures that correct CUDA is set for the guards lifetime
 # restores the previous CUDA context on exit
 class ScopedCudaGuard:
-
     def __init__(self):
         import warnings
+
         warnings.warn("ScopedCudaGuard is deprecated, use ScopedDevice instead")
 
         if wp.context.runtime.cuda_devices:
@@ -551,13 +536,10 @@ class ScopedCudaGuard:
 
 
 class ScopedDevice:
-
     def __init__(self, device):
-
         self.device = wp.get_device(device)
 
     def __enter__(self):
-
         # save the previous default device
         self.saved_device = self.device.runtime.default_device
 
@@ -570,7 +552,6 @@ class ScopedDevice:
         return self.device
 
     def __exit__(self, exc_type, exc_value, traceback):
-
         # restore original CUDA context
         self.device.context_guard.__exit__(exc_type, exc_value, traceback)
 
@@ -579,16 +560,13 @@ class ScopedDevice:
 
 
 class ScopedStream:
-
     def __init__(self, stream):
-
         self.stream = stream
         if stream is not None:
             self.device = stream.device
             self.device_scope = ScopedDevice(self.device)
 
     def __enter__(self):
-
         if self.stream is not None:
             self.device_scope.__enter__()
             self.saved_stream = self.device.stream
@@ -597,7 +575,6 @@ class ScopedStream:
         return self.stream
 
     def __exit__(self, exc_type, exc_value, traceback):
-
         if self.stream is not None:
             self.device.stream = self.saved_stream
             self.device_scope.__exit__(exc_type, exc_value, traceback)
@@ -605,22 +582,32 @@ class ScopedStream:
 
 # timer utils
 class ScopedTimer:
-
     indent = -1
 
     enabled = True
 
-    def __init__(self, name, active=True, print=True, detailed=False, dict=None, use_nvtx=False, color='rapids'):
-        """ Context manager object for a timer
-            
+    def __init__(
+        self,
+        name,
+        active=True,
+        print=True,
+        detailed=False,
+        dict=None,
+        use_nvtx=False,
+        color="rapids",
+        synchronize=False,
+    ):
+        """Context manager object for a timer
+
         Parameters:
             name (str): Name of timer
             active (bool): Enables this timer
             print (bool): At context manager exit, print elapsed time to sys.stdout
             detailed (bool): Collects additional profiling data using cProfile and calls ``print_stats()`` at context exit
-            dict (dict): A dictionary of lists to which the elapsed time will be appended using ``name`` as a key 
+            dict (dict): A dictionary of lists to which the elapsed time will be appended using ``name`` as a key
             use_nvtx (bool): If true, timing functionality is replaced by an NVTX range
             color (int or str): ARGB value (e.g. 0x00FFFF) or color name (e.g. 'cyan') associated with the NVTX range
+            synchronize (bool): Synchronize the CPU thread with any outstanding CUDA work to return accurate timings
 
         Attributes:
             elapsed (float): The duration of the ``with`` block used with this object
@@ -632,6 +619,7 @@ class ScopedTimer:
         self.dict = dict
         self.use_nvtx = use_nvtx
         self.color = color
+        self.synchronize = synchronize
         self.elapsed = 0.0
 
         if self.dict is not None:
@@ -639,35 +627,40 @@ class ScopedTimer:
                 self.dict[name] = []
 
     def __enter__(self):
+        if self.active:
+            if self.synchronize:
+                wp.synchronize()
 
-        if (self.active):
-            if (self.use_nvtx):
+            if self.use_nvtx:
                 import nvtx
+
                 self.nvtx_range_id = nvtx.start_range(self.name, color=self.color)
                 return
 
             self.start = timeit.default_timer()
             ScopedTimer.indent += 1
 
-            if (self.detailed):
+            if self.detailed:
                 self.cp = cProfile.Profile()
                 self.cp.clear()
                 self.cp.enable()
 
         return self
 
-
     def __exit__(self, exc_type, exc_value, traceback):
+        if self.active:
+            if self.synchronize:
+                wp.synchronize()
 
-        if (self.active):
-            if (self.use_nvtx):
+            if self.use_nvtx:
                 import nvtx
+
                 nvtx.end_range(self.nvtx_range_id)
                 return
 
-            if (self.detailed):
+            if self.detailed:
                 self.cp.disable()
-                self.cp.print_stats(sort='tottime')
+                self.cp.print_stats(sort="tottime")
 
             self.elapsed = (timeit.default_timer() - self.start) * 1000.0
 
@@ -678,7 +671,7 @@ class ScopedTimer:
             for i in range(ScopedTimer.indent):
                 indent += "\t"
 
-            if (self.print):
+            if self.print:
                 print("{}{} took {:.2f} ms".format(indent, self.name, self.elapsed))
 
             ScopedTimer.indent -= 1

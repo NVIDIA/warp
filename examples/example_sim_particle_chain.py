@@ -23,17 +23,15 @@ wp.init()
 
 
 class Example:
-
     def __init__(self, stage):
-
         self.sim_width = 64
         self.sim_height = 32
 
         self.sim_fps = 60.0
         self.sim_substeps = 10
         self.sim_duration = 5.0
-        self.sim_frames = int(self.sim_duration*self.sim_fps)
-        self.sim_dt = (1.0/self.sim_fps)/self.sim_substeps
+        self.sim_frames = int(self.sim_duration * self.sim_fps)
+        self.sim_dt = (1.0 / self.sim_fps) / self.sim_substeps
         self.sim_time = 0.0
 
         builder = wp.sim.ModelBuilder()
@@ -43,8 +41,8 @@ class Example:
 
         # chain
         for i in range(1, 10):
-            builder.add_particle((i, 1.0, 0.0), (0.0, 0., 0.0), 1.0)
-            builder.add_spring(i - 1, i, 1.e+6, 0.0, 0)
+            builder.add_particle((i, 1.0, 0.0), (0.0, 0.0, 0.0), 1.0)
+            builder.add_spring(i - 1, i, 1.0e6, 0.0, 0)
 
         self.model = builder.finalize()
         self.model.ground = False
@@ -57,11 +55,8 @@ class Example:
         self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=15.0)
 
     def update(self):
-
         with wp.ScopedTimer("simulate"):
-
             for s in range(self.sim_substeps):
-
                 self.state_0.clear_forces()
                 self.state_1.clear_forces()
 
@@ -72,7 +67,6 @@ class Example:
                 (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
     def render(self, is_live=False):
-
         with wp.ScopedTimer("render"):
             time = 0.0 if is_live else self.sim_time
 
@@ -81,7 +75,7 @@ class Example:
             self.renderer.end_frame()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sim_particle_chain.usd")
 
     example = Example(stage_path)

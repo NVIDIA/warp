@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [0.8.2] - 2023-04-21
+
+- Add `ModelBuilder.soft_contact_max` to control the maximum number of soft contacts that can be registered. Use `Model.allocate_soft_contacts(new_count)` to change count on existing `Model` objects.
+- Add support for `bool` parameters 
+- Add support for logical boolean operators with `int` types
+- Fix for `wp.quat()` default constructor
+- Fix conditional reassignments
+
 ## [0.8.1] - 2023-04-13
 
 - Fix for regression when passing flattened numeric lists as matrix arguments to kernels
@@ -50,7 +58,7 @@ Breaking Changes
 - `wp.sim.model.ground_plane` is now a `wp.array` to support gradient, users should call `builder.set_ground_plane()` to create the ground 
 - `wp.sim` capsule, cones, and cylinders are now aligned with the default USD up-axis
 
-
+  
 ## [0.7.2] - 2023-02-15
 
 - Reduce test time for vec/math types
@@ -89,6 +97,7 @@ Breaking Changes
 - Add CUTLASS integration for dense GEMMs, see `wp.matmul()` and `wp.matmul_batched()` 
 - Add QR and Eigen decompositions for `mat33` types, see `wp.qr3()`, and `wp.eig3()`
 - Add default (zero) constructors for matrix types
+- Add a flag to suppress all output except errors and warnings (set `wp.config.quiet = True`)
 - Skip recompilation when Kernel Node attributes are edited
 - Allow optional attributes for Kernel Node
 - Allow disabling backward pass code-gen on a per-kernel basis, use `@wp.kernel(enable_backward=False)`
@@ -130,7 +139,7 @@ Breaking Changes
 ## [0.5.1] - 2022-11-01
 
 - Fix for unit tests in Kit
-- 
+
 ## [0.5.0] - 2022-10-31
 
 - Add smoothed particle hydrodynamics (SPH) example, see `example_sph.py`
@@ -158,7 +167,7 @@ Breaking Changes
 - Fix for reload when multiple `.ptx` versions are present
 - Improved error reporting during code-gen
  
- ## [0.4.3] - 2022-09-20
+## [0.4.3] - 2022-09-20
 
 - Update all samples to use GPU interop path by default
 - Fix for arrays > 2GB in length
@@ -170,7 +179,6 @@ Breaking Changes
 - Add NDEBUG flag to release mode kernel builds
 - Fix for particle solver node when using a large number of particles
 - Fix for broken cameras in Warp sample scenes
-
 
 ## [0.4.1] - 2022-08-30
 

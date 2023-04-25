@@ -85,9 +85,33 @@ struct vec_t
     }
 };
 
+using vec2b = vec_t<2,int8>;
+using vec3b = vec_t<3,int8>;
+using vec4b = vec_t<4,int8>;
 using vec2ub = vec_t<2,uint8>;
 using vec3ub = vec_t<3,uint8>;
 using vec4ub = vec_t<4,uint8>;
+
+using vec2s = vec_t<2,int16>;
+using vec3s = vec_t<3,int16>;
+using vec4s = vec_t<4,int16>;
+using vec2us = vec_t<2,uint16>;
+using vec3us = vec_t<3,uint16>;
+using vec4us = vec_t<4,uint16>;
+
+using vec2i = vec_t<2,int32>;
+using vec3i = vec_t<3,int32>;
+using vec4i = vec_t<4,int32>;
+using vec2ui = vec_t<2,uint32>;
+using vec3ui = vec_t<3,uint32>;
+using vec4ui = vec_t<4,uint32>;
+
+using vec2l = vec_t<2,int64>;
+using vec3l = vec_t<3,int64>;
+using vec4l = vec_t<4,int64>;
+using vec2ul = vec_t<2,uint64>;
+using vec3ul = vec_t<3,uint64>;
+using vec4ul = vec_t<4,uint64>;
 
 using vec2h = vec_t<2,half>;
 using vec3h = vec_t<3,half>;

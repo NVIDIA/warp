@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 
 wp.init()
 
+
 @wp.kernel
 def loss_l2(states: wp.array(dtype=wp.float32), targets: wp.array(dtype=wp.float32), loss: wp.array(dtype=wp.float32)):
     i = wp.tid()
@@ -34,11 +35,13 @@ def loss_l2(states: wp.array(dtype=wp.float32), targets: wp.array(dtype=wp.float
     l = diff * diff
     wp.atomic_add(loss, 0, l)
 
+
 @wp.kernel
 def apply_torque(torques: wp.array(dtype=wp.float32), start_index: int, body_f: wp.array(dtype=wp.spatial_vector)):
     fx = torques[start_index + 0]
     fz = torques[start_index + 1]
     body_f[0] = wp.spatial_vector(0.0, 0.0, 0.0, fx, 0.0, fz)
+
 
 @wp.kernel
 def save_state(body_q: wp.array(dtype=wp.transform), start_index: int, states: wp.array(dtype=wp.float32)):
@@ -46,19 +49,18 @@ def save_state(body_q: wp.array(dtype=wp.transform), start_index: int, states: w
     states[start_index + 0] = pos[0]
     states[start_index + 1] = pos[2]
 
-class Environment:
 
-    frame_dt = 1.0/60.0
+class Environment:
+    frame_dt = 1.0 / 60.0
     episode_frames = 100
 
     sim_substeps = 1
     sim_dt = frame_dt / sim_substeps
-   
+
     sim_time = 0.0
     render_time = 0.0
 
-    def __init__(self, device='cpu'):
-
+    def __init__(self, device="cpu"):
         builder = wp.sim.ModelBuilder()
 
         self.device = device
@@ -67,16 +69,10 @@ class Environment:
         builder = wp.sim.ModelBuilder(gravity=0.0)
         builder.add_articulation()
         b = builder.add_body(origin=wp.transform())
-        s = builder.add_shape_box( 
-                pos=(0.0, 0.0, 0.0),
-                hx=0.5,
-                hy=0.5,
-                hz=0.5,
-                density=100.0,
-                body=b)
+        s = builder.add_shape_box(pos=(0.0, 0.0, 0.0), hx=0.5, hy=0.5, hz=0.5, density=100.0, body=b)
 
         # compute reference trajectory
-        rad = np.linspace(0.0, np.pi*2, self.episode_frames)
+        rad = np.linspace(0.0, np.pi * 2, self.episode_frames)
         self.ref_traj = np.stack([np.cos(rad), np.sin(rad)], axis=1)
 
         # set initial joint configuration to first reference state
@@ -105,7 +101,7 @@ class Environment:
         """
         Simulate the system for the given states.
         """
-        
+
         for _ in range(self.sim_substeps):
             if requires_grad:
                 next_state = self.model.state(requires_grad=True)
@@ -115,15 +111,8 @@ class Environment:
 
             wp.sim.collide(self.model, state)
             # apply generalized torques to rigid body here, instead of planar joints
-            wp.launch(
-                apply_torque,
-                1,
-                inputs=[action, action_index],
-                outputs=[state.body_f],
-                device=action.device)
-            state = self.integrator.simulate(
-                self.model, state, next_state, self.sim_dt,
-                requires_grad=requires_grad)
+            wp.launch(apply_torque, 1, inputs=[action, action_index], outputs=[state.body_f], device=action.device)
+            state = self.integrator.simulate(self.model, state, next_state, self.sim_dt, requires_grad=requires_grad)
         return state
 
     def _render(self, state: wp.sim.State):
@@ -141,34 +130,31 @@ class Environment:
 
         actions.requires_grad = requires_grad
         state = self.model.state(requires_grad=requires_grad)
-        if (render):
+        if render:
             # set up Usd renderer
             self.renderer = wp.sim.render.SimRenderer(
-                self.model,
-                os.path.join(os.path.dirname(__file__), "outputs/example_sim_trajopt.usd"),
-                scaling=100.0)
+                self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_trajopt.usd"), scaling=100.0
+            )
             self.render_time = 0.0
             self._render(state)
 
-        states = wp.zeros(self.episode_frames * self.state_dim, dtype=wp.float32, device=self.device, requires_grad=requires_grad)
+        states = wp.zeros(
+            self.episode_frames * self.state_dim, dtype=wp.float32, device=self.device, requires_grad=requires_grad
+        )
 
         for i in range(self.episode_frames):
-
             # simulate
-            next_state = self.simulate(state, actions, action_index=i*self.action_dim, requires_grad=requires_grad)
+            next_state = self.simulate(state, actions, action_index=i * self.action_dim, requires_grad=requires_grad)
 
             # save state
             wp.launch(
-                save_state,
-                dim=1,
-                inputs=[next_state.body_q, i*self.state_dim],
-                outputs=[states],
-                device=self.device)
+                save_state, dim=1, inputs=[next_state.body_q, i * self.state_dim], outputs=[states], device=self.device
+            )
 
             # update state
             state = next_state
 
-            if (render):
+            if render:
                 self._render(state)
 
         # compute loss
@@ -176,22 +162,28 @@ class Environment:
             loss = wp.zeros(1, dtype=wp.float32, device=self.device, requires_grad=requires_grad)
         wp.launch(
             loss_l2,
-            dim=self.state_dim*self.episode_frames,
+            dim=self.state_dim * self.episode_frames,
             inputs=[states, self.ref_traj],
             outputs=[loss],
-            device=self.device)
-        
+            device=self.device,
+        )
+
         return states
 
     def optimize(self, num_iter=100, lr=0.01):
         # initial guess
-        actions = wp.array(np.zeros(self.episode_frames*self.action_dim)*100.0, dtype=wp.float32, device=self.device, requires_grad=True)
+        actions = wp.array(
+            np.zeros(self.episode_frames * self.action_dim) * 100.0,
+            dtype=wp.float32,
+            device=self.device,
+            requires_grad=True,
+        )
 
         optimizer = Adam([actions], lr=lr)
         loss = wp.zeros(1, dtype=wp.float32, device=self.device, requires_grad=True)
 
         # optimize
-        for i in range(1, num_iter+1):
+        for i in range(1, num_iter + 1):
             loss.zero_()
             tape = wp.Tape()
             with tape:
@@ -208,6 +200,7 @@ class Environment:
 
         return actions
 
+
 np.set_printoptions(precision=4, linewidth=2000, suppress=True)
 
 sim = Environment(device=wp.get_preferred_device())
@@ -218,9 +211,9 @@ opt_traj = sim.forward(best_actions, render=True)
 
 np_states = opt_traj.numpy().reshape((-1, 2))
 np_ref = sim.ref_traj.numpy().reshape((-1, 2))
-plt.plot(np_ref[:,0], np_ref[:,1], label="reference")
-plt.plot(np_states[:,0], np_states[:,1], label="optimized")
+plt.plot(np_ref[:, 0], np_ref[:, 1], label="reference")
+plt.plot(np_states[:, 0], np_states[:, 1], label="optimized")
 plt.grid()
 plt.legend()
-plt.axis('equal')
+plt.axis("equal")
 plt.show()

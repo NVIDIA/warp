@@ -24,6 +24,7 @@ _DIALOG_WIDTH = 800
 _DIALOG_HEIGHT = 600
 _BUTTON_WIDTH = 100
 
+
 class _State:
     """State object shared across the various handlers."""
 
@@ -40,8 +41,8 @@ class _State:
     def is_read_only(self) -> bool:
         return self.code_str_attr.get_upstream_connection_count() > 0
 
-def _get_save_btn_clicked_handler(state: _State) -> Callable:
 
+def _get_save_btn_clicked_handler(state: _State) -> Callable:
     def fn():
         # Trim the trailing new line character inserted by
         # the text editor.
@@ -56,8 +57,8 @@ def _get_save_btn_clicked_handler(state: _State) -> Callable:
 
     return fn
 
-def _get_edit_btn_clicked_handler(state: _State) -> Callable:
 
+def _get_edit_btn_clicked_handler(state: _State) -> Callable:
     def fn():
         read_only = state.is_read_only()
 
@@ -91,6 +92,7 @@ def _get_edit_btn_clicked_handler(state: _State) -> Callable:
         state.dialog = dialog
 
     return fn
+
 
 def get_code_str_prop_builder(layout: Any) -> Callable:
     """Builds the function used to create the property."""

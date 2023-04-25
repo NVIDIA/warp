@@ -10,6 +10,7 @@ from typing import Tuple
 
 wp.init()
 
+
 class RenderMode(Enum):
     NONE = "none"
     TINY = "tiny"
@@ -17,6 +18,7 @@ class RenderMode(Enum):
 
     def __str__(self):
         return self.value
+
 
 class IntegratorType(Enum):
     EULER = "euler"
@@ -26,20 +28,19 @@ class IntegratorType(Enum):
         return self.value
 
 
-
 def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), upaxis="y"):
     # compute positional offsets per environment
     env_offset = np.array(env_offset)
     nonzeros = np.nonzero(env_offset)[0]
     num_dim = nonzeros.shape[0]
     if num_dim > 0:
-        side_length = int(np.ceil(num_envs**(1.0/num_dim)))
+        side_length = int(np.ceil(num_envs ** (1.0 / num_dim)))
         env_offsets = []
     else:
         env_offsets = np.zeros((num_envs, 3))
     if num_dim == 1:
         for i in range(num_envs):
-            env_offsets.append(i*env_offset)
+            env_offsets.append(i * env_offset)
     elif num_dim == 2:
         for i in range(num_envs):
             d0 = i // side_length
@@ -50,7 +51,7 @@ def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), upaxis="y"):
             env_offsets.append(offset)
     elif num_dim == 3:
         for i in range(num_envs):
-            d0 = i // (side_length*side_length)
+            d0 = i // (side_length * side_length)
             d1 = (i // side_length) % side_length
             d2 = i % side_length
             offset = np.zeros(3)
@@ -67,13 +68,14 @@ def compute_env_offsets(num_envs, env_offset=(5.0, 0.0, 5.0), upaxis="y"):
     env_offsets -= correction
     return env_offsets
 
+
 class Environment:
     sim_name: str = "Environment"
 
     frame_dt = 1.0 / 60.0
 
-    episode_duration = 5.0      # seconds
-    episode_frames = int(episode_duration/frame_dt)
+    episode_duration = 5.0  # seconds
+    episode_frames = int(episode_duration / frame_dt)
 
     # whether to play the simulation indefinitely when using the Tiny renderer
     continuous_tiny_render: bool = True
@@ -124,23 +126,23 @@ class Environment:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
-            '--integrator',
-            help='Type of integrator',
-            type=IntegratorType, choices=list(IntegratorType),
-            default=self.integrator_type.value)
+            "--integrator",
+            help="Type of integrator",
+            type=IntegratorType,
+            choices=list(IntegratorType),
+            default=self.integrator_type.value,
+        )
         self.parser.add_argument(
-            '--visualizer',
-            help='Type of renderer',
-            type=RenderMode, choices=list(RenderMode),
-            default=self.render_mode.value)
+            "--visualizer",
+            help="Type of renderer",
+            type=RenderMode,
+            choices=list(RenderMode),
+            default=self.render_mode.value,
+        )
         self.parser.add_argument(
-            '--num_envs',
-            help='Number of environments to simulate',
-            type=int, default=self.num_envs)
-        self.parser.add_argument(
-            '--profile',
-            help='Enable profiling',
-            type=bool, default=self.profile)
+            "--num_envs", help="Number of environments to simulate", type=int, default=self.num_envs
+        )
+        self.parser.add_argument("--profile", help="Enable profiling", type=bool, default=self.profile)
 
     def parse_args(self):
         args = self.parser.parse_args()
@@ -162,11 +164,12 @@ class Environment:
         try:
             articulation_builder = wp.sim.ModelBuilder()
             self.create_articulation(articulation_builder)
-            env_offsets = compute_env_offsets(
-                self.num_envs, self.env_offset, self.up_axis)
+            env_offsets = compute_env_offsets(self.num_envs, self.env_offset, self.up_axis)
             for i in range(self.num_envs):
                 xform = wp.transform(env_offsets[i], wp.quat_identity())
-                builder.add_builder(articulation_builder, xform, separate_collision_group=self.separate_collision_group_per_env)
+                builder.add_builder(
+                    articulation_builder, xform, separate_collision_group=self.separate_collision_group_per_env
+                )
             self.bodies_per_env = len(articulation_builder.body_q)
         except NotImplementedError:
             # custom simulation setup where something other than an articulation is used
@@ -181,7 +184,7 @@ class Environment:
 
         self.model.joint_attach_ke = self.joint_attach_ke
         self.model.joint_attach_kd = self.joint_attach_kd
-        
+
         # set up current and next state to be used by the integrator
         self.state_0 = None
         self.state_1 = None
@@ -196,17 +199,13 @@ class Environment:
             self.render_mode = RenderMode.NONE
         if self.render_mode == RenderMode.TINY:
             self.renderer = wp.sim.render.SimRendererTiny(
-                self.model,
-                self.sim_name,
-                upaxis=self.up_axis,
-                **self.tiny_render_settings)
+                self.model, self.sim_name, upaxis=self.up_axis, **self.tiny_render_settings
+            )
         elif self.render_mode == RenderMode.USD:
             filename = os.path.join(os.path.dirname(__file__), "outputs", self.sim_name + ".usd")
             self.renderer = wp.sim.render.SimRendererUsd(
-                self.model,
-                filename,
-                upaxis=self.up_axis,
-                **self.usd_render_settings)
+                self.model, filename, upaxis=self.up_axis, **self.usd_render_settings
+            )
 
     def create_articulation(self, builder):
         raise NotImplementedError
@@ -230,7 +229,7 @@ class Environment:
     def state(self):
         # shortcut to current state
         return self.state_0
-    
+
     def update(self):
         for i in range(self.sim_substeps):
             self.state_0.clear_forces()
@@ -240,7 +239,7 @@ class Environment:
             self.state_0, self.state_1 = self.state_1, self.state_0
 
     def render(self, is_live=False):
-        if (self.renderer is not None):
+        if self.renderer is not None:
             with wp.ScopedTimer("render", False):
                 self.render_time += self.frame_dt
                 self.renderer.begin_frame(self.render_time)
@@ -248,8 +247,7 @@ class Environment:
                 self.renderer.end_frame()
 
     def run(self):
-
-        #---------------
+        # ---------------
         # run simulation
 
         self.sim_time = 0.0
@@ -258,17 +256,12 @@ class Environment:
         self.state_1 = self.model.state()
 
         if self.eval_fk:
-            wp.sim.eval_fk(
-                self.model,
-                self.model.joint_q,
-                self.model.joint_qd,
-                None,
-                self.state_0)
+            wp.sim.eval_fk(self.model, self.model.joint_q, self.model.joint_qd, None, self.state_0)
 
         self.before_simulate()
         self.update()
 
-        if (self.renderer is not None):
+        if self.renderer is not None:
             self.render()
 
             if self.render_mode == RenderMode.TINY:
@@ -282,9 +275,9 @@ class Environment:
 
             # simulate
             self.update()
-                    
+
             graph = wp.capture_end()
-            
+
         if self.plot_body_coords:
             q_history = []
             q_history.append(self.state_0.body_q.numpy().copy())
@@ -299,17 +292,13 @@ class Environment:
             joint_q = wp.zeros_like(self.model.joint_q)
             joint_qd = wp.zeros_like(self.model.joint_qd)
 
-
-        # simulate 
+        # simulate
         with wp.ScopedTimer("simulate", detailed=False, print=False, active=True, dict=profiler):
-
-            if (self.renderer is not None):
- 
+            if self.renderer is not None:
                 with wp.ScopedTimer("render", False):
-
-                    if (self.renderer is not None):
+                    if self.renderer is not None:
                         self.render_time += self.frame_dt
-                        
+
                         self.renderer.begin_frame(self.render_time)
                         self.renderer.render(self.state_0)
                         self.renderer.end_frame()
@@ -325,7 +314,9 @@ class Environment:
                             self.state_0.clear_forces()
                             self.custom_update()
                             wp.sim.collide(self.model, self.state_0)
-                            self.integrator.simulate(self.model, self.state_0, self.state_1, self.sim_dt, requires_grad=self.requires_grad)
+                            self.integrator.simulate(
+                                self.model, self.state_0, self.state_1, self.sim_dt, requires_grad=self.requires_grad
+                            )
                             self.state_0, self.state_1 = self.state_1, self.state_0
 
                             self.sim_time += self.sim_dt
@@ -350,16 +341,17 @@ class Environment:
 
         self.after_simulate()
 
-        avg_time = np.array(profiler["simulate"]).mean()/self.episode_frames
-        avg_steps_second = 1000.0*float(self.num_envs)/avg_time
+        avg_time = np.array(profiler["simulate"]).mean() / self.episode_frames
+        avg_steps_second = 1000.0 * float(self.num_envs) / avg_time
 
         print(f"envs: {self.num_envs} steps/second {avg_steps_second} avg_time {avg_time}")
 
-        if (self.renderer is not None):
+        if self.renderer is not None:
             self.renderer.save()
-        
+
         if self.plot_body_coords:
             import matplotlib.pyplot as plt
+
             q_history = np.array(q_history)
             qd_history = np.array(qd_history)
             delta_history = np.array(delta_history)
@@ -372,39 +364,40 @@ class Environment:
             fig, ax = plt.subplots(len(body_indices), 7, figsize=(10, 10), squeeze=False)
             fig.subplots_adjust(hspace=0.2, wspace=0.2)
             for i, j in enumerate(body_indices):
-                ax[i,0].set_title(f"Body {j} Position")
-                ax[i,0].grid()
-                ax[i,1].set_title(f"Body {j} Orientation")
-                ax[i,1].grid()
-                ax[i,2].set_title(f"Body {j} Linear Velocity")
-                ax[i,2].grid()
-                ax[i,3].set_title(f"Body {j} Angular Velocity")
-                ax[i,3].grid()
-                ax[i,4].set_title(f"Body {j} Linear Delta")
-                ax[i,4].grid()
-                ax[i,5].set_title(f"Body {j} Angular Delta")
-                ax[i,5].grid()
-                ax[i,6].set_title(f"Body {j} Num Contacts")
-                ax[i,6].grid()
-                ax[i,0].plot(q_history[:,j,:3])        
-                ax[i,1].plot(q_history[:,j,3:])
-                ax[i,2].plot(qd_history[:,j,3:])
-                ax[i,3].plot(qd_history[:,j,:3])
-                ax[i,4].plot(delta_history[:,j,3:])
-                ax[i,5].plot(delta_history[:,j,:3])
-                ax[i,6].plot(num_con_history[:,j])
-                ax[i,0].set_xlim(0, self.sim_steps)
-                ax[i,1].set_xlim(0, self.sim_steps)
-                ax[i,2].set_xlim(0, self.sim_steps)
-                ax[i,3].set_xlim(0, self.sim_steps)
-                ax[i,4].set_xlim(0, self.sim_steps)
-                ax[i,5].set_xlim(0, self.sim_steps)
-                ax[i,6].set_xlim(0, self.sim_steps)
-                ax[i,6].yaxis.get_major_locator().set_params(integer=True)
+                ax[i, 0].set_title(f"Body {j} Position")
+                ax[i, 0].grid()
+                ax[i, 1].set_title(f"Body {j} Orientation")
+                ax[i, 1].grid()
+                ax[i, 2].set_title(f"Body {j} Linear Velocity")
+                ax[i, 2].grid()
+                ax[i, 3].set_title(f"Body {j} Angular Velocity")
+                ax[i, 3].grid()
+                ax[i, 4].set_title(f"Body {j} Linear Delta")
+                ax[i, 4].grid()
+                ax[i, 5].set_title(f"Body {j} Angular Delta")
+                ax[i, 5].grid()
+                ax[i, 6].set_title(f"Body {j} Num Contacts")
+                ax[i, 6].grid()
+                ax[i, 0].plot(q_history[:, j, :3])
+                ax[i, 1].plot(q_history[:, j, 3:])
+                ax[i, 2].plot(qd_history[:, j, 3:])
+                ax[i, 3].plot(qd_history[:, j, :3])
+                ax[i, 4].plot(delta_history[:, j, 3:])
+                ax[i, 5].plot(delta_history[:, j, :3])
+                ax[i, 6].plot(num_con_history[:, j])
+                ax[i, 0].set_xlim(0, self.sim_steps)
+                ax[i, 1].set_xlim(0, self.sim_steps)
+                ax[i, 2].set_xlim(0, self.sim_steps)
+                ax[i, 3].set_xlim(0, self.sim_steps)
+                ax[i, 4].set_xlim(0, self.sim_steps)
+                ax[i, 5].set_xlim(0, self.sim_steps)
+                ax[i, 6].set_xlim(0, self.sim_steps)
+                ax[i, 6].yaxis.get_major_locator().set_params(integer=True)
             plt.show()
 
         if self.plot_joint_coords:
             import matplotlib.pyplot as plt
+
             joint_q_history = np.array(joint_q_history)
             dof_q = joint_q_history.shape[1]
             ncols = int(np.ceil(np.sqrt(dof_q)))
@@ -415,25 +408,25 @@ class Environment:
                 constrained_layout=True,
                 figsize=(ncols * 3.5, nrows * 3.5),
                 squeeze=False,
-                sharex=True
+                sharex=True,
             )
 
             joint_id = 0
             joint_type_names = {
-                wp.sim.JOINT_BALL.val: "ball", 
-                wp.sim.JOINT_REVOLUTE.val: "hinge", 
-                wp.sim.JOINT_PRISMATIC.val: "slide", 
+                wp.sim.JOINT_BALL.val: "ball",
+                wp.sim.JOINT_REVOLUTE.val: "hinge",
+                wp.sim.JOINT_PRISMATIC.val: "slide",
                 wp.sim.JOINT_UNIVERSAL.val: "universal",
                 wp.sim.JOINT_COMPOUND.val: "compound",
-                wp.sim.JOINT_FREE.val: "free", 
+                wp.sim.JOINT_FREE.val: "free",
                 wp.sim.JOINT_FIXED.val: "fixed",
                 wp.sim.JOINT_DISTANCE.val: "distance",
-                wp.sim.JOINT_D6.val: "D6"
+                wp.sim.JOINT_D6.val: "D6",
             }
             joint_lower = self.model.joint_limit_lower.numpy()
             joint_upper = self.model.joint_limit_upper.numpy()
             joint_type = self.model.joint_type.numpy()
-            while joint_id < len(joint_type)-1 and joint_type[joint_id] == wp.sim.JOINT_FIXED.val:
+            while joint_id < len(joint_type) - 1 and joint_type[joint_id] == wp.sim.JOINT_FIXED.val:
                 # skip fixed joints
                 joint_id += 1
             q_start = self.model.joint_q_start.numpy()
@@ -448,14 +441,14 @@ class Environment:
                 ax.plot(joint_q_history[:, dim])
                 if joint_type[joint_id] != wp.sim.JOINT_FREE.val:
                     lower = joint_lower[qd_i]
-                    if abs(lower) < 2*np.pi:
+                    if abs(lower) < 2 * np.pi:
                         ax.axhline(lower, color="red")
                     upper = joint_upper[qd_i]
-                    if abs(upper) < 2*np.pi:
+                    if abs(upper) < 2 * np.pi:
                         ax.axhline(upper, color="red")
                 joint_name = joint_type_names[joint_type[joint_id]]
                 ax.set_title(f"$\\mathbf{{q_{{{dim}}}}}$ ({self.model.joint_name[joint_id]} / {joint_name} {joint_id})")
-                if joint_id < self.model.joint_count-1 and q_start[joint_id+1] == dim+1:
+                if joint_id < self.model.joint_count - 1 and q_start[joint_id + 1] == dim + 1:
                     joint_id += 1
                     qd_i = qd_start[joint_id]
                 else:
@@ -463,15 +456,15 @@ class Environment:
             plt.tight_layout()
             plt.show()
 
-        return 1000.0*float(self.num_envs)/avg_time
+        return 1000.0 * float(self.num_envs) / avg_time
 
-    
+
 def run_env(Demo):
     demo = Demo()
     demo.parse_args()
     if demo.profile:
         import matplotlib.pyplot as plt
-        
+
         env_count = 2
         env_times = []
         env_size = []
@@ -483,7 +476,7 @@ def run_env(Demo):
 
             env_size.append(env_count)
             env_times.append(steps_per_second)
-            
+
             env_count *= 2
 
         # dump times
@@ -493,12 +486,11 @@ def run_env(Demo):
         # plot
         plt.figure(1)
         plt.plot(env_size, env_times)
-        plt.xscale('log')
+        plt.xscale("log")
         plt.xlabel("Number of Envs")
-        plt.yscale('log')
+        plt.yscale("log")
         plt.ylabel("Steps/Second")
         plt.show()
     else:
         demo.init()
         return demo.run()
-    

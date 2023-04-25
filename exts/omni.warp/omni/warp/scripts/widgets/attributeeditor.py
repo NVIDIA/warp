@@ -24,9 +24,11 @@ _LABEL_WIDTH = 100
 _FIELD_WIDTH = 275
 _DIALOG_BTNS_FRAME_HEIGHT = 20
 
+
 def _add_label(title):
     ui.Label(title, alignment=ui.Alignment.RIGHT, width=_LABEL_WIDTH)
     ui.Spacer(width=_DIALOG_PADDING)
+
 
 class AttributeEditor:
     """Editor to add/remove node attributes."""
@@ -79,11 +81,7 @@ class AttributeEditor:
 
     @property
     def array_format(self):
-        return ArrayAttributeFormat(
-            self.array_format_combobox.model
-                .get_item_value_model()
-                .get_value_as_int()
-        )
+        return ArrayAttributeFormat(self.array_format_combobox.model.get_item_value_model().get_value_as_int())
 
     @property
     def array_shape_source(self):
@@ -102,8 +100,7 @@ class AttributeEditor:
 
     def _update_array_shape_source_visibility(self):
         self.output_array_shape_source_frame.visible = (
-            self.port_type == og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
-            and self.is_array
+            self.port_type == og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT and self.is_array
         )
 
     def _handle_data_type_clicked(self, btn):
@@ -130,10 +127,7 @@ class AttributeEditor:
             self.filtered_data_type_names = self.supported_data_type_names
         else:
             text = text[0]
-            self.filtered_data_type_names = tuple(
-                x for x in self.supported_data_type_names
-                if text in x
-            )
+            self.filtered_data_type_names = tuple(x for x in self.supported_data_type_names if text in x)
 
         self._build_data_type_frame()
         self.selected_data_type_btn = None
@@ -158,15 +152,11 @@ class AttributeEditor:
             self._set_error_msg("The attribute's name cannot be empty.")
             return
         if not name[0].isalpha():
-            self._set_error_msg(
-                "The first character of the attribute's name must be a letter."
-            )
+            self._set_error_msg("The first character of the attribute's name must be a letter.")
             return
 
         if self.data_type is None:
-            self._set_error_msg(
-                "A data type for the new attribute must be selected."
-            )
+            self._set_error_msg("A data type for the new attribute must be selected.")
             return
 
         attr_desc = UserAttributeDesc(
@@ -176,10 +166,7 @@ class AttributeEditor:
             is_array=self.is_array,
             array_format=self.array_format,
             array_shape_source=self.array_shape_source,
-            optional=(
-                self.port_type == og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT
-                and self.optional
-            ),
+            optional=(self.port_type == og.AttributePortType.ATTRIBUTE_PORT_TYPE_INPUT and self.optional),
         )
 
         try:
@@ -220,7 +207,6 @@ class AttributeEditor:
 
         with self.dialog.frame:
             with ui.VStack(spacing=10):
-
                 # Placeholder to display any error message.
                 self.error_msg_label = ui.Label(
                     "",
@@ -265,10 +251,8 @@ class AttributeEditor:
 
                         self.data_type_frame = ui.ScrollingFrame(
                             height=_DATA_TYPE_FRAME_HEIGHT,
-                            horizontal_scrollbar_policy=(
-                                ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_OFF
-                            ),
-                            style_type_name_override="TreeView"
+                            horizontal_scrollbar_policy=(ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_OFF),
+                            style_type_name_override="TreeView",
                         )
                         self._build_data_type_frame()
 
@@ -277,9 +261,7 @@ class AttributeEditor:
                 with self.is_array_frame:
                     _add_label("Is Array")
                     self.is_array_checkbox = ui.CheckBox(width=_FIELD_WIDTH)
-                    self.is_array_checkbox.model.add_value_changed_fn(
-                        self._handle_is_array_value_changed
-                    )
+                    self.is_array_checkbox.model.add_value_changed_fn(self._handle_is_array_value_changed)
 
                 # Array's format.
                 self.array_format_frame = ui.HStack(height=0, visible=False)
@@ -290,9 +272,7 @@ class AttributeEditor:
                         *(x.label for x in ArrayAttributeFormat),
                         width=_FIELD_WIDTH,
                     )
-                    self.array_format_combobox.model.add_item_changed_fn(
-                        self._handle_array_format_item_changed
-                    )
+                    self.array_format_combobox.model.add_item_changed_fn(self._handle_array_format_item_changed)
 
                 # Output array's shape.
                 self.output_array_shape_source_frame = ui.HStack(

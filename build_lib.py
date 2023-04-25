@@ -159,7 +159,7 @@ def lib_name(name):
 
 try:
 
-    if args.standalone and sys.platform != "darwin":
+    if args.standalone:
         # build clang.dll
         cpp_sources = [
             "clang/clang.cpp",
@@ -184,9 +184,12 @@ try:
             libs.append("Version.lib")
             libs.append(f'/LIBPATH:"{libpath}"')
         else:
-            libs = [f"-l:{lib}" for lib in libs if os.path.splitext(lib)[1] == ".a"]
-            libs.insert(0, "-Wl,--start-group")
-            libs.append("-Wl,--end-group")
+            libs = [f"-l{lib[3:-2]}" for lib in libs if os.path.splitext(lib)[1] == ".a"]
+            if sys.platform == "darwin":
+                libs += libs  # prevents unresolved symbols due to link order
+            else:
+                libs.insert(0, "-Wl,--start-group")
+                libs.append("-Wl,--end-group")
             libs.append(f"-L{libpath}")
             libs.append("-lpthread")
             libs.append("-ldl")

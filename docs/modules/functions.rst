@@ -673,6 +673,62 @@ Utility
    Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
 
 
+.. function:: select(cond: int8, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: select(cond: uint8, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: select(cond: int16, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: select(cond: uint16, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: select(cond: int32, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: select(cond: uint32, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: select(cond: int64, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
+.. function:: select(cond: uint64, arg1: Any, arg2: Any)
+   :noindex:
+   :nocontentsentry:
+
+   Select between two arguments, if cond is false then return ``arg1``, otherwise return ``arg2``
+
+
 .. function:: select(arr: Array[Any], arg1: Any, arg2: Any)
    :noindex:
    :nocontentsentry:
@@ -1407,6 +1463,46 @@ Operators
 
 
 .. function:: unot(b: bool) -> bool
+
+
+.. function:: unot(b: int8) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(b: uint8) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(b: int16) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(b: uint16) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(b: int32) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(b: uint32) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(b: int64) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(b: uint64) -> bool
+   :noindex:
+   :nocontentsentry:
 
 
 .. rubric:: Footnotes

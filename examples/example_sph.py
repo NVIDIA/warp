@@ -28,34 +28,33 @@ import os
 wp.init()
 
 
-@wp.func 
+@wp.func
 def square(x: float):
-    return x*x
+    return x * x
 
-@wp.func 
+
+@wp.func
 def cube(x: float):
-    return x*x*x
+    return x * x * x
 
-@wp.func 
+
+@wp.func
 def fifth(x: float):
-    return x*x*x*x*x
+    return x * x * x * x * x
 
-@wp.func 
-def density_kernel(xyz: wp.vec3,
-                   smoothing_length: float):
 
+@wp.func
+def density_kernel(xyz: wp.vec3, smoothing_length: float):
     # calculate distance
     distance = wp.dot(xyz, xyz)
 
     return wp.max(cube(square(smoothing_length) - distance), 0.0)
 
-@wp.func 
-def diff_pressure_kernel(xyz: wp.vec3,
-                         pressure: float,
-                         neighbor_pressure: float,
-                         neighbor_rho: float,
-                         smoothing_length: float):
 
+@wp.func
+def diff_pressure_kernel(
+    xyz: wp.vec3, pressure: float, neighbor_pressure: float, neighbor_rho: float, smoothing_length: float
+):
     # calculate distance
     distance = wp.sqrt(wp.dot(xyz, xyz))
 
@@ -68,31 +67,29 @@ def diff_pressure_kernel(xyz: wp.vec3,
     else:
         return wp.vec3()
 
-@wp.func 
-def diff_viscous_kernel(xyz: wp.vec3,
-                        v: wp.vec3,
-                        neighbor_v: wp.vec3,
-                        neighbor_rho: float,
-                        smoothing_length: float):
 
+@wp.func
+def diff_viscous_kernel(xyz: wp.vec3, v: wp.vec3, neighbor_v: wp.vec3, neighbor_rho: float, smoothing_length: float):
     # calculate distance
     distance = wp.sqrt(wp.dot(xyz, xyz))
 
     # calculate terms of kernel
     if distance < smoothing_length:
         term_1 = (neighbor_v - v) / neighbor_rho
-        term_2 = (smoothing_length - distance)
+        term_2 = smoothing_length - distance
         return term_1 * term_2
     else:
         return wp.vec3()
 
-@wp.kernel
-def compute_density(grid : wp.uint64,
-                    particle_x: wp.array(dtype=wp.vec3),
-                    particle_rho: wp.array(dtype=float),
-                    density_normalization: float,
-                    smoothing_length: float):
 
+@wp.kernel
+def compute_density(
+    grid: wp.uint64,
+    particle_x: wp.array(dtype=wp.vec3),
+    particle_rho: wp.array(dtype=float),
+    density_normalization: float,
+    smoothing_length: float,
+):
     tid = wp.tid()
 
     # order threads by cell
@@ -118,19 +115,21 @@ def compute_density(grid : wp.uint64,
     # add external potential
     particle_rho[i] = density_normalization * rho
 
-@wp.kernel
-def get_acceleration(grid : wp.uint64,
-                     particle_x: wp.array(dtype=wp.vec3),
-                     particle_v: wp.array(dtype=wp.vec3),
-                     particle_rho: wp.array(dtype=float),
-                     particle_a: wp.array(dtype=wp.vec3),
-                     isotropic_exp: float,
-                     base_density: float,
-                     gravity: float,
-                     pressure_normalization: float,
-                     viscous_normalization: float,
-                     smoothing_length: float):
 
+@wp.kernel
+def get_acceleration(
+    grid: wp.uint64,
+    particle_x: wp.array(dtype=wp.vec3),
+    particle_v: wp.array(dtype=wp.vec3),
+    particle_rho: wp.array(dtype=float),
+    particle_a: wp.array(dtype=wp.vec3),
+    isotropic_exp: float,
+    base_density: float,
+    gravity: float,
+    pressure_normalization: float,
+    viscous_normalization: float,
+    smoothing_length: float,
+):
     tid = wp.tid()
 
     # order threads by cell
@@ -163,7 +162,9 @@ def get_acceleration(grid : wp.uint64,
             relative_position = particle_x[index] - x
 
             # calculate pressure force
-            pressure_force += diff_pressure_kernel(relative_position, pressure, neighbor_pressure, neighbor_rho, smoothing_length)
+            pressure_force += diff_pressure_kernel(
+                relative_position, pressure, neighbor_pressure, neighbor_rho, smoothing_length
+            )
 
             # compute kernel derivative
             viscous_force += diff_viscous_kernel(relative_position, v, neighbor_v, neighbor_rho, smoothing_length)
@@ -174,14 +175,16 @@ def get_acceleration(grid : wp.uint64,
     # add external potential
     particle_a[i] = force / rho + wp.vec3(0.0, gravity, 0.0)
 
-@wp.kernel
-def apply_bounds(particle_x: wp.array(dtype=wp.vec3),
-                 particle_v: wp.array(dtype=wp.vec3),
-                 damping_coef: float,
-                 width: float,
-                 height: float,
-                 length: float):
 
+@wp.kernel
+def apply_bounds(
+    particle_x: wp.array(dtype=wp.vec3),
+    particle_v: wp.array(dtype=wp.vec3),
+    damping_coef: float,
+    width: float,
+    height: float,
+    length: float,
+):
     tid = wp.tid()
 
     # get pos and velocity
@@ -190,56 +193,52 @@ def apply_bounds(particle_x: wp.array(dtype=wp.vec3),
 
     # clamp x left
     if x[0] < 0.0:
-        x = wp.vec3(0.0,  x[1],  x[2])
-        v = wp.vec3(v[0] * damping_coef, v[1],  v[2])
+        x = wp.vec3(0.0, x[1], x[2])
+        v = wp.vec3(v[0] * damping_coef, v[1], v[2])
 
     # clamp x right
     if x[0] > width:
-        x = wp.vec3(width,  x[1],  x[2])
-        v = wp.vec3(v[0] * damping_coef, v[1],  v[2])
+        x = wp.vec3(width, x[1], x[2])
+        v = wp.vec3(v[0] * damping_coef, v[1], v[2])
 
     # clamp y bot
     if x[1] < 0.0:
-        x = wp.vec3(x[0],  0.0,  x[2])
-        v = wp.vec3(v[0], v[1] * damping_coef,  v[2])
+        x = wp.vec3(x[0], 0.0, x[2])
+        v = wp.vec3(v[0], v[1] * damping_coef, v[2])
 
     # clamp z left
     if x[2] < 0.0:
-        x = wp.vec3(x[0],  x[1],  0.0)
-        v = wp.vec3(v[0], v[1],  v[2] * damping_coef)
+        x = wp.vec3(x[0], x[1], 0.0)
+        v = wp.vec3(v[0], v[1], v[2] * damping_coef)
 
     # clamp z right
     if x[2] > length:
-        x = wp.vec3(x[0],  x[1],  length)
-        v = wp.vec3(v[0], v[1],  v[2] * damping_coef)
-        
+        x = wp.vec3(x[0], x[1], length)
+        v = wp.vec3(v[0], v[1], v[2] * damping_coef)
+
     # apply clamps
     particle_x[tid] = x
     particle_v[tid] = v
 
+
 @wp.kernel
-def kick(particle_v: wp.array(dtype=wp.vec3),
-         particle_a: wp.array(dtype=wp.vec3),
-         dt: float):
+def kick(particle_v: wp.array(dtype=wp.vec3), particle_a: wp.array(dtype=wp.vec3), dt: float):
     tid = wp.tid()
     v = particle_v[tid]
     particle_v[tid] = v + particle_a[tid] * dt
 
+
 @wp.kernel
-def drift(particle_x: wp.array(dtype=wp.vec3),
-          particle_v: wp.array(dtype=wp.vec3),
-          dt: float):
+def drift(particle_x: wp.array(dtype=wp.vec3), particle_v: wp.array(dtype=wp.vec3), dt: float):
     tid = wp.tid()
     x = particle_x[tid]
     particle_x[tid] = x + particle_v[tid] * dt
 
-@wp.kernel
-def initialize_particles(particle_x: wp.array(dtype=wp.vec3),
-                         smoothing_length: float,
-                         width: float,
-                         height: float,
-                         length: float):
 
+@wp.kernel
+def initialize_particles(
+    particle_x: wp.array(dtype=wp.vec3), smoothing_length: float, width: float, height: float, length: float
+):
     tid = wp.tid()
 
     # grid size
@@ -251,7 +250,7 @@ def initialize_particles(particle_x: wp.array(dtype=wp.vec3),
     z = wp.float(tid % nr_z)
     y = wp.float((tid // nr_z) % nr_y)
     x = wp.float((tid // (nr_z * nr_y)) % nr_x)
-    pos = smoothing_length * wp.vec3(x, y, z) 
+    pos = smoothing_length * wp.vec3(x, y, z)
 
     # add small jitter
     state = wp.rand_init(123, tid)
@@ -262,34 +261,38 @@ def initialize_particles(particle_x: wp.array(dtype=wp.vec3),
 
 
 class Example:
-
-    def __init__(self, stage): 
-
+    def __init__(self, stage):
         # render params
-        self.frame_dt = 1.0/60.0
+        self.frame_dt = 1.0 / 60.0
         self.frame_count = 600
         self.renderer = wp.render.UsdRenderer(stage)
         self.sim_time = 0.0
 
         # simulation params
-        self.smoothing_length = 0.8 # NOTE change this to adjust number of particles
-        self.width = 80.0 # x
-        self.height = 80.0 # y
-        self.length = 80.0 # z
+        self.smoothing_length = 0.8  # NOTE change this to adjust number of particles
+        self.width = 80.0  # x
+        self.height = 80.0  # y
+        self.length = 80.0  # z
         self.isotropic_exp = 20
         self.base_density = 1.0
-        self.particle_mass = 0.01 * self.smoothing_length**3 # reduce according to smoothing length
-        self.dt = 0.01 * self.smoothing_length # decrease sim dt by smoothing length
+        self.particle_mass = 0.01 * self.smoothing_length**3  # reduce according to smoothing length
+        self.dt = 0.01 * self.smoothing_length  # decrease sim dt by smoothing length
         self.dynamic_visc = 0.025
         self.damping_coef = -0.95
         self.gravity = -0.1
-        self.n = int(self.height * (self.width/4.0) * (self.height/4.0) / (self.smoothing_length**3)) # number particles (small box in corner)
+        self.n = int(
+            self.height * (self.width / 4.0) * (self.height / 4.0) / (self.smoothing_length**3)
+        )  # number particles (small box in corner)
         self.sim_step_to_frame_ratio = int(32 / self.smoothing_length)
 
         # constants
-        self.density_normalization = (315.0 * self.particle_mass) / (64.0 * np.pi * self.smoothing_length**9) # integrate density kernel
-        self.pressure_normalization = - (45.0 * self.particle_mass) / (np.pi * self.smoothing_length**6)
-        self.viscous_normalization = (45.0 * self.dynamic_visc * self.particle_mass) / (np.pi * self.smoothing_length**6)
+        self.density_normalization = (315.0 * self.particle_mass) / (
+            64.0 * np.pi * self.smoothing_length**9
+        )  # integrate density kernel
+        self.pressure_normalization = -(45.0 * self.particle_mass) / (np.pi * self.smoothing_length**6)
+        self.viscous_normalization = (45.0 * self.dynamic_visc * self.particle_mass) / (
+            np.pi * self.smoothing_length**6
+        )
 
         # allocate arrays
         self.x = wp.empty(tuple([self.n]), dtype=wp.vec3)
@@ -298,14 +301,17 @@ class Example:
         self.a = wp.zeros(tuple([self.n]), dtype=wp.vec3)
 
         # set random positions
-        wp.launch(kernel=initialize_particles, dim=self.n, inputs=[self.x, self.smoothing_length, self.width, self.height, self.length]) # initialize in small area
+        wp.launch(
+            kernel=initialize_particles,
+            dim=self.n,
+            inputs=[self.x, self.smoothing_length, self.width, self.height, self.length],
+        )  # initialize in small area
 
         # create hash array
         grid_size = int(self.height / (4.0 * self.smoothing_length))
         self.grid = wp.HashGrid(grid_size, grid_size, grid_size)
 
     def update(self):
-
         with wp.ScopedTimer("simulate", active=True):
             for s in range(self.sim_step_to_frame_ratio):
                 with wp.ScopedTimer("grid build", active=False):
@@ -314,50 +320,48 @@ class Example:
 
                 with wp.ScopedTimer("forces", active=False):
                     # compute density of points
-                    wp.launch(kernel=compute_density,
-                              dim=self.n,
-                              inputs=[self.grid.id,
-                                      self.x,
-                                      self.rho,
-                                      self.density_normalization,
-                                      self.smoothing_length])
+                    wp.launch(
+                        kernel=compute_density,
+                        dim=self.n,
+                        inputs=[self.grid.id, self.x, self.rho, self.density_normalization, self.smoothing_length],
+                    )
 
                     # get new acceleration
-                    wp.launch(kernel=get_acceleration,
-                              dim=self.n,
-                              inputs=[self.grid.id,
-                                      self.x,
-                                      self.v,
-                                      self.rho,
-                                      self.a,
-                                      self.isotropic_exp,
-                                      self.base_density,
-                                      self.gravity,
-                                      self.pressure_normalization,
-                                      self.viscous_normalization,
-                                      self.smoothing_length])
+                    wp.launch(
+                        kernel=get_acceleration,
+                        dim=self.n,
+                        inputs=[
+                            self.grid.id,
+                            self.x,
+                            self.v,
+                            self.rho,
+                            self.a,
+                            self.isotropic_exp,
+                            self.base_density,
+                            self.gravity,
+                            self.pressure_normalization,
+                            self.viscous_normalization,
+                            self.smoothing_length,
+                        ],
+                    )
 
                     # apply bounds
-                    wp.launch(kernel=apply_bounds,
-                              dim=self.n,
-                              inputs=[self.x,
-                                      self.v,
-                                      self.damping_coef,
-                                      self.width,
-                                      self.height,
-                                      self.length])
+                    wp.launch(
+                        kernel=apply_bounds,
+                        dim=self.n,
+                        inputs=[self.x, self.v, self.damping_coef, self.width, self.height, self.length],
+                    )
 
                     # kick
                     wp.launch(kernel=kick, dim=self.n, inputs=[self.v, self.a, self.dt])
 
                     # drift
                     wp.launch(kernel=drift, dim=self.n, inputs=[self.x, self.v, self.dt])
- 
-    def render(self, is_live=False):
 
+    def render(self, is_live=False):
         with wp.ScopedTimer("render", active=True):
-            time = 0.0 if is_live else self.sim_time 
-   
+            time = 0.0 if is_live else self.sim_time
+
             self.renderer.begin_frame(time)
             self.renderer.render_points(points=self.x.numpy(), radius=self.smoothing_length, name="points")
             self.renderer.end_frame()
@@ -365,7 +369,7 @@ class Example:
         self.sim_time += self.frame_dt
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     stage_path = os.path.join(os.path.dirname(__file__), "outputs/example_sph.usd")
 
     example = Example(stage_path)

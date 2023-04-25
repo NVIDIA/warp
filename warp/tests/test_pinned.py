@@ -13,8 +13,8 @@ import unittest
 
 wp.init()
 
-def test_pinned(test, device):
 
+def test_pinned(test, device):
     assert wp.get_device(device).is_cuda, "Test device must be a CUDA device"
 
     n = 1024 * 1024
@@ -63,7 +63,6 @@ def test_pinned(test, device):
 
 
 def register(parent):
-
     cuda_devices = wp.get_cuda_devices()
 
     class TestPinned(parent):
@@ -75,6 +74,6 @@ def register(parent):
     return TestPinned
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

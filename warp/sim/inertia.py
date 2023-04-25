@@ -25,15 +25,13 @@ def triangle_inertia(
     com: wp.vec3,
     # outputs
     mass: wp.array(dtype=float, ndim=1),
-    inertia: wp.array(dtype=wp.mat33, ndim=1)):
-
+    inertia: wp.array(dtype=wp.mat33, ndim=1),
+):
     pcom = p - com
     qcom = q - com
     rcom = r - com
 
-    Dm = wp.mat33(pcom[0], qcom[0], rcom[0],
-                  pcom[1], qcom[1], rcom[1],
-                  pcom[2], qcom[2], rcom[2])
+    Dm = wp.mat33(pcom[0], qcom[0], rcom[0], pcom[1], qcom[1], rcom[1], pcom[2], qcom[2], rcom[2])
 
     volume = wp.determinant(Dm) / 6.0
 
@@ -41,7 +39,7 @@ def triangle_inertia(
     wp.atomic_add(mass, 0, 4.0 * density * volume)
 
     alpha = wp.sqrt(5.0) / 5.0
-    mid = (com + p + q + r) / 4.
+    mid = (com + p + q + r) / 4.0
     off_mid = mid - com
 
     # displacement of quadrature point from COM
@@ -51,14 +49,14 @@ def triangle_inertia(
     d3 = alpha * (com - mid) + off_mid
 
     # accumulate inertia
-    identity = wp.mat33(1., 0., 0., 0., 1., 0., 0., 0., 1.)
+    identity = wp.mat33(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
     I = wp.dot(d0, d0) * identity - wp.outer(d0, d0)
     I += wp.dot(d1, d1) * identity - wp.outer(d1, d1)
     I += wp.dot(d2, d2) * identity - wp.outer(d2, d2)
     I += wp.dot(d3, d3) * identity - wp.outer(d3, d3)
 
     wp.atomic_add(inertia, 0, (density * volume) * I)
-    
+
     return volume
 
 
@@ -72,8 +70,8 @@ def compute_solid_mesh_inertia(
     # outputs
     mass: wp.array(dtype=float, ndim=1),
     inertia: wp.array(dtype=wp.mat33, ndim=1),
-    volume: wp.array(dtype=float, ndim=1)):
-
+    volume: wp.array(dtype=float, ndim=1),
+):
     i = wp.tid()
 
     p = vertices[indices[i * 3 + 0]]
@@ -95,8 +93,8 @@ def compute_hollow_mesh_inertia(
     # outputs
     mass: wp.array(dtype=float, ndim=1),
     inertia: wp.array(dtype=wp.mat33, ndim=1),
-    volume: wp.array(dtype=float, ndim=1)):
-    
+    volume: wp.array(dtype=float, ndim=1),
+):
     tid = wp.tid()
     i = indices[tid * 3 + 0]
     j = indices[tid * 3 + 1]
@@ -199,8 +197,8 @@ def compute_cylinder_inertia(density: float, r: float, h: float) -> tuple:
 
     m = density * math.pi * r * r * h
 
-    Ia = 1/12 * m * (3 * r * r + h * h)
-    Ib = 1/2 * m * r * r
+    Ia = 1 / 12 * m * (3 * r * r + h * h)
+    Ib = 1 / 2 * m * r * r
 
     I = np.array([[Ia, 0.0, 0.0], [0.0, Ib, 0.0], [0.0, 0.0, Ia]])
 
@@ -222,8 +220,8 @@ def compute_cone_inertia(density: float, r: float, h: float) -> tuple:
 
     m = density * math.pi * r * r * h / 3.0
 
-    Ia = 1/20 * m * (3 * r * r + 2 * h * h)
-    Ib = 3/10 * m * r * r
+    Ia = 1 / 20 * m * (3 * r * r + 2 * h * h)
+    Ib = 3 / 10 * m * r * r
 
     I = np.array([[Ia, 0.0, 0.0], [0.0, Ib, 0.0], [0.0, 0.0, Ia]])
 
@@ -256,7 +254,9 @@ def compute_box_inertia(density: float, w: float, h: float, d: float) -> tuple:
     return (m, np.zeros(3), I)
 
 
-def compute_mesh_inertia(density: float, vertices: list, indices: list, is_solid: bool = True, thickness: Union[List[float], float] = 0.001) -> tuple:
+def compute_mesh_inertia(
+    density: float, vertices: list, indices: list, is_solid: bool = True, thickness: Union[List[float], float] = 0.001
+) -> tuple:
     """Computes mass, center of mass, 3x3 inertia matrix, and volume for a mesh."""
     com = np.mean(vertices, 0)
     com_warp = wp.vec3(com[0], com[1], com[2])
@@ -275,35 +275,33 @@ def compute_mesh_inertia(density: float, vertices: list, indices: list, is_solid
     if is_solid:
         weight = 0.25
         alpha = math.sqrt(5.0) / 5.0
-        wp.launch(kernel=compute_solid_mesh_inertia,
-                    dim=num_tris,
-                    inputs=[
-                        com_warp,
-                        weight,
-                        wp.array(indices, dtype=int),
-                        wp.array(vertices, dtype=wp.vec3),
-                        ],
-                    outputs=[
-                        mass_warp,
-                        I_warp,
-                        vol_warp])
+        wp.launch(
+            kernel=compute_solid_mesh_inertia,
+            dim=num_tris,
+            inputs=[
+                com_warp,
+                weight,
+                wp.array(indices, dtype=int),
+                wp.array(vertices, dtype=wp.vec3),
+            ],
+            outputs=[mass_warp, I_warp, vol_warp],
+        )
     else:
         weight = 0.25 * density
         if isinstance(thickness, float):
             thickness = [thickness] * len(vertices)
-        wp.launch(kernel=compute_hollow_mesh_inertia,
-                    dim=num_tris,
-                    inputs=[
-                        com_warp,
-                        weight,
-                        wp.array(indices, dtype=int),
-                        wp.array(vertices, dtype=wp.vec3),
-                        wp.array(thickness, dtype=float),
-                        ],
-                    outputs=[
-                        mass_warp,
-                        I_warp,
-                        vol_warp])
+        wp.launch(
+            kernel=compute_hollow_mesh_inertia,
+            dim=num_tris,
+            inputs=[
+                com_warp,
+                weight,
+                wp.array(indices, dtype=int),
+                wp.array(vertices, dtype=wp.vec3),
+                wp.array(thickness, dtype=float),
+            ],
+            outputs=[mass_warp, I_warp, vol_warp],
+        )
 
     # Extract mass and inertia and save to class attributes.
     mass = mass_warp.numpy()[0] * density
@@ -313,7 +311,7 @@ def compute_mesh_inertia(density: float, vertices: list, indices: list, is_solid
 
 
 def transform_inertia(m, I, p, q):
-    R = np.array(wp.quat_to_matrix(q)).reshape(3,3)
+    R = np.array(wp.quat_to_matrix(q)).reshape(3, 3)
 
     # Steiner's theorem
     return R @ I @ R.T + m * (np.dot(p, p) * np.eye(3) - np.outer(p, p))

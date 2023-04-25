@@ -38,6 +38,7 @@ ATTR_PORT_TYPE_OUTPUT = og.AttributePortType.ATTRIBUTE_PORT_TYPE_OUTPUT
 #   Internal State
 # ------------------------------------------------------------------------------
 
+
 class InternalState(InternalStateBase):
     """Internal state for the node."""
 
@@ -104,8 +105,10 @@ class InternalState(InternalStateBase):
 
         return True
 
+
 #   Compute
 # ------------------------------------------------------------------------------
+
 
 def infer_kernel_shape(
     db: OgnKernelDatabase,
@@ -114,26 +117,26 @@ def infer_kernel_shape(
     source = db.inputs.dimSource
     if source == EXPLICIT_SOURCE:
         dim_count = min(max(db.inputs.dimCount, 0), MAX_DIMENSIONS)
-        return tuple(
-            max(getattr(db.inputs, "dim{}".format(i + 1)), 0)
-            for i in range(dim_count)
-        )
+        return tuple(max(getattr(db.inputs, "dim{}".format(i + 1)), 0) for i in range(dim_count))
 
     try:
         value = getattr(db.inputs, source)
     except AttributeError:
         raise RuntimeError(
-            "The attribute '{}' used to source the dimension doesn't exist."
-            .format(join_attr_name(ATTR_PORT_TYPE_INPUT, source))
+            "The attribute '{}' used to source the dimension doesn't exist.".format(
+                join_attr_name(ATTR_PORT_TYPE_INPUT, source)
+            )
         )
 
     try:
         return (value.shape[0],)
     except AttributeError:
         raise RuntimeError(
-            "The attribute '{}' used to source the dimension isn't an array."
-            .format(join_attr_name(ATTR_PORT_TYPE_INPUT, source))
+            "The attribute '{}' used to source the dimension isn't an array.".format(
+                join_attr_name(ATTR_PORT_TYPE_INPUT, source)
+            )
         )
+
 
 def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     """Evaluates the node."""
@@ -146,7 +149,7 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     kernel_shape = infer_kernel_shape(db)
 
     # Ensure that our internal state is correctly initialized.
-    timeline =  omni.timeline.get_timeline_interface()
+    timeline = omni.timeline.get_timeline_interface()
     if db.internal_state.needs_initialization(db, timeline.is_stopped()):
         if not db.internal_state.initialize(db, len(kernel_shape)):
             return
@@ -180,8 +183,10 @@ def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
     # Write the output values to the node's attributes.
     write_output_attrs(db.outputs, db.internal_state.attr_infos, outputs)
 
+
 #   Node Entry Point
 # ------------------------------------------------------------------------------
+
 
 class OgnKernel:
     """Warp's kernel node."""
@@ -195,10 +200,7 @@ class OgnKernel:
         # Populate the devices tokens.
         attr = og.Controller.attribute("inputs:device", node)
         if attr.get_metadata(og.MetadataKeys.ALLOWED_TOKENS) is None:
-            attr.set_metadata(
-                og.MetadataKeys.ALLOWED_TOKENS,
-                ",".join(["cpu", "cuda:0"])
-            )
+            attr.set_metadata(og.MetadataKeys.ALLOWED_TOKENS, ",".join(["cpu", "cuda:0"]))
 
     @staticmethod
     def compute(db: OgnKernelDatabase) -> None:
