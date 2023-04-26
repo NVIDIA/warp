@@ -9,6 +9,13 @@ if sys.version_info[0] < 3:
 
 import os
 import argparse
+import subprocess
+
+# Install dependencies
+subprocess.check_call([sys.executable, "-m", "pip", "install", "numpy"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "gitpython"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "cmake"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "ninja"])
 
 import warp.config
 import warp.build
