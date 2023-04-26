@@ -157,7 +157,7 @@ def quote(path):
 
 
 def build_dll(
-    dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, use_cache=True, quick=False
+    dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, quick=False
 ):
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
@@ -180,34 +180,6 @@ def build_dll(
     warp_home_path = pathlib.Path(__file__).parent
     warp_home = warp_home_path.resolve()
     nanovdb_home = warp_home_path.parent / "_build/host-deps/nanovdb/include"
-
-    if use_cache:
-        if os.path.exists(dll_path) == True:
-            dll_time = os.path.getmtime(dll_path)
-            cache_valid = True
-
-            # check if output exists and is newer than source
-            if cu_path:
-                cu_time = os.path.getmtime(cu_path)
-                if cu_time > dll_time:
-                    if warp.config.verbose:
-                        print(f"cu_time: {cu_time} > dll_time: {dll_time} invaliding cache for {cu_path}")
-
-                    cache_valid = False
-
-            for cpp_path in cpp_paths:
-                cpp_time = os.path.getmtime(cpp_path)
-                if cpp_time > dll_time:
-                    if warp.config.verbose:
-                        print(f"cpp_time: {cpp_time} > dll_time: {dll_time} invaliding cache for {cpp_path}")
-
-                    cache_valid = False
-
-            if cache_valid:
-                if warp.config.verbose:
-                    print(f"Skipping build of {dll_path} since outputs newer than inputs")
-
-                return True
 
     # ensure that dll is not loaded in the process
     force_unload_dll(dll_path)

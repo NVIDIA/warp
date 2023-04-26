@@ -201,8 +201,7 @@ try:
                         libs=libs,
                         mode=warp.config.mode,
                         verify_fp=warp.config.verify_fp,
-                        fast_math=args.fast_math,
-                        use_cache=False)
+                        fast_math=args.fast_math)
 
     # build warp.dll
     cpp_sources = [
@@ -233,7 +232,6 @@ try:
                     mode=warp.config.mode,
                     verify_fp=warp.config.verify_fp,
                     fast_math=args.fast_math,
-                    use_cache=False,
                     quick=args.quick)
                     
 except Exception as e:
