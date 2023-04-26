@@ -14,6 +14,7 @@ import numpy as np
 import warp as wp
 from warp.tests.test_base import *
 
+
 @dataclass
 class TestData:
     a: Any
@@ -25,11 +26,8 @@ class TestData:
     expected_adj_t: float = None
 
     def check_backwards(self):
-        return (
-            self.expected_adj_a is not None
-            and self.expected_adj_b is not None
-            and self.expected_adj_t is not None
-        )
+        return self.expected_adj_a is not None and self.expected_adj_b is not None and self.expected_adj_t is not None
+
 
 TEST_DATA = {
     wp.float32: (
@@ -74,10 +72,9 @@ TEST_DATA = {
 
 wp.init()
 
+
 def test_smoothstep(test, device):
-
     def make_kernel_fn(data_type):
-
         def fn(
             a: wp.array(dtype=data_type),
             b: wp.array(dtype=data_type),
@@ -157,8 +154,8 @@ def test_smoothstep(test, device):
                     tol=1e-6,
                 )
 
+
 def register(parent):
-    
     devices = get_test_devices()
 
     class TestSmoothstep(parent):
@@ -166,6 +163,7 @@ def register(parent):
 
     add_function_test(TestSmoothstep, "test_smoothstep", test_smoothstep, devices=devices)
     return TestSmoothstep
+
 
 if __name__ == "__main__":
     _ = register(unittest.TestCase)

@@ -25,6 +25,7 @@ BUNDLE_TYPE_OG_TYPE = og.Type(
     role=og.AttributeRole.TEXT,
 )
 
+
 class IntEnum(int, Enum):
     """Base class for integer enumerators with labels."""
 
@@ -34,6 +35,7 @@ class IntEnum(int, Enum):
         obj.label = label
         return obj
 
+
 def get_annotations(obj: Any) -> Mapping[str, Any]:
     """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
     # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
@@ -41,6 +43,7 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
         return obj.__dict__.get("__annotations__", {})
 
     return getattr(obj, "__annotations__", {})
+
 
 def get_warp_type_from_data_type_name(
     data_type_name: str,
@@ -61,10 +64,10 @@ def get_warp_type_from_data_type_name(
             )
 
         return "{prefix}array(dtype={prefix}{dtype}, ndim={ndim})".format(
-                prefix=prefix,
-                dtype=data_type_name,
-                ndim=dim_count,
-            )
+            prefix=prefix,
+            dtype=data_type_name,
+            ndim=dim_count,
+        )
 
     dtype = getattr(wp.types, data_type_name)
     if dim_count == 0:
@@ -75,11 +78,14 @@ def get_warp_type_from_data_type_name(
 
     return wp.array(dtype=dtype, ndim=dim_count)
 
+
 def log_info(msg):
     carb.log_info("[omni.warp] {}".format(msg))
 
+
 def log_warn(msg):
     carb.log_warn("[omni.warp] {}".format(msg))
+
 
 def log_error(msg):
     carb.log_error("[omni.warp] {}".format(msg))

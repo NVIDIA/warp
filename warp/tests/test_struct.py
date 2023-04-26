@@ -13,16 +13,19 @@ import unittest
 
 wp.init()
 
+
 @wp.struct
 class Model:
     dt: float
     gravity: wp.vec3
     m: wp.array(dtype=float)
 
+
 @wp.struct
 class State:
     x: wp.array(dtype=wp.vec3)
     v: wp.array(dtype=wp.vec3)
+
 
 @wp.kernel
 def kernel_step(state_in: State, state_out: State, model: Model):
@@ -30,6 +33,7 @@ def kernel_step(state_in: State, state_out: State, model: Model):
 
     state_out.v[i] = state_in.v[i] + model.gravity / model.m[i] * model.dt
     state_out.x[i] = state_in.x[i] + state_out.v[i] * model.dt
+
 
 def test_step(test, device):
     dim = 5
@@ -118,7 +122,7 @@ def test_step_grad(test, device):
     dl_dx = 2 * state_out.x.numpy()
     dl_dv = dl_dx * dt
 
-    dv_dm = - gravity * dt / m[:, None] ** 2
+    dv_dm = -gravity * dt / m[:, None] ** 2
     dl_dm = (dl_dv * dv_dm).sum(-1)
 
     assert_np_equal(state_out.x.grad.numpy(), dl_dx, tol=1e-6)
@@ -128,7 +132,7 @@ def test_step_grad(test, device):
     assert_np_equal(model.m.grad.numpy(), dl_dm, tol=1e-6)
 
     tape.zero()
-    
+
     assert state_out.x.grad.numpy().sum() == 0.0
     assert state_in.x.grad.numpy().sum() == 0.0
     assert state_out.v.grad.numpy().sum() == 0.0
@@ -140,43 +144,47 @@ def test_step_grad(test, device):
 class Empty:
     pass
 
+
 @wp.kernel
 def test_empty(input: Empty):
     tid = wp.tid()
+
 
 @wp.struct
 class Uninitialized:
     data: wp.array(dtype=int)
 
+
 @wp.kernel
 def test_uninitialized(input: Uninitialized):
     tid = wp.tid()
+
 
 @wp.struct
 class Baz:
     data: wp.array(dtype=int)
     z: wp.vec3
 
+
 @wp.struct
 class Bar:
     baz: Baz
     y: float
+
 
 @wp.struct
 class Foo:
     bar: Bar
     x: int
 
+
 @wp.kernel
 def kernel_nested_struct(foo: Foo):
     tid = wp.tid()
     foo.bar.baz.data[tid] = (
-          foo.bar.baz.data[tid]
-        + foo.x
-        + int(foo.bar.y * 100.0)
-        + int(wp.length_sq(foo.bar.baz.z))
-        + tid * 2
+        foo.bar.baz.data[tid] + foo.x + int(foo.bar.y * 100.0) + int(wp.length_sq(foo.bar.baz.z)) + tid * 2
     )
+
 
 def test_nested_struct(test, device):
     dim = 3
@@ -195,6 +203,7 @@ def test_nested_struct(test, device):
         foo.bar.baz.data,
         wp.array((260, 262, 264), dtype=int, device=device),
     )
+
 
 @wp.kernel
 def test_struct_instantiate(data: wp.array(dtype=int)):
@@ -216,6 +225,10 @@ class MathThings:
     m1: wp.mat22
     m2: wp.mat22
     m3: wp.mat22
+    m4: wp.mat22
+    m5: wp.mat22
+    m6: wp.mat22
+
 
 @wp.kernel
 def check_math_conversions(s: MathThings):
@@ -225,63 +238,116 @@ def check_math_conversions(s: MathThings):
     wp.expect_eq(s.m1, wp.mat22(1.0, 2.0, 3.0, 4.0))
     wp.expect_eq(s.m2, wp.mat22(10.0, 20.0, 30.0, 40.0))
     wp.expect_eq(s.m3, wp.mat22(100.0, 200.0, 300.0, 400.0))
+    wp.expect_eq(s.m4, wp.mat22(1.0, 2.0, 3.0, 4.0))
+    wp.expect_eq(s.m5, wp.mat22(10.0, 20.0, 30.0, 40.0))
+    wp.expect_eq(s.m6, wp.mat22(100.0, 200.0, 300.0, 400.0))
+
 
 def test_struct_math_conversions(test, device):
-
     s = MathThings()
 
-    # test assigning various iterables to vector and matrix attributes
+    # test assigning various containers to vector and matrix attributes
     s.v1 = (1, 2, 3)
     s.v2 = [10, 20, 30]
     s.v3 = np.array([100, 200, 300])
+    # 2d containers for matrices
     s.m1 = ((1, 2), (3, 4))
     s.m2 = [[10, 20], [30, 40]]
     s.m3 = np.array([[100, 200], [300, 400]])
+    # 1d containers for matrices
+    s.m4 = (1, 2, 3, 4)
+    s.m5 = [10, 20, 30, 40]
+    s.m6 = np.array([100, 200, 300, 400])
 
     wp.launch(check_math_conversions, dim=1, inputs=[s])
 
 
 @wp.struct
 class ReturnStruct:
-
     a: int
     b: int
 
+
 @wp.func
 def test_return_func():
-
     a = ReturnStruct(1, 2)
     return a
 
+
 @wp.kernel
 def test_return():
-
     t = test_return_func()
     wp.expect_eq(t.a, 1)
     wp.expect_eq(t.b, 2)
-    
+
+
+@wp.struct
+class DefaultAttribNested:
+    f: float
+
+
+@wp.struct
+class DefaultAttribStruct:
+    i: int
+    d: wp.float64
+    v: wp.vec3
+    m: wp.mat22
+    a: wp.array(dtype=wp.int32)
+    s: DefaultAttribNested
+
+
+@wp.kernel
+def check_default_attributes(data: DefaultAttribStruct):
+    wp.expect_eq(data.i, wp.int32(0))
+    wp.expect_eq(data.d, wp.float64(0))
+    wp.expect_eq(data.v, wp.vec3(0.0, 0.0, 0.0))
+    wp.expect_eq(data.m, wp.mat22(0.0, 0.0, 0.0, 0.0))
+    wp.expect_eq(data.a.shape[0], 0)
+    wp.expect_eq(data.s.f, wp.float32(0.0))
+
+
+def test_struct_default_attributes(test, device):
+    # do not initialize any struct attributes and check default values in kernel
+    s = DefaultAttribStruct()
+
+    wp.launch(check_default_attributes, dim=1, inputs=[s])
 
 
 def register(parent):
-    
     devices = get_test_devices()
-    
+
     class TestStruct(parent):
         pass
 
     add_function_test(TestStruct, "test_step", test_step, devices=devices)
     add_function_test(TestStruct, "test_step_grad", test_step_grad, devices=devices)
     add_kernel_test(TestStruct, kernel=test_empty, name="test_empty", dim=1, inputs=[Empty()], devices=devices)
-    add_kernel_test(TestStruct, kernel=test_uninitialized, name="test_uninitialized", dim=1, inputs=[Uninitialized()], devices=devices)
+    add_kernel_test(
+        TestStruct,
+        kernel=test_uninitialized,
+        name="test_uninitialized",
+        dim=1,
+        inputs=[Uninitialized()],
+        devices=devices,
+    )
     add_kernel_test(TestStruct, kernel=test_return, name="test_return", dim=1, inputs=[], devices=devices)
     add_function_test(TestStruct, "test_nested_struct", test_nested_struct, devices=devices)
     add_function_test(TestStruct, "test_struct_math_conversions", test_struct_math_conversions, devices=devices)
+    add_function_test(TestStruct, "test_struct_default_attributes", test_struct_default_attributes, devices=devices)
 
     for device in devices:
-        add_kernel_test(TestStruct, kernel=test_struct_instantiate, name="test_struct_instantiate", dim=1, inputs=[wp.array([1], dtype=int, device=device)], devices=[device])
+        add_kernel_test(
+            TestStruct,
+            kernel=test_struct_instantiate,
+            name="test_struct_instantiate",
+            dim=1,
+            inputs=[wp.array([1], dtype=int, device=device)],
+            devices=[device],
+        )
 
     return TestStruct
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

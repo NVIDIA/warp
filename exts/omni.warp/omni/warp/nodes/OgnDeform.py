@@ -15,27 +15,21 @@ import time
 import numpy as np
 import warp as wp
 
-@wp.kernel
-def deform(points_in: wp.array(dtype=wp.vec3),
-            points_out: wp.array(dtype=wp.vec3),
-            time: float):
 
+@wp.kernel
+def deform(points_in: wp.array(dtype=wp.vec3), points_out: wp.array(dtype=wp.vec3), time: float):
     # get thread-id
     tid = wp.tid()
 
     # sine-wave deformer
-    points_out[tid] = points_in[tid] + wp.vec3(0.0, wp.sin(time + points_in[tid][0]*0.1)*10.0, 0.0)
-    
+    points_out[tid] = points_in[tid] + wp.vec3(0.0, wp.sin(time + points_in[tid][0] * 0.1) * 10.0, 0.0)
+
 
 class OgnDeform:
-
     @staticmethod
     def compute(db) -> bool:
-
         with wp.ScopedDevice("cuda:0"):
-
             if len(db.inputs.points):
-
                 # convert node inputs to a GPU array
                 points_in = wp.array(db.inputs.points, dtype=wp.vec3)
                 points_out = wp.zeros_like(points_in)

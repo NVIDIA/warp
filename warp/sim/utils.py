@@ -5,10 +5,7 @@ PI_2 = wp.constant(1.57079632679)
 
 
 @wp.func
-def velocity_at_point(
-    qd: wp.spatial_vector,
-    r: wp.vec3
-):
+def velocity_at_point(qd: wp.spatial_vector, r: wp.vec3):
     """
     Returns the velocity of a point relative to the frame with the given spatial velocity.
     """
@@ -24,7 +21,7 @@ def quat_twist(axis: wp.vec3, q: wp.quat):
     # project imaginary part onto axis
     a = wp.vec3(q[0], q[1], q[2])
     proj = wp.dot(a, axis)
-    a = proj*axis
+    a = proj * axis
     # if proj < 0.0:
     #     # ensure twist points in same direction as axis
     #     a = -a
@@ -48,7 +45,8 @@ def quat_decompose(q: wp.quat):
     R = wp.mat33(
         wp.quat_rotate(q, wp.vec3(1.0, 0.0, 0.0)),
         wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0)),
-        wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0)))
+        wp.quat_rotate(q, wp.vec3(0.0, 0.0, 1.0)),
+    )
 
     # https://www.sedris.org/wg8home/Documents/WG80485.pdf
     phi = wp.atan2(R[1, 2], R[2, 2])
@@ -101,25 +99,25 @@ def quat_to_euler(q: wp.quat, i: int, j: int, k: int) -> wp.vec3:
     if i == k:
         not_proper = False
         k = 6 - i - j  # because i + j + k = 1 + 2 + 3 = 6
-    e = float((i-j)*(j-k)*(k-i)) / 2.0  # Levi-Civita symbol
+    e = float((i - j) * (j - k) * (k - i)) / 2.0  # Levi-Civita symbol
     a = q[0]
     b = q[i]
     c = q[j]
-    d = q[k]*e
+    d = q[k] * e
     if not_proper:
         a -= q[j]
-        b += q[k]*e
+        b += q[k] * e
         c += q[0]
         d -= q[i]
-    t2 = wp.acos(2.0*(a*a + b*b)/(a*a + b*b + c*c + d*d) - 1.0)
+    t2 = wp.acos(2.0 * (a * a + b * b) / (a * a + b * b + c * c + d * d) - 1.0)
     tp = wp.atan2(b, a)
     tm = wp.atan2(d, c)
     t1 = 0.0
     t3 = 0.0
     if wp.abs(t2) < 1e-6:
-        t3 = 2.0*tp - t1
-    elif wp.abs(t2-PI_2) < 1e-6:
-        t3 = 2.0*tm + t1
+        t3 = 2.0 * tp - t1
+    elif wp.abs(t2 - PI_2) < 1e-6:
+        t3 = 2.0 * tm + t1
     else:
         t1 = tp - tm
         t3 = tp + tm
@@ -147,7 +145,6 @@ def transform_twist(t: wp.transform, x: wp.spatial_vector):
 
 @wp.func
 def transform_wrench(t: wp.transform, x: wp.spatial_vector):
-
     q = wp.transform_get_rotation(t)
     p = wp.transform_get_translation(t)
 

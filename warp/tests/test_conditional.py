@@ -22,7 +22,6 @@ wp.init()
 
 @wp.kernel
 def test_conditional_if_else():
-
     a = 0.5
     b = 2.0
 
@@ -32,39 +31,36 @@ def test_conditional_if_else():
         c = -1.0
 
     wp.expect_eq(c, -1.0)
-    
+
 
 @wp.kernel
 def test_conditional_if_else_nested():
-
     a = 1.0
     b = 2.0
 
     if a > b:
-
         c = 3.0
         d = 4.0
 
-        if (c > d):
+        if c > d:
             e = 1.0
         else:
             e = -1.0
 
     else:
-
         c = 6.0
         d = 7.0
 
-        if (c > d):
+        if c > d:
             e = 2.0
         else:
             e = -2.0
 
     wp.expect_eq(e, -2.0)
 
+
 @wp.kernel
 def test_boolean_and():
-
     a = 1.0
     b = 2.0
     c = 1.0
@@ -73,10 +69,10 @@ def test_boolean_and():
         c = -1.0
 
     wp.expect_eq(c, -1.0)
+
 
 @wp.kernel
 def test_boolean_or():
-
     a = 1.0
     b = 2.0
     c = 1.0
@@ -85,15 +81,14 @@ def test_boolean_or():
         c = -1.0
 
     wp.expect_eq(c, -1.0)
-    
+
 
 @wp.kernel
 def test_boolean_compound():
-
     a = 1.0
     b = 2.0
     c = 3.0
-    
+
     d = 1.0
 
     if a > 0.0 and b > 0.0 or c > a:
@@ -101,12 +96,12 @@ def test_boolean_compound():
 
     wp.expect_eq(d, -1.0)
 
+
 @wp.kernel
 def test_boolean_literal():
-
     t = True
     f = False
-    
+
     r = 1.0
 
     if t == (not f):
@@ -115,8 +110,35 @@ def test_boolean_literal():
     wp.expect_eq(r, -1.0)
 
 
-def register(parent):
+@wp.kernel
+def test_int_logical_not():
+    x = 0
+    if not 123:
+        x = 123
 
+    wp.expect_eq(x, 0)
+
+
+@wp.kernel
+def test_int_conditional_assign_overload():
+    if 123:
+        x = 123
+
+    if 234:
+        x = 234
+
+    wp.expect_eq(x, 234)
+
+
+@wp.kernel
+def test_bool_param_conditional(foo: bool):
+    if foo:
+        x = 123
+
+    wp.expect_eq(x, 123)
+
+
+def register(parent):
     devices = get_test_devices()
 
     class TestConditional(parent):
@@ -128,10 +150,13 @@ def register(parent):
     add_kernel_test(TestConditional, kernel=test_boolean_or, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_boolean_compound, dim=1, devices=devices)
     add_kernel_test(TestConditional, kernel=test_boolean_literal, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_int_logical_not, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_int_conditional_assign_overload, dim=1, devices=devices)
+    add_kernel_test(TestConditional, kernel=test_bool_param_conditional, dim=1, inputs=[True], devices=devices)
 
     return TestConditional
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

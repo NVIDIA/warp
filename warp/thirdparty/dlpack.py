@@ -7,6 +7,7 @@ class DLDeviceType(ctypes.c_int):
     """The enum that encodes the type of the device where
     DLTensor memory is allocated.
     """
+
     kDLCPU = 1
     kDLCUDA = 2
     kDLCUDAHost = 3
@@ -21,7 +22,7 @@ class DLDeviceType(ctypes.c_int):
 
     def __str__(self):
         return {
-            self.kDLCPU : "CPU",
+            self.kDLCPU: "CPU",
             self.kDLCUDA: "CUDA",
             self.kDLCUDAHost: "CUDAHost",
             self.kDLOpenCL: "OpenCL",
@@ -32,7 +33,7 @@ class DLDeviceType(ctypes.c_int):
             self.kDLROCMHost: "ROMCHost",
             self.kDLCUDAManaged: "CUDAManaged",
             self.kDLOneAPI: "oneAPI",
-            }[self.value]
+        }[self.value]
 
 
 class DLDevice(ctypes.Structure):
@@ -41,6 +42,7 @@ class DLDevice(ctypes.Structure):
        device_type: DLDeviceType
        device_id: c_int
     """
+
     _fields_ = [
         ("device_type", DLDeviceType),
         ("device_id", ctypes.c_int),
@@ -49,6 +51,7 @@ class DLDevice(ctypes.Structure):
 
 class DLDataTypeCode(ctypes.c_uint8):
     """An integer that encodes the category of DLTensor elements' data type."""
+
     kDLInt = 0
     kDLUInt = 1
     kDLFloat = 2
@@ -63,7 +66,7 @@ class DLDataTypeCode(ctypes.c_uint8):
             self.kDLFloat: "float",
             self.kDLBfloat: "bfloat",
             self.kDLComplex: "complex",
-            self.kDLOpaquePointer: "void_p"
+            self.kDLOpaquePointer: "void_p",
         }[self.value]
 
 
@@ -75,6 +78,7 @@ class DLDataType(ctypes.Structure):
     The element is understood as packed `lanes` repetitions of
     elements from `type_code` data-category of width `bits`.
     """
+
     _fields_ = [
         ("type_code", DLDataTypeCode),
         ("bits", ctypes.c_uint8),
@@ -94,7 +98,7 @@ class DLDataType(ctypes.Structure):
         "float32": (DLDataTypeCode.kDLFloat, 32, 1),
         "float64": (DLDataTypeCode.kDLFloat, 64, 1),
         "complex64": (DLDataTypeCode.kDLComplex, 64, 1),
-        "complex128": (DLDataTypeCode.kDLComplex, 128, 1)
+        "complex128": (DLDataTypeCode.kDLComplex, 128, 1),
     }
 
 
@@ -114,6 +118,7 @@ class DLTensor(ctypes.Structure):
        byte_offset: data + byte_offset gives the address of
                 tensor element with index (0,) * ndim
     """
+
     _fields_ = [
         ("data", ctypes.c_void_p),
         ("device", DLDevice),
@@ -130,6 +135,7 @@ class DLManagedTensor(ctypes.Structure):
     deleter callable for the tensor descriptor, and pointer to
     some additional data. These are stored in fields `dl_tensor`,
     `deleter`, and `manager_ctx`."""
+
     _fields_ = [
         ("dl_tensor", DLTensor),
         ("manager_ctx", ctypes.c_void_p),

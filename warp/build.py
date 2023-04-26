@@ -5,10 +5,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import math
 import os
 import sys
-import importlib
 import subprocess
 import ctypes
 import _ctypes
@@ -22,23 +20,20 @@ from warp.thirdparty import appdirs
 # array[i,j] += x -> augassign not handling target of subscript
 
 
-
-
 def run_cmd(cmd, capture=False):
-    
-    if (warp.config.verbose):
+    if warp.config.verbose:
         print(cmd)
 
     try:
         return subprocess.check_output(cmd, shell=True)
     except subprocess.CalledProcessError as e:
         print(e.output.decode())
-        raise(e)
+        raise (e)
+
 
 # cut-down version of vcvars64.bat that allows using
 # custom toolchain locations
 def set_msvc_compiler(msvc_path, sdk_path):
-
     if "INCLUDE" not in os.environ:
         os.environ["INCLUDE"] = ""
 
@@ -65,11 +60,8 @@ def set_msvc_compiler(msvc_path, sdk_path):
 
 
 def find_host_compiler():
-
-    if (os.name == 'nt'):
-
+    if os.name == "nt":
         try:
-
             # try and find an installed host compiler (msvc)
             # runs vcvars and copies back the build environment
 
@@ -82,12 +74,12 @@ def find_host_compiler():
             vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
 
             output = run_cmd(f'"{vsvars_path}" && set').decode()
-            
+
             for line in output.splitlines():
                 pair = line.split("=", 1)
-                if (len(pair) >= 2):
+                if len(pair) >= 2:
                     os.environ[pair[0]] = pair[1]
-                
+
             cl_path = run_cmd("where cl.exe").decode("utf-8").rstrip()
             cl_version = os.environ["VCToolsVersion"].split(".")
 
@@ -95,35 +87,37 @@ def find_host_compiler():
             cl_required_major = 14
             cl_required_minor = 29
 
-            if ((int(cl_version[0]) < cl_required_major) or
-                (int(cl_version[0]) == cl_required_major) and int(cl_version[1]) < cl_required_minor):
-                
-                print(f"Warp: MSVC found but compiler version too old, found {cl_version[0]}.{cl_version[1]}, but must be {cl_required_major}.{cl_required_minor} or higher, kernel host compilation will be disabled.")
+            if (
+                (int(cl_version[0]) < cl_required_major)
+                or (int(cl_version[0]) == cl_required_major)
+                and int(cl_version[1]) < cl_required_minor
+            ):
+                print(
+                    f"Warp: MSVC found but compiler version too old, found {cl_version[0]}.{cl_version[1]}, but must be {cl_required_major}.{cl_required_minor} or higher, kernel host compilation will be disabled."
+                )
                 return ""
-                
-            return cl_path
-        
-        except Exception as e:
 
+            return cl_path
+
+        except Exception as e:
             # couldn't find host compiler
             return ""
     else:
-        
         # try and find g++
         try:
             return run_cmd("which g++").decode()
         except:
             return ""
-    
+
 
 def get_cuda_toolkit_version(cuda_home):
-    
     try:
         # the toolkit version can be obtained by running "nvcc --version"
         nvcc_path = os.path.join(cuda_home, "bin", "nvcc")
-        nvcc_version_output = subprocess.check_output([nvcc_path, "--version"]).decode('utf-8')
+        nvcc_version_output = subprocess.check_output([nvcc_path, "--version"]).decode("utf-8")
         # search for release substring (e.g., "release 11.5")
         import re
+
         m = re.search(r"(?<=release )\d+\.\d+", nvcc_version_output)
         if m is not None:
             return tuple(int(x) for x in m.group(0).split("."))
@@ -136,33 +130,35 @@ def get_cuda_toolkit_version(cuda_home):
 
 # builds cuda source to PTX or CUBIN using NVRTC (output type determined by output_path extension)
 def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False):
-
     src_file = open(cu_path)
-    src = src_file.read().encode('utf-8')
+    src = src_file.read().encode("utf-8")
     src_file.close()
 
-    inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode('utf-8')
-    output_path = output_path.encode('utf-8')
+    inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
+    output_path = output_path.encode("utf-8")
 
-    err = warp.context.runtime.core.cuda_compile_program(src, arch, inc_path, config=="debug", warp.config.verbose, verify_fp, fast_math, output_path)
-    if (err):
+    err = warp.context.runtime.core.cuda_compile_program(
+        src, arch, inc_path, config == "debug", warp.config.verbose, verify_fp, fast_math, output_path
+    )
+    if err:
         raise Exception("CUDA build failed")
 
 
 # load PTX or CUBIN as a CUDA runtime module (input type determined by input_path extension)
 def load_cuda(input_path, device):
-
     if not device.is_cuda:
-        raise("Not a CUDA device")
+        raise ("Not a CUDA device")
 
-    return warp.context.runtime.core.cuda_load_module(device.context, input_path.encode('utf-8'))
+    return warp.context.runtime.core.cuda_load_module(device.context, input_path.encode("utf-8"))
 
 
 def quote(path):
-    return "\"" + path + "\""
+    return '"' + path + '"'
 
-def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, use_cache=True, quick=False):
 
+def build_dll(
+    dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, use_cache=True, quick=False
+):
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
 
@@ -180,48 +176,44 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         cuda_compat_enabled = "WP_ENABLE_CUDA_COMPATIBILITY=1"
 
     import pathlib
+
     warp_home_path = pathlib.Path(__file__).parent
     warp_home = warp_home_path.resolve()
-    nanovdb_home = (warp_home_path.parent / "_build/host-deps/nanovdb/include")
-    
+    nanovdb_home = warp_home_path.parent / "_build/host-deps/nanovdb/include"
+
     if use_cache:
-
-        if (os.path.exists(dll_path) == True):
-
+        if os.path.exists(dll_path) == True:
             dll_time = os.path.getmtime(dll_path)
             cache_valid = True
 
             # check if output exists and is newer than source
-            if (cu_path):                   
+            if cu_path:
                 cu_time = os.path.getmtime(cu_path)
-                if (cu_time > dll_time):
-                    
-                    if (warp.config.verbose):
+                if cu_time > dll_time:
+                    if warp.config.verbose:
                         print(f"cu_time: {cu_time} > dll_time: {dll_time} invaliding cache for {cu_path}")
 
                     cache_valid = False
 
             for cpp_path in cpp_paths:
                 cpp_time = os.path.getmtime(cpp_path)
-                if (cpp_time > dll_time):
-                    
-                    if (warp.config.verbose):
+                if cpp_time > dll_time:
+                    if warp.config.verbose:
                         print(f"cpp_time: {cpp_time} > dll_time: {dll_time} invaliding cache for {cpp_path}")
 
                     cache_valid = False
-                
-            if (cache_valid):
-                
-                if (warp.config.verbose):
+
+            if cache_valid:
+                if warp.config.verbose:
                     print(f"Skipping build of {dll_path} since outputs newer than inputs")
-                
+
                 return True
 
     # ensure that dll is not loaded in the process
     force_unload_dll(dll_path)
 
     # output stale, rebuild
-    if (warp.config.verbose):
+    if warp.config.verbose:
         print(f"Building {dll_path}")
 
     native_dir = os.path.join(warp_home, "native")
@@ -231,16 +223,15 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         min_ctk_version = (11, 5)
         ctk_version = get_cuda_toolkit_version(cuda_home) or min_ctk_version
         if ctk_version < min_ctk_version:
-            raise Exception(f"CUDA Toolkit version {min_ctk_version[0]}.{min_ctk_version[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})")
+            raise Exception(
+                f"CUDA Toolkit version {min_ctk_version[0]}.{min_ctk_version[1]}+ is required (found {ctk_version[0]}.{ctk_version[1]} in {cuda_home})"
+            )
 
         gencode_opts = []
 
         if quick:
             # minimum supported architectures (PTX)
-            gencode_opts += [
-                "-gencode=arch=compute_52,code=compute_52",
-                "-gencode=arch=compute_75,code=compute_75"
-            ]
+            gencode_opts += ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
         else:
             # generate code for all supported architectures
             gencode_opts += [
@@ -252,7 +243,6 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 "-gencode=arch=compute_75,code=sm_75",  # Turing
                 "-gencode=arch=compute_80,code=sm_80",  # Ampere
                 "-gencode=arch=compute_86,code=sm_86",
-                
                 # SASS for supported mobile architectures (e.g. Tegra/Jetson)
                 # "-gencode=arch=compute_53,code=sm_53",
                 # "-gencode=arch=compute_62,code=sm_62",
@@ -265,7 +255,6 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 gencode_opts += [
                     "-gencode=arch=compute_89,code=sm_89",  # Ada
                     "-gencode=arch=compute_90,code=sm_90",  # Hopper
-
                     # PTX for future hardware
                     "-gencode=arch=compute_90,code=compute_90",
                 ]
@@ -276,7 +265,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 ]
 
         nvcc_opts = gencode_opts + [
-            "-t0", # multithreaded compilation
+            "-t0",  # multithreaded compilation
             "--extended-lambda",
         ]
 
@@ -286,8 +275,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
     # is the library being built with CUDA enabled?
     cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_path is not None) else "WP_ENABLE_CUDA=0"
 
-    if os.name == 'nt':
-
+    if os.name == "nt":
         # try loading clang.dll, except when we're building clang.dll or warp.dll
         clang = None
         if os.path.basename(dll_path) != "clang.dll" and os.path.basename(dll_path) != "warp.dll":
@@ -299,7 +287,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         if not warp.config.host_compiler:
             if not clang:
                 raise RuntimeError("Warp build error: No host or bundled compiler was not found")
-        
+
         host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
 
         cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
@@ -320,10 +308,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         if "/NODEFAULTLIB" in libs:
             runtime = "/sdl- /GS-"  # don't specify a runtime, and disable security checks with depend on it
 
-        if (mode == "debug"):
+        if mode == "debug":
             cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
             linkopts = ["/DLL", "/DEBUG"]
-        elif (mode == "release"):
+        elif mode == "release":
             cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
             linkopts = ["/DLL"]
         else:
@@ -342,26 +330,27 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
                 if clang:
                     with open(cpp_path, "rb") as cpp:
-                        clang.compile_cpp(cpp.read(), native_dir.encode('utf-8'), cpp_out.encode('utf-8'))
+                        clang.compile_cpp(cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"))
 
                 else:
                     cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
                     run_cmd(cpp_cmd)
 
         if cu_path:
-
             cu_out = cu_path + ".o"
 
-            if (mode == "debug"):
+            if mode == "debug":
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -I"{nanovdb_home}" -line-info {" ".join(nvcc_opts)} -DWP_CUDA -DWP_ENABLE_CUDA=1 -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
-            elif (mode == "release"):
+            elif mode == "release":
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 {" ".join(nvcc_opts)} -I"{native_dir}" -I"{nanovdb_home}" -DNDEBUG -DWP_CUDA -DWP_ENABLE_CUDA=1 -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
                 linkopts.append(quote(cu_out))
-                linkopts.append(f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"')
+                linkopts.append(
+                    f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"'
+                )
 
         with ScopedTimer("link", active=warp.config.verbose):
             # Link into a DLL, unless we have LLVM to load the object code directly
@@ -370,31 +359,35 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 run_cmd(link_cmd)
 
     else:
-
-        # try loading clang.so, except when we're building clang.so or warp.so
         clang = None
-        if os.path.basename(dll_path) != "clang.so" and os.path.basename(dll_path) != "warp.so":
-            try:
-                clang = warp.build.load_dll(f"{warp_home_path}/bin/clang.so")
-            except RuntimeError as e:
-                clang = None
+        try:
+            if sys.platform == "darwin":
+                # try loading libclang.dylib, except when we're building libclang.dylib or libwarp.dylib
+                if os.path.basename(dll_path) != "libclang.dylib" and os.path.basename(dll_path) != "libwarp.dylib":
+                    clang = warp.build.load_dll(f"{warp_home_path}/bin/libclang.dylib")
+            else:  # Linux
+                # try loading clang.so, except when we're building clang.so or warp.so
+                if os.path.basename(dll_path) != "clang.so" and os.path.basename(dll_path) != "warp.so":
+                    clang = warp.build.load_dll(f"{warp_home_path}/bin/clang.so")
+        except RuntimeError as e:
+            clang = None
 
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
         includes = cpp_includes + cuda_includes
 
-        if (mode == "debug"):
+        if mode == "debug":
             cpp_flags = f'-O0 -g -D_DEBUG -DWP_CPU -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -fkeep-inline-functions -I"{native_dir}" {includes}'
 
-        if (mode == "release"):
+        if mode == "release":
             cpp_flags = f'-O3 -DNDEBUG -DWP_CPU -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes}'
 
         if verify_fp:
-            cpp_flags += ' -DWP_VERIFY_FP'
+            cpp_flags += " -DWP_VERIFY_FP"
 
         if fast_math:
-            cpp_flags += ' -ffast-math'
+            cpp_flags += " -ffast-math"
 
         ld_inputs = []
 
@@ -405,29 +398,30 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
                 if clang:
                     with open(cpp_path, "rb") as cpp:
-                        clang.compile_cpp(cpp.read(), native_dir.encode('utf-8'), cpp_out.encode('utf-8'))
+                        clang.compile_cpp(cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"))
 
                 else:
                     build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
                     run_cmd(build_cmd)
 
         if cu_path:
-
             cu_out = cu_path + ".o"
 
-            if (mode == "debug"):
+            if mode == "debug":
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(nvcc_opts)} -DWP_CUDA -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
-            elif (mode == "release"):
+            elif mode == "release":
                 cuda_cmd = f'"{cuda_home}/bin/nvcc" -O3 --compiler-options -fPIC,-fvisibility=hidden {" ".join(nvcc_opts)} -DNDEBUG -DWP_CUDA -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{cutlass_enabled} {cutlass_includes} -o "{cu_out}" -c "{cu_path}"'
 
             with ScopedTimer("build_cuda", active=warp.config.verbose):
                 run_cmd(cuda_cmd)
 
                 ld_inputs.append(quote(cu_out))
-                ld_inputs.append(f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lpthread -ldl -lrt')
+                ld_inputs.append(
+                    f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lpthread -ldl -lrt'
+                )
 
-        if sys.platform == 'darwin':
+        if sys.platform == "darwin":
             opt_no_undefined = "-Wl,-undefined,error"
             opt_exclude_libs = ""
         else:
@@ -437,28 +431,29 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         with ScopedTimer("link", active=warp.config.verbose):
             # Link into a DLL, unless we have LLVM to load the object code directly
             if not clang:
-                link_cmd = f"g++ -shared -Wl,-rpath,'$ORIGIN' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+                origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
+                link_cmd = f"g++ -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
                 run_cmd(link_cmd)
 
-    
-def load_dll(dll_path):    
+
+def load_dll(dll_path):
     try:
-        if (sys.version_info[0] > 3 or
-            sys.version_info[0] == 3 and sys.version_info[1] >= 8):
-                dll = ctypes.CDLL(dll_path, winmode=0)
+        if sys.version_info[0] > 3 or sys.version_info[0] == 3 and sys.version_info[1] >= 8:
+            dll = ctypes.CDLL(dll_path, winmode=0)
         else:
             dll = ctypes.CDLL(dll_path)
     except OSError:
         raise RuntimeError(f"Failed to load the shared library '{dll_path}'")
     return dll
 
-def unload_dll(dll):
 
+def unload_dll(dll):
     handle = dll._handle
     del dll
 
     # force garbage collection to eliminate any Python references to the dll
     import gc
+
     gc.collect()
 
     # platform dependent unload, removes *all* references to the dll
@@ -475,9 +470,8 @@ def unload_dll(dll):
 
 
 def force_unload_dll(dll_path):
-
     try:
-        # force load/unload of the dll from the process 
+        # force load/unload of the dll from the process
         dll = load_dll(dll_path)
         unload_dll(dll)
 
@@ -504,25 +498,27 @@ def init_kernel_cache(path=None):
     if path is not None:
         cache_root_dir = os.path.realpath(path)
     else:
-        cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA Corporation", version=warp.config.version)
+        cache_root_dir = appdirs.user_cache_dir(
+            appname="warp", appauthor="NVIDIA Corporation", version=warp.config.version
+        )
 
     cache_bin_dir = os.path.join(cache_root_dir, "bin")
     cache_gen_dir = os.path.join(cache_root_dir, "gen")
 
     if not os.path.isdir(cache_root_dir):
-        #print("Creating cache directory '%s'" % cache_root_dir)
+        # print("Creating cache directory '%s'" % cache_root_dir)
         os.makedirs(cache_root_dir, exist_ok=True)
 
     if not os.path.isdir(cache_gen_dir):
-        #print("Creating codegen directory '%s'" % cache_gen_dir)
+        # print("Creating codegen directory '%s'" % cache_gen_dir)
         os.makedirs(cache_gen_dir, exist_ok=True)
 
     if not os.path.isdir(cache_bin_dir):
-        #print("Creating binary directory '%s'" % cache_bin_dir)
+        # print("Creating binary directory '%s'" % cache_bin_dir)
         os.makedirs(cache_bin_dir, exist_ok=True)
 
     warp.config.kernel_cache_dir = cache_root_dir
-    
+
     global kernel_bin_dir, kernel_gen_dir
     kernel_bin_dir = cache_bin_dir
     kernel_gen_dir = cache_gen_dir

@@ -28,14 +28,17 @@ import warp as wp
 #   Warp Type
 # ------------------------------------------------------------------------------
 
+
 def get_warp_type(data_dtype: type, data_ndim: int) -> type:
     """Retrieves the Warp type matching the array bundle type."""
     return wp.array(dtype=data_dtype, ndim=data_ndim)
+
 
 #   Bundle Accessor
 # ------------------------------------------------------------------------------
 
 _ACCESSOR_ATTR_NAME_FMT = "{}_attr"
+
 
 class Accessor(NamedTuple):
     """Accessor for an existing bundle."""
@@ -73,6 +76,7 @@ class Accessor(NamedTuple):
             setattr(inst, field, getattr(self, field))
 
         return inst
+
 
 def create_bundle(
     bundle: og.BundleContents,
@@ -123,20 +127,17 @@ def create_bundle(
 
     return accessor
 
+
 def read_bundle(bundle: og.BundleContents) -> Accessor:
     """Reads a bundle describing an array."""
     # Retrieve the attribute describing this bundle's type.
     bundle_type_attr = bundle.attribute_by_name(BUNDLE_TYPE_ATTR_NAME)
 
     # Validate the data.
-    if (
-        bundle_type_attr is not None
-        and bundle_type_attr.cpu_value != Accessor.BUNDLE_TYPE
-    ):
+    if bundle_type_attr is not None and bundle_type_attr.cpu_value != Accessor.BUNDLE_TYPE:
         raise RuntimeError(
             "Trying to read a bundle of type '{}' "
-            "when expecting one of type '{}'."
-            .format(bundle_type_attr.cpu_value, Accessor.BUNDLE_TYPE)
+            "when expecting one of type '{}'.".format(bundle_type_attr.cpu_value, Accessor.BUNDLE_TYPE)
         )
 
     # Initialize the accessor instance from the bundle attributes.

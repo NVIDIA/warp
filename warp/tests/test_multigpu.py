@@ -21,20 +21,17 @@ wp.init()
 
 @wp.kernel
 def inc(a: wp.array(dtype=float)):
-
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 
 
 @wp.kernel
 def arange(start: int, step: int, a: wp.array(dtype=int)):
-
     tid = wp.tid()
     a[tid] = start + step * tid
 
 
 def test_multigpu_set_device(test, device):
-
     assert len(wp.get_cuda_devices()) > 1, "At least two CUDA devices are required"
 
     n = 32
@@ -59,7 +56,6 @@ def test_multigpu_set_device(test, device):
 
 
 def test_multigpu_scoped_device(test, device):
-
     assert len(wp.get_cuda_devices()) > 1, "At least two CUDA devices are required"
 
     n = 32
@@ -84,7 +80,6 @@ def test_multigpu_scoped_device(test, device):
 
 
 def test_multigpu_nesting(test, device):
-    
     assert len(wp.get_cuda_devices()) > 1, "At least two CUDA devices are required"
 
     initial_device = wp.get_device()
@@ -118,11 +113,10 @@ def test_multigpu_nesting(test, device):
 
 
 def test_multigpu_pingpong(test, device):
-    
     assert len(wp.get_cuda_devices()) > 1, "At least two CUDA devices are required"
 
     n = 1024 * 1024
-    
+
     a0 = wp.zeros(n, dtype=float, device="cuda:0")
     a1 = wp.zeros(n, dtype=float, device="cuda:1")
 
@@ -132,7 +126,6 @@ def test_multigpu_pingpong(test, device):
     iters = 10
 
     for i in range(iters):
-
         wp.launch(inc, dim=a0.size, inputs=[a0], device=a0.device)
         wp.copy(a1, a0, stream=stream0)
 
@@ -150,19 +143,18 @@ def test_multigpu_pingpong(test, device):
 
 
 def register(parent):
-
     class TestMultigpu(parent):
         pass
 
     if wp.get_cuda_device_count() > 1:
-
         add_function_test(TestMultigpu, "test_multigpu_set_device", test_multigpu_set_device)
         add_function_test(TestMultigpu, "test_multigpu_scoped_device", test_multigpu_scoped_device)
         add_function_test(TestMultigpu, "test_multigpu_nesting", test_multigpu_nesting)
         add_function_test(TestMultigpu, "test_multigpu_pingpong", test_multigpu_pingpong)
-    
+
     return TestMultigpu
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2, failfast=False)

@@ -37,6 +37,7 @@ def compute(data: Data):
 
 wp.init()
 
+
 def load_code_as_module(code, name):
     file, file_path = tempfile.mkstemp(suffix=".py")
 
@@ -51,6 +52,7 @@ def load_code_as_module(code, name):
         os.remove(file_path)
 
     return module
+
 
 def test_transient_module(test, device):
     module = load_code_as_module(CODE, "")
@@ -67,8 +69,8 @@ def test_transient_module(test, device):
     wp.launch(module.compute, dim=1, inputs=[data])
     assert_np_equal(data.x.numpy(), np.array([124]))
 
-def register(parent):
 
+def register(parent):
     devices = get_test_devices()
 
     class TestTransientModule(parent):
@@ -76,6 +78,7 @@ def register(parent):
 
     add_function_test(TestTransientModule, "test_transient_module", test_transient_module, devices=devices)
     return TestTransientModule
+
 
 if __name__ == "__main__":
     _ = register(unittest.TestCase)

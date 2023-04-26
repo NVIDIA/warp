@@ -16,60 +16,60 @@ import unittest
 
 wp.init()
 
+
 # construct kernel + test function for atomic ops on each vec/matrix type
 def make_atomic_test(type):
-   
-    def test_atomic_kernel(out_add: wp.array(dtype=type),
-                           out_min: wp.array(dtype=type),
-                           out_max: wp.array(dtype=type),
-                           val: wp.array(dtype=type)):
-
+    def test_atomic_kernel(
+        out_add: wp.array(dtype=type),
+        out_min: wp.array(dtype=type),
+        out_max: wp.array(dtype=type),
+        val: wp.array(dtype=type),
+    ):
         tid = wp.tid()
-        
+
         wp.atomic_add(out_add, 0, val[tid])
         wp.atomic_min(out_min, 0, val[tid])
         wp.atomic_max(out_max, 0, val[tid])
-
 
     # register a custom kernel (no decorator) function
     # this lets us register the same function definition
     # against multiple symbols, with different arg types
     module = wp.get_module(test_atomic_kernel.__module__)
     kernel = wp.Kernel(func=test_atomic_kernel, key=f"test_atomic_{type.__name__}_kernel", module=module)
-        
-    def test_atomic(test, device):
 
+    def test_atomic(test, device):
         n = 1024
 
         rng = np.random.default_rng(42)
-        
+
         if type == wp.int32:
-            base = (rng.random(size=1, dtype=np.float32)*100.0).astype(np.int32)
-            val = (rng.random(size=n, dtype=np.float32)*100.0).astype(np.int32)
-        
+            base = (rng.random(size=1, dtype=np.float32) * 100.0).astype(np.int32)
+            val = (rng.random(size=n, dtype=np.float32) * 100.0).astype(np.int32)
+
         elif type == wp.float32:
             base = rng.random(size=1, dtype=np.float32)
             val = rng.random(size=n, dtype=np.float32)
-        
+
         else:
             base = rng.random(size=(1, *type._shape_), dtype=float)
             val = rng.random(size=(n, *type._shape_), dtype=float)
-        
+
         add_array = wp.array(base, dtype=type, device=device)
         min_array = wp.array(base, dtype=type, device=device)
         max_array = wp.array(base, dtype=type, device=device)
-        
+
         val_array = wp.array(val, dtype=type, device=device)
 
         wp.launch(kernel, n, inputs=[add_array, min_array, max_array, val_array], device=device)
 
         val = np.append(val, [base[0]], axis=0)
 
-        assert_np_equal(add_array.numpy(), np.sum(val, axis=0), tol=1.e-2)
-        assert_np_equal(min_array.numpy(), np.min(val, axis=0), tol=1.e-2)
-        assert_np_equal(max_array.numpy(), np.max(val, axis=0), tol=1.e-2)
+        assert_np_equal(add_array.numpy(), np.sum(val, axis=0), tol=1.0e-2)
+        assert_np_equal(min_array.numpy(), np.min(val, axis=0), tol=1.0e-2)
+        assert_np_equal(max_array.numpy(), np.max(val, axis=0), tol=1.0e-2)
 
     return test_atomic
+
 
 # generate test functions for atomic types
 test_atomic_int = make_atomic_test(wp.int32)
@@ -83,12 +83,11 @@ test_atomic_mat44 = make_atomic_test(wp.mat44)
 
 
 def register(parent):
-
     devices = get_test_devices()
 
     class TestAtomic(parent):
         pass
-    
+
     add_function_test(TestAtomic, "test_atomic_int", test_atomic_int, devices=devices)
     add_function_test(TestAtomic, "test_atomic_float", test_atomic_float, devices=devices)
     add_function_test(TestAtomic, "test_atomic_vec2", test_atomic_vec2, devices=devices)
@@ -100,6 +99,7 @@ def register(parent):
 
     return TestAtomic
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

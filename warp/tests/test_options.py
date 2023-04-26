@@ -12,12 +12,14 @@ from warp.tests.test_base import *
 
 wp.init()
 
+
 @wp.kernel
 def scale(
     x: wp.array(dtype=float),
     y: wp.array(dtype=float),
 ):
     y[0] = x[0] ** 2.0
+
 
 @wp.kernel(enable_backward=True)
 def scale_1(
@@ -26,12 +28,14 @@ def scale_1(
 ):
     y[0] = x[0] ** 2.0
 
+
 @wp.kernel(enable_backward=False)
 def scale_2(
     x: wp.array(dtype=float),
     y: wp.array(dtype=float),
 ):
     y[0] = x[0] ** 2.0
+
 
 def test_options_1(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
@@ -46,6 +50,7 @@ def test_options_1(test, device):
     tape.backward(y)
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
+
 def test_options_2(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
@@ -58,6 +63,7 @@ def test_options_2(test, device):
 
     tape.backward(y)
     assert_np_equal(tape.gradients[x].numpy(), np.array(6.0))
+
 
 def test_options_3(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
@@ -72,6 +78,7 @@ def test_options_3(test, device):
     tape.backward(y)
     assert_np_equal(tape.gradients[x].numpy(), np.array(6.0))
 
+
 def test_options_4(test, device):
     x = wp.array([3.0], dtype=float, requires_grad=True, device=device)
     y = wp.zeros_like(x)
@@ -85,8 +92,8 @@ def test_options_4(test, device):
     tape.backward(y)
     assert_np_equal(tape.gradients[x].numpy(), np.array(0.0))
 
+
 def register(parent):
-    
     devices = get_test_devices()
 
     class TestOptions(parent):
@@ -97,6 +104,7 @@ def register(parent):
     add_function_test(TestOptions, "test_options_3", test_options_3, devices=devices)
     add_function_test(TestOptions, "test_options_4", test_options_4, devices=devices)
     return TestOptions
+
 
 if __name__ == "__main__":
     _ = register(unittest.TestCase)

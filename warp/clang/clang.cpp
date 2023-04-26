@@ -35,9 +35,7 @@
 
 namespace wp {
 
-extern "C" {
-
-std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, llvm::LLVMContext& context)
+static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, llvm::LLVMContext& context)
 {
     // Compilation arguments
     std::vector<const char*> args;
@@ -75,6 +73,8 @@ std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const c
 
     return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
 }
+
+extern "C" {
 
 WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file)
 {
@@ -158,11 +158,15 @@ WP_API int load_obj(const char* object_file, const char* module_name)
     {
         #if defined (_WIN32)
             const char* clang_dll = "clang.dll";
+            char global_prefix = '\0';
+        #elif defined(__APPLE__)
+            const char* clang_dll = "libclang.dylib";
+            char global_prefix = '_';
         #else
             const char* clang_dll = "clang.so";
+            char global_prefix = '\0';
         #endif
 
-        char global_prefix = '\0';
         auto search = llvm::orc::DynamicLibrarySearchGenerator::Load(clang_dll, global_prefix);
 
         if(!search)
@@ -215,7 +219,7 @@ WP_API uint64_t lookup(const char* dll_name, const char* function_name)
 {
     auto* dll = jit->getJITDylibByName(dll_name);
 
-    auto func = jit->lookupLinkerMangled(*dll, function_name);
+    auto func = jit->lookup(*dll, function_name);
 
     if(!func)
     {

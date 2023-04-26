@@ -16,19 +16,18 @@ wp.init()
 
 @wp.kernel
 def inc(a: wp.array(dtype=float)):
-
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 
+
 @wp.kernel
 def inc_new(src: wp.array(dtype=float), dst: wp.array(dtype=float)):
-
     tid = wp.tid()
     dst[tid] = src[tid] + 1.0
 
+
 @wp.kernel
 def sum(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):
-
     tid = wp.tid()
     c[tid] = a[tid] + b[tid]
 
@@ -38,7 +37,6 @@ N = 10 * 1024 * 1024
 
 
 def test_stream_arg_implicit_sync(test, device):
-
     # wp.zeros() and array.numpy() should not require explicit sync
 
     a = wp.zeros(N, dtype=float, device=device)
@@ -60,11 +58,9 @@ def test_stream_arg_implicit_sync(test, device):
 
 
 def test_stream_scope_implicit_sync(test, device):
-
     # wp.zeros() and array.numpy() should not require explicit sync
 
     with wp.ScopedDevice(device):
-
         a = wp.zeros(N, dtype=float)
         b = wp.empty(N, dtype=float)
         c = wp.empty(N, dtype=float)
@@ -74,8 +70,7 @@ def test_stream_scope_implicit_sync(test, device):
 
         # launch work on new stream
         with wp.ScopedStream(new_stream):
-
-            assert(wp.get_stream() == new_stream)
+            assert wp.get_stream() == new_stream
 
             wp.launch(inc, dim=a.size, inputs=[a])
             wp.copy(b, a)
@@ -83,7 +78,7 @@ def test_stream_scope_implicit_sync(test, device):
             wp.copy(c, a)
             wp.launch(inc, dim=a.size, inputs=[a])
 
-        assert(wp.get_stream() == old_stream)
+        assert wp.get_stream() == old_stream
 
         assert_np_equal(a.numpy(), np.full(N, fill_value=3.0))
         assert_np_equal(b.numpy(), np.full(N, fill_value=1.0))
@@ -91,7 +86,6 @@ def test_stream_scope_implicit_sync(test, device):
 
 
 def test_stream_arg_synchronize(test, device):
-
     a = wp.zeros(N, dtype=float, device=device)
     b = wp.empty(N, dtype=float, device=device)
     c = wp.empty(N, dtype=float, device=device)
@@ -120,7 +114,6 @@ def test_stream_arg_synchronize(test, device):
 
 
 def test_stream_arg_wait_event(test, device):
-
     a = wp.zeros(N, dtype=float, device=device)
     b = wp.empty(N, dtype=float, device=device)
     c = wp.empty(N, dtype=float, device=device)
@@ -157,7 +150,6 @@ def test_stream_arg_wait_event(test, device):
 
 
 def test_stream_arg_wait_stream(test, device):
-
     a = wp.zeros(N, dtype=float, device=device)
     b = wp.empty(N, dtype=float, device=device)
     c = wp.empty(N, dtype=float, device=device)
@@ -187,9 +179,7 @@ def test_stream_arg_wait_stream(test, device):
 
 
 def test_stream_scope_synchronize(test, device):
-
     with wp.ScopedDevice(device):
-
         a = wp.zeros(N, dtype=float)
         b = wp.empty(N, dtype=float)
         c = wp.empty(N, dtype=float)
@@ -219,9 +209,7 @@ def test_stream_scope_synchronize(test, device):
 
 
 def test_stream_scope_wait_event(test, device):
-
     with wp.ScopedDevice(device):
-
         a = wp.zeros(N, dtype=float)
         b = wp.empty(N, dtype=float)
         c = wp.empty(N, dtype=float)
@@ -259,9 +247,7 @@ def test_stream_scope_wait_event(test, device):
 
 
 def test_stream_scope_wait_stream(test, device):
-
     with wp.ScopedDevice(device):
-
         a = wp.zeros(N, dtype=float)
         b = wp.empty(N, dtype=float)
         c = wp.empty(N, dtype=float)
@@ -293,7 +279,6 @@ def test_stream_scope_wait_stream(test, device):
 
 
 def test_stream_arg_graph_mgpu(test, device):
-
     # resources on GPU 0
     stream0 = wp.get_stream("cuda:0")
     a0 = wp.zeros(N, dtype=float, device="cuda:0")
@@ -332,11 +317,10 @@ def test_stream_arg_graph_mgpu(test, device):
         wp.capture_launch(g, stream=stream0)
 
     # check results
-    assert_np_equal(c0.numpy(), np.full(N, fill_value=2*num_iters))
+    assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
 
 
 def test_stream_scope_graph_mgpu(test, device):
-
     # resources on GPU 0
     with wp.ScopedDevice("cuda:0"):
         stream0 = wp.get_stream()
@@ -351,12 +335,10 @@ def test_stream_scope_graph_mgpu(test, device):
 
     # capture graph
     with wp.ScopedDevice("cuda:0"):
-
         # start recording
         wp.capture_begin()
 
         with wp.ScopedDevice("cuda:1"):
-
             # branch into stream1
             wp.wait_stream(stream0)
 
@@ -378,17 +360,15 @@ def test_stream_scope_graph_mgpu(test, device):
 
     # replay
     with wp.ScopedDevice("cuda:0"):
-
         num_iters = 10
         for _ in range(num_iters):
             wp.capture_launch(g)
 
     # check results
-    assert_np_equal(c0.numpy(), np.full(N, fill_value=2*num_iters))
+    assert_np_equal(c0.numpy(), np.full(N, fill_value=2 * num_iters))
 
 
 def register(parent):
-
     devices = wp.get_cuda_devices()
 
     class TestStreams(parent):
@@ -411,6 +391,6 @@ def register(parent):
     return TestStreams
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)

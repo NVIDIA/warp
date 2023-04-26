@@ -28,8 +28,8 @@ def compute_bounds(
     indices: wp.array(dtype=int),
     positions: wp.array(dtype=wp.vec3),
     lowers: wp.array(dtype=wp.vec3),
-    uppers: wp.array(dtype=wp.vec3)):
-
+    uppers: wp.array(dtype=wp.vec3),
+):
     tid = wp.tid()
     i = indices[tid * 3 + 0]
     j = indices[tid * 3 + 1]
@@ -48,11 +48,8 @@ def compute_bounds(
 
 @wp.kernel
 def compute_num_contacts(
-    lowers: wp.array(dtype=wp.vec3),
-    uppers: wp.array(dtype=wp.vec3),
-    mesh_id: wp.uint64,
-    counts: wp.array(dtype=int)):
-
+    lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype=wp.vec3), mesh_id: wp.uint64, counts: wp.array(dtype=int)
+):
     face_index = int(0)
     face_u = float(0.0)
     face_v = float(0.0)
@@ -66,8 +63,8 @@ def compute_num_contacts(
     query = wp.mesh_query_aabb(mesh_id, lower, upper)
     count = int(0)
 
-    #index = int(-1)
-    #while wp.mesh_query_aabb_next(query, index):
+    # index = int(-1)
+    # while wp.mesh_query_aabb_next(query, index):
 
     for index in query:
         count = count + 1
@@ -75,9 +72,7 @@ def compute_num_contacts(
     counts[tid] = count
 
 
-
 def test_compute_bounds(test, device):
-    
     # create two touching triangles.
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, -1, 1]])
     indices = np.array([0, 1, 2, 1, 2, 3])
@@ -120,13 +115,13 @@ def test_compute_bounds(test, device):
     test.assertTrue(upper_view[1][1] == 1)
     test.assertTrue(upper_view[1][2] == 1)
 
+
 def test_mesh_query_aabb_count_overlap(test, device):
-    
     # create two touching triangles.
     points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, -1, 1]])
     indices = np.array([0, 1, 2, 1, 2, 3])
     m = wp.Mesh(
-        points=wp.array(points, dtype=wp.vec3, device=device),        
+        points=wp.array(points, dtype=wp.vec3, device=device),
         indices=wp.array(indices, dtype=int, device=device),
     )
 
@@ -161,12 +156,10 @@ def test_mesh_query_aabb_count_overlap(test, device):
     for c in view:
         test.assertTrue(c == 2)
 
+
 def test_mesh_query_aabb_count_nonoverlap(test, device):
-    
     # create two separate triangles.
-    points = np.array(
-        [[0, 0, 0], [1, 0, 0], [0, 1, 0], [10, 0, 0], [10, 1, 0], [10, 0, 1]]
-    )
+    points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [10, 0, 0], [10, 1, 0], [10, 0, 1]])
     indices = np.array([0, 1, 2, 3, 4, 5])
     m = wp.Mesh(
         points=wp.array(points, dtype=wp.vec3, device=device),
@@ -205,18 +198,28 @@ def test_mesh_query_aabb_count_nonoverlap(test, device):
 
 
 def register(parent):
-        
     devices = get_test_devices()
 
     class TestMeshQueryAABBMethods(parent):
         pass
 
     add_function_test(TestMeshQueryAABBMethods, "test_compute_bounds", test_compute_bounds, devices=devices)
-    add_function_test(TestMeshQueryAABBMethods, "test_mesh_query_aabb_count_overlap", test_mesh_query_aabb_count_overlap, devices=devices)
-    add_function_test(TestMeshQueryAABBMethods, "test_mesh_query_aabb_count_nonoverlap", test_mesh_query_aabb_count_nonoverlap, devices=devices)
+    add_function_test(
+        TestMeshQueryAABBMethods,
+        "test_mesh_query_aabb_count_overlap",
+        test_mesh_query_aabb_count_overlap,
+        devices=devices,
+    )
+    add_function_test(
+        TestMeshQueryAABBMethods,
+        "test_mesh_query_aabb_count_nonoverlap",
+        test_mesh_query_aabb_count_nonoverlap,
+        devices=devices,
+    )
 
     return TestMeshQueryAABBMethods
 
-if __name__ == '__main__':    
+
+if __name__ == "__main__":
     c = register(unittest.TestCase)
     unittest.main(verbosity=2)
