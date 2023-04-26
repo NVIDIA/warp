@@ -49,6 +49,7 @@ warp.config.mode = args.mode
 warp.config.verify_fp = args.verify_fp
 warp.config.fast_math = args.fast_math
 
+# Fetch prebuilt Clang/LLVM libraries
 if os.name == "nt":
     subprocess.check_call(
         [
@@ -58,6 +59,28 @@ if os.name == "nt":
             "_build/host-deps/llvm-project",
             "clang+llvm-warp",
             "15.0.7-windows-x86_64-vs142",
+        ]
+    )
+elif sys.platform == "darwin":
+    subprocess.check_call(
+        [
+            "./tools/packman/packman",
+            "install",
+            "-l",
+            "./_build/host-deps/llvm-project",
+            "clang+llvm-warp",
+            "15.0.7-darwin-x86_64-macos11",
+        ]
+    )
+else:
+    subprocess.check_call(
+        [
+            "./tools/packman/packman",
+            "install",
+            "-l",
+            "./_build/host-deps/llvm-project",
+            "clang+llvm-warp",
+            "15.0.7-linux-x86_64-gcc7.5-cxx11abi0",
         ]
     )
 
