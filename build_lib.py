@@ -49,6 +49,18 @@ warp.config.mode = args.mode
 warp.config.verify_fp = args.verify_fp
 warp.config.fast_math = args.fast_math
 
+if os.name == "nt":
+    subprocess.check_call(
+        [
+            "tools\packman\packman.cmd",
+            "install",
+            "-l",
+            "_build/host-deps/llvm-project",
+            "clang+llvm-warp",
+            "15.0.7-windows-x86_64-vs142",
+        ]
+    )
+
 
 # See PyTorch for reference on how to find nvcc.exe more robustly, https://pytorch.org/docs/stable/_modules/torch/utils/cpp_extension.html#CppExtension
 def find_cuda():
