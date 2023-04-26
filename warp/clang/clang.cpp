@@ -157,13 +157,13 @@ WP_API int load_obj(const char* object_file, const char* module_name)
     // Enable searching for external symbols in the calling module
     {
         #if defined (_WIN32)
-            const char* clang_dll = "clang.dll";
+            const char* clang_dll = "warp-clang.dll";
             char global_prefix = '\0';
         #elif defined(__APPLE__)
-            const char* clang_dll = "libclang.dylib";
+            const char* clang_dll = "libwarp-clang.dylib";
             char global_prefix = '_';
         #else
-            const char* clang_dll = "clang.so";
+            const char* clang_dll = "warp-clang.so";
             char global_prefix = '\0';
         #endif
 

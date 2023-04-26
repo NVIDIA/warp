@@ -1756,21 +1756,21 @@ class Runtime:
                 os.environ["PATH"] = bin_path + os.pathsep + os.environ["PATH"]
 
             warp_lib = os.path.join(bin_path, "warp.dll")
-            llvm_lib = os.path.join(bin_path, "clang.dll")
+            llvm_lib = os.path.join(bin_path, "warp-clang.dll")
 
         elif sys.platform == "darwin":
             warp_lib = os.path.join(bin_path, "libwarp.dylib")
-            llvm_lib = os.path.join(bin_path, "libclang.dylib")
+            llvm_lib = os.path.join(bin_path, "libwarp-clang.dylib")
 
         else:
             warp_lib = os.path.join(bin_path, "warp.so")
-            llvm_lib = os.path.join(bin_path, "clang.so")
+            llvm_lib = os.path.join(bin_path, "warp-clang.so")
 
         self.core = warp.build.load_dll(warp_lib)
 
         if llvm_lib and os.path.exists(llvm_lib):
             self.llvm = warp.build.load_dll(llvm_lib)
-            # setup c-types for clang.dll
+            # setup c-types for warp-clang.dll
             self.llvm.lookup.restype = ctypes.c_uint64
         else:
             self.llvm = None

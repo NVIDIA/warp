@@ -160,14 +160,14 @@ def lib_name(name):
 try:
 
     if args.standalone:
-        # build clang.dll
+        # build warp-clang.dll
         cpp_sources = [
             "clang/clang.cpp",
             "native/crt.cpp",
         ]
         clang_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 
-        clang_dll_path = os.path.join(build_path, f"bin/{lib_name('clang')}")
+        clang_dll_path = os.path.join(build_path, f"bin/{lib_name('warp-clang')}")
 
         if args.build_llvm:
             # obtain Clang and LLVM libraries from the local build
