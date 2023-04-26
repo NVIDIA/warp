@@ -65,9 +65,11 @@ square_two = """import warp as wp
 
 wp.init()
 
+
 @wp.func
 def sqr(x: float):
-    return x*x
+    return x * x
+
 
 @wp.kernel
 def kern(expect: float):
@@ -76,24 +78,25 @@ def kern(expect: float):
 
 def run(expect, device):
     wp.launch(kern, dim=1, inputs=[expect], device=device)
-  
 """
 
 square_four = """import warp as wp
 
 wp.init()
 
+
 @wp.func
 def multiply(x: float):
-    return x*x
+    return x * x
+
 
 @wp.kernel
 def kern(expect: float):
     wp.expect_eq(multiply(4.0), expect)
 
+
 def run(expect, device):
     wp.launch(kern, dim=1, inputs=[expect], device=device)
-  
 """
 
 
@@ -142,6 +145,7 @@ import warp.tests.test_reference_reference as refref
 
 wp.init()
 
+
 @wp.func
 def magic():
     return {} * refref.more_magic()
@@ -152,6 +156,7 @@ template_refref = """# This file is used to test reloading module references.
 import warp as wp
 
 wp.init()
+
 
 @wp.func
 def more_magic():

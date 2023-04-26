@@ -3366,6 +3366,7 @@ def export_stubs(file):
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
     print("from typing import overload as over", file=file)
+    print(file=file)
 
     # type hints, these need to be mirrored into the stubs file
     print('Length = TypeVar("Length", bound=int)', file=file)
@@ -3389,7 +3390,7 @@ def export_stubs(file):
         header = "".join(lines)
 
     print(header, file=file)
-    print("\n", file=file)
+    print(file=file)
 
     for k, g in builtin_functions.items():
         for f in g.overloads:
@@ -3412,10 +3413,10 @@ def export_stubs(file):
 
             print("@over", file=file)
             print(f"def {f.key}({args}){return_str}:", file=file)
-            print(f'   """', file=file)
-            print(textwrap.indent(text=f.doc, prefix="   "), file=file)
-            print(f'   """', file=file)
-            print(f"   ...\n", file=file)
+            print(f'    """', file=file)
+            print(textwrap.indent(text=f.doc, prefix="    "), file=file)
+            print(f'    """', file=file)
+            print(f"    ...\n\n", file=file)
 
 
 def export_builtins(file):
