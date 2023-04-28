@@ -224,6 +224,21 @@ def test_range_constant():
     wp.expect_eq(s, -3)
 
 
+N = wp.constant(3)
+
+
+# test a dynamic loop nested between loops expected to be unrolled.
+@wp.kernel
+def test_range_constant_dynamic_nested(m: int):
+    s = int(0)
+    for i in range(N):
+        for k in range(m):
+            for j in range(N):
+                s += 1
+
+    wp.expect_eq(s, N * m * N)
+
+
 def test_unresolved_func(test, device):
     # kernel with unresolved function must be in a separate module, otherwise the current module would fail to load
     from warp.tests.test_unresolved_func import unresolved_func_kernel
@@ -341,7 +356,14 @@ def register(parent):
         devices=devices,
     )
     add_kernel_test(TestCodeGen, name="test_range_constant", kernel=test_range_constant, dim=1, devices=devices)
-
+    add_kernel_test(
+        TestCodeGen,
+        name="test_range_constant_dynamic_nested",
+        kernel=test_range_constant_dynamic_nested,
+        dim=1,
+        inputs=[10],
+        devices=devices,
+    )
     add_kernel_test(
         TestCodeGen,
         name="test_range_dynamic_nested",
