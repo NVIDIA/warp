@@ -13,6 +13,7 @@
 ##############################################################################
 
 import warp as wp
+import warp.render
 
 import numpy as np
 

@@ -516,7 +516,6 @@ class Kernel:
 
 # ----------------------
 
-
 # decorator to register function, @func
 def func(f):
     name = warp.codegen.make_full_qualified_name(f)
@@ -2103,6 +2102,22 @@ class Runtime:
         ]
         self.core.cuda_launch_kernel.restype = ctypes.c_size_t
 
+        self.core.cuda_graphics_map.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_graphics_map.restype = None
+        self.core.cuda_graphics_unmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_graphics_unmap.restype = None
+        self.core.cuda_graphics_device_ptr_and_size.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_uint64),
+            ctypes.POINTER(ctypes.c_size_t),
+        ]
+        self.core.cuda_graphics_device_ptr_and_size.restype = None
+        self.core.cuda_graphics_register_gl_buffer.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint]
+        self.core.cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
+        self.core.cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.core.cuda_graphics_unregister_resource.restype = None
+
         self.core.init.restype = ctypes.c_int
 
         error = self.core.init()
@@ -2478,6 +2493,64 @@ def wait_stream(stream: Stream, event: Event = None):
     """
 
     get_stream().wait_stream(stream, event=event)
+
+
+class RegisteredGLBuffer:
+    """
+    Helper object to register a GL buffer with CUDA so that it can be mapped to a Warp array.
+    """
+
+    # Specifies no hints about how this resource will be used.
+    # It is therefore assumed that this resource will be
+    # read from and written to by CUDA. This is the default value.
+    NONE = 0x00
+
+    # Specifies that CUDA will not write to this resource.
+    READ_ONLY = 0x01
+
+    # Specifies that CUDA will not read from this resource and will write over the
+    # entire contents of the resource, so none of the data previously
+    # stored in the resource will be preserved.
+    WRITE_DISCARD = 0x02
+
+    def __init__(self, gl_buffer_id: int, device: Devicelike = None, flags: int = NONE):
+        """Create a new RegisteredGLBuffer object.
+
+        Args:
+            gl_buffer_id: The OpenGL buffer id (GLuint).
+            device: The device to register the buffer with.  If None, the current device will be used.
+            flags: A combination of the flags constants.
+        """
+        self.gl_buffer_id = gl_buffer_id
+        self.device = get_device(device)
+        self.context = self.device.context
+        self.resource = runtime.core.cuda_graphics_register_gl_buffer(self.context, gl_buffer_id, flags)
+
+    def __del__(self):
+        runtime.core.cuda_graphics_unregister_resource(self.context, self.resource)
+
+    def map(self, dtype, shape) -> warp.array:
+        """Map the OpenGL buffer to a Warp array.
+
+        Args:
+            dtype: The type of each element in the array.
+            shape: The shape of the array.
+
+        Returns:
+            A Warp array object representing the mapped OpenGL buffer.
+        """
+        runtime.core.cuda_graphics_map(self.context, self.resource)
+        ctypes.POINTER(ctypes.c_uint64), ctypes.POINTER(ctypes.c_size_t)
+        ptr = ctypes.c_uint64(0)
+        size = ctypes.c_size_t(0)
+        runtime.core.cuda_graphics_device_ptr_and_size(
+            self.context, self.resource, ctypes.byref(ptr), ctypes.byref(size)
+        )
+        return warp.array(ptr=ptr.value, dtype=dtype, shape=shape, device=self.device, owner=False)
+
+    def unmap(self):
+        """Unmap the OpenGL buffer."""
+        runtime.core.cuda_graphics_unmap(self.context, self.resource)
 
 
 def zeros(

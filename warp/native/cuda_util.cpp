@@ -14,9 +14,12 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <wingdi.h>  // needed for OpenGL includes
 #elif defined(__linux__)
 #include <dlfcn.h>
 #endif
+
+#include <cudaGLTypedefs.h>
 
 // the minimum CUDA version required from the driver
 #define WP_CUDA_DRIVER_VERSION 11030
@@ -71,6 +74,12 @@ static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
 static PFN_cuLaunchKernel_v4000 pfn_cuLaunchKernel;
 static PFN_cuMemcpyPeerAsync_v4000 pfn_cuMemcpyPeerAsync;
+static PFN_cuGraphicsMapResources_v3000 pfn_cuGraphicsMapResources;
+static PFN_cuGraphicsUnmapResources_v3000 pfn_cuGraphicsUnmapResources;
+static PFN_cuGraphicsResourceGetMappedPointer_v3020 pfn_cuGraphicsResourceGetMappedPointer;
+static PFN_cuGraphicsGLRegisterBuffer_v3000 pfn_cuGraphicsGLRegisterBuffer;
+static PFN_cuGraphicsUnregisterResource_v3000 pfn_cuGraphicsUnregisterResource;
+
 
 bool ContextGuard::always_restore = false;
 
@@ -171,6 +180,11 @@ bool init_cuda_driver()
     get_driver_entry_point("cuModuleGetFunction", &(void*&)pfn_cuModuleGetFunction);
     get_driver_entry_point("cuLaunchKernel", &(void*&)pfn_cuLaunchKernel);
     get_driver_entry_point("cuMemcpyPeerAsync", &(void*&)pfn_cuMemcpyPeerAsync);
+    get_driver_entry_point("cuGraphicsMapResources", &(void*&)pfn_cuGraphicsMapResources);
+    get_driver_entry_point("cuGraphicsUnmapResources", &(void*&)pfn_cuGraphicsUnmapResources);
+    get_driver_entry_point("cuGraphicsResourceGetMappedPointer", &(void*&)pfn_cuGraphicsResourceGetMappedPointer);
+    get_driver_entry_point("cuGraphicsGLRegisterBuffer", &(void*&)pfn_cuGraphicsGLRegisterBuffer);
+    get_driver_entry_point("cuGraphicsUnregisterResource", &(void*&)pfn_cuGraphicsUnregisterResource);
 
     if (pfn_cuInit)
         return check_cu(pfn_cuInit(0));
@@ -381,5 +395,29 @@ CUresult cuMemcpyPeerAsync_f(CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr
     return pfn_cuMemcpyPeerAsync ? pfn_cuMemcpyPeerAsync(dst_ptr, dst_ctx, src_ptr, src_ctx, n, stream) : DRIVER_ENTRY_POINT_ERROR;
 }
 
+CUresult cuGraphicsMapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream stream)
+{
+    return pfn_cuGraphicsMapResources ? pfn_cuGraphicsMapResources(count, resources, stream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphicsUnmapResources_f(unsigned int count, CUgraphicsResource* resources, CUstream hStream)
+{
+    return pfn_cuGraphicsUnmapResources ? pfn_cuGraphicsUnmapResources(count, resources, hStream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphicsResourceGetMappedPointer_f(CUdeviceptr* pDevPtr, size_t* pSize, CUgraphicsResource resource)
+{
+    return pfn_cuGraphicsResourceGetMappedPointer ? pfn_cuGraphicsResourceGetMappedPointer(pDevPtr, pSize, resource) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource *pCudaResource, unsigned int buffer, unsigned int flags)
+{
+    return pfn_cuGraphicsGLRegisterBuffer ? pfn_cuGraphicsGLRegisterBuffer(pCudaResource, (GLuint) buffer, flags) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource)
+{
+    return pfn_cuGraphicsUnregisterResource ? pfn_cuGraphicsUnregisterResource(resource) : DRIVER_ENTRY_POINT_ERROR;
+}
 
 #endif // WP_ENABLE_CUDA

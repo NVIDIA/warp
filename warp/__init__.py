@@ -58,6 +58,7 @@ from warp.context import print_builtins, export_builtins, export_stubs
 from warp.context import Kernel, Function
 from warp.context import Stream, get_stream, set_stream, synchronize_stream
 from warp.context import Event, record_event, wait_event, wait_stream
+from warp.context import RegisteredGLBuffer
 
 from warp.tape import Tape
 from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice, ScopedStream
@@ -74,4 +75,4 @@ from warp.dlpack import from_dlpack, to_dlpack
 
 from warp.constants import *
 
-from . import builtins, render
+from . import builtins

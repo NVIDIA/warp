@@ -20,6 +20,7 @@ import math
 
 import numpy as np
 import warp as wp
+import warp.render
 
 wp.init()
 
@@ -97,7 +98,7 @@ class Example:
         self.sim_restitution = 0.0
         self.sim_margin = 15.0
 
-        self.renderer = wp.render.UsdRenderer(stage, upaxis="z")
+        self.renderer = wp.render.UsdRenderer(stage, up_axis="z")
         self.renderer.render_ground(size=10000.0)
 
         init_pos = 1000.0 * (np.random.rand(self.num_particles, 3) * 2.0 - 1.0) + np.array((0.0, 0.0, 3000.0))
