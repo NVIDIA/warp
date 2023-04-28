@@ -35,6 +35,14 @@
 
 namespace wp {
 
+static void initialize_llvm()
+{
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmPrinters();
+}
+
 static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, llvm::LLVMContext& context)
 {
     // Compilation arguments
@@ -86,10 +94,7 @@ WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char*
 
     std::string input_file = std::string(output_file).substr(0, std::strlen(output_file) - std::strlen(obj_ext));
 
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmPrinters();
+    initialize_llvm();
 
     llvm::LLVMContext context;
     std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, context);
@@ -135,6 +140,8 @@ WP_API int load_obj(const char* object_file, const char* module_name)
 {
     if(!jit)
     {
+        initialize_llvm();
+
         auto jit_expected = llvm::orc::LLJITBuilder().create();
 
         if(!jit_expected)
@@ -157,13 +164,13 @@ WP_API int load_obj(const char* object_file, const char* module_name)
     // Enable searching for external symbols in the calling module
     {
         #if defined (_WIN32)
-            const char* clang_dll = "clang.dll";
+            const char* clang_dll = "warp-clang.dll";
             char global_prefix = '\0';
         #elif defined(__APPLE__)
-            const char* clang_dll = "libclang.dylib";
+            const char* clang_dll = "libwarp-clang.dylib";
             char global_prefix = '_';
         #else
-            const char* clang_dll = "clang.so";
+            const char* clang_dll = "warp-clang.so";
             char global_prefix = '\0';
         #endif
 
