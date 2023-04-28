@@ -20,7 +20,7 @@ from environment import Environment, run_env
 
 class UsdEnvironment(Environment):
     sim_name = "env_usd"
-    tiny_render_settings = dict(scaling=10.0, draw_grid=True)
+    opengl_render_settings = dict(scaling=10.0, draw_grid=True)
     usd_render_settings = dict(scaling=100.0)
 
     episode_duration = 2.0

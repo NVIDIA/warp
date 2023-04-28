@@ -53,13 +53,13 @@ def _compute_segment_xform(pos0, pos1):
 class UsdRenderer:
     """A USD renderer"""
 
-    def __init__(self, stage, upaxis="y", fps=60, scaling=1.0):
+    def __init__(self, stage, up_axis="y", fps=60, scaling=1.0):
         """Construct a UsdRenderer object
 
         Args:
             model: A simulation model
             stage (str/Usd.Stage): A USD stage (either in memory or on disk)
-            upaxis (str): The upfacing axis of the stage
+            up_axis (str): The upfacing axis of the stage
             fps: The number of frames per second to use in the USD file
             scaling: Scaling factor to use for the entities in the scene
         """
@@ -72,7 +72,7 @@ class UsdRenderer:
             self.stage = stage
         else:
             print("Failed to create stage in renderer. Please construct with stage path or stage object.")
-        self.upaxis = upaxis
+        self.up_axis = up_axis
         self.fps = float(fps)
         self.time = 0.0
 
@@ -97,11 +97,11 @@ class UsdRenderer:
         self.stage.SetEndTimeCode(0.0)
         self.stage.SetTimeCodesPerSecond(self.fps)
 
-        if upaxis == "x":
+        if up_axis == "x":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.x)
-        elif upaxis == "y":
+        elif up_axis == "y":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.y)
-        elif upaxis == "z":
+        elif up_axis == "z":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
 
         # add default lights
@@ -234,13 +234,13 @@ class UsdRenderer:
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
         mesh.CreateDoubleSidedAttr().Set(True)
 
-        if self.upaxis == "x":
+        if self.up_axis == "x":
             points = ((0.0, -size, -size), (0.0, size, -size), (0.0, size, size), (0.0, -size, size))
             normals = ((1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0))
-        elif self.upaxis == "y":
+        elif self.up_axis == "y":
             points = ((-size, 0.0, -size), (size, 0.0, -size), (size, 0.0, size), (-size, 0.0, size))
             normals = ((0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0))
-        elif self.upaxis == "z":
+        elif self.up_axis == "z":
             points = ((-size, -size, 0.0), (size, -size, 0.0), (size, size, 0.0), (-size, size, 0.0))
             normals = ((0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0))
         counts = (4,)

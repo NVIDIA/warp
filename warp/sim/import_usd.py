@@ -29,7 +29,9 @@ def parse_usd(
     joint_limit_kd=10.0,
     verbose=False,
     ignore_paths=[],
+    export_usda=False,
 ):
+
     try:
         from pxr import Usd, UsdGeom, UsdPhysics
     except ImportError:
@@ -56,9 +58,12 @@ def parse_usd(
 
         stage = Usd.Stage.Open(target_filename, Usd.Stage.LoadNone)
         stage_str = stage.GetRootLayer().ExportToString()
-        # with open(os.path.join(folder_name, base_name + ".usda"), "w") as f:
-        #     f.write(stage_str)
         print(f"Downloaded USD file to {target_filename}.")
+        if export_usda:
+            usda_filename = os.path.join(folder_name, base_name + ".usda")
+            with open(usda_filename, "w") as f:
+                f.write(stage_str)
+                print(f"Exported USDA file to {usda_filename}.")
 
         # parse referenced USD files like `references = @./franka_collisions.usd@`
         downloaded = set()
@@ -77,10 +82,20 @@ def parse_usd(
                 refdir = os.path.dirname(refname)
                 if refdir:
                     os.makedirs(os.path.join(folder_name, refdir), exist_ok=True)
-                with open(os.path.join(folder_name, refname), "wb") as f:
+                ref_filename = os.path.join(folder_name, refname)
+                with open(ref_filename, "wb") as f:
                     f.write(file)
                 downloaded.add(refname)
-                print(f"Downloaded USD reference {refname} to {os.path.join(folder_name, refname)}.")
+                print(f"Downloaded USD reference {refname} to {ref_filename}.")
+                if export_usda:
+                    ref_stage = Usd.Stage.Open(ref_filename, Usd.Stage.LoadNone)
+                    ref_stage_str = ref_stage.GetRootLayer().ExportToString()
+                    base = os.path.basename(ref_filename)
+                    base_name = dot.join(base.split(dot)[:-1])
+                    usda_filename = os.path.join(folder_name, base_name + ".usda")
+                    with open(usda_filename, "w") as f:
+                        f.write(ref_stage_str)
+                        print(f"Exported USDA file to {usda_filename}.")
             except:
                 print(f"Failed to download {refname}.")
 
@@ -177,9 +192,9 @@ def parse_usd(
         target_pos = parse_float(prim, f"drive:{type}:physics:targetPosition")
         target_vel = parse_float(prim, f"drive:{type}:physics:targetVelocity")
         if is_angular:
-            stiffness *= mass_unit * linear_unit**2
+            stiffness *= mass_unit * linear_unit ** 2
             stiffness = np.deg2rad(stiffness)
-            damping *= mass_unit * linear_unit**2
+            damping *= mass_unit * linear_unit ** 2
             damping = np.deg2rad(damping)
             if target_pos is not None:
                 target_pos = np.deg2rad(target_pos)

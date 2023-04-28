@@ -175,4 +175,11 @@ extern "C"
     WP_API void cuda_set_context_restore_policy(bool always_restore);
     WP_API int cuda_get_context_restore_policy();
 
+    WP_API void cuda_graphics_map(void* context, void* resource);
+    WP_API void cuda_graphics_unmap(void* context, void* resource);
+    WP_API void cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size);
+    WP_API void* cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags);
+    WP_API void cuda_graphics_unregister_resource(void* context, void* resource);
+
 } // extern "C"
+ 
