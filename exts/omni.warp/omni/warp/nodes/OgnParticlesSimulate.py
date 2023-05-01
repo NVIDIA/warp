@@ -14,6 +14,7 @@ import numpy as np
 import omni.graph.core as og
 import omni.timeline
 import warp as wp
+import warp.sim
 
 import omni.warp
 from omni.warp.ogn.OgnParticlesSimulateDatabase import OgnParticlesSimulateDatabase
