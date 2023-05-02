@@ -2707,3 +2707,6 @@ add_builtin(
 add_builtin("unot", input_types={"b": bool}, value_type=bool, doc="", group="Operators")
 for t in int_types:
     add_builtin("unot", input_types={"b": t}, value_type=bool, doc="", group="Operators")
+
+
+add_builtin("unot", input_types={"a": array(dtype=Any)}, value_type=bool, doc="", group="Operators")

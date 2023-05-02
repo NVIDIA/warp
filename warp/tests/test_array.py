@@ -670,6 +670,34 @@ def test_large_arrays_fast(test, device):
     assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
 
 
+
+@wp.kernel
+def kernel_array_to_bool(array_null: wp.array(dtype=float),
+                         array_valid: wp.array(dtype=float)):
+
+    if not array_null:
+        # always succeed
+        wp.expect_eq(0, 0)
+    else:
+        # force failure
+        wp.expect_eq(1, 2)
+
+    if array_valid:
+        # always succeed
+        wp.expect_eq(0, 0)
+    else:
+        # force failure
+        wp.expect_eq(1, 2)
+
+
+def test_array_to_bool(test, device):
+
+    arr = wp.zeros(8, dtype=float, device=device)
+
+    wp.launch(kernel_array_to_bool, dim=1, inputs=[None, arr], device=device)
+
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -692,6 +720,7 @@ def register(parent):
     add_function_test(TestArray, "test_fill_zero", test_fill_zero, devices=devices)
     add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
     add_function_test(TestArray, "test_large_arrays_fast", test_large_arrays_fast, devices=devices)
+    add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
 
     return TestArray
 
