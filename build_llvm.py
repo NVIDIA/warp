@@ -8,6 +8,12 @@ import warp.build
 base_path = os.path.dirname(os.path.realpath(__file__))
 build_path = os.path.join(base_path, "warp")
 
+llvm_project_dir = "external/llvm-project"
+llvm_project_path = os.path.join(base_path, llvm_project_dir)
+llvm_path = os.path.join(llvm_project_path, "llvm")
+llvm_build_path = os.path.join(llvm_project_path, f"out/build/{warp.config.mode}")
+llvm_install_path = os.path.join(llvm_project_path, f"out/install/{warp.config.mode}")
+
 # Fetch prebuilt Clang/LLVM libraries
 if os.name == "nt":
     subprocess.check_call(
@@ -52,8 +58,6 @@ def build_from_source():
 
     from git import Repo
 
-    llvm_project_dir = "external/llvm-project"
-    llvm_project_path = os.path.join(base_path, llvm_project_dir)
     repo_url = "https://github.com/llvm/llvm-project.git"
 
     if not os.path.exists(llvm_project_path):
@@ -75,10 +79,6 @@ def build_from_source():
         cmake_build_type = "MinSizeRel"  # prefer smaller size over aggressive speed
     else:
         cmake_build_type = "Debug"
-
-    llvm_path = os.path.join(llvm_project_path, "llvm")
-    llvm_build_path = os.path.join(llvm_project_path, f"out/build/{warp.config.mode}")
-    llvm_install_path = os.path.join(llvm_project_path, f"out/install/{warp.config.mode}")
 
     # Location of cmake and ninja installed through pip (see build.bat / build.sh)
     python_bin = "python/Scripts" if sys.platform == "win32" else "python/bin"
