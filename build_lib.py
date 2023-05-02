@@ -86,15 +86,6 @@ def lib_name(name):
 
 
 try:
-    # build warp-clang.dll
-    if args.standalone:
-        import build_llvm
-
-        if args.build_llvm:
-            build_llvm.build_from_source()
-
-        build_llvm.build_warp_clang(args.build_llvm, lib_name("warp-clang"))
-
     # build warp.dll
     cpp_sources = [
         "native/warp.cpp",
@@ -126,6 +117,15 @@ try:
         fast_math=args.fast_math,
         quick=args.quick,
     )
+
+    # build warp-clang.dll
+    if args.standalone:
+        import build_llvm
+
+        if args.build_llvm:
+            build_llvm.build_from_source()
+
+        build_llvm.build_warp_clang(args.build_llvm, lib_name("warp-clang"))
 
 except Exception as e:
     # output build error

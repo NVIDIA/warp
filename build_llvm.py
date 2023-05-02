@@ -4,11 +4,6 @@ import subprocess
 
 import warp.build
 
-# Install dependencies
-subprocess.check_call([sys.executable, "-m", "pip", "install", "gitpython"])
-subprocess.check_call([sys.executable, "-m", "pip", "install", "cmake"])
-subprocess.check_call([sys.executable, "-m", "pip", "install", "ninja"])
-
 # set build output path off this file
 base_path = os.path.dirname(os.path.realpath(__file__))
 build_path = os.path.join(base_path, "warp")
@@ -50,6 +45,11 @@ else:
 
 
 def build_from_source():
+    # Install dependencies
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "gitpython"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "cmake"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "ninja"])
+
     from git import Repo
 
     llvm_project_dir = "external/llvm-project"
@@ -57,7 +57,7 @@ def build_from_source():
     repo_url = "https://github.com/llvm/llvm-project.git"
 
     if not os.path.exists(llvm_project_path):
-        print(f"Cloning LLVM project...")
+        print("Cloning LLVM project...")
         shallow_clone = True  # https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/
         if shallow_clone:
             repo = Repo.clone_from(
