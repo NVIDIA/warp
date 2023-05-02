@@ -1186,7 +1186,8 @@ class Adjoint:
                 else:
                     # unroll
                     for i in range(start, end, step):
-                        var_iter = adj.add_constant(i)
+                        const_iter = adj.add_constant(i)
+                        var_iter = adj.add_call(warp.context.builtin_functions["int"], [const_iter])
                         adj.symbols[node.target.id] = var_iter
 
                         # eval body
