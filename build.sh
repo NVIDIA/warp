@@ -12,9 +12,6 @@ SCRIPT_DIR=$(dirname ${BASH_SOURCE})
 
 # pip deps
 ./_build/target-deps/python/python -m pip install numpy
-./_build/target-deps/python/python -m pip install gitpython
-./_build/target-deps/python/python -m pip install cmake
-./_build/target-deps/python/python -m pip install ninja
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     ./_build/target-deps/python/python build_lib.py
