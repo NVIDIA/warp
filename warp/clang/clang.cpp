@@ -39,6 +39,7 @@
     extern "C" void __chkstk();
 #elif defined(__APPLE__)
     extern "C" void __bzero(void*, size_t);
+    extern "C" __double2 __sincos_stret(double);
 #endif
 
 namespace wp {
@@ -219,6 +220,7 @@ WP_API int load_obj(const char* object_file, const char* module_name)
             SYMBOL(__chkstk),
         #elif defined(__APPLE__)
             SYMBOL(__bzero),
+            SYMBOL(__sincos_stret),
         #else
             SYMBOL(sincosf), SYMBOL_T(sincos, void(*)(double,double*,double*)),
         #endif
