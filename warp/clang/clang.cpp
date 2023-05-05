@@ -33,6 +33,12 @@
 #include <string>
 #include <cstring>
 
+#if defined(_WIN64)
+    extern "C" void __chkstk();
+#elif defined(__APPLE__)
+    extern "C" void __bzero(void*, size_t);
+#endif
+
 namespace wp {
 
 static void initialize_llvm()
@@ -161,28 +167,64 @@ WP_API int load_obj(const char* object_file, const char* module_name)
         return -1;
     }
 
-    // Enable searching for external symbols in the calling module
+    // Define symbols for Warp's CRT functions subset
     {
-        #if defined (_WIN32)
-            const char* clang_dll = "warp-clang.dll";
-            char global_prefix = '\0';
-        #elif defined(__APPLE__)
-            const char* clang_dll = "libwarp-clang.dylib";
-            char global_prefix = '_';
+        #if defined(__APPLE__)
+            #define MANGLING_PREFIX "_"
         #else
-            const char* clang_dll = "warp-clang.so";
-            char global_prefix = '\0';
+            #define MANGLING_PREFIX ""
         #endif
+        
+        const auto flags = llvm::JITSymbolFlags::Exported | llvm::JITSymbolFlags::Absolute;
+        #define SYMBOL(sym) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(&::sym), flags} }
+        #define SYMBOL_T(sym, T) { jit->getExecutionSession().intern(MANGLING_PREFIX #sym), { llvm::pointerToJITTargetAddress(static_cast<T>(&::sym)), flags} }
 
-        auto search = llvm::orc::DynamicLibrarySearchGenerator::Load(clang_dll, global_prefix);
+        auto error = dll->define(llvm::orc::absoluteSymbols({
+            SYMBOL(printf),
+            SYMBOL_T(abs, int(*)(int)), SYMBOL(llabs),
+            SYMBOL(fmodf), SYMBOL_T(fmod, double(*)(double, double)),
+            SYMBOL(logf), SYMBOL_T(log, double(*)(double)),
+            SYMBOL(log2f), SYMBOL_T(log2, double(*)(double)),
+            SYMBOL(log10f), SYMBOL_T(log10, double(*)(double)),
+            SYMBOL(expf), SYMBOL_T(exp, double(*)(double)),
+            SYMBOL(sqrtf), SYMBOL_T(sqrt, double(*)(double)),
+            SYMBOL(powf), SYMBOL_T(pow, double(*)(double, double)),
+            SYMBOL(floorf), SYMBOL_T(floor, double(*)(double)),
+            SYMBOL(ceilf), SYMBOL_T(ceil, double(*)(double)),
+            SYMBOL(fabsf), SYMBOL_T(fabs, double(*)(double)),
+            SYMBOL(roundf), SYMBOL_T(round, double(*)(double)),
+            SYMBOL(truncf), SYMBOL_T(trunc, double(*)(double)),
+            SYMBOL(rintf), SYMBOL_T(rint, double(*)(double)),
+            SYMBOL(acosf), SYMBOL_T(acos, double(*)(double)),
+            SYMBOL(asinf), SYMBOL_T(asin, double(*)(double)),
+            SYMBOL(atanf), SYMBOL_T(atan, double(*)(double)),
+            SYMBOL(atan2f), SYMBOL_T(atan2, double(*)(double, double)),
+            SYMBOL(cosf), SYMBOL_T(cos, double(*)(double)),
+            SYMBOL(sinf), SYMBOL_T(sin, double(*)(double)),
+            SYMBOL(tanf), SYMBOL_T(tan, double(*)(double)),
+            SYMBOL(sinhf), SYMBOL_T(sinh, double(*)(double)),
+            SYMBOL(coshf), SYMBOL_T(cosh, double(*)(double)),
+            SYMBOL(tanhf), SYMBOL_T(tanh, double(*)(double)),
+            SYMBOL(fmaf),
+            SYMBOL(memcpy),
+            SYMBOL(memset),
+            SYMBOL(_wp_assert),
+            SYMBOL(_wp_isfinite),
+        #if defined(_WIN64)
+            // For functions with large stack frames the compiler will emit a call to
+            // __chkstk() to linearly touch each memory page. This grows the stack without
+            // triggering the stack overflow guards.
+            SYMBOL(__chkstk),
+        #elif defined(__APPLE__)
+            SYMBOL(__bzero),
+        #endif
+        }));
 
-        if(!search)
+        if(error)
         {
-            std::cerr << "Failed to create generator: " << toString(search.takeError()) << std::endl;
+            std::cerr << "Failed to define symbols: " << llvm::toString(std::move(error)) << std::endl;
             return -1;
         }
-
-        dll->addGenerator(std::move(*search));
     }
 
     // Load the object file into a memory buffer
