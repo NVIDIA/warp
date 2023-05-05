@@ -18,7 +18,7 @@ class Tape:
         self.loss = None
 
     def __enter__(self):
-        if wp.context.runtime.tape != None:
+        if wp.context.runtime.tape is not None:
             raise RuntimeError("Warp: Error, entering a tape while one is already active")
 
         wp.context.runtime.tape = self
@@ -26,7 +26,7 @@ class Tape:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if wp.context.runtime.tape == None:
+        if wp.context.runtime.tape is None:
             raise RuntimeError("Warp: Error, ended tape capture, but tape not present")
 
         wp.context.runtime.tape = None

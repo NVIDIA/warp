@@ -176,7 +176,9 @@ WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, 
         return 0;
 
     const void* src_data = NULL;
+    const void* src_grad = NULL;
     void* dst_data = NULL;
+    void* dst_grad = NULL;
     int src_ndim = 0;
     int dst_ndim = 0;
     const int* src_shape = NULL;
@@ -192,6 +194,7 @@ WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, 
     {
         const wp::array_t<void>& src_arr = *static_cast<const wp::array_t<void>*>(src);
         src_data = src_arr.data;
+        src_grad = src_arr.grad;
         src_ndim = src_arr.ndim;
         src_shape = src_arr.shape.dims;
         src_strides = src_arr.strides;
@@ -216,6 +219,7 @@ WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, 
     {
         const wp::array_t<void>& dst_arr = *static_cast<const wp::array_t<void>*>(dst);
         dst_data = dst_arr.data;
+        dst_grad = dst_arr.grad;
         dst_ndim = dst_arr.ndim;
         dst_shape = dst_arr.shape.dims;
         dst_strides = dst_arr.strides;
@@ -242,6 +246,7 @@ WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, 
         return 0;
     }
 
+    bool has_grad = (src_grad && dst_grad);
     size_t n = 1;
 
     for (int i = 0; i < src_ndim; i++)
@@ -258,6 +263,14 @@ WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, 
               dst_strides, src_strides,
               dst_indices, src_indices,
               src_shape, src_ndim, elem_size);
+
+    if (has_grad)
+    {
+        array_copy_nd(dst_grad, src_grad,
+                dst_strides, src_strides,
+                dst_indices, src_indices,
+                src_shape, src_ndim, elem_size);
+    }
 
     return n;
 }

@@ -820,17 +820,17 @@ class shape_t(ctypes.Structure):
     def __init__(self):
         pass
 
+class array_t(ctypes.Structure): 
 
-class array_t(ctypes.Structure):
-    _fields_ = [
-        ("data", ctypes.c_uint64),
-        ("shape", ctypes.c_int32 * ARRAY_MAX_DIMS),
-        ("strides", ctypes.c_int32 * ARRAY_MAX_DIMS),
-        ("ndim", ctypes.c_int32),
-    ]
-
-    def __init__(self, data=0, ndim=0, shape=(0,), strides=(0,)):
+    _fields_ = [("data", ctypes.c_uint64),
+                ("grad", ctypes.c_uint64),
+                ("shape", ctypes.c_int32*ARRAY_MAX_DIMS),
+                ("strides", ctypes.c_int32*ARRAY_MAX_DIMS),
+                ("ndim", ctypes.c_int32)]
+    
+    def __init__(self, data=0, grad=0, ndim=0, shape=(0,), strides=(0,)):
         self.data = data
+        self.grad = grad
         self.ndim = ndim
         for i in range(ndim):
             self.shape[i] = shape[i]
@@ -845,13 +845,19 @@ class indexedarray_t(ctypes.Structure):
     ]
 
     def __init__(self, data, indices, shape):
-        self.data = data.__ctype__()
-        for i in range(data.ndim):
-            if indices[i] is not None:
-                self.indices[i] = ctypes.c_void_p(indices[i].ptr)
-            else:
+        if data is None:
+            self.data = array().__ctype__()
+            for i in range(ARRAY_MAX_DIMS):
                 self.indices[i] = ctypes.c_void_p(None)
-            self.shape[i] = shape[i]
+                self.shape[i] = 0
+        else:
+            self.data = data.__ctype__()
+            for i in range(data.ndim):
+                if indices[i] is not None:
+                    self.indices[i] = ctypes.c_void_p(indices[i].ptr)
+                else:
+                    self.indices[i] = ctypes.c_void_p(None)
+                self.shape[i] = shape[i]
 
 
 def type_ctype(dtype):
@@ -1026,6 +1032,7 @@ class array(Array):
         strides=None,
         length=0,
         ptr=None,
+        grad_ptr=None,
         capacity=0,
         device=None,
         copy=True,
@@ -1052,6 +1059,7 @@ class array(Array):
             strides (tuple): Number of bytes in each dimension between successive elements of the array
             length (int): Number of elements (rows) of the data type (deprecated, users should use `shape` argument)
             ptr (uint64): Address of an external memory address to alias (data should be None)
+            grad_ptr (uint64): Address of an external memory address to alias for the gradient array
             capacity (int): Maximum size in bytes of the ptr allocation (data should be None)
             device (Devicelike): Device the array lives on
             copy (bool): Whether the incoming data will be copied or aliased, this is only possible when the incoming `data` already lives on the device specified and types match
@@ -1158,6 +1166,7 @@ class array(Array):
                 # ref numpy memory directly
                 self.shape = shape
                 self.ptr = ptr
+                self.grad_ptr = grad_ptr
                 self.dtype = dtype
                 self.strides = strides
                 self.capacity = arr.size * type_size_in_bytes(dtype)
@@ -1201,6 +1210,7 @@ class array(Array):
             self.capacity = capacity
             self.dtype = dtype
             self.ptr = ptr
+            self.grad_ptr = grad_ptr
             self.device = device
             self.owner = owner
             if device is not None and device.is_cpu:
@@ -1221,7 +1231,7 @@ class array(Array):
         for d in self.shape:
             self.size *= d
 
-        self.grad = None
+        self._grad = None
 
         # set up array interface access so we can treat this object as a numpy array
         if self.ptr:
@@ -1381,6 +1391,7 @@ class array(Array):
             shape=tuple(new_shape),
             strides=tuple(new_strides),
             ptr=self.ptr + ptr_offset,
+            grad_ptr=(self.grad_ptr + ptr_offset if self.grad_ptr is not None else None),
             capacity=self.capacity,
             device=self.device,
             owner=False,
@@ -1403,7 +1414,8 @@ class array(Array):
     def __ctype__(self):
         if self.ctype is None:
             data = 0 if self.ptr is None else ctypes.c_uint64(self.ptr)
-            self.ctype = array_t(data=data, ndim=self.ndim, shape=self.shape, strides=self.strides)
+            grad = 0 if self.grad_ptr is None else ctypes.c_uint64(self.grad_ptr)
+            self.ctype = array_t(data=data, grad=grad, ndim=self.ndim, shape=self.shape, strides=self.strides)
 
         return self.ctype
 
@@ -1426,20 +1438,48 @@ class array(Array):
         return d
 
     @property
+    def grad(self):
+        return self._grad
+
+    @grad.setter
+    def grad(self, value):
+        # trigger re-creation of C-representation
+        self.ctype = None
+        if value is None:
+            self.grad_ptr = None
+            self._grad = None
+            return
+        if self._grad is None:
+            self.grad_ptr = value.ptr
+            self._grad = value
+        else:
+            self._grad.assign(value)
+
+    @property
     def requires_grad(self):
         return self._requires_grad
 
     @requires_grad.setter
     def requires_grad(self, value: bool):
-        if value and self.grad is None:
+        if value and self._grad is None:
             self._alloc_grad()
         elif not value:
-            self.grad = None
+            self._grad = None
 
         self._requires_grad = value
 
     def _alloc_grad(self):
-        self.grad = warp.zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
+        if self.grad_ptr is None:
+            num_bytes = self.size * type_size_in_bytes(self.dtype)
+            self.grad_ptr = self.device.allocator.alloc(num_bytes, pinned=self.pinned)
+            if self.grad_ptr is None:
+                raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(self.device, num_bytes))
+            with warp.ScopedStream(self.device.null_stream):
+                self.device.memset(self.grad_ptr, 0, num_bytes)
+
+        self._grad = array(ptr=self.grad_ptr, shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False, owner=False)
+        # trigger re-creation of C-representation
+        self.ctype = None
 
     @property
     def vars(self):
@@ -1560,7 +1600,7 @@ class array(Array):
         if self.device == device:
             return self
         else:
-            dest = warp.empty(shape=self.shape, dtype=self.dtype, device=device)
+            dest = warp.empty(shape=self.shape, dtype=self.dtype, device=device, requires_grad=self.requires_grad)
             # to copy between devices, array must be contiguous
             warp.copy(dest, self.contiguous())
             return dest
@@ -1615,6 +1655,7 @@ class array(Array):
             shape=shape,
             strides=None,
             ptr=self.ptr,
+            grad_ptr=self.grad_ptr,
             capacity=self.capacity,
             device=self.device,
             copy=False,
@@ -1638,6 +1679,7 @@ class array(Array):
                 shape=self.shape,
                 strides=self.strides,
                 ptr=self.ptr,
+                grad_ptr=self.grad_ptr,
                 capacity=self.capacity,
                 device=self.device,
                 copy=False,
@@ -1686,6 +1728,7 @@ class array(Array):
             shape=tuple(shape),
             strides=tuple(strides),
             ptr=self.ptr,
+            grad_ptr=self.grad_ptr,
             capacity=self.capacity,
             device=self.device,
             copy=False,
@@ -1741,7 +1784,7 @@ class indexedarray(Generic[T]):
     _vars = None
 
     def __init__(
-        self, data: array = None, indices: Union[array, List[array]] = None, dtype=None, ndim=None, requires_grad=False
+        self, data: array = None, indices: Union[array, List[array]] = None, dtype=None, ndim=None
     ):
         # canonicalize types
         if dtype is not None:
@@ -1823,9 +1866,6 @@ class indexedarray(Generic[T]):
 
         self.is_contiguous = False
 
-        self.grad = None
-        self.requires_grad = requires_grad
-
     def __len__(self):
         return self.shape[0]
 
@@ -1835,22 +1875,6 @@ class indexedarray(Generic[T]):
     # construct a C-representation of the array for passing to kernels
     def __ctype__(self):
         return indexedarray_t(self.data, self.indices, self.shape)
-
-    @property
-    def requires_grad(self):
-        return self._requires_grad
-
-    @requires_grad.setter
-    def requires_grad(self, value: bool):
-        if value and self.grad is None and self.data is not None:
-            self._alloc_grad()
-        elif not value:
-            self.grad = None
-
-        self._requires_grad = value
-
-    def _alloc_grad(self):
-        self.grad = warp.zeros(shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False)
 
     @property
     def vars(self):
@@ -2026,27 +2050,23 @@ class Mesh:
         self.velocities = velocities
         self.indices = indices
 
-        def get_data(array):
-            if array:
-                return ctypes.c_void_p(array.ptr)
-            else:
-                return ctypes.c_void_p(0)
-
         from warp.context import runtime
 
         if self.device.is_cpu:
             self.id = runtime.core.mesh_create_host(
-                get_data(points), get_data(velocities), get_data(indices), int(len(points)), int(indices.size / 3)
-            )
+                points.__ctype__(),
+                velocities.__ctype__() if velocities else array().__ctype__(),
+                indices.__ctype__(),
+                int(len(points)),
+                int(indices.size / 3))
         else:
             self.id = runtime.core.mesh_create_device(
                 self.device.context,
-                get_data(points),
-                get_data(velocities),
-                get_data(indices),
+                points.__ctype__(),
+                velocities.__ctype__() if velocities else array().__ctype__(),
+                indices.__ctype__(),
                 int(len(points)),
-                int(indices.size / 3),
-            )
+                int(indices.size / 3))
 
     def __del__(self):
         try:
@@ -2058,7 +2078,6 @@ class Mesh:
                 # use CUDA context guard to avoid side effects during garbage collection
                 with self.device.context_guard:
                     runtime.core.mesh_destroy_device(self.id)
-
         except:
             pass
 

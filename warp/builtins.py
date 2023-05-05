@@ -546,7 +546,7 @@ def vector_constructor_func(args, kwds, templates):
     if args is None:
         return vector(length=Any, dtype=Scalar)
 
-    if templates == None or len(templates) == 0:
+    if templates is None or len(templates) == 0:
         # handle construction of anonymous (undeclared) vector types
 
         if "length" in kwds:
@@ -677,7 +677,7 @@ def matrix_constructor_func(args, kwds, templates):
             else:
                 # check that we either got 1 arg (scalar construction), or enough values for whole matrix
                 size = shape[0] * shape[1]
-                if len(args) > 1 and len(args) != shape[0] * shape[1]:
+                if len(args) > 1 and len(args) != size:
                     raise RuntimeError(
                         "Wrong number of scalars when attempting to construct a matrix from a list of components"
                     )
@@ -727,7 +727,7 @@ def matrix_identity_value_func(args, kwds, templates):
 
     n, dtype = [kwds["n"], kwds["dtype"]]
 
-    if n == None:
+    if n is None:
         raise RuntimeError("'n' must be a constant when calling identity() function")
 
     templates.append(n)
@@ -1488,11 +1488,11 @@ add_builtin(
     doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.",
 )
 
-
 add_builtin(
     "mesh_get",
     input_types={"id": uint64},
     value_type=Mesh,
+    missing_grad=True,
     group="Geometry",
     doc="""Retrieves the mesh given its index.""",
 )

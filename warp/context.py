@@ -92,7 +92,7 @@ class Function:
         self.generic = generic
 
         # allow registering builtin functions with a different name in Python from the native code
-        if native_func == None:
+        if native_func is None:
             self.native_func = key
         else:
             self.native_func = native_func
@@ -266,7 +266,7 @@ class Function:
             )
 
     def is_builtin(self):
-        return self.func == None
+        return self.func is None
 
     def is_simple(self):
         if self.variadic:
@@ -657,12 +657,12 @@ def add_builtin(
     native_func=None,
 ):
     # wrap simple single-type functions with a value_func()
-    if value_func == None:
+    if value_func is None:
 
         def value_func(args, kwds, templates):
             return value_type
 
-    if initializer_list_func == None:
+    if initializer_list_func is None:
 
         def initializer_list_func(args, templates):
             return False
@@ -1857,23 +1857,10 @@ class Runtime:
         self.core.bvh_refit_device.argtypes = [ctypes.c_uint64]
 
         self.core.mesh_create_host.restype = ctypes.c_uint64
-        self.core.mesh_create_host.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
+        self.core.mesh_create_host.argtypes = [warp.types.array_t, warp.types.array_t, warp.types.array_t, ctypes.c_int, ctypes.c_int]
 
         self.core.mesh_create_device.restype = ctypes.c_uint64
-        self.core.mesh_create_device.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
+        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, warp.types.array_t, warp.types.array_t, warp.types.array_t, ctypes.c_int, ctypes.c_int]
 
         self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
         self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
@@ -2334,7 +2321,7 @@ def assert_initialized():
 def is_cpu_available():
     # initialize host build env (do this lazily) since
     # it takes 5secs to run all the batch files to locate MSVC
-    if warp.config.host_compiler == None:
+    if warp.config.host_compiler is None:
         warp.config.host_compiler = warp.build.find_host_compiler()
 
     return warp.config.host_compiler != ""
@@ -2574,7 +2561,7 @@ def zeros(
         A warp.array object representing the allocation
     """
 
-    # backwards compatability for case where users did wp.zeros(n, dtype=..), or wp.zeros(n=length, dtype=..)
+    # backwards compatibility for case where users did wp.zeros(n, dtype=..), or wp.zeros(n=length, dtype=..)
     if isinstance(shape, int):
         shape = (shape,)
     elif "n" in kwargs:
@@ -2589,6 +2576,9 @@ def zeros(
 
     device = get_device(device)
 
+    ptr = None
+    grad_ptr = None
+
     if num_bytes > 0:
         if device.is_capturing:
             raise RuntimeError(f"Cannot allocate memory while graph capture is active on device {device}.")
@@ -2601,8 +2591,13 @@ def zeros(
         with warp.ScopedStream(device.null_stream):
             device.memset(ptr, 0, num_bytes)
 
-    else:
-        ptr = None
+        if requires_grad:
+            # allocate gradient array
+            grad_ptr = device.allocator.alloc(num_bytes, pinned=pinned)
+            if grad_ptr is None:
+                raise RuntimeError("Memory allocation failed on device: {} for {} bytes".format(device, num_bytes))
+            with warp.ScopedStream(device.null_stream):
+                device.memset(grad_ptr, 0, num_bytes)
 
     # construct array
     return warp.types.array(
@@ -2610,6 +2605,7 @@ def zeros(
         shape=shape,
         capacity=num_bytes,
         ptr=ptr,
+        grad_ptr=grad_ptr,
         device=device,
         owner=True,
         requires_grad=requires_grad,
@@ -2630,7 +2626,10 @@ def zeros_like(src: warp.array, requires_grad: bool = None, pinned: bool = None)
     """
 
     if requires_grad is None:
-        requires_grad = src.requires_grad
+        if hasattr(src, "requires_grad"):
+            requires_grad = src.requires_grad
+        else:
+            requires_grad = False
 
     if pinned is None:
         pinned = src.pinned
@@ -2652,7 +2651,10 @@ def clone(src: warp.array, requires_grad: bool = None, pinned: bool = None) -> w
     """
 
     if requires_grad is None:
-        requires_grad = src.requires_grad
+        if hasattr(src, "requires_grad"):
+            requires_grad = src.requires_grad
+        else:
+            requires_grad = False
 
     if pinned is None:
         pinned = src.pinned
@@ -2701,7 +2703,10 @@ def empty_like(src: warp.array, requires_grad: bool = None, pinned: bool = None)
     """
 
     if requires_grad is None:
-        requires_grad = src.requires_grad
+        if hasattr(src, "requires_grad"):
+            requires_grad = src.requires_grad
+        else:
+            requires_grad = False
 
     if pinned is None:
         pinned = src.pinned
@@ -3140,7 +3145,7 @@ def capture_end(device: Devicelike = None, stream=None) -> Graph:
 
     device.is_capturing = False
 
-    if graph == None:
+    if graph is None:
         raise RuntimeError(
             "Error occurred during CUDA graph capture. This could be due to an unintended allocation or CPU/GPU synchronization event."
         )
@@ -3192,6 +3197,8 @@ def copy(
     if count == 0:
         return
 
+    has_grad = (hasattr(src, "grad_ptr") and hasattr(dest, "grad_ptr") and src.grad_ptr and dest.grad_ptr)
+
     if src.is_contiguous and dest.is_contiguous:
         bytes_to_copy = count * warp.types.type_size_in_bytes(src.dtype)
 
@@ -3203,6 +3210,10 @@ def copy(
 
         src_ptr = src.ptr + src_offset_in_bytes
         dst_ptr = dest.ptr + dst_offset_in_bytes
+
+        if has_grad:
+            src_grad_ptr = src.grad_ptr + src_offset_in_bytes
+            dst_grad_ptr = dest.grad_ptr + dst_offset_in_bytes
 
         if src_offset_in_bytes + bytes_to_copy > src_size_in_bytes:
             raise RuntimeError(
@@ -3216,6 +3227,8 @@ def copy(
 
         if src.device.is_cpu and dest.device.is_cpu:
             runtime.core.memcpy_h2h(dst_ptr, src_ptr, bytes_to_copy)
+            if has_grad:
+                runtime.core.memcpy_h2h(dst_grad_ptr, src_grad_ptr, bytes_to_copy)
         else:
             # figure out the CUDA context/stream for the copy
             if stream is not None:
@@ -3228,13 +3241,21 @@ def copy(
             with warp.ScopedStream(stream):
                 if src.device.is_cpu and dest.device.is_cuda:
                     runtime.core.memcpy_h2d(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+                    if has_grad:
+                        runtime.core.memcpy_h2d(copy_device.context, dst_grad_ptr, src_grad_ptr, bytes_to_copy)
                 elif src.device.is_cuda and dest.device.is_cpu:
                     runtime.core.memcpy_d2h(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+                    if has_grad:
+                        runtime.core.memcpy_d2h(copy_device.context, dst_grad_ptr, src_grad_ptr, bytes_to_copy)
                 elif src.device.is_cuda and dest.device.is_cuda:
                     if src.device == dest.device:
                         runtime.core.memcpy_d2d(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+                        if has_grad:
+                            runtime.core.memcpy_d2d(copy_device.context, dst_grad_ptr, src_grad_ptr, bytes_to_copy)
                     else:
                         runtime.core.memcpy_peer(copy_device.context, dst_ptr, src_ptr, bytes_to_copy)
+                        if has_grad:
+                            runtime.core.memcpy_peer(copy_device.context, dst_grad_ptr, src_grad_ptr, bytes_to_copy)
                 else:
                     raise RuntimeError("Unexpected source and destination combination")
 
@@ -3276,7 +3297,7 @@ def copy(
 
 
 def type_str(t):
-    if t == None:
+    if t is None:
         return "None"
     elif t == Any:
         return "Any"
@@ -3565,5 +3586,5 @@ def init():
     """Initialize the Warp runtime. This function must be called before any other API call. If an error occurs an exception will be raised."""
     global runtime
 
-    if runtime == None:
+    if runtime is None:
         runtime = Runtime()

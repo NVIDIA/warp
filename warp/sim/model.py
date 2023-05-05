@@ -2554,7 +2554,7 @@ class ModelBuilder:
 
         """
         # compute rest angle
-        if rest == None:
+        if rest is None:
             x1 = np.array(self.particle_q[i])
             x2 = np.array(self.particle_q[j])
             x3 = np.array(self.particle_q[k])

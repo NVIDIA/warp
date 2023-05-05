@@ -388,7 +388,9 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
         return 0;
 
     const void* src_data = NULL;
+    const void* src_grad = NULL;
     void* dst_data = NULL;
+    void* dst_grad = NULL;
     int src_ndim = 0;
     int dst_ndim = 0;
     const int* src_shape = NULL;
@@ -404,6 +406,7 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
     {
         const wp::array_t<void>& src_arr = *static_cast<const wp::array_t<void>*>(src);
         src_data = src_arr.data;
+        src_grad = src_arr.grad;
         src_ndim = src_arr.ndim;
         src_shape = src_arr.shape.dims;
         src_strides = src_arr.strides;
@@ -428,6 +431,7 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
     {
         const wp::array_t<void>& dst_arr = *static_cast<const wp::array_t<void>*>(dst);
         dst_data = dst_arr.data;
+        dst_grad = dst_arr.grad;
         dst_ndim = dst_arr.ndim;
         dst_shape = dst_arr.shape.dims;
         dst_strides = dst_arr.strides;
@@ -454,6 +458,7 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
         return 0;
     }
 
+    bool has_grad = (src_grad && dst_grad);
     size_t n = 1;
 
     for (int i = 0; i < src_ndim; i++)
@@ -476,6 +481,13 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
                                                                    dst_strides[0], src_strides[0],
                                                                    dst_indices[0], src_indices[0],
                                                                    src_shape[0], elem_size));
+        if (has_grad)
+        {
+            wp_launch_device(WP_CURRENT_CONTEXT, array_copy_1d_kernel, n, (dst_grad, src_grad,
+                                                                       dst_strides[0], src_strides[0],
+                                                                       dst_indices[0], src_indices[0],
+                                                                       src_shape[0], elem_size));
+        }
         break;
     }
     case 2:
@@ -490,6 +502,13 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
                                                                    dst_strides_v, src_strides_v,
                                                                    dst_indices_v, src_indices_v,
                                                                    shape_v, elem_size));
+        if (has_grad)
+        {
+            wp_launch_device(WP_CURRENT_CONTEXT, array_copy_2d_kernel, n, (dst_grad, src_grad,
+                                                                       dst_strides_v, src_strides_v,
+                                                                       dst_indices_v, src_indices_v,
+                                                                       shape_v, elem_size));
+        }
         break;
     }
     case 3:
@@ -504,6 +523,13 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
                                                                    dst_strides_v, src_strides_v,
                                                                    dst_indices_v, src_indices_v,
                                                                    shape_v, elem_size));
+        if (has_grad)
+        {
+            wp_launch_device(WP_CURRENT_CONTEXT, array_copy_3d_kernel, n, (dst_grad, src_grad,
+                                                                       dst_strides_v, src_strides_v,
+                                                                       dst_indices_v, src_indices_v,
+                                                                       shape_v, elem_size));
+        }
         break;
     }
     case 4:
@@ -518,6 +544,13 @@ WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_typ
                                                                    dst_strides_v, src_strides_v,
                                                                    dst_indices_v, src_indices_v,
                                                                    shape_v, elem_size));
+        if (has_grad)
+        {
+            wp_launch_device(WP_CURRENT_CONTEXT, array_copy_4d_kernel, n, (dst_grad, src_grad,
+                                                                       dst_strides_v, src_strides_v,
+                                                                       dst_indices_v, src_indices_v,
+                                                                       shape_v, elem_size));
+        }
         break;
     }
     default:
