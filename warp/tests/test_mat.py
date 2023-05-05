@@ -1060,6 +1060,16 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
         m4resultright = m4[0] * s[0]
         m5resultright = m5[0] * s[0]
 
+        m2result_2 = s[0] * m2[0]
+        m3result_2 = s[0] * m3[0]
+        m4result_2 = s[0] * m4[0]
+        m5result_2 = s[0] * m5[0]
+
+        m2resultright_2 = m2[0] * s[0]
+        m3resultright_2 = m3[0] * s[0]
+        m4resultright_2 = m4[0] * s[0]
+        m5resultright_2 = m5[0] * s[0]
+
         # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
@@ -1086,6 +1096,30 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
                 outcomponents_rightmul[idx] = wptype(2) * m5resultright[i, j]
                 idx = idx + 1
 
+        for i in range(2):
+            for j in range(2):
+                outcomponents[idx] = wptype(2) * m2result_2[i, j]
+                outcomponents_rightmul[idx] = wptype(2) * m2resultright_2[i, j]
+                idx = idx + 1
+
+        for i in range(3):
+            for j in range(3):
+                outcomponents[idx] = wptype(2) * m3result_2[i, j]
+                outcomponents_rightmul[idx] = wptype(2) * m3resultright_2[i, j]
+                idx = idx + 1
+
+        for i in range(4):
+            for j in range(4):
+                outcomponents[idx] = wptype(2) * m4result_2[i, j]
+                outcomponents_rightmul[idx] = wptype(2) * m4resultright_2[i, j]
+                idx = idx + 1
+
+        for i in range(5):
+            for j in range(5):
+                outcomponents[idx] = wptype(2) * m5result_2[i, j]
+                outcomponents_rightmul[idx] = wptype(2) * m5resultright_2[i, j]
+                idx = idx + 1
+
     kernel = getkernel(check_mat_scalar_mul, suffix=dtype.__name__)
 
     if register_kernels:
@@ -1096,8 +1130,8 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
     m3 = wp.array(randvals([1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
     m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
     m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
-    outcomponents = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
-    outcomponents_rightmul = wp.zeros(2 * 2 + 3 * 3 + 4 * 4 + 5 * 5, dtype=wptype, requires_grad=True, device=device)
+    outcomponents = wp.zeros(2 * (2 * 2 + 3 * 3 + 4 * 4 + 5 * 5), dtype=wptype, requires_grad=True, device=device)
+    outcomponents_rightmul = wp.zeros(2 * (2 * 2 + 3 * 3 + 4 * 4 + 5 * 5), dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[s, m2, m3, m4, m5], outputs=[outcomponents, outcomponents_rightmul], device=device)
 
@@ -1111,6 +1145,16 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
     assert_np_equal(outcomponents_rightmul.numpy()[4:13], 2 * sval * m3.numpy().reshape(-1), tol=10 * tol)
     assert_np_equal(outcomponents_rightmul.numpy()[13:29], 2 * sval * m4.numpy().reshape(-1), tol=10 * tol)
     assert_np_equal(outcomponents_rightmul.numpy()[29:54], 2 * sval * m5.numpy().reshape(-1), tol=10 * tol)
+
+    assert_np_equal(outcomponents.numpy()[54:58], 2 * sval * m2.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents.numpy()[58:67], 2 * sval * m3.numpy().reshape(-1), tol=10 * tol)
+    assert_np_equal(outcomponents.numpy()[67:83], 2 * sval * m4.numpy().reshape(-1), tol=10 * tol)
+    assert_np_equal(outcomponents.numpy()[83:108], 2 * sval * m5.numpy().reshape(-1), tol=10 * tol)
+
+    assert_np_equal(outcomponents_rightmul.numpy()[54:58], 2 * sval * m2.numpy().reshape(-1), tol=tol)
+    assert_np_equal(outcomponents_rightmul.numpy()[58:67], 2 * sval * m3.numpy().reshape(-1), tol=10 * tol)
+    assert_np_equal(outcomponents_rightmul.numpy()[67:83], 2 * sval * m4.numpy().reshape(-1), tol=10 * tol)
+    assert_np_equal(outcomponents_rightmul.numpy()[83:108], 2 * sval * m5.numpy().reshape(-1), tol=10 * tol)
 
     if dtype in np_float_types:
         idx = 0
@@ -1206,6 +1250,11 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
         v4result = m4[0] * v4[0]
         v5result = m5[0] * v5[0]
         v32result = m32[0] * v32[0]
+        v2result_2 = m2[0] @ v2[0]
+        v3result_2 = m3[0] @ v3[0]
+        v4result_2 = m4[0] @ v4[0]
+        v5result_2 = m5[0] @ v5[0]
+        v32result_2 = m32[0] @ v32[0]
 
         idx = 0
 
@@ -1230,6 +1279,26 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
             outcomponents[idx] = wptype(2) * v32result[i]
             idx = idx + 1
 
+        for i in range(2):
+            outcomponents[idx] = wptype(2) * v2result_2[i]
+            idx = idx + 1
+
+        for i in range(3):
+            outcomponents[idx] = wptype(2) * v3result_2[i]
+            idx = idx + 1
+
+        for i in range(4):
+            outcomponents[idx] = wptype(2) * v4result_2[i]
+            idx = idx + 1
+
+        for i in range(5):
+            outcomponents[idx] = wptype(2) * v5result_2[i]
+            idx = idx + 1
+
+        for i in range(3):
+            outcomponents[idx] = wptype(2) * v32result_2[i]
+            idx = idx + 1
+
     kernel = getkernel(check_mat_vec_mul, suffix=dtype.__name__)
 
     if register_kernels:
@@ -1245,7 +1314,7 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
     m4 = wp.array(randvals([1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
     m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     m32 = wp.array(randvals([1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
-    outcomponents = wp.zeros(2 + 3 + 4 + 5 + 3, dtype=wptype, requires_grad=True, device=device)
+    outcomponents = wp.zeros(2 * (2 + 3 + 4 + 5 + 3), dtype=wptype, requires_grad=True, device=device)
 
     wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5, v32, m2, m3, m4, m5, m32], outputs=[outcomponents], device=device)
 
@@ -1254,6 +1323,11 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
     assert_np_equal(outcomponents.numpy()[5:9], 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=5 * tol)
     assert_np_equal(outcomponents.numpy()[9:14], 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=5 * tol)
     assert_np_equal(outcomponents.numpy()[14:17], 2 * np.matmul(m32.numpy()[0], v32.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[17:19], 2 * np.matmul(m2.numpy()[0], v2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[19:22], 2 * np.matmul(m3.numpy()[0], v3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[22:26], 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[26:31], 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[31:34], 2 * np.matmul(m32.numpy()[0], v32.numpy()[0]), tol=5 * tol)
 
     if dtype in np_float_types:
         idx = 0
@@ -1301,55 +1375,91 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(wptype)
 
     def check_mat_mat_mul(
-        v2: wp.array(dtype=mat22),
-        v3: wp.array(dtype=mat33),
-        v4: wp.array(dtype=mat44),
-        v5: wp.array(dtype=mat55),
-        v32: wp.array(dtype=mat32),
-        m2: wp.array(dtype=mat22),
-        m3: wp.array(dtype=mat33),
-        m4: wp.array(dtype=mat44),
-        m5: wp.array(dtype=mat55),
-        m32: wp.array(dtype=mat32),
+        a2: wp.array(dtype=mat22),
+        a3: wp.array(dtype=mat33),
+        a4: wp.array(dtype=mat44),
+        a5: wp.array(dtype=mat55),
+        a32: wp.array(dtype=mat32),
+        b2: wp.array(dtype=mat22),
+        b3: wp.array(dtype=mat33),
+        b4: wp.array(dtype=mat44),
+        b5: wp.array(dtype=mat55),
+        b32: wp.array(dtype=mat32),
         outcomponents: wp.array(dtype=wptype),
     ):
-        m2result = m2[0] * v2[0]
-        m3result = m3[0] * v3[0]
-        m4result = m4[0] * v4[0]
-        m5result = m5[0] * v5[0]
-        m32result = m32[0] * v2[0]
-        m32result2 = m3[0] * v32[0]
+        c2result = b2[0] * a2[0]
+        c3result = b3[0] * a3[0]
+        c4result = b4[0] * a4[0]
+        c5result = b5[0] * a5[0]
+        c32result = b32[0] * a2[0]
+        c32result2 = b3[0] * a32[0]
+        c2result_2 = b2[0] @ a2[0]
+        c3result_2 = b3[0] @ a3[0]
+        c4result_2 = b4[0] @ a4[0]
+        c5result_2 = b5[0] @ a5[0]
+        c32result_2 = b32[0] @ a2[0]
+        c32result2_2 = b3[0] @ a32[0]
 
         # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0
         for i in range(2):
             for j in range(2):
-                outcomponents[idx] = wptype(2) * m2result[i, j]
+                outcomponents[idx] = wptype(2) * c2result[i, j]
                 idx = idx + 1
 
         for i in range(3):
             for j in range(3):
-                outcomponents[idx] = wptype(2) * m3result[i, j]
+                outcomponents[idx] = wptype(2) * c3result[i, j]
                 idx = idx + 1
 
         for i in range(4):
             for j in range(4):
-                outcomponents[idx] = wptype(2) * m4result[i, j]
+                outcomponents[idx] = wptype(2) * c4result[i, j]
                 idx = idx + 1
 
         for i in range(5):
             for j in range(5):
-                outcomponents[idx] = wptype(2) * m5result[i, j]
+                outcomponents[idx] = wptype(2) * c5result[i, j]
                 idx = idx + 1
 
         for i in range(3):
             for j in range(2):
-                outcomponents[idx] = wptype(2) * m32result[i, j]
+                outcomponents[idx] = wptype(2) * c32result[i, j]
                 idx = idx + 1
 
         for i in range(3):
             for j in range(2):
-                outcomponents[idx] = wptype(2) * m32result2[i, j]
+                outcomponents[idx] = wptype(2) * c32result2[i, j]
+                idx = idx + 1
+
+        for i in range(2):
+            for j in range(2):
+                outcomponents[idx] = wptype(2) * c2result_2[i, j]
+                idx = idx + 1
+
+        for i in range(3):
+            for j in range(3):
+                outcomponents[idx] = wptype(2) * c3result_2[i, j]
+                idx = idx + 1
+
+        for i in range(4):
+            for j in range(4):
+                outcomponents[idx] = wptype(2) * c4result_2[i, j]
+                idx = idx + 1
+
+        for i in range(5):
+            for j in range(5):
+                outcomponents[idx] = wptype(2) * c5result_2[i, j]
+                idx = idx + 1
+
+        for i in range(3):
+            for j in range(2):
+                outcomponents[idx] = wptype(2) * c32result_2[i, j]
+                idx = idx + 1
+
+        for i in range(3):
+            for j in range(2):
+                outcomponents[idx] = wptype(2) * c32result2_2[i, j]
                 idx = idx + 1
 
     kernel = getkernel(check_mat_mat_mul, suffix=dtype.__name__)
@@ -1368,7 +1478,7 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
     m5 = wp.array(randvals([1, 5, 5], dtype), dtype=mat55, requires_grad=True, device=device)
     m32 = wp.array(randvals([1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
     outcomponents = wp.zeros(
-        2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 3 * 2 + 3 * 2, dtype=wptype, requires_grad=True, device=device
+        2 * (2 * 2 + 3 * 3 + 4 * 4 + 5 * 5 + 3 * 2 + 3 * 2), dtype=wptype, requires_grad=True, device=device
     )
 
     wp.launch(kernel, dim=1, inputs=[v2, v3, v4, v5, v32, m2, m3, m4, m5, m32], outputs=[outcomponents], device=device)
@@ -1378,7 +1488,13 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
     assert_np_equal(outcomponents.numpy()[13:29], 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=2 * tol)
     assert_np_equal(outcomponents.numpy()[29:54], 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=10 * tol)
     assert_np_equal(outcomponents.numpy()[54:60], 2 * np.matmul(m32.numpy()[0], v2.numpy()[0]), tol=5 * tol)
-    assert_np_equal(outcomponents.numpy()[60:], 2 * np.matmul(m3.numpy()[0], v32.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[60:66], 2 * np.matmul(m3.numpy()[0], v32.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[66:70], 2 * np.matmul(m2.numpy()[0], v2.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[70:79], 2 * np.matmul(m3.numpy()[0], v3.numpy()[0]), tol=tol)
+    assert_np_equal(outcomponents.numpy()[79:95], 2 * np.matmul(m4.numpy()[0], v4.numpy()[0]), tol=2 * tol)
+    assert_np_equal(outcomponents.numpy()[95:120], 2 * np.matmul(m5.numpy()[0], v5.numpy()[0]), tol=10 * tol)
+    assert_np_equal(outcomponents.numpy()[120:126], 2 * np.matmul(m32.numpy()[0], v2.numpy()[0]), tol=5 * tol)
+    assert_np_equal(outcomponents.numpy()[126:132], 2 * np.matmul(m3.numpy()[0], v32.numpy()[0]), tol=5 * tol)
 
     if dtype in np_float_types:
         idx = 0

@@ -43,6 +43,7 @@ builtin_operators = {}
 builtin_operators[ast.Add] = "add"
 builtin_operators[ast.Sub] = "sub"
 builtin_operators[ast.Mult] = "mul"
+builtin_operators[ast.MatMult] = "mul"
 builtin_operators[ast.Div] = "div"
 builtin_operators[ast.FloorDiv] = "floordiv"
 builtin_operators[ast.Pow] = "pow"
@@ -1681,7 +1682,7 @@ cuda_kernel_template = """
 extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 {{
     size_t _idx = grid_index();
-    if (_idx >= dim.size) 
+    if (_idx >= dim.size)
         return;
 
     set_launch_bounds(dim);
@@ -1692,7 +1693,7 @@ extern "C" __global__ void {name}_cuda_kernel_forward({forward_args})
 extern "C" __global__ void {name}_cuda_kernel_backward({reverse_args})
 {{
     size_t _idx = grid_index();
-    if (_idx >= dim.size) 
+    if (_idx >= dim.size)
         return;
 
     set_launch_bounds(dim);
