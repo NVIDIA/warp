@@ -7,7 +7,6 @@
 
 import ctypes
 import hashlib
-import inspect
 import struct
 import zlib
 import numpy as np
@@ -252,6 +251,12 @@ def matrix(shape, dtype):
             return warp.mul(self, y)
 
         def __rmul__(self, x):
+            return warp.mul(x, self)
+
+        def __matmul__(self, y):
+            return warp.mul(self, y)
+
+        def __rmatmul__(self, x):
             return warp.mul(x, self)
 
         def __div__(self, y):
@@ -1059,7 +1064,7 @@ class array(Array):
         self.owner = False
 
         # convert shape to Tuple
-        if shape == None:
+        if shape is None:
             shape = tuple(length for _ in range(ndim or 1))
         elif isinstance(shape, int):
             shape = (shape,)
@@ -1149,7 +1154,7 @@ class array(Array):
                 if strides is not None:
                     strides = strides[0:-dtype_ndim]
 
-            if device.is_cpu and copy == False:
+            if device.is_cpu and copy is False:
                 # ref numpy memory directly
                 self.shape = shape
                 self.ptr = ptr
@@ -1206,7 +1211,7 @@ class array(Array):
             self.__name__ = "array<" + type.__name__ + ">"
 
         # update ndim
-        if ndim == None:
+        if ndim is None:
             self.ndim = len(self.shape)
         else:
             self.ndim = ndim
@@ -1286,7 +1291,7 @@ class array(Array):
         return self.shape[0]
 
     def __str__(self):
-        if self.device == None:
+        if self.device is None:
             # for 'empty' arrays we just return the type information, these are used in kernel function signatures
             return f"array{self.dtype}"
         else:
@@ -1402,6 +1407,24 @@ class array(Array):
 
         return self.ctype
 
+    def __matmul__(self, other):
+        """
+        Enables A @ B syntax for matrix multiplication
+        """
+        if self.ndim != 2 or other.ndim != 2:
+            raise RuntimeError(
+                "A has dim = {}, B has dim = {}. If multiplying with @, A and B must have dim = 2.".format(
+                    self.ndim, other.ndim
+                )
+            )
+
+        m = self.shape[0]
+        n = other.shape[1]
+        c = warp.zeros(shape=(m, n), dtype=self.dtype, device=self.device, requires_grad=True)
+        d = warp.zeros(shape=(m, n), dtype=self.dtype, device=self.device, requires_grad=True)
+        matmul(self, other, c, d, device=self.device)
+        return d
+
     @property
     def requires_grad(self):
         return self._requires_grad
@@ -1430,7 +1453,7 @@ class array(Array):
 
     def zero_(self):
         if not self.is_contiguous:
-            raise RuntimeError(f"Assigning to non-contiguous arrays is unsupported.")
+            raise RuntimeError("Assigning to non-contiguous arrays is unsupported.")
 
         if self.device is not None and self.ptr is not None:
             self.device.memset(
@@ -1439,7 +1462,7 @@ class array(Array):
 
     def fill_(self, value):
         if not self.is_contiguous:
-            raise RuntimeError(f"Assigning to non-contiguous arrays is unsupported.")
+            raise RuntimeError("Assigning to non-contiguous arrays is unsupported.")
 
         if self.device is not None and self.ptr is not None:
             if isinstance(value, ctypes.Array):
@@ -1452,7 +1475,7 @@ class array(Array):
                     value_type_ok = (self.dtype._length_ == value._length_) and (self.dtype._type_ == value._type_)
                 if not value_type_ok:
                     raise RuntimeError(
-                        f"wp.array has Array type elements (eg vec, mat etc). Value type must match element type in wp.array.fill_() method"
+                        "wp.array has Array type elements (eg vec, mat etc). Value type must match element type in wp.array.fill_() method"
                     )
 
                 src = ctypes.cast(value, ctypes.POINTER(ctypes.c_void_p))
@@ -1544,7 +1567,7 @@ class array(Array):
 
     def flatten(self):
         if not self.is_contiguous:
-            raise RuntimeError(f"Flattening non-contiguous arrays is unsupported.")
+            raise RuntimeError("Flattening non-contiguous arrays is unsupported.")
 
         a = array(
             dtype=self.dtype,
@@ -1565,10 +1588,10 @@ class array(Array):
 
     def reshape(self, shape):
         if not self.is_contiguous:
-            raise RuntimeError(f"Reshaping non-contiguous arrays is unsupported.")
+            raise RuntimeError("Reshaping non-contiguous arrays is unsupported.")
 
         # convert shape to tuple
-        if shape == None:
+        if shape is None:
             raise RuntimeError("shape parameter is required.")
         if isinstance(shape, int):
             shape = (shape,)
@@ -1641,7 +1664,7 @@ class array(Array):
         if len(self.shape) == 1:
             return self
 
-        if axes == None:
+        if axes is None:
             # reverse the order of the axes
             axes = range(self.ndim)[::-1]
 
@@ -1781,7 +1804,7 @@ class indexedarray(Generic[T]):
                     shape[0] = len(indices)
 
                 else:
-                    raise ValueError(f"Indices must be a single Warp array or a list of Warp arrays")
+                    raise ValueError("Indices must be a single Warp array or a list of Warp arrays")
 
             self.shape = tuple(shape)
 
@@ -2076,7 +2099,7 @@ class Volume:
             return
 
         if data.device is None:
-            raise RuntimeError(f"Invalid device")
+            raise RuntimeError("Invalid device")
         self.device = data.device
 
         if self.device.is_cpu:
@@ -2253,7 +2276,7 @@ class Volume:
             and (tile_points.dtype == int32 and tile_points.ndim == 2)
             or (tile_points.dtype == vec3 and tile_points.ndim == 1)
         ):
-            raise RuntimeError(f"Expected an warp array of vec3s or of n-by-3 int32s as tile_points!")
+            raise RuntimeError("Expected an warp array of vec3s or of n-by-3 int32s as tile_points!")
         if not tile_points.device.is_cuda:
             tile_points = array(tile_points, dtype=tile_points.dtype, device=device)
 
@@ -2349,6 +2372,14 @@ def matmul(
             "Invalid shapes for matrices: A = {} B = {} C = {} D = {}".format(a.shape, b.shape, c.shape, d.shape)
         )
 
+    if runtime.tape:
+        runtime.tape.record_func(
+            backward=lambda: adj_matmul(
+                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
+            ),
+            arrays=[a, b, c, d],
+        )
+
     # cpu fallback if no cuda devices found
     if device == "cpu":
         d.assign(alpha * (a.numpy() @ b.numpy()) + beta * c.numpy())
@@ -2374,14 +2405,6 @@ def matmul(
     )
     if not ret:
         raise RuntimeError("Matmul failed.")
-
-    if runtime.tape:
-        runtime.tape.record_func(
-            backward=lambda: adj_matmul(
-                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
-            ),
-            arrays=[a, b, c, d],
-        )
 
 
 def adj_matmul(
@@ -2581,6 +2604,14 @@ def batched_matmul(
             "Invalid shapes for matrices: A = {} B = {} C = {} D = {}".format(a.shape, b.shape, c.shape, d.shape)
         )
 
+    if runtime.tape:
+        runtime.tape.record_func(
+            backward=lambda: adj_matmul(
+                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
+            ),
+            arrays=[a, b, c, d],
+        )
+
     # cpu fallback if no cuda devices found
     if device == "cpu":
         d.assign(alpha * np.matmul(a.numpy(), b.numpy()) + beta * c.numpy())
@@ -2606,14 +2637,6 @@ def batched_matmul(
     )
     if not ret:
         raise RuntimeError("Batched matmul failed.")
-
-    if runtime.tape:
-        runtime.tape.record_func(
-            backward=lambda: adj_matmul(
-                a, b, c, a.grad, b.grad, c.grad, d.grad, alpha, beta, allow_tf32x3_arith, device
-            ),
-            arrays=[a, b, c, d],
-        )
 
 
 def adj_batched_matmul(
