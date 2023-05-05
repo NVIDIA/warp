@@ -187,7 +187,7 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
         if expect:
             assert_array_equal(output, result)
 
-    if name == None:
+    if name is None:
         name = kernel.key
 
     # device is required for kernel tests, so use all devices if none were given

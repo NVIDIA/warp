@@ -131,7 +131,7 @@ struct array_t
     CUDA_CALLABLE inline array_t() {}    
     CUDA_CALLABLE inline array_t(int) {} // for backward a = 0 initialization syntax
 
-    array_t(T* data, int size) : data(data) {
+    array_t(T* data, int size, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 1d array
         shape.dims[0] = size;
         shape.dims[1] = 0;
@@ -143,7 +143,7 @@ struct array_t
         strides[2] = 0;
         strides[3] = 0;
     }
-    array_t(T* data, int dim0, int dim1) : data(data) {
+    array_t(T* data, int dim0, int dim1, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 2d array
         shape.dims[0] = dim0;
         shape.dims[1] = dim1;
@@ -155,7 +155,7 @@ struct array_t
         strides[2] = 0;
         strides[3] = 0;
     }
-    array_t(T* data, int dim0, int dim1, int dim2) : data(data) {
+    array_t(T* data, int dim0, int dim1, int dim2, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 3d array
         shape.dims[0] = dim0;
         shape.dims[1] = dim1;
@@ -167,7 +167,7 @@ struct array_t
         strides[2] = sizeof(T);
         strides[3] = 0;
     }
-    array_t(T* data, int dim0, int dim1, int dim2, int dim3) : data(data) {
+    array_t(T* data, int dim0, int dim1, int dim2, int dim3, T* grad=nullptr) : data(data), grad(grad) {
         // constructor for 4d array
         shape.dims[0] = dim0;
         shape.dims[1] = dim1;
@@ -182,7 +182,8 @@ struct array_t
 
     inline bool empty() const { return !data; }
 
-    T* data;
+    T* data{nullptr};
+    T* grad{nullptr};
     shape_t shape;
     int strides[ARRAY_MAX_DIMS];
     int ndim;
@@ -222,14 +223,57 @@ CUDA_CALLABLE inline T* data_at_byte_offset(const array_t<T>& a, size_t byte_off
 }
 
 template <typename T>
-CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
+CUDA_CALLABLE inline T* grad_at_byte_offset(const array_t<T>& a, size_t byte_offset)
+{   
+    return reinterpret_cast<T*>(reinterpret_cast<char*>(a.grad) + byte_offset);
+}
+
+template <typename T>
+CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i)
 {
     assert(arr.ndim == 1);
     assert(i >= 0 && i < arr.shape[0]);
     
-    const size_t byte_offset = i*stride(arr, 0);
+    return i*stride(arr, 0);
+}
 
-    T& result = *data_at_byte_offset(arr, byte_offset);
+template <typename T>
+CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j)
+{
+    assert(arr.ndim == 2);
+    assert(i >= 0 && i < arr.shape[0]);
+    assert(j >= 0 && j < arr.shape[1]);
+    
+    return i*stride(arr, 0) + j*stride(arr, 1);
+}
+
+template <typename T>
+CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j, int k)
+{
+    assert(arr.ndim == 3);
+    assert(i >= 0 && i < arr.shape[0]);
+    assert(j >= 0 && j < arr.shape[1]);
+    assert(k >= 0 && k < arr.shape[2]);
+
+    return i*stride(arr, 0) + j*stride(arr, 1) + k*stride(arr, 2);
+}
+
+template <typename T>
+CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j, int k, int l)
+{
+    assert(arr.ndim == 4);
+    assert(i >= 0 && i < arr.shape[0]);
+    assert(j >= 0 && j < arr.shape[1]);
+    assert(k >= 0 && k < arr.shape[2]);
+    assert(l >= 0 && l < arr.shape[3]);
+
+    return i*stride(arr, 0) + j*stride(arr, 1) + k*stride(arr, 2) + l*stride(arr, 3);
+}
+
+template <typename T>
+CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
+{
+    T& result = *data_at_byte_offset(arr, byte_offset(arr, i));
     FP_VERIFY_FWD_1(result)
 
     return result;
@@ -238,13 +282,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
 template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
 {
-    assert(arr.ndim == 2);
-    assert(i >= 0 && i < arr.shape[0]);
-    assert(j >= 0 && j < arr.shape[1]);
-
-    const size_t byte_offset = i*stride(arr,0) + j*stride(arr,1);
-
-    T& result = *data_at_byte_offset(arr, byte_offset);
+    T& result = *data_at_byte_offset(arr, byte_offset(arr, i, j));
     FP_VERIFY_FWD_2(result)
 
     return result;
@@ -253,16 +291,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
 template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
 {
-    assert(arr.ndim == 3);
-    assert(i >= 0 && i < arr.shape[0]);
-    assert(j >= 0 && j < arr.shape[1]);
-    assert(k >= 0 && k < arr.shape[2]);
-
-    const size_t byte_offset = i*stride(arr,0) + 
-                            j*stride(arr,1) +
-                            k*stride(arr,2);
-       
-    T& result = *data_at_byte_offset(arr, byte_offset);
+    T& result = *data_at_byte_offset(arr, byte_offset(arr, i, j, k));
     FP_VERIFY_FWD_3(result)
 
     return result;
@@ -271,18 +300,43 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
 template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
 {
-    assert(arr.ndim == 4);
-    assert(i >= 0 && i < arr.shape[0]);
-    assert(j >= 0 && j < arr.shape[1]);
-    assert(k >= 0 && k < arr.shape[2]);
-    assert(l >= 0 && l < arr.shape[3]);
+    T& result = *data_at_byte_offset(arr, byte_offset(arr, i, j, k, l));
+    FP_VERIFY_FWD_4(result)
 
-    const size_t byte_offset = i*stride(arr,0) + 
-                            j*stride(arr,1) + 
-                            k*stride(arr,2) + 
-                            l*stride(arr,3);
+    return result;
+}
 
-    T& result = *data_at_byte_offset(arr, byte_offset);
+template <typename T>
+CUDA_CALLABLE inline T& index_grad(const array_t<T>& arr, int i)
+{
+    T& result = *grad_at_byte_offset(arr, byte_offset(arr, i));
+    FP_VERIFY_FWD_1(result)
+
+    return result;
+}
+
+template <typename T>
+CUDA_CALLABLE inline T& index_grad(const array_t<T>& arr, int i, int j)
+{
+    T& result = *grad_at_byte_offset(arr, byte_offset(arr, i, j));
+    FP_VERIFY_FWD_2(result)
+
+    return result;
+}
+
+template <typename T>
+CUDA_CALLABLE inline T& index_grad(const array_t<T>& arr, int i, int j, int k)
+{
+    T& result = *grad_at_byte_offset(arr, byte_offset(arr, i, j, k));
+    FP_VERIFY_FWD_3(result)
+
+    return result;
+}
+
+template <typename T>
+CUDA_CALLABLE inline T& index_grad(const array_t<T>& arr, int i, int j, int k, int l)
+{
+    T& result = *grad_at_byte_offset(arr, byte_offset(arr, i, j, k, l));
     FP_VERIFY_FWD_4(result)
 
     return result;
@@ -301,9 +355,7 @@ CUDA_CALLABLE inline T& index(const indexedarray_t<T>& iarr, int i)
         assert(i >= 0 && i < iarr.arr.shape[0]);
     }
 
-    const size_t byte_offset = i * stride(iarr.arr, 0);
-
-    T& result = *data_at_byte_offset(iarr.arr, byte_offset);
+    T& result = *data_at_byte_offset(iarr.arr, byte_offset(iarr.arr, i));
     FP_VERIFY_FWD_1(result)
 
     return result;
@@ -327,9 +379,7 @@ CUDA_CALLABLE inline T& index(const indexedarray_t<T>& iarr, int i, int j)
         assert(j >= 0 && j < iarr.arr.shape[1]);
     }
 
-    const size_t byte_offset = i * stride(iarr.arr, 0) + j * stride(iarr.arr, 1);
-
-    T& result = *data_at_byte_offset(iarr.arr, byte_offset);
+    T& result = *data_at_byte_offset(iarr.arr, byte_offset(iarr.arr, i, j));
     FP_VERIFY_FWD_1(result)
 
     return result;
@@ -359,11 +409,7 @@ CUDA_CALLABLE inline T& index(const indexedarray_t<T>& iarr, int i, int j, int k
         assert(k >= 0 && k < iarr.arr.shape[2]);
     }
 
-    const size_t byte_offset = i * stride(iarr.arr, 0) +
-                            j * stride(iarr.arr, 1) + 
-                            k * stride(iarr.arr, 2);
-
-    T& result = *data_at_byte_offset(iarr.arr, byte_offset);
+    T& result = *data_at_byte_offset(iarr.arr, byte_offset(iarr.arr, i, j, k));
     FP_VERIFY_FWD_1(result)
 
     return result;
@@ -399,12 +445,7 @@ CUDA_CALLABLE inline T& index(const indexedarray_t<T>& iarr, int i, int j, int k
         assert(l >= 0 && l < iarr.arr.shape[3]);
     }
 
-    const size_t byte_offset = i * stride(iarr.arr, 0) +
-                            j * stride(iarr.arr, 1) + 
-                            k * stride(iarr.arr, 2) +
-                            l * stride(iarr.arr, 3);
-
-    T& result = *data_at_byte_offset(iarr.arr, byte_offset);
+    T& result = *data_at_byte_offset(iarr.arr, byte_offset(iarr.arr, i, j, k, l));
     FP_VERIFY_FWD_1(result)
 
     return result;
@@ -418,7 +459,7 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i)
     assert(i >= 0 && i < src.shape[0]);
 
     array_t<T> a;
-    a.data = data_at_byte_offset(src, i*stride(src, 0));
+    a.data = data_at_byte_offset(src, byte_offset(src, i));
     a.shape[0] = src.shape[1];
     a.shape[1] = src.shape[2];
     a.shape[2] = src.shape[3];
@@ -438,7 +479,7 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j)
     assert(j >= 0 && j < src.shape[1]);
 
     array_t<T> a;
-    a.data = data_at_byte_offset(src, i*stride(src, 0) + j*stride(src,1));
+    a.data = data_at_byte_offset(src, byte_offset(src, i, j));
     a.shape[0] = src.shape[2];
     a.shape[1] = src.shape[3];
     a.strides[0] = src.strides[2];
@@ -457,7 +498,7 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i, int j, int k)
     assert(k >= 0 && k < src.shape[2]);
 
     array_t<T> a;
-    a.data = data_at_byte_offset(src, i*stride(src, 0) + j*stride(src,1) + k*stride(src,2));
+    a.data = data_at_byte_offset(src, byte_offset(src, i, j, k));
     a.shape[0] = src.shape[3];
     a.strides[0] = src.strides[3];
     a.ndim = src.ndim-3;
@@ -684,131 +725,168 @@ CUDA_CALLABLE inline void adj_atomic_add(int64* buf, int64 value) { }
 CUDA_CALLABLE inline void adj_atomic_add(uint64* buf, uint64 value) { }
 
 // only generate gradients for T types
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_load(const A1<T>& buf, int i, const A2<T>& adj_buf, int& adj_i, const T& adj_output)
+template<typename T>
+inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, const array_t<T>& adj_buf, int& adj_i, const T& adj_output)
 {
-    if (!adj_buf.empty())
-        adj_atomic_add(&index(adj_buf, i), adj_output);
+    if (buf.grad)
+        adj_atomic_add(&index_grad(buf, i), adj_output);
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_load(const A1<T>& buf, int i, int j, const A2<T>& adj_buf, int& adj_i, int& adj_j, const T& adj_output)
+template<typename T>
+inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, int j, const array_t<T>& adj_buf, int& adj_i, int& adj_j, const T& adj_output)
 {
-    if (!adj_buf.empty())
-        adj_atomic_add(&index(adj_buf, i, j), adj_output);
+    if (buf.grad)
+        adj_atomic_add(&index_grad(buf, i, j), adj_output);
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_load(const A1<T>& buf, int i, int j, int k, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, const T& adj_output)
+template<typename T>
+inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, int j, int k, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, const T& adj_output)
 {
-    if (!adj_buf.empty())
-        adj_atomic_add(&index(adj_buf, i, j, k), adj_output);
+    if (buf.grad)
+        adj_atomic_add(&index_grad(buf, i, j, k), adj_output);
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_load(const A1<T>& buf, int i, int j, int k, int l, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int & adj_l, const T& adj_output)
+template<typename T>
+inline CUDA_CALLABLE void adj_load(const array_t<T>& buf, int i, int j, int k, int l, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, const T& adj_output)
 {
-    if (!adj_buf.empty())
-        adj_atomic_add(&index(adj_buf, i, j, k, l), adj_output);
+    if (buf.grad)
+        adj_atomic_add(&index_grad(buf, i, j, k, l), adj_output);
 }
 
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_store(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value)
+template<typename T>
+inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value)
 {
-    if (!adj_buf.empty())
-        adj_value += index(adj_buf, i);
+    if (buf.grad)
+        adj_value += index_grad(buf, i);
 
     FP_VERIFY_ADJ_1(value, adj_value)
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_store(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value)
+template<typename T>
+inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value)
 {
-    if (!adj_buf.empty())
-        adj_value += index(adj_buf, i, j);
+    if (buf.grad)
+        adj_value += index_grad(buf, i, j);
 
     FP_VERIFY_ADJ_2(value, adj_value)
 
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_store(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value)
+template<typename T>
+inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value)
 {
-    if (!adj_buf.empty())
-        adj_value += index(adj_buf, i, j, k);
+    if (buf.grad)
+        adj_value += index_grad(buf, i, j, k);
 
     FP_VERIFY_ADJ_3(value, adj_value)
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_store(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value)
+template<typename T>
+inline CUDA_CALLABLE void adj_store(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value)
 {
-    if (!adj_buf.empty())
-        adj_value += index(adj_buf, i, j, k, l);
+    if (buf.grad)
+        adj_value += index_grad(buf, i, j, k, l);
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
 
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
+template<typename T>
+inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
 {
-    if (!adj_buf.empty())
-        adj_value += index(adj_buf, i);
+    if (buf.grad)
+        adj_value += index_grad(buf, i);
 
     FP_VERIFY_ADJ_1(value, adj_value)
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
+template<typename T>
+inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
 {
-    if (!adj_buf.empty())
-        adj_value += index(adj_buf, i, j);
+    if (buf.grad)
+        adj_value += index_grad(buf, i, j);
 
     FP_VERIFY_ADJ_2(value, adj_value)
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
+template<typename T>
+inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
 {
-    if (!adj_buf.empty())
-        adj_value += index(adj_buf, i, j, k);
+    if (buf.grad)
+        adj_value += index_grad(buf, i, j, k);
 
     FP_VERIFY_ADJ_3(value, adj_value)
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
+template<typename T>
+inline CUDA_CALLABLE void adj_atomic_add(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
 {
-    if (!adj_buf.empty())
-        adj_value += index(adj_buf, i, j, k, l);
+    if (buf.grad)
+        adj_value += index_grad(buf, i, j, k, l);
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
 
 
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
+template<typename T>
+inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret)
 {
-    if (!adj_buf.empty())
-        adj_value -= index(adj_buf, i);
+    if (buf.grad)
+        adj_value -= index_grad(buf, i);
 
     FP_VERIFY_ADJ_1(value, adj_value)
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
+template<typename T>
+inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret)
 {
-    if (!adj_buf.empty())
-        adj_value -= index(adj_buf, i, j);
+    if (buf.grad)
+        adj_value -= index_grad(buf, i, j);
 
     FP_VERIFY_ADJ_2(value, adj_value)
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
+template<typename T>
+inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret)
 {
-    if (!adj_buf.empty())
-        adj_value -= index(adj_buf, i, j, k);
+    if (buf.grad)
+        adj_value -= index_grad(buf, i, j, k);
 
     FP_VERIFY_ADJ_3(value, adj_value)
 }
-template<template<typename> class A1, template<typename> class A2, typename T>
-inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
+template<typename T>
+inline CUDA_CALLABLE void adj_atomic_sub(const array_t<T>& buf, int i, int j, int k, int l, T value, const array_t<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret)
 {
-    if (!adj_buf.empty())
-        adj_value -= index(adj_buf, i, j, k, l);
+    if (buf.grad)
+        adj_value -= index_grad(buf, i, j, k, l);
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }
+
+// generic array types that do not support gradient computation (indexedarray, etc.)
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_load(const A1<T>& buf, int i, const A2<T>& adj_buf, int& adj_i, const T& adj_output) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_load(const A1<T>& buf, int i, int j, const A2<T>& adj_buf, int& adj_i, int& adj_j, const T& adj_output) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_load(const A1<T>& buf, int i, int j, int k, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, const T& adj_output) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_load(const A1<T>& buf, int i, int j, int k, int l, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, const T& adj_output) {}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_store(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_store(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_store(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_store(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value) {}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_add(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
+
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, int k, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, T& adj_value, const T& adj_ret) {}
+template<template<typename> class A1, template<typename> class A2, typename T>
+inline CUDA_CALLABLE void adj_atomic_sub(const A1<T>& buf, int i, int j, int k, int l, T value, const A2<T>& adj_buf, int& adj_i, int& adj_j, int& adj_k, int& adj_l, T& adj_value, const T& adj_ret) {}
 
 template<template<typename> class A1, template<typename> class A2, typename T>
 inline CUDA_CALLABLE void adj_atomic_min(const A1<T>& buf, int i, T value, const A2<T>& adj_buf, int& adj_i, T& adj_value, const T& adj_ret) {}

@@ -94,7 +94,7 @@ dtype_is_compatible.compatible_sets = None
 
 
 # wrap a torch tensor to a wp array, data is not copied
-def from_torch(t, dtype=None, requires_grad=None):
+def from_torch(t, dtype=None, requires_grad=None, grad=None):
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
@@ -132,8 +132,19 @@ def from_torch(t, dtype=None, requires_grad=None):
         shape = tuple(shape[:-dtype_dims])
         strides = tuple(strides[:-dtype_dims])
 
+    grad_ptr = None
+    if grad is not None:
+        import torch
+        if isinstance(grad, warp.types.array):
+            grad_ptr = grad.ptr
+        elif isinstance(grad, torch.Tensor):
+            grad_ptr = grad.data_ptr()
+    elif t.grad is not None:
+        grad_ptr = t.grad.data_ptr()
+
     a = warp.types.array(
         ptr=t.data_ptr(),
+        grad_ptr=grad_ptr,
         dtype=dtype,
         shape=shape,
         strides=strides,

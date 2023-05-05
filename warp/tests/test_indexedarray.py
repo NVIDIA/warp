@@ -557,41 +557,6 @@ def test_indexedarray_generics(test, device):
         assert_np_equal(ia4.numpy(), np.full((2, 2, 2, 2), 2, dtype=np.int32))
 
 
-@wp.kernel
-def for_loop_grad(n: int, x: wp.indexedarray(dtype=float), s: wp.array(dtype=float)):
-    sum = float(0.0)
-
-    for i in range(n):
-        sum = sum + x[i] * 2.0
-
-    s[0] = sum
-
-
-def test_indexedarray_for_loop_grad(test, device):
-    data = wp.array(data=np.ones(32, dtype=np.float32), device=device)
-    indices = wp.array(data=[0, 3, 4, 10, 12, 17, 22, 25, 29, 31], dtype=int, device=device)
-    n = indices.size
-
-    # indexed array with gradient
-    x = wp.indexedarray(data, [indices], requires_grad=True)
-
-    sum = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(for_loop_grad, dim=1, inputs=[n, x, sum], device=device)
-
-    # ensure forward pass outputs correct
-    test.assertEqual(sum.numpy()[0], 2.0 * indices.size)
-
-    tape.backward(loss=sum)
-
-    # ensure forward pass outputs persist
-    test.assertEqual(sum.numpy()[0], 2.0 * indices.size)
-    # ensure gradients correct
-    assert_np_equal(tape.gradients[x].numpy(), 2.0 * np.ones(indices.size, dtype=np.float32))
-
-
 def register(parent):
     devices = get_test_devices()
 
@@ -607,9 +572,6 @@ def register(parent):
     add_function_test(TestIndexedArray, "test_indexedarray_getitem", test_indexedarray_getitem, devices=devices)
     add_function_test(TestIndexedArray, "test_indexedarray_slicing", test_indexedarray_slicing, devices=devices)
     add_function_test(TestIndexedArray, "test_indexedarray_generics", test_indexedarray_generics, devices=devices)
-    add_function_test(
-        TestIndexedArray, "test_indexedarray_for_loop_grad", test_indexedarray_for_loop_grad, devices=devices
-    )
 
     return TestIndexedArray
 

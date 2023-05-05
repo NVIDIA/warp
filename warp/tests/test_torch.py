@@ -407,15 +407,18 @@ def test_torch_autograd(test, device):
             adj_x = torch.zeros_like(ctx.x).contiguous()
             adj_y = adj_y.contiguous()
 
+            wp_x = wp.from_torch(ctx.x, grad=adj_x)
+            wp_y = wp.from_torch(ctx.y, grad=adj_y)
+
             wp.launch(
                 kernel=op_kernel,
                 dim=len(ctx.x),
                 # fwd inputs
-                inputs=[wp.from_torch(ctx.x)],
-                outputs=[None],
-                # adj inputs
-                adj_inputs=[wp.from_torch(adj_x)],
-                adj_outputs=[wp.from_torch(adj_y)],
+                inputs=[wp_x],
+                outputs=[wp_y],
+                # adj inputs (already stored in input/output arrays, passing null pointers)
+                adj_inputs=[None],
+                adj_outputs=[None],
                 adjoint=True,
             )
 
