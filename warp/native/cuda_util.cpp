@@ -19,8 +19,6 @@
 #include <dlfcn.h>
 #endif
 
-#include <cudaGLTypedefs.h>
-
 // the minimum CUDA version required from the driver
 #define WP_CUDA_DRIVER_VERSION 11030
 
@@ -35,8 +33,19 @@
 #error Building Warp requires CUDA Toolkit version 11.5 or higher
 #endif
 
+// Avoid including <cudaGLTypedefs.h>, which requires OpenGL headers to be installed.
+// We define our own GL types, based on the spec here: https://www.khronos.org/opengl/wiki/OpenGL_Type
+namespace wp
+{
+typedef uint32_t GLuint;
+}
+
+// function prototypes adapted from <cudaGLTypedefs.h>
+typedef CUresult (CUDAAPI *PFN_cuGraphicsGLRegisterBuffer_v3000)(CUgraphicsResource *pCudaResource, wp::GLuint buffer, unsigned int Flags);
+
+
 // function pointers to driver API entry points
-// these are explicitly versioned according to cudaTypedefs.h from CUDA Toolkit WP_CUDA_VERSION
+// these are explicitly versioned according to cudaTypedefs.h from CUDA Toolkit WP_CUDA_TOOLKIT_VERSION
 #if CUDA_VERSION < 12000
 static PFN_cuGetProcAddress_v11030 pfn_cuGetProcAddress;
 #else
@@ -412,7 +421,7 @@ CUresult cuGraphicsResourceGetMappedPointer_f(CUdeviceptr* pDevPtr, size_t* pSiz
 
 CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource *pCudaResource, unsigned int buffer, unsigned int flags)
 {
-    return pfn_cuGraphicsGLRegisterBuffer ? pfn_cuGraphicsGLRegisterBuffer(pCudaResource, (GLuint) buffer, flags) : DRIVER_ENTRY_POINT_ERROR;
+    return pfn_cuGraphicsGLRegisterBuffer ? pfn_cuGraphicsGLRegisterBuffer(pCudaResource, (wp::GLuint) buffer, flags) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource)
