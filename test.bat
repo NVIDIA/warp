@@ -14,4 +14,4 @@ echo "Installing Warp to Python"
 call %PYTHON% -m pip install -e .
 
 echo "Running tests"
-call %PYTHON% warp\tests\test_all.py
+call %PYTHON% -m warp.tests.test_all
