@@ -192,7 +192,7 @@ def build_warp_clang(build_llvm, lib_name):
             cpp_paths=clang_cpp_paths,
             cu_path=None,
             libs=libs,
-            mode=warp.config.mode,
+            mode=warp.config.mode if build_llvm else "release",
             verify_fp=warp.config.verify_fp,
             fast_math=warp.config.fast_math,
         )
