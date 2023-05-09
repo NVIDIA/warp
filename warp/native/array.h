@@ -231,7 +231,6 @@ CUDA_CALLABLE inline T* grad_at_byte_offset(const array_t<T>& a, size_t byte_off
 template <typename T>
 CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i)
 {
-    assert(arr.ndim == 1);
     assert(i >= 0 && i < arr.shape[0]);
     
     return i*stride(arr, 0);
@@ -240,7 +239,6 @@ CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i)
 template <typename T>
 CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j)
 {
-    assert(arr.ndim == 2);
     assert(i >= 0 && i < arr.shape[0]);
     assert(j >= 0 && j < arr.shape[1]);
     
@@ -250,7 +248,6 @@ CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j)
 template <typename T>
 CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j, int k)
 {
-    assert(arr.ndim == 3);
     assert(i >= 0 && i < arr.shape[0]);
     assert(j >= 0 && j < arr.shape[1]);
     assert(k >= 0 && k < arr.shape[2]);
@@ -261,7 +258,6 @@ CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j, int
 template <typename T>
 CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j, int k, int l)
 {
-    assert(arr.ndim == 4);
     assert(i >= 0 && i < arr.shape[0]);
     assert(j >= 0 && j < arr.shape[1]);
     assert(k >= 0 && k < arr.shape[2]);
@@ -273,6 +269,7 @@ CUDA_CALLABLE inline size_t byte_offset(const array_t<T>& arr, int i, int j, int
 template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
 {
+    assert(arr.ndim == 1);
     T& result = *data_at_byte_offset(arr, byte_offset(arr, i));
     FP_VERIFY_FWD_1(result)
 
@@ -282,6 +279,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i)
 template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
 {
+    assert(arr.ndim == 2);
     T& result = *data_at_byte_offset(arr, byte_offset(arr, i, j));
     FP_VERIFY_FWD_2(result)
 
@@ -291,6 +289,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j)
 template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
 {
+    assert(arr.ndim == 3);
     T& result = *data_at_byte_offset(arr, byte_offset(arr, i, j, k));
     FP_VERIFY_FWD_3(result)
 
@@ -300,6 +299,7 @@ CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k)
 template <typename T>
 CUDA_CALLABLE inline T& index(const array_t<T>& arr, int i, int j, int k, int l)
 {
+    assert(arr.ndim == 4);
     T& result = *data_at_byte_offset(arr, byte_offset(arr, i, j, k, l));
     FP_VERIFY_FWD_4(result)
 
