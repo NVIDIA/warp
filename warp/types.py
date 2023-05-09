@@ -1614,6 +1614,7 @@ class array(Array):
             shape=(self.size,),
             strides=(type_size_in_bytes(self.dtype),),
             ptr=self.ptr,
+            grad_ptr=self.grad_ptr,
             capacity=self.capacity,
             device=self.device,
             copy=False,
