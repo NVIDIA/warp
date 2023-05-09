@@ -256,11 +256,10 @@ def build_dll(
             except RuntimeError as e:
                 clang = None
 
-        if not warp.config.host_compiler:
-            if not clang:
-                raise RuntimeError("Warp build error: No host or bundled compiler was not found")
-
-        host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
+        if warp.config.host_compiler:
+            host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
+        elif not clang:
+            raise RuntimeError("Warp build error: No host or bundled compiler was found")
 
         cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
         cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'

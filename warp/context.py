@@ -2319,6 +2319,9 @@ def assert_initialized():
 
 # global entry points
 def is_cpu_available():
+    if runtime.llvm:
+        return True
+
     # initialize host build env (do this lazily) since
     # it takes 5secs to run all the batch files to locate MSVC
     if warp.config.host_compiler is None:
