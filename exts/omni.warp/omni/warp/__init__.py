@@ -13,6 +13,7 @@ __all__ = [
     "PointsAttributeFlags",
     "define_prim_attrs",
     "from_omni_graph",
+    "get_child_bundle_count",
     "get_prim_type",
     "get_world_xform",
     "get_world_xform_from_prim",
@@ -61,10 +62,7 @@ from pxr import (
 )
 import warp as wp
 
-from .scripts.attributes import (
-    cast_array_attr_value_to_warp,
-    insert_bundle_attr,
-)
+from .scripts.attributes import cast_array_attr_value_to_warp
 
 # Register the extension by importing its entry point class.
 from .scripts.extension import OmniWarpExtension
@@ -135,29 +133,45 @@ def get_world_xform_from_prim(prim_path: str) -> None:
 # ------------------------------------------------------------------------------
 
 
-def get_prim_type(bundle: og.BundleContents) -> str:
+def get_child_bundle_count(
+    bundle: og.BundleContents,
+) -> int:
+    """Retrieves the number of children defined for a bundle."""
+    return bundle.bundle.get_child_bundle_count()
+
+
+def get_prim_type(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> str:
     """Retrieves the primitive type."""
-    attr = bundle.attribute_by_name("sourcePrimType")
-    return attr.cpu_value
+    attr = _get_bundle_attr_by_name(bundle, "sourcePrimType", child_bundle_idx)
+    return _get_cpu_array(attr)
 
 
-def get_world_xform(bundle: og.BundleContents) -> np.ndarray:
+def get_world_xform(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> np.ndarray:
     """Retrieves the world transformation matrix."""
-    attr = bundle.attribute_by_name("worldMatrix")
+    attr = _get_bundle_attr_by_name(bundle, "worldMatrix", child_bundle_idx)
     if attr is None:
         return np.identity(4)
 
-    return attr.cpu_value.reshape(4, 4)
+    return _get_cpu_array(attr).reshape(4, 4)
 
 
 def define_prim_attrs(
     bundle: og.BundleContents,
     source_prim_path: str,
     source_prim_type: str,
+    child_bundle_idx: int = 0,
 ) -> None:
     """Defines the primitive attributes."""
-    source_prim_path_attr = insert_bundle_attr(
-        bundle,
+    child_bundle = _create_child_bundle(bundle, child_bundle_idx)
+    xform = get_world_xform_from_prim(source_prim_path)
+
+    source_prim_path_attr = child_bundle.create_attribute(
         "sourcePrimPath",
         og.Type(
             og.BaseDataType.TOKEN,
@@ -166,10 +180,9 @@ def define_prim_attrs(
             role=og.AttributeRole.NONE,
         ),
     )
-    source_prim_path_attr.cpu_value = source_prim_path
+    _set_cpu_array(source_prim_path_attr, source_prim_path)
 
-    source_prim_type_attr = insert_bundle_attr(
-        bundle,
+    source_prim_type_attr = child_bundle.create_attribute(
         "sourcePrimType",
         og.Type(
             og.BaseDataType.TOKEN,
@@ -178,10 +191,9 @@ def define_prim_attrs(
             role=og.AttributeRole.NONE,
         ),
     )
-    source_prim_type_attr.cpu_value = source_prim_type
+    _set_cpu_array(source_prim_type_attr, source_prim_type)
 
-    world_matrix_attr = insert_bundle_attr(
-        bundle,
+    world_matrix_attr = child_bundle.create_attribute(
         "worldMatrix",
         og.Type(
             og.BaseDataType.DOUBLE,
@@ -190,7 +202,7 @@ def define_prim_attrs(
             role=og.AttributeRole.MATRIX,
         ),
     )
-    world_matrix_attr.cpu_value = get_world_xform_from_prim(source_prim_path)
+    _set_cpu_array(world_matrix_attr, xform)
 
 
 #   Point Cloud Geometries
@@ -208,11 +220,14 @@ class PointsAttributeFlags(IntFlag):
     ALL = POINTS | VELOCITIES | WIDTHS | MASSES
 
 
-def points_create_bundle(bundle: og.BundleContents, point_count: int) -> None:
+def points_create_bundle(
+    bundle: og.BundleContents,
+    point_count: int,
+    child_bundle_idx: int = 0,
+) -> None:
     """Creates and initializes point cloud attributes within a bundle."""
-    # Create the attributes.
-    points_attr = insert_bundle_attr(
-        bundle,
+    child_bundle = _create_child_bundle(bundle, child_bundle_idx)
+    child_bundle.create_attribute(
         "points",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -220,9 +235,9 @@ def points_create_bundle(bundle: og.BundleContents, point_count: int) -> None:
             array_depth=1,
             role=og.AttributeRole.POSITION,
         ),
+        element_count=point_count,
     )
-    velocities_attr = insert_bundle_attr(
-        bundle,
+    child_bundle.create_attribute(
         "velocities",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -230,9 +245,9 @@ def points_create_bundle(bundle: og.BundleContents, point_count: int) -> None:
             array_depth=1,
             role=og.AttributeRole.VECTOR,
         ),
+        element_count=point_count,
     )
-    widths_attr = insert_bundle_attr(
-        bundle,
+    child_bundle.create_attribute(
         "widths",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -240,9 +255,9 @@ def points_create_bundle(bundle: og.BundleContents, point_count: int) -> None:
             array_depth=1,
             role=og.AttributeRole.NONE,
         ),
+        element_count=point_count,
     )
-    masses_attr = insert_bundle_attr(
-        bundle,
+    child_bundle.create_attribute(
         "masses",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -250,63 +265,81 @@ def points_create_bundle(bundle: og.BundleContents, point_count: int) -> None:
             array_depth=1,
             role=og.AttributeRole.NONE,
         ),
+        element_count=point_count,
     )
 
-    # Set the size of the array attributes.
-    points_attr.size = point_count
-    velocities_attr.size = point_count
-    widths_attr.size = point_count
-    masses_attr.size = point_count
 
-
-def points_get_point_count(bundle: og.BundleContents) -> int:
+def points_get_point_count(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> int:
     """Retrieves the number of points."""
-    return bundle.attribute_by_name("points").size
+    return _get_bundle_attr_by_name(bundle, "points", child_bundle_idx).size()
 
 
-def points_get_points(bundle: og.BundleContents) -> wp.array(dtype=wp.vec3):
+def points_get_points(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=wp.vec3):
     """Retrieves the bundle points attribute as a Warp array."""
-    attr = bundle.attribute_by_name("points")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=wp.vec3)
+    attr = _get_bundle_attr_by_name(bundle, "points", child_bundle_idx)
+    return _get_gpu_array(attr, wp.vec3, read_only=bundle.read_only)
 
 
-def points_get_velocities(bundle: og.BundleContents) -> wp.array(dtype=wp.vec3):
+def points_get_velocities(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=wp.vec3):
     """Retrieves the bundle velocities attribute as a Warp array."""
-    attr = bundle.attribute_by_name("velocities")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=wp.vec3)
+    attr = _get_bundle_attr_by_name(bundle, "velocities", child_bundle_idx)
+    return _get_gpu_array(attr, wp.vec3, read_only=bundle.read_only)
 
 
-def points_get_widths(bundle: og.BundleContents) -> wp.array(dtype=float):
+def points_get_widths(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=float):
     """Retrieves the bundle widths attribute as a Warp array."""
-    attr = bundle.attribute_by_name("widths")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=float)
+    attr = _get_bundle_attr_by_name(bundle, "widths", child_bundle_idx)
+    return _get_gpu_array(attr, float, read_only=bundle.read_only)
 
 
-def points_get_masses(bundle: og.BundleContents) -> wp.array(dtype=float):
+def points_get_masses(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=float):
     """Retrieves the bundle masses attribute as a Warp array."""
-    attr = bundle.attribute_by_name("masses")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=float)
+    attr = _get_bundle_attr_by_name(bundle, "masses", child_bundle_idx)
+    return _get_gpu_array(attr, float, read_only=bundle.read_only)
 
 
-def points_get_local_extent(bundle: og.BundleContents) -> np.ndarray:
+def points_get_local_extent(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> np.ndarray:
     """Retrieves the local extent of the geometry points."""
     # Some standard workflows include a single 'extent' attribute when defining
     # geometry primitives on the stage.
-    attr = bundle.attribute_by_name("extent")
+    attr = _get_bundle_attr_by_name(bundle, "extent", child_bundle_idx)
     if attr is not None:
-        return attr.cpu_value
+        return _get_cpu_array(attr)
 
     # Alternatively, the ReadPrims node offers an option to compute the bounding
     # box which results in a triple of 'bboxMinCorner', 'bboxMaxCorner',
     # and 'bboxTransform' attributes.
-    min_attr = bundle.attribute_by_name("bboxMinCorner")
-    max_attr = bundle.attribute_by_name("bboxMaxCorner")
+    min_attr = _get_bundle_attr_by_name(bundle, "bboxMinCorner", child_bundle_idx)
+    max_attr = _get_bundle_attr_by_name(bundle, "bboxMaxCorner", child_bundle_idx)
     if min_attr is not None and max_attr is not None:
-        return np.stack((min_attr.cpu_value, max_attr.cpu_value))
+        return np.stack(
+            (
+                _get_cpu_array(min_attr),
+                _get_cpu_array(max_attr),
+            ),
+        )
 
     # The last resort is to compute the extent ourselves from
     # the point positions.
-    points = points_get_points(bundle)
+    points = points_get_points(bundle, child_bundle_idx=child_bundle_idx)
     min_extent = wp.array((+inf, +inf, +inf), dtype=wp.vec3)
     max_extent = wp.array((-inf, -inf, -inf), dtype=wp.vec3)
     wp.launch(
@@ -321,10 +354,11 @@ def points_get_local_extent(bundle: og.BundleContents) -> np.ndarray:
 def points_get_world_extent(
     bundle: og.BundleContents,
     axis_aligned: bool = False,
+    child_bundle_idx: int = 0,
 ) -> np.ndarray:
     """Retrieves the world extent of the geometry points."""
-    extent = points_get_local_extent(bundle)
-    xform = get_world_xform(bundle)
+    extent = points_get_local_extent(bundle, child_bundle_idx=child_bundle_idx)
+    xform = get_world_xform(bundle, child_bundle_idx=child_bundle_idx)
 
     if axis_aligned:
         points = np.array(
@@ -352,19 +386,23 @@ def points_get_world_extent(
     )
 
 
-def points_clear_dirty_attributes(bundle: og.BundleContents) -> None:
+def points_clear_dirty_attributes(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> None:
     """Clears the list of attributes that have been updated."""
-    attr = _create_dirty_attrs_attr(bundle)
-    attr.cpu_value = ""
+    attr = _create_dirty_attrs_attr(bundle, child_bundle_idx)
+    _set_cpu_array(attr, "")
 
 
 def points_set_dirty_attributes(
     bundle: og.BundleContents,
     flags: PointsAttributeFlags,
+    child_bundle_idx: int = 0,
 ) -> None:
     """Sets attributes that have been updated."""
-    attr = _create_dirty_attrs_attr(bundle)
-    values = attr.cpu_value.split()
+    attr = _create_dirty_attrs_attr(bundle, child_bundle_idx)
+    values = _get_cpu_array(attr).split()
     additional_values = []
 
     if PointsAttributeFlags.POINTS in flags:
@@ -381,7 +419,7 @@ def points_set_dirty_attributes(
 
     additional_values = tuple(x for x in additional_values if x not in values)
     values.extend(additional_values)
-    attr.cpu_value = " ".join(values)
+    _set_cpu_array(attr, " ".join(values))
 
 
 #   Mesh Geometries
@@ -404,11 +442,11 @@ def mesh_create_bundle(
     point_count: int,
     vertex_count: int,
     face_count: int,
+    child_bundle_idx: int = 0,
 ) -> None:
     """Creates and initializes mesh attributes within a bundle."""
-    # Create the attributes.
-    points_attr = insert_bundle_attr(
-        bundle,
+    child_bundle = _create_child_bundle(bundle, child_bundle_idx)
+    child_bundle.create_attribute(
         "points",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -416,9 +454,9 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.POSITION,
         ),
+        element_count=point_count,
     )
-    normals_attr = insert_bundle_attr(
-        bundle,
+    child_bundle.create_attribute(
         "normals",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -426,9 +464,9 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.NORMAL,
         ),
+        element_count=vertex_count,
     )
-    uvs_attr = insert_bundle_attr(
-        bundle,
+    child_bundle.create_attribute(
         "primvars:st",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -436,9 +474,9 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.TEXCOORD,
         ),
+        element_count=vertex_count,
     )
-    face_vertex_counts_attr = insert_bundle_attr(
-        bundle,
+    child_bundle.create_attribute(
         "faceVertexCounts",
         og.Type(
             og.BaseDataType.INT,
@@ -446,9 +484,9 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.NONE,
         ),
+        element_count=face_count,
     )
-    face_vertex_indices_attr = insert_bundle_attr(
-        bundle,
+    child_bundle.create_attribute(
         "faceVertexIndices",
         og.Type(
             og.BaseDataType.INT,
@@ -456,89 +494,118 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.NONE,
         ),
+        element_count=vertex_count,
     )
 
-    # Set the size of the array attributes.
-    points_attr.size = point_count
-    normals_attr.size = vertex_count
-    uvs_attr.size = vertex_count
-    face_vertex_counts_attr.size = face_count
-    face_vertex_indices_attr.size = vertex_count
 
-
-def mesh_get_point_count(bundle: og.BundleContents) -> int:
+def mesh_get_point_count(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> int:
     """Retrieves the number of points."""
-    return bundle.attribute_by_name("points").size
+    return _get_bundle_attr_by_name(bundle, "points", child_bundle_idx).size()
 
 
-def mesh_get_vertex_count(bundle: og.BundleContents) -> int:
+def mesh_get_vertex_count(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> int:
     """Retrieves the number of vertices."""
-    return int(np.sum(bundle.attribute_by_name("faceVertexCounts").cpu_value))
+    attr = _get_bundle_attr_by_name(bundle, "faceVertexCounts", child_bundle_idx)
+    return int(np.sum(_get_cpu_array(attr)))
 
 
-def mesh_get_face_count(bundle: og.BundleContents) -> int:
+def mesh_get_face_count(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> int:
     """Retrieves the number of faces."""
-    return bundle.attribute_by_name("faceVertexCounts").size
+    return _get_bundle_attr_by_name(bundle, "faceVertexCounts", child_bundle_idx).size()
 
 
-def mesh_get_points(bundle: og.BundleContents) -> wp.array(dtype=wp.vec3):
+def mesh_get_points(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=wp.vec3):
     """Retrieves the bundle points attribute as a Warp array."""
-    attr = bundle.attribute_by_name("points")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=wp.vec3)
+    return points_get_points(bundle, child_bundle_idx=child_bundle_idx)
 
 
-def mesh_get_velocities(bundle: og.BundleContents) -> wp.array(dtype=wp.vec3):
+def mesh_get_velocities(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=wp.vec3):
     """Retrieves the bundle velocities attribute as a Warp array."""
-    attr = bundle.attribute_by_name("velocities")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=wp.vec3)
+    return points_get_velocities(bundle, child_bundle_idx=child_bundle_idx)
 
 
-def mesh_get_normals(bundle: og.BundleContents) -> wp.array(dtype=wp.vec3):
+def mesh_get_normals(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=wp.vec3):
     """Retrieves the bundle normals attribute as a Warp array."""
-    attr = bundle.attribute_by_name("normals")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=wp.vec3)
+    attr = _get_bundle_attr_by_name(bundle, "normals", child_bundle_idx)
+    return _get_gpu_array(attr, wp.vec3, read_only=bundle.read_only)
 
 
-def mesh_get_uvs(bundle: og.BundleContents) -> wp.array(dtype=wp.vec2):
+def mesh_get_uvs(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=wp.vec2):
     """Retrieves the bundle UVs attribute as a Warp array."""
-    attr = bundle.attribute_by_name("primvars:st")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=wp.vec2)
+    attr = _get_bundle_attr_by_name(bundle, "primvars:st", child_bundle_idx)
+    return _get_gpu_array(attr, wp.vec2, read_only=bundle.read_only)
 
 
-def mesh_get_face_vertex_counts(bundle: og.BundleContents) -> wp.array(dtype=int):
+def mesh_get_face_vertex_counts(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=int):
     """Retrieves the bundle face vertex counts attribute as a Warp array."""
-    attr = bundle.attribute_by_name("faceVertexCounts")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=int)
+    attr = _get_bundle_attr_by_name(bundle, "faceVertexCounts", child_bundle_idx)
+    return _get_gpu_array(attr, int, read_only=bundle.read_only)
 
 
-def mesh_get_face_vertex_indices(bundle: og.BundleContents) -> wp.array(dtype=int):
+def mesh_get_face_vertex_indices(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> wp.array(dtype=int):
     """Retrieves the bundle face vertex indices attribute as a Warp array."""
-    attr = bundle.attribute_by_name("faceVertexIndices")
-    return wp.from_ptr(attr.gpu_value.memory, attr.size, dtype=int)
+    attr = _get_bundle_attr_by_name(bundle, "faceVertexIndices", child_bundle_idx)
+    return _get_gpu_array(attr, int, read_only=bundle.read_only)
 
 
-def mesh_get_local_extent(bundle: og.BundleContents) -> np.ndarray:
+def mesh_get_local_extent(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> np.ndarray:
     """Retrieves the local extent of the geometry mesh."""
-    return points_get_local_extent(bundle)
+    return points_get_local_extent(bundle, child_bundle_idx=child_bundle_idx)
 
 
 def mesh_get_world_extent(
     bundle: og.BundleContents,
     axis_aligned: bool = False,
+    child_bundle_idx: int = 0,
 ) -> np.ndarray:
     """Retrieves the world extent of the geometry mesh."""
-    return points_get_world_extent(bundle, axis_aligned=axis_aligned)
+    return points_get_world_extent(
+        bundle,
+        axis_aligned=axis_aligned,
+        child_bundle_idx=child_bundle_idx,
+    )
 
 
 def mesh_get_triangulated_face_vertex_indices(
     bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
 ) -> wp.array(dtype=int):
     """Retrieves a triangulated version of the face vertex indices."""
-    counts = mesh_get_face_vertex_counts(bundle).numpy()
+    counts = mesh_get_face_vertex_counts(bundle, child_bundle_idx=child_bundle_idx).numpy()
     if np.all(counts == 3):
-        return mesh_get_face_vertex_indices(bundle)
+        return mesh_get_face_vertex_indices(bundle, child_bundle_idx=child_bundle_idx)
 
-    indices = mesh_get_face_vertex_indices(bundle).numpy()
+    indices = mesh_get_face_vertex_indices(bundle, child_bundle_idx=child_bundle_idx).numpy()
     tri_face_count = np.sum(np.subtract(counts, 2))
     out = np.empty(tri_face_count * 3, dtype=int)
 
@@ -556,19 +623,23 @@ def mesh_get_triangulated_face_vertex_indices(
     return wp.array(out, dtype=int, copy=True)
 
 
-def mesh_clear_dirty_attributes(bundle: og.BundleContents) -> None:
+def mesh_clear_dirty_attributes(
+    bundle: og.BundleContents,
+    child_bundle_idx: int = 0,
+) -> None:
     """Clears the list of attributes that have been updated."""
-    attr = _create_dirty_attrs_attr(bundle)
-    attr.cpu_value = ""
+    attr = _create_dirty_attrs_attr(bundle, child_bundle_idx)
+    _set_cpu_array(attr, "")
 
 
 def mesh_set_dirty_attributes(
     bundle: og.BundleContents,
     flags: MeshAttributeFlags,
+    child_bundle_idx: int = 0,
 ) -> None:
     """Sets attributes that have been updated."""
-    attr = _create_dirty_attrs_attr(bundle)
-    values = attr.cpu_value.split()
+    attr = _create_dirty_attrs_attr(bundle, child_bundle_idx)
+    values = _get_cpu_array(attr).split()
     additional_values = []
 
     if MeshAttributeFlags.POINTS in flags:
@@ -585,7 +656,7 @@ def mesh_set_dirty_attributes(
 
     additional_values = tuple(x for x in additional_values if x not in values)
     values.extend(additional_values)
-    attr.cpu_value = " ".join(values)
+    _set_cpu_array(attr, " ".join(values))
 
 
 #   Private Helpers
@@ -604,12 +675,72 @@ def _compute_extent_kernel(
     wp.atomic_max(out_max_extent, 0, points[tid])
 
 
+def _create_child_bundle(
+    bundle: og.BundleContents,
+    child_bundle_idx: int,
+) -> og.IBundle2:
+    """Creates a single child bundle if it doesn't already exist."""
+    if child_bundle_idx < bundle.bundle.get_child_bundle_count():
+        return bundle.bundle.get_child_bundle(child_bundle_idx)
+
+    return bundle.bundle.create_child_bundle("prim{}".format(child_bundle_idx))
+
+
+def _get_bundle_attr_by_name(
+    bundle: og.BundleContents,
+    name: str,
+    child_bundle_idx: int,
+) -> Optional[og.AttributeData]:
+    """Retrieves a bundle attribute from its name."""
+    if bundle.bundle.get_child_bundle_count():
+        attr = bundle.bundle.get_child_bundle(child_bundle_idx).get_attribute_by_name(name)
+    else:
+        attr = bundle.bundle.get_attribute_by_name(name)
+
+    if not attr.is_valid():
+        return None
+
+    return attr
+
+
+def _get_gpu_array(
+    attr: og.AttributeData,
+    dtype: type,
+    read_only: bool = True,
+) -> wp.array:
+    """Retrieves the value of an array attribute living on the GPU."""
+    attr.gpu_ptr_kind = og.PtrToPtrKind.CPU
+    (ptr, _) = attr.get_array(
+        on_gpu=True,
+        get_for_write=not read_only,
+        reserved_element_count=0 if read_only else attr.size(),
+    )
+    return wp.from_ptr(ptr, attr.size(), dtype=dtype)
+
+
+def _get_cpu_array(
+    attr: og.AttributeData,
+    read_only: bool = True,
+) -> Union[np.ndarray, str]:
+    """Retrieves the value of an array attribute living on the CPU."""
+    return attr.get_array(
+        on_gpu=False,
+        get_for_write=not read_only,
+        reserved_element_count=0 if read_only else attr.size(),
+    )
+
+
+def _set_cpu_array(attr: og.AttributeData, value: Sequence) -> None:
+    """Sets the given value onto an array attribute living on the CPU."""
+    attr.set(value, on_gpu=False)
+
+
 def _create_dirty_attrs_attr(
     bundle: og.BundleContents,
-) -> og.RuntimeAttribute:
+    child_bundle_idx: int,
+) -> og.AttributeData:
     """Creates a new dirty attributes attribute into a bundle."""
-    return insert_bundle_attr(
-        bundle,
+    return bundle.bundle.create_attribute(
         "dirtyAttrs",
         og.Type(
             og.BaseDataType.UCHAR,

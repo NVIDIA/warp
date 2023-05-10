@@ -233,12 +233,9 @@ def insert_bundle_attr(
     bundle: og.BundleContents,
     name: str,
     type: og.Type,
-) -> og.RuntimeAttribute:
-    attr = bundle.attribute_by_name(name)
-    if attr is None:
-        attr = bundle.insert((type, name))
-
-    return attr
+) -> og.AttributeData:
+    """Inserts a new attribute into a bundle."""
+    return bundle.bundle.create_attribute(name, type)
 
 
 #   User Attributes Information

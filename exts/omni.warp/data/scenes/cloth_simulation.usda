@@ -73,35 +73,9 @@ def Xform "World"
             custom timecode state:usdTimecode = -1
             custom bool state:useFindPrims = 0
             uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (595, 190)
+            uniform float2 ui:nodegraph:node:pos = (800, 190)
 
             def Output "outputs_primsBundle"
-            {
-            }
-        }
-
-        def OmniGraphNode "extract_prim" (
-            prepend apiSchemas = ["NodeGraphNodeAPI"]
-        )
-        {
-            custom rel inputs:prim (
-                customData = {
-                    dictionary omni = {
-                        dictionary graph = {
-                            string relType = "target"
-                        }
-                    }
-                }
-            )
-            custom string inputs:primPath = "/World/Collider/Bunny"
-            custom rel inputs:prims
-            prepend rel inputs:prims = </World/ActionGraph/read_collider/outputs_primsBundle>
-            token node:type = "omni.graph.nodes.ExtractPrim"
-            int node:typeVersion = 1
-            uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (844, 171)
-
-            def Output "outputs_primBundle"
             {
             }
         }
@@ -144,7 +118,7 @@ def Xform "World"
             custom float inputs:clothTriDampingStiffness = 100
             custom float inputs:clothTriElasticStiffness = 1000000
             custom rel inputs:collider
-            prepend rel inputs:collider = </World/ActionGraph/extract_prim/outputs_primBundle>
+            prepend rel inputs:collider = </World/ActionGraph/read_collider/outputs_primsBundle>
             custom float inputs:colliderContactDistance = 5
             custom float inputs:colliderContactQueryRange = 100
             custom float inputs:contactDampingStiffness = 10000

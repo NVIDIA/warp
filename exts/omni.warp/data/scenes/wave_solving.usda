@@ -76,35 +76,9 @@ def Xform "World"
             custom timecode state:usdTimecode = -1
             custom bool state:useFindPrims = 0
             uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (-183, 216)
+            uniform float2 ui:nodegraph:node:pos = (90, 210)
 
             def Output "outputs_primsBundle"
-            {
-            }
-        }
-
-        def OmniGraphNode "extract_prim" (
-            prepend apiSchemas = ["NodeGraphNodeAPI"]
-        )
-        {
-            custom rel inputs:prim (
-                customData = {
-                    dictionary omni = {
-                        dictionary graph = {
-                            string relType = "target"
-                        }
-                    }
-                }
-            )
-            custom string inputs:primPath = "/World/Collider"
-            custom rel inputs:prims
-            prepend rel inputs:prims = </World/ActionGraph/read_collider/outputs_primsBundle>
-            token node:type = "omni.graph.nodes.ExtractPrim"
-            int node:typeVersion = 1
-            uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (100, 202)
-
-            def Output "outputs_primBundle"
             {
             }
         }
@@ -116,7 +90,7 @@ def Xform "World"
             custom float inputs:amplitude = 2
             custom float inputs:cellSize = 1
             custom rel inputs:collider
-            prepend rel inputs:collider = </World/ActionGraph/extract_prim/outputs_primBundle>
+            prepend rel inputs:collider = </World/ActionGraph/read_collider/outputs_primsBundle>
             custom float inputs:damping = 0.25
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/on_playback_tick.outputs:tick>
