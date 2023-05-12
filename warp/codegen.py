@@ -7,28 +7,18 @@
 
 from __future__ import annotations
 
-import os
 import re
 import sys
-import importlib
 import ast
-import math
 import inspect
-import typing
-import weakref
 import ctypes
-import copy
 import textwrap
 
 import numpy as np
 
-from typing import Tuple
-from typing import List
-from typing import Dict
 from typing import Any
 from typing import Callable
 from typing import Mapping
-from typing import NamedTuple
 from typing import Union
 
 from warp.types import *
@@ -244,7 +234,6 @@ def compute_type_str(base_name, template_params):
 
 class Var:
     def __init__(self, label, type, requires_grad=False, constant=None):
-
         # convert built-in types to wp types
         if type == float:
             type = float32
@@ -394,19 +383,17 @@ class Adjoint:
 
     # generates a list of formatted args
     def format_args(adj, prefix, args):
-
         arg_strs = []
 
         for a in args:
             if type(a) == warp.context.Function:
                 # functions don't have a var_ prefix so strip it off here
-                if (prefix == "var_"):
+                if prefix == "var_":
                     arg_strs.append(a.key)
                 else:
                     arg_strs.append(prefix + a.key)
 
             else:
-
                 arg_strs.append(prefix + str(a))
 
         return arg_strs
@@ -414,7 +401,7 @@ class Adjoint:
     # generates argument string for a forward function call
     def format_forward_call_args(adj, args, use_initializer_list):
         arg_str = ", ".join(adj.format_args("var_", args))
-        if (use_initializer_list):
+        if use_initializer_list:
             return "{{{}}}".format(arg_str)
         return arg_str
 
@@ -422,10 +409,9 @@ class Adjoint:
     def format_reverse_call_args(adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list):
         formatted_var = adj.format_args("var_", args)
         formatted_var_adj = adj.format_args(
-            "&adj_" if use_initializer_list else "adj_",
-            [a for i, a in enumerate(args) if i not in non_adjoint_args])
-        formatted_out_adj = adj.format_args(
-            "adj_", [a for i, a in enumerate(args_out) if i not in non_adjoint_outputs])
+            "&adj_" if use_initializer_list else "adj_", [a for i, a in enumerate(args) if i not in non_adjoint_args]
+        )
+        formatted_out_adj = adj.format_args("adj_", [a for i, a in enumerate(args_out) if i not in non_adjoint_outputs])
 
         if len(formatted_var_adj) == 0 and len(formatted_out_adj) == 0:
             # there are no adjoint arguments, so we don't need to call the reverse function
@@ -604,15 +590,17 @@ class Adjoint:
         if value_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
 
-            forward_call = "{}{}({});".format(func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list))
+            forward_call = "{}{}({});".format(
+                func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
+            )
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="//" + forward_call)
             else:
                 adj.add_forward(forward_call)
 
-            if (not func.missing_grad and len(args)):
+            if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, [], {}, {}, use_initializer_list)
-                if (arg_str is not None):
+                if arg_str is not None:
                     reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
                     adj.add_reverse(reverse_call)
 
@@ -622,12 +610,14 @@ class Adjoint:
             # handle multiple value functions
 
             output = [adj.add_var(v) for v in value_type]
-            forward_call = "{}{}({});".format(func.namespace, func_name, adj.format_forward_call_args(args + output, use_initializer_list))
+            forward_call = "{}{}({});".format(
+                func.namespace, func_name, adj.format_forward_call_args(args + output, use_initializer_list)
+            )
             adj.add_forward(forward_call)
 
-            if (not func.missing_grad and len(args)):
+            if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, output, {}, {}, use_initializer_list)
-                if (arg_str is not None):
+                if arg_str is not None:
                     reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
                     adj.add_reverse(reverse_call)
 
@@ -639,16 +629,18 @@ class Adjoint:
         # handle simple function (one output)
         else:
             output = adj.add_var(func.value_func(args, kwds, templates))
-            forward_call = "var_{} = {}{}({});".format(output, func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list))
+            forward_call = "var_{} = {}{}({});".format(
+                output, func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
+            )
 
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="//" + forward_call)
             else:
                 adj.add_forward(forward_call)
-            
-            if (not func.missing_grad and len(args)):
+
+            if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, [output], {}, {}, use_initializer_list)
-                if (arg_str is not None):
+                if arg_str is not None:
                     reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
                     adj.add_reverse(reverse_call)
 
@@ -1336,7 +1328,7 @@ class Adjoint:
                 node.value.expects = len(node.targets[0].elts)
 
             # evaluate values
-            if (isinstance(node.value, ast.Tuple)):
+            if isinstance(node.value, ast.Tuple):
                 out = [adj.eval(v) for v in node.value.elts]
             else:
                 out = adj.eval(node.value)
