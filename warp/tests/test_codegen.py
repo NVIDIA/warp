@@ -219,6 +219,19 @@ def test_break_multiple(n: int):
     wp.expect_eq(a, 2)
 
 
+@wp.kernel
+def test_continue(n: int):
+    a = int(0)
+
+    for i in range(0, n):
+        if i == 5:
+            continue
+
+        a += 1
+
+    wp.expect_eq(a, n - 1)
+
+
 lower = wp.constant(-3)
 upper = wp.constant(3)
 step = wp.constant(2)
@@ -408,6 +421,7 @@ def register(parent):
     add_kernel_test(
         TestCodeGen, name="test_break_multiple", kernel=test_break_multiple, dim=1, inputs=[10], devices=devices
     )
+    add_kernel_test(TestCodeGen, name="test_continue", kernel=test_continue, dim=1, inputs=[10], devices=devices)
 
     add_function_test(TestCodeGen, func=test_unresolved_func, name="test_unresolved_func", devices=devices)
     add_function_test(TestCodeGen, func=test_unresolved_symbol, name="test_unresolved_symbol", devices=devices)
