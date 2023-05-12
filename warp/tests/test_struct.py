@@ -263,6 +263,24 @@ def test_struct_math_conversions(test, device):
 
 
 @wp.struct
+class TestData:
+    value: wp.int32
+
+
+@wp.func
+def GetTestData(value: wp.int32):
+    return TestData(value * 2)
+
+
+@wp.kernel
+def test_return_struct(data: wp.array(dtype=wp.int32)):
+    tid = wp.tid()
+    data[tid] = GetTestData(tid).value
+
+    wp.expect_eq(data[tid], tid * 2)
+
+
+@wp.struct
 class ReturnStruct:
     a: int
     b: int
@@ -342,6 +360,14 @@ def register(parent):
             name="test_struct_instantiate",
             dim=1,
             inputs=[wp.array([1], dtype=int, device=device)],
+            devices=[device],
+        )
+        add_kernel_test(
+            TestStruct,
+            kernel=test_return_struct,
+            name="test_return_struct",
+            dim=1,
+            inputs=[wp.zeros(10, dtype=int, device=device)],
             devices=[device],
         )
 

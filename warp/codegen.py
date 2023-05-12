@@ -13,6 +13,7 @@ import ast
 import inspect
 import ctypes
 import textwrap
+import types
 
 import numpy as np
 
@@ -899,98 +900,48 @@ class Adjoint:
             return adj.symbols[node.id]
 
         # try and resolve the name using the function's globals context (used to lookup constants + functions)
-        elif node.id in adj.func.__globals__:
-            obj = adj.func.__globals__[node.id]
+        obj = adj.func.__globals__.get(node.id)
 
-            if warp.types.is_value(obj):
-                # evaluate constant
-                out = adj.add_constant(obj)
-                adj.symbols[node.id] = out
-                return out
-
-            elif isinstance(obj, warp.context.Function):
-                # pass back ref. to function (will be converted to name during function call)
-                return obj
-
-            else:
-                raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
-
-        else:
+        if obj == None:
             # Lookup constant in captured contents
             capturedvars = dict(
                 zip(adj.func.__code__.co_freevars, [c.cell_contents for c in (adj.func.__closure__ or [])])
             )
             obj = capturedvars.get(str(node.id), None)
 
-            if warp.types.is_value(obj):
-                # evaluate constant
-                out = adj.add_constant(obj)
-                adj.symbols[node.id] = out
-                return out
-
+        if obj == None:
             raise KeyError("Referencing undefined symbol: " + str(node.id))
 
+        if warp.types.is_value(obj):
+            # evaluate constant
+            out = adj.add_constant(obj)
+            adj.symbols[node.id] = out
+            return out
+
+        # the named object is either a function, class name, or module
+        # pass it back to the caller for processing
+        return obj
+
     def emit_Attribute(adj, node):
-        def attribute_to_str(node):
-            if isinstance(node, ast.Name):
-                return node.id
-            elif isinstance(node, ast.Attribute):
-                return attribute_to_str(node.value) + "." + node.attr
-            else:
-                raise RuntimeError(f"Failed to parse attribute")
+        try:
+            val = adj.eval(node.value)
 
-        def attribute_to_val(node, context):
-            if isinstance(node, ast.Name):
-                if node.id in context:
-                    return context[node.id]
-                return None
-            elif isinstance(node, ast.Attribute):
-                val = attribute_to_val(node.value, context)
-                if val is None:
-                    return None
-                return getattr(val, node.attr)
-            else:
-                raise RuntimeError(f"Failed to parse attribute")
+            if isinstance(val, types.ModuleType) or isinstance(val, type):
+                out = getattr(val, node.attr)
 
-        key = attribute_to_str(node)
+                if warp.types.is_value(out):
+                    return adj.add_constant(out)
 
-        if key in adj.symbols:
-            return adj.symbols[key]
-        elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
-            struct = adj.symbols[node.value.id]
-
-            try:
-                attr_name = struct.label + "." + node.attr
-                attr_type = struct.type.vars[node.attr].type
-            except:
-                raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({struct.type})")
-
-            # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-            return Var(attr_name, attr_type)
-        else:
-            # try and resolve to either a wp.constant
-            # or a wp.func object
-            obj = attribute_to_val(node, adj.func.__globals__)
-
-            if warp.types.is_value(obj):
-                out = adj.add_constant(obj)
-                adj.symbols[key] = out
                 return out
 
-            elif isinstance(node.value, ast.Attribute):
-                # resolve nested attribute
-                val = adj.eval(node.value)
+            # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+            attr_name = val.label + "." + node.attr
+            attr_type = val.type.vars[node.attr].type
 
-                try:
-                    attr_name = val.label + "." + node.attr
-                    attr_type = val.type.vars[node.attr].type
-                except:
-                    raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
+            return Var(attr_name, attr_type)
 
-                # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-                return Var(attr_name, attr_type)
-            else:
-                raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
+        except KeyError:
+            raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
 
     def emit_String(adj, node):
         # string constant
