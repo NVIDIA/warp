@@ -7,28 +7,19 @@
 
 from __future__ import annotations
 
-import os
 import re
 import sys
-import importlib
 import ast
-import math
 import inspect
-import typing
-import weakref
 import ctypes
-import copy
 import textwrap
+import types
 
 import numpy as np
 
-from typing import Tuple
-from typing import List
-from typing import Dict
 from typing import Any
 from typing import Callable
 from typing import Mapping
-from typing import NamedTuple
 from typing import Union
 
 from warp.types import *
@@ -244,7 +235,6 @@ def compute_type_str(base_name, template_params):
 
 class Var:
     def __init__(self, label, type, requires_grad=False, constant=None):
-
         # convert built-in types to wp types
         if type == float:
             type = float32
@@ -394,19 +384,17 @@ class Adjoint:
 
     # generates a list of formatted args
     def format_args(adj, prefix, args):
-
         arg_strs = []
 
         for a in args:
             if type(a) == warp.context.Function:
                 # functions don't have a var_ prefix so strip it off here
-                if (prefix == "var_"):
+                if prefix == "var_":
                     arg_strs.append(a.key)
                 else:
                     arg_strs.append(prefix + a.key)
 
             else:
-
                 arg_strs.append(prefix + str(a))
 
         return arg_strs
@@ -414,7 +402,7 @@ class Adjoint:
     # generates argument string for a forward function call
     def format_forward_call_args(adj, args, use_initializer_list):
         arg_str = ", ".join(adj.format_args("var_", args))
-        if (use_initializer_list):
+        if use_initializer_list:
             return "{{{}}}".format(arg_str)
         return arg_str
 
@@ -422,10 +410,9 @@ class Adjoint:
     def format_reverse_call_args(adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list):
         formatted_var = adj.format_args("var_", args)
         formatted_var_adj = adj.format_args(
-            "&adj_" if use_initializer_list else "adj_",
-            [a for i, a in enumerate(args) if i not in non_adjoint_args])
-        formatted_out_adj = adj.format_args(
-            "adj_", [a for i, a in enumerate(args_out) if i not in non_adjoint_outputs])
+            "&adj_" if use_initializer_list else "adj_", [a for i, a in enumerate(args) if i not in non_adjoint_args]
+        )
+        formatted_out_adj = adj.format_args("adj_", [a for i, a in enumerate(args_out) if i not in non_adjoint_outputs])
 
         if len(formatted_var_adj) == 0 and len(formatted_out_adj) == 0:
             # there are no adjoint arguments, so we don't need to call the reverse function
@@ -604,15 +591,17 @@ class Adjoint:
         if value_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
 
-            forward_call = "{}{}({});".format(func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list))
+            forward_call = "{}{}({});".format(
+                func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
+            )
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="//" + forward_call)
             else:
                 adj.add_forward(forward_call)
 
-            if (not func.missing_grad and len(args)):
+            if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, [], {}, {}, use_initializer_list)
-                if (arg_str is not None):
+                if arg_str is not None:
                     reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
                     adj.add_reverse(reverse_call)
 
@@ -622,12 +611,14 @@ class Adjoint:
             # handle multiple value functions
 
             output = [adj.add_var(v) for v in value_type]
-            forward_call = "{}{}({});".format(func.namespace, func_name, adj.format_forward_call_args(args + output, use_initializer_list))
+            forward_call = "{}{}({});".format(
+                func.namespace, func_name, adj.format_forward_call_args(args + output, use_initializer_list)
+            )
             adj.add_forward(forward_call)
 
-            if (not func.missing_grad and len(args)):
+            if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, output, {}, {}, use_initializer_list)
-                if (arg_str is not None):
+                if arg_str is not None:
                     reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
                     adj.add_reverse(reverse_call)
 
@@ -639,16 +630,18 @@ class Adjoint:
         # handle simple function (one output)
         else:
             output = adj.add_var(func.value_func(args, kwds, templates))
-            forward_call = "var_{} = {}{}({});".format(output, func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list))
+            forward_call = "var_{} = {}{}({});".format(
+                output, func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
+            )
 
             if func.skip_replay:
                 adj.add_forward(forward_call, replay="//" + forward_call)
             else:
                 adj.add_forward(forward_call)
-            
-            if (not func.missing_grad and len(args)):
+
+            if not func.missing_grad and len(args):
                 arg_str = adj.format_reverse_call_args(args, [output], {}, {}, use_initializer_list)
-                if (arg_str is not None):
+                if arg_str is not None:
                     reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
                     adj.add_reverse(reverse_call)
 
@@ -907,98 +900,48 @@ class Adjoint:
             return adj.symbols[node.id]
 
         # try and resolve the name using the function's globals context (used to lookup constants + functions)
-        elif node.id in adj.func.__globals__:
-            obj = adj.func.__globals__[node.id]
+        obj = adj.func.__globals__.get(node.id)
 
-            if warp.types.is_value(obj):
-                # evaluate constant
-                out = adj.add_constant(obj)
-                adj.symbols[node.id] = out
-                return out
-
-            elif isinstance(obj, warp.context.Function):
-                # pass back ref. to function (will be converted to name during function call)
-                return obj
-
-            else:
-                raise TypeError(f"'{node.id}' is not a local variable, function, or warp.constant")
-
-        else:
+        if obj == None:
             # Lookup constant in captured contents
             capturedvars = dict(
                 zip(adj.func.__code__.co_freevars, [c.cell_contents for c in (adj.func.__closure__ or [])])
             )
             obj = capturedvars.get(str(node.id), None)
 
-            if warp.types.is_value(obj):
-                # evaluate constant
-                out = adj.add_constant(obj)
-                adj.symbols[node.id] = out
-                return out
-
+        if obj == None:
             raise KeyError("Referencing undefined symbol: " + str(node.id))
 
+        if warp.types.is_value(obj):
+            # evaluate constant
+            out = adj.add_constant(obj)
+            adj.symbols[node.id] = out
+            return out
+
+        # the named object is either a function, class name, or module
+        # pass it back to the caller for processing
+        return obj
+
     def emit_Attribute(adj, node):
-        def attribute_to_str(node):
-            if isinstance(node, ast.Name):
-                return node.id
-            elif isinstance(node, ast.Attribute):
-                return attribute_to_str(node.value) + "." + node.attr
-            else:
-                raise RuntimeError(f"Failed to parse attribute")
+        try:
+            val = adj.eval(node.value)
 
-        def attribute_to_val(node, context):
-            if isinstance(node, ast.Name):
-                if node.id in context:
-                    return context[node.id]
-                return None
-            elif isinstance(node, ast.Attribute):
-                val = attribute_to_val(node.value, context)
-                if val is None:
-                    return None
-                return getattr(val, node.attr)
-            else:
-                raise RuntimeError(f"Failed to parse attribute")
+            if isinstance(val, types.ModuleType) or isinstance(val, type):
+                out = getattr(val, node.attr)
 
-        key = attribute_to_str(node)
+                if warp.types.is_value(out):
+                    return adj.add_constant(out)
 
-        if key in adj.symbols:
-            return adj.symbols[key]
-        elif isinstance(node.value, ast.Name) and node.value.id in adj.symbols:
-            struct = adj.symbols[node.value.id]
-
-            try:
-                attr_name = struct.label + "." + node.attr
-                attr_type = struct.type.vars[node.attr].type
-            except:
-                raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{node.value.id}' ({struct.type})")
-
-            # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-            return Var(attr_name, attr_type)
-        else:
-            # try and resolve to either a wp.constant
-            # or a wp.func object
-            obj = attribute_to_val(node, adj.func.__globals__)
-
-            if warp.types.is_value(obj):
-                out = adj.add_constant(obj)
-                adj.symbols[key] = out
                 return out
 
-            elif isinstance(node.value, ast.Attribute):
-                # resolve nested attribute
-                val = adj.eval(node.value)
+            # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
+            attr_name = val.label + "." + node.attr
+            attr_type = val.type.vars[node.attr].type
 
-                try:
-                    attr_name = val.label + "." + node.attr
-                    attr_type = val.type.vars[node.attr].type
-                except:
-                    raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
+            return Var(attr_name, attr_type)
 
-                # create a Var that points to the struct attribute, i.e.: directly generates `struct.attr` when used
-                return Var(attr_name, attr_type)
-            else:
-                raise TypeError(f"'{key}' is not a local variable, warp function, nested attribute, or warp constant")
+        except KeyError:
+            raise RuntimeError(f"Error, `{node.attr}` is not an attribute of '{val.label}' ({val.type})")
 
     def emit_String(adj, node):
         # string constant
@@ -1336,7 +1279,7 @@ class Adjoint:
                 node.value.expects = len(node.targets[0].elts)
 
             # evaluate values
-            if (isinstance(node.value, ast.Tuple)):
+            if isinstance(node.value, ast.Tuple):
                 out = [adj.eval(v) for v in node.value.elts]
             else:
                 out = adj.eval(node.value)
