@@ -175,6 +175,19 @@ def test_while(n: int):
 
 
 @wp.kernel
+def test_pass(n: int):
+    i = int(0)
+
+    while i < n:
+        if False:
+            pass
+        else:
+            i = i + 1
+
+    wp.expect_eq(i, n)
+
+
+@wp.kernel
 def test_break(n: int):
     a = int(0)
 
@@ -402,6 +415,7 @@ def register(parent):
 
     add_kernel_test(TestCodeGen, name="test_while_zero", kernel=test_while, dim=1, inputs=[0], devices=devices)
     add_kernel_test(TestCodeGen, name="test_while_positive", kernel=test_while, dim=1, inputs=[16], devices=devices)
+    add_kernel_test(TestCodeGen, name="test_pass", kernel=test_pass, dim=1, inputs=[16], devices=devices)
 
     add_kernel_test(TestCodeGen, name="test_break", kernel=test_break, dim=1, inputs=[10], devices=devices)
     add_kernel_test(TestCodeGen, name="test_break_early", kernel=test_break_early, dim=1, inputs=[10], devices=devices)

@@ -1394,6 +1394,9 @@ class Adjoint:
         for elem in node.elts:
             adj.eval(elem)
 
+    def emit_Pass(adj, node):
+        pass
+
     def eval(adj, node):
         if hasattr(node, "lineno"):
             adj.set_lineno(node.lineno - 1)
@@ -1422,6 +1425,7 @@ class Adjoint:
             ast.Return: Adjoint.emit_Return,
             ast.AugAssign: Adjoint.emit_AugAssign,
             ast.Tuple: Adjoint.emit_Tuple,
+            ast.Pass: Adjoint.emit_Pass,
         }
 
         emit_node = node_visitors.get(type(node))
