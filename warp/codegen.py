@@ -340,8 +340,8 @@ class Adjoint:
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
 
-        adj.cond = None  # condition variable if in branch
         adj.return_var = None  # return type for function or kernel
+        adj.loop_symbols = []  # symbols at the start of each loop
 
         # blocks
         adj.blocks = [Block()]
@@ -994,28 +994,19 @@ class Adjoint:
 
         return adj.add_call(func, [arg])
 
-    def emit_While(adj, node):
-        adj.begin_while(node.test)
-
-        symbols_prev = adj.symbols.copy()
-
-        # eval body
-        for s in node.body:
-            adj.eval(s)
-
+    def materialize_redefinitions(adj, symbols):
         # detect symbols with conflicting definitions (assigned inside the for loop)
-        for items in symbols_prev.items():
+        for items in symbols.items():
             sym = items[0]
             var1 = items[1]
             var2 = adj.symbols[sym]
 
             if var1 != var2:
                 if warp.config.verbose:
-                    print(
-                        "Warning: detected mutated variable {} during a dynamic for-loop, this is a non-differentiable operation".format(
-                            sym
-                        )
-                    )
+                    lineno = adj.lineno + adj.fun_lineno
+                    line = adj.source.splitlines()[adj.lineno]
+                    msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
+                    print(msg)
 
                 if var1.constant is not None:
                     raise Exception(
@@ -1029,6 +1020,18 @@ class Adjoint:
 
                 # reset the symbol to point to the original variable
                 adj.symbols[sym] = var1
+
+    def emit_While(adj, node):
+        adj.begin_while(node.test)
+
+        adj.loop_symbols.append(adj.symbols.copy())
+
+        # eval body
+        for s in node.body:
+            adj.eval(s)
+
+        adj.materialize_redefinitions(adj.loop_symbols[-1])
+        adj.loop_symbols.pop()
 
         adj.end_while()
 
@@ -1125,41 +1128,20 @@ class Adjoint:
             adj.symbols[node.target.id] = adj.begin_for(iter)
 
             # for loops should be side-effect free, here we store a copy
-            symbols_prev = adj.symbols.copy()
+            adj.loop_symbols.append(adj.symbols.copy())
 
             # eval body
             for s in node.body:
                 adj.eval(s)
 
-            # detect symbols with conflicting definitions (assigned inside the for loop)
-            for items in symbols_prev.items():
-                sym = items[0]
-                var1 = items[1]
-                var2 = adj.symbols[sym]
-
-                if var1 != var2:
-                    if warp.config.verbose:
-                        lineno = adj.lineno + adj.fun_lineno
-                        line = adj.source.splitlines()[adj.lineno]
-                        msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
-                        print(msg)
-
-                    if var1.constant is not None:
-                        raise Exception(
-                            "Error mutating a constant {} inside a dynamic loop, use the following syntax: pi = float(3.141) to declare a dynamic variable".format(
-                                sym
-                            )
-                        )
-
-                    # overwrite the old variable value (violates SSA)
-                    adj.add_call(warp.context.builtin_functions["copy"], [var1, var2])
-
-                    # reset the symbol to point to the original variable
-                    adj.symbols[sym] = var1
+            adj.materialize_redefinitions(adj.loop_symbols[-1])
+            adj.loop_symbols.pop()
 
             adj.end_for(iter)
 
     def emit_Break(adj, node):
+        adj.materialize_redefinitions(adj.loop_symbols[-1])
+
         adj.add_forward(f"goto for_end_{adj.loop_blocks[-1].label};")
 
     def emit_Expr(adj, node):
@@ -1378,8 +1360,6 @@ class Adjoint:
             raise RuntimeError("Error, unsupported assignment statement.")
 
     def emit_Return(adj, node):
-        cond = adj.cond
-
         if node.value is not None:
             var = adj.eval(node.value)
         else:
