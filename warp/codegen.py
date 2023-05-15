@@ -1144,6 +1144,11 @@ class Adjoint:
 
         adj.add_forward(f"goto for_end_{adj.loop_blocks[-1].label};")
 
+    def emit_Continue(adj, node):
+        adj.materialize_redefinitions(adj.loop_symbols[-1])
+
+        adj.add_forward(f"goto for_start_{adj.loop_blocks[-1].label};")
+
     def emit_Expr(adj, node):
         return adj.eval(node.value)
 
@@ -1417,6 +1422,7 @@ class Adjoint:
             ast.While: Adjoint.emit_While,
             ast.For: Adjoint.emit_For,
             ast.Break: Adjoint.emit_Break,
+            ast.Continue: Adjoint.emit_Continue,
             ast.Expr: Adjoint.emit_Expr,
             ast.Call: Adjoint.emit_Call,
             ast.Index: Adjoint.emit_Index,  # Deprecated in 3.8; Use the index value directly instead.
