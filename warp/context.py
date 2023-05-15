@@ -860,7 +860,7 @@ def get_module(name):
             old_module.kernels = {}
             old_module.functions = {}
             old_module.constants = []
-            old_module.structs = []
+            old_module.structs = {}
             old_module.loader = parent_loader
 
         return user_modules[name]
@@ -1008,7 +1008,7 @@ class Module:
         self.kernels = {}
         self.functions = {}
         self.constants = []
-        self.structs = []
+        self.structs = {}
 
         self.dll = None
         self.cpu_module = None
@@ -1055,7 +1055,7 @@ class Module:
         self.content_hash = None
 
     def register_struct(self, struct):
-        self.structs.append(struct)
+        self.structs[struct.key] = struct
 
         # for a reload of module on next launch
         self.unload()
@@ -1145,7 +1145,7 @@ class Module:
                 ch = hashlib.sha256()
 
                 # struct source
-                for struct in module.structs:
+                for struct in module.structs.values():
                     s = ",".join(
                         "{}: {}".format(name, type_hint) for name, type_hint in get_annotations(struct.cls).items()
                     )
