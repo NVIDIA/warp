@@ -28,7 +28,6 @@
 
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 
-#define _GNU_SOURCE  // declare sincos()
 #include <cmath>
 #include <vector>
 #include <iostream>
