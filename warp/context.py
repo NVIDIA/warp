@@ -1507,7 +1507,12 @@ class Stream:
     def __init__(self, device=None, **kwargs):
         self.owner = False
 
-        device = runtime.get_device(device)
+        # we can't use get_device() if called during init, but we can use an explicit Device arg
+        if runtime is not None:
+            device = runtime.get_device(device)
+        elif not isinstance(device, Device):
+            raise RuntimeError("A device object is required when creating a stream before or during Warp initialization")
+
         if not device.is_cuda:
             raise RuntimeError(f"Device {device} is not a CUDA device")
 
@@ -1560,7 +1565,7 @@ class Event:
     def __init__(self, device=None, cuda_event=None, enable_timing=False):
         self.owner = False
 
-        device = runtime.get_device(device)
+        device = get_device(device)
         if not device.is_cuda:
             raise RuntimeError(f"Device {device} is not a CUDA device")
 
@@ -1684,7 +1689,7 @@ class Device:
             if s.device != self:
                 raise RuntimeError(f"Stream from device {s.device} cannot be used on device {self}")
             self._stream = s
-            runtime.core.cuda_context_set_stream(self.context, s.cuda_stream)
+            self.runtime.core.cuda_context_set_stream(self.context, s.cuda_stream)
         else:
             raise RuntimeError(f"Device {self} is not a CUDA device")
 
