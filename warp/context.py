@@ -930,10 +930,12 @@ class ModuleBuilder:
 
                 def wrap(adj):
                     def value_type(args, kwds, templates):
-                        if adj.return_var:
-                            return adj.return_var.type
-                        else:
+                        if adj.return_var is None or len(adj.return_var) == 0:
                             return None
+                        if len(adj.return_var) == 1:
+                            return adj.return_var[0].type
+                        else:
+                            return [v.type for v in adj.return_var]
 
                     return value_type
 

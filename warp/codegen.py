@@ -409,6 +409,9 @@ class Adjoint:
     # generates argument string for a reverse function call
     def format_reverse_call_args(adj, args, args_out, non_adjoint_args, non_adjoint_outputs, use_initializer_list):
         formatted_var = adj.format_args("var_", args)
+        formatted_out = []
+        if len(args_out) > 1:
+            formatted_out = adj.format_args("var_", args_out)
         formatted_var_adj = adj.format_args(
             "&adj_" if use_initializer_list else "adj_", [a for i, a in enumerate(args) if i not in non_adjoint_args]
         )
@@ -420,11 +423,15 @@ class Adjoint:
 
         if use_initializer_list:
             var_str = "{{{}}}".format(", ".join(formatted_var))
+            out_str = "{{{}}}".format(", ".join(formatted_out))
             adj_str = "{{{}}}".format(", ".join(formatted_var_adj))
-            out_str = ", ".join(formatted_out_adj)
-            arg_str = ", ".join([var_str, adj_str, out_str])
+            out_adj_str = ", ".join(formatted_out_adj)
+            if len(args_out) > 1:
+                arg_str = ", ".join([var_str, out_str, adj_str, out_adj_str])
+            else:
+                arg_str = ", ".join([var_str, adj_str, out_adj_str])
         else:
-            arg_str = ", ".join(formatted_var + formatted_var_adj + formatted_out_adj)
+            arg_str = ", ".join(formatted_var + formatted_out + formatted_var_adj + formatted_out_adj)
         return arg_str
 
     def indent(adj):
@@ -562,10 +569,16 @@ class Adjoint:
             for x in args:
                 if isinstance(x, Var):
                     # shorten Warp primitive type names
-                    if x.type.__module__ == "warp.types":
-                        arg_types.append(x.type.__name__)
+                    if isinstance(x.type, list):
+                        if len(x.type) != 1:
+                            raise Exception("Argument must not be the result from a multi-valued function")
+                        arg_type = x.type[0]
                     else:
-                        arg_types.append(x.type.__module__ + "." + x.type.__name__)
+                        arg_type = x.type
+                    if arg_type.__module__ == "warp.types":
+                        arg_types.append(arg_type.__name__)
+                    else:
+                        arg_types.append(arg_type.__module__ + "." + arg_type.__name__)
 
                 if isinstance(x, warp.context.Function):
                     arg_types.append("function")
@@ -607,7 +620,30 @@ class Adjoint:
 
             return None
 
-        elif isinstance(value_type, list):
+        elif not isinstance(value_type, list) or len(value_type) == 1:
+            # handle simple function (one output)
+
+            if isinstance(value_type, list):
+                value_type = value_type[0]
+            output = adj.add_var(value_type)
+            forward_call = "var_{} = {}{}({});".format(
+                output, func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
+            )
+
+            if func.skip_replay:
+                adj.add_forward(forward_call, replay="//" + forward_call)
+            else:
+                adj.add_forward(forward_call)
+
+            if not func.missing_grad and len(args):
+                arg_str = adj.format_reverse_call_args(args, [output], {}, {}, use_initializer_list)
+                if arg_str is not None:
+                    reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
+                    adj.add_reverse(reverse_call)
+
+            return output
+        
+        else:
             # handle multiple value functions
 
             output = [adj.add_var(v) for v in value_type]
@@ -627,32 +663,18 @@ class Adjoint:
 
             return output
 
-        # handle simple function (one output)
-        else:
-            output = adj.add_var(func.value_func(args, kwds, templates))
-            forward_call = "var_{} = {}{}({});".format(
-                output, func.namespace, func_name, adj.format_forward_call_args(args, use_initializer_list)
-            )
-
-            if func.skip_replay:
-                adj.add_forward(forward_call, replay="//" + forward_call)
-            else:
-                adj.add_forward(forward_call)
-
-            if not func.missing_grad and len(args):
-                arg_str = adj.format_reverse_call_args(args, [output], {}, {}, use_initializer_list)
-                if arg_str is not None:
-                    reverse_call = "{}adj_{}({});".format(func.namespace, func.native_func, arg_str)
-                    adj.add_reverse(reverse_call)
-
-            return output
 
     def add_return(adj, var):
-        if var.ctype() == "void":
-            adj.add_forward("return;".format(var), "goto label{};".format(adj.label_count))
+        if var is None or len(var) == 0:
+            adj.add_forward("return;", "goto label{};".format(adj.label_count))
+        elif len(var) == 1:
+            adj.add_forward("return var_{};".format(var[0]), "goto label{};".format(adj.label_count))
+            adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
         else:
-            adj.add_forward("return var_{};".format(var), "goto label{};".format(adj.label_count))
-            adj.add_reverse("adj_" + str(var) + " += adj_ret;")
+            for i, v in enumerate(var):
+                adj.add_forward("ret_{} = var_{};".format(i, v))
+                adj.add_reverse("adj_{} += adj_ret_{};".format(v, i))
+            adj.add_forward("return;", "goto label{};".format(adj.label_count))
 
         adj.add_reverse("label{}:;".format(adj.label_count))
 
@@ -1365,18 +1387,20 @@ class Adjoint:
             raise RuntimeError("Error, unsupported assignment statement.")
 
     def emit_Return(adj, node):
-        if node.value is not None:
-            var = adj.eval(node.value)
+        if (node.value is None):
+            var = None
+        elif (isinstance(node.value, ast.Tuple)):
+            var = tuple(adj.eval(arg) for arg in node.value.elts)
         else:
-            var = Var("void", void)
+            var = (adj.eval(node.value),)
 
-        # set return type of function
         if adj.return_var is not None:
-            if adj.return_var.ctype() != var.ctype():
-                raise TypeError(
-                    f"Error, function returned different types, previous: {adj.return_var.ctype()}, new {var.ctype()}"
-                )
-        adj.return_var = var
+            old_ctypes = tuple(v.ctype() for v in adj.return_var)
+            new_ctypes = tuple(v.ctype() for v in var)
+            if old_ctypes != new_ctypes:
+                raise TypeError(f"Error, function returned different types, previous: [{', '.join(old_ctypes)}], new [{', '.join(new_ctypes)}]")
+        else:
+            adj.return_var = var
 
         adj.add_return(var)
 
@@ -1930,9 +1954,12 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 
 def codegen_func(adj, device="cpu"):
     # forward header
-    # return_type = "void"
+    if adj.return_var is not None and len(adj.return_var) == 1:
+        return_type = adj.return_var[0].ctype()
+    else:
+        return_type = "void"
 
-    return_type = "void" if adj.return_var is None else adj.return_var.ctype()
+    has_multiple_outputs = (adj.return_var is not None and len(adj.return_var) != 1)
 
     forward_args = []
     reverse_args = []
@@ -1941,6 +1968,10 @@ def codegen_func(adj, device="cpu"):
     for arg in adj.args:
         forward_args.append(arg.ctype() + " var_" + arg.label)
         reverse_args.append(arg.ctype() + " var_" + arg.label)
+    if has_multiple_outputs:
+        for i, arg in enumerate(adj.return_var):
+            forward_args.append(arg.ctype() + " & ret_" + str(i))
+            reverse_args.append(arg.ctype() + " & ret_" + str(i))
 
     # reverse args
     for arg in adj.args:
@@ -1950,8 +1981,10 @@ def codegen_func(adj, device="cpu"):
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
         else:
             reverse_args.append(arg.ctype() + " & adj_" + arg.label)
-
-    if return_type != "void":
+    if has_multiple_outputs:
+        for i, arg in enumerate(adj.return_var):
+            reverse_args.append(arg.ctype() + " & adj_ret_" + str(i))
+    elif return_type != "void":
         reverse_args.append(return_type + " & adj_ret")
 
     # codegen body
