@@ -39,6 +39,10 @@
 #define RAD_TO_DEG 57.29577951308232087679
 #define DEG_TO_RAD  0.01745329251994329577
 
+#if defined(__CUDACC__) && !defined(_MSC_VER)
+__device__ void __debugbreak() {}
+#endif
+
 namespace wp
 {
 
