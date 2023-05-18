@@ -27,6 +27,12 @@
 #include <llvm/IR/LegacyPassManager.h>
 
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
+#include <llvm/ExecutionEngine/JITEventListener.h>
+#include <llvm/ExecutionEngine/JITLink/JITLinkMemoryManager.h>
+#include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
+#include <llvm/ExecutionEngine/Orc/TargetProcess/TargetExecutionUtils.h>
+#include <llvm/ExecutionEngine/SectionMemoryManager.h>
 
 #include <cmath>
 #include <vector>
@@ -59,7 +65,12 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     args.push_back("-I");
     args.push_back(include_dir);
-    args.push_back("-O2");
+
+    #if defined(NDEBUG)
+        args.push_back("-O2");
+    #else
+        args.push_back("-O0");
+    #endif
 
     clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
@@ -72,6 +83,10 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     auto& compiler_invocation = compiler_instance.getInvocation();
     clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine.release());
+
+    #if !defined(NDEBUG)
+        compiler_invocation.getCodeGenOpts().setDebugInfo(clang::codegenoptions::FullDebugInfo);
+    #endif
 
     // Map code to a MemoryBuffer
     std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
@@ -151,7 +166,25 @@ WP_API int load_obj(const char* object_file, const char* module_name)
     {
         initialize_llvm();
 
-        auto jit_expected = llvm::orc::LLJITBuilder().create();
+        auto jit_expected = llvm::orc::LLJITBuilder()
+            .setObjectLinkingLayerCreator(
+                [&](llvm::orc::ExecutionSession &session, const llvm::Triple &triple) {
+                    auto get_memory_manager = []() {
+                        return std::make_unique<llvm::SectionMemoryManager>();
+                    };
+                    auto obj_linking_layer = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(session, std::move(get_memory_manager));
+
+                    #if !defined(NDEBUG)
+                        // Register the event listener.
+                        obj_linking_layer->registerJITEventListener(*llvm::JITEventListener::createGDBRegistrationListener());
+
+                        // Make sure the debug info sections aren't stripped.
+                        obj_linking_layer->setProcessAllSections(true);
+                    #endif
+
+                    return obj_linking_layer;
+                })
+            .create();
 
         if(!jit_expected)
         {
