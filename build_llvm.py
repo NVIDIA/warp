@@ -50,7 +50,7 @@ else:
     )
 
 
-def build_from_source():
+def build_from_source(args):
     # Install dependencies
     subprocess.check_call([sys.executable, "-m", "pip", "install", "gitpython"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "cmake"])
@@ -76,9 +76,17 @@ def build_from_source():
 
     # CMake supports Debug, Release, RelWithDebInfo, and MinSizeRel builds
     if warp.config.mode == "release":
-        cmake_build_type = "MinSizeRel"  # prefer smaller size over aggressive speed
+        # prefer smaller size over aggressive speed
+        cmake_build_type = "MinSizeRel"
     else:
-        cmake_build_type = "Debug"
+        # When warp.config.mode == "debug" we build a Debug version of warp.dll but
+        # we generally don't want warp-clang.dll to be a slow Debug version.
+        if args.debug_llvm:
+            cmake_build_type = "Debug"
+        else:
+            # The GDB/LLDB debugger observes the __jit_debug_register_code symbol
+            # defined by the LLVM JIT, for which it needs debug info.
+            cmake_build_type = "RelWithDebInfo"
 
     # Location of cmake and ninja installed through pip (see build.bat / build.sh)
     python_bin = "python/Scripts" if sys.platform == "win32" else "python/bin"
@@ -152,7 +160,7 @@ def build_from_source():
 
 
 # build warp-clang.dll
-def build_warp_clang(build_llvm, lib_name):
+def build_warp_clang(args, lib_name):
     try:
         cpp_sources = [
             "clang/clang.cpp",
@@ -162,7 +170,7 @@ def build_warp_clang(build_llvm, lib_name):
 
         clang_dll_path = os.path.join(build_path, f"bin/{lib_name}")
 
-        if build_llvm:
+        if args.build_llvm:
             # obtain Clang and LLVM libraries from the local build
             libpath = os.path.join(llvm_install_path, "lib")
         else:
@@ -192,7 +200,7 @@ def build_warp_clang(build_llvm, lib_name):
             cpp_paths=clang_cpp_paths,
             cu_path=None,
             libs=libs,
-            mode=warp.config.mode if build_llvm else "release",
+            mode=warp.config.mode if args.build_llvm else "release",
             verify_fp=warp.config.verify_fp,
             fast_math=warp.config.fast_math,
         )
