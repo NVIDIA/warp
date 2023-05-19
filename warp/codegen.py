@@ -1057,36 +1057,37 @@ class Adjoint:
 
         adj.end_while()
 
-    def emit_For(adj, node):
-        def is_num(a):
-            # simple constant
-            if isinstance(a, ast.Num):
-                return True
-            # expression of form -constant
-            elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
+    def is_num(adj, a):
+        # simple constant
+        if isinstance(a, ast.Num):
+            return True
+        # expression of form -constant
+        elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
+            return True
+        else:
+            # try and resolve the expression to an object
+            # e.g.: wp.constant in the globals scope
+            obj, path = adj.resolve_path(a)
+            if warp.types.is_int(obj):
                 return True
             else:
-                # try and resolve the expression to an object
-                # e.g.: wp.constant in the globals scope
-                obj, path = adj.resolve_path(a)
-                if warp.types.is_int(obj):
-                    return True
-                else:
-                    return False
+                return False
 
-        def eval_num(a):
-            if isinstance(a, ast.Num):
-                return a.n
-            elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
-                return -a.operand.n
+    def eval_num(adj, a):
+        if isinstance(a, ast.Num):
+            return a.n
+        elif isinstance(a, ast.UnaryOp) and isinstance(a.op, ast.USub) and isinstance(a.operand, ast.Num):
+            return -a.operand.n
+        else:
+            # try and resolve the expression to an object
+            # e.g.: wp.constant in the globals scope
+            obj, path = adj.resolve_path(a)
+            if warp.types.is_int(obj):
+                return obj
             else:
-                # try and resolve the expression to an object
-                # e.g.: wp.constant in the globals scope
-                obj, path = adj.resolve_path(a)
-                if warp.types.is_int(obj):
-                    return obj
-                else:
-                    return False
+                return False
+
+    def emit_For(adj, node):
 
         # try and unroll simple range() statements that use constant args
         unrolled = False
@@ -1097,7 +1098,7 @@ class Adjoint:
                 # if all range() arguments are numeric constants we will unroll
                 # note that this only handles trivial constants, it will not unroll
                 # constant compile-time expressions e.g.: range(0, 3*2)
-                if not is_num(a):
+                if not adj.is_num(a):
                     is_constant = False
                     break
 
@@ -1105,20 +1106,20 @@ class Adjoint:
                 # range(end)
                 if len(node.iter.args) == 1:
                     start = 0
-                    end = eval_num(node.iter.args[0])
+                    end = adj.eval_num(node.iter.args[0])
                     step = 1
 
                 # range(start, end)
                 elif len(node.iter.args) == 2:
-                    start = eval_num(node.iter.args[0])
-                    end = eval_num(node.iter.args[1])
+                    start = adj.eval_num(node.iter.args[0])
+                    end = adj.eval_num(node.iter.args[1])
                     step = 1
 
                 # range(start, end, step)
                 elif len(node.iter.args) == 3:
-                    start = eval_num(node.iter.args[0])
-                    end = eval_num(node.iter.args[1])
-                    step = eval_num(node.iter.args[2])
+                    start = adj.eval_num(node.iter.args[0])
+                    end = adj.eval_num(node.iter.args[1])
+                    step = adj.eval_num(node.iter.args[2])
 
                 # test if we're above max unroll count
                 max_iters = abs(end - start) // abs(step)
@@ -1223,8 +1224,9 @@ class Adjoint:
             if isinstance(kw.value, ast.Num):
                 return kw.value.n
             elif isinstance(kw.value, ast.Tuple):
-                return tuple(e.n for e in kw.value.elts)
-            return adj.resolve_path(kw.value)[0]
+                return tuple(adj.eval_num(e) for e in kw.value.elts)
+            else:
+                return adj.resolve_path(kw.value)[0]
 
         kwds = {kw.arg: kwval(kw) for kw in node.keywords}
 
@@ -1348,8 +1350,17 @@ class Adjoint:
 
             if is_array(target.type):
                 adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
+            
+            elif type_is_vector(target.type) or type_is_matrix(target.type):                         
+                adj.add_call(warp.context.builtin_functions["indexset"], [target, *indices, value])
+
+                if warp.config.verbose:
+                    lineno = adj.lineno + adj.fun_lineno
+                    line = adj.source.splitlines()[adj.lineno]
+                    print(f"Warning: mutating {node.targets[0].value.id} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n")
+
             else:
-                raise RuntimeError("Can only subscript assign array types")
+                raise RuntimeError("Can only subscript assign array, vector, and matrix types")
 
             return var
 

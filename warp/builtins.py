@@ -21,7 +21,7 @@ def sametype_value_func(default):
         if args is None:
             return default
         if not all(types_equal(args[0].type, a.type) for a in args[1:]):
-            raise RuntimeError(f"Input types must be exactly the same, {[a.type for a in args]}")
+            raise RuntimeError(f"Input types must be the same, found: {[type_repr(a.type) for a in args]}")
         return args[0].type
 
     return fn
@@ -2280,6 +2280,77 @@ add_builtin(
 )
 
 add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
+
+
+def vector_indexset_element_value_func(args, kwds, _):
+
+    vec = args[0]
+    index = args[1]
+    value = args[2]
+
+    if value.type is not vec.type._wp_scalar_type_:
+        raise RuntimeError(f"Trying to assign type '{type_repr(value.type)}' to element of a vector with type '{type_repr(vec.type)}'")
+
+    return None
+
+# implements vector[index] = value
+add_builtin(
+    "indexset",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    value_func=vector_indexset_element_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+
+
+def matrix_indexset_element_value_func(args, kwds, _):
+
+    mat = args[0]
+    row = args[1]
+    col = args[2]
+    value = args[3]
+
+    if value.type is not mat.type._wp_scalar_type_:
+        raise RuntimeError(f"Trying to assign type '{type_repr(value.type)}' to element of a matrix with type '{type_repr(mat.type)}'")
+
+    return None
+
+
+def matrix_indexset_row_value_func(args, kwds, _):
+
+    mat = args[0]
+    row = args[1]
+    value = args[2]
+
+    if value.type._shape_[0] != mat.type._shape_[1]:
+        raise RuntimeError(f"Trying to assign vector with length {value.type._length} to matrix with shape {mat.type._shape}, vector length must match the number of matrix columns.")
+
+    if value.type._wp_scalar_type_ is not mat.type._wp_scalar_type_:
+        raise RuntimeError(f"Trying to assign vector of type '{type_repr(value.type)}' to row of matrix of type '{type_repr(mat.type)}'")
+
+    return None
+
+
+# implements matrix[i] = row
+add_builtin(
+    "indexset",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    value_func=matrix_indexset_row_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+
+# implements matrix[i,j] = scalar
+add_builtin(
+    "indexset",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_func=matrix_indexset_element_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
 
 for t in scalar_types + vector_types:
     if "vec" in t.__name__ or "mat" in t.__name__:

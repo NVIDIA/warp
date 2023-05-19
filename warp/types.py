@@ -926,6 +926,19 @@ def type_typestr(dtype):
         raise Exception("Unknown ctype")
 
 
+# converts any known type to a human readable string, good for error messages, reporting etc
+def type_repr(t):
+
+    if is_array(t):
+        return str(f"array(ndim={t.ndim}, dtype={t.dtype})")
+    if type_is_vector(t):
+        return str(f"vector(length={t._shape_[0]}, dtype={t._wp_scalar_type_})")
+    elif type_is_matrix(t):
+        return str(f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={t._wp_scalar_type_})")
+    else:
+        return str(t)
+
+
 def type_is_int(t):
     if t == int:
         t = int32
@@ -938,6 +951,21 @@ def type_is_float(t):
         t = float32
 
     return t in float_types
+
+# returns True if the passed *type* is a vector
+def type_is_vector(t):
+    if hasattr(t, "_wp_generic_type_str_") and t._wp_generic_type_str_ == "vec_t":
+        return True
+    else:
+        return False
+
+
+# returns True if the passed *type* is a matrix
+def type_is_matrix(t):
+    if hasattr(t, "_wp_generic_type_str_") and t._wp_generic_type_str_ == "mat_t":
+        return True
+    else:
+        return False
 
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
@@ -959,6 +987,11 @@ def is_float(x):
 
 def is_value(x):
     return type_is_value(type(x))
+
+
+# returns true if the passed *instance* is one of the array types
+def is_array(a):
+    return isinstance(a, array_types)
 
 
 def types_equal(a, b, match_generic=False):
@@ -1938,8 +1971,6 @@ def indexedarray4d(*args, **kwargs):
 array_types = (array, indexedarray)
 
 
-def is_array(a):
-    return isinstance(a, array_types)
 
 
 class Bvh:

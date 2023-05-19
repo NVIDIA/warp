@@ -3889,6 +3889,48 @@ def test_constructors_default_precision():
             wp.expect_eq(custom[i, j], float(i) * 2.0 + float(j))
 
 
+@wp.kernel
+def test_matrix_mutation(expected: wp.types.matrix(shape=(10, 3), dtype=float)):
+
+    m = wp.matrix(shape=(10, 3), dtype=float)
+
+    # test direct element indexing
+    m[0, 0] = 1.0
+    m[0, 1] = 2.0
+    m[0, 2] = 3.0
+
+    # The nested indexing (matrix->vector->scalar) below does not 
+    # currently modify m because m[0] returns row vector by
+    # value rather than reference, this is different from NumPy 
+    # which always returns by ref. Not clear how we can support 
+    # this as well as auto-diff.
+
+    # m[0][1] = 2.0
+    # m[0][2] = 3.0
+
+    # test setting rows
+    for i in range(1, 10):
+        m[i] = m[i-1] + wp.vec3(1.0, 2.0, 3.0)
+
+    wp.expect_eq(m, expected)
+
+
+CONSTANT_SHAPE_ROWS = wp.constant(10)
+CONSTANT_SHAPE_COLS = wp.constant(10)
+
+# tests that we can use global constants in shape keyword argument 
+# for matrix constructor
+@wp.kernel
+def test_constructors_constant_shape():
+
+    m = wp.matrix(shape=(CONSTANT_SHAPE_ROWS, CONSTANT_SHAPE_COLS), dtype=float)
+
+    for i in range(CONSTANT_SHAPE_ROWS):
+        for j in range(CONSTANT_SHAPE_COLS):
+            m[i,j] = float(i*j)
+
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -3897,7 +3939,21 @@ def register(parent):
 
     add_kernel_test(TestMat, test_constructors_explicit_precision, dim=1, devices=devices)
     add_kernel_test(TestMat, test_constructors_default_precision, dim=1, devices=devices)
+    add_kernel_test(TestMat, test_constructors_constant_shape, dim=1, devices=devices)
 
+    mat103 = wp.types.matrix(shape=(10, 3), dtype=float)
+    add_kernel_test(TestMat, test_matrix_mutation, dim=1, inputs=[mat103(1.0, 2.0, 3.0,
+                                                                         2.0, 4.0, 6.0,
+                                                                         3.0, 6.0, 9.0,
+                                                                         4.0, 8.0, 12.0,
+                                                                         5.0, 10.0, 15.0,
+                                                                         6.0, 12.0, 18.0,
+                                                                         7.0, 14.0, 21.0,
+                                                                         8.0, 16.0, 24.0,
+                                                                         9.0, 18.0, 27.0,
+                                                                         10.0, 20.0, 30.0)], devices=devices)
+
+       
     for dtype in np_signed_int_types + np_float_types:
         add_function_test_register_kernel(
             TestMat, f"test_negation_{dtype.__name__}", test_negation, devices=devices, dtype=dtype
