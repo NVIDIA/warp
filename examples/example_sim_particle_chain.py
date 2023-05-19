@@ -14,6 +14,7 @@
 ###########################################################################
 
 import os
+import math
 
 import warp as wp
 import warp.sim
@@ -41,7 +42,9 @@ class Example:
 
         # chain
         for i in range(1, 10):
-            builder.add_particle((i, 1.0, 0.0), (0.0, 0.0, 0.0), 1.0)
+            radius = math.sqrt(i) * 0.2
+            mass = math.pi * radius * radius * radius
+            builder.add_particle((i, 1.0, 0.0), (0.0, 0.0, 0.0), mass, radius=radius)
             builder.add_spring(i - 1, i, 1.0e6, 0.0, 0)
 
         self.model = builder.finalize()

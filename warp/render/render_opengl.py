@@ -1950,7 +1950,7 @@ Instances: {len(self._instances)}"""
                 body_q = body_tf.to(self._device)
 
         vbo_transforms = self._instance_transform_cuda_buffer.map(dtype=wp.mat44, shape=(self._instance_count,))
-        
+
         wp.launch(
             update_vbo_transforms,
             dim=self._instance_count,
@@ -2021,8 +2021,14 @@ Instances: {len(self._instances)}"""
 
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, self._frame_pbo)
         gl.glBindTexture(gl.GL_TEXTURE_2D, self._frame_texture)
-        # read screen texture into PBO
-        gl.glGetTexImage(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, ctypes.c_void_p(0))
+        try:
+            # read screen texture into PBO
+            gl.glGetTexImage(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, ctypes.c_void_p(0))
+        except gl.GLException:
+            # this can happen if the window is closed/being moved to a different display
+            gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+            gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, 0)
+            return False
         gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, 0)
 
@@ -2050,6 +2056,7 @@ Instances: {len(self._instances)}"""
                 device=target_image.device,
             )
         pbo_buffer.unmap()
+        return True
 
     def get_tile_pixels(self, tile_id: int, target_image: wp.array):
         from pyglet import gl
@@ -2062,8 +2069,14 @@ Instances: {len(self._instances)}"""
         ), f"Shape of `target_image` array does not match {viewport[3]} x {viewport[2]} x 3"
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, self._frame_pbo)
         gl.glBindTexture(gl.GL_TEXTURE_2D, self._frame_texture)
-        # read screen texture into PBO
-        gl.glGetTexImage(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, gl.GL_FLOAT, ctypes.c_void_p(0))
+        try:
+            # read screen texture into PBO
+            gl.glGetTexImage(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, ctypes.c_void_p(0))
+        except gl.GLException:
+            # this can happen if the window is closed/being moved to a different display
+            gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+            gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, 0)
+            return False
         gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, 0)
 
@@ -2081,6 +2094,7 @@ Instances: {len(self._instances)}"""
             device=target_image.device,
         )
         pbo_buffer.unmap()
+        return True
 
     # def create_image_texture(self, file_path):
     #     from PIL import Image
@@ -2232,6 +2246,7 @@ Instances: {len(self._instances)}"""
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        up_axis: int = 1,
     ):
         """Add a capsule for visualization
 
@@ -2240,6 +2255,7 @@ Instances: {len(self._instances)}"""
             radius: The radius of the capsule
             half_height: The half height of the capsule
             name: A name for the USD prim on the stage
+            up_axis: The axis of the capsule that points up (0: x, 1: y, 2: z)
         """
         geo_hash = hash(("capsule", radius, half_height))
         if geo_hash in self._shape_geo_hash:
@@ -2247,7 +2263,7 @@ Instances: {len(self._instances)}"""
             if self.update_shape_instance(name, pos, rot):
                 return shape
         else:
-            vertices, indices = self._create_capsule_mesh(radius, half_height)
+            vertices, indices = self._create_capsule_mesh(radius, half_height, up_axis=up_axis)
             shape = self.register_shape(geo_hash, vertices, indices)
         if not is_template:
             body = self._resolve_body_id(parent_body)
@@ -2263,6 +2279,7 @@ Instances: {len(self._instances)}"""
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        up_axis: int = 1,
     ):
         """Add a cylinder for visualization
 
@@ -2271,6 +2288,7 @@ Instances: {len(self._instances)}"""
             radius: The radius of the cylinder
             half_height: The half height of the cylinder
             name: A name for the USD prim on the stage
+            up_axis: The axis of the cylinder that points up (0: x, 1: y, 2: z)
         """
         geo_hash = hash(("cylinder", radius, half_height))
         if geo_hash in self._shape_geo_hash:
@@ -2278,7 +2296,7 @@ Instances: {len(self._instances)}"""
             if self.update_shape_instance(name, pos, rot):
                 return shape
         else:
-            vertices, indices = self._create_cylinder_mesh(radius, half_height)
+            vertices, indices = self._create_cylinder_mesh(radius, half_height, up_axis=up_axis)
             shape = self.register_shape(geo_hash, vertices, indices)
         if not is_template:
             body = self._resolve_body_id(parent_body)
@@ -2294,6 +2312,7 @@ Instances: {len(self._instances)}"""
         half_height: float,
         parent_body: str = None,
         is_template: bool = False,
+        up_axis: int = 1,
     ):
         """Add a cone for visualization
 
@@ -2302,6 +2321,7 @@ Instances: {len(self._instances)}"""
             radius: The radius of the cone
             half_height: The half height of the cone
             name: A name for the USD prim on the stage
+            up_axis: The axis of the cone that points up (0: x, 1: y, 2: z)
         """
         geo_hash = hash(("cone", radius, half_height))
         if geo_hash in self._shape_geo_hash:
@@ -2309,7 +2329,7 @@ Instances: {len(self._instances)}"""
             if self.update_shape_instance(name, pos, rot):
                 return shape
         else:
-            vertices, indices = self._create_cone_mesh(radius, half_height)
+            vertices, indices = self._create_cone_mesh(radius, half_height, up_axis=up_axis)
             shape = self.register_shape(geo_hash, vertices, indices)
         if not is_template:
             body = self._resolve_body_id(parent_body)
@@ -2417,6 +2437,44 @@ Instances: {len(self._instances)}"""
             self.add_shape_instance(name, shape, body, pos, rot)
         return shape
 
+    def render_arrow(
+        self,
+        name: str,
+        pos: tuple,
+        rot: tuple,
+        base_radius: float,
+        base_height: float,
+        cap_radius: float = None,
+        cap_height: float = None,
+        parent_body: str = None,
+        is_template: bool = False,
+        up_axis: int = 1,
+        color: Tuple[float, float, float] = None,
+    ):
+        """Add a arrow for visualization
+
+        Args:
+            pos: The position of the arrow
+            base_radius: The radius of the cylindrical base of the arrow
+            base_height: The height of the cylindrical base of the arrow
+            cap_radius: The radius of the conical cap of the arrow
+            cap_height: The height of the conical cap of the arrow
+            name: A name for the USD prim on the stage
+            up_axis: The axis of the arrow that points up (0: x, 1: y, 2: z)
+        """
+        geo_hash = hash(("arrow", base_radius, base_height, cap_radius, cap_height))
+        if geo_hash in self._shape_geo_hash:
+            shape = self._shape_geo_hash[geo_hash]
+            if self.update_shape_instance(name, pos, rot):
+                return shape
+        else:
+            vertices, indices = self._create_arrow_mesh(base_radius, base_height, cap_radius, cap_height, up_axis=up_axis)
+            shape = self.register_shape(geo_hash, vertices, indices)
+        if not is_template:
+            body = self._resolve_body_id(parent_body)
+            self.add_shape_instance(name, shape, body, pos, rot, color1=color, color2=color)
+        return shape
+
     def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple):
         """
         Create a reference (instance) with the given name to the given path.
@@ -2434,7 +2492,7 @@ Instances: {len(self._instances)}"""
 
         Args:
             points: The points to render
-            radius: The radius of the points
+            radius: The radius of the points (scalar or list)
             colors: The colors of the points
             name: A name for the USD prim on the stage
         """
@@ -2449,13 +2507,18 @@ Instances: {len(self._instances)}"""
 
         if name not in self._shape_instancers:
             instancer = ShapeInstancer(self._shape_shader, self._device)
-            vertices, indices = self._create_sphere_mesh(radius)
+            radius_is_scalar = np.isscalar(radius)
+            if radius_is_scalar:
+                vertices, indices = self._create_sphere_mesh(radius)
+            else:
+                vertices, indices = self._create_sphere_mesh(1.0)
             if colors is None:
                 color = tab10_color_map(len(self._shape_geo_hash))
             else:
                 color = colors[0]
             instancer.register_shape(vertices, indices, color, color)
-            instancer.allocate_instances(np.array(points), colors1=colors, colors2=colors)
+            scalings = None if radius_is_scalar else np.tile(radius, (3, 1)).T
+            instancer.allocate_instances(np.array(points), colors1=colors, colors2=colors, scalings=scalings)
             self._shape_instancers[name] = instancer
         else:
             instancer = self._shape_instancers[name]
@@ -2466,7 +2529,7 @@ Instances: {len(self._instances)}"""
             wp.launch(
                 update_points_positions,
                 dim=len(points),
-                inputs=[wp_points, None],
+                inputs=[wp_points, instancer.instance_scalings],
                 outputs=[instancer.vbo_transforms],
                 device=self._device,
             )

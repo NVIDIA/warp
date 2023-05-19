@@ -321,6 +321,38 @@ add_builtin(
     group="Vector Math",
 )
 
+add_builtin(
+    "min",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_scalar_value_func,
+    doc="Return the minimum element of a vector.",
+    group="Vector Math",
+)
+add_builtin(
+    "max",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_scalar_value_func,
+    doc="Return the maximum element of a vector.",
+    group="Vector Math",
+)
+
+add_builtin(
+    "argmin",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=lambda args, kwds, _: warp.uint32,
+    doc="Return the index of the minimum element of a vector.",
+    group="Vector Math",
+    missing_grad=True,
+)
+add_builtin(
+    "argmax",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=lambda args, kwds, _: warp.uint32,
+    doc="Return the index of the maximum element of a vector.",
+    group="Vector Math",
+    missing_grad=True,
+)
+
 
 def value_func_outer(args, kwds, _):
     if args is None:
@@ -2485,6 +2517,26 @@ add_builtin(
     value_func=sametype_value_func(transformation(dtype=Scalar)),
     doc="",
     group="Operators",
+)
+
+# bitwise operators
+add_builtin(
+    "bit_and", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
+)
+add_builtin(
+    "bit_or", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
+)
+add_builtin(
+    "bit_xor", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
+)
+add_builtin(
+    "lshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
+)
+add_builtin(
+    "rshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
+)
+add_builtin(
+    "invert", input_types={"x": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
 )
 
 

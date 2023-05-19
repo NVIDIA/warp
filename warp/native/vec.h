@@ -492,6 +492,54 @@ inline CUDA_CALLABLE vec_t<Length,Type> max(vec_t<Length,Type> a, vec_t<Length,T
 }
 
 template<unsigned Length, typename Type>
+inline CUDA_CALLABLE Type min(vec_t<Length,Type> v)
+{
+    Type ret = v[0];
+    for( unsigned i=1; i < Length; ++i )
+    {
+        if (v[i] < ret)
+            ret = v[i];
+    }
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE Type max(vec_t<Length,Type> v)
+{
+    Type ret = v[0];
+    for( unsigned i=1; i < Length; ++i )
+    {
+        if (v[i] > ret)
+            ret = v[i];
+    }
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE unsigned argmin(vec_t<Length,Type> v)
+{
+    unsigned ret = 0;
+    for( unsigned i=1; i < Length; ++i )
+    {
+        if (v[i] < v[ret])
+            ret = i;
+    }
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE unsigned argmax(vec_t<Length,Type> v)
+{
+    unsigned ret = 0;
+    for( unsigned i=1; i < Length; ++i )
+    {
+        if (v[i] > v[ret])
+            ret = i;
+    }
+    return ret;
+}
+
+template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void expect_near(const vec_t<Length, Type>& actual, const vec_t<Length, Type>& expected, const Type& tolerance)
 {
     const Type diff(0);
@@ -824,6 +872,20 @@ inline CUDA_CALLABLE void adj_max(const vec_t<Length,Type> &a, const vec_t<Lengt
         else
             adj_b[i] += adj_ret[i];
     }
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_min(const vec_t<Length,Type> &v, vec_t<Length,Type>& adj_v, const Type &adj_ret)
+{
+    unsigned i = argmin(v);
+    adj_v[i] += adj_ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_max(const vec_t<Length,Type> &v, vec_t<Length,Type>& adj_v, const Type &adj_ret)
+{
+    unsigned i = argmax(v);
+    adj_v[i] += adj_ret;
 }
 
 // Do I need to specialize these for different lengths?

@@ -35,6 +35,7 @@ class Example:
         self.radius = 0.1
 
         builder = wp.sim.ModelBuilder()
+        builder.default_particle_radius = self.radius
 
         builder.add_particle_grid(
             dim_x=16,
@@ -51,7 +52,6 @@ class Example:
         )
 
         self.model = builder.finalize()
-        self.model.particle_radius = self.radius
         self.model.particle_kf = 25.0
 
         self.model.soft_contact_kd = 100.0
