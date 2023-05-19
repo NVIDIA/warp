@@ -8,21 +8,30 @@
 """A module for building simulation models and state.
 """
 
+from .inertia import transform_inertia
+from .inertia import compute_cone_inertia
+from .inertia import compute_cylinder_inertia
+from .inertia import compute_capsule_inertia
+from .inertia import compute_box_inertia
+from .inertia import compute_sphere_inertia
+from .inertia import compute_mesh_inertia
+
 import warp as wp
 import numpy as np
 
 import math
 import copy
 
-from typing import List, Optional, Tuple, Union
-
-from warp.types import Volume
+from typing import List, Optional, Tuple
 
 Vec3 = List[float]
 Vec4 = List[float]
 Quat = List[float]
 Mat33 = List[float]
 Transform = Tuple[Vec3, Quat]
+
+# Particle flags
+PARTICLE_FLAG_ACTIVE = wp.constant(wp.uint32(1 << 0))
 
 # Shape geometry types
 GEO_SPHERE = wp.constant(0)
@@ -34,22 +43,6 @@ GEO_MESH = wp.constant(5)
 GEO_SDF = wp.constant(6)
 GEO_PLANE = wp.constant(7)
 GEO_NONE = wp.constant(8)
-
-from .inertia import compute_mesh_inertia
-from .inertia import compute_sphere_inertia
-from .inertia import compute_box_inertia
-from .inertia import compute_capsule_inertia
-from .inertia import compute_cylinder_inertia
-from .inertia import compute_cone_inertia
-from .inertia import transform_inertia
-
-from warp.types import Volume
-
-Vec3 = List[float]
-Vec4 = List[float]
-Quat = List[float]
-Mat33 = List[float]
-Transform = Tuple[Vec3, Quat]
 
 # Types of joints linking rigid bodies
 JOINT_PRISMATIC = wp.constant(0)
@@ -66,6 +59,13 @@ JOINT_D6 = wp.constant(8)
 JOINT_MODE_LIMIT = wp.constant(0)
 JOINT_MODE_TARGET_POSITION = wp.constant(1)
 JOINT_MODE_TARGET_VELOCITY = wp.constant(2)
+
+
+def flag_to_int(flag):
+    """Converts a flag to an integer."""
+    if type(flag) in wp.types.int_types:
+        return flag.value
+    return int(flag)
 
 
 # Material properties pertaining to rigid shape contact dynamics
@@ -142,13 +142,14 @@ class Mesh:
         Args:
             vertices: List of vertices in the mesh
             indices: List of triangle indices, 3 per-element
-            compute_inertia: If True, the inertia tensor and center of mass will be computed assuming density of 1.0
+            compute_inertia: If True, the mass, inertia tensor and center of mass will be computed assuming density of 1.0
             is_solid: If True, the mesh is assumed to be a solid during inertia computation, otherwise it is assumed to be a hollow surface
         """
 
         self.vertices = vertices
         self.indices = indices
         self.is_solid = is_solid
+        self.has_inertia = compute_inertia
 
         if compute_inertia:
             self.mass, self.com, self.I, _ = compute_mesh_inertia(1.0, vertices, indices, is_solid=is_solid)
@@ -261,10 +262,32 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
         else:
             hollow = compute_cone_inertia(density, r - thickness, h - 2.0 * thickness)
             return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif type == GEO_MESH:
-        if src.mass > 0.0 and src.is_solid == is_solid:
-            s = scale[0]
-            return (density * src.mass * s * s * s, src.com, density * src.I * s * s * s * s * s)
+    elif (type == GEO_MESH):
+        if src.has_inertia and src.mass > 0.0 and src.is_solid == is_solid:
+            m, c, I = src.mass, src.com, src.I
+
+            s = np.array(scale[:3])
+            sx, sy, sz = s
+
+            mass_ratio = sx * sy * sz * density
+            m_new = m * mass_ratio
+
+            c_new = c * s
+
+            Ixx = I[0, 0] * (sy**2 + sz**2) / 2 * mass_ratio
+            Iyy = I[1, 1] * (sx**2 + sz**2) / 2 * mass_ratio
+            Izz = I[2, 2] * (sx**2 + sy**2) / 2 * mass_ratio
+            Ixy = I[0, 1] * sx * sy * mass_ratio
+            Ixz = I[0, 2] * sx * sz * mass_ratio
+            Iyz = I[1, 2] * sy * sz * mass_ratio
+
+            I_new = np.array([
+                [Ixx, Ixy, Ixz],
+                [Ixy, Iyy, Iyz],
+                [Ixz, Iyz, Izz]
+            ])
+
+            return m_new, c_new, I_new
         else:
             # fall back to computing inertia from mesh geometry
             vertices = np.array(src.vertices) * np.array(scale[:3])
@@ -288,6 +311,7 @@ class Model:
         particle_mass (wp.array): Particle mass, shape [particle_count], float
         particle_inv_mass (wp.array): Particle inverse mass, shape [particle_count], float
         particle_radius (wp.array): Particle radius, shape [particle_count], float
+        particle_max_radius (float): Maximum particle radius (useful for HashGrid construction)
         particle_ke (wp.array): Particle normal contact stiffness (used by SemiImplicitIntegrator), shape [particle_count], float
         particle_kd (wp.array): Particle normal contact damping (used by SemiImplicitIntegrator), shape [particle_count], float
         particle_kf (wp.array): Particle friction force stiffness (used by SemiImplicitIntegrator), shape [particle_count], float
@@ -295,6 +319,7 @@ class Model:
         particle_cohesion (wp.array): Particle cohesion strength, shape [particle_count], float
         particle_adhesion (wp.array): Particle adhesion strength, shape [particle_count], float
         particle_grid (HashGrid): HashGrid instance used for accelerated simulation of particle interactions
+        particle_flags (wp.array): Particle enabled state, shape [particle_count], bool
 
         shape_transform (wp.array): Rigid shape transforms, shape [shape_count, 7], float
         shape_body (wp.array): Rigid shape body index, shape [shape_count], int
@@ -373,16 +398,16 @@ class Model:
 
         articulation_start (wp.array): Articulation start index, shape [articulation_count], int
 
-        soft_contact_distance (float): Radius around particles for soft contact generation
         soft_contact_margin (float): Contact margin for generation of soft contacts
         soft_contact_ke (float): Stiffness of soft contacts (used by SemiImplicitIntegrator)
         soft_contact_kd (float): Damping of soft contacts (used by SemiImplicitIntegrator)
         soft_contact_kf (float): Stiffness of friction force in soft contacts (used by SemiImplicitIntegrator)
         soft_contact_mu (float): Friction coefficient of soft contacts
+        soft_contact_restitution (float): Restitution coefficient of soft contacts (used by XPBDIntegrator)
 
         rigid_contact_margin (float): Contact margin for generation of rigid body contacts
-        rigid_contact_torsional_friction (float): Torsional friction coefficient for rigid body contacts
-        rigid_contact_rolling_friction (float): Rolling friction coefficient for rigid body contacts
+        rigid_contact_torsional_friction (float): Torsional friction coefficient for rigid body contacts (used by XPBDIntegrator)
+        rigid_contact_rolling_friction (float): Rolling friction coefficient for rigid body contacts (used by XPBDIntegrator)
 
         ground (bool): Whether the ground plane and ground contacts are enabled
         ground_plane (wp.array): Ground plane 3D normal and offset, shape [4], float
@@ -420,7 +445,8 @@ class Model:
         self.particle_qd = None
         self.particle_mass = None
         self.particle_inv_mass = None
-        self.particle_radius = 0.0
+        self.particle_radius = None
+        self.particle_max_radius = 0.0
         self.particle_ke = 1.0e3
         self.particle_kd = 1.0e2
         self.particle_kf = 1.0e2
@@ -428,6 +454,7 @@ class Model:
         self.particle_cohesion = 0.0
         self.particle_adhesion = 0.0
         self.particle_grid = None
+        self.particle_flags = None
 
         self.shape_transform = None
         self.shape_body = None
@@ -505,12 +532,12 @@ class Model:
         self.joint_attach_ke = 1.0e3
         self.joint_attach_kd = 1.0e2
 
-        self.soft_contact_distance = 0.1
         self.soft_contact_margin = 0.2
         self.soft_contact_ke = 1.0e3
         self.soft_contact_kd = 10.0
         self.soft_contact_kf = 1.0e3
         self.soft_contact_mu = 0.5
+        self.soft_contact_restitution = 0.0
 
         self.rigid_contact_margin = None
         self.rigid_contact_torsional_friction = None
@@ -599,7 +626,8 @@ class Model:
 
     def find_shape_contact_pairs(self):
         # find potential contact pairs based on collision groups and collision mask (pairwise filtering)
-        import itertools, copy
+        import itertools
+        import copy
 
         filters = copy.copy(self.shape_collision_filter_pairs)
         for a, b in self.shape_collision_filter_pairs:
@@ -764,6 +792,28 @@ class Model:
         """Maximum number of soft contacts that can be registered"""
         return len(self.soft_contact_particle)
 
+    @property
+    def soft_contact_distance(self):
+        import warnings
+        warnings.warn(
+            "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
+            "Particles now have individual radii, returning `Model.particle_max_radius`.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.particle_max_radius
+
+    @soft_contact_distance.setter
+    def soft_contact_distance(self, value):
+        import warnings
+        warnings.warn(
+            "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
+            "Particles now have individual radii, setting `Model.particle_radius` array to given value.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.particle_radius.fill_(value)
+
 
 class ModelBuilder:
     """A helper class for building simulation models at runtime.
@@ -809,6 +859,10 @@ class ModelBuilder:
         desired.
     """
 
+    # Default particle settings
+    default_particle_radius = 0.1
+
+    # Default triangle soft mesh settings
     default_tri_ke = 100.0
     default_tri_ka = 100.0
     default_tri_kd = 10.0
@@ -819,7 +873,7 @@ class ModelBuilder:
     default_edge_ke = 100.0
     default_edge_kd = 0.0
 
-    # Default shape contact material properties
+    # Default rigid shape contact material properties
     default_shape_ke = 1.0e5
     default_shape_kd = 1000.0
     default_shape_kf = 1000.0
@@ -841,6 +895,8 @@ class ModelBuilder:
         self.particle_q = []
         self.particle_qd = []
         self.particle_mass = []
+        self.particle_radius = []
+        self.particle_flags = []
 
         # shapes (each shape has an entry in these arrays)
         # transform from shape to body
@@ -1830,6 +1886,7 @@ class ModelBuilder:
         mu: float = default_shape_mu,
         restitution: float = default_shape_restitution,
         thickness: float = 0.0,
+        has_ground_collision: bool = False,
     ):
         """
         Adds a plane collision shape.
@@ -1849,6 +1906,7 @@ class ModelBuilder:
             mu: The coefficient of friction
             restitution: The coefficient of restitution
             thickness: The thickness of the plane (0 by default) for collision handling
+            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
 
         """
         if pos is None or rot is None:
@@ -1865,7 +1923,11 @@ class ModelBuilder:
                 axis = c / np.linalg.norm(c)
                 rot = wp.quat_from_axis_angle(axis, angle)
         scale = (width, length, 0.0)
-        return self._add_shape(body, pos, rot, GEO_PLANE, scale, None, 0.0, ke, kd, kf, mu, restitution, thickness)
+
+        return self._add_shape(
+            body, pos, rot, GEO_PLANE, scale,
+            None, 0.0, ke, kd, kf, mu, restitution, thickness,
+            has_ground_collision=has_ground_collision)
 
     def add_shape_sphere(
         self,
@@ -1881,6 +1943,7 @@ class ModelBuilder:
         restitution: float = default_shape_restitution,
         is_solid: bool = True,
         thickness: float = default_geo_thickness,
+        has_ground_collision: bool = True,
     ):
         """Adds a sphere collision shape to a body.
 
@@ -1897,25 +1960,14 @@ class ModelBuilder:
             restitution: The coefficient of restitution
             is_solid: Whether the sphere is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow sphere, and for collision handling
+            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
 
         """
 
         return self._add_shape(
-            body,
-            pos,
-            rot,
-            GEO_SPHERE,
-            (radius, 0.0, 0.0, 0.0),
-            None,
-            density,
-            ke,
-            kd,
-            kf,
-            mu,
-            restitution,
-            thickness + radius,
-            is_solid,
-        )
+            body, pos, rot, GEO_SPHERE, (radius, 0.0, 0.0, 0.0),
+            None, density, ke, kd, kf, mu, restitution, thickness + radius, is_solid,
+            has_ground_collision=has_ground_collision)
 
     def add_shape_box(
         self,
@@ -1933,6 +1985,7 @@ class ModelBuilder:
         restitution: float = default_shape_restitution,
         is_solid: bool = True,
         thickness: float = default_geo_thickness,
+        has_ground_collision: bool = True,
     ):
         """Adds a box collision shape to a body.
 
@@ -1951,12 +2004,14 @@ class ModelBuilder:
             restitution: The coefficient of restitution
             is_solid: Whether the box is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow box, and for collision handling
+            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
 
         """
 
         return self._add_shape(
-            body, pos, rot, GEO_BOX, (hx, hy, hz, 0.0), None, density, ke, kd, kf, mu, restitution, thickness, is_solid
-        )
+            body, pos, rot, GEO_BOX, (hx, hy, hz, 0.0),
+            None, density, ke, kd, kf, mu, restitution, thickness, is_solid,
+            has_ground_collision=has_ground_collision)
 
     def add_shape_capsule(
         self,
@@ -1974,6 +2029,7 @@ class ModelBuilder:
         restitution: float = default_shape_restitution,
         is_solid: bool = True,
         thickness: float = default_geo_thickness,
+        has_ground_collision: bool = True,
     ):
         """Adds a capsule collision shape to a body.
 
@@ -1992,6 +2048,7 @@ class ModelBuilder:
             restitution: The coefficient of restitution
             is_solid: Whether the capsule is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow capsule, and for collision handling
+            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
 
         """
 
@@ -2001,22 +2058,11 @@ class ModelBuilder:
             q = wp.mul(rot, wp.quat(0.0, 0.0, -sqh, sqh))
         elif up_axis == 2:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
+
         return self._add_shape(
-            body,
-            pos,
-            q,
-            GEO_CAPSULE,
-            (radius, half_height, 0.0, 0.0),
-            None,
-            density,
-            ke,
-            kd,
-            kf,
-            mu,
-            restitution,
-            thickness + radius,
-            is_solid,
-        )
+            body, pos, q, GEO_CAPSULE, (radius, half_height, 0.0, 0.0),
+            None, density, ke, kd, kf, mu, restitution, thickness + radius, is_solid,
+            has_ground_collision=has_ground_collision)
 
     def add_shape_cylinder(
         self,
@@ -2034,6 +2080,7 @@ class ModelBuilder:
         restitution: float = default_shape_restitution,
         is_solid: bool = True,
         thickness: float = default_geo_thickness,
+        has_ground_collision: bool = True,
     ):
         """Adds a cylinder collision shape to a body.
 
@@ -2052,6 +2099,7 @@ class ModelBuilder:
             restitution: The coefficient of restitution
             is_solid: Whether the cylinder is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow cylinder, and for collision handling
+            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
 
         """
 
@@ -2061,22 +2109,11 @@ class ModelBuilder:
             q = wp.mul(rot, wp.quat(0.0, 0.0, -sqh, sqh))
         elif up_axis == 2:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
+
         return self._add_shape(
-            body,
-            pos,
-            q,
-            GEO_CYLINDER,
-            (radius, half_height, 0.0, 0.0),
-            None,
-            density,
-            ke,
-            kd,
-            kf,
-            mu,
-            restitution,
-            thickness,
-            is_solid,
-        )
+            body, pos, q, GEO_CYLINDER, (radius, half_height, 0.0, 0.0),
+            None, density, ke, kd, kf, mu, restitution, thickness, is_solid,
+            has_ground_collision=has_ground_collision)
 
     def add_shape_cone(
         self,
@@ -2094,6 +2131,7 @@ class ModelBuilder:
         restitution: float = default_shape_restitution,
         is_solid: bool = True,
         thickness: float = default_geo_thickness,
+        has_ground_collision: bool = True,
     ):
         """Adds a cone collision shape to a body.
 
@@ -2112,6 +2150,7 @@ class ModelBuilder:
             restitution: The coefficient of restitution
             is_solid: Whether the cone is solid or hollow
             thickness: Thickness to use for computing inertia of a hollow cone, and for collision handling
+            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
 
         """
 
@@ -2121,22 +2160,11 @@ class ModelBuilder:
             q = wp.mul(rot, wp.quat(0.0, 0.0, -sqh, sqh))
         elif up_axis == 2:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
+
         return self._add_shape(
-            body,
-            pos,
-            q,
-            GEO_CONE,
-            (radius, half_height, 0.0, 0.0),
-            None,
-            density,
-            ke,
-            kd,
-            kf,
-            mu,
-            restitution,
-            thickness,
-            is_solid,
-        )
+            body, pos, q, GEO_CONE, (radius, half_height, 0.0, 0.0),
+            None, density, ke, kd, kf, mu, restitution, thickness, is_solid,
+            has_ground_collision=has_ground_collision)
 
     def add_shape_mesh(
         self,
@@ -2153,6 +2181,7 @@ class ModelBuilder:
         restitution: float = default_shape_restitution,
         is_solid: bool = True,
         thickness: float = default_geo_thickness,
+        has_ground_collision: bool = True,
     ):
         """Adds a triangle mesh collision shape to a body.
 
@@ -2170,25 +2199,15 @@ class ModelBuilder:
             restitution: The coefficient of restitution
             is_solid: If True, the mesh is solid, otherwise it is a hollow surface with the given wall thickness
             thickness: Thickness to use for computing inertia of a hollow mesh, and for collision handling
+            has_ground_collision: If True, the mesh will collide with the ground plane if `Model.ground` is True
 
         """
 
         return self._add_shape(
-            body,
-            pos,
-            rot,
-            GEO_MESH,
-            (scale[0], scale[1], scale[2], 0.0),
-            mesh,
-            density,
-            ke,
-            kd,
-            kf,
-            mu,
-            restitution,
-            thickness,
-            is_solid,
-        )
+            body, pos, rot, GEO_MESH, (scale[0], scale[1], scale[2], 0.0),
+            mesh, density, ke, kd, kf, mu,
+            restitution, thickness, is_solid,
+            has_ground_collision=has_ground_collision)
 
     def _shape_radius(self, type, scale, src):
         """
@@ -2201,7 +2220,7 @@ class ModelBuilder:
         elif type == GEO_CAPSULE or type == GEO_CYLINDER or type == GEO_CONE:
             return scale[0] + scale[1]
         elif type == GEO_MESH:
-            vmax = np.max(np.abs(src.vertices), axis=0) * scale[0]
+            vmax = np.max(np.abs(src.vertices), axis=0) * np.max(scale)
             return np.linalg.norm(vmax)
         elif type == GEO_PLANE:
             if scale[0] > 0.0 and scale[1] > 0.0:
@@ -2273,13 +2292,15 @@ class ModelBuilder:
         return shape
 
     # particles
-    def add_particle(self, pos: Vec3, vel: Vec3, mass: float) -> int:
+    def add_particle(self, pos: Vec3, vel: Vec3, mass: float, radius: float = None, flags: wp.uint32 = PARTICLE_FLAG_ACTIVE) -> int:
         """Adds a single particle to the model
 
         Args:
             pos: The initial position of the particle
             vel: The initial velocity of the particle
             mass: The mass of the particle
+            flags: The flags that control the dynamical behavior of the particle, see PARTICLE_FLAG_* constants
+            radius: The radius of the particle used in collision handling. If None, the radius is set to the default value (default_particle_radius).
 
         Note:
             Set the mass equal to zero to create a 'kinematic' particle that does is not subject to dynamics.
@@ -2290,6 +2311,10 @@ class ModelBuilder:
         self.particle_q.append(pos)
         self.particle_qd.append(vel)
         self.particle_mass.append(mass)
+        if radius is None:
+            radius = self.default_particle_radius
+        self.particle_radius.append(radius)
+        self.particle_flags.append(flags)
 
         return len(self.particle_q) - 1
 
@@ -3191,6 +3216,14 @@ class ModelBuilder:
             m.particle_qd = wp.array(self.particle_qd, dtype=wp.vec3, requires_grad=requires_grad)
             m.particle_mass = wp.array(self.particle_mass, dtype=wp.float32, requires_grad=requires_grad)
             m.particle_inv_mass = wp.array(particle_inv_mass, dtype=wp.float32, requires_grad=requires_grad)
+            m.particle_radius = wp.array(self.particle_radius, dtype=wp.float32, requires_grad=requires_grad)
+            m.particle_flags = wp.array([flag_to_int(f) for f in self.particle_flags], dtype=wp.uint32)
+            m.particle_max_radius = np.max(self.particle_radius) if len(self.particle_radius) > 0 else 0.0
+
+            # hash-grid for particle interactions
+            m.particle_grid = wp.HashGrid(128, 128, 128)
+            if len(self.particle_q) > 0:
+                m.particle_grid.build(m.particle_q, 2.0 * m.particle_max_radius)
 
             # ---------------------
             # collision geometry
@@ -3370,9 +3403,6 @@ class ModelBuilder:
 
             m.joint_dof_count = self.joint_dof_count
             m.joint_coord_count = self.joint_coord_count
-
-            # hash-grid for particle interactions
-            m.particle_grid = wp.HashGrid(128, 128, 128)
 
             # store refs to geometry
             m.geo_meshes = self.geo_meshes

@@ -640,11 +640,16 @@ class UsdRenderer:
 
         instancer_path = self.root.GetPath().AppendChild(name)
         instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
+        radius_is_scalar = np.isscalar(radius)
         if not instancer:
             if colors is None:
                 instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
                 instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
-                instancer_sphere.GetRadiusAttr().Set(radius)
+                if radius_is_scalar:
+                    instancer_sphere.GetRadiusAttr().Set(radius)
+                else:
+                    instancer_sphere.GetRadiusAttr().Set(1.0)
+                    instancer.GetScalesAttr().Set(np.tile(radius, (3, 1)).T)
 
                 instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
                 instancer.CreateProtoIndicesAttr().Set([0] * len(points))
@@ -658,7 +663,10 @@ class UsdRenderer:
                 instancer = UsdGeom.Points.Define(self.stage, instancer_path)
 
                 instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
-                instancer.GetWidthsAttr().Set([radius] * len(points))
+                if radius_is_scalar:
+                    instancer.GetWidthsAttr().Set([radius] * len(points))
+                else:
+                    instancer.GetWidthsAttr().Set(radius)
 
         if colors is None:
             instancer.GetPositionsAttr().Set(points, self.time)

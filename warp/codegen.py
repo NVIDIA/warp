@@ -50,6 +50,13 @@ builtin_operators[ast.LtE] = "<="
 builtin_operators[ast.Eq] = "=="
 builtin_operators[ast.NotEq] = "!="
 
+builtin_operators[ast.BitAnd] = "bit_and"
+builtin_operators[ast.BitOr] = "bit_or"
+builtin_operators[ast.BitXor] = "bit_xor"
+builtin_operators[ast.Invert] = "invert"
+builtin_operators[ast.LShift] = "lshift"
+builtin_operators[ast.RShift] = "rshift"
+
 
 def get_annotations(obj: Any) -> Mapping[str, Any]:
     """Alternative to `inspect.get_annotations()` for Python 3.9 and older."""
@@ -1805,6 +1812,10 @@ def constant_str(value):
 
         # construct value from initializer array, e.g. wp::initializer_array<4,wp::float32>{1.0, 2.0, 3.0, 4.0}
         return f"{dtypestr}{{{', '.join(initlist)}}}"
+    
+    elif value_type in warp.types.scalar_types:
+        # make sure we emit the value of objects, e.g. uint32
+        return str(value.value)
 
     else:
         # otherwise just convert constant to string

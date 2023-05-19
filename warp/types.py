@@ -2862,6 +2862,9 @@ class HashGrid:
             self.id = runtime.core.hash_grid_create_host(dim_x, dim_y, dim_z)
         else:
             self.id = runtime.core.hash_grid_create_device(self.device.context, dim_x, dim_y, dim_z)
+        
+        # indicates whether the grid data has been reserved for use by a kernel
+        self.reserved = False
 
     def build(self, points, radius):
         """Updates the hash grid data structure.
@@ -2882,6 +2885,7 @@ class HashGrid:
             runtime.core.hash_grid_update_host(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
         else:
             runtime.core.hash_grid_update_device(self.id, radius, ctypes.cast(points.ptr, ctypes.c_void_p), len(points))
+        self.reserved = True
 
     def reserve(self, num_points):
         from warp.context import runtime
@@ -2890,6 +2894,7 @@ class HashGrid:
             runtime.core.hash_grid_reserve_host(self.id, num_points)
         else:
             runtime.core.hash_grid_reserve_device(self.id, num_points)
+        self.reserved = True
 
     def __del__(self):
         try:
@@ -3002,6 +3007,10 @@ def type_is_generic(t):
                 return True
     else:
         return False
+
+
+def type_is_generic_scalar(t):
+    return t in (Scalar, Float, Int)
 
 
 def type_matches_template(arg_type, template_type):

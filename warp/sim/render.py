@@ -228,7 +228,7 @@ def CreateSimRenderer(renderer):
                 particle_q = state.particle_q.numpy()
 
                 # render particles
-                self.render_points("particles", particle_q, radius=self.model.soft_contact_distance)
+                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy())
 
                 # render tris
                 if self.model.tri_count:

@@ -48,6 +48,7 @@ class Cloth:
 
     def __init__(self, render=True, profile=False, adapter=None):
         builder = wp.sim.ModelBuilder()
+        builder.default_particle_radius = 0.01
 
         dim_x = 16
         dim_y = 16
@@ -73,9 +74,7 @@ class Cloth:
 
         self.model = builder.finalize(self.device)
         self.model.ground = False
-        # soft contact distance determines the size of the rendered particles
-        self.model.soft_contact_distance = 0.01
-        
+
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         self.target = (8.0, 0.0, 0.0)
