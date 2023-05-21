@@ -1932,6 +1932,16 @@ add_builtin(
 
 add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout", export=False, group="Utility")
 
+add_builtin(
+    "breakpoint",
+    input_types={},
+    doc="Debugger breakpoint",
+    export=False,
+    group="Utility",
+    namespace="",
+    native_func="__debugbreak",
+)
+
 # helpers
 add_builtin(
     "tid",
