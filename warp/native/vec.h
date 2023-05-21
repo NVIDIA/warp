@@ -377,7 +377,7 @@ template<unsigned Length, typename Type>
 inline CUDA_CALLABLE Type index(const vec_t<Length, Type> & a, int idx)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > Length)
+    if (idx < 0 || idx >= Length)
     {
         printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
@@ -388,10 +388,10 @@ inline CUDA_CALLABLE Type index(const vec_t<Length, Type> & a, int idx)
 }
 
 template<unsigned Length, typename Type>
-inline CUDA_CALLABLE void indexset(vec_t<Length, Type>& v, int idx, const Type& value)
+inline CUDA_CALLABLE void indexset(vec_t<Length, Type>& v, int idx, Type value)
 {
 #ifndef NDEBUG
-    if (idx < 0 || idx > Length)
+    if (idx < 0 || idx >= Length)
     {
         printf("vec store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);

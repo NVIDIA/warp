@@ -304,12 +304,12 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE Type index(const mat_t<Rows,Cols,Type>& m, int row, int col)
 {
 #ifndef NDEBUG
-    if (row < 0 || row > Rows)
+    if (row < 0 || row >= Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col > Cols)
+    if (col < 0 || col >= Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
@@ -319,10 +319,10 @@ inline CUDA_CALLABLE Type index(const mat_t<Rows,Cols,Type>& m, int row, int col
 }
 
 template<unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void indexset(mat_t<Rows,Cols,Type>& m, int row, const vec_t<Cols, Type>& value)
+inline CUDA_CALLABLE void indexset(mat_t<Rows,Cols,Type>& m, int row, vec_t<Cols, Type> value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row > Rows)
+    if (row < 0 || row >= Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
@@ -337,12 +337,12 @@ template<unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void indexset(mat_t<Rows,Cols,Type>& m, int row, int col, Type value)
 {
 #ifndef NDEBUG
-    if (row < 0 || row > Rows)
+    if (row < 0 || row >= Rows)
     {
         printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
         assert(0);
     }
-    if (col < 0 || col > Cols)
+    if (col < 0 || col >= Cols)
     {
         printf("mat col index %d out of bounds at %s %d\n", col, __FILE__, __LINE__);
         assert(0);
