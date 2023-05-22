@@ -135,6 +135,7 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
     grad_ptr = None
     if grad is not None:
         import torch
+
         if isinstance(grad, warp.types.array):
             grad_ptr = grad.ptr
         elif isinstance(grad, torch.Tensor):

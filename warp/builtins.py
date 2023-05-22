@@ -2325,15 +2325,17 @@ add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidde
 
 
 def vector_indexset_element_value_func(args, kwds, _):
-
     vec = args[0]
     index = args[1]
     value = args[2]
 
     if value.type is not vec.type._wp_scalar_type_:
-        raise RuntimeError(f"Trying to assign type '{type_repr(value.type)}' to element of a vector with type '{type_repr(vec.type)}'")
+        raise RuntimeError(
+            f"Trying to assign type '{type_repr(value.type)}' to element of a vector with type '{type_repr(vec.type)}'"
+        )
 
     return None
+
 
 # implements vector[index] = value
 add_builtin(
@@ -2347,29 +2349,33 @@ add_builtin(
 
 
 def matrix_indexset_element_value_func(args, kwds, _):
-
     mat = args[0]
     row = args[1]
     col = args[2]
     value = args[3]
 
     if value.type is not mat.type._wp_scalar_type_:
-        raise RuntimeError(f"Trying to assign type '{type_repr(value.type)}' to element of a matrix with type '{type_repr(mat.type)}'")
+        raise RuntimeError(
+            f"Trying to assign type '{type_repr(value.type)}' to element of a matrix with type '{type_repr(mat.type)}'"
+        )
 
     return None
 
 
 def matrix_indexset_row_value_func(args, kwds, _):
-
     mat = args[0]
     row = args[1]
     value = args[2]
 
     if value.type._shape_[0] != mat.type._shape_[1]:
-        raise RuntimeError(f"Trying to assign vector with length {value.type._length} to matrix with shape {mat.type._shape}, vector length must match the number of matrix columns.")
+        raise RuntimeError(
+            f"Trying to assign vector with length {value.type._length} to matrix with shape {mat.type._shape}, vector length must match the number of matrix columns."
+        )
 
     if value.type._wp_scalar_type_ is not mat.type._wp_scalar_type_:
-        raise RuntimeError(f"Trying to assign vector of type '{type_repr(value.type)}' to row of matrix of type '{type_repr(mat.type)}'")
+        raise RuntimeError(
+            f"Trying to assign vector of type '{type_repr(value.type)}' to row of matrix of type '{type_repr(mat.type)}'"
+        )
 
     return None
 
@@ -2511,7 +2517,7 @@ add_builtin(
 add_builtin(
     "expect_near",
     input_types={"arg1": Float, "arg2": Float, "tolerance": Float},
-    defaults={"tolerance": 1.e-6},
+    defaults={"tolerance": 1.0e-6},
     value_type=None,
     doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude",
     group="Utility",
@@ -2602,24 +2608,12 @@ add_builtin(
 )
 
 # bitwise operators
-add_builtin(
-    "bit_and", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
-)
-add_builtin(
-    "bit_or", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
-)
-add_builtin(
-    "bit_xor", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
-)
-add_builtin(
-    "lshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
-)
-add_builtin(
-    "rshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
-)
-add_builtin(
-    "invert", input_types={"x": Int}, value_func=sametype_value_func(Int), doc="", group="Operators"
-)
+add_builtin("bit_and", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("bit_or", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("bit_xor", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("lshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("rshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("invert", input_types={"x": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
 
 
 def scalar_mul_value_func(default):

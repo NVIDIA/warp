@@ -193,14 +193,11 @@ def test_multi_valued_func(test, device):
 
 @wp.kernel
 def test_func_defaults():
-     
     # test default as expected
-    wp.expect_near(1.0, 1.0 + 1.e-6)
+    wp.expect_near(1.0, 1.0 + 1.0e-6)
 
     # test that changing tolerance still works
     wp.expect_near(1.0, 1.1, 0.5)
-
-
 
 
 def register(parent):

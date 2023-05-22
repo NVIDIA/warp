@@ -527,7 +527,6 @@ class Adjoint:
 
                 # skip type checking for variadic functions
                 if not f.variadic:
-
                     # check argument counts match are compatible (may be some default args)
                     if len(f.input_types) < len(args):
                         match = False
@@ -535,7 +534,6 @@ class Adjoint:
 
                     # check argument types equal
                     for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
-                        
                         # if arg type registered as Any, treat as
                         # template allowing any type to match
                         if arg_type == Any:
@@ -555,7 +553,6 @@ class Adjoint:
                             if not types_equal(arg_type, args[i].type, match_generic=True):
                                 match = False
                                 break
-
 
                 # check output dimensions match expectations
                 if min_outputs:
@@ -616,7 +613,6 @@ class Adjoint:
                     match = False
                     break
 
-
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             adj.builder.build_function(func)
@@ -669,7 +665,7 @@ class Adjoint:
                     adj.add_reverse(reverse_call)
 
             return output
-        
+
         else:
             # handle multiple value functions
 
@@ -689,7 +685,6 @@ class Adjoint:
                 return output[0]
 
             return output
-
 
     def add_return(adj, var):
         if var is None or len(var) == 0:
@@ -1115,7 +1110,6 @@ class Adjoint:
                 return False
 
     def emit_For(adj, node):
-
         # try and unroll simple range() statements that use constant args
         unrolled = False
 
@@ -1377,14 +1371,16 @@ class Adjoint:
 
             if is_array(target.type):
                 adj.add_call(warp.context.builtin_functions["store"], [target, *indices, value])
-            
-            elif type_is_vector(target.type) or type_is_matrix(target.type):                         
+
+            elif type_is_vector(target.type) or type_is_matrix(target.type):
                 adj.add_call(warp.context.builtin_functions["indexset"], [target, *indices, value])
 
                 if warp.config.verbose:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source.splitlines()[adj.lineno]
-                    print(f"Warning: mutating {node.targets[0].value.id} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n")
+                    print(
+                        f"Warning: mutating {node.targets[0].value.id} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
+                    )
 
             else:
                 raise RuntimeError("Can only subscript assign array, vector, and matrix types")
@@ -1425,9 +1421,9 @@ class Adjoint:
             raise RuntimeError("Error, unsupported assignment statement.")
 
     def emit_Return(adj, node):
-        if (node.value is None):
+        if node.value is None:
             var = None
-        elif (isinstance(node.value, ast.Tuple)):
+        elif isinstance(node.value, ast.Tuple):
             var = tuple(adj.eval(arg) for arg in node.value.elts)
         else:
             var = (adj.eval(node.value),)
@@ -1436,7 +1432,9 @@ class Adjoint:
             old_ctypes = tuple(v.ctype() for v in adj.return_var)
             new_ctypes = tuple(v.ctype() for v in var)
             if old_ctypes != new_ctypes:
-                raise TypeError(f"Error, function returned different types, previous: [{', '.join(old_ctypes)}], new [{', '.join(new_ctypes)}]")
+                raise TypeError(
+                    f"Error, function returned different types, previous: [{', '.join(old_ctypes)}], new [{', '.join(new_ctypes)}]"
+                )
         else:
             adj.return_var = var
 
@@ -1832,7 +1830,7 @@ def constant_str(value):
 
         # construct value from initializer array, e.g. wp::initializer_array<4,wp::float32>{1.0, 2.0, 3.0, 4.0}
         return f"{dtypestr}{{{', '.join(initlist)}}}"
-    
+
     elif value_type in warp.types.scalar_types:
         # make sure we emit the value of objects, e.g. uint32
         return str(value.value)
@@ -2001,7 +1999,7 @@ def codegen_func(adj, device="cpu"):
     else:
         return_type = "void"
 
-    has_multiple_outputs = (adj.return_var is not None and len(adj.return_var) != 1)
+    has_multiple_outputs = adj.return_var is not None and len(adj.return_var) != 1
 
     forward_args = []
     reverse_args = []

@@ -820,14 +820,16 @@ class shape_t(ctypes.Structure):
     def __init__(self):
         pass
 
-class array_t(ctypes.Structure): 
 
-    _fields_ = [("data", ctypes.c_uint64),
-                ("grad", ctypes.c_uint64),
-                ("shape", ctypes.c_int32*ARRAY_MAX_DIMS),
-                ("strides", ctypes.c_int32*ARRAY_MAX_DIMS),
-                ("ndim", ctypes.c_int32)]
-    
+class array_t(ctypes.Structure):
+    _fields_ = [
+        ("data", ctypes.c_uint64),
+        ("grad", ctypes.c_uint64),
+        ("shape", ctypes.c_int32 * ARRAY_MAX_DIMS),
+        ("strides", ctypes.c_int32 * ARRAY_MAX_DIMS),
+        ("ndim", ctypes.c_int32),
+    ]
+
     def __init__(self, data=0, grad=0, ndim=0, shape=(0,), strides=(0,)):
         self.data = data
         self.grad = grad
@@ -928,7 +930,6 @@ def type_typestr(dtype):
 
 # converts any known type to a human readable string, good for error messages, reporting etc
 def type_repr(t):
-
     if is_array(t):
         return str(f"array(ndim={t.ndim}, dtype={t.dtype})")
     if type_is_vector(t):
@@ -951,6 +952,7 @@ def type_is_float(t):
         t = float32
 
     return t in float_types
+
 
 # returns True if the passed *type* is a vector
 def type_is_vector(t):
@@ -1510,7 +1512,9 @@ class array(Array):
             with warp.ScopedStream(self.device.null_stream):
                 self.device.memset(self.grad_ptr, 0, num_bytes)
 
-        self._grad = array(ptr=self.grad_ptr, shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False, owner=False)
+        self._grad = array(
+            ptr=self.grad_ptr, shape=self.shape, dtype=self.dtype, device=self.device, requires_grad=False, owner=False
+        )
         # trigger re-creation of C-representation
         self.ctype = None
 
@@ -1817,9 +1821,7 @@ class indexedarray(Generic[T]):
     # (initialized when needed)
     _vars = None
 
-    def __init__(
-        self, data: array = None, indices: Union[array, List[array]] = None, dtype=None, ndim=None
-    ):
+    def __init__(self, data: array = None, indices: Union[array, List[array]] = None, dtype=None, ndim=None):
         # canonicalize types
         if dtype is not None:
             if dtype == int:
@@ -1971,8 +1973,6 @@ def indexedarray4d(*args, **kwargs):
 array_types = (array, indexedarray)
 
 
-
-
 class Bvh:
     def __init__(self, lowers, uppers):
         """Class representing a bounding volume hierarchy.
@@ -2090,7 +2090,8 @@ class Mesh:
                 velocities.__ctype__() if velocities else array().__ctype__(),
                 indices.__ctype__(),
                 int(len(points)),
-                int(indices.size / 3))
+                int(indices.size / 3),
+            )
         else:
             self.id = runtime.core.mesh_create_device(
                 self.device.context,
@@ -2098,7 +2099,8 @@ class Mesh:
                 velocities.__ctype__() if velocities else array().__ctype__(),
                 indices.__ctype__(),
                 int(len(points)),
-                int(indices.size / 3))
+                int(indices.size / 3),
+            )
 
     def __del__(self):
         try:
@@ -2862,7 +2864,7 @@ class HashGrid:
             self.id = runtime.core.hash_grid_create_host(dim_x, dim_y, dim_z)
         else:
             self.id = runtime.core.hash_grid_create_device(self.device.context, dim_x, dim_y, dim_z)
-        
+
         # indicates whether the grid data has been reserved for use by a kernel
         self.reserved = False
 

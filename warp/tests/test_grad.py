@@ -474,18 +474,27 @@ def test_3d_math_grad(test, device):
 
 
 def test_mesh_grad(test, device):
-    pos = wp.array([
-        [0.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0],
-        [0.0, 0.0, 1.0],
-    ], dtype=wp.vec3, device=device, requires_grad=True)
-    indices = wp.array([
-        [0, 1, 2],
-        [0, 2, 3],
-        [0, 3, 1],
-        [1, 3, 2],
-    ], dtype=wp.int32, device=device)
+    pos = wp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=wp.vec3,
+        device=device,
+        requires_grad=True,
+    )
+    indices = wp.array(
+        [
+            [0, 1, 2],
+            [0, 2, 3],
+            [0, 3, 1],
+            [1, 3, 2],
+        ],
+        dtype=wp.int32,
+        device=device,
+    )
 
     mesh = wp.Mesh(points=pos, indices=indices)
 
@@ -497,7 +506,7 @@ def test_mesh_grad(test, device):
         b = mesh.points[j]
         c = mesh.points[k]
         return wp.length(wp.cross(b - a, c - a)) * 0.5
-    
+
     def compute_area(mesh_id: wp.uint64, out: wp.array(dtype=wp.float32)):
         wp.atomic_add(out, 0, compute_triangle_area(mesh_id, wp.tid()))
 

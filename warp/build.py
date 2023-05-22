@@ -156,9 +156,7 @@ def quote(path):
     return '"' + path + '"'
 
 
-def build_dll(
-    dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, quick=False
-):
+def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=False, fast_math=False, quick=False):
     cuda_home = warp.config.cuda_path
     cuda_cmd = None
 
@@ -334,7 +332,10 @@ def build_dll(
         try:
             if sys.platform == "darwin":
                 # try loading libwarp-clang.dylib, except when we're building libwarp-clang.dylib or libwarp.dylib
-                if os.path.basename(dll_path) != "libwarp-clang.dylib" and os.path.basename(dll_path) != "libwarp.dylib":
+                if (
+                    os.path.basename(dll_path) != "libwarp-clang.dylib"
+                    and os.path.basename(dll_path) != "libwarp.dylib"
+                ):
                     clang = warp.build.load_dll(f"{warp_home_path}/bin/libwarp-clang.dylib")
             else:  # Linux
                 # try loading warp-clang.so, except when we're building warp-clang.so or warp.so

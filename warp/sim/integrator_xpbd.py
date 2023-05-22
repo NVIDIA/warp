@@ -6,7 +6,13 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp as wp
-from .model import PARTICLE_FLAG_ACTIVE, ModelShapeMaterials, JOINT_MODE_TARGET_POSITION, JOINT_MODE_TARGET_VELOCITY, JOINT_MODE_LIMIT
+from .model import (
+    PARTICLE_FLAG_ACTIVE,
+    ModelShapeMaterials,
+    JOINT_MODE_TARGET_POSITION,
+    JOINT_MODE_TARGET_VELOCITY,
+    JOINT_MODE_LIMIT,
+)
 from .utils import velocity_at_point, vec_min, vec_max, vec_abs
 from .integrator_euler import integrate_bodies, integrate_particles
 

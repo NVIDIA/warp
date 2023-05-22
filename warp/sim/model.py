@@ -262,7 +262,7 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
         else:
             hollow = compute_cone_inertia(density, r - thickness, h - 2.0 * thickness)
             return solid[0] - hollow[0], solid[1], solid[2] - hollow[2]
-    elif (type == GEO_MESH):
+    elif type == GEO_MESH:
         if src.has_inertia and src.mass > 0.0 and src.is_solid == is_solid:
             m, c, I = src.mass, src.com, src.I
 
@@ -281,11 +281,7 @@ def compute_shape_mass(type, scale, src, density, is_solid, thickness):
             Ixz = I[0, 2] * sx * sz * mass_ratio
             Iyz = I[1, 2] * sy * sz * mass_ratio
 
-            I_new = np.array([
-                [Ixx, Ixy, Ixz],
-                [Ixy, Iyy, Iyz],
-                [Ixz, Iyz, Izz]
-            ])
+            I_new = np.array([[Ixx, Ixy, Ixz], [Ixy, Iyy, Iyz], [Ixz, Iyz, Izz]])
 
             return m_new, c_new, I_new
         else:
@@ -795,6 +791,7 @@ class Model:
     @property
     def soft_contact_distance(self):
         import warnings
+
         warnings.warn(
             "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
             "Particles now have individual radii, returning `Model.particle_max_radius`.",
@@ -806,6 +803,7 @@ class Model:
     @soft_contact_distance.setter
     def soft_contact_distance(self, value):
         import warnings
+
         warnings.warn(
             "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
             "Particles now have individual radii, setting `Model.particle_radius` array to given value.",
@@ -1925,9 +1923,21 @@ class ModelBuilder:
         scale = (width, length, 0.0)
 
         return self._add_shape(
-            body, pos, rot, GEO_PLANE, scale,
-            None, 0.0, ke, kd, kf, mu, restitution, thickness,
-            has_ground_collision=has_ground_collision)
+            body,
+            pos,
+            rot,
+            GEO_PLANE,
+            scale,
+            None,
+            0.0,
+            ke,
+            kd,
+            kf,
+            mu,
+            restitution,
+            thickness,
+            has_ground_collision=has_ground_collision,
+        )
 
     def add_shape_sphere(
         self,
@@ -1965,9 +1975,22 @@ class ModelBuilder:
         """
 
         return self._add_shape(
-            body, pos, rot, GEO_SPHERE, (radius, 0.0, 0.0, 0.0),
-            None, density, ke, kd, kf, mu, restitution, thickness + radius, is_solid,
-            has_ground_collision=has_ground_collision)
+            body,
+            pos,
+            rot,
+            GEO_SPHERE,
+            (radius, 0.0, 0.0, 0.0),
+            None,
+            density,
+            ke,
+            kd,
+            kf,
+            mu,
+            restitution,
+            thickness + radius,
+            is_solid,
+            has_ground_collision=has_ground_collision,
+        )
 
     def add_shape_box(
         self,
@@ -2009,9 +2032,22 @@ class ModelBuilder:
         """
 
         return self._add_shape(
-            body, pos, rot, GEO_BOX, (hx, hy, hz, 0.0),
-            None, density, ke, kd, kf, mu, restitution, thickness, is_solid,
-            has_ground_collision=has_ground_collision)
+            body,
+            pos,
+            rot,
+            GEO_BOX,
+            (hx, hy, hz, 0.0),
+            None,
+            density,
+            ke,
+            kd,
+            kf,
+            mu,
+            restitution,
+            thickness,
+            is_solid,
+            has_ground_collision=has_ground_collision,
+        )
 
     def add_shape_capsule(
         self,
@@ -2060,9 +2096,22 @@ class ModelBuilder:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
 
         return self._add_shape(
-            body, pos, q, GEO_CAPSULE, (radius, half_height, 0.0, 0.0),
-            None, density, ke, kd, kf, mu, restitution, thickness + radius, is_solid,
-            has_ground_collision=has_ground_collision)
+            body,
+            pos,
+            q,
+            GEO_CAPSULE,
+            (radius, half_height, 0.0, 0.0),
+            None,
+            density,
+            ke,
+            kd,
+            kf,
+            mu,
+            restitution,
+            thickness + radius,
+            is_solid,
+            has_ground_collision=has_ground_collision,
+        )
 
     def add_shape_cylinder(
         self,
@@ -2111,9 +2160,22 @@ class ModelBuilder:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
 
         return self._add_shape(
-            body, pos, q, GEO_CYLINDER, (radius, half_height, 0.0, 0.0),
-            None, density, ke, kd, kf, mu, restitution, thickness, is_solid,
-            has_ground_collision=has_ground_collision)
+            body,
+            pos,
+            q,
+            GEO_CYLINDER,
+            (radius, half_height, 0.0, 0.0),
+            None,
+            density,
+            ke,
+            kd,
+            kf,
+            mu,
+            restitution,
+            thickness,
+            is_solid,
+            has_ground_collision=has_ground_collision,
+        )
 
     def add_shape_cone(
         self,
@@ -2162,9 +2224,22 @@ class ModelBuilder:
             q = wp.mul(rot, wp.quat(sqh, 0.0, 0.0, sqh))
 
         return self._add_shape(
-            body, pos, q, GEO_CONE, (radius, half_height, 0.0, 0.0),
-            None, density, ke, kd, kf, mu, restitution, thickness, is_solid,
-            has_ground_collision=has_ground_collision)
+            body,
+            pos,
+            q,
+            GEO_CONE,
+            (radius, half_height, 0.0, 0.0),
+            None,
+            density,
+            ke,
+            kd,
+            kf,
+            mu,
+            restitution,
+            thickness,
+            is_solid,
+            has_ground_collision=has_ground_collision,
+        )
 
     def add_shape_mesh(
         self,
@@ -2204,10 +2279,22 @@ class ModelBuilder:
         """
 
         return self._add_shape(
-            body, pos, rot, GEO_MESH, (scale[0], scale[1], scale[2], 0.0),
-            mesh, density, ke, kd, kf, mu,
-            restitution, thickness, is_solid,
-            has_ground_collision=has_ground_collision)
+            body,
+            pos,
+            rot,
+            GEO_MESH,
+            (scale[0], scale[1], scale[2], 0.0),
+            mesh,
+            density,
+            ke,
+            kd,
+            kf,
+            mu,
+            restitution,
+            thickness,
+            is_solid,
+            has_ground_collision=has_ground_collision,
+        )
 
     def _shape_radius(self, type, scale, src):
         """
@@ -2292,7 +2379,9 @@ class ModelBuilder:
         return shape
 
     # particles
-    def add_particle(self, pos: Vec3, vel: Vec3, mass: float, radius: float = None, flags: wp.uint32 = PARTICLE_FLAG_ACTIVE) -> int:
+    def add_particle(
+        self, pos: Vec3, vel: Vec3, mass: float, radius: float = None, flags: wp.uint32 = PARTICLE_FLAG_ACTIVE
+    ) -> int:
         """Adds a single particle to the model
 
         Args:

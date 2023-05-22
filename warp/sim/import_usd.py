@@ -31,7 +31,6 @@ def parse_usd(
     ignore_paths=[],
     export_usda=False,
 ):
-
     try:
         from pxr import Usd, UsdGeom, UsdPhysics
     except ImportError:
@@ -192,9 +191,9 @@ def parse_usd(
         target_pos = parse_float(prim, f"drive:{type}:physics:targetPosition")
         target_vel = parse_float(prim, f"drive:{type}:physics:targetVelocity")
         if is_angular:
-            stiffness *= mass_unit * linear_unit ** 2
+            stiffness *= mass_unit * linear_unit**2
             stiffness = np.deg2rad(stiffness)
-            damping *= mass_unit * linear_unit ** 2
+            damping *= mass_unit * linear_unit**2
             damping = np.deg2rad(damping)
             if target_pos is not None:
                 target_pos = np.deg2rad(target_pos)

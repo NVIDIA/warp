@@ -66,7 +66,7 @@ class Function:
         missing_grad=False,
         generic=False,
         native_func=None,
-        defaults=None
+        defaults=None,
     ):
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -80,7 +80,7 @@ class Function:
         self.module = module
         self.variadic = variadic  # function can take arbitrary number of inputs, e.g.: printf()
         self.defaults = defaults
-        
+
         if initializer_list_func is None:
             self.initializer_list_func = lambda x, y: False
         else:
@@ -523,6 +523,7 @@ class Kernel:
 
 # ----------------------
 
+
 # decorator to register function, @func
 def func(f):
     name = warp.codegen.make_full_qualified_name(f)
@@ -662,7 +663,7 @@ def add_builtin(
     skip_replay=False,
     missing_grad=False,
     native_func=None,
-    defaults=None
+    defaults=None,
 ):
     # wrap simple single-type functions with a value_func()
     if value_func is None:
@@ -677,19 +678,6 @@ def add_builtin(
 
     if defaults == None:
         defaults = {}
-
-    def is_generic(t):
-        ret = False
-        if t in [warp.types.Scalar, warp.types.Float]:
-            ret = True
-        if hasattr(t, "_wp_type_params_"):
-            ret = (
-                warp.types.Scalar in t._wp_type_params_
-                or warp.types.Float in t._wp_type_params_
-                or warp.types.Any in t._wp_type_params_
-            )
-
-        return ret
 
     # Add specialized versions of this builtin if it's generic by matching arguments against
     # hard coded types. We do this so you can use hard coded warp types outside kernels:
@@ -819,7 +807,7 @@ def add_builtin(
         missing_grad=missing_grad,
         generic=generic,
         native_func=native_func,
-        defaults=defaults
+        defaults=defaults,
     )
 
     if key in builtin_functions:
@@ -1527,7 +1515,9 @@ class Stream:
         if runtime is not None:
             device = runtime.get_device(device)
         elif not isinstance(device, Device):
-            raise RuntimeError("A device object is required when creating a stream before or during Warp initialization")
+            raise RuntimeError(
+                "A device object is required when creating a stream before or during Warp initialization"
+            )
 
         if not device.is_cuda:
             raise RuntimeError(f"Device {device} is not a CUDA device")
@@ -1878,10 +1868,23 @@ class Runtime:
         self.core.bvh_refit_device.argtypes = [ctypes.c_uint64]
 
         self.core.mesh_create_host.restype = ctypes.c_uint64
-        self.core.mesh_create_host.argtypes = [warp.types.array_t, warp.types.array_t, warp.types.array_t, ctypes.c_int, ctypes.c_int]
+        self.core.mesh_create_host.argtypes = [
+            warp.types.array_t,
+            warp.types.array_t,
+            warp.types.array_t,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
 
         self.core.mesh_create_device.restype = ctypes.c_uint64
-        self.core.mesh_create_device.argtypes = [ctypes.c_void_p, warp.types.array_t, warp.types.array_t, warp.types.array_t, ctypes.c_int, ctypes.c_int]
+        self.core.mesh_create_device.argtypes = [
+            ctypes.c_void_p,
+            warp.types.array_t,
+            warp.types.array_t,
+            warp.types.array_t,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
 
         self.core.mesh_destroy_host.argtypes = [ctypes.c_uint64]
         self.core.mesh_destroy_device.argtypes = [ctypes.c_uint64]
@@ -3221,7 +3224,7 @@ def copy(
     if count == 0:
         return
 
-    has_grad = (hasattr(src, "grad_ptr") and hasattr(dest, "grad_ptr") and src.grad_ptr and dest.grad_ptr)
+    has_grad = hasattr(src, "grad_ptr") and hasattr(dest, "grad_ptr") and src.grad_ptr and dest.grad_ptr
 
     if src.is_contiguous and dest.is_contiguous:
         bytes_to_copy = count * warp.types.type_size_in_bytes(src.dtype)

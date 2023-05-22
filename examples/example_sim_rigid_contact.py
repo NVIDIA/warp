@@ -121,7 +121,7 @@ class Example:
 
         # -----------------------
         # set up OpenGL renderer
-        if (self.enable_rendering):
+        if self.enable_rendering:
             self.renderer = wp.sim.render.SimRendererOpenGL(self.model, stage, scaling=0.5)
 
     def load_mesh(self, filename, path):

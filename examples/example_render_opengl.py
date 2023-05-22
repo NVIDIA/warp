@@ -41,11 +41,11 @@ else:
 if num_tiles > 1:
     # set up instances to hide one of the capsules in each tile
     for i in range(num_tiles):
-        instances = [j for j in np.arange(13) if j != i+2]
+        instances = [j for j in np.arange(13) if j != i + 2]
         instance_ids.append(instances)
         if custom_tile_arrangement:
-            angle = np.pi*2.0 / num_tiles * i
-            positions.append((int(np.cos(angle)*150 + 250), int(np.sin(angle)*150 + 250)))
+            angle = np.pi * 2.0 / num_tiles * i
+            positions.append((int(np.cos(angle) * 150 + 250), int(np.sin(angle) * 150 + 250)))
             sizes.append((150, 150))
     renderer.setup_tiled_rendering(instance_ids, tile_positions=positions, tile_sizes=sizes)
 
@@ -53,6 +53,7 @@ renderer.render_ground()
 
 if show_plot:
     import matplotlib.pyplot as plt
+
     if split_up_tiles:
         pixels = wp.zeros((num_tiles, renderer.tile_height, renderer.tile_width, 3), dtype=wp.float32)
         ncols = int(np.ceil(np.sqrt(num_tiles)))
@@ -67,7 +68,7 @@ if show_plot:
             squeeze=False,
             sharex=True,
             sharey=True,
-            num=1
+            num=1,
         )
         tile_temp = np.zeros((renderer.tile_height, renderer.tile_width, 3), dtype=np.float32)
         for dim in range(ncols * nrows):
@@ -88,9 +89,23 @@ while renderer.is_running():
     time = renderer.clock_time
     renderer.begin_frame(time)
     for i in range(10):
-        renderer.render_capsule(f"capsule_{i}", [i-5.0, np.sin(time+i*0.2), -3.0], [0.0, 0.0, 0.0, 1.0], radius=0.5, half_height=0.8)
-    renderer.render_cylinder("cylinder", [3.2, 1.0, np.sin(time+0.5)], np.array(wp.quat_from_axis_angle((1.0, 0.0, 0.0), np.sin(time+0.5))), radius=0.5, half_height=0.8)
-    renderer.render_cone("cone", [-1.2, 1.0, 0.0], np.array(wp.quat_from_axis_angle((0.707, 0.707, 0.0), time)), radius=0.5, half_height=0.8)
+        renderer.render_capsule(
+            f"capsule_{i}", [i - 5.0, np.sin(time + i * 0.2), -3.0], [0.0, 0.0, 0.0, 1.0], radius=0.5, half_height=0.8
+        )
+    renderer.render_cylinder(
+        "cylinder",
+        [3.2, 1.0, np.sin(time + 0.5)],
+        np.array(wp.quat_from_axis_angle((1.0, 0.0, 0.0), np.sin(time + 0.5))),
+        radius=0.5,
+        half_height=0.8,
+    )
+    renderer.render_cone(
+        "cone",
+        [-1.2, 1.0, 0.0],
+        np.array(wp.quat_from_axis_angle((0.707, 0.707, 0.0), time)),
+        radius=0.5,
+        half_height=0.8,
+    )
     renderer.end_frame()
 
     if show_plot and plt.fignum_exists(1):

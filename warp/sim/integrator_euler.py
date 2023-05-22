@@ -797,7 +797,7 @@ def eval_particle_ground_contacts(
     # outputs
     f: wp.array(dtype=wp.vec3),
 ):
-    tid = wp.tid()    
+    tid = wp.tid()
     if (particle_flags[tid] & PARTICLE_FLAG_ACTIVE) == 0:
         return
 
@@ -1924,14 +1924,7 @@ def update_state(model, state_in, state_out, x, dt):
     wp.launch(
         kernel=update_particle_position,
         dim=model.particle_count,
-        inputs=[
-            state_in.particle_q,
-            state_out.particle_q,
-            state_out.particle_qd,
-            x,
-            model.particle_flags,
-            dt
-        ],
+        inputs=[state_in.particle_q, state_out.particle_q, state_out.particle_qd, x, model.particle_flags, dt],
         device=model.device,
     )
 

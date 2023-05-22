@@ -81,7 +81,7 @@ class Environment:
 
     frame_dt = 1.0 / 60.0
 
-    episode_duration = 5.0      # seconds
+    episode_duration = 5.0  # seconds
 
     # whether to play the simulation indefinitely when using the OpenGL renderer
     continuous_opengl_render: bool = True
@@ -217,7 +217,8 @@ class Environment:
                 self.sim_name,
                 up_axis=self.up_axis,
                 show_rigid_contact_points=self.show_rigid_contact_points,
-                **self.opengl_render_settings)
+                **self.opengl_render_settings,
+            )
             if self.use_tiled_rendering and self.num_envs > 1:
                 floor_id = self.model.shape_count - 1
                 # all shapes except the floor
@@ -226,9 +227,12 @@ class Environment:
                 additional_instances = []
                 if self.activate_ground_plane:
                     additional_instances.append(floor_id)
-                self.renderer.setup_tiled_rendering(instances=[
-                    instance_ids[i * shapes_per_env:(i + 1) * shapes_per_env] + additional_instances
-                    for i in range(self.num_envs)])
+                self.renderer.setup_tiled_rendering(
+                    instances=[
+                        instance_ids[i * shapes_per_env : (i + 1) * shapes_per_env] + additional_instances
+                        for i in range(self.num_envs)
+                    ]
+                )
         elif self.render_mode == RenderMode.USD:
             filename = os.path.join(os.path.dirname(__file__), "..", "outputs", self.sim_name + ".usd")
             self.renderer = wp.sim.render.SimRendererUsd(
@@ -236,7 +240,8 @@ class Environment:
                 filename,
                 up_axis=self.up_axis,
                 show_rigid_contact_points=self.show_rigid_contact_points,
-                **self.usd_render_settings)
+                **self.usd_render_settings,
+            )
 
     def create_articulation(self, builder):
         raise NotImplementedError

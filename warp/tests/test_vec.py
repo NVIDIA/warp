@@ -2766,7 +2766,6 @@ def test_constructors_default_precision():
 
 @wp.kernel
 def test_vector_mutation(expected: wp.types.vector(length=10, dtype=float)):
-
     v = wp.vector(length=10, dtype=float)
 
     # test element indexing
@@ -2780,16 +2779,15 @@ def test_vector_mutation(expected: wp.types.vector(length=10, dtype=float)):
 
 CONSTANT_LENGTH = wp.constant(10)
 
-# tests that we can use global constants in length keyword argument 
+
+# tests that we can use global constants in length keyword argument
 # for vector constructor
 @wp.kernel
 def test_constructors_constant_length():
-
     v = wp.vector(length=(CONSTANT_LENGTH), dtype=float)
 
     for i in range(CONSTANT_LENGTH):
         v[i] = float(i)
-
 
 
 def register(parent):
@@ -2801,9 +2799,15 @@ def register(parent):
     add_kernel_test(TestVec, test_constructors_explicit_precision, dim=1, devices=devices)
     add_kernel_test(TestVec, test_constructors_default_precision, dim=1, devices=devices)
     add_kernel_test(TestVec, test_constructors_constant_length, dim=1, devices=devices)
-    
+
     vec10 = wp.types.vector(length=10, dtype=float)
-    add_kernel_test(TestVec, test_vector_mutation, dim=1, inputs=[vec10(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0)], devices=devices)
+    add_kernel_test(
+        TestVec,
+        test_vector_mutation,
+        dim=1,
+        inputs=[vec10(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0)],
+        devices=devices,
+    )
 
     for dtype in np_unsigned_int_types:
         add_function_test_register_kernel(

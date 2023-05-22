@@ -670,11 +670,8 @@ def test_large_arrays_fast(test, device):
     assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
 
 
-
 @wp.kernel
-def kernel_array_to_bool(array_null: wp.array(dtype=float),
-                         array_valid: wp.array(dtype=float)):
-
+def kernel_array_to_bool(array_null: wp.array(dtype=float), array_valid: wp.array(dtype=float)):
     if not array_null:
         # always succeed
         wp.expect_eq(0, 0)
@@ -691,11 +688,9 @@ def kernel_array_to_bool(array_null: wp.array(dtype=float),
 
 
 def test_array_to_bool(test, device):
-
     arr = wp.zeros(8, dtype=float, device=device)
 
     wp.launch(kernel_array_to_bool, dim=1, inputs=[None, arr], device=device)
-
 
 
 def register(parent):

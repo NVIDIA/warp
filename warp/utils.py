@@ -242,6 +242,7 @@ def transform_inertia(m, I, p, q):
     # Steiner's theorem
     return R @ I @ R.T + m * (np.dot(p, p) * np.eye(3) - np.outer(p, p))
 
+
 # spatial operators
 
 
