@@ -44,6 +44,7 @@ def eval_particle_forces_kernel(
     k_friction: float,
     k_mu: float,
     k_cohesion: float,
+    max_radius: float,
     # outputs
     particle_f: wp.array(dtype=wp.vec3),
 ):
@@ -61,17 +62,17 @@ def eval_particle_forces_kernel(
     f = wp.vec3()
 
     # particle contact
-    query = wp.hash_grid_query(grid, x, radius * 2.0 + k_cohesion)
+    query = wp.hash_grid_query(grid, x, radius + max_radius + k_cohesion)
     index = int(0)
 
     count = int(0)
 
     while wp.hash_grid_query_next(query, index):
-        if index != i:
+        if (particle_flags[index] & PARTICLE_FLAG_ACTIVE) != 0 and index != i:
             # compute distance to point
             n = x - particle_x[index]
             d = wp.length(n)
-            err = d - radius * 2.0
+            err = d - radius - particle_radius[index]
 
             count += 1
 
@@ -85,8 +86,7 @@ def eval_particle_forces_kernel(
 
 
 def eval_particle_forces(model, state, forces):
-    if model.particle_max_radius > 0.0:
-        assert model.particle_grid.reserved, "Particle grid must be reserved"
+    if model.particle_max_radius > 0.0 and model.particle_grid.reserved:
         wp.launch(
             kernel=eval_particle_forces_kernel,
             dim=model.particle_count,
@@ -101,6 +101,7 @@ def eval_particle_forces(model, state, forces):
                 model.particle_kf,
                 model.particle_mu,
                 model.particle_cohesion,
+                model.particle_max_radius,
             ],
             outputs=[forces],
             device=model.device,
