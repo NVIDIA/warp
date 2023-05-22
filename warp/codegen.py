@@ -527,26 +527,35 @@ class Adjoint:
 
                 # skip type checking for variadic functions
                 if not f.variadic:
-                    # check argument counts match (todo: default arguments?)
-                    if len(f.input_types) != len(args):
+
+                    # check argument counts match are compatible (may be some default args)
+                    if len(f.input_types) < len(args):
                         match = False
                         continue
 
                     # check argument types equal
-                    for i, a in enumerate(f.input_types.values()):
+                    for i, (arg_name, arg_type) in enumerate(f.input_types.items()):
+                        
                         # if arg type registered as Any, treat as
                         # template allowing any type to match
-                        if a == Any:
+                        if arg_type == Any:
                             continue
 
                         # handle function refs as a special case
-                        if a == Callable and type(args[i]) is warp.context.Function:
+                        if arg_type == Callable and type(args[i]) is warp.context.Function:
                             continue
 
-                        # otherwise check arg type matches input variable type
-                        if not types_equal(a, args[i].type, match_generic=True):
-                            match = False
-                            break
+                        # look for default values for missing args
+                        if i >= len(args):
+                            if arg_name not in f.defaults:
+                                match = False
+                                break
+                        else:
+                            # otherwise check arg type matches input variable type
+                            if not types_equal(arg_type, args[i].type, match_generic=True):
+                                match = False
+                                break
+
 
                 # check output dimensions match expectations
                 if min_outputs:
@@ -596,6 +605,17 @@ class Adjoint:
 
         else:
             func = resolved_func
+
+        # push any default values onto args
+        for i, (arg_name, arg_type) in enumerate(func.input_types.items()):
+            if i >= len(args):
+                if arg_name in f.defaults:
+                    const = adj.add_constant(func.defaults[arg_name])
+                    args.append(const)
+                else:
+                    match = False
+                    break
+
 
         # if it is a user-function then build it recursively
         if not func.is_builtin():

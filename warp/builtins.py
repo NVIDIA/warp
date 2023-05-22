@@ -2511,6 +2511,7 @@ add_builtin(
 add_builtin(
     "expect_near",
     input_types={"arg1": Float, "arg2": Float, "tolerance": Float},
+    defaults={"tolerance": 1.e-6},
     value_type=None,
     doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude",
     group="Utility",

@@ -191,6 +191,18 @@ def test_multi_valued_func(test, device):
     wp.launch(kernel=test_multi_valued_kernel, dim=test_data1.size, inputs=[test_data1, test_data2], device=device)
 
 
+@wp.kernel
+def test_func_defaults():
+     
+    # test default as expected
+    wp.expect_near(1.0, 1.0 + 1.e-6)
+
+    # test that changing tolerance still works
+    wp.expect_near(1.0, 1.1, 0.5)
+
+
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -203,6 +215,7 @@ def register(parent):
     add_function_test(TestFunc, func=test_func_export, name="test_func_export", devices=["cpu"])
     add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
     add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)
+    add_kernel_test(TestFunc, kernel=test_func_defaults, name="test_func_defaults", dim=1, devices=devices)
 
     return TestFunc
 
