@@ -95,6 +95,8 @@ struct shape_t
 {
     int dims[ARRAY_MAX_DIMS];
 
+    shape_t() : dims() {}
+
     CUDA_CALLABLE inline int operator[](int i) const
     {
         assert(i < ARRAY_MAX_DIMS);

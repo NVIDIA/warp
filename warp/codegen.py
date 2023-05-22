@@ -188,6 +188,32 @@ class Struct:
 
         self.ctype = StructType
 
+        # create default constructor (zero-initialize)
+        self.default_constructor = warp.context.Function(
+            func=None,
+            key=self.key,
+            namespace="",
+            value_func=lambda *_: self,
+            input_types={},
+            initializer_list_func=lambda *_: False,
+            native_func=make_full_qualified_name(self.cls),
+        )
+
+        # build a constructor that takes each param as a value
+        input_types = {label: var.type for label, var in self.vars.items()}
+
+        self.value_constructor = warp.context.Function(
+            func=None,
+            key=self.key,
+            namespace="",
+            value_func=lambda *_: self,
+            input_types=input_types,
+            initializer_list_func=lambda *_: False,
+            native_func=make_full_qualified_name(self.cls),
+        )
+
+        self.default_constructor.add_overload(self.value_constructor)
+
         if module:
             module.register_struct(self)
 
@@ -214,17 +240,7 @@ class Struct:
         return NewStructInstance()
 
     def initializer(self):
-        input_types = {label: var.type for label, var in self.vars.items()}
-
-        return warp.context.Function(
-            func=None,
-            key=self.key,
-            namespace="",
-            value_func=lambda *_: self,
-            input_types=input_types,
-            initializer_list_func=lambda *_: False,
-            native_func=make_full_qualified_name(self.cls),
-        )
+        return self.default_constructor
 
 
 def compute_type_str(base_name, template_params):
@@ -1415,7 +1431,9 @@ class Adjoint:
             return out
 
         elif isinstance(node.targets[0], ast.Attribute):
-            raise RuntimeError("Error, assignment to member variables is not currently support (structs are immutable)")
+            raise RuntimeError(
+                "Error, assignment to member variables is not currently supported (structs are immutable)"
+            )
 
         else:
             raise RuntimeError("Error, unsupported assignment statement.")
