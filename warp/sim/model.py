@@ -3311,8 +3311,6 @@ class ModelBuilder:
 
             # hash-grid for particle interactions
             m.particle_grid = wp.HashGrid(128, 128, 128)
-            if len(self.particle_q) > 0:
-                m.particle_grid.build(m.particle_q, 2.0 * m.particle_max_radius)
 
             # ---------------------
             # collision geometry

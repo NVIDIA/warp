@@ -79,6 +79,7 @@ class Example:
 
         self.model = builder.finalize()
         self.model.ground = True
+        self.model.soft_contact_ke = 1.0e4
         self.model.soft_contact_kd = 1.0e2
 
         self.integrator = wp.sim.SemiImplicitIntegrator()

@@ -549,12 +549,12 @@ def create_soft_contacts(
         face_v = float(0.0)
         sign = float(0.0)
 
-        if wp.mesh_query_point(mesh, x_local / geo_scale[0], margin, sign, face_index, face_u, face_v):
+        if wp.mesh_query_point(mesh, wp.cw_div(x_local, geo_scale), margin, sign, face_index, face_u, face_v):
             shape_p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
             shape_v = wp.mesh_eval_velocity(mesh, face_index, face_u, face_v)
 
-            shape_p = shape_p * geo_scale[0]
-            shape_v = shape_v * geo_scale[0]
+            shape_p = wp.cw_mul(shape_p, geo_scale)
+            shape_v = wp.cw_mul(shape_v, geo_scale)
 
             delta = x_local - shape_p
             d = wp.length(delta) * sign
