@@ -66,6 +66,7 @@ class Function:
         missing_grad=False,
         generic=False,
         native_func=None,
+        defaults=None
     ):
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -78,6 +79,8 @@ class Function:
         self.group = group
         self.module = module
         self.variadic = variadic  # function can take arbitrary number of inputs, e.g.: printf()
+        self.defaults = defaults
+        
         if initializer_list_func is None:
             self.initializer_list_func = lambda x, y: False
         else:
@@ -659,6 +662,7 @@ def add_builtin(
     skip_replay=False,
     missing_grad=False,
     native_func=None,
+    defaults=None
 ):
     # wrap simple single-type functions with a value_func()
     if value_func is None:
@@ -670,6 +674,22 @@ def add_builtin(
 
         def initializer_list_func(args, templates):
             return False
+
+    if defaults == None:
+        defaults = {}
+
+    def is_generic(t):
+        ret = False
+        if t in [warp.types.Scalar, warp.types.Float]:
+            ret = True
+        if hasattr(t, "_wp_type_params_"):
+            ret = (
+                warp.types.Scalar in t._wp_type_params_
+                or warp.types.Float in t._wp_type_params_
+                or warp.types.Any in t._wp_type_params_
+            )
+
+        return ret
 
     # Add specialized versions of this builtin if it's generic by matching arguments against
     # hard coded types. We do this so you can use hard coded warp types outside kernels:
@@ -799,6 +819,7 @@ def add_builtin(
         missing_grad=missing_grad,
         generic=generic,
         native_func=native_func,
+        defaults=defaults
     )
 
     if key in builtin_functions:
