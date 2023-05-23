@@ -179,8 +179,13 @@ class OmniWarpExtension(omni.ext.IExt):
         self._is_live = True
         self._ext_name = omni.ext.get_extension_name(ext_id)
 
-        self._register_actions()
-        self._menu = WarpMenu()
+        try:
+            import omni.kit.menu.utils
+        except ImportError:
+            print("Warning: menu not enabled.")
+        else:
+            self._register_actions()
+            self._menu = WarpMenu()
 
         try:
             importlib.import_module("omni.kit.browser.sample").register_sample_folder(SCENES_PATH, "Warp")
@@ -214,9 +219,10 @@ class OmniWarpExtension(omni.ext.IExt):
     def on_shutdown(self):
         log_info("OmniWarpExtension shutdown")
 
-        self._menu.shutdown()
-        self._menu = None
-        self._deregister_actions()
+        if self._menu is not None:
+            self._menu.shutdown()
+            self._menu = None
+            self._deregister_actions()
 
         try:
             importlib.import_module("omni.kit.browser.sample").unregister_sample_folder(SCENES_PATH)
