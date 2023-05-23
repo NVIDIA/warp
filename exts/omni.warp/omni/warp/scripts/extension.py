@@ -29,6 +29,7 @@ SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__fi
 WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
+SETTING_ENABLE_BACKWARD = "/exts/omni.warp/enable_backward"
 KERNEL_NODE_OPT_IN_SETTING = "/app/omni.warp.kernel/opt_in"
 KERNEL_NODE_ENABLE_OPT_IN_SETTING = "/app/omni.warp.kernel/enable_opt_in"
 OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so that nodes have been instantiated
@@ -177,6 +178,9 @@ class OmniWarpExtension(omni.ext.IExt):
     def on_startup(self, ext_id):
         log_info("OmniWarpExtension startup")
 
+        settings = carb.settings.get_settings()
+
+        wp.config.enable_backward = settings.get(SETTING_ENABLE_BACKWARD)
         wp.init()
 
         self._is_live = True

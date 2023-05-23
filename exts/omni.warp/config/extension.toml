@@ -39,6 +39,9 @@ name = "warp"
 path = "."
 public = true
 
+[settings]
+exts."omni.warp".enable_backward = false
+
 # Kit testing flags
 [[test]]
 pyCoverageOmit = [
