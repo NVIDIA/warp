@@ -10,7 +10,6 @@ from contextlib import suppress
 from typing import Sequence
 from .menu import WarpMenu
 from .common import log_info
-from .common import log_error
 import warp as wp
 import os, sys, subprocess
 import webbrowser
@@ -22,7 +21,6 @@ import omni.ext
 import omni.kit.actions.core
 import omni.timeline
 
-SCRIPTS_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scripts"))
 SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../data/scenes"))
 
 WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
@@ -253,6 +251,15 @@ class OmniWarpExtension(omni.ext.IExt):
             tag=actions_tag,
         )
 
+        action_registry.register_action(
+            self._ext_name,
+            "browse_scenes",
+            lambda: self._on_browse_scenes_click(),
+            display_name="Warp->Browse Scenes",
+            description="",
+            tag=actions_tag,
+        )
+
     def _deregister_actions(self):
         action_registry = omni.kit.actions.core.get_action_registry()
         action_registry.deregister_all_actions_for_extension(self._ext_name)
@@ -282,52 +289,8 @@ class OmniWarpExtension(omni.ext.IExt):
         self._example = None
         self._update_event_sub = None
 
-    def _on_script_menu_click(self, script_name):
-        def new_stage():
-            new_stage = omni.usd.get_context().new_stage()
-            if new_stage:
-                stage = omni.usd.get_context().get_stage()
-            else:
-                log_error("Could not open new stage")
-                return
-
-            import_path = os.path.normpath(os.path.join(SCRIPTS_PATH, script_name))
-
-            module = importlib.load_source(script_name, import_path)
-            self._example = module.Example()
-
-            if self._example is None:
-                log_error("Problem loading example module")
-                return
-            if not hasattr(self._example, "init"):
-                log_error("Example missing init() function")
-                return
-            if not hasattr(self._example, "update"):
-                log_error("Example missing update() function")
-                return
-            if not hasattr(self._example, "render"):
-                log_error("Example missing render() function")
-                return
-
-            with wp.ScopedDevice("cuda:0"):
-                self._example.init(stage)
-                self._example.render(is_live=self._is_live)
-
-            # focus camera
-            omni.usd.get_context().get_selection().set_selected_prim_paths(
-                [stage.GetDefaultPrim().GetPath().pathString], False
-            )
-            viewport_window = omni.kit.viewport_legacy.get_viewport_interface().get_viewport_window()
-            if viewport_window:
-                viewport_window.focus_on_selected()
-            omni.usd.get_context().get_selection().clear_selected_prim_paths()
-
-            self._update_event_sub = self._update_event_stream.create_subscription_to_pop(self._on_update)
-
-        omni.kit.window.file.prompt_if_unsaved_stage(new_stage)
-
-    def _on_browse_scripts_click(self):
-        open_file(SCRIPTS_PATH)
+    def _on_browse_scenes_click(self):
+        open_file(SCENES_PATH)
 
     def _on_getting_started_click(self, *_):
         webbrowser.open(WARP_GETTING_STARTED_URL)
