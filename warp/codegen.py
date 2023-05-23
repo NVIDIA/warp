@@ -1431,9 +1431,15 @@ class Adjoint:
             return out
 
         elif isinstance(node.targets[0], ast.Attribute):
-            raise RuntimeError(
-                "Error, assignment to member variables is not currently supported (structs are immutable)"
-            )
+            rhs = adj.eval(node.value)
+            attr = adj.emit_Attribute(node.targets[0])
+            adj.add_call(warp.context.builtin_functions["copy"], [attr, rhs])
+
+            if warp.config.verbose:
+                lineno = adj.lineno + adj.fun_lineno
+                line = adj.source.splitlines()[adj.lineno]
+                msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
+                print(msg)
 
         else:
             raise RuntimeError("Error, unsupported assignment statement.")

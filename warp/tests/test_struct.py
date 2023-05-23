@@ -344,6 +344,24 @@ def test_struct_default_attributes_kernel():
     check_default_attributes_func(s)
 
 
+@wp.struct
+class MutableStruct:
+
+    param1: int
+    param2: float
+
+
+@wp.kernel
+def test_struct_mutate_attributes_kernel():
+
+    t = MutableStruct()
+    t.param1 = 1
+    t.param2 = 1.1
+
+    wp.expect_eq(t.param1, 1)
+    wp.expect_eq(t.param2, 1.1)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -369,8 +387,17 @@ def register(parent):
     )
     add_kernel_test(
         TestStruct,
-        name="test_struct_default_attributes_kernel",
+        name="test_struct_default_attributes",
         kernel=test_struct_default_attributes_kernel,
+        dim=1,
+        inputs=[],
+        devices=devices,
+    )
+    
+    add_kernel_test(
+        TestStruct,
+        name="test_struct_mutate_attributes",
+        kernel=test_struct_mutate_attributes_kernel,
         dim=1,
         inputs=[],
         devices=devices,
