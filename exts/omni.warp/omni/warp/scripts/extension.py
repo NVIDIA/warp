@@ -11,7 +11,6 @@ from typing import Sequence
 from .menu import WarpMenu
 from .common import log_info
 from .common import log_error
-from . import menu_common
 import warp as wp
 import os, sys, subprocess
 import webbrowser
@@ -238,51 +237,6 @@ class OmniWarpExtension(omni.ext.IExt):
         # actions
         action_registry.register_action(
             self._ext_name,
-            "cloth_scene",
-            lambda: self._on_scene_menu_click(menu_common.SCENE_CLOTH),
-            display_name="Warp->Cloth Simulation",
-            description="",
-            tag=actions_tag,
-        )
-
-        action_registry.register_action(
-            self._ext_name,
-            "deformer_scene",
-            lambda: self._on_scene_menu_click(menu_common.SCENE_DEFORM),
-            display_name="Warp->Simple Deformer",
-            description="",
-            tag=actions_tag,
-        )
-
-        action_registry.register_action(
-            self._ext_name,
-            "particles_scene",
-            lambda: self._on_scene_menu_click(menu_common.SCENE_PARTICLES),
-            display_name="Warp->Particle Simulation",
-            description="",
-            tag=actions_tag,
-        )
-
-        action_registry.register_action(
-            self._ext_name,
-            "wave_scene",
-            lambda: self._on_scene_menu_click(menu_common.SCENE_WAVE),
-            display_name="Warp->Wave Pool",
-            description="",
-            tag=actions_tag,
-        )
-
-        action_registry.register_action(
-            self._ext_name,
-            "marching_scene",
-            lambda: self._on_scene_menu_click(menu_common.SCENE_MARCHING),
-            display_name="Warp->Marching Cubes",
-            description="",
-            tag=actions_tag,
-        )
-
-        action_registry.register_action(
-            self._ext_name,
             "getting_started",
             lambda: self._on_getting_started_click(),
             display_name="Warp->Getting Started",
@@ -295,15 +249,6 @@ class OmniWarpExtension(omni.ext.IExt):
             "documentation",
             lambda: self._on_documentation_click(),
             display_name="Warp->Documentation",
-            description="",
-            tag=actions_tag,
-        )
-
-        action_registry.register_action(
-            self._ext_name,
-            "browse_scenes",
-            lambda: self._on_browse_scenes_click(),
-            display_name="Warp->Browse Scenes",
             description="",
             tag=actions_tag,
         )
@@ -381,18 +326,8 @@ class OmniWarpExtension(omni.ext.IExt):
 
         omni.kit.window.file.prompt_if_unsaved_stage(new_stage)
 
-    def _on_scene_menu_click(self, scene_name):
-        def new_stage():
-            stage_path = os.path.normpath(os.path.join(SCENES_PATH, scene_name))
-            omni.usd.get_context().open_stage(stage_path)
-
-        omni.kit.window.file.prompt_if_unsaved_stage(new_stage)
-
     def _on_browse_scripts_click(self):
         open_file(SCRIPTS_PATH)
-
-    def _on_browse_scenes_click(self):
-        open_file(SCENES_PATH)
 
     def _on_getting_started_click(self, *_):
         webbrowser.open(WARP_GETTING_STARTED_URL)
