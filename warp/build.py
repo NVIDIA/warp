@@ -275,7 +275,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             debug = "_DEBUG"
 
         if "/NODEFAULTLIB" in libs:
-            runtime = "/sdl- /GS-"  # don't specify a runtime, and disable security checks with depend on it
+            runtime = "/sdl- /GS-"  # don't specify a runtime, and disable security checks which depend on it
 
         if mode == "debug":
             cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
@@ -299,7 +299,9 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
                 if clang:
                     with open(cpp_path, "rb") as cpp:
-                        clang.compile_cpp(cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"))
+                        clang.compile_cpp(
+                            cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), mode == "debug"
+                        )
 
                 else:
                     cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
@@ -370,7 +372,9 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
                 if clang:
                     with open(cpp_path, "rb") as cpp:
-                        clang.compile_cpp(cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"))
+                        clang.compile_cpp(
+                            cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), mode == "debug"
+                        )
 
                 else:
                     build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'

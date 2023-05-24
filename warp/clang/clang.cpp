@@ -66,7 +66,7 @@ static void initialize_llvm()
     llvm::InitializeAllAsmPrinters();
 }
 
-static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, llvm::LLVMContext& context)
+static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, bool debug, llvm::LLVMContext& context)
 {
     // Compilation arguments
     std::vector<const char*> args;
@@ -75,11 +75,7 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     args.push_back("-I");
     args.push_back(include_dir);
 
-    #if defined(NDEBUG)
-        args.push_back("-O2");
-    #else
-        args.push_back("-O0");
-    #endif
+    args.push_back(debug ? "-O0" : "-O2");
 
     args.push_back("-triple");
     args.push_back(target_triple);
@@ -96,9 +92,10 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     auto& compiler_invocation = compiler_instance.getInvocation();
     clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine.release());
 
-    #if !defined(NDEBUG)
+    if(debug)
+    {
         compiler_invocation.getCodeGenOpts().setDebugInfo(clang::codegenoptions::FullDebugInfo);
-    #endif
+    }
 
     // Map code to a MemoryBuffer
     std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
@@ -120,7 +117,7 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
 extern "C" {
 
-WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file)
+WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file, bool debug)
 {
     #if defined (_WIN32)
         const char* obj_ext = ".obj";
@@ -133,7 +130,7 @@ WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char*
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, context);
+    std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, debug, context);
 
     if(!module)
     {
@@ -185,13 +182,11 @@ WP_API int load_obj(const char* object_file, const char* module_name)
                     };
                     auto obj_linking_layer = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(session, std::move(get_memory_manager));
 
-                    #if !defined(NDEBUG)
-                        // Register the event listener.
-                        obj_linking_layer->registerJITEventListener(*llvm::JITEventListener::createGDBRegistrationListener());
+                    // Register the event listener.
+                    obj_linking_layer->registerJITEventListener(*llvm::JITEventListener::createGDBRegistrationListener());
 
-                        // Make sure the debug info sections aren't stripped.
-                        obj_linking_layer->setProcessAllSections(true);
-                    #endif
+                    // Make sure the debug info sections aren't stripped.
+                    obj_linking_layer->setProcessAllSections(true);
 
                     return obj_linking_layer;
                 })
