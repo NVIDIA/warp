@@ -47,6 +47,19 @@
     extern "C" __double2 __sincos_stret(double);
 #endif
 
+extern "C" {
+
+// GDB and LLDB support debugging of JIT-compiled code by observing calls to __jit_debug_register_code()
+// by putting a breakpoint on it, and retrieving the debug info through __jit_debug_descriptor.
+// On Linux it suffices for these symbols not to be stripped out, while for Windows a .pdb has to contain
+// their information. LLVM defines them, but we don't want a huge .pdb with all LLVM source code's debug
+// info. By forward-declaring them here it suffices to compile this file with /Zi.
+struct jit_descriptor;
+extern jit_descriptor __jit_debug_descriptor;
+extern void __jit_debug_register_code();
+
+}
+
 namespace wp {
 	
 #if defined (_WIN32)
