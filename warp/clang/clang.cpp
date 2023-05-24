@@ -48,6 +48,15 @@
 #endif
 
 namespace wp {
+	
+#if defined (_WIN32)
+	// Windows defaults to using the COFF binary format (aka. "msvc" in the target triple).
+	// Override it to use the ELF format to support DWARF debug info, but keep using the
+	// Microsoft calling convention (see also https://llvm.org/docs/DebuggingJITedCode.html).
+	static const char* target_triple = "x86_64-pc-windows-elf";
+#else
+	static const char* target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
+#endif
 
 static void initialize_llvm()
 {
@@ -71,6 +80,9 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     #else
         args.push_back("-O0");
     #endif
+
+    args.push_back("-triple");
+    args.push_back(target_triple);
 
     clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
@@ -128,7 +140,6 @@ WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char*
         return -1;
     }
 
-    std::string target_triple = llvm::sys::getDefaultTargetTriple();
     std::string Error;
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, Error);
 

@@ -88,13 +88,6 @@ def build_from_source(args):
             # defined by the LLVM JIT, for which it needs debug info.
             cmake_build_type = "RelWithDebInfo"
 
-    if os.name == "nt":
-        # GDB/LLDB only support DWARF debug info present in ELF object code, so use that
-        # format instead of Windows' native COFF object code containing CodeView debug info.
-        target_triple = "x86_64-pc-windows-elf"
-    else:
-        target_triple = "x86_64-pc-linux-elf"
-
     # Location of cmake and ninja installed through pip (see build.bat / build.sh)
     python_bin = "python/Scripts" if sys.platform == "win32" else "python/bin"
     os.environ["PATH"] = os.path.join(base_path, "_build/target-deps/" + python_bin) + os.pathsep + os.environ["PATH"]
@@ -112,7 +105,6 @@ def build_from_source(args):
         "-D", "LLVM_USE_CRT_DEBUG=MTd",
         "-D", "LLVM_USE_CRT_RELWITHDEBINFO=MTd",
         "-D", "LLVM_TARGETS_TO_BUILD=X86",
-        "-D", f"LLVM_DEFAULT_TARGET_TRIPLE={target_triple}",
         "-D", "LLVM_ENABLE_PROJECTS=clang",
         "-D", "LLVM_ENABLE_ZLIB=FALSE",
         "-D", "LLVM_ENABLE_ZSTD=FALSE",
