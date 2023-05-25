@@ -1235,22 +1235,22 @@ class Module:
 
             module_name = "wp_" + self.name
             module_path = os.path.join(build_path, module_name)
-            obj_path = os.path.join(gen_path, module_name)
             module_hash = self.hash_module()
 
             builder = ModuleBuilder(self, self.options)
 
             if device.is_cpu:
-                dll_path = obj_path + ".cpp.o"
+                obj_path = os.path.join(build_path, module_name)
+                obj_path = obj_path + ".o"
                 cpu_hash_path = module_path + ".cpu.hash"
 
                 # check cache
-                if warp.config.cache_kernels and os.path.isfile(cpu_hash_path) and os.path.isfile(dll_path):
+                if warp.config.cache_kernels and os.path.isfile(cpu_hash_path) and os.path.isfile(obj_path):
                     with open(cpu_hash_path, "rb") as f:
                         cache_hash = f.read()
 
                     if cache_hash == module_hash:
-                        runtime.llvm.load_obj(dll_path.encode("utf-8"), module_name.encode("utf-8"))
+                        runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
                         self.cpu_module = module_name
                         return True
 
@@ -1268,7 +1268,7 @@ class Module:
                     # build object code
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
                         warp.build.build_cpu(
-                            dll_path,
+                            obj_path,
                             cpp_path,
                             mode=self.options["mode"],
                             fast_math=self.options["fast_math"],
@@ -1276,7 +1276,6 @@ class Module:
                         )
 
                     # load the object code
-                    obj_path = cpp_path + ".o"
                     runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
                     self.cpu_module = module_name
 

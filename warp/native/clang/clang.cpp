@@ -135,11 +135,8 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
 extern "C" {
 
-WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file, bool debug)
+WP_API int compile_cpp(const char* cpp_src, const char *input_file, const char* include_dir, const char* output_file, bool debug)
 {
-    const char* obj_ext = ".o";
-    std::string input_file = std::string(output_file).substr(0, std::strlen(output_file) - std::strlen(obj_ext));
-
     initialize_llvm();
 
     llvm::LLVMContext context;

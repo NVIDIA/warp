@@ -40,10 +40,10 @@ def load_cuda(input_path, device):
     return warp.context.runtime.core.cuda_load_module(device.context, input_path.encode("utf-8"))
 
 
-def build_cpu(dll_path, cpp_path, mode="release", verify_fp=False, fast_math=False):
+def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False):
     # output stale, rebuild
     if warp.config.verbose:
-        print(f"Building {dll_path}")
+        print(f"Building {obj_path}")
 
     import pathlib
 
@@ -61,11 +61,15 @@ def build_cpu(dll_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
     except RuntimeError as e:
         clang = None
 
-    cpp_out = cpp_path + ".o"
-
     with ScopedTimer("build", active=warp.config.verbose):
         with open(cpp_path, "rb") as cpp:
-            clang.compile_cpp(cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), mode == "debug")
+            clang.compile_cpp(
+                cpp.read(),
+                cpp_path.encode("utf-8"),
+                native_dir.encode("utf-8"),
+                obj_path.encode("utf-8"),
+                mode == "debug",
+            )
 
 
 def load_dll(dll_path):

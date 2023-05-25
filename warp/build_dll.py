@@ -282,10 +282,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
         includes = cpp_includes + cuda_includes
 
         if mode == "debug":
-            cpp_flags = f'-O0 -g -fno-rtti -D_DEBUG -DWP_ENABLE_DEBUG=1 -DWP_CPU -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -fkeep-inline-functions -I"{native_dir}" {includes}'
+            cpp_flags = f'-O0 -g -fno-rtti -D_DEBUG -DWP_ENABLE_DEBUG=1 -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -fkeep-inline-functions -I"{native_dir}" {includes}'
 
         if mode == "release":
-            cpp_flags = f'-O3 -DNDEBUG -DWP_ENABLE_DEBUG=0 -DWP_CPU -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes}'
+            cpp_flags = f'-O3 -DNDEBUG -DWP_ENABLE_DEBUG=0 -D{cuda_enabled} -D{cutlass_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden --std=c++14 -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes}'
 
         if verify_fp:
             cpp_flags += " -DWP_VERIFY_FP"
