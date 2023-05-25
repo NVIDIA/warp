@@ -1245,10 +1245,7 @@ class Module:
 
             if device.is_cpu:
                 if runtime.llvm:
-                    if os.name == "nt":
-                        dll_path = obj_path + ".cpp.obj"
-                    else:
-                        dll_path = obj_path + ".cpp.o"
+                    dll_path = obj_path + ".cpp.o"
                 else:
                     if os.name == "nt":
                         dll_path = module_path + ".dll"
@@ -1283,23 +1280,11 @@ class Module:
                     cpp_file.write(cpp_source)
                     cpp_file.close()
 
-                    bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
-                    if os.name == "nt":
-                        libs = ["warp.lib", f'/LIBPATH:"{bin_path}"']
-                        libs.append("/NOENTRY")
-                        libs.append("/NODEFAULTLIB")
-                    elif sys.platform == "darwin":
-                        libs = [f"-lwarp", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
-                    else:
-                        libs = ["-l:warp.so", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
-
                     # build object code
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
                         warp.build.build_cpu(
                             dll_path,
-                            [cpp_path],
-                            None,
-                            libs,
+                            cpp_path,
                             mode=self.options["mode"],
                             fast_math=self.options["fast_math"],
                             verify_fp=warp.config.verify_fp,
@@ -1307,8 +1292,7 @@ class Module:
 
                     if runtime.llvm:
                         # load the object code
-                        obj_ext = ".obj" if os.name == "nt" else ".o"
-                        obj_path = cpp_path + obj_ext
+                        obj_path = cpp_path + ".o"
                         runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
                         self.cpu_module = module_name
                     else:

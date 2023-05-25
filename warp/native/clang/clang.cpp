@@ -137,12 +137,7 @@ extern "C" {
 
 WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file, bool debug)
 {
-    #if defined (_WIN32)
-        const char* obj_ext = ".obj";
-    #else
-        const char* obj_ext = ".o";
-    #endif
-
+    const char* obj_ext = ".o";
     std::string input_file = std::string(output_file).substr(0, std::strlen(output_file) - std::strlen(obj_ext));
 
     initialize_llvm();
