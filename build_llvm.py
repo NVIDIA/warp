@@ -2,7 +2,8 @@ import sys
 import os
 import subprocess
 
-import warp.build
+import warp
+from warp.build_dll import build_dll
 
 # set build output path off this file
 base_path = os.path.dirname(os.path.realpath(__file__))
@@ -302,7 +303,7 @@ def build_warp_clang(args, lib_name):
             libs.append("-lpthread")
             libs.append("-ldl")
 
-        warp.build.build_dll(
+        build_dll(
             dll_path=clang_dll_path,
             cpp_paths=clang_cpp_paths,
             cu_path=None,
