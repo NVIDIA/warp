@@ -1293,9 +1293,9 @@ class Module:
                     else:
                         libs = ["-l:warp.so", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
 
-                    # build DLL or object code
+                    # build object code
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(
+                        warp.build.build_cpu(
                             dll_path,
                             [cpp_path],
                             None,
