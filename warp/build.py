@@ -509,18 +509,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
     cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_path is not None) else "WP_ENABLE_CUDA=0"
 
     if os.name == "nt":
-        # try loading warp-clang.dll, except when we're building warp-clang.dll or warp.dll
-        clang = None
-        if os.path.basename(dll_path) != "warp-clang.dll" and os.path.basename(dll_path) != "warp.dll":
-            try:
-                clang = warp.build.load_dll(f"{warp_home_path}/bin/warp-clang.dll")
-            except RuntimeError as e:
-                clang = None
-
         if warp.config.host_compiler:
             host_linker = os.path.join(os.path.dirname(warp.config.host_compiler), "link.exe")
-        elif not clang:
-            raise RuntimeError("Warp build error: No host or bundled compiler was found")
+        else:
+            raise RuntimeError("Warp build error: No host compiler was found")
 
         cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
         cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'
@@ -537,14 +529,11 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             iter_dbg = "_ITERATOR_DEBUG_LEVEL=2"
             debug = "_DEBUG"
 
-        if "/NODEFAULTLIB" in libs:
-            runtime = "/sdl- /GS-"  # don't specify a runtime, and disable security checks which depend on it
-
         if warp.config.mode == "debug":
-            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D WP_ENABLE_DEBUG=1 /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
+            cpp_flags = f'/nologo {runtime} /Zi /Od /D "{debug}" /D WP_ENABLE_DEBUG=1 /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
             linkopts = ["/DLL", "/DEBUG"]
         elif warp.config.mode == "release":
-            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D WP_ENABLE_DEBUG=0 /D "WP_CPU" /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
+            cpp_flags = f'/nologo {runtime} /Ox /D "{debug}" /D WP_ENABLE_DEBUG=0 /D "{cuda_enabled}" /D "{cutlass_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" /I"{nanovdb_home}" {includes}'
             linkopts = ["/DLL"]
         else:
             raise RuntimeError(f"Unrecognized build configuration (debug, release), got: {mode}")
@@ -560,15 +549,8 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 cpp_out = cpp_path + ".obj"
                 linkopts.append(quote(cpp_out))
 
-                if clang:
-                    with open(cpp_path, "rb") as cpp:
-                        clang.compile_cpp(
-                            cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), warp.config.mode == "debug"
-                        )
-
-                else:
-                    cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
-                    run_cmd(cpp_cmd)
+                cpp_cmd = f'"{warp.config.host_compiler}" {cpp_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
+                run_cmd(cpp_cmd)
 
         if cu_path:
             cu_out = cu_path + ".o"
@@ -587,28 +569,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 )
 
         with ScopedTimer("link", active=warp.config.verbose):
-            # Link into a DLL, unless we have LLVM to load the object code directly
-            if not clang:
-                link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
-                run_cmd(link_cmd)
+            link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
+            run_cmd(link_cmd)
 
     else:
-        clang = None
-        try:
-            if sys.platform == "darwin":
-                # try loading libwarp-clang.dylib, except when we're building libwarp-clang.dylib or libwarp.dylib
-                if (
-                    os.path.basename(dll_path) != "libwarp-clang.dylib"
-                    and os.path.basename(dll_path) != "libwarp.dylib"
-                ):
-                    clang = warp.build.load_dll(f"{warp_home_path}/bin/libwarp-clang.dylib")
-            else:  # Linux
-                # try loading warp-clang.so, except when we're building warp-clang.so or warp.so
-                if os.path.basename(dll_path) != "warp-clang.so" and os.path.basename(dll_path) != "warp.so":
-                    clang = warp.build.load_dll(f"{warp_home_path}/bin/warp-clang.so")
-        except RuntimeError as e:
-            clang = None
-
         cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}/include"'
         cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_path else ""
@@ -633,15 +597,8 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 cpp_out = cpp_path + ".o"
                 ld_inputs.append(quote(cpp_out))
 
-                if clang:
-                    with open(cpp_path, "rb") as cpp:
-                        clang.compile_cpp(
-                            cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), warp.config.mode == "debug"
-                        )
-
-                else:
-                    build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
-                    run_cmd(build_cmd)
+                build_cmd = f'g++ {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
+                run_cmd(build_cmd)
 
         if cu_path:
             cu_out = cu_path + ".o"
@@ -668,18 +625,16 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             opt_exclude_libs = "-Wl,--exclude-libs,ALL"
 
         with ScopedTimer("link", active=warp.config.verbose):
-            # Link into a DLL, unless we have LLVM to load the object code directly
-            if not clang:
-                origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
-                link_cmd = f"g++ -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
-                run_cmd(link_cmd)
+            origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
+            link_cmd = f"g++ -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+            run_cmd(link_cmd)
 
-                # Strip symbols to reduce the binary size
-                if sys.platform == "darwin":
-                    run_cmd(f"strip -x {dll_path}")  # Strip all local symbols
-                else:  # Linux
-                    # Strip all symbols except for those needed to support debugging JIT-compiled code
-                    run_cmd(f"strip --strip-all --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}")
+            # Strip symbols to reduce the binary size
+            if sys.platform == "darwin":
+                run_cmd(f"strip -x {dll_path}")  # Strip all local symbols
+            else:  # Linux
+                # Strip all symbols except for those needed to support debugging JIT-compiled code
+                run_cmd(f"strip --strip-all --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}")
 
 
 def load_dll(dll_path):
