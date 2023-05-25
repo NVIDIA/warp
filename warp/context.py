@@ -1023,7 +1023,7 @@ class Module:
 
         self.options = {
             "max_unroll": 16,
-            "enable_backward": True,
+            "enable_backward": warp.config.enable_backward,
             "fast_math": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,

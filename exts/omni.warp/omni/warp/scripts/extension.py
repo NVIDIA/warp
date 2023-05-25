@@ -26,8 +26,9 @@ SCENES_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__fi
 WARP_GETTING_STARTED_URL = "https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_warp.html"
 WARP_DOCUMENTATION_URL = "https://nvidia.github.io/warp/"
 
-KERNEL_NODE_OPT_IN_SETTING = "/app/omni.warp.kernel/opt_in"
-KERNEL_NODE_ENABLE_OPT_IN_SETTING = "/app/omni.warp.kernel/enable_opt_in"
+SETTING_ENABLE_BACKWARD = "/exts/omni.warp/enable_backward"
+SETTING_KERNEL_NODE_OPT_IN = "/app/omni.warp.kernel/opt_in"
+SETTING_KERNEL_NODE_ENABLE_OPT_IN = "/app/omni.warp.kernel/enable_opt_in"
 OMNIGRAPH_STAGEUPDATE_ORDER = 100  # We want our attach() to run after OG so that nodes have been instantiated
 
 
@@ -50,12 +51,12 @@ def is_kernel_node_check_enabled() -> bool:
     settings = carb.settings.get_settings()
     if not settings.is_accessible_as(
         carb.dictionary.ItemType.BOOL,
-        KERNEL_NODE_ENABLE_OPT_IN_SETTING,
+        SETTING_KERNEL_NODE_ENABLE_OPT_IN,
     ):
         # The enable-setting is not present, we enable the check
         return True
 
-    if not settings.get(KERNEL_NODE_ENABLE_OPT_IN_SETTING):
+    if not settings.get(SETTING_KERNEL_NODE_ENABLE_OPT_IN):
         # The enable-setting is present and False, disable the check
         return False
 
@@ -77,12 +78,12 @@ def verify_kernel_node_load(nodes: Sequence[og.Node]):
 
     def on_cancel(dialog: MessageDialog):
         settings = carb.settings.get_settings()
-        settings.set(KERNEL_NODE_OPT_IN_SETTING, False)
+        settings.set(SETTING_KERNEL_NODE_OPT_IN, False)
         dialog.hide()
 
     def on_ok(dialog: MessageDialog):
         settings = carb.settings.get_settings()
-        settings.set(KERNEL_NODE_OPT_IN_SETTING, True)
+        settings.set(SETTING_KERNEL_NODE_OPT_IN, True)
         dialog.hide()
 
     dialog = MessageDialog(
@@ -112,7 +113,7 @@ def check_for_kernel_nodes() -> None:
 
     # Check is enabled - see if they already opted-in
     settings = carb.settings.get_settings()
-    if settings.get(KERNEL_NODE_OPT_IN_SETTING):
+    if settings.get(SETTING_KERNEL_NODE_OPT_IN):
         # The check is enabled, and they opted-in
         return
 
@@ -151,7 +152,7 @@ def on_kernel_opt_in_setting_change(
         return
 
     settings = carb.settings.get_settings()
-    if settings.get(KERNEL_NODE_OPT_IN_SETTING):
+    if settings.get(SETTING_KERNEL_NODE_OPT_IN):
         set_all_graphs_enabled(True)
 
 
@@ -174,6 +175,9 @@ class OmniWarpExtension(omni.ext.IExt):
     def on_startup(self, ext_id):
         log_info("OmniWarpExtension startup")
 
+        settings = carb.settings.get_settings()
+
+        wp.config.enable_backward = settings.get(SETTING_ENABLE_BACKWARD)
         wp.init()
 
         self._is_live = True
@@ -211,7 +215,7 @@ class OmniWarpExtension(omni.ext.IExt):
             OMNIGRAPH_STAGEUPDATE_ORDER + 1,
         )
         self._opt_in_setting_sub = omni.kit.app.SettingChangeSubscription(
-            KERNEL_NODE_OPT_IN_SETTING,
+            SETTING_KERNEL_NODE_OPT_IN,
             on_kernel_opt_in_setting_change,
         )
         assert self._opt_in_setting_sub
