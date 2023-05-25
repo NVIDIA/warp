@@ -1732,10 +1732,10 @@ class Runtime:
             warp_lib = os.path.join(bin_path, "warp.so")
             llvm_lib = os.path.join(bin_path, "warp-clang.so")
 
-        self.core = warp.build.load_dll(warp_lib)
+        self.core = self.load_dll(warp_lib)
 
         if llvm_lib and os.path.exists(llvm_lib):
-            self.llvm = warp.build.load_dll(llvm_lib)
+            self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
             self.llvm.lookup.restype = ctypes.c_uint64
         else:
@@ -2183,6 +2183,16 @@ class Runtime:
 
         # global tape
         self.tape = None
+
+    def load_dll(self, dll_path):
+        try:
+            if sys.version_info[0] > 3 or sys.version_info[0] == 3 and sys.version_info[1] >= 8:
+                dll = ctypes.CDLL(dll_path, winmode=0)
+            else:
+                dll = ctypes.CDLL(dll_path)
+        except OSError:
+            raise RuntimeError(f"Failed to load the shared library '{dll_path}'")
+        return dll
 
     def get_device(self, ident: Devicelike = None) -> Device:
         if isinstance(ident, Device):
