@@ -1014,7 +1014,6 @@ class Module:
         self.constants = []
         self.structs = {}
 
-        self.dll = None
         self.cpu_module = None
         self.cuda_modules = {}  # module lookup by CUDA context
 
@@ -1208,8 +1207,6 @@ class Module:
 
         if device.is_cpu:
             # check if already loaded
-            if self.dll:
-                return True
             if self.cpu_module:
                 return True
             # avoid repeated build attempts
@@ -1244,14 +1241,7 @@ class Module:
             builder = ModuleBuilder(self, self.options)
 
             if device.is_cpu:
-                if runtime.llvm:
-                    dll_path = obj_path + ".cpp.o"
-                else:
-                    if os.name == "nt":
-                        dll_path = module_path + ".dll"
-                    else:
-                        dll_path = module_path + ".so"
-
+                dll_path = obj_path + ".cpp.o"
                 cpu_hash_path = module_path + ".cpu.hash"
 
                 # check cache
@@ -1260,14 +1250,9 @@ class Module:
                         cache_hash = f.read()
 
                     if cache_hash == module_hash:
-                        if runtime.llvm:
-                            runtime.llvm.load_obj(dll_path.encode("utf-8"), module_name.encode("utf-8"))
-                            self.cpu_module = module_name
-                            return True
-                        else:
-                            self.dll = warp.build.load_dll(dll_path)
-                            if self.dll is not None:
-                                return True
+                        runtime.llvm.load_obj(dll_path.encode("utf-8"), module_name.encode("utf-8"))
+                        self.cpu_module = module_name
+                        return True
 
                 # build
                 try:
@@ -1290,16 +1275,10 @@ class Module:
                             verify_fp=warp.config.verify_fp,
                         )
 
-                    if runtime.llvm:
-                        # load the object code
-                        obj_path = cpp_path + ".o"
-                        runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
-                        self.cpu_module = module_name
-                    else:
-                        # load the DLL
-                        self.dll = warp.build.load_dll(dll_path)
-                        if self.dll is None:
-                            raise Exception("Failed to load CPU module")
+                    # load the object code
+                    obj_path = cpp_path + ".o"
+                    runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
+                    self.cpu_module = module_name
 
                     # update cpu hash
                     with open(cpu_hash_path, "wb") as f:
@@ -1384,10 +1363,6 @@ class Module:
             return True
 
     def unload(self):
-        if self.dll:
-            warp.build.unload_dll(self.dll)
-            self.dll = None
-
         if self.cpu_module:
             runtime.llvm.unload_obj(self.cpu_module.encode("utf-8"))
             self.cpu_module = None
@@ -1422,17 +1397,13 @@ class Module:
         name = kernel.get_mangled_name()
 
         if device.is_cpu:
-            if self.cpu_module:
-                func = ctypes.CFUNCTYPE(None)
-                forward = func(
-                    runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))
-                )
-                backward = func(
-                    runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))
-                )
-            else:
-                forward = eval("self.dll." + name + "_cpu_forward")
-                backward = eval("self.dll." + name + "_cpu_backward")
+            func = ctypes.CFUNCTYPE(None)
+            forward = func(
+                runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))
+            )
+            backward = func(
+                runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))
+            )
         else:
             cu_module = self.cuda_modules[device.context]
             forward = runtime.core.cuda_get_kernel(
