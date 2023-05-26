@@ -27,6 +27,12 @@
 #include <llvm/IR/LegacyPassManager.h>
 
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
+#include <llvm/ExecutionEngine/JITEventListener.h>
+#include <llvm/ExecutionEngine/JITLink/JITLinkMemoryManager.h>
+#include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
+#include <llvm/ExecutionEngine/Orc/TargetProcess/TargetExecutionUtils.h>
+#include <llvm/ExecutionEngine/SectionMemoryManager.h>
 
 #include <cmath>
 #include <vector>
@@ -41,7 +47,29 @@
     extern "C" __double2 __sincos_stret(double);
 #endif
 
+extern "C" {
+
+// GDB and LLDB support debugging of JIT-compiled code by observing calls to __jit_debug_register_code()
+// by putting a breakpoint on it, and retrieving the debug info through __jit_debug_descriptor.
+// On Linux it suffices for these symbols not to be stripped out, while for Windows a .pdb has to contain
+// their information. LLVM defines them, but we don't want a huge .pdb with all LLVM source code's debug
+// info. By forward-declaring them here it suffices to compile this file with /Zi.
+struct jit_descriptor;
+extern jit_descriptor __jit_debug_descriptor;
+extern void __jit_debug_register_code();
+
+}
+
 namespace wp {
+	
+#if defined (_WIN32)
+	// Windows defaults to using the COFF binary format (aka. "msvc" in the target triple).
+	// Override it to use the ELF format to support DWARF debug info, but keep using the
+	// Microsoft calling convention (see also https://llvm.org/docs/DebuggingJITedCode.html).
+	static const char* target_triple = "x86_64-pc-windows-elf";
+#else
+	static const char* target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
+#endif
 
 static void initialize_llvm()
 {
@@ -51,7 +79,7 @@ static void initialize_llvm()
     llvm::InitializeAllAsmPrinters();
 }
 
-static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, llvm::LLVMContext& context)
+static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, const char* cpp_src, const char* include_dir, bool debug, llvm::LLVMContext& context)
 {
     // Compilation arguments
     std::vector<const char*> args;
@@ -59,7 +87,11 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     args.push_back("-I");
     args.push_back(include_dir);
-    args.push_back("-O2");
+
+    args.push_back(debug ? "-O0" : "-O2");
+
+    args.push_back("-triple");
+    args.push_back(target_triple);
 
     clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer =
@@ -72,6 +104,11 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     auto& compiler_invocation = compiler_instance.getInvocation();
     clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine.release());
+
+    if(debug)
+    {
+        compiler_invocation.getCodeGenOpts().setDebugInfo(clang::codegenoptions::FullDebugInfo);
+    }
 
     // Map code to a MemoryBuffer
     std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
@@ -93,7 +130,7 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
 extern "C" {
 
-WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file)
+WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char* output_file, bool debug)
 {
     #if defined (_WIN32)
         const char* obj_ext = ".obj";
@@ -106,14 +143,13 @@ WP_API int compile_cpp(const char* cpp_src, const char* include_dir, const char*
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, context);
+    std::unique_ptr<llvm::Module> module = cpp_to_llvm(input_file, cpp_src, include_dir, debug, context);
 
     if(!module)
     {
         return -1;
     }
 
-    std::string target_triple = llvm::sys::getDefaultTargetTriple();
     std::string Error;
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, Error);
 
@@ -151,7 +187,23 @@ WP_API int load_obj(const char* object_file, const char* module_name)
     {
         initialize_llvm();
 
-        auto jit_expected = llvm::orc::LLJITBuilder().create();
+        auto jit_expected = llvm::orc::LLJITBuilder()
+            .setObjectLinkingLayerCreator(
+                [&](llvm::orc::ExecutionSession &session, const llvm::Triple &triple) {
+                    auto get_memory_manager = []() {
+                        return std::make_unique<llvm::SectionMemoryManager>();
+                    };
+                    auto obj_linking_layer = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(session, std::move(get_memory_manager));
+
+                    // Register the event listener.
+                    obj_linking_layer->registerJITEventListener(*llvm::JITEventListener::createGDBRegistrationListener());
+
+                    // Make sure the debug info sections aren't stripped.
+                    obj_linking_layer->setProcessAllSections(true);
+
+                    return obj_linking_layer;
+                })
+            .create();
 
         if(!jit_expected)
         {

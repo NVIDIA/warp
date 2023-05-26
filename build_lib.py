@@ -27,8 +27,9 @@ parser.add_argument(
 )
 parser.add_argument("--fast_math", type=bool, default=False, help="Enable fast math on library, default False")
 parser.add_argument("--quick", action="store_true", help="Only generate PTX code, disable CUTLASS ops")
-parser.add_argument("--build_llvm", type=bool, default=False, help="Build a bundled Clang/LLVM compiler")
-parser.add_argument("--standalone", type=bool, default=True, help="Use standalone LLVM-based JIT")
+parser.add_argument("--build_llvm", type=bool, default=False, help="Build Clang/LLVM compiler from source")
+parser.add_argument("--debug_llvm", type=bool, default=False, help="Enable LLVM compiler code debugging")
+parser.add_argument("--standalone", type=bool, default=True, help="Use standalone LLVM-based JIT compiler")
 args = parser.parse_args()
 
 # set build output path off this file
@@ -123,9 +124,9 @@ try:
         import build_llvm
 
         if args.build_llvm:
-            build_llvm.build_from_source()
+            build_llvm.build_from_source(args)
 
-        build_llvm.build_warp_clang(args.build_llvm, lib_name("warp-clang"))
+        build_llvm.build_warp_clang(args, lib_name("warp-clang"))
 
 except Exception as e:
     # output build error
