@@ -181,7 +181,7 @@ class OmniWarpExtension(omni.ext.IExt):
         wp.init()
 
         self._is_live = True
-        self._ext_name = omni.ext.get_extension_name(ext_id)
+        self._ext_name = "omni.warp"
 
         try:
             import omni.kit.menu.utils
