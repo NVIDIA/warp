@@ -14,9 +14,8 @@ from warp.thirdparty import appdirs
 
 # builds cuda source to PTX or CUBIN using NVRTC (output type determined by output_path extension)
 def build_cuda(cu_path, arch, output_path, config="release", verify_fp=False, fast_math=False):
-    with open(cu_path) as src_file:
-        src = src_file.read().encode("utf-8")
-
+    with open(cu_path, "rb") as src_file:
+        src = src_file.read()
         inc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "native").encode("utf-8")
         output_path = output_path.encode("utf-8")
 
