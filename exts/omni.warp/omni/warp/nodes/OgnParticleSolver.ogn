@@ -17,14 +17,9 @@
                 "type": "bundle",
                 "description": "Collision Prim"
             },
-            "collider_offset": {
-                "type": "float",
-                "description": "Distance to maintain from collision primitive surface",
-                "default": 0.01
-            },
             "collider_margin": {
                 "type": "float",
-                "description": "Distance to generate contacts at, multiple of collider_offset ",
+                "description": "Distance to generate contacts at",
                 "default": 1.5
             },            
             "mass": {

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.8.3]
+
+- Add support for individual particle radii: `ModelBuilder.add_particle` has a new `radius` argument, `Model.particle_radius` is now a Warp array, where assignment by a single scalar radius is still supported but will be deprecated in a future Warp version
+- Add bitwise operators &, |, ~, <<, >>
+- Add per-particle flags as a `Model.particle_flags` Warp array, introduce `PARTICLE_FLAG_ACTIVE` to define whether a particle is being simulated and participates in contact dynamics
+- Add XPBD support for particle-particle collision
+- `hash_grid_point_id` now returns -1 if the `HashGrid` has not been reserved before
+- `Model.soft_contact_distance` is now deprecated and subsumed in `Model.particle_radius`
+
 ## [0.8.2] - 2023-04-21
 
 - Add `ModelBuilder.soft_contact_max` to control the maximum number of soft contacts that can be registered. Use `Model.allocate_soft_contacts(new_count)` to change count on existing `Model` objects.

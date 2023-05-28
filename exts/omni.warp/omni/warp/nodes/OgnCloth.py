@@ -258,7 +258,7 @@ class OgnCloth:
                 context.model.soft_contact_kd = db.inputs.k_contact_damp
                 context.model.soft_contact_kf = db.inputs.k_contact_friction
                 context.model.soft_contact_mu = db.inputs.k_contact_mu
-                context.model.soft_contact_distance = db.inputs.collider_offset
+                context.model.particle_radius = db.inputs.collider_offset
                 context.model.soft_contact_margin = db.inputs.collider_offset * 10.0
 
                 # Update tri properties if required:
