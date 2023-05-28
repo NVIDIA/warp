@@ -235,6 +235,9 @@ def solve_particle_particle_contacts(
 
     # order threads by cell
     i = wp.hash_grid_point_id(grid, tid)
+    if i == -1:
+        # hash grid has not been built yet
+        return
     if (particle_flags[i] & PARTICLE_FLAG_ACTIVE) == 0:
         return
 
@@ -2009,7 +2012,7 @@ class XPBDIntegrator:
                             device=model.device,
                         )
                         
-                    if model.particle_max_radius > 0.0 and model.particle_grid.reserved:
+                    if model.particle_max_radius > 0.0:
                         wp.launch(
                             kernel=solve_particle_particle_contacts,
                             dim=model.particle_count,
