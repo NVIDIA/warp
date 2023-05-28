@@ -165,6 +165,12 @@ def vector(length, dtype):
         def __str__(self):
             return f"[{', '.join(map(str, self))}]"
 
+        def __eq__(self, other):
+            for i in range(self._length_):
+                if self[i] != other[i]:
+                    return False
+            return True
+
     return vec_t
 
 
@@ -278,6 +284,13 @@ def matrix(shape, dtype):
                 row_str.append(f"[{', '.join(map(str, row_val))}]")
 
             return "[" + ",\n ".join(row_str) + "]"
+
+        def __eq__(self, other):
+            for i in range(self._length_):
+                if self[i] != other[i]:
+                    return False
+            return True
+
 
         def get_row(self, r):
             if r < 0 or r >= self._shape_[0]:
@@ -873,7 +886,7 @@ def type_ctype(dtype):
 
 
 def type_length(dtype):
-    if dtype == float or dtype == int:
+    if dtype == float or dtype == int or isinstance(dtype, warp.codegen.Struct):
         return 1
     else:
         return dtype._length_
@@ -882,10 +895,13 @@ def type_length(dtype):
 def type_size_in_bytes(dtype):
     if dtype.__module__ == "ctypes":
         return ctypes.sizeof(dtype)
+    elif type_is_struct(dtype):
+        return ctypes.sizeof(dtype.ctype)
     elif dtype == float or dtype == int:
         return 4
     elif hasattr(dtype, "_type_"):
         return getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
+    
     else:
         return 0
 
@@ -900,6 +916,8 @@ def type_to_warp(dtype):
 
 
 def type_typestr(dtype):
+    from warp.codegen import Struct
+
     if dtype == float16:
         return "<f2"
     elif dtype == float32:
@@ -922,6 +940,8 @@ def type_typestr(dtype):
         return "<i8"
     elif dtype == uint64:
         return "<u8"
+    elif isinstance(dtype, Struct):
+        return f"|V{ctypes.sizeof(dtype.ctype)}"        
     elif issubclass(dtype, ctypes.Array):
         return type_typestr(dtype._wp_scalar_type_)
     else:
@@ -953,6 +973,14 @@ def type_is_float(t):
 
     return t in float_types
 
+
+def type_is_struct(dtype):
+    from warp.codegen import Struct
+
+    if isinstance(dtype, Struct):
+        return True
+    else:
+        return False
 
 # returns True if the passed *type* is a vector
 def type_is_vector(t):
@@ -1140,26 +1168,42 @@ class array(Array):
                 # data or ptr, not both
                 raise RuntimeError("Should only construct arrays with either data or ptr arguments, not both")
 
-            try:
-                # force convert tuples and lists (or any array type) to ndarray
-                arr = np.array(data, copy=False)
-            except Exception as e:
-                raise RuntimeError(
-                    "When constructing an array the data argument must be convertible to ndarray type type. Encountered an error while converting:"
-                    + str(e)
-                )
+            if isinstance(dtype, warp.codegen.Struct):
+                try:
+                    # convert each struct instance to its corresponding ctype
+                    ctype_list = [v.__ctype__() for v in data]
+                    # convert the list of ctypes to a contiguous ctypes array
+                    ctype_arr = (dtype.ctype * len(ctype_list))(*ctype_list)
+                    # convert to numpy
+                    arr = np.frombuffer(ctype_arr, dtype=dtype.ctype)
+                    #arr = np.array(ctype_arr, copy=False)
+                
+                except Exception as e:
+                    raise RuntimeError(
+                        "Error while trying to construct Warp array from a Python list of Warp structs." + str(e))
+                   
+            else:
+                try:
+                    # convert tuples and lists of numeric types to ndarray
+                    arr = np.array(data, copy=False)
+                except Exception as e:
+                    raise RuntimeError(
+                        "When constructing an array the data argument must be convertible to ndarray type type. Encountered an error while converting:"
+                        + str(e)
+                    )
 
             if dtype == Any:
                 # infer dtype from the source data array
                 dtype = np_dtype_to_warp_type[arr.dtype]
 
-            try:
-                # try to convert src array to destination type
-                arr = arr.astype(dtype=type_typestr(dtype), copy=False)
-            except:
-                raise RuntimeError(
-                    f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}"
-                )
+            # try to convert numeric src array to destination type
+            if not isinstance(dtype, warp.codegen.Struct):
+                try:
+                    arr = arr.astype(dtype=type_typestr(dtype), copy=False)
+                except:
+                    raise RuntimeError(
+                        f"Could not convert input data with type {arr.dtype} to array with type {dtype._type_}"
+                    )
 
             # ensure contiguous
             arr = np.ascontiguousarray(arr)
@@ -1280,13 +1324,14 @@ class array(Array):
                 self.is_contiguous = strides[:ndim] == contiguous_strides[:ndim]
 
             # store flat shape (including type shape)
-            if self.dtype not in [Any, Scalar, Float, Int] and issubclass(dtype, ctypes.Array):
+
+            if isinstance(dtype, type) and issubclass(dtype, ctypes.Array):
                 # vector type, flatten the dimensions into one tuple
                 arr_shape = (*self.shape, *self.dtype._shape_)
                 dtype_strides = strides_from_shape(self.dtype._shape_, self.dtype._type_)
                 arr_strides = (*self.strides, *dtype_strides)
             else:
-                # scalar type
+                # scalar or struct type
                 arr_shape = self.shape
                 arr_strides = self.strides
 
@@ -1629,8 +1674,38 @@ class array(Array):
             if self.ptr is None:
                 return np.empty(shape=self.shape, dtype=self.dtype)
             else:
-                return np.array(self.to("cpu"), copy=False)
+                a = self.to("cpu")
 
+                if isinstance(self.dtype, warp.codegen.Struct):
+                    # Note: cptr holds a backref to the source array to avoid it being deallocated
+                    p = a.cptr()
+                    return np.ctypeslib.as_array(p, self.shape)
+                else:
+                    # convert through array interface
+                    return np.array(a, copy=False)
+
+    # return a ctypes cast of the array address
+    # note that accesses to this object are *not* bounds checked
+    def cptr(self):
+        if self.device != "cpu":
+            raise RuntimeError("Accessing array memory through a ctypes ptr is only supported for CPU arrays.")
+        
+        p = ctypes.cast(self.ptr, ctypes.POINTER(self.dtype.ctype))
+
+        # store backref to the underlying array to avoid it being deallocated
+        p._ref = self
+
+        return p
+
+    # returns a flattened list of items in the array as a Python list
+    def list(self):
+        a = self.to("cpu").flatten()
+
+        # Note: cptr holds a backref to the source array to avoid it being deallocated
+        p = a.cptr()
+
+        return p[:a.size]
+    
     # convert data from one device to another, nop if already on device
     def to(self, device):
         device = warp.get_device(device)
@@ -1943,7 +2018,21 @@ class indexedarray(Generic[T]):
     def numpy(self):
         # use the CUDA default stream for synchronous behaviour with other streams
         with warp.ScopedStream(self.device.null_stream):
-            return np.array(self.contiguous().to("cpu"), copy=False)
+
+            a = self.contiguous().to("cpu")
+
+            if isinstance(self.dtype, warp.codegen.Struct):
+                p = ctypes.cast(a.ptr, ctypes.POINTER(a.dtype.ctype))
+                np.ctypeslib.as_array(p, self.shape)
+            else:
+                # convert through array interface
+                return np.array(a, copy=False)
+
+    # returns a flattened list of items in the array as a Python list
+    def list(self):
+        a = self.flatten()
+        p = ctypes.cast(a.ptr, ctypes.POINTER(a.dtype.ctype))
+        return p[:a.size]
 
 
 # aliases for indexedarrays with small dimensions
