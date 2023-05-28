@@ -441,7 +441,7 @@ class Model:
         self.particle_qd = None
         self.particle_mass = None
         self.particle_inv_mass = None
-        self.particle_radius = None
+        self._particle_radius = None
         self.particle_max_radius = 0.0
         self.particle_ke = 1.0e3
         self.particle_kd = 1.0e2
@@ -806,11 +806,30 @@ class Model:
 
         warnings.warn(
             "Model.soft_contact_distance is deprecated and will be removed in a future Warp version. "
-            "Particles now have individual radii, setting `Model.particle_radius` array to given value.",
+            "Particles now have individual radii, see `Model.particle_radius`.",
             DeprecationWarning,
             stacklevel=2,
         )
-        self.particle_radius.fill_(value)
+    
+    @property
+    def particle_radius(self):
+        """Array of per-particle radii"""
+        return self._particle_radius
+    
+    @particle_radius.setter
+    def particle_radius(self, value):
+        if isinstance(value, float):
+            import warnings
+
+            warnings.warn(
+                "Model.particle_radius is an array of per-particle radii, assigning with a scalar value "
+                "is deprecated and will be removed in a future Warp version.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self._particle_radius.fill_(value)
+        else:
+            self._particle_radius = value
 
 
 class ModelBuilder:
@@ -2973,6 +2992,8 @@ class ModelBuilder:
         cell_z: float,
         mass: float,
         jitter: float,
+        radius_mean: float = default_particle_radius,
+        radius_std: float = 0.0,
     ):
         for z in range(dim_z):
             for y in range(dim_y):
@@ -2982,7 +3003,11 @@ class ModelBuilder:
 
                     p = np.array(wp.quat_rotate(rot, v)) + pos + np.random.rand(3) * jitter
 
-                    self.add_particle(p, vel, m)
+                    if radius_std > 0.0:
+                        r = radius_mean + np.random.randn() * radius_std
+                    else:
+                        r = radius_mean
+                    self.add_particle(p, vel, m, r)
 
     def add_soft_grid(
         self,
@@ -3305,7 +3330,7 @@ class ModelBuilder:
             m.particle_qd = wp.array(self.particle_qd, dtype=wp.vec3, requires_grad=requires_grad)
             m.particle_mass = wp.array(self.particle_mass, dtype=wp.float32, requires_grad=requires_grad)
             m.particle_inv_mass = wp.array(particle_inv_mass, dtype=wp.float32, requires_grad=requires_grad)
-            m.particle_radius = wp.array(self.particle_radius, dtype=wp.float32, requires_grad=requires_grad)
+            m._particle_radius = wp.array(self.particle_radius, dtype=wp.float32, requires_grad=requires_grad)
             m.particle_flags = wp.array([flag_to_int(f) for f in self.particle_flags], dtype=wp.uint32)
             m.particle_max_radius = np.max(self.particle_radius) if len(self.particle_radius) > 0 else 0.0
 

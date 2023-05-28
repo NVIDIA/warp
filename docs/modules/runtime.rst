@@ -457,6 +457,39 @@ You can also create identity transforms and anonymously typed instances inside a
       # create double precision identity transform:
       qd = wp.transform_identity(dtype=wp.float64)
 
+Structs
+#######
+
+Users can define custom structure types using the ``@wp.struct`` decorator as follows::
+
+   @wp.struct
+   class MyStruct:
+
+      param1: int
+      param2: float
+      param3: wp.array(dtype=wp.vec3)
+
+Struct attributes must be annotated with their respective type. They can be constructed in Python scope and then passed to kernels as arguments::
+
+   @wp.kernel
+   def compute(args: MyStruct):
+
+      tid = wp.tid()
+
+      print(args.param1)
+      print(args.param2)
+      print(args.param3[tid])
+
+   # construct an instance of the struct in Python
+   s = MyStruct()
+   s.param1 = 10
+   s.param2 = 2.5
+   s.param3 = wp.zeros(shape=10, dtype=wp.vec3)
+
+   # pass to our compute kernel
+   wp.launch(compute, dim=10, inputs=[s])
+
+.. note:: Structs have some limitations, they cannot currently be stored in arrays (AOS layout), and although users can modify structs inside kernels gradients will not be propagated through modified attributes for differentiability.
 
 Type Conversions
 ################

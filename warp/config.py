@@ -31,3 +31,5 @@ cuda_output = (
 )
 
 ptx_target_arch = 70  # target architecture for PTX generation, defaults to the lowest architecture that supports all of Warp's features
+
+enable_backward = True  # whether to compiler the backward passes of the kernels

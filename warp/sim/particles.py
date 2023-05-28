@@ -52,6 +52,9 @@ def eval_particle_forces_kernel(
 
     # order threads by cell
     i = wp.hash_grid_point_id(grid, tid)
+    if i == -1:
+        # hash grid has not been built yet
+        return
     if (particle_flags[i] & PARTICLE_FLAG_ACTIVE) == 0:
         return
 
@@ -86,7 +89,7 @@ def eval_particle_forces_kernel(
 
 
 def eval_particle_forces(model, state, forces):
-    if model.particle_max_radius > 0.0 and model.particle_grid.reserved:
+    if model.particle_max_radius > 0.0:
         wp.launch(
             kernel=eval_particle_forces_kernel,
             dim=model.particle_count,

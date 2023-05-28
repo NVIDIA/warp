@@ -1187,7 +1187,7 @@ def handle_contact_pairs(
     elif geo_type_a == wp.sim.GEO_MESH and geo_type_b == wp.sim.GEO_BOX:
         # vertex-based contact
         mesh = wp.mesh_get(geo.source[shape_a])
-        body_a_pos = mesh.points[point_id] * geo_scale_a[0]
+        body_a_pos = wp.cw_mul(mesh.points[point_id], geo_scale_a)
         p_a_world = wp.transform_point(X_ws_a, body_a_pos)
         # find closest point + contact normal on box B
         query_b = wp.transform_point(X_sw_b, p_a_world)

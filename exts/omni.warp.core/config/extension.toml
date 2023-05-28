@@ -1,0 +1,32 @@
+[package]
+# Semantic Versioning is used: https://semver.org/
+version = "0.8.2"
+authors = ["NVIDIA"]
+title = "Warp"
+description="A Python framework for high-performance simulation and graphics programming"
+readme  = "docs/README.md"
+repository="https://github.com/nvidia/warp"
+category = "core"
+keywords = ["warp", "simulation"]
+changelog="docs/CHANGELOG.md"
+
+preview_image = "data/preview.png"
+icon = "data/icon.png"
+
+# Core language module
+[[python.module]]
+name = "warp"
+path = "."
+public = true
+
+# Kit testing flags
+[[test]]
+pyCoverageOmit = [
+    "warp/stubs.py",
+    "warp/sim/render.py",
+    "warp/sim/integrator_euler.py",
+    "warp/sim/optimizer.py",
+    "warp/render.py"
+]
+pyCoverageThreshold = 40
+timeout = 900

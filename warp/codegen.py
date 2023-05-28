@@ -276,6 +276,8 @@ class Var:
         if is_array(self.type):
             if hasattr(self.type.dtype, "_wp_generic_type_str_"):
                 dtypestr = compute_type_str(self.type.dtype._wp_generic_type_str_, self.type.dtype._wp_type_params_)
+            elif isinstance(self.type.dtype, Struct):
+                dtypestr = make_full_qualified_name(self.type.dtype.cls)
             else:
                 dtypestr = str(self.type.dtype.__name__)
             classstr = type(self.type).__name__
@@ -396,6 +398,9 @@ class Adjoint:
         for a in adj.args:
             if isinstance(a.type, Struct):
                 builder.build_struct_recursive(a.type)
+            elif isinstance(a.type, warp.types.array) and isinstance(a.type.dtype, Struct):
+                builder.build_struct_recursive(a.type.dtype)
+                
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -962,14 +967,14 @@ class Adjoint:
         # try and resolve the name using the function's globals context (used to lookup constants + functions)
         obj = adj.func.__globals__.get(node.id)
 
-        if obj == None:
+        if obj is None:
             # Lookup constant in captured contents
             capturedvars = dict(
                 zip(adj.func.__code__.co_freevars, [c.cell_contents for c in (adj.func.__closure__ or [])])
             )
             obj = capturedvars.get(str(node.id), None)
 
-        if obj == None:
+        if obj is None:
             raise KeyError("Referencing undefined symbol: " + str(node.id))
 
         if warp.types.is_value(obj):
@@ -1648,6 +1653,13 @@ static CUDA_CALLABLE void adj_{name}({reverse_args})
 {{
 {reverse_body}
 }}
+
+CUDA_CALLABLE void atomic_add({name}* p, {name} t)
+{{
+{atomic_add_body}
+}}
+
+
 """
 
 cpu_function_template = """
@@ -1891,11 +1903,14 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
     forward_initializers = []
     reverse_body = []
+    atomic_add_body = []
 
     # forward args
     for label, var in struct.vars.items():
         forward_args.append(f"{var.ctype()} const& {label} = {{}}")
         reverse_args.append(f"{var.ctype()} const&")
+
+        atomic_add_body.append(f"{indent_block}atomic_add(&p->{label}, t.{label});\n")
 
         prefix = f"{indent_block}," if forward_initializers else ":"
         forward_initializers.append(f"{indent_block}{prefix} {label}{{{label}}}\n")
@@ -1903,7 +1918,6 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     # reverse args
     for label, var in struct.vars.items():
         reverse_args.append(var.ctype() + " const& adj_" + label)
-
         reverse_body.append(f"{indent_block}adj_ret.{label} = adj_{label};\n")
 
     reverse_args.append(name + " & adj_ret")
@@ -1915,6 +1929,7 @@ def codegen_struct(struct, device="cpu", indent_size=4):
         forward_initializers="".join(forward_initializers),
         reverse_args=indent(reverse_args),
         reverse_body="".join(reverse_body),
+        atomic_add_body="".join(atomic_add_body),
     )
 
 

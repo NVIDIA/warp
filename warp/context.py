@@ -1023,7 +1023,7 @@ class Module:
 
         self.options = {
             "max_unroll": 16,
-            "enable_backward": True,
+            "enable_backward": warp.config.enable_backward,
             "fast_math": False,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": warp.config.mode,
@@ -1180,9 +1180,11 @@ class Module:
                 s = f"{k}={module.options[k]}"
                 h.update(bytes(s, "utf-8"))
 
-            # ensure to trigger recompilation if verify_fp flag is changed
+            # ensure to trigger recompilation if flags affecting kernel compilation are changed
             if warp.config.verify_fp:
                 h.update(bytes("verify_fp", "utf-8"))
+
+            h.update(bytes(warp.config.mode, "utf-8"))
 
             # compile-time constants (global)
             if warp.types._constant_hash:

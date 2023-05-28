@@ -11,6 +11,7 @@ import ctypes
 from typing import Union
 
 
+
 # return the warp device corresponding to a torch device
 def device_from_torch(torch_device):
     return warp.get_device(str(torch_device))
@@ -162,6 +163,10 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
 
 def to_torch(a):
     import torch
+
+    # Torch does not support structured arrays
+    if isinstance(a.dtype, warp.codegen.Struct):
+        raise RuntimeError("Cannot convert structured Warp arrays to Torch.")
 
     if a.device.is_cpu:
         # Torch has an issue wrapping CPU objects

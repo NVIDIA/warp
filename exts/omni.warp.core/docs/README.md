@@ -1,8 +1,6 @@
-# Warp [omni.warp]
+# Warp Core [omni.warp.core]
 
 NVIDIA Warp is a Python framework for writing high-performance simulation and graphics code. Compute kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
-
-This extension also contains OmniGraph nodes and samples built on top of Warp.
 
 ## Documentation
 

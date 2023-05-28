@@ -192,6 +192,11 @@ def to_dlpack(wp_array: warp.array):
         A pycapsule containing a DLManagedTensor that can be converted
         to other array formats without copying the underlying memory.
     """
+
+    # DLPack does not support structured arrays
+    if isinstance(wp_array.dtype, warp.codegen.Struct):
+        raise RuntimeError("Cannot convert structured Warp arrays to DLPack.")
+    
     holder = _Holder(wp_array)
 
     # allocate DLManagedTensor

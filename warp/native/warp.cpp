@@ -68,6 +68,11 @@ int is_cutlass_enabled()
     return int(WP_ENABLE_CUTLASS);
 }
 
+int is_debug_enabled()
+{
+    return int(WP_ENABLE_DEBUG);
+}
+
 void* alloc_host(size_t s)
 {
     return malloc(s);

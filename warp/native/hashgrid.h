@@ -16,11 +16,11 @@ struct HashGrid
     float cell_width;
     float cell_width_inv;
 
-    int* point_cells;   // cell id of a point
-    int* point_ids;     // index to original point
+    int* point_cells{nullptr};   // cell id of a point
+    int* point_ids{nullptr};     // index to original point
     
-    int* cell_starts;   // start index of a range of indices belonging to a cell, dim_x*dim_y*dim_z in length
-    int* cell_ends;     // end index of a range of indices belonging to a cell, dim_x*dim_y*dim_z in length
+    int* cell_starts{nullptr};   // start index of a range of indices belonging to a cell, dim_x*dim_y*dim_z in length
+    int* cell_ends{nullptr};     // end index of a range of indices belonging to a cell, dim_x*dim_y*dim_z in length
 
     int dim_x;
     int dim_y;
@@ -131,6 +131,8 @@ CUDA_CALLABLE inline hash_grid_query_t hash_grid_query(uint64_t id, wp::vec3 pos
 CUDA_CALLABLE inline bool hash_grid_query_next(hash_grid_query_t& query, int& index)
 {
     const HashGrid& grid = query.grid;
+    if (!grid.point_cells)
+        return false;
 
     while (1)
     {
@@ -192,6 +194,8 @@ CUDA_CALLABLE inline hash_grid_query_t iter_reverse(const hash_grid_query_t& que
 CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)
 {
     const HashGrid* grid = (const HashGrid*)(id);
+    if (grid->point_ids == nullptr)
+        return -1;
     return grid->point_ids[index];
 }
 

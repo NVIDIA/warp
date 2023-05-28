@@ -23,6 +23,8 @@ extern "C"
     WP_API int is_cuda_compatibility_enabled();
     // whether Warp was compiled with CUTLASS support
     WP_API int is_cutlass_enabled();
+    // whether Warp was compiled with debug support
+    WP_API int is_debug_enabled();
 
     WP_API uint16_t float_to_half_bits(float x);
     WP_API float half_bits_to_float(uint16_t u);
