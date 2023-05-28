@@ -95,6 +95,8 @@ struct shape_t
 {
     int dims[ARRAY_MAX_DIMS];
 
+    CUDA_CALLABLE inline shape_t() : dims() {}
+
     CUDA_CALLABLE inline int operator[](int i) const
     {
         assert(i < ARRAY_MAX_DIMS);
@@ -708,6 +710,11 @@ CUDA_CALLABLE inline void adj_select(const array_t<T1>& arr, const T2& a, const 
     else
         adj_a += adj_ret;
 }
+
+// stub for the case where we have an nested array inside a struct and
+// atomic add the whole struct onto an array (e.g.: during backwards pass)
+template <typename T>
+CUDA_CALLABLE inline void atomic_add(array_t<T>*, array_t<T>) {}
 
 // for float and vector types this is just an alias for an atomic add
 template <typename T>

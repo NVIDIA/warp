@@ -105,6 +105,13 @@ Scalar Math
    Return the element wise minimum of two vectors.
 
 
+.. function:: min(v: Vector[Any,Scalar]) -> Scalar
+   :noindex:
+   :nocontentsentry:
+
+   Return the minimum element of a vector.
+
+
 .. function:: max(x: Scalar, y: Scalar) -> Scalar
 
    Return the maximum of two scalars.
@@ -115,6 +122,13 @@ Scalar Math
    :nocontentsentry:
 
    Return the element wise maximum of two vectors.
+
+
+.. function:: max(v: Vector[Any,Scalar]) -> Scalar
+   :noindex:
+   :nocontentsentry:
+
+   Return the maximum element of a vector.
 
 
 .. function:: clamp(x: Scalar, a: Scalar, b: Scalar) -> Scalar
@@ -283,6 +297,16 @@ Vector Math
 .. function:: ddot(x: Matrix[Any,Any,Scalar], y: Matrix[Any,Any,Scalar]) -> Scalar
 
    Compute the double dot product between two matrices.
+
+
+.. function:: argmin(v: Vector[Any,Scalar]) -> uint32
+
+   Return the index of the minimum element of a vector. [1]_
+
+
+.. function:: argmax(v: Vector[Any,Scalar]) -> uint32
+
+   Return the index of the maximum element of a vector. [1]_
 
 
 .. function:: outer(x: Vector[Any,Scalar], y: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
@@ -662,6 +686,11 @@ Utility
    Print variable to stdout
 
 
+.. function:: breakpoint() -> None
+
+   Debugger breakpoint
+
+
 .. function:: tid() -> int
 
    Return the current thread index. Note that this is the *global* index of the thread in the range [0, dim) 
@@ -1021,7 +1050,7 @@ Geometry
 
 .. function:: mesh_get(id: uint64) -> Mesh
 
-   Retrieves the mesh given its index.
+   Retrieves the mesh given its index. [1]_
 
 
 .. function:: mesh_eval_face_normal(id: uint64, face: int32) -> vec3f
@@ -1360,6 +1389,24 @@ Operators
    :nocontentsentry:
 
 
+.. function:: bit_and(x: Int, y: Int) -> Int
+
+
+.. function:: bit_or(x: Int, y: Int) -> Int
+
+
+.. function:: bit_xor(x: Int, y: Int) -> Int
+
+
+.. function:: lshift(x: Int, y: Int) -> Int
+
+
+.. function:: rshift(x: Int, y: Int) -> Int
+
+
+.. function:: invert(x: Int) -> Int
+
+
 .. function:: mul(x: Scalar, y: Scalar) -> Scalar
 
 
@@ -1522,6 +1569,11 @@ Operators
 
 
 .. function:: unot(b: uint64) -> bool
+   :noindex:
+   :nocontentsentry:
+
+
+.. function:: unot(a: Array[Any]) -> bool
    :noindex:
    :nocontentsentry:
 
