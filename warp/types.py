@@ -2150,7 +2150,7 @@ class Mesh:
 
         Args:
             points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
-            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be length 3*number of triangles
+            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be a 2d array with shape (num_tris, 3)
             velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
         """
 
@@ -2169,6 +2169,11 @@ class Mesh:
         self.device = points.device
         self.points = points
         self.velocities = velocities
+
+        # ensure that indices is a 2D array
+        num_tris = int(indices.size / 3)
+        indices = indices.reshape((num_tris, 3))
+        
         self.indices = indices
 
         from warp.context import runtime
