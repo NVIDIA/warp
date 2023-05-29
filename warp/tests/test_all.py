@@ -64,6 +64,7 @@ import warp.tests.test_math
 import warp.tests.test_generics
 import warp.tests.test_indexedarray
 import warp.tests.test_copy
+import warp.tests.test_mesh
 
 
 def register_tests(parent):
@@ -117,6 +118,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_generics.register(parent))
     tests.append(warp.tests.test_indexedarray.register(parent))
     tests.append(warp.tests.test_copy.register(parent))
+    tests.append(warp.tests.test_mesh.register(parent))
 
     return tests
 
