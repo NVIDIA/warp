@@ -68,6 +68,7 @@ from warp.context import print_builtins, export_builtins, export_stubs
 from warp.context import Kernel, Function
 from warp.context import Stream, get_stream, set_stream, synchronize_stream
 from warp.context import Event, record_event, wait_event, wait_stream
+from warp.context import RegisteredGLBuffer
 
 from warp.tape import Tape
 from warp.utils import ScopedTimer, ScopedCudaGuard, ScopedDevice, ScopedStream
@@ -84,7 +85,7 @@ from warp.dlpack import from_dlpack, to_dlpack
 
 from warp.constants import *
 
-from . import builtins, render
+from . import builtins
 
 
 @over
@@ -104,6 +105,14 @@ def min(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
 
 
 @over
+def min(v: Vector[Any, Scalar]) -> Scalar:
+    """
+    Return the minimum element of a vector.
+    """
+    ...
+
+
+@over
 def max(x: Scalar, y: Scalar) -> Scalar:
     """
     Return the maximum of two scalars.
@@ -115,6 +124,14 @@ def max(x: Scalar, y: Scalar) -> Scalar:
 def max(x: Vector[Any, Scalar], y: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     """
     Return the element wise maximum of two vectors.
+    """
+    ...
+
+
+@over
+def max(v: Vector[Any, Scalar]) -> Scalar:
+    """
+    Return the maximum element of a vector.
     """
     ...
 
@@ -370,6 +387,22 @@ def dot(x: Quaternion[Float], y: Quaternion[Float]) -> Scalar:
 def ddot(x: Matrix[Any, Any, Scalar], y: Matrix[Any, Any, Scalar]) -> Scalar:
     """
     Compute the double dot product between two matrices.
+    """
+    ...
+
+
+@over
+def argmin(v: Vector[Any, Scalar]) -> uint32:
+    """
+    Return the index of the minimum element of a vector.
+    """
+    ...
+
+
+@over
+def argmax(v: Vector[Any, Scalar]) -> uint32:
+    """
+    Return the index of the maximum element of a vector.
     """
     ...
 
@@ -1726,6 +1759,42 @@ def sub(x: Transformation[Scalar], y: Transformation[Scalar]) -> Transformation[
 
 
 @over
+def bit_and(x: Int, y: Int) -> Int:
+    """ """
+    ...
+
+
+@over
+def bit_or(x: Int, y: Int) -> Int:
+    """ """
+    ...
+
+
+@over
+def bit_xor(x: Int, y: Int) -> Int:
+    """ """
+    ...
+
+
+@over
+def lshift(x: Int, y: Int) -> Int:
+    """ """
+    ...
+
+
+@over
+def rshift(x: Int, y: Int) -> Int:
+    """ """
+    ...
+
+
+@over
+def invert(x: Int) -> Int:
+    """ """
+    ...
+
+
+@over
 def mul(x: Scalar, y: Scalar) -> Scalar:
     """ """
     ...
@@ -1937,5 +2006,11 @@ def unot(b: int64) -> bool:
 
 @over
 def unot(b: uint64) -> bool:
+    """ """
+    ...
+
+
+@over
+def unot(a: Array[Any]) -> bool:
     """ """
     ...

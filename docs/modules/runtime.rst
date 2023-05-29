@@ -489,7 +489,14 @@ Struct attributes must be annotated with their respective type. They can be cons
    # pass to our compute kernel
    wp.launch(compute, dim=10, inputs=[s])
 
-.. note:: Structs have some limitations, they cannot currently be stored in arrays (AOS layout), and although users can modify structs inside kernels gradients will not be propagated through modified attributes for differentiability.
+Arrays of structs can zero initialized as follows::
+
+      a = wp.zeros(shape=10, dtype=MyStruct)
+
+Or initialized from a list of struct objects::
+
+      a = wp.array([MyStruct(), MyStruct(), MyStruct()], dtype=MyStruct)
+
 
 Type Conversions
 ################
