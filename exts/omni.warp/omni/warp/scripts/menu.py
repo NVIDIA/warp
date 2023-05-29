@@ -9,25 +9,12 @@ class WarpMenu:
         self._build_warp_menu()
 
     def _build_warp_menu(self):
-        # scene menu
-        scene_menu_list = []
-
-        scene_menu_list.append(MenuItemDescription(name="Browse Scenes", onclick_action=("omni.warp", "browse_scenes")))
-        scene_menu_list.append(MenuItemDescription())  # line break
-
-        # help menu
-        help_menu_list = []
-
-        help_menu_list.append(
-            MenuItemDescription(name="Getting Started", onclick_action=("omni.warp", "getting_started"))
-        )
-        help_menu_list.append(MenuItemDescription(name="Documentation", onclick_action=("omni.warp", "documentation")))
-
         # Warp menu
         warp_menu = []
 
-        warp_menu.append(MenuItemDescription(name="Scenes", sub_menu=scene_menu_list))
-        warp_menu.append(MenuItemDescription(name="Help", sub_menu=help_menu_list))
+        warp_menu.append(MenuItemDescription(name="Documentation", onclick_action=("omni.warp", "documentation")))
+        warp_menu.append(MenuItemDescription(name="Getting Started", onclick_action=("omni.warp", "getting_started")))
+        warp_menu.append(MenuItemDescription(name="Sample Scenes", onclick_action=("omni.warp", "browse_scenes")))
 
         self._top_menu = [MenuItemDescription(name="Warp", appear_after="Simulation", sub_menu=warp_menu)]
 
