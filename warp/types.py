@@ -2138,7 +2138,7 @@ class Mesh:
     vars = {
         "points": Var("points", array(dtype=vec3)),
         "velocities": Var("velocities", array(dtype=vec3)),
-        "indices": Var("indices", array(dtype=int32, ndim=2)),
+        "indices": Var("indices", array(dtype=int32)),
     }
 
     def __init__(self, points=None, indices=None, velocities=None):
@@ -2150,7 +2150,7 @@ class Mesh:
 
         Args:
             points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
-            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be a 2d array with shape (num_tris, 3)
+            indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be a 1d array with shape (num_tris, 3)
             velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
         """
 
@@ -2166,14 +2166,12 @@ class Mesh:
         if indices.dtype != int32 or not indices.is_contiguous:
             raise RuntimeError("Mesh indices should be a contiguous array of type wp.int32")
 
+        if indices.ndim > 1:
+            raise RuntimeError("Mesh indices should be a flattened 1d array of indices")
+
         self.device = points.device
         self.points = points
         self.velocities = velocities
-
-        # ensure that indices is a 2D array
-        num_tris = int(indices.size / 3)
-        indices = indices.reshape((num_tris, 3))
-        
         self.indices = indices
 
         from warp.context import runtime
