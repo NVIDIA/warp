@@ -116,6 +116,11 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
 
     compiler_instance.getPreprocessorOpts().addMacroDef("WP_CPU");
 
+    if(!debug)
+    {
+        compiler_instance.getPreprocessorOpts().addMacroDef("NDEBUG");
+    }
+
     compiler_instance.getLangOpts().MicrosoftExt = 1;  // __forceinline / __int64
     compiler_instance.getLangOpts().DeclSpecKeyword = 1;  // __declspec
 
