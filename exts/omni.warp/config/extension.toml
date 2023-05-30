@@ -28,7 +28,6 @@ exclude = ["Ogn*Database.py", "*/ogn*"]
 "omni.kit.browser.sample" = {optional = true}
 "omni.kit.menu.utils" = {optional = true}
 "omni.kit.property.usd" = {}
-"omni.kit.test" = {}
 "omni.kit.widget.searchfield" = {}
 "omni.kit.widget.text_editor" = {}
 "omni.kit.window.property" = {}
@@ -43,15 +42,3 @@ name = "omni.warp"
 
 [settings]
 exts."omni.warp".enable_backward = false
-
-# Kit testing flags
-[[test]]
-pyCoverageOmit = [
-    "warp/stubs.py",
-    "warp/sim/render.py",
-    "warp/sim/integrator_euler.py",
-    "warp/sim/optimizer.py",
-    "warp/render.py"
-]
-pyCoverageThreshold = 40
-timeout = 900
