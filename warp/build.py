@@ -413,6 +413,16 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
 
 
 def load_dll(dll_path):
+    if sys.platform == "win32":
+        if dll_path[-4:] != ".dll":
+            return None
+    elif sys.platform == "darwin":
+        if dll_path[-6:] != ".dylib":
+            return None
+    else:
+        if dll_path[-3:] != ".so":
+            return None
+
     try:
         if sys.version_info[0] > 3 or sys.version_info[0] == 3 and sys.version_info[1] >= 8:
             dll = ctypes.CDLL(dll_path, winmode=0)
@@ -424,6 +434,9 @@ def load_dll(dll_path):
 
 
 def unload_dll(dll):
+    if dll is None:
+        return
+
     handle = dll._handle
     del dll
 
