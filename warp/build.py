@@ -300,7 +300,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 if clang:
                     with open(cpp_path, "rb") as cpp:
                         clang.compile_cpp(
-                            cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), mode == "debug"
+                            cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), warp.config.mode == "debug"
                         )
 
                 else:
@@ -373,7 +373,7 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 if clang:
                     with open(cpp_path, "rb") as cpp:
                         clang.compile_cpp(
-                            cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), mode == "debug"
+                            cpp.read(), native_dir.encode("utf-8"), cpp_out.encode("utf-8"), warp.config.mode == "debug"
                         )
 
                 else:
