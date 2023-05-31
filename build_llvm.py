@@ -270,7 +270,7 @@ def build_from_source(args):
 def build_warp_clang(args, lib_name):
     try:
         cpp_sources = [
-            "clang/clang.cpp",
+            "native/clang/clang.cpp",
             "native/crt.cpp",
         ]
         clang_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]

@@ -14,7 +14,17 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     license="NVSCL",
     packages=setuptools.find_packages(),
-    package_data={"": ["native/*", "native/nanovdb/*", "tests/assets/*", "bin/*"]},
+    package_data={
+        "": [
+            "native/*.cpp",
+            "native/*.cu",
+            "native/*.h",
+            "native/clang/*.cpp",
+            "native/nanovdb/*.h",
+            "tests/assets/*",
+            "bin/*",
+        ]
+    },
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
@@ -25,5 +35,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=["numpy"],
-    python_requires=">=3.7"
+    python_requires=">=3.7",
 )
