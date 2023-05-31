@@ -3,7 +3,7 @@
 version = "0.9.0"
 authors = ["NVIDIA"]
 title = "Warp"
-description="A Python framework for high-performance simulation and graphics programming"
+description="Provides the core Warp Python module for Omniverse"
 readme  = "docs/README.md"
 repository="https://github.com/nvidia/warp"
 category = "core"
