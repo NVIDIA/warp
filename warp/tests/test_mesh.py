@@ -86,9 +86,9 @@ def read_indices_kernel(
 ):
     tid = wp.tid()
     mesh = wp.mesh_get(mesh_id)
-    out_indices[tid * 3 + 0] = mesh.indices[tid, 0]
-    out_indices[tid * 3 + 1] = mesh.indices[tid, 1]
-    out_indices[tid * 3 + 2] = mesh.indices[tid, 2]
+    out_indices[tid * 3 + 0] = mesh.indices[tid * 3 + 0]
+    out_indices[tid * 3 + 1] = mesh.indices[tid * 3 + 1]
+    out_indices[tid * 3 + 2] = mesh.indices[tid * 3 + 2]
 
 
 def test_mesh_read_properties(test, device):
