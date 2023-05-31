@@ -246,8 +246,6 @@ def solve_particle_particle_contacts(
     radius = particle_radius[i]
     w1 = particle_invmass[i]
 
-    f = wp.vec3()
-
     # particle contact
     query = wp.hash_grid_query(grid, x, radius + max_radius + k_cohesion)
     index = int(0)

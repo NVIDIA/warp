@@ -810,12 +810,12 @@ class Model:
             DeprecationWarning,
             stacklevel=2,
         )
-    
+
     @property
     def particle_radius(self):
         """Array of per-particle radii"""
         return self._particle_radius
-    
+
     @particle_radius.setter
     def particle_radius(self, value):
         if isinstance(value, float):
@@ -828,8 +828,13 @@ class Model:
                 stacklevel=2,
             )
             self._particle_radius.fill_(value)
+            self.particle_max_radius = value
         else:
             self._particle_radius = value
+            # TODO implement max radius update to be compatible with graph capture
+            device = wp.get_device(self.device)
+            if not device.is_capturing:
+                self.particle_max_radius = self._particle_radius.numpy().max()
 
 
 class ModelBuilder:
