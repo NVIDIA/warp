@@ -95,7 +95,7 @@ dtype_is_compatible.compatible_sets = None
 
 
 # wrap a torch tensor to a wp array, data is not copied
-def from_torch(t, dtype=None, requires_grad=None, grad=None):
+def from_torch(t, dtype=None, requires_grad=None):
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
@@ -134,19 +134,14 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
         strides = tuple(strides[:-dtype_dims])
 
     grad_ptr = None
-    if grad is not None:
-        import torch
-
-        if isinstance(grad, warp.types.array):
-            grad_ptr = grad.ptr
-        elif isinstance(grad, torch.Tensor):
-            grad_ptr = grad.data_ptr()
-    elif t.grad is not None:
-        grad_ptr = t.grad.data_ptr()
-    elif t.requires_grad:
-        import torch
-        t.grad = torch.zeros_like(t)
-        grad_ptr = t.grad.data_ptr()
+    if requires_grad:
+        if t.grad is not None:
+            grad_ptr = t.grad.data_ptr()
+        elif t.requires_grad:
+            # allocate a zero-filled gradient tensor if it doesn't exist
+            import torch
+            t.grad = torch.zeros_like(t, requires_grad=False)
+            grad_ptr = t.grad.data_ptr()
 
     a = warp.types.array(
         ptr=t.data_ptr(),
