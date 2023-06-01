@@ -117,15 +117,12 @@ class Example:
         self.model = builder.finalize()
         self.model.ground = True
 
-        self.model.joint_attach_ke = 1600.0
-        self.model.joint_attach_kd = 20.0
-
         self.integrator = wp.sim.SemiImplicitIntegrator()
 
         # -----------------------
-        # set up Usd renderer
+        # set up OpenGL renderer
         if self.enable_rendering:
-            self.renderer = wp.sim.render.SimRendererTiny(self.model, stage)
+            self.renderer = wp.sim.render.SimRendererOpenGL(self.model, stage, scaling=0.5)
 
     def load_mesh(self, filename, path):
         asset_stage = Usd.Stage.Open(filename)

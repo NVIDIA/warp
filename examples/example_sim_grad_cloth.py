@@ -48,6 +48,7 @@ class Cloth:
 
     def __init__(self, render=True, profile=False, adapter=None):
         builder = wp.sim.ModelBuilder()
+        builder.default_particle_radius = 0.01
 
         dim_x = 16
         dim_y = 16
@@ -86,8 +87,8 @@ class Cloth:
             self.states.append(self.model.state(requires_grad=True))
 
         if self.render:
-            self.stage = wp.sim.render.SimRenderer(
-                self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_cloth.usd"), scaling=40.0
+            self.stage = wp.sim.render.SimRendererOpenGL(
+                self.model, os.path.join(os.path.dirname(__file__), "outputs/example_sim_grad_cloth.usd"), scaling=4.0
             )
 
     @wp.kernel
@@ -154,8 +155,6 @@ class Cloth:
 
             self.render_time += self.frame_dt
 
-        self.stage.save()
-
     def train(self, mode="gd"):
         tape = wp.Tape()
 
@@ -206,6 +205,8 @@ class Cloth:
                 wp.launch(self.step_kernel, dim=len(x), inputs=[x, x.grad, self.train_rate], device=self.device)
 
             tape.zero()
+
+        self.stage.save()
 
 
 bounce = Cloth(profile=False, render=True)

@@ -17,8 +17,16 @@ wp.init()
 def register(parent):
     class TestModel(parent):
         def test_add_triangles(self):
-            pts = np.random.randn(5, 3)
-            tris = np.array([[0, 3, 1], [1, 3, 4], [1, 4, 2], [1, 4, 1]])
+            pts = np.array(
+                [
+                    [-0.00585869, 0.34189449, -1.17415233],
+                    [-1.894547, 0.1788074, 0.9251329],
+                    [-1.26141048, 0.16140787, 0.08823282],
+                    [-0.08609255, -0.82722546, 0.65995427],
+                    [0.78827592, -1.77375711, -0.55582718],
+                ]
+            )
+            tris = np.array([[0, 3, 4], [0, 2, 3], [2, 1, 3], [1, 4, 3]])
 
             builder1 = ModelBuilder()
             builder2 = ModelBuilder()
@@ -27,18 +35,18 @@ def register(parent):
                 builder2.add_particle(pt, [0.0, 0.0, 0.0], 1.0)
 
             # test add_triangle(s) with default arguments:
-            for t in tris:
-                builder1.add_triangle(t[0], t[1], t[2])
-            builder2.add_triangles(tris[:, 0], tris[:, 1], tris[:, 2])
+            areas = builder2.add_triangles(tris[:, 0], tris[:, 1], tris[:, 2])
+            for i, t in enumerate(tris):
+                area = builder1.add_triangle(t[0], t[1], t[2])
+                self.assertAlmostEqual(area, areas[i], places=6)
 
             # test add_triangle(s) with non default arguments:
-            tri_ke = np.random.randn(3)
-            tri_ka = np.random.randn(3)
-            tri_kd = np.random.randn(3)
-            tri_drag = np.random.randn(3)
-            tri_lift = np.random.randn(3)
-            for i in range(3):
-                t = tris[i]
+            tri_ke = np.random.randn(pts.shape[0])
+            tri_ka = np.random.randn(pts.shape[0])
+            tri_kd = np.random.randn(pts.shape[0])
+            tri_drag = np.random.randn(pts.shape[0])
+            tri_lift = np.random.randn(pts.shape[0])
+            for i, t in enumerate(tris):
                 builder1.add_triangle(
                     t[0],
                     t[1],
@@ -57,7 +65,15 @@ def register(parent):
             assert_np_equal(np.array(builder1.tri_materials), np.array(builder2.tri_materials))
 
         def test_add_edges(self):
-            pts = np.random.randn(5, 3)
+            pts = np.array(
+                [
+                    [-0.00585869, 0.34189449, -1.17415233],
+                    [-1.894547, 0.1788074, 0.9251329],
+                    [-1.26141048, 0.16140787, 0.08823282],
+                    [-0.08609255, -0.82722546, 0.65995427],
+                    [0.78827592, -1.77375711, -0.55582718],
+                ]
+            )
             edges = np.array([[0, 4, 3, 1], [3, 2, 4, 1]])
 
             builder1 = ModelBuilder()

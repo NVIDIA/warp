@@ -20,13 +20,13 @@ import math
 import warp as wp
 import warp.sim
 
-from environment import Environment, run_env, IntegratorType
+from environment import Environment, run_env
 
 
 class AntEnvironment(Environment):
     sim_name = "env_ant"
     env_offset = (2.5, 0.0, 2.5)
-    tiny_render_settings = dict(scaling=3.0)
+    opengl_render_settings = dict(scaling=3.0)
     usd_render_settings = dict(scaling=100.0)
 
     sim_substeps_euler = 32

@@ -6,6 +6,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import warp as wp
+from .model import PARTICLE_FLAG_ACTIVE
 
 
 @wp.func
@@ -36,12 +37,14 @@ def eval_particle_forces_kernel(
     grid: wp.uint64,
     particle_x: wp.array(dtype=wp.vec3),
     particle_v: wp.array(dtype=wp.vec3),
-    radius: float,
+    particle_radius: wp.array(dtype=float),
+    particle_flags: wp.array(dtype=wp.uint32),
     k_contact: float,
     k_damp: float,
     k_friction: float,
     k_mu: float,
     k_cohesion: float,
+    max_radius: float,
     # outputs
     particle_f: wp.array(dtype=wp.vec3),
 ):
@@ -49,24 +52,30 @@ def eval_particle_forces_kernel(
 
     # order threads by cell
     i = wp.hash_grid_point_id(grid, tid)
+    if i == -1:
+        # hash grid has not been built yet
+        return
+    if (particle_flags[i] & PARTICLE_FLAG_ACTIVE) == 0:
+        return
 
     x = particle_x[i]
     v = particle_v[i]
+    radius = particle_radius[i]
 
     f = wp.vec3()
 
     # particle contact
-    query = wp.hash_grid_query(grid, x, radius * 2.0 + k_cohesion)
+    query = wp.hash_grid_query(grid, x, radius + max_radius + k_cohesion)
     index = int(0)
 
     count = int(0)
 
     while wp.hash_grid_query_next(query, index):
-        if index != i:
+        if (particle_flags[index] & PARTICLE_FLAG_ACTIVE) != 0 and index != i:
             # compute distance to point
             n = x - particle_x[index]
             d = wp.length(n)
-            err = d - radius * 2.0
+            err = d - radius - particle_radius[index]
 
             count += 1
 
@@ -80,7 +89,7 @@ def eval_particle_forces_kernel(
 
 
 def eval_particle_forces(model, state, forces):
-    if model.particle_radius > 0.0:
+    if model.particle_max_radius > 0.0:
         wp.launch(
             kernel=eval_particle_forces_kernel,
             dim=model.particle_count,
@@ -89,11 +98,13 @@ def eval_particle_forces(model, state, forces):
                 state.particle_q,
                 state.particle_qd,
                 model.particle_radius,
+                model.particle_flags,
                 model.particle_ke,
                 model.particle_kd,
                 model.particle_kf,
                 model.particle_mu,
                 model.particle_cohesion,
+                model.particle_max_radius,
             ],
             outputs=[forces],
             device=model.device,

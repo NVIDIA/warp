@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## [0.9.0] - 2023-06-01
+
+- Add support for in-place modifications to vector, matrix, and struct types inside kernels (will warn during backward pass with `wp.verbose` if using gradients)
+- Add support for step-through VSCode debugging of kernel code with standalone LLVM compiler, see `wp.breakpoint()`, and `test_debug.py`
+- Add support for default values on built-in functions
+- Add support for multi-valued `@wp.func` functions
+- Add support for `pass`, `continue`, and `break` statements
+- Add missing `__sincos_stret` symbol for macOS
+- Add support for gradient propagation through `wp.Mesh.points`, and other cases where arrays are passed to native functions
+- Add support for Python `@` operator as an alias for `wp.matmul()`
+- Add XPBD support for particle-particle collision
+- Add support for individual particle radii: `ModelBuilder.add_particle` has a new `radius` argument, `Model.particle_radius` is now a Warp array
+- Add per-particle flags as a `Model.particle_flags` Warp array, introduce `PARTICLE_FLAG_ACTIVE` to define whether a particle is being simulated and participates in contact dynamics
+- Add support for Python bitwise operators `&`, `|`, `~`, `<<`, `>>`
+- Switch to using standalone LLVM compiler by default for `cpu` devices
+- Split `omni.warp` into `omni.warp.core` for Omniverse applications that want to use the Warp Python module with minimal additional dependencies
+- Disable kernel gradient generation by default inside Omniverse for improved compile times
+- Fix for bounds checking on element access of vector/matrix types
+- Fix for stream initialization when a custom (non-primary) external CUDA context has been set on the calling thread
+- Fix for duplicate `@wp.struct` registration during hot reload
+- Fix for array `unot()` operator so kernel writers can use `if not array:` syntax
+- Fix for case where dynamic loops are nested within unrolled loops
+- Change `wp.hash_grid_point_id()` now returns -1 if the `wp.HashGrid` has not been reserved before
+- Deprecate `wp.Model.soft_contact_distance` which is now replaced by `wp.Model.particle_radius`
+- Deprecate single scalar particle radius (should be a per-particle array)
+
 ## [0.8.2] - 2023-04-21
 
 - Add `ModelBuilder.soft_contact_max` to control the maximum number of soft contacts that can be registered. Use `Model.allocate_soft_contacts(new_count)` to change count on existing `Model` objects.

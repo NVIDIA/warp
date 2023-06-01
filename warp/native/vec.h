@@ -376,17 +376,40 @@ inline CUDA_CALLABLE Type tensordot(vec_t<Length, Type> a, vec_t<Length, Type> b
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE Type index(const vec_t<Length, Type> & a, int idx)
 {
-#if FP_CHECK
-    if (idx < 0 || idx > Length)
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
     {
         printf("vec index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
         assert(0);
     }
 #endif
 
-    return a[idx];
-        
+    return a[idx];        
 }
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void indexset(vec_t<Length, Type>& v, int idx, Type value)
+{
+#ifndef NDEBUG
+    if (idx < 0 || idx >= Length)
+    {
+        printf("vec store %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    v[idx] = value;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_indexset(vec_t<Length, Type>& v, int idx, const Type& value,
+                                       vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
+{
+    // nop
+}
+
+
+
 
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE Type length(vec_t<Length, Type> a)
@@ -487,6 +510,54 @@ inline CUDA_CALLABLE vec_t<Length,Type> max(vec_t<Length,Type> a, vec_t<Length,T
     for( unsigned i=0; i < Length; ++i )
     {
         ret[i] = a[i] > b[i] ? a[i] : b[i];
+    }
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE Type min(vec_t<Length,Type> v)
+{
+    Type ret = v[0];
+    for( unsigned i=1; i < Length; ++i )
+    {
+        if (v[i] < ret)
+            ret = v[i];
+    }
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE Type max(vec_t<Length,Type> v)
+{
+    Type ret = v[0];
+    for( unsigned i=1; i < Length; ++i )
+    {
+        if (v[i] > ret)
+            ret = v[i];
+    }
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE unsigned argmin(vec_t<Length,Type> v)
+{
+    unsigned ret = 0;
+    for( unsigned i=1; i < Length; ++i )
+    {
+        if (v[i] < v[ret])
+            ret = i;
+    }
+    return ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE unsigned argmax(vec_t<Length,Type> v)
+{
+    unsigned ret = 0;
+    for( unsigned i=1; i < Length; ++i )
+    {
+        if (v[i] > v[ret])
+            ret = i;
     }
     return ret;
 }
@@ -729,7 +800,7 @@ inline CUDA_CALLABLE void adj_dot(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, T
 template<unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_index(const vec_t<Length, Type> & a, int idx, vec_t<Length, Type> & adj_a, int & adj_idx, Type & adj_ret)
 {
-#if FP_CHECK
+#ifndef NDEBUG
     if (idx < 0 || idx > Length)
     {
         printf("Tvec2<Scalar> index %d out of bounds at %s %d\n", idx, __FILE__, __LINE__);
@@ -824,6 +895,20 @@ inline CUDA_CALLABLE void adj_max(const vec_t<Length,Type> &a, const vec_t<Lengt
         else
             adj_b[i] += adj_ret[i];
     }
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_min(const vec_t<Length,Type> &v, vec_t<Length,Type>& adj_v, const Type &adj_ret)
+{
+    unsigned i = argmin(v);
+    adj_v[i] += adj_ret;
+}
+
+template<unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_max(const vec_t<Length,Type> &v, vec_t<Length,Type>& adj_v, const Type &adj_ret)
+{
+    unsigned i = argmax(v);
+    adj_v[i] += adj_ret;
 }
 
 // Do I need to specialize these for different lengths?

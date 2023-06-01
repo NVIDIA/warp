@@ -1,0 +1,42 @@
+[package]
+# Semantic Versioning is used: https://semver.org/
+version = "0.9.0"
+authors = ["NVIDIA"]
+title = "Warp"
+description="Provides the core Warp Python module for Omniverse"
+readme  = "docs/README.md"
+repository="https://github.com/nvidia/warp"
+category = "core"
+keywords = ["warp", "simulation"]
+changelog="docs/CHANGELOG.md"
+
+preview_image = "data/preview.png"
+icon = "data/icon.png"
+
+# Watch files for hot reloading (only works for Python files)
+[fswatcher.patterns]
+include = ["*.py"]
+
+[dependencies]
+"omni.kit.test" = {}
+
+# Core language module
+[[python.module]]
+name = "warp"
+path = "."
+public = true
+
+[[python.module]]
+name = "omni.warp.core"
+
+# Kit testing flags
+[[test]]
+pyCoverageOmit = [
+    "warp/stubs.py",
+    "warp/sim/render.py",
+    "warp/sim/integrator_euler.py",
+    "warp/sim/optimizer.py",
+    "warp/render.py"
+]
+pyCoverageThreshold = 40
+timeout = 900

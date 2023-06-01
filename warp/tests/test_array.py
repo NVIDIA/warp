@@ -670,12 +670,159 @@ def test_large_arrays_fast(test, device):
     assert_np_equal(a1.numpy(), np.zeros_like(a1.numpy()))
 
 
+@wp.kernel
+def kernel_array_to_bool(array_null: wp.array(dtype=float), array_valid: wp.array(dtype=float)):
+    if not array_null:
+        # always succeed
+        wp.expect_eq(0, 0)
+    else:
+        # force failure
+        wp.expect_eq(1, 2)
+
+    if array_valid:
+        # always succeed
+        wp.expect_eq(0, 0)
+    else:
+        # force failure
+        wp.expect_eq(1, 2)
+
+
+def test_array_to_bool(test, device):
+    arr = wp.zeros(8, dtype=float, device=device)
+
+    wp.launch(kernel_array_to_bool, dim=1, inputs=[None, arr], device=device)
+
+@wp.struct
+class InputStruct:
+
+    param1: int
+    param2: float
+    param3: wp.vec3
+    param4: wp.array(dtype=float)
+
+@wp.struct
+class OutputStruct:
+
+    param1: int
+    param2: float
+    param3: wp.vec3
+
+
+@wp.kernel
+def struct_array_kernel(inputs: wp.array(dtype=InputStruct),
+                        outputs: wp.array(dtype=OutputStruct)):
+
+    tid = wp.tid()
+
+    wp.expect_eq(inputs[tid].param1, tid)
+    wp.expect_eq(inputs[tid].param2, float(tid*tid))
+
+    wp.expect_eq(inputs[tid].param3[0], 1.0)
+    wp.expect_eq(inputs[tid].param3[1], 2.0)
+    wp.expect_eq(inputs[tid].param3[2], 3.0)
+
+    wp.expect_eq(inputs[tid].param4[0], 1.0)
+    wp.expect_eq(inputs[tid].param4[1], 2.0)
+    wp.expect_eq(inputs[tid].param4[2], 3.0)
+
+
+    o = OutputStruct()
+    o.param1 = inputs[tid].param1
+    o.param2 = inputs[tid].param2
+    o.param3 = inputs[tid].param3
+    
+    outputs[tid] = o
+
+
+def test_array_of_structs(test, device):
+
+    num_items = 10
+
+    l = []
+    for i in range(num_items):
+        
+        s = InputStruct()
+        s.param1 = i
+        s.param2 = float(i*i)
+        s.param3 = wp.vec3(1.0, 2.0, 3.0)
+        s.param4 = wp.array([1.0, 2.0, 3.0], dtype=float, device=device)
+        
+        l.append(s)
+
+    # initialize array from list of structs
+    inputs = wp.array(l, dtype=InputStruct, device=device)
+    outputs = wp.zeros(num_items, dtype=OutputStruct, device=device)
+    
+    # pass to our compute kernel
+    wp.launch(struct_array_kernel, dim=num_items, inputs=[inputs, outputs], device=device)
+
+    out_numpy = outputs.numpy()
+    out_list = outputs.list()
+    out_cptr = outputs.to("cpu").cptr()
+
+    for i in range(num_items):
+
+        test.assertEqual(out_numpy[i][0], l[i].param1)
+        test.assertEqual(out_numpy[i][1], l[i].param2)
+        assert_np_equal(out_numpy[i][2], np.array(l[i].param3))
+
+        test.assertEqual(out_list[i].param1, l[i].param1)
+        test.assertEqual(out_list[i].param2, l[i].param2)
+        test.assertEqual(out_list[i].param3, l[i].param3)
+
+        test.assertEqual(out_cptr[i].param1, l[i].param1)
+        test.assertEqual(out_cptr[i].param2, l[i].param2)
+        test.assertEqual(out_cptr[i].param3, l[i].param3)
+
+
+@wp.struct
+class GradStruct:
+
+    param1: int
+    param2: float
+    param3: wp.vec3
+
+@wp.kernel
+def test_array_of_structs_grad_kernel(inputs: wp.array(dtype=GradStruct),
+                                      loss: wp.array(dtype=float)):
+    
+    tid = wp.tid()
+
+    wp.atomic_add(loss, 0, inputs[tid].param2*2.0)
+
+def test_array_of_structs_grad(test, device):
+
+    num_items = 10
+
+    l = []
+    for i in range(num_items):
+
+        g = GradStruct()
+        g.param2 = float(i)
+        
+        l.append(g)
+
+    a = wp.array(l, dtype=GradStruct, device=device, requires_grad=True)
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    
+    with wp.Tape() as tape:
+        
+        wp.launch(test_array_of_structs_grad_kernel, dim=num_items, inputs=[a, loss], device=device)
+    
+    tape.backward(loss)
+
+    grads = a.grad.list()
+    for i in range(num_items):
+        test.assertEqual(grads[i].param2, 2.0)
+
+
+
 def register(parent):
     devices = get_test_devices()
 
     class TestArray(parent):
         pass
-
+    
     add_function_test(TestArray, "test_shape", test_shape, devices=devices)
     add_function_test(TestArray, "test_flatten", test_flatten, devices=devices)
     add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
@@ -692,6 +839,9 @@ def register(parent):
     add_function_test(TestArray, "test_fill_zero", test_fill_zero, devices=devices)
     add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
     add_function_test(TestArray, "test_large_arrays_fast", test_large_arrays_fast, devices=devices)
+    add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
+    add_function_test(TestArray, "test_array_of_structs", test_array_of_structs, devices=devices)
+    add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
 
     return TestArray
 

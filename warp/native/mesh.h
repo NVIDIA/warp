@@ -40,17 +40,24 @@ struct Mesh
 		num_points = 0;
 		num_tris = 0;
 		context = nullptr;
-	}    
+	}
+
+	inline CUDA_CALLABLE Mesh(
+		array_t<vec3> points,
+		array_t<vec3> velocities,
+		array_t<int> indices,
+		int num_points,
+		int num_tris,
+		void* context = nullptr
+	) : points(points), velocities(velocities), indices(indices), num_points(num_points), num_tris(num_tris), context(context)
+	{
+		bounds = nullptr;
+	}
 };
 
 CUDA_CALLABLE inline Mesh mesh_get(uint64_t id)
 {
     return *(Mesh*)(id);
-}
-
-CUDA_CALLABLE inline void adj_mesh_get(uint64_t id, uint64_t& adj_id, const Mesh& adj_ret)
-{
-	// no-op
 }
 
 
@@ -531,7 +538,7 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(
 
 //Stub
 CUDA_CALLABLE inline void adj_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper,
-											   uint64_t, vec3&, vec3&, mesh_query_aabb_t&)
+											  uint64_t, vec3&, vec3&, mesh_query_aabb_t&)
 {
 
 }
@@ -760,7 +767,7 @@ CUDA_CALLABLE inline vec3 mesh_get_velocity(uint64_t id, int index)
 }
 
 CUDA_CALLABLE inline void adj_mesh_get_velocity(uint64_t id, int index,
-										     uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
+										        uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
 {
 	// no-op
 }

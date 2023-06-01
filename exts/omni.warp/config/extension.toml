@@ -1,7 +1,7 @@
 
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "0.8.2"
+version = "0.9.0"
 authors = ["NVIDIA"]
 title = "Warp"
 description="A Python framework for high-performance simulation and graphics programming"
@@ -20,33 +20,25 @@ include = ["*.ogn", "*.py"]
 exclude = ["Ogn*Database.py", "*/ogn*"]
 
 [dependencies]
-"omni.usd" = {}
-"omni.kit.menu.utils" = {}
-"omni.timeline" = {}
+"omni.graph" = {}
+"omni.graph.action" = {}
+"omni.graph.core" = {}
+"omni.graph.nodes" = {}
 "omni.kit.actions.core" = {}
 "omni.kit.browser.sample" = {optional = true}
-"omni.graph" = {}
-"omni.graph.nodes" = {}
-"omni.kit.test" = {}
+"omni.kit.menu.utils" = {optional = true}
+"omni.kit.property.usd" = {}
+"omni.kit.widget.searchfield" = {}
+"omni.kit.widget.text_editor" = {}
+"omni.kit.window.property" = {}
+"omni.timeline" = {}
+"omni.ui" = {}
+"omni.usd" = {}
+"omni.warp.core" = {}
 
 # Main python module this extension provides, it will be publicly available as "import omni.warp".
 [[python.module]]
 name = "omni.warp"
 
-# Core language module
-[[python.module]]
-name = "warp"
-path = "."
-public = true
-
-# Kit testing flags
-[[test]]
-pyCoverageOmit = [
-    "warp/stubs.py",
-    "warp/sim/render.py",
-    "warp/sim/integrator_euler.py",
-    "warp/sim/optimizer.py",
-    "warp/render.py"
-]
-pyCoverageThreshold = 40
-timeout = 900
+[settings]
+exts."omni.warp".enable_backward = false

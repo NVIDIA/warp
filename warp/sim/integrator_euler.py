@@ -12,7 +12,7 @@ models + state forward in time.
 
 import warp as wp
 
-from .model import ModelShapeMaterials, ModelShapeGeometry
+from .model import PARTICLE_FLAG_ACTIVE, ModelShapeMaterials, ModelShapeGeometry
 
 from .optimizer import Optimizer
 from .particles import eval_particle_forces
@@ -26,12 +26,15 @@ def integrate_particles(
     v: wp.array(dtype=wp.vec3),
     f: wp.array(dtype=wp.vec3),
     w: wp.array(dtype=float),
+    particle_flags: wp.array(dtype=wp.uint32),
     gravity: wp.vec3,
     dt: float,
     x_new: wp.array(dtype=wp.vec3),
     v_new: wp.array(dtype=wp.vec3),
 ):
     tid = wp.tid()
+    if (particle_flags[tid] & PARTICLE_FLAG_ACTIVE) == 0:
+        return
 
     x0 = x[tid]
     v0 = v[tid]
@@ -781,24 +784,29 @@ def eval_tetrahedra(
 
 
 @wp.kernel
-def eval_contacts(
+def eval_particle_ground_contacts(
     particle_x: wp.array(dtype=wp.vec3),
     particle_v: wp.array(dtype=wp.vec3),
+    particle_radius: wp.array(dtype=float),
+    particle_flags: wp.array(dtype=wp.uint32),
     ke: float,
     kd: float,
     kf: float,
     mu: float,
-    offset: float,
     ground: wp.array(dtype=float),
+    # outputs
     f: wp.array(dtype=wp.vec3),
 ):
     tid = wp.tid()
+    if (particle_flags[tid] & PARTICLE_FLAG_ACTIVE) == 0:
+        return
 
     x = particle_x[tid]
     v = particle_v[tid]
+    radius = particle_radius[tid]
 
     n = wp.vec3(ground[0], ground[1], ground[2])
-    c = wp.min(wp.dot(n, x) + ground[3] - offset, 0.0)
+    c = wp.min(wp.dot(n, x) + ground[3] - radius, 0.0)
 
     vn = wp.dot(n, v)
     jn = c * ke
@@ -826,9 +834,11 @@ def eval_contacts(
 
 
 @wp.kernel
-def eval_soft_contacts(
+def eval_particle_contacts(
     particle_x: wp.array(dtype=wp.vec3),
     particle_v: wp.array(dtype=wp.vec3),
+    particle_radius: wp.array(dtype=float),
+    particle_flags: wp.array(dtype=wp.uint32),
     body_q: wp.array(dtype=wp.transform),
     body_qd: wp.array(dtype=wp.spatial_vector),
     body_com: wp.array(dtype=wp.vec3),
@@ -845,7 +855,6 @@ def eval_soft_contacts(
     contact_body_pos: wp.array(dtype=wp.vec3),
     contact_body_vel: wp.array(dtype=wp.vec3),
     contact_normal: wp.array(dtype=wp.vec3),
-    contact_distance: float,
     contact_max: int,
     # outputs
     particle_f: wp.array(dtype=wp.vec3),
@@ -860,6 +869,8 @@ def eval_soft_contacts(
     shape_index = contact_shape[tid]
     body_index = shape_body[shape_index]
     particle_index = contact_particle[tid]
+    if (particle_flags[particle_index] & PARTICLE_FLAG_ACTIVE) == 0:
+        return
 
     px = particle_x[particle_index]
     pv = particle_v[particle_index]
@@ -878,7 +889,7 @@ def eval_soft_contacts(
     r = bx - wp.transform_point(X_wb, X_com)
 
     n = contact_normal[tid]
-    c = wp.dot(n, px - bx) - contact_distance
+    c = wp.dot(n, px - bx) - particle_radius[tid]
 
     if c > particle_ka:
         return
@@ -1552,16 +1563,17 @@ def compute_forces(model, state, particle_f, body_f, requires_grad):
     # particle ground contact
     if model.ground and model.particle_count:
         wp.launch(
-            kernel=eval_contacts,
+            kernel=eval_particle_ground_contacts,
             dim=model.particle_count,
             inputs=[
                 state.particle_q,
                 state.particle_qd,
+                model.particle_radius,
+                model.particle_flags,
                 model.soft_contact_ke,
                 model.soft_contact_kd,
                 model.soft_contact_kf,
                 model.soft_contact_mu,
-                model.soft_contact_distance,
                 model.ground_plane,
             ],
             outputs=[particle_f],
@@ -1647,11 +1659,13 @@ def compute_forces(model, state, particle_f, body_f, requires_grad):
     # particle shape contact
     if model.particle_count and model.shape_count > 1:
         wp.launch(
-            kernel=eval_soft_contacts,
+            kernel=eval_particle_contacts,
             dim=model.soft_contact_max,
             inputs=[
                 state.particle_q,
                 state.particle_qd,
+                model.particle_radius,
+                model.particle_flags,
                 state.body_q,
                 state.body_qd,
                 model.body_com,
@@ -1668,7 +1682,6 @@ def compute_forces(model, state, particle_f, body_f, requires_grad):
                 model.soft_contact_body_pos,
                 model.soft_contact_body_vel,
                 model.soft_contact_normal,
-                model.soft_contact_distance,
                 model.soft_contact_max,
             ],
             # outputs
@@ -1809,6 +1822,7 @@ class SemiImplicitIntegrator:
                         state_in.particle_qd,
                         state_in.particle_f,
                         model.particle_inv_mass,
+                        model.particle_flags,
                         model.gravity,
                         dt,
                     ],
@@ -1825,11 +1839,14 @@ def compute_particle_residual(
     particle_qd_1: wp.array(dtype=wp.vec3),
     particle_f: wp.array(dtype=wp.vec3),
     particle_m: wp.array(dtype=float),
+    particle_flags: wp.array(dtype=wp.uint32),
     gravity: wp.vec3,
     dt: float,
     residual: wp.array(dtype=wp.vec3),
 ):
     tid = wp.tid()
+    if (particle_flags[tid] & PARTICLE_FLAG_ACTIVE) == 0:
+        return
 
     m = particle_m[tid]
     v1 = particle_qd_1[tid]
@@ -1850,9 +1867,12 @@ def update_particle_position(
     particle_q_1: wp.array(dtype=wp.vec3),
     particle_qd_1: wp.array(dtype=wp.vec3),
     x: wp.array(dtype=wp.vec3),
+    particle_flags: wp.array(dtype=wp.uint32),
     dt: float,
 ):
     tid = wp.tid()
+    if (particle_flags[tid] & PARTICLE_FLAG_ACTIVE) == 0:
+        return
 
     qd_1 = x[tid]
 
@@ -1872,6 +1892,7 @@ def compute_residual(model, state_in, state_out, particle_f, residual, dt):
             state_out.particle_qd,
             particle_f,
             model.particle_mass,
+            model.particle_flags,
             model.gravity,
             dt,
             residual.astype(dtype=wp.vec3),
@@ -1889,6 +1910,7 @@ def init_state(model, state_in, state_out, dt):
             state_in.particle_qd,
             state_in.particle_f,
             model.particle_inv_mass,
+            model.particle_flags,
             model.gravity,
             dt,
         ],
@@ -1902,7 +1924,7 @@ def update_state(model, state_in, state_out, x, dt):
     wp.launch(
         kernel=update_particle_position,
         dim=model.particle_count,
-        inputs=[state_in.particle_q, state_out.particle_q, state_out.particle_qd, x, dt],
+        inputs=[state_in.particle_q, state_out.particle_q, state_out.particle_qd, x, model.particle_flags, dt],
         device=model.device,
     )
 

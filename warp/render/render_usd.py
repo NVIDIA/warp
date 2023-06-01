@@ -53,13 +53,13 @@ def _compute_segment_xform(pos0, pos1):
 class UsdRenderer:
     """A USD renderer"""
 
-    def __init__(self, stage, upaxis="y", fps=60, scaling=1.0):
+    def __init__(self, stage, up_axis="y", fps=60, scaling=1.0):
         """Construct a UsdRenderer object
 
         Args:
             model: A simulation model
             stage (str/Usd.Stage): A USD stage (either in memory or on disk)
-            upaxis (str): The upfacing axis of the stage
+            up_axis (str): The upfacing axis of the stage
             fps: The number of frames per second to use in the USD file
             scaling: Scaling factor to use for the entities in the scene
         """
@@ -72,7 +72,7 @@ class UsdRenderer:
             self.stage = stage
         else:
             print("Failed to create stage in renderer. Please construct with stage path or stage object.")
-        self.upaxis = upaxis
+        self.up_axis = up_axis
         self.fps = float(fps)
         self.time = 0.0
 
@@ -97,11 +97,11 @@ class UsdRenderer:
         self.stage.SetEndTimeCode(0.0)
         self.stage.SetTimeCodesPerSecond(self.fps)
 
-        if upaxis == "x":
+        if up_axis == "x":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.x)
-        elif upaxis == "y":
+        elif up_axis == "y":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.y)
-        elif upaxis == "z":
+        elif up_axis == "z":
             UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
 
         # add default lights
@@ -234,13 +234,13 @@ class UsdRenderer:
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
         mesh.CreateDoubleSidedAttr().Set(True)
 
-        if self.upaxis == "x":
+        if self.up_axis == "x":
             points = ((0.0, -size, -size), (0.0, size, -size), (0.0, size, size), (0.0, -size, size))
             normals = ((1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0))
-        elif self.upaxis == "y":
+        elif self.up_axis == "y":
             points = ((-size, 0.0, -size), (size, 0.0, -size), (size, 0.0, size), (-size, 0.0, size))
             normals = ((0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), (0.0, 1.0, 0.0))
-        elif self.upaxis == "z":
+        elif self.up_axis == "z":
             points = ((-size, -size, 0.0), (size, -size, 0.0), (size, size, 0.0), (-size, size, 0.0))
             normals = ((0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0))
         counts = (4,)
@@ -640,11 +640,16 @@ class UsdRenderer:
 
         instancer_path = self.root.GetPath().AppendChild(name)
         instancer = UsdGeom.PointInstancer.Get(self.stage, instancer_path)
+        radius_is_scalar = np.isscalar(radius)
         if not instancer:
             if colors is None:
                 instancer = UsdGeom.PointInstancer.Define(self.stage, instancer_path)
                 instancer_sphere = UsdGeom.Sphere.Define(self.stage, instancer.GetPath().AppendChild("sphere"))
-                instancer_sphere.GetRadiusAttr().Set(radius)
+                if radius_is_scalar:
+                    instancer_sphere.GetRadiusAttr().Set(radius)
+                else:
+                    instancer_sphere.GetRadiusAttr().Set(1.0)
+                    instancer.GetScalesAttr().Set(np.tile(radius, (3, 1)).T)
 
                 instancer.CreatePrototypesRel().SetTargets([instancer_sphere.GetPath()])
                 instancer.CreateProtoIndicesAttr().Set([0] * len(points))
@@ -658,7 +663,10 @@ class UsdRenderer:
                 instancer = UsdGeom.Points.Define(self.stage, instancer_path)
 
                 instancer.CreatePrimvar("displayColor", Sdf.ValueTypeNames.Float3Array, "vertex", 1)
-                instancer.GetWidthsAttr().Set([radius] * len(points))
+                if radius_is_scalar:
+                    instancer.GetWidthsAttr().Set([radius] * len(points))
+                else:
+                    instancer.GetWidthsAttr().Set(radius)
 
         if colors is None:
             instancer.GetPositionsAttr().Set(points, self.time)

@@ -162,7 +162,7 @@ class OgnParticleSolver:
 
                             for i in range(points_count):
                                 builder.add_particle(
-                                    pos=particle_points[i], vel=particle_velocities[i], mass=db.inputs.mass
+                                    pos=particle_points[i], vel=particle_velocities[i], mass=db.inputs.mass, radius=db.inputs.radius
                                 )
 
                     # collision shape
@@ -237,8 +237,7 @@ class OgnParticleSolver:
                 state.model.soft_contact_kd = db.inputs.k_contact_damp
                 state.model.soft_contact_kf = db.inputs.k_contact_friction
                 state.model.soft_contact_mu = db.inputs.k_contact_mu
-                state.model.soft_contact_distance = db.inputs.collider_offset
-                state.model.soft_contact_margin = db.inputs.collider_offset * db.inputs.collider_margin
+                state.model.soft_contact_margin = db.inputs.collider_margin
 
                 # update collider positions
                 with wp.ScopedTimer("Refit", active=profile_enabled):
@@ -278,7 +277,7 @@ class OgnParticleSolver:
 
                 use_graph = True
                 if use_graph:
-                    if state.capture == None:
+                    if state.capture is None:
                         # load ourselves and simulation kernels before graph capture
                         wp.load_module(device=state.device)
                         wp.load_module(device=state.device, module=warp.sim, recursive=True)

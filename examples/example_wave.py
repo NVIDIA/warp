@@ -17,6 +17,7 @@ import os
 import math
 
 import warp as wp
+import warp.render
 
 wp.init()
 

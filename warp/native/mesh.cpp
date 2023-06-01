@@ -49,18 +49,9 @@ void mesh_rem_descriptor(uint64_t id)
 
 } // namespace wp
 
-uint64_t mesh_create_host(vec3* points, vec3* velocities, int* indices, int num_points, int num_tris)
+uint64_t mesh_create_host(array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris)
 {
-    Mesh* m = new Mesh();
-
-    m->context = NULL;
-
-    m->points = array_t<vec3>(points, num_points);
-    m->velocities = array_t<vec3>(velocities, num_points);
-    m->indices = array_t<int>(indices, num_tris, 3);
-
-    m->num_points = num_points;
-    m->num_tris = num_tris;
+    Mesh* m = new Mesh(points, velocities, indices, num_points, num_tris);
 
     m->bounds = new bounds3[num_tris];
 
@@ -76,20 +67,20 @@ uint64_t mesh_create_host(vec3* points, vec3* velocities, int* indices, int num_
     return (uint64_t)m;
 }
 
-uint64_t mesh_create_device(void* context, vec3* points, vec3* velocities, int* indices, int num_points, int num_tris)
+uint64_t mesh_create_device(void* context, array_t<wp::vec3> points, array_t<wp::vec3> velocities, array_t<int> indices, int num_points, int num_tris)
 {
     ContextGuard guard(context);
 
-    Mesh mesh;
+    Mesh mesh(points, velocities, indices, num_points, num_tris);
 
     mesh.context = context ? context : cuda_context_get_current();
 
-    mesh.points = array_t<vec3>(points, num_points);
-    mesh.velocities = array_t<vec3>(velocities, num_points);
-    mesh.indices = array_t<int>(indices, num_tris, 3);
+    // mesh.points = array_t<vec3>(points, num_points, points_grad);
+    // mesh.velocities = array_t<vec3>(velocities, num_points, velocities_grad);
+    // mesh.indices = array_t<int>(indices, num_tris, 3);
 
-    mesh.num_points = num_points;
-    mesh.num_tris = num_tris;
+    // mesh.num_points = num_points;
+    // mesh.num_tris = num_tris;
 
     {
         // todo: BVH creation only on CPU at the moment so temporarily bring all the data back to host

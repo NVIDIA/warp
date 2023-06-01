@@ -26,19 +26,23 @@
             },
             "collider_0": {
                "type": "bundle",
-                "description": ""
+                "description": "",
+                "optional": true
             },
             "collider_1": {
                "type": "bundle",
-                "description": ""
+                "description": "",
+                "optional": true
             },
             "collider_2": {
                "type": "bundle",
-                "description": ""
+                "description": "",
+                "optional": true
             },
             "collider_3": {
                "type": "bundle",
-                "description": ""
+                "description": "",
+                "optional": true
             },
             "buoyancy_enabled": {
                "type": "bool",

@@ -21,7 +21,7 @@ def sametype_value_func(default):
         if args is None:
             return default
         if not all(types_equal(args[0].type, a.type) for a in args[1:]):
-            raise RuntimeError(f"Input types must be exactly the same, {[a.type for a in args]}")
+            raise RuntimeError(f"Input types must be the same, found: {[type_repr(a.type) for a in args]}")
         return args[0].type
 
     return fn
@@ -321,6 +321,38 @@ add_builtin(
     group="Vector Math",
 )
 
+add_builtin(
+    "min",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_scalar_value_func,
+    doc="Return the minimum element of a vector.",
+    group="Vector Math",
+)
+add_builtin(
+    "max",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=sametype_scalar_value_func,
+    doc="Return the maximum element of a vector.",
+    group="Vector Math",
+)
+
+add_builtin(
+    "argmin",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=lambda args, kwds, _: warp.uint32,
+    doc="Return the index of the minimum element of a vector.",
+    group="Vector Math",
+    missing_grad=True,
+)
+add_builtin(
+    "argmax",
+    input_types={"v": vector(length=Any, dtype=Scalar)},
+    value_func=lambda args, kwds, _: warp.uint32,
+    doc="Return the index of the maximum element of a vector.",
+    group="Vector Math",
+    missing_grad=True,
+)
+
 
 def value_func_outer(args, kwds, _):
     if args is None:
@@ -546,7 +578,7 @@ def vector_constructor_func(args, kwds, templates):
     if args is None:
         return vector(length=Any, dtype=Scalar)
 
-    if templates == None or len(templates) == 0:
+    if templates is None or len(templates) == 0:
         # handle construction of anonymous (undeclared) vector types
 
         if "length" in kwds:
@@ -677,7 +709,7 @@ def matrix_constructor_func(args, kwds, templates):
             else:
                 # check that we either got 1 arg (scalar construction), or enough values for whole matrix
                 size = shape[0] * shape[1]
-                if len(args) > 1 and len(args) != shape[0] * shape[1]:
+                if len(args) > 1 and len(args) != size:
                     raise RuntimeError(
                         "Wrong number of scalars when attempting to construct a matrix from a list of components"
                     )
@@ -727,7 +759,7 @@ def matrix_identity_value_func(args, kwds, templates):
 
     n, dtype = [kwds["n"], kwds["dtype"]]
 
-    if n == None:
+    if n is None:
         raise RuntimeError("'n' must be a constant when calling identity() function")
 
     templates.append(n)
@@ -1488,11 +1520,11 @@ add_builtin(
     doc="Tests for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Moller's method. Returns > 0 if triangles intersect.",
 )
 
-
 add_builtin(
     "mesh_get",
     input_types={"id": uint64},
     value_type=Mesh,
+    missing_grad=True,
     group="Geometry",
     doc="""Retrieves the mesh given its index.""",
 )
@@ -1900,6 +1932,16 @@ add_builtin(
 
 add_builtin("print", input_types={"value": Any}, doc="Print variable to stdout", export=False, group="Utility")
 
+add_builtin(
+    "breakpoint",
+    input_types={},
+    doc="Debugger breakpoint",
+    export=False,
+    group="Utility",
+    namespace="",
+    native_func="__debugbreak",
+)
+
 # helpers
 add_builtin(
     "tid",
@@ -2281,6 +2323,83 @@ add_builtin(
 
 add_builtin("index", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
+
+def vector_indexset_element_value_func(args, kwds, _):
+    vec = args[0]
+    index = args[1]
+    value = args[2]
+
+    if value.type is not vec.type._wp_scalar_type_:
+        raise RuntimeError(
+            f"Trying to assign type '{type_repr(value.type)}' to element of a vector with type '{type_repr(vec.type)}'"
+        )
+
+    return None
+
+
+# implements vector[index] = value
+add_builtin(
+    "indexset",
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": int, "value": Scalar},
+    value_func=vector_indexset_element_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+
+
+def matrix_indexset_element_value_func(args, kwds, _):
+    mat = args[0]
+    row = args[1]
+    col = args[2]
+    value = args[3]
+
+    if value.type is not mat.type._wp_scalar_type_:
+        raise RuntimeError(
+            f"Trying to assign type '{type_repr(value.type)}' to element of a matrix with type '{type_repr(mat.type)}'"
+        )
+
+    return None
+
+
+def matrix_indexset_row_value_func(args, kwds, _):
+    mat = args[0]
+    row = args[1]
+    value = args[2]
+
+    if value.type._shape_[0] != mat.type._shape_[1]:
+        raise RuntimeError(
+            f"Trying to assign vector with length {value.type._length} to matrix with shape {mat.type._shape}, vector length must match the number of matrix columns."
+        )
+
+    if value.type._wp_scalar_type_ is not mat.type._wp_scalar_type_:
+        raise RuntimeError(
+            f"Trying to assign vector of type '{type_repr(value.type)}' to row of matrix of type '{type_repr(mat.type)}'"
+        )
+
+    return None
+
+
+# implements matrix[i] = row
+add_builtin(
+    "indexset",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "value": vector(length=Any, dtype=Scalar)},
+    value_func=matrix_indexset_row_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+
+# implements matrix[i,j] = scalar
+add_builtin(
+    "indexset",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int, "value": Scalar},
+    value_func=matrix_indexset_element_value_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+)
+
 for t in scalar_types + vector_types:
     if "vec" in t.__name__ or "mat" in t.__name__:
         continue
@@ -2398,6 +2517,7 @@ add_builtin(
 add_builtin(
     "expect_near",
     input_types={"arg1": Float, "arg2": Float, "tolerance": Float},
+    defaults={"tolerance": 1.0e-6},
     value_type=None,
     doc="Prints an error to stdout if arg1 and arg2 are not closer than tolerance in magnitude",
     group="Utility",
@@ -2486,6 +2606,14 @@ add_builtin(
     doc="",
     group="Operators",
 )
+
+# bitwise operators
+add_builtin("bit_and", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("bit_or", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("bit_xor", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("lshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("rshift", input_types={"x": Int, "y": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
+add_builtin("invert", input_types={"x": Int}, value_func=sametype_value_func(Int), doc="", group="Operators")
 
 
 def scalar_mul_value_func(default):
@@ -2707,3 +2835,6 @@ add_builtin(
 add_builtin("unot", input_types={"b": bool}, value_type=bool, doc="", group="Operators")
 for t in int_types:
     add_builtin("unot", input_types={"b": t}, value_type=bool, doc="", group="Operators")
+
+
+add_builtin("unot", input_types={"a": array(dtype=Any)}, value_type=bool, doc="", group="Operators")

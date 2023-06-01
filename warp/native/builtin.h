@@ -39,6 +39,10 @@
 #define RAD_TO_DEG 57.29577951308232087679
 #define DEG_TO_RAD  0.01745329251994329577
 
+#if defined(__CUDACC__) && !defined(_MSC_VER)
+__device__ void __debugbreak() {}
+#endif
+
 namespace wp
 {
 
@@ -339,9 +343,15 @@ inline CUDA_CALLABLE T min(T a, T b) { return a<b?a:b; } \
 inline CUDA_CALLABLE T max(T a, T b) { return a>b?a:b; } \
 inline CUDA_CALLABLE T clamp(T x, T a, T b) { return min(max(a, x), b); } \
 inline CUDA_CALLABLE T floordiv(T a, T b) { return a/b; } \
-inline CUDA_CALLABLE T nonzero(T x) { return x == T(0) ? T(0) : T(1); }\
-inline CUDA_CALLABLE T sqrt(T x) { return 0; }\
-inline CUDA_CALLABLE bool isfinite(T x) { return true; }\
+inline CUDA_CALLABLE T nonzero(T x) { return x == T(0) ? T(0) : T(1); } \
+inline CUDA_CALLABLE T sqrt(T x) { return 0; } \
+inline CUDA_CALLABLE T bit_and(T a, T b) { return a&b; } \
+inline CUDA_CALLABLE T bit_or(T a, T b) { return a|b; } \
+inline CUDA_CALLABLE T bit_xor(T a, T b) { return a^b; } \
+inline CUDA_CALLABLE T lshift(T a, T b) { return a<<b; } \
+inline CUDA_CALLABLE T rshift(T a, T b) { return a>>b; } \
+inline CUDA_CALLABLE T invert(T x) { return ~x; } \
+inline CUDA_CALLABLE bool isfinite(T x) { return true; } \
 inline CUDA_CALLABLE void adj_mul(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_div(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_add(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
@@ -352,9 +362,16 @@ inline CUDA_CALLABLE void adj_max(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_abs(T x, T adj_x, T& adj_ret) { } \
 inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) { } \
 inline CUDA_CALLABLE void adj_clamp(T x, T a, T b, T& adj_x, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) { }\
-inline CUDA_CALLABLE void adj_step(T x, T& adj_x, T adj_ret) { }\
-inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { }
+inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_step(T x, T& adj_x, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_sqrt(T x, T adj_x, T& adj_ret) { } \
+inline CUDA_CALLABLE void adj_bit_and(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_bit_or(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_bit_xor(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_lshift(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_rshift(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_invert(T x, T adj_x, T& adj_ret) { }
 
 inline CUDA_CALLABLE int8 abs(int8 x) { return ::abs(x); }
 inline CUDA_CALLABLE int16 abs(int16 x) { return ::abs(x); }

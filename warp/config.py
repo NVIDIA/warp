@@ -7,7 +7,7 @@
 
 import os
 
-version = "0.8.2"
+version = "0.9.0"
 
 cuda_path = (
     None  # path to local CUDA toolchain, if None at init time warp will attempt to find the SDK using CUDA_PATH env var
@@ -31,3 +31,5 @@ cuda_output = (
 )
 
 ptx_target_arch = 70  # target architecture for PTX generation, defaults to the lowest architecture that supports all of Warp's features
+
+enable_backward = True  # whether to compiler the backward passes of the kernels

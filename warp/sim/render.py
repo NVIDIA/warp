@@ -62,15 +62,15 @@ def CreateSimRenderer(renderer):
             path,
             scaling=1.0,
             fps=60,
-            upaxis="y",
+            up_axis="y",
             show_rigid_contact_points=False,
             contact_points_radius=1e-3,
             **render_kwargs,
         ):
             # create USD stage
-            super().__init__(path, scaling=scaling, fps=fps, upaxis=upaxis, **render_kwargs)
+            super().__init__(path, scaling=scaling, fps=fps, up_axis=up_axis, **render_kwargs)
             self.scaling = scaling
-            self.cam_axis = "xyz".index(upaxis.lower())
+            self.cam_axis = "xyz".index(up_axis.lower())
             self.show_rigid_contact_points = show_rigid_contact_points
             self.contact_points_radius = contact_points_radius
             self.populate(model)
@@ -208,7 +208,7 @@ def CreateSimRenderer(renderer):
 
                         self.geo_shape[geo_hash] = shape
 
-                    self.add_shape_instance(name, shape, body, X_bs.p, X_bs.q, scale, color)
+                    self.add_shape_instance(name, shape, body, X_bs.p, X_bs.q, scale)
                     self.instance_count += 1
 
             if model.ground:
@@ -228,7 +228,7 @@ def CreateSimRenderer(renderer):
                 particle_q = state.particle_q.numpy()
 
                 # render particles
-                self.render_points("particles", particle_q, radius=self.model.soft_contact_distance)
+                self.render_points("particles", particle_q, radius=self.model.particle_radius.numpy())
 
                 # render tris
                 if self.model.tri_count:
@@ -315,5 +315,5 @@ def CreateSimRenderer(renderer):
 
 
 SimRendererUsd = CreateSimRenderer(wp.render.UsdRenderer)
-SimRendererTiny = CreateSimRenderer(wp.render.TinyRenderer)
+SimRendererOpenGL = CreateSimRenderer(wp.render.OpenGLRenderer)
 SimRenderer = SimRendererUsd

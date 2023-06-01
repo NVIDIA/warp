@@ -37,6 +37,7 @@ class Example:
         self.sim_relaxation = 1.0
 
         builder = wp.sim.ModelBuilder()
+        builder.default_particle_radius = 0.01
 
         builder.add_soft_grid(
             pos=(0.0, 0.0, 0.0),
@@ -59,7 +60,6 @@ class Example:
 
         self.model = builder.finalize()
         self.model.ground = True
-        self.model.soft_contact_distance = 0.01
         self.model.soft_contact_ke = 1.0e3
         self.model.soft_contact_kd = 0.0
         self.model.soft_contact_kf = 1.0e3
@@ -69,7 +69,7 @@ class Example:
         self.state_0 = self.model.state()
         self.state_1 = self.model.state()
 
-        self.renderer = wp.sim.render.SimRenderer(self.model, stage, scaling=40.0)
+        self.renderer = wp.sim.render.SimRendererOpenGL(self.model, stage, scaling=1.0)
 
     def update(self):
         with wp.ScopedTimer("simulate", active=True):

@@ -10,7 +10,7 @@ import math
 import timeit
 import cProfile
 import numpy as np
-from typing import Union
+from typing import Union, Tuple
 
 import warp as wp
 
@@ -233,6 +233,10 @@ def transform_expand_list(xforms):
 
 
 def transform_inertia(m, I, p, q):
+    """
+    Transforms the inertia tensor described by the given mass and 3x3 inertia
+    matrix to a new frame described by the given position and orientation.
+    """
     R = quat_to_matrix(q)
 
     # Steiner's theorem
