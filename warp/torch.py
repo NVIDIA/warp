@@ -143,6 +143,10 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None):
             grad_ptr = grad.data_ptr()
     elif t.grad is not None:
         grad_ptr = t.grad.data_ptr()
+    elif t.requires_grad:
+        import torch
+        t.grad = torch.zeros_like(t)
+        grad_ptr = t.grad.data_ptr()
 
     a = warp.types.array(
         ptr=t.data_ptr(),
