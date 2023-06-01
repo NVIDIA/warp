@@ -411,6 +411,13 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
                 link_cmd = f"g++ -shared -Wl,-rpath,'{origin}' {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
                 run_cmd(link_cmd)
 
+                # Strip symbols to reduce the binary size
+                if sys.platform == "darwin":
+                    run_cmd(f"strip -x {dll_path}")  # Strip all local symbols
+                else:  # Linux
+                    # Strip all symbols except for those needed to support debugging JIT-compiled code
+                    run_cmd(f"strip --strip-all --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}")
+
 
 def load_dll(dll_path):
     if sys.platform == "win32":
