@@ -172,13 +172,21 @@ def to_torch(a):
         # that support the __array_interface__ protocol
         # in this case we need to workaround by going
         # to an ndarray first, see https://pearu.github.io/array_interface_pytorch.html
-        return torch.as_tensor(numpy.asarray(a))
+        t = torch.as_tensor(numpy.asarray(a))
+        if a.requires_grad:
+            t.requires_grad = True
+            t.grad = torch.as_tensor(numpy.asarray(a.grad))
+        return t
 
     elif a.device.is_cuda:
         # Torch does support the __cuda_array_interface__
         # correctly, but we must be sure to maintain a reference
         # to the owning object to prevent memory allocs going out of scope
-        return torch.as_tensor(a, device=device_to_torch(a.device))
+        t = torch.as_tensor(a, device=device_to_torch(a.device))
+        if a.requires_grad:
+            t.requires_grad = True
+            t.grad = torch.as_tensor(a.grad, device=device_to_torch(a.device))
+        return t
 
     else:
         raise RuntimeError("Unsupported device")
