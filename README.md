@@ -2,7 +2,7 @@
 
 Warp is a Python framework for writing high-performance simulation and graphics code. Kernels are defined in Python syntax and JIT converted to C++/CUDA and compiled at runtime.
 
-Warp is comes with a rich set of primitives that make it easy to write programs for physics simulation, geometry processing, and procedural animation. In addition, Warp kernels are differentiable, and can be used as part of machine-learning training pipelines with other frameworks such as PyTorch.
+Warp comes with a rich set of primitives that make it easy to write programs for physics simulation, geometry processing, and procedural animation. In addition, Warp kernels are differentiable, and can be used as part of machine-learning training pipelines with other frameworks such as PyTorch.
 
 Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and [CHANGELOG.md](./CHANGELOG.md) for release history.
 
