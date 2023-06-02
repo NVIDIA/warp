@@ -115,8 +115,6 @@ Here, we revisit the same example from above where now only a single conversion 
         wp.launch(loss, dim=len(xs), inputs=[xs], outputs=[l], device=xs.device)
         print(f"{i}\tloss: {l.numpy()[0]}")
 
-.. autofunction:: from_torch
-
 .. automodule:: warp.torch
     :members:
     :undoc-members:
