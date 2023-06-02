@@ -8,17 +8,15 @@
 import warp
 import numpy
 import ctypes
-from typing import Union
 
 
-
-# return the warp device corresponding to a torch device
 def device_from_torch(torch_device):
+    """Return the warp device corresponding to a torch device."""
     return warp.get_device(str(torch_device))
 
 
-# return the torch device corresponding to a warp device
 def device_to_torch(wp_device):
+    """Return the torch device corresponding to a warp device."""
     device = warp.get_device(wp_device)
     if device.is_cpu or device.is_primary:
         return str(device)
@@ -29,6 +27,7 @@ def device_to_torch(wp_device):
 
 
 def dtype_from_torch(torch_dtype):
+    """Return the Warp dtype corresponding to a torch dtype."""
     # initialize lookup table on first call to defer torch import
     if dtype_from_torch.type_map is None:
         import torch
@@ -61,6 +60,7 @@ dtype_from_torch.type_map = None
 
 
 def dtype_is_compatible(torch_dtype, warp_dtype):
+    """Evaluates whether the given torch dtype is compatible with the given warp dtype."""
     # initialize lookup table on first call to defer torch import
     if dtype_is_compatible.compatible_sets is None:
         import torch
@@ -96,6 +96,16 @@ dtype_is_compatible.compatible_sets = None
 
 # wrap a torch tensor to a wp array, data is not copied
 def from_torch(t, dtype=None, requires_grad=None):
+    """Wrap a PyTorch tensor to a Warp array without copying the data.
+
+    Args:
+        t (torch.Tensor): The torch tensor to wrap.
+        dtype (warp.dtype, optional): The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.
+        requires_grad (bool, optional): Whether the resulting array should wrap the tensor's gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's `requires_grad` value.
+
+    Returns:
+        warp.array: The wrapped array.
+    """
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
     elif not dtype_is_compatible(t.dtype, dtype):
@@ -161,6 +171,16 @@ def from_torch(t, dtype=None, requires_grad=None):
 
 
 def to_torch(a, requires_grad=None):
+    """
+    Convert a Warp array to a PyTorch tensor without copying the data.
+
+    Args:
+        a (warp.array): The Warp array to convert.
+        requires_grad (bool, optional): Whether the resulting tensor should convert the array's gradient, if it exists, to a grad tensor. Defaults to the array's `requires_grad` value.
+
+    Returns:
+        torch.Tensor: The converted tensor.
+    """
     import torch
 
     if requires_grad is None:
@@ -196,6 +216,7 @@ def to_torch(a, requires_grad=None):
 
 
 def stream_from_torch(stream_or_device=None):
+    """Convert from a PyTorch CUDA stream to a Warp.Stream."""
     import torch
 
     if isinstance(stream_or_device, torch.cuda.Stream):
@@ -215,6 +236,7 @@ def stream_from_torch(stream_or_device=None):
 
 
 def stream_to_torch(stream_or_device=None):
+    """Convert from a Warp.Stream to a PyTorch CUDA stream."""
     import torch
 
     if isinstance(stream_or_device, warp.Stream):
