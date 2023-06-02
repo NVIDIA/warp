@@ -160,8 +160,11 @@ def from_torch(t, dtype=None, requires_grad=None):
     return a
 
 
-def to_torch(a):
+def to_torch(a, requires_grad=None):
     import torch
+
+    if requires_grad is None:
+        requires_grad = a.requires_grad
 
     # Torch does not support structured arrays
     if isinstance(a.dtype, warp.codegen.Struct):
@@ -173,8 +176,8 @@ def to_torch(a):
         # in this case we need to workaround by going
         # to an ndarray first, see https://pearu.github.io/array_interface_pytorch.html
         t = torch.as_tensor(numpy.asarray(a))
-        if a.requires_grad:
-            t.requires_grad = True
+        t.requires_grad = requires_grad
+        if requires_grad and a.requires_grad:
             t.grad = torch.as_tensor(numpy.asarray(a.grad))
         return t
 
@@ -183,8 +186,8 @@ def to_torch(a):
         # correctly, but we must be sure to maintain a reference
         # to the owning object to prevent memory allocs going out of scope
         t = torch.as_tensor(a, device=device_to_torch(a.device))
-        if a.requires_grad:
-            t.requires_grad = True
+        t.requires_grad = requires_grad
+        if requires_grad and a.requires_grad:
             t.grad = torch.as_tensor(a.grad, device=device_to_torch(a.device))
         return t
 
