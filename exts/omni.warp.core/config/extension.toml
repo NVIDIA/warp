@@ -17,9 +17,6 @@ icon = "data/icon.png"
 [fswatcher.patterns]
 include = ["*.py"]
 
-[dependencies]
-"omni.kit.test" = {}
-
 # Core language module
 [[python.module]]
 name = "warp"
