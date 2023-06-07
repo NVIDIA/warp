@@ -1,18 +1,100 @@
 import setuptools
 import os
+import shutil
+import argparse
+
+from typing import NamedTuple
 from wheel.bdist_wheel import bdist_wheel
 
+# Parse --build-option arguments meant for the bdist_wheel command. We have to parse these
+# ourselves because when bdist_wheel runs it's too late to select a subset of libraries for package_data.
+parser = argparse.ArgumentParser()
+parser.add_argument("command")
+parser.add_argument("--platform", "-P", type=str, default="", help="Wheel platform: windows|linux|macos")
+args = parser.parse_known_args()[0]
 
-def get_warp_platform():
+
+class Platform(NamedTuple):
+    name: str
+    fancy_name: str
+    extension: str
+    tag: str
+
+
+platforms = [
+    Platform("windows", "Windows", ".dll", "win_amd64"),
+    Platform("linux", "Linux", ".so", "manylinux2014_x86_64"),
+    Platform("macos", "macOS", ".dylib", "macosx_10_13_x86_64"),
+]
+
+
+# Determine supported platforms of warp/bin libraries based on their extension
+def detect_warp_platforms():
+    detected_platforms = set()
     for filename in os.listdir("warp/bin"):
-        if os.path.splitext(filename)[1] == ".dll":
-            return "win_amd64"
-        if os.path.splitext(filename)[1] == ".so":
-            return "manylinux2014_x86_64"
-        if os.path.splitext(filename)[1] == ".dylib":
-            return "macosx_10_13_x86_64"
+        for p in platforms:
+            if os.path.splitext(filename)[1] == p.extension:
+                detected_platforms.add(p)
 
-    raise Exception("No libraries found in warp/bin")
+    if len(detected_platforms) == 0:
+        raise Exception("No libraries found in warp/bin. Please run build_lib.py first.")
+
+    return detected_platforms
+
+
+detected_platforms = detect_warp_platforms()
+
+wheel_platform = None  # The one platform for which we're building a wheel
+
+if args.command == "bdist_wheel":
+    if args.platform != "":
+        for p in platforms:
+            if args.platform == p.name or args.platform == p.fancy_name:
+                wheel_platform = p
+                print(f"Platform argument specified for building {p.fancy_name} wheel")
+                break
+
+        if wheel_platform is None:
+            print(f"Platform argument '{args.platform}' not recognized")
+        elif wheel_platform not in detected_platforms:
+            print(f"No libraries found for {wheel_platform.fancy_name}")
+            print(f"Falling back to auto-detection")
+            wheel_platform = None
+
+if wheel_platform is None:
+    if len(detected_platforms) > 1:
+        print("Libraries for multiple platforms were detected. Picking the first one.")
+        print("Run `python -m build --wheel -C--build-option=-P[windows|linux|macos]` to select a specific one.")
+    wheel_platform = next(iter(detected_platforms))
+
+print("Creating Warp wheel for " + wheel_platform.fancy_name)
+
+
+# Binary wheel distribution builds assume that the platform you're building on will be the platform
+# of the package. This class overrides the platform tag.
+# https://packaging.python.org/en/latest/specifications/platform-compatibility-tags
+class WarpBDistWheel(bdist_wheel):
+    # Even though we parse the platform argument ourselves, we need to declare it here as well so
+    # setuptools.Command can validate the command line options.
+    user_options = bdist_wheel.user_options + [
+        ("platform=", "P", "Wheel platform: windows|linux|macos"),
+    ]
+
+    def initialize_options(self):
+        super().initialize_options()
+        self.platform = ""
+
+    def get_tag(self):
+        # The wheel's complete tag format is {python tag}-{abi tag}-{platform tag}.
+        return "py3", "none", wheel_platform.tag
+
+    def run(self):
+        super().run()
+
+        # Clean up so we can re-invoke `py -m build --wheel -C--build-option=--platform=...`
+        # See https://github.com/pypa/setuptools/issues/1871 for details.
+        shutil.rmtree("./build", ignore_errors=True)
+        shutil.rmtree("./warp_lang.egg-info", ignore_errors=True)
 
 
 # Distributions are identified as non-pure (i.e. containing non-Python code, or binaries) if the
@@ -23,17 +105,19 @@ class BinaryDistribution(setuptools.Distribution):
         return True
 
 
-# Binary wheel distribution builds assume that the platform you're building on will be the platform
-# of the package. This factory function provides a class which overrides the platform tag.
-# https://packaging.python.org/en/latest/specifications/platform-compatibility-tags
-def bdist_factory(platform_tag: str):
-    class warp_bdist(bdist_wheel):
-        def get_tag(self, *args, **kws):
-            # The tag format is {python tag}-{abi tag}-{platform tag}.
-            return "py3", "none", platform_tag
+def get_warp_libraries(extension):
+    libraries = []
+    for filename in os.listdir("warp/bin"):
+        if os.path.splitext(filename)[1] == extension:
+            libraries.append("bin/" + filename)
 
-    return warp_bdist
+    return libraries
 
+
+if wheel_platform is not None:
+    warp_binary_libraries = get_warp_libraries(wheel_platform.extension)
+else:
+    warp_binary_libraries = []  # Not needed during egg_info command
 
 setuptools.setup(
     name="warp-lang",
@@ -57,8 +141,8 @@ setuptools.setup(
             "native/clang/*.cpp",
             "native/nanovdb/*.h",
             "tests/assets/*",
-            "bin/*",
         ]
+        + warp_binary_libraries,
     },
     classifiers=[
         "Programming Language :: Python :: 3.7",
@@ -70,7 +154,9 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     distclass=BinaryDistribution,
-    cmdclass={"bdist_wheel": bdist_factory(get_warp_platform())},
+    cmdclass={
+        "bdist_wheel": WarpBDistWheel,
+    },
     install_requires=["numpy"],
     python_requires=">=3.7",
 )
