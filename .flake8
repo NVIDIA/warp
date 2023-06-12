@@ -29,6 +29,8 @@ ignore =
     # line break before/after binary operator. Black formats it differently: https://stackoverflow.com/a/57074422
     W503,
     W504,
+    # redefinition of warp Functions is allowed to provide overrides
+    F811,
 
 ; Omniverse ignores
 ;

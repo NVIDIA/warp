@@ -35,6 +35,17 @@ def kernel_step(state_in: State, state_out: State, model: Model):
     state_out.x[i] = state_in.x[i] + state_out.v[i] * model.dt
 
 
+@wp.kernel
+def kernel_step_with_copy(state_in: State, state_out: State, model: Model):
+    i = wp.tid()
+
+    model_rescaled = Model(1.0, model.gravity / model.m[i] * model.dt, model.m)
+
+    state_out_copy = State(state_out.x, state_out.v)
+    state_out_copy.v[i] = state_in.v[i] + model_rescaled.gravity
+    state_out_copy.x[i] = state_in.x[i] + state_out_copy.v[i] * model.dt
+
+
 def test_step(test, device):
     dim = 5
 
@@ -67,10 +78,11 @@ def test_step(test, device):
     state_out.x = wp.empty_like(x_in)
     state_out.v = wp.empty_like(v_in)
 
-    with CheckOutput(test):
-        wp.launch(kernel_step, dim=dim, inputs=[state_in, state_out, model], device=device)
+    for step_kernel in [kernel_step, kernel_step_with_copy]:
+        with CheckOutput(test):
+            wp.launch(step_kernel, dim=dim, inputs=[state_in, state_out, model], device=device)
 
-    assert_np_equal(state_out.x.numpy(), x_expected, tol=1e-6)
+        assert_np_equal(state_out.x.numpy(), x_expected, tol=1e-6)
 
 
 @wp.kernel
@@ -111,33 +123,34 @@ def test_step_grad(test, device):
 
     loss = wp.empty(1, dtype=float, device=device, requires_grad=True)
 
-    tape = wp.Tape()
+    for step_kernel in [kernel_step, kernel_step_with_copy]:
+        tape = wp.Tape()
 
-    with tape:
-        wp.launch(kernel_step, dim=dim, inputs=[state_in, state_out, model], device=device)
-        wp.launch(kernel_loss, dim=dim, inputs=[state_out.x, loss], device=device)
+        with tape:
+            wp.launch(step_kernel, dim=dim, inputs=[state_in, state_out, model], device=device)
+            wp.launch(kernel_loss, dim=dim, inputs=[state_out.x, loss], device=device)
 
-    tape.backward(loss)
+        tape.backward(loss)
 
-    dl_dx = 2 * state_out.x.numpy()
-    dl_dv = dl_dx * dt
+        dl_dx = 2 * state_out.x.numpy()
+        dl_dv = dl_dx * dt
 
-    dv_dm = -gravity * dt / m[:, None] ** 2
-    dl_dm = (dl_dv * dv_dm).sum(-1)
+        dv_dm = -gravity * dt / m[:, None] ** 2
+        dl_dm = (dl_dv * dv_dm).sum(-1)
 
-    assert_np_equal(state_out.x.grad.numpy(), dl_dx, tol=1e-6)
-    assert_np_equal(state_in.x.grad.numpy(), dl_dx, tol=1e-6)
-    assert_np_equal(state_out.v.grad.numpy(), dl_dv, tol=1e-6)
-    assert_np_equal(state_in.v.grad.numpy(), dl_dv, tol=1e-6)
-    assert_np_equal(model.m.grad.numpy(), dl_dm, tol=1e-6)
+        assert_np_equal(state_out.x.grad.numpy(), dl_dx, tol=1e-6)
+        assert_np_equal(state_in.x.grad.numpy(), dl_dx, tol=1e-6)
+        assert_np_equal(state_out.v.grad.numpy(), dl_dv, tol=1e-6)
+        assert_np_equal(state_in.v.grad.numpy(), dl_dv, tol=1e-6)
+        assert_np_equal(model.m.grad.numpy(), dl_dm, tol=1e-6)
 
-    tape.zero()
+        tape.zero()
 
-    assert state_out.x.grad.numpy().sum() == 0.0
-    assert state_in.x.grad.numpy().sum() == 0.0
-    assert state_out.v.grad.numpy().sum() == 0.0
-    assert state_in.v.grad.numpy().sum() == 0.0
-    assert model.m.grad.numpy().sum() == 0.0
+        assert state_out.x.grad.numpy().sum() == 0.0
+        assert state_in.x.grad.numpy().sum() == 0.0
+        assert state_out.v.grad.numpy().sum() == 0.0
+        assert state_in.v.grad.numpy().sum() == 0.0
+        assert model.m.grad.numpy().sum() == 0.0
 
 
 @wp.struct
@@ -346,14 +359,12 @@ def test_struct_default_attributes_kernel():
 
 @wp.struct
 class MutableStruct:
-
     param1: int
     param2: float
 
 
 @wp.kernel
 def test_struct_mutate_attributes_kernel():
-
     t = MutableStruct()
     t.param1 = 1
     t.param2 = 1.1
@@ -393,7 +404,7 @@ def register(parent):
         inputs=[],
         devices=devices,
     )
-    
+
     add_kernel_test(
         TestStruct,
         name="test_struct_mutate_attributes",

@@ -44,15 +44,14 @@ private:
 
 void MedianBVHBuilder::build(BVH& bvh, const bounds3* items, int n)
 {
-    memset(&bvh, 0, sizeof(BVH));
-
+    bvh.max_depth = 0;
     bvh.max_nodes = 2*n-1;
+    bvh.num_nodes = 0;
 
     bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
     bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
     bvh.node_parents = new int[bvh.max_nodes];
-
-    bvh.num_nodes = 0;
+    bvh.node_counts = NULL;
 
     // root is always in first slot for top down builders
     bvh.root = 0;
