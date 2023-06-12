@@ -593,17 +593,6 @@ void memtile_device(void* context, void* dest, void *src, size_t srcsize, size_t
     check_cuda(cudaFree(src_device));
 }
 
-
-void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len)
-{
-
-}
-
-void array_sum_device(uint64_t a, uint64_t out, int len)
-{
-    
-}
-
 void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive)
 {
     scan_device((const int*)in, (int*)out, len, inclusive);
@@ -1384,8 +1373,11 @@ void cuda_graphics_unregister_resource(void* context, void* resource)
 #include "mesh.cu"
 #include "sort.cu"
 #include "hashgrid.cu"
+#include "reduce.cu"
+#include "runlength_encode.cu"
 #include "scan.cu"
 #include "marching.cu"
+#include "sparse.cu"
 #include "volume.cu"
 #include "volume_builder.cu"
 #if WP_ENABLE_CUTLASS

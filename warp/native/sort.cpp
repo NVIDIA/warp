@@ -6,8 +6,11 @@
  * license agreement from NVIDIA CORPORATION is strictly prohibited.
  */
 
+#include "warp.h"
 #include "sort.h"
 #include "string.h"
+
+#include <cstdint>
 
 void radix_sort_pairs_host(int* keys, int* values, int n)
 {
@@ -78,4 +81,14 @@ void radix_sort_pairs_host(int* keys, int* values, int n)
 
 void radix_sort_reserve(void* context, int n, void** mem_out, size_t* size_out) {}
 
+void radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n) {}
+
 #endif // !WP_ENABLE_CUDA
+
+
+void radix_sort_pairs_int_host(uint64_t keys, uint64_t values, int n)
+{
+    radix_sort_pairs_host(
+        reinterpret_cast<int *>(keys),
+        reinterpret_cast<int *>(values), n);
+}

@@ -892,6 +892,10 @@ def type_length(dtype):
         return dtype._length_
 
 
+def type_scalar_type(dtype):
+    return getattr(dtype, "_wp_scalar_type_", dtype)
+
+
 def type_size_in_bytes(dtype):
     if dtype.__module__ == "ctypes":
         return ctypes.sizeof(dtype)

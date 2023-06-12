@@ -1852,10 +1852,38 @@ class Runtime:
         ]
         self.core.array_copy_device.restype = ctypes.c_size_t
 
+        self.core.array_sum_double_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_sum_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_sum_double_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_sum_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+
+        self.core.array_inner_double_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_inner_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_inner_double_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_inner_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+
         self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
         self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
         self.core.array_scan_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
         self.core.array_scan_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+
+        self.core.radix_sort_pairs_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+        self.core.radix_sort_pairs_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+
+        self.core.runlength_encode_int_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+        ]
+        self.core.runlength_encode_int_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+        ]
 
         self.core.bvh_create_host.restype = ctypes.c_uint64
         self.core.bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
@@ -1997,6 +2025,47 @@ class Runtime:
             ctypes.POINTER(ctypes.c_float),
             ctypes.POINTER(ctypes.c_float),
         ]
+
+        bsr_matrix_from_triplets_argtypes = [
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+        ]
+        self.core.bsr_matrix_from_triplets_float_host.argtypes = bsr_matrix_from_triplets_argtypes
+        self.core.bsr_matrix_from_triplets_double_host.argtypes = bsr_matrix_from_triplets_argtypes
+        self.core.bsr_matrix_from_triplets_float_device.argtypes = bsr_matrix_from_triplets_argtypes
+        self.core.bsr_matrix_from_triplets_double_device.argtypes = bsr_matrix_from_triplets_argtypes
+
+        self.core.bsr_matrix_from_triplets_float_host.restype = ctypes.c_int
+        self.core.bsr_matrix_from_triplets_double_host.restype = ctypes.c_int
+        self.core.bsr_matrix_from_triplets_float_device.restype = ctypes.c_int
+        self.core.bsr_matrix_from_triplets_double_device.restype = ctypes.c_int
+
+        bsr_transpose_argtypes = [
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+        ]
+        self.core.bsr_transpose_float_host.argtypes = bsr_transpose_argtypes
+        self.core.bsr_transpose_double_host.argtypes = bsr_transpose_argtypes
+        self.core.bsr_transpose_float_device.argtypes = bsr_transpose_argtypes
+        self.core.bsr_transpose_double_device.argtypes = bsr_transpose_argtypes
+
 
         self.core.is_cuda_enabled.argtypes = None
         self.core.is_cuda_enabled.restype = ctypes.c_int

@@ -10,9 +10,10 @@ import math
 import timeit
 import cProfile
 import numpy as np
-from typing import Union, Tuple
+from typing import Union, Tuple, Any
 
 import warp as wp
+import warp.types
 
 
 def length(a):
@@ -384,20 +385,333 @@ def array_scan(in_array, out_array, inclusive=True):
 
     from warp.context import runtime
 
-    if in_array.device == "cpu":
+    if in_array.device.is_cpu:
         if in_array.dtype == wp.int32:
             runtime.core.array_scan_int_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         elif in_array.dtype == wp.float32:
             runtime.core.array_scan_float_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         else:
             raise RuntimeError("Unsupported data type")
-    elif in_array.device == "cuda":
+    elif in_array.device.is_cuda:
         if in_array.dtype == wp.int32:
             runtime.core.array_scan_int_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         elif in_array.dtype == wp.float32:
             runtime.core.array_scan_float_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         else:
             raise RuntimeError("Unsupported data type")
+
+
+def radix_sort_pairs(keys, values, count: int):
+    if keys.device != values.device:
+        raise RuntimeError("Array storage devices do not match")
+
+    if keys.size < 2 * count or values.size < 2 * count:
+        raise RuntimeError("Array storage must be large enough to contain 2*count elements")
+
+    from warp.context import runtime
+
+    if keys.device.is_cpu:
+        if keys.dtype == wp.int32 and values.dtype == wp.int32:
+            runtime.core.radix_sort_pairs_int_host(keys.ptr, values.ptr, count)
+        else:
+            raise RuntimeError("Unsupported data type")
+    elif keys.device.is_cuda:
+        if keys.dtype == wp.int32 and values.dtype == wp.int32:
+            runtime.core.radix_sort_pairs_int_device(keys.ptr, values.ptr, count)
+        else:
+            raise RuntimeError("Unsupported data type")
+
+
+def runlength_encode(values, run_values, run_lengths, run_count=None, value_count=None):
+    if run_values.device != values.device or run_lengths.device != values.device:
+        raise RuntimeError("Array storage devices do not match")
+
+    if value_count is None:
+        value_count = values.size
+
+    if run_values.size < value_count or run_lengths.size < value_count:
+        raise RuntimeError("Output array storage sizes must be at least equal to value_count")
+
+    if values.dtype != run_values.dtype:
+        raise RuntimeError("values and run_values data types do not match")
+
+    if run_lengths.dtype != wp.int32:
+        raise RuntimeError("run_lengths array must be of type int32")
+
+    # User can provide a device output array for storing the number of runs
+    # For convenience, if no such array is provided, number of runs is returned on host
+    if run_count is None:
+        host_return = True
+        run_count = wp.empty(shape=(1,), dtype=int, device=values.device)
+    else:
+        host_return = False
+        if run_count.device != values.device:
+            raise RuntimeError("run_count storage devices does not match other arrays")
+        if run_count.dtype != wp.int32:
+            raise RuntimeError("run_count array must be of type int32")
+
+    from warp.context import runtime
+
+    if values.device.is_cpu:
+        if values.dtype == wp.int32:
+            runtime.core.runlength_encode_int_host(
+                values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count
+            )
+        else:
+            raise RuntimeError("Unsupported data type")
+    elif values.device.is_cuda:
+        if values.dtype == wp.int32:
+            runtime.core.runlength_encode_int_device(
+                values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count
+            )
+        else:
+            raise RuntimeError("Unsupported data type")
+
+    if host_return:
+        return int(run_count.numpy()[0])
+
+
+def array_sum(values, out=None, value_count=None, axis=None):
+    if value_count is None:
+        if axis is None:
+            value_count = values.size
+        else:
+            value_count = values.shape[axis]
+
+    if axis is None:
+        output_shape = (1,)
+    else:
+
+        def output_dim(ax, dim):
+            return 1 if ax == axis else dim
+
+        output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(values.shape))
+
+    type_length = wp.types.type_length(values.dtype)
+    scalar_type = wp.types.type_scalar_type(values.dtype)
+
+    # User can provide a device output array for storing the number of runs
+    # For convenience, if no such array is provided, number of runs is returned on host
+    if out is None:
+        host_return = True
+        out = wp.empty(shape=output_shape, dtype=values.dtype, device=values.device)
+    else:
+        host_return = False
+        if out.device != values.device:
+            raise RuntimeError("out storage device should match values array")
+        if out.dtype != values.dtype:
+            raise RuntimeError(f"out array should have type {values.dtype.__name__}")
+        if out.shape != output_shape:
+            raise RuntimeError(f"out array should have shape {output_shape}")
+
+    from warp.context import runtime
+
+    if values.device.is_cpu:
+        if scalar_type == wp.float32:
+            native_func = runtime.core.array_sum_float_host
+        elif scalar_type == wp.float64:
+            native_func = runtime.core.array_sum_double_host
+        else:
+            raise RuntimeError("Unsupported data type")
+    elif values.device.is_cuda:
+        if scalar_type == wp.float32:
+            native_func = runtime.core.array_sum_float_device
+        elif scalar_type == wp.float64:
+            native_func = runtime.core.array_sum_double_device
+        else:
+            raise RuntimeError("Unsupported data type")
+
+    if axis is None:
+        stride = wp.types.type_size_in_bytes(values.dtype)
+        native_func(values.ptr, out.ptr, value_count, stride, type_length)
+
+        if host_return:
+            return out.numpy()[0]
+    else:
+        stride = values.strides[axis]
+        for idx in np.ndindex(output_shape):
+            out_offset = sum(i * s for i, s in zip(idx, out.strides))
+            val_offset = sum(i * s for i, s in zip(idx, values.strides))
+
+            native_func(
+                values.ptr + val_offset,
+                out.ptr + out_offset,
+                value_count,
+                stride,
+                type_length,
+            )
+
+        if host_return:
+            return out
+
+
+def array_inner(a, b, out=None, count=None, axis=None):
+    if a.size != b.size:
+        raise RuntimeError("Array storage sizes do not match")
+
+    if a.device != b.device:
+        raise RuntimeError("Array storage sizes do not match")
+
+    if a.dtype != b.dtype:
+        raise RuntimeError("Array data types do not match")
+
+    if count is None:
+        if axis is None:
+            count = a.size
+        else:
+            count = a.shape[axis]
+
+    if axis is None:
+        output_shape = (1,)
+    else:
+
+        def output_dim(ax, dim):
+            return 1 if ax == axis else dim
+
+        output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(a.shape))
+
+    type_length = wp.types.type_length(a.dtype)
+    scalar_type = wp.types.type_scalar_type(a.dtype)
+
+    # User can provide a device output array for storing the number of runs
+    # For convenience, if no such array is provided, number of runs is returned on host
+    if out is None:
+        host_return = True
+        out = wp.empty(shape=output_shape, dtype=scalar_type, device=a.device)
+    else:
+        host_return = False
+        if out.device != a.device:
+            raise RuntimeError("out storage device should match values array")
+        if out.dtype != scalar_type:
+            raise RuntimeError(f"out array should have type {scalar_type.__name__}")
+        if out.shape != output_shape:
+            raise RuntimeError(f"out array should have shape {output_shape}")
+
+    from warp.context import runtime
+
+    if a.device.is_cpu:
+        if scalar_type == wp.float32:
+            native_func = runtime.core.array_inner_float_host
+        elif scalar_type == wp.float64:
+            native_func = runtime.core.array_inner_double_host
+        else:
+            raise RuntimeError("Unsupported data type")
+    elif a.device.is_cuda:
+        if scalar_type == wp.float32:
+            native_func = runtime.core.array_inner_float_device
+        elif scalar_type == wp.float64:
+            native_func = runtime.core.array_inner_double_device
+        else:
+            raise RuntimeError("Unsupported data type")
+
+    if axis is None:
+        stride_a = wp.types.type_size_in_bytes(a.dtype)
+        stride_b = wp.types.type_size_in_bytes(b.dtype)
+        native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_length)
+
+        if host_return:
+            return out.numpy()[0]
+    else:
+        stride_a = a.strides[axis]
+        stride_b = b.strides[axis]
+
+        for idx in np.ndindex(output_shape):
+            out_offset = sum(i * s for i, s in zip(idx, out.strides))
+            a_offset = sum(i * s for i, s in zip(idx, a.strides))
+            b_offset = sum(i * s for i, s in zip(idx, b.strides))
+
+            native_func(
+                a.ptr + a_offset,
+                b.ptr + b_offset,
+                out.ptr + out_offset,
+                count,
+                stride_a,
+                stride_b,
+                type_length,
+            )
+
+        if host_return:
+            return out
+
+
+_copy_kernel_cache = dict()
+
+
+def array_cast(in_array, out_array, count=None):
+    def make_copy_kernel(dest_dtype, src_dtype):
+        import re
+        import warp.context
+
+        def copy_kernel(
+            dest: Any,
+            src: Any,
+        ):
+            dest[wp.tid()] = dest_dtype(src[wp.tid()])
+
+        module = wp.get_module(copy_kernel.__module__)
+        key = f"{copy_kernel.__name__}_{warp.context.type_str(src_dtype)}_{warp.context.type_str(dest_dtype)}"
+        key = re.sub("[^0-9a-zA-Z_]+", "", key)
+
+        if key not in _copy_kernel_cache:
+            _copy_kernel_cache[key] = wp.Kernel(func=copy_kernel, key=key, module=module)
+        return _copy_kernel_cache[key]
+
+    if in_array.device != out_array.device:
+        raise RuntimeError("Array storage devices do not match")
+
+    in_array_data_shape = getattr(in_array.dtype, "_shape_", ())
+    out_array_data_shape = getattr(out_array.dtype, "_shape_", ())
+
+    if in_array.ndim != out_array.ndim or in_array_data_shape != out_array_data_shape:
+        # Number of dimensions or data type shape do not match.
+        # Flatten arrays and do cast at the scalar level
+        in_array = in_array.flatten()
+        out_array = out_array.flatten()
+
+        in_array_data_length = warp.types.type_length(in_array.dtype)
+        out_array_data_length = warp.types.type_length(out_array.dtype)
+        in_array_scalar_type = wp.types.type_scalar_type(in_array.dtype)
+        out_array_scalar_type = wp.types.type_scalar_type(out_array.dtype)
+
+        in_array = wp.array(
+            data=None,
+            ptr=in_array.ptr,
+            capacity=in_array.capacity,
+            owner=False,
+            device=in_array.device,
+            dtype=in_array_scalar_type,
+            shape=in_array.shape[0] * in_array_data_length,
+        )
+
+        out_array = wp.array(
+            data=None,
+            ptr=out_array.ptr,
+            capacity=out_array.capacity,
+            owner=False,
+            device=out_array.device,
+            dtype=out_array_scalar_type,
+            shape=out_array.shape[0] * out_array_data_length,
+        )
+
+        if count is not None:
+            count *= in_array_data_length
+
+    if count is None:
+        count = in_array.size
+
+    if in_array.ndim == 1:
+        dim = count
+    elif count < in_array.size:
+        raise RuntimeError("Partial cast is not supported for arrays with more than one dimension")
+    else:
+        dim = in_array.shape
+
+    if in_array.dtype == out_array.dtype:
+        # Same data type, can simply copy
+        wp.copy(dest=out_array, src=in_array, count=count)
+    else:
+        copy_kernel = make_copy_kernel(src_dtype=in_array.dtype, dest_dtype=out_array.dtype)
+        wp.launch(kernel=copy_kernel, dim=dim, inputs=[out_array, in_array], device=out_array.device)
 
 
 # code snippet for invoking cProfile

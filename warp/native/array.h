@@ -597,13 +597,12 @@ inline CUDA_CALLABLE void adj_view(A1<T>& src, int i, int j, int k, A2<T>& adj_s
 // TODO: lower_bound() for indexed arrays?
 
 template <typename T>
-CUDA_CALLABLE inline int lower_bound(const array_t<T>& arr, T value)
+CUDA_CALLABLE inline int lower_bound(const array_t<T>& arr, int arr_begin, int arr_end, T value)
 {
     assert(arr.ndim == 1);
-    int n = arr.shape[0];
 
-    int lower = 0;
-    int upper = n - 1;
+    int lower = arr_begin;
+    int upper = arr_end - 1;
 
     while(lower < upper)
     {
@@ -622,7 +621,14 @@ CUDA_CALLABLE inline int lower_bound(const array_t<T>& arr, T value)
     return lower;
 }
 
+template <typename T>
+CUDA_CALLABLE inline int lower_bound(const array_t<T>& arr, T value)
+{
+    return lower_bound(arr, 0, arr.shape[0], value);
+}
+
 template <typename T> inline CUDA_CALLABLE void adj_lower_bound(const array_t<T>& arr, T value, array_t<T> adj_arr, T adj_value, int adj_ret) {}
+template <typename T> inline CUDA_CALLABLE void adj_lower_bound(const array_t<T>& arr, int arr_begin, int arr_end, T value, array_t<T> adj_arr, int adj_arr_begin, int adj_arr_end, T adj_value, int adj_ret) {}
 
 template<template<typename> class A, typename T>
 inline CUDA_CALLABLE T atomic_add(const A<T>& buf, int i, T value) { return atomic_add(&index(buf, i), value); }
