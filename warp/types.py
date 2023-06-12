@@ -3160,6 +3160,53 @@ def type_matches_template(arg_type, template_type):
     return True
 
 
+def infer_argument_types(args, template_types, arg_names=None):
+    """Resolve argument types with the given list of template types."""
+
+    if len(args) != len(template_types):
+        raise RuntimeError(f"Number of arguments must match number of template types.")
+
+    arg_types = []
+
+    for i in range(len(args)):
+        arg = args[i]
+        arg_type = type(arg)
+        arg_name = arg_names[i] if arg_names else str(i)
+        if arg_type in warp.types.array_types:
+            arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
+        elif arg_type in warp.types.scalar_types:
+            arg_types.append(arg_type)
+        elif arg_type in [int, float]:
+            # canonicalize type
+            arg_types.append(warp.types.type_to_warp(arg_type))
+        elif hasattr(arg_type, "_wp_scalar_type_"):
+            # vector/matrix type
+            arg_types.append(arg_type)
+        elif issubclass(arg_type, warp.codegen.StructInstance):
+            # a struct
+            arg_types.append(arg._struct_)
+        # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
+        #     arg_types.append(arg_type)
+        # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.bvh_query_t]:
+        #     arg_types.append(arg_type)
+        elif arg is None:
+            # allow passing None for arrays
+            t = template_types[i]
+            if warp.types.is_array(t):
+                arg_types.append(type(t)(dtype=t.dtype, ndim=t.ndim))
+            else:
+                raise TypeError(
+                    f"Unable to infer the type of argument '{arg_name}', got None"
+                )
+        else:
+            # TODO: attempt to figure out if it's a vector/matrix type given as a numpy array, list, etc.
+            raise TypeError(
+                f"Unable to infer the type of argument '{arg_name}', got {arg_type}"
+            )
+
+    return arg_types
+
+
 simple_type_codes = {
     int: "i4",
     float: "f4",
