@@ -20,6 +20,7 @@ import warp.tests.test_codegen
 import warp.tests.test_mesh_query_aabb
 import warp.tests.test_mesh_query_point
 import warp.tests.test_mesh_query_ray
+import warp.tests.test_bvh
 import warp.tests.test_conditional
 import warp.tests.test_operators
 import warp.tests.test_rounding
@@ -74,6 +75,7 @@ def register_tests(parent):
     tests.append(warp.tests.test_mesh_query_aabb.register(parent))
     tests.append(warp.tests.test_mesh_query_point.register(parent))
     tests.append(warp.tests.test_mesh_query_ray.register(parent))
+    tests.append(warp.tests.test_bvh.register(parent))
     tests.append(warp.tests.test_conditional.register(parent))
     tests.append(warp.tests.test_operators.register(parent))
     tests.append(warp.tests.test_rounding.register(parent))
