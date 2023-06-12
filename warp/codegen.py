@@ -400,7 +400,6 @@ class Adjoint:
                 builder.build_struct_recursive(a.type)
             elif isinstance(a.type, warp.types.array) and isinstance(a.type.dtype, Struct):
                 builder.build_struct_recursive(a.type.dtype)
-                
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -1917,8 +1916,11 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
     # reverse args
     for label, var in struct.vars.items():
-        reverse_args.append(var.ctype() + " const& adj_" + label)
-        reverse_body.append(f"{indent_block}adj_ret.{label} = adj_{label};\n")
+        reverse_args.append(var.ctype() + " & adj_" + label)
+        if is_array(var.type):
+            reverse_body.append(f"adj_{label} = {indent_block}adj_ret.{label};\n")
+        else:
+            reverse_body.append(f"adj_{label} += {indent_block}adj_ret.{label};\n")
 
     reverse_args.append(name + " & adj_ret")
 
