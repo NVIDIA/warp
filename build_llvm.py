@@ -1,6 +1,7 @@
 import sys
 import os
 import subprocess
+import platform
 
 import warp
 from warp.build_dll import build_dll
@@ -17,38 +18,28 @@ llvm_install_path = os.path.join(llvm_project_path, f"out/install/{warp.config.m
 
 # Fetch prebuilt Clang/LLVM libraries
 if os.name == "nt":
-    subprocess.check_call(
-        [
-            "tools\\packman\\packman.cmd",
-            "install",
-            "-l",
-            "_build/host-deps/llvm-project",
-            "clang+llvm-warp",
-            "15.0.7-windows-x86_64-vs142",
-        ]
-    )
-elif sys.platform == "darwin":
-    subprocess.check_call(
-        [
-            "./tools/packman/packman",
-            "install",
-            "-l",
-            "./_build/host-deps/llvm-project",
-            "clang+llvm-warp",
-            "15.0.7-darwin-x86_64-macos11",
-        ]
-    )
+    packman = "tools\\packman\\packman.cmd"
+    package = "15.0.7-windows-x86_64-vs142"
 else:
-    subprocess.check_call(
-        [
-            "./tools/packman/packman",
-            "install",
-            "-l",
-            "./_build/host-deps/llvm-project",
-            "clang+llvm-warp",
-            "15.0.7-linux-x86_64-gcc7.5-cxx11abi0",
-        ]
-    )
+    packman = "./tools/packman/packman"
+    if sys.platform == "darwin":
+        if platform.machine() == "arm64":
+            package = "15.0.7-darwin-aarch64-macos11"
+        else:
+            package = "15.0.7-darwin-x86_64-macos11"
+    else:
+        package = "15.0.7-linux-x86_64-gcc7.5-cxx11abi0"
+
+subprocess.check_call(
+    [
+        packman,
+        "install",
+        "-l",
+        "./_build/host-deps/llvm-project",
+        "clang+llvm-warp",
+        package,
+    ]
+)
 
 
 def build_from_source(args):
@@ -93,6 +84,11 @@ def build_from_source(args):
     python_bin = "python/Scripts" if sys.platform == "win32" else "python/bin"
     os.environ["PATH"] = os.path.join(base_path, "_build/target-deps/" + python_bin) + os.pathsep + os.environ["PATH"]
 
+    if platform.machine() == "arm64":
+        target = "AArch64"
+    else:
+        target = "X86"
+
     # Build LLVM and Clang
     cmake_gen = [
         # fmt: off
@@ -105,7 +101,7 @@ def build_from_source(args):
         "-D", "LLVM_USE_CRT_MINSIZEREL=MT",
         "-D", "LLVM_USE_CRT_DEBUG=MTd",
         "-D", "LLVM_USE_CRT_RELWITHDEBINFO=MTd",
-        "-D", "LLVM_TARGETS_TO_BUILD=X86",
+        "-D", f"LLVM_TARGETS_TO_BUILD={target}",
         "-D", "LLVM_ENABLE_PROJECTS=clang",
         "-D", "LLVM_ENABLE_ZLIB=FALSE",
         "-D", "LLVM_ENABLE_ZSTD=FALSE",
