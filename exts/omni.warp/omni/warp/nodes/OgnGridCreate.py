@@ -36,6 +36,22 @@ class InternalState:
 
         self.is_valid = False
 
+    def have_setting_attrs_changed(self, db: OgnGridCreateDatabase) -> bool:
+        """Checks if the values of the attributes that set-up the node have changed."""
+        return (
+            db.inputs.sourcePrimPath != self.prim_path
+            or not np.array_equal(db.inputs.center, self.center)
+            or not np.array_equal(db.inputs.size, self.size)
+            or not np.array_equal(db.inputs.dims, self.dims)
+        )
+
+    def store_setting_attrs(self, db: OgnGridCreateDatabase) -> None:
+        """Stores the values of the attributes that set-up the node."""
+        self.prim_path = db.inputs.sourcePrimPath
+        self.center = db.inputs.center.copy()
+        self.size = db.inputs.size.copy()
+        self.dims = db.inputs.dims.copy()
+
 
 #   Compute
 # ------------------------------------------------------------------------------
@@ -55,13 +71,7 @@ def compute(db: OgnGridCreateDatabase) -> None:
         "Mesh",
     )
 
-    if (
-        state.is_valid
-        and db.inputs.sourcePrimPath == state.prim_path
-        and np.array_equal(db.inputs.center, state.center)
-        and np.array_equal(db.inputs.size, state.size)
-        and np.array_equal(db.inputs.dims, state.dims)
-    ):
+    if state.is_valid and not state.have_setting_attrs_changed(db):
         return
 
     # Compute the mesh's topology counts.
@@ -90,13 +100,7 @@ def compute(db: OgnGridCreateDatabase) -> None:
             db.inputs.dims.tolist(),
         )
 
-    # Cache the node attribute values relevant to this internal state.
-    # They're the ones used to check whether the geometry needs
-    # to be updated or not.
-    state.prim_path = db.inputs.sourcePrimPath
-    state.center = db.inputs.center.copy()
-    state.size = db.inputs.size.copy()
-    state.dims = db.inputs.dims.copy()
+    state.store_setting_attrs(db)
 
 
 #   Node Entry Point

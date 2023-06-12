@@ -134,16 +134,16 @@ class InternalState:
 
         self.is_valid = False
 
-    def needs_initialization(self, mesh_bundle: og.BundleContents) -> bool:
+    def needs_initialization(self, db: OgnParticlesFromMeshDatabase) -> bool:
         """Checks if the internal state needs to be (re)initialized."""
         if not self.is_valid:
             return True
 
         # To query whether the input geometry has changed, we could hash its
         # attributes but instead we do a cheap approximation.
-        point_count = omni.warp.mesh_get_point_count(mesh_bundle)
-        xform = omni.warp.get_world_xform(mesh_bundle)
-        extent = omni.warp.mesh_get_local_extent(mesh_bundle)
+        point_count = omni.warp.mesh_get_point_count(db.inputs.mesh)
+        xform = omni.warp.get_world_xform(db.inputs.mesh)
+        extent = omni.warp.mesh_get_local_extent(db.inputs.mesh)
         has_geometry_changed = (
             point_count != self._point_count
             or not np.array_equal(xform, self._xform)
@@ -155,11 +155,11 @@ class InternalState:
 
         return False
 
-    def initialize(self, mesh_bundle: og.BundleContents) -> bool:
+    def initialize(self, db: OgnParticlesFromMeshDatabase) -> bool:
         """Initializes the internal state."""
-        point_count = omni.warp.mesh_get_point_count(mesh_bundle)
-        xform = omni.warp.get_world_xform(mesh_bundle)
-        extent = omni.warp.mesh_get_local_extent(mesh_bundle)
+        point_count = omni.warp.mesh_get_point_count(db.inputs.mesh)
+        xform = omni.warp.get_world_xform(db.inputs.mesh)
+        extent = omni.warp.mesh_get_local_extent(db.inputs.mesh)
 
         # Transform the mesh's point positions into world space.
         world_point_positions = wp.empty(point_count, dtype=wp.vec3)
@@ -167,7 +167,7 @@ class InternalState:
             kernel=transform_points_kernel,
             dim=point_count,
             inputs=[
-                omni.warp.mesh_get_points(mesh_bundle),
+                omni.warp.mesh_get_points(db.inputs.mesh),
                 xform.T,
             ],
             outputs=[
@@ -177,7 +177,7 @@ class InternalState:
 
         # Initialize Warp's mesh instance, which requires
         # a triangulated topology.
-        face_vertex_indices = omni.warp.mesh_get_triangulated_face_vertex_indices(mesh_bundle)
+        face_vertex_indices = omni.warp.mesh_get_triangulated_face_vertex_indices(db.inputs.mesh)
         mesh = wp.Mesh(
             points=world_point_positions,
             velocities=wp.zeros(point_count, dtype=wp.vec3),
@@ -195,6 +195,36 @@ class InternalState:
         self._extent = extent.copy()
 
         return True
+
+    def have_setting_attrs_changed(self, db: OgnParticlesFromMeshDatabase) -> bool:
+        """Checks if the values of the attributes that set-up the node have changed."""
+        return (
+            db.inputs.sourcePrimPath != self.prim_path
+            or db.inputs.seed != self.seed
+            or db.inputs.minSdf != self.min_sdf
+            or db.inputs.maxSdf != self.max_sdf
+            or db.inputs.radius != self.radius
+            or db.inputs.spacing != self.spacing
+            or db.inputs.spacingJitter != self.spacing_jitter
+            or db.inputs.mass != self.mass
+            or not np.array_equal(db.inputs.velocityDir, self.vel_dir)
+            or db.inputs.velocityAmount != self.vel_amount
+            or db.inputs.maxPoints != self.max_pts
+        )
+
+    def store_setting_attrs(self, db: OgnParticlesFromMeshDatabase) -> None:
+        """Stores the values of the attributes that set-up the node."""
+        self.prim_path = db.inputs.sourcePrimPath
+        self.seed = db.inputs.seed
+        self.min_sdf = db.inputs.minSdf
+        self.max_sdf = db.inputs.maxSdf
+        self.radius = db.inputs.radius
+        self.spacing = db.inputs.spacing
+        self.spacing_jitter = db.inputs.spacingJitter
+        self.mass = db.inputs.mass
+        self.vel_dir = db.inputs.velocityDir.copy()
+        self.vel_amount = db.inputs.velocityAmount
+        self.max_pts = db.inputs.maxPoints
 
 
 #   Compute
@@ -263,22 +293,10 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
     )
 
     # Initialize the internal state if it hasn't been already.
-    if state.needs_initialization(db.inputs.mesh):
-        if not state.initialize(db.inputs.mesh):
+    if state.needs_initialization(db):
+        if not state.initialize(db):
             return
-    elif (
-        db.inputs.sourcePrimPath == state.prim_path
-        and db.inputs.seed == state.seed
-        and db.inputs.minSdf == state.min_sdf
-        and db.inputs.maxSdf == state.max_sdf
-        and db.inputs.radius == state.radius
-        and db.inputs.spacing == state.spacing
-        and db.inputs.spacingJitter == state.spacing_jitter
-        and db.inputs.mass == state.mass
-        and np.array_equal(db.inputs.velocityDir, state.vel_dir)
-        and db.inputs.velocityAmount == state.vel_amount
-        and db.inputs.maxPoints == state.max_pts
-    ):
+    elif not state.have_setting_attrs_changed(db):
         return
 
     with omni.warp.NodeTimer("spawn_particles", db, active=PROFILING):
@@ -325,21 +343,7 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         masses = omni.warp.points_get_masses(db.outputs.particles)
         masses.fill_(db.inputs.mass)
 
-
-    # Cache the node attribute values relevant to this internal state.
-    # They're the ones used to check whether the geometry needs
-    # to be updated or not.
-    state.prim_path = db.inputs.sourcePrimPath
-    state.seed = db.inputs.seed
-    state.min_sdf = db.inputs.minSdf
-    state.max_sdf = db.inputs.maxSdf
-    state.radius = db.inputs.radius
-    state.spacing = db.inputs.spacing
-    state.spacing_jitter = db.inputs.spacingJitter
-    state.mass = db.inputs.mass
-    state.vel_dir = db.inputs.velocityDir.copy()
-    state.vel_amount = db.inputs.velocityAmount
-    state.max_pts = db.inputs.maxPoints
+    state.store_setting_attrs(db)
 
 
 #   Node Entry Point

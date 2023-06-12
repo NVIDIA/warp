@@ -158,48 +158,50 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
         face_count,
     )
 
-    if point_count and vertex_count and face_count:
-        out_points = omni.warp.mesh_get_points(db.outputs.mesh)
-        out_face_vertex_counts = omni.warp.mesh_get_face_vertex_counts(
-            db.outputs.mesh,
-        )
-        out_face_vertex_indices = omni.warp.mesh_get_face_vertex_indices(
-            db.outputs.mesh,
-        )
+    if not point_count or not vertex_count or not face_count:
+        return
 
-        # Copy the data to the output geometry mesh bundle.
-        wp.copy(out_points, state.mc.verts)
-        wp.copy(out_face_vertex_indices, state.mc.indices)
+    out_points = omni.warp.mesh_get_points(db.outputs.mesh)
+    out_face_vertex_counts = omni.warp.mesh_get_face_vertex_counts(
+        db.outputs.mesh,
+    )
+    out_face_vertex_indices = omni.warp.mesh_get_face_vertex_indices(
+        db.outputs.mesh,
+    )
 
-        # Set all faces to be triangles.
-        out_face_vertex_counts.fill_(3)
+    # Copy the data to the output geometry mesh bundle.
+    wp.copy(out_points, state.mc.verts)
+    wp.copy(out_face_vertex_indices, state.mc.indices)
 
-        # Transform the mesh to fit the given center and size values.
-        center = (
-            dims[0] * 0.5,
-            dims[1] * 0.5,
-            dims[2] * 0.5,
+    # Set all faces to be triangles.
+    out_face_vertex_counts.fill_(3)
+
+    # Transform the mesh to fit the given center and size values.
+    center = (
+        dims[0] * 0.5,
+        dims[1] * 0.5,
+        dims[2] * 0.5,
+    )
+    offset = db.inputs.center
+    scale = (
+        db.inputs.size[0] / dims[0],
+        db.inputs.size[1] / dims[1],
+        db.inputs.size[2] / dims[2],
+    )
+    with omni.warp.NodeTimer("transform_points", db, active=PROFILING):
+        wp.launch(
+            transform_points_kernel,
+            dim=point_count,
+            inputs=[
+                state.mc.verts,
+                center,
+                offset,
+                scale,
+            ],
+            outputs=[
+                out_points,
+            ],
         )
-        offset = db.inputs.center
-        scale = (
-            db.inputs.size[0] / dims[0],
-            db.inputs.size[1] / dims[1],
-            db.inputs.size[2] / dims[2],
-        )
-        with omni.warp.NodeTimer("transform_points", db, active=PROFILING):
-            wp.launch(
-                transform_points_kernel,
-                dim=point_count,
-                inputs=[
-                    state.mc.verts,
-                    center,
-                    offset,
-                    scale,
-                ],
-                outputs=[
-                    out_points,
-                ],
-            )
 
 
 #   Node Entry Point
