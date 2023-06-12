@@ -308,7 +308,7 @@ class Adjoint:
     # Source code transformer, this class takes a Python function and
     # generates forward and backward SSA forms of the function instructions
 
-    def __init__(adj, func, overload_annotations=None):
+    def __init__(adj, func, overload_annotations=None, transformers: List[ast.NodeTransformer] = []):
         adj.func = func
 
         # build AST from function object
@@ -326,8 +326,10 @@ class Adjoint:
         # extract name of source file
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
 
-        # build AST
+        # build AST and apply node transformers
         adj.tree = ast.parse(adj.source)
+        for transformer in transformers:
+            adj.tree = transformer.visit(adj.tree)
 
         adj.fun_name = adj.tree.body[0].name
 
@@ -594,6 +596,7 @@ class Adjoint:
         else:
             # user-defined function
             arg_types = [a.type for a in args]
+
             resolved_func = func.get_overload(arg_types)
 
         if resolved_func is None:
@@ -2033,7 +2036,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     return s
 
 
-def codegen_func(adj, device="cpu"):
+def codegen_func(adj, name, device="cpu", options={}):
     # forward header
     if adj.return_var is not None and len(adj.return_var) == 1:
         return_type = adj.return_var[0].ctype()
@@ -2070,7 +2073,11 @@ def codegen_func(adj, device="cpu"):
 
     # codegen body
     forward_body = codegen_func_forward(adj, func_type="function", device=device)
-    reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
+
+    if options.get("enable_backward", True):
+        reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
+    else:
+        reverse_body = ""
 
     if device == "cpu":
         template = cpu_function_template
@@ -2080,7 +2087,7 @@ def codegen_func(adj, device="cpu"):
         raise ValueError("Device {} is not supported".format(device))
 
     s = template.format(
-        name=make_full_qualified_name(adj.func),
+        name=name,
         return_type=return_type,
         forward_args=indent(forward_args),
         reverse_args=indent(reverse_args),

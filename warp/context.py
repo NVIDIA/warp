@@ -67,6 +67,8 @@ class Function:
         generic=False,
         native_func=None,
         defaults=None,
+        overloaded_annotations=None,
+        code_transformers=[],
     ):
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -108,7 +110,9 @@ class Function:
             self.user_overloads = {}
 
             # user defined (Python) function
-            self.adj = warp.codegen.Adjoint(func)
+            self.adj = warp.codegen.Adjoint(
+                func, overload_annotations=overloaded_annotations, transformers=code_transformers
+            )
 
             # record input types
             for name, type in self.adj.arg_types.items():
@@ -391,13 +395,13 @@ class KernelHooks:
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
-    def __init__(self, func, key, module, options=None):
+    def __init__(self, func, key, module, options=None, code_transformers=[]):
         self.func = func
         self.module = module
         self.key = key
         self.options = {} if options is None else options
 
-        self.adj = warp.codegen.Adjoint(func)
+        self.adj = warp.codegen.Adjoint(func, transformers=code_transformers)
 
         # check if generic
         self.is_generic = False
@@ -955,7 +959,7 @@ class ModuleBuilder:
 
         # code-gen all imported functions
         for func in self.functions.keys():
-            cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
+            cpp_source += warp.codegen.codegen_func(func.adj, name=func.key, device="cpu", options=self.options)
 
         for kernel in self.module.kernels.values():
             # each kernel gets an entry point in the module
@@ -981,7 +985,7 @@ class ModuleBuilder:
 
         # code-gen all imported functions
         for func in self.functions.keys():
-            cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
+            cu_source += warp.codegen.codegen_func(func.adj, name=func.key, device="cuda", options=self.options)
 
         for kernel in self.module.kernels.values():
             if not kernel.is_generic:
@@ -1139,6 +1143,11 @@ class Module:
 
             return getattr(obj, "__annotations__", {})
 
+        def get_type_name(type_hint):
+            if isinstance(type_hint, warp.codegen.Struct):
+                return get_type_name(type_hint.cls)
+            return type_hint
+
         def hash_recursive(module, visited):
             # Hash this module, including all referenced modules recursively.
             # The visited set tracks modules already visited to avoid circular references.
@@ -1151,7 +1160,8 @@ class Module:
                 # struct source
                 for struct in module.structs.values():
                     s = ",".join(
-                        "{}: {}".format(name, type_hint) for name, type_hint in get_annotations(struct.cls).items()
+                        "{}: {}".format(name, get_type_name(type_hint))
+                        for name, type_hint in get_annotations(struct.cls).items()
                     )
                     ch.update(bytes(s, "utf-8"))
 
