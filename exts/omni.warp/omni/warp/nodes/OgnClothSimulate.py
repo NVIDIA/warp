@@ -427,16 +427,6 @@ def compute(db: OgnClothSimulateDatabase) -> None:
         # Pass through the data.
         db.outputs.cloth = db.inputs.cloth
 
-        if state.enabled:
-            # If the node was just disabled, we want to force an update over
-            # all mesh attributes to make sure that we correctly write out
-            # the incoming data being passed through at least once.
-            omni.warp.mesh_clear_dirty_attributes(db.outputs.cloth)
-            omni.warp.mesh_set_dirty_attributes(
-                db.outputs.cloth,
-                omni.warp.MeshAttributeFlags.ALL,
-            )
-
         # Store whether the simulation was last enabled.
         state.enabled = False
         return
@@ -449,10 +439,6 @@ def compute(db: OgnClothSimulateDatabase) -> None:
 
         if not state.initialize(db):
             return
-
-        updates = omni.warp.MeshAttributeFlags.ALL
-    else:
-        updates = omni.warp.MeshAttributeFlags.POINTS
 
     if db.inputs.collider.valid and state.collider_mesh is not None:
         # To query whether the input collider has changed, we could hash its
@@ -504,10 +490,6 @@ def compute(db: OgnClothSimulateDatabase) -> None:
 
     # Store the current time.
     state.time = db.inputs.time
-
-    # Notify downstream nodes of updates done to the geometry.
-    omni.warp.mesh_clear_dirty_attributes(db.outputs.cloth)
-    omni.warp.mesh_set_dirty_attributes(db.outputs.cloth, updates)
 
 
 #   Node Entry Point

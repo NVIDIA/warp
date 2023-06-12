@@ -67,12 +67,6 @@ def compute(db: OgnMeshDeformDatabase) -> None:
             ],
         )
 
-    # Notify downstream nodes of updates done to the geometry.
-    omni.warp.mesh_set_dirty_attributes(
-        db.outputs.mesh,
-        omni.warp.MeshAttributeFlags.POINTS,
-    )
-
 
 #   Node Entry Point
 # ------------------------------------------------------------------------------

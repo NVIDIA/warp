@@ -55,24 +55,13 @@ def compute(db: OgnGridCreateDatabase) -> None:
         "Mesh",
     )
 
-    # Query the geometry components that need to be updated.
     if (
-        not state.is_valid
-        or db.inputs.sourcePrimPath != state.prim_path
-        or not np.array_equal(db.inputs.dims, state.dims)
+        state.is_valid
+        and db.inputs.sourcePrimPath == state.prim_path
+        and np.array_equal(db.inputs.center, state.center)
+        and np.array_equal(db.inputs.size, state.size)
+        and np.array_equal(db.inputs.dims, state.dims)
     ):
-        updates = omni.warp.MeshAttributeFlags.ALL
-    elif not np.array_equal(db.inputs.center, state.center) or not np.array_equal(db.inputs.size, state.size):
-        updates = omni.warp.MeshAttributeFlags.POINTS
-    else:
-        updates = omni.warp.MeshAttributeFlags.NONE
-
-    if updates == omni.warp.MeshAttributeFlags.NONE:
-        # If no update needs to be done, there ought to be an output bundle
-        # already existing, so we read it and notify downstrean nodes that
-        # nothing changed.
-        omni.warp.mesh_clear_dirty_attributes(db.outputs.mesh)
-        omni.warp.mesh_set_dirty_attributes(db.outputs.mesh, updates)
         return
 
     # Compute the mesh's topology counts.
@@ -99,12 +88,7 @@ def compute(db: OgnGridCreateDatabase) -> None:
             db.inputs.center.tolist(),
             db.inputs.size.tolist(),
             db.inputs.dims.tolist(),
-            update_topology=omni.warp.MeshAttributeFlags.TOPOLOGY in updates,
         )
-
-    # Notify downstream nodes of updates done to the geometry.
-    omni.warp.mesh_clear_dirty_attributes(db.outputs.mesh)
-    omni.warp.mesh_set_dirty_attributes(db.outputs.mesh, updates)
 
     # Cache the node attribute values relevant to this internal state.
     # They're the ones used to check whether the geometry needs

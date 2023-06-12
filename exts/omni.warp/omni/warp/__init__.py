@@ -8,16 +8,13 @@
 """Public Python API exposed by the omni.warp extension."""
 
 __all__ = [
-    "MeshAttributeFlags",
     "NodeTimer",
-    "PointsAttributeFlags",
     "define_prim_attrs",
     "from_omni_graph",
     "get_child_bundle_count",
     "get_prim_type",
     "get_world_xform",
     "get_world_xform_from_prim",
-    "mesh_clear_dirty_attributes",
     "mesh_create_bundle",
     "mesh_get_face_count",
     "mesh_get_face_vertex_counts",
@@ -31,8 +28,6 @@ __all__ = [
     "mesh_get_velocities",
     "mesh_get_vertex_count",
     "mesh_get_world_extent",
-    "mesh_set_dirty_attributes",
-    "points_clear_dirty_attributes",
     "points_create_bundle",
     "points_get_local_extent",
     "points_get_masses",
@@ -41,7 +36,6 @@ __all__ = [
     "points_get_velocities",
     "points_get_widths",
     "points_get_world_extent",
-    "points_set_dirty_attributes",
 ]
 
 from enum import IntFlag
@@ -207,17 +201,6 @@ def define_prim_attrs(
 
 #   Point Cloud Geometries
 # ------------------------------------------------------------------------------
-
-
-class PointsAttributeFlags(IntFlag):
-    """Flags representing point cloud attributes having been updated."""
-
-    NONE = 0
-    POINTS = 1 << 0
-    VELOCITIES = 1 << 1
-    WIDTHS = 1 << 2
-    MASSES = 1 << 3
-    ALL = POINTS | VELOCITIES | WIDTHS | MASSES
 
 
 def points_create_bundle(
@@ -386,55 +369,8 @@ def points_get_world_extent(
     )
 
 
-def points_clear_dirty_attributes(
-    bundle: og.BundleContents,
-    child_bundle_idx: int = 0,
-) -> None:
-    """Clears the list of attributes that have been updated."""
-    attr = _create_dirty_attrs_attr(bundle, child_bundle_idx)
-    _set_cpu_array(attr, "")
-
-
-def points_set_dirty_attributes(
-    bundle: og.BundleContents,
-    flags: PointsAttributeFlags,
-    child_bundle_idx: int = 0,
-) -> None:
-    """Sets attributes that have been updated."""
-    attr = _create_dirty_attrs_attr(bundle, child_bundle_idx)
-    values = _get_cpu_array(attr).split()
-    additional_values = []
-
-    if PointsAttributeFlags.POINTS in flags:
-        additional_values.append("points")
-
-    if PointsAttributeFlags.VELOCITIES in flags:
-        additional_values.append("velocities")
-
-    if PointsAttributeFlags.WIDTHS in flags:
-        additional_values.append("widths")
-
-    if PointsAttributeFlags.MASSES in flags:
-        additional_values.append("masses")
-
-    additional_values = tuple(x for x in additional_values if x not in values)
-    values.extend(additional_values)
-    _set_cpu_array(attr, " ".join(values))
-
-
 #   Mesh Geometries
 # ------------------------------------------------------------------------------
-
-
-class MeshAttributeFlags(IntFlag):
-    """Flags representing mesh attributes having been updated."""
-
-    NONE = 0
-    POINTS = 1 << 0
-    NORMALS = 1 << 1
-    UVS = 1 << 2
-    TOPOLOGY = 1 << 3
-    ALL = POINTS | NORMALS | UVS | TOPOLOGY
 
 
 def mesh_create_bundle(
@@ -623,42 +559,6 @@ def mesh_get_triangulated_face_vertex_indices(
     return wp.array(out, dtype=int, copy=True)
 
 
-def mesh_clear_dirty_attributes(
-    bundle: og.BundleContents,
-    child_bundle_idx: int = 0,
-) -> None:
-    """Clears the list of attributes that have been updated."""
-    attr = _create_dirty_attrs_attr(bundle, child_bundle_idx)
-    _set_cpu_array(attr, "")
-
-
-def mesh_set_dirty_attributes(
-    bundle: og.BundleContents,
-    flags: MeshAttributeFlags,
-    child_bundle_idx: int = 0,
-) -> None:
-    """Sets attributes that have been updated."""
-    attr = _create_dirty_attrs_attr(bundle, child_bundle_idx)
-    values = _get_cpu_array(attr).split()
-    additional_values = []
-
-    if MeshAttributeFlags.POINTS in flags:
-        additional_values.append("points")
-
-    if MeshAttributeFlags.NORMALS in flags:
-        additional_values.append("normals")
-
-    if MeshAttributeFlags.UVS in flags:
-        additional_values.append("primvars:st")
-
-    if MeshAttributeFlags.TOPOLOGY in flags:
-        additional_values.extend(("faceVertexCounts", "faceVertexIndices"))
-
-    additional_values = tuple(x for x in additional_values if x not in values)
-    values.extend(additional_values)
-    _set_cpu_array(attr, " ".join(values))
-
-
 #   Private Helpers
 # ------------------------------------------------------------------------------
 
@@ -733,19 +633,3 @@ def _get_cpu_array(
 def _set_cpu_array(attr: og.AttributeData, value: Sequence) -> None:
     """Sets the given value onto an array attribute living on the CPU."""
     attr.set(value, on_gpu=False)
-
-
-def _create_dirty_attrs_attr(
-    bundle: og.BundleContents,
-    child_bundle_idx: int,
-) -> og.AttributeData:
-    """Creates a new dirty attributes attribute into a bundle."""
-    return bundle.bundle.create_attribute(
-        "dirtyAttrs",
-        og.Type(
-            og.BaseDataType.UCHAR,
-            tuple_count=1,
-            array_depth=1,
-            role=og.AttributeRole.TEXT,
-        ),
-    )

@@ -114,26 +114,11 @@ def Xform "World"
             }
         }
 
-        def OmniGraphNode "extract_attribute_dirtyAttrs" (
-            prepend apiSchemas = ["NodeGraphNodeAPI"]
-        )
-        {
-            custom token inputs:attrName = "dirtyAttrs"
-            custom rel inputs:data
-            prepend rel inputs:data = </World/ActionGraph/wave_solve/outputs_mesh>
-            token node:type = "omni.graph.nodes.ExtractAttribute"
-            int node:typeVersion = 1
-            custom token outputs:output
-            uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (686, 278)
-        }
-
         def OmniGraphNode "write_prims" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
             custom string inputs:attrNamesToExport = "*"
-            prepend string inputs:attrNamesToExport.connect = </World/ActionGraph/extract_attribute_dirtyAttrs.outputs:output>
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/wave_solve.outputs:execOut>
             custom string inputs:pathPattern = "*"
@@ -149,7 +134,7 @@ def Xform "World"
                 }
             )
             uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (988, 58)
+            uniform float2 ui:nodegraph:node:pos = (670, 110)
         }
     }
 

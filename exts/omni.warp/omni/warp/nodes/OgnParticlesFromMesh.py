@@ -266,39 +266,19 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
     if state.needs_initialization(db.inputs.mesh):
         if not state.initialize(db.inputs.mesh):
             return
-
-        updates = omni.warp.PointsAttributeFlags.ALL
     elif (
-        db.inputs.sourcePrimPath != state.prim_path
-        or db.inputs.seed != state.seed
-        or db.inputs.minSdf != state.min_sdf
-        or db.inputs.maxSdf != state.max_sdf
-        or db.inputs.spacing != state.spacing
-        or db.inputs.spacingJitter != state.spacing_jitter
-        or db.inputs.maxPoints != state.max_pts
+        db.inputs.sourcePrimPath == state.prim_path
+        and db.inputs.seed == state.seed
+        and db.inputs.minSdf == state.min_sdf
+        and db.inputs.maxSdf == state.max_sdf
+        and db.inputs.radius == state.radius
+        and db.inputs.spacing == state.spacing
+        and db.inputs.spacingJitter == state.spacing_jitter
+        and db.inputs.mass == state.mass
+        and np.array_equal(db.inputs.velocityDir, state.vel_dir)
+        and db.inputs.velocityAmount == state.vel_amount
+        and db.inputs.maxPoints == state.max_pts
     ):
-        updates = omni.warp.PointsAttributeFlags.ALL
-    else:
-        updates = omni.warp.PointsAttributeFlags.NONE
-
-        if not np.array_equal(db.inputs.velocityDir, state.vel_dir) or db.inputs.velocityAmount != state.vel_amount:
-            updates |= omni.warp.PointsAttributeFlags.VELOCITIES
-
-        if db.inputs.radius != state.radius:
-            updates |= omni.warp.PointsAttributeFlags.WIDTHS
-
-        if db.inputs.mass != state.mass:
-            updates |= omni.warp.PointsAttributeFlags.MASSES
-
-    if updates == omni.warp.PointsAttributeFlags.NONE:
-        # If no update needs to be done, there ought to be an output bundle
-        # already existing, so we read it and notify downstrean nodes that
-        # nothing changed.
-        omni.warp.points_clear_dirty_attributes(db.outputs.particles)
-        omni.warp.points_set_dirty_attributes(
-            db.outputs.particles,
-            omni.warp.PointsAttributeFlags.NONE,
-        )
         return
 
     with omni.warp.NodeTimer("spawn_particles", db, active=PROFILING):
@@ -316,41 +296,35 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
     )
 
     if point_count:
-        if omni.warp.PointsAttributeFlags.VELOCITIES in updates:
-            velocities = omni.warp.points_get_velocities(db.outputs.particles)
-            if db.inputs.velocityAmount < 1e-6:
-                velocities.fill_(0.0)
-            else:
-                # Retrieve the mesh's world transformation.
-                xform = omni.warp.get_world_xform(db.inputs.mesh)
+        velocities = omni.warp.points_get_velocities(db.outputs.particles)
+        if db.inputs.velocityAmount < 1e-6:
+            velocities.fill_(0.0)
+        else:
+            # Retrieve the mesh's world transformation.
+            xform = omni.warp.get_world_xform(db.inputs.mesh)
 
-                # Retrieve the normalized velocity direction.
-                vel = db.inputs.velocityDir
-                vel /= np.linalg.norm(vel)
+            # Retrieve the normalized velocity direction.
+            vel = db.inputs.velocityDir
+            vel /= np.linalg.norm(vel)
 
-                # Transform the velocity local direction with the mesh's world
-                # rotation matrix to get the velocity direction in world space.
-                vel = np.dot(xform[:3, :3].T, vel)
+            # Transform the velocity local direction with the mesh's world
+            # rotation matrix to get the velocity direction in world space.
+            vel = np.dot(xform[:3, :3].T, vel)
 
-                # Scale the result to get the velocity's magnitude.
-                vel *= db.inputs.velocityAmount
+            # Scale the result to get the velocity's magnitude.
+            vel *= db.inputs.velocityAmount
 
-                # Store the velocities in the output bundle.
-                velocities.fill_(wp.vec3(vel))
+            # Store the velocities in the output bundle.
+            velocities.fill_(wp.vec3(vel))
 
-        if omni.warp.PointsAttributeFlags.WIDTHS in updates:
-            # Store the radius in the output bundle.
-            widths = omni.warp.points_get_widths(db.outputs.particles)
-            widths.fill_(db.inputs.radius * 2.0)
+        # Store the radius in the output bundle.
+        widths = omni.warp.points_get_widths(db.outputs.particles)
+        widths.fill_(db.inputs.radius * 2.0)
 
-        if omni.warp.PointsAttributeFlags.MASSES in updates:
-            # Store the mass in the output bundle.
-            masses = omni.warp.points_get_masses(db.outputs.particles)
-            masses.fill_(db.inputs.mass)
+        # Store the mass in the output bundle.
+        masses = omni.warp.points_get_masses(db.outputs.particles)
+        masses.fill_(db.inputs.mass)
 
-    # Notify downstream nodes of updates done to the geometry.
-    omni.warp.points_clear_dirty_attributes(db.outputs.particles)
-    omni.warp.points_set_dirty_attributes(db.outputs.particles, updates)
 
     # Cache the node attribute values relevant to this internal state.
     # They're the ones used to check whether the geometry needs

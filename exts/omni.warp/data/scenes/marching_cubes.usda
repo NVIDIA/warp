@@ -117,7 +117,7 @@ def Xform "World"
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            custom string inputs:attrNamesToExport = "points faceVertexCounts faceVertexIndices"
+            custom string inputs:attrNamesToExport = "*"
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/mesh_from_volume.outputs:execOut>
             custom string inputs:pathPattern = "*"

@@ -201,13 +201,6 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
                 ],
             )
 
-    # Notify downstream nodes of updates done to the geometry.
-    omni.warp.mesh_clear_dirty_attributes(db.outputs.mesh)
-    omni.warp.mesh_set_dirty_attributes(
-        db.outputs.mesh,
-        omni.warp.MeshAttributeFlags.POINTS | omni.warp.MeshAttributeFlags.TOPOLOGY,
-    )
-
 
 #   Node Entry Point
 # ------------------------------------------------------------------------------

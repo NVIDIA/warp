@@ -416,16 +416,6 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
         # Pass through the data.
         db.outputs.particles = db.inputs.particles
 
-        if state.enabled:
-            # If the node was just disabled, we want to force an update over
-            # all point attributes to make sure that we correctly write out
-            # the incoming data being passed through at least once.
-            omni.warp.points_clear_dirty_attributes(db.outputs.particles)
-            omni.warp.points_set_dirty_attributes(
-                db.outputs.particles,
-                omni.warp.PointsAttributeFlags.ALL,
-            )
-
         # Store whether the simulation was last enabled.
         state.enabled = False
         return
@@ -438,10 +428,6 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
 
         if not state.initialize(db):
             return
-
-        updates = omni.warp.PointsAttributeFlags.ALL
-    else:
-        updates = omni.warp.PointsAttributeFlags.POINTS
 
     if db.inputs.collider.valid and state.collider_mesh is not None:
         # To query whether the input collider has changed, we could hash its
@@ -478,10 +464,6 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
 
     # Store the current time.
     state.time = db.inputs.time
-
-    # Notify downstream nodes of updates done to the geometry.
-    omni.warp.points_clear_dirty_attributes(db.outputs.particles)
-    omni.warp.points_set_dirty_attributes(db.outputs.particles, updates)
 
 
 #   Node Entry Point

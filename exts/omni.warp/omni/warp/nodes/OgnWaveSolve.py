@@ -356,10 +356,6 @@ def compute(db: OgnWaveSolveDatabase) -> None:
         if not state.initialize(db, dims):
             return
 
-        updates = omni.warp.MeshAttributeFlags.ALL
-    else:
-        updates = omni.warp.MeshAttributeFlags.POINTS
-
     # Retrieve the simulation's delta time.
     timeline = omni.timeline.get_timeline_interface()
     sim_rate = timeline.get_ticks_per_second()
@@ -386,10 +382,6 @@ def compute(db: OgnWaveSolveDatabase) -> None:
 
     # Store the current time.
     state.time = db.inputs.time
-
-    # Notify downstream nodes of updates done to the geometry.
-    omni.warp.mesh_clear_dirty_attributes(db.outputs.mesh)
-    omni.warp.mesh_set_dirty_attributes(db.outputs.mesh, updates)
 
 
 #   Node Entry Point
