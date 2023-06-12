@@ -27,6 +27,15 @@ struct vec_t
             c[i] = s;
         }
     }
+    
+    template <typename OtherType>
+    inline explicit CUDA_CALLABLE vec_t(const vec_t<Length, OtherType>& other)
+    {
+        for( unsigned i=0; i < Length; ++i )
+        {
+            c[i] = other[i];
+        }
+    }
 
     inline CUDA_CALLABLE vec_t(Type x, Type y)
     {
@@ -630,6 +639,15 @@ inline CUDA_CALLABLE void adj_vec_t(Type s, Type& adj_s, const vec_t<Length, Typ
     }
 }
 
+// adjoint for the casting constructor
+template<unsigned Length, typename Type, typename OtherType>
+inline CUDA_CALLABLE void adj_vec_t(const vec_t<Length, OtherType>& other, vec_t<Length, OtherType>& adj_other, const vec_t<Length, Type>& adj_ret)
+{
+    for( unsigned i=0; i < Length; ++i )
+    {
+        adj_other[i] += adj_ret[i];
+    }
+}
 
 template<typename Type>
 CUDA_CALLABLE inline void adj_vec_t(const vec_t<3,Type>& w, const vec_t<3,Type>& v, vec_t<3,Type>& adj_w, vec_t<3,Type>& adj_v, const vec_t<6,Type>& adj_ret)
