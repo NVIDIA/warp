@@ -161,7 +161,7 @@ class Function:
                     continue
 
                 # try and find builtin in the warp.dll
-                if hasattr(warp.context.runtime.core, f.mangled_name) == False:
+                if not hasattr(warp.context.runtime.core, f.mangled_name):
                     raise RuntimeError(
                         f"Couldn't find function {self.key} with mangled name {f.mangled_name} in the Warp native library"
                     )
@@ -267,10 +267,38 @@ class Function:
             else:
                 raise RuntimeError(f"Error calling function '{f.key}'.")
 
-        else:
+        elif hasattr(self, "user_overloads") and len(self.user_overloads):
+            # user-defined function with overloads
+
+            if len(kwargs):
+                raise RuntimeError(
+                    f"Error calling function '{self.key}', keyword arguments are not supported for user-defined overloads.")
+
+            # try and find a matching overload
+            for f in self.user_overloads.values():
+                if len(f.input_types) != len(args):
+                    continue
+                template_types = list(f.input_types.values())
+                arg_names = list(f.input_types.keys())
+                try:
+                    # attempt to unify argument types with function template types
+                    warp.types.infer_argument_types(args, template_types, arg_names)
+                    return f.func(*args)
+                except Exception:
+                    continue
+
             raise RuntimeError(
-                f"Error, functions decorated with @wp.func can only be called from within Warp kernels (trying to call {self.key}())"
-            )
+                f"Error calling function '{self.key}', no overload found for arguments {args}")
+
+        else:
+            # user-defined function with no overloads
+
+            if self.func is None:
+                raise RuntimeError(
+                    f"Error calling function '{self.key}', function is undefined")
+
+            # this function has no overloads, call it like a plain Python function
+            return self.func(*args, **kwargs)
 
     def is_builtin(self):
         return self.func is None
@@ -429,44 +457,8 @@ class Kernel:
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
         arg_names = list(self.adj.arg_types.keys())
-        arg_types = []
-
-        for i in range(len(args)):
-            arg = args[i]
-            arg_type = type(arg)
-            if arg_type in warp.types.array_types:
-                arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
-            elif arg_type in warp.types.scalar_types:
-                arg_types.append(arg_type)
-            elif arg_type in [int, float]:
-                # canonicalize type
-                arg_types.append(warp.types.type_to_warp(arg_type))
-            elif hasattr(arg_type, "_wp_scalar_type_"):
-                # vector/matrix type
-                arg_types.append(arg_type)
-            elif issubclass(arg_type, warp.codegen.StructInstance):
-                # a struct
-                arg_types.append(arg._struct_)
-            # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
-            #     arg_types.append(arg_type)
-            # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.bvh_query_t]:
-            #     arg_types.append(arg_type)
-            elif arg is None:
-                # allow passing None for arrays
-                t = template_types[i]
-                if warp.types.is_array(t):
-                    arg_types.append(type(t)(dtype=t.dtype, ndim=t.ndim))
-                else:
-                    raise TypeError(
-                        f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got None"
-                    )
-            else:
-                # TODO: attempt to figure out if it's a vector/matrix type given as a numpy array, list, etc.
-                raise TypeError(
-                    f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got {arg_type}"
-                )
-
-        return arg_types
+        
+        return warp.types.infer_argument_types(args, template_types, arg_names)
 
     def add_overload(self, arg_types):
         if len(arg_types) != len(self.adj.arg_types):

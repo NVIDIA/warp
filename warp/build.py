@@ -12,7 +12,6 @@ import ctypes
 import _ctypes
 
 import warp.config
-import warp.utils
 from warp.utils import ScopedTimer
 from warp.thirdparty import appdirs
 
