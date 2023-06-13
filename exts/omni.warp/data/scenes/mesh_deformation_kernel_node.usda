@@ -20,23 +20,30 @@ def Xform "World"
         token evaluationMode = "Automatic"
         token evaluator:type = "execution"
         token fabricCacheBacking = "Shared"
-        int2 fileFormatVersion = (1, 6)
+        int2 fileFormatVersion = (1, 7)
         token pipelineStage = "pipelineStageSimulation"
 
-        def OmniGraphNode "on_playback_tick" (
+        def OmniGraphNode "on_tick" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            token node:type = "omni.graph.action.OnPlaybackTick"
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
             int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
             custom double outputs:deltaSeconds
             custom double outputs:frame
+            custom bool outputs:isPlaying
             custom uint outputs:tick (
                 customData = {
                     bool isExecution = 1
                 }
             )
             custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
             uniform token ui:nodegraph:node:expansionState = "minimized"
             uniform float2 ui:nodegraph:node:pos = (88, -26)
         }
@@ -66,6 +73,7 @@ def Xform "World"
             custom uint64 state:importPath
             custom uint64 state:srcAttrib
             custom uint64 state:srcPath
+            custom uint64 state:srcPathAsToken
             custom double state:time
             uniform token ui:nodegraph:node:expansionState = "minimized"
             uniform float2 ui:nodegraph:node:pos = (113, 147)
@@ -79,15 +87,15 @@ def Xform "World"
             custom token inputs:codeProvider = "embedded" (
                 allowedTokens = ["embedded", "file"]
             )
-            custom string inputs:codeStr = """import warp as wp
-
-@wp.kernel
-def compute(inputs: Inputs, outputs: Outputs):
-    tid = wp.tid()
-
-    pos = inputs.points[tid]
-    displacement = wp.vec3(0.0, wp.sin(inputs.time + pos[0] * 0.1) * 10.0, 0.0)
-    outputs.points[tid] = pos + displacement
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    tid = wp.tid()\r
+\r
+    pos = inputs.points[tid]\r
+    displacement = wp.vec3(0.0, wp.sin(inputs.time + pos[0] * 0.1) * 10.0, 0.0)\r
+    outputs.points[tid] = pos + displacement\r
 """
             custom token inputs:device = "cuda:0" (
                 allowedTokens = ["cpu", "cuda:0"]
@@ -100,12 +108,11 @@ def compute(inputs: Inputs, outputs: Outputs):
             custom int inputs:dimCount = 1
             custom token inputs:dimSource = "points"
             custom uint inputs:execIn
-            prepend uint inputs:execIn.connect = </World/ActionGraph/on_playback_tick.outputs:tick>
+            prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
             custom point3f[] inputs:points
-            delete point3f[] inputs:points.connect = </World/ActionGraph/extract_attribute_points.outputs:output>
             prepend point3f[] inputs:points.connect = </World/ActionGraph/PlaneReadAttrib.outputs:value>
             custom float inputs:time
-            prepend float inputs:time.connect = </World/ActionGraph/on_playback_tick.outputs:time>
+            prepend float inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
             token node:type = "omni.warp.WarpKernel"
             int node:typeVersion = 2
             custom uint outputs:execOut (

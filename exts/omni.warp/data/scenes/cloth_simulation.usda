@@ -23,20 +23,27 @@ def Xform "World"
         int2 fileFormatVersion = (1, 7)
         token pipelineStage = "pipelineStageSimulation"
 
-        def OmniGraphNode "on_playback_tick" (
+        def OmniGraphNode "on_tick" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            token node:type = "omni.graph.action.OnPlaybackTick"
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
             int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
             custom double outputs:deltaSeconds
             custom double outputs:frame
+            custom bool outputs:isPlaying
             custom uint outputs:tick (
                 customData = {
                     bool isExecution = 1
                 }
             )
             custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
             uniform token ui:nodegraph:node:expansionState = "minimized"
             uniform float2 ui:nodegraph:node:pos = (490, 40)
         }
@@ -84,7 +91,7 @@ def Xform "World"
         {
             custom int2 inputs:dims = (64, 64)
             custom uint inputs:execIn
-            prepend uint inputs:execIn.connect = </World/ActionGraph/on_playback_tick.outputs:tick>
+            prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
             custom float2 inputs:size = (100, 100)
             custom token inputs:xformPrimPath = "/World/Cloth"
             token node:type = "omni.warp.WarpGridCreate"
@@ -131,7 +138,7 @@ def Xform "World"
             custom bool inputs:groundEnabled = 1
             custom int inputs:substepCount = 32
             custom double inputs:time = 0
-            prepend double inputs:time.connect = </World/ActionGraph/on_playback_tick.outputs:time>
+            prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
             token node:type = "omni.warp.WarpClothSimulate"
             int node:typeVersion = 1
             custom uint outputs:execOut (

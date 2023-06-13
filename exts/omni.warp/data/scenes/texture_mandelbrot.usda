@@ -20,7 +20,7 @@ def Xform "World"
         token evaluationMode = "Automatic"
         token evaluator:type = "execution"
         token fabricCacheBacking = "Shared"
-        int2 fileFormatVersion = (1, 6)
+        int2 fileFormatVersion = (1, 7)
         token pipelineStage = "pipelineStageSimulation"
 
         def OmniGraphNode "dimension" (
@@ -82,20 +82,27 @@ def Xform "World"
             uniform float2 ui:nodegraph:node:pos = (-300, 648)
         }
 
-        def OmniGraphNode "on_playback_tick" (
+        def OmniGraphNode "on_tick" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            token node:type = "omni.graph.action.OnPlaybackTick"
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
             int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
             custom double outputs:deltaSeconds
             custom double outputs:frame
+            custom bool outputs:isPlaying
             custom uint outputs:tick (
                 customData = {
                     bool isExecution = 1
                 }
             )
             custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
             uniform token ui:nodegraph:node:expansionState = "minimized"
             uniform float2 ui:nodegraph:node:pos = (-310, 752)
         }
@@ -108,66 +115,66 @@ def Xform "World"
             custom token inputs:codeProvider = "embedded" (
                 allowedTokens = ["embedded", "file"]
             )
-            custom string inputs:codeStr = """import warp as wp
-
-MAX_ITERATIONS = wp.constant(100)
-
-@wp.func
-def bourke_color_map(low: float, high: float, v: float):
-    r = 1.0
-    g = 1.0
-    b = 1.0
-
-    if v < low:
-        v = low
-    if v > high:
-        v = high
-
-    dv = high - low
-
-    if v < (low + 0.25 * dv):
-        r = 0.0
-        g = 4.0 * (v - low) / dv
-    elif v < (low + 0.5 * dv):
-        r = 0.0
-        b = 1.0 + 4.0 * (low + 0.25 * dv - v) / dv
-    elif v < (low + 0.75 * dv):
-        r = 4.0 * (v - low - 0.5 * dv) / dv
-        b = 0.0
-    else:
-        g = 1.0 + 4.0 * (low + 0.75 * dv - v) / dv
-        b = 0.0
-
-    return wp.vec3(r, g, b)
-
-@wp.func
-def compute_mandelbrot_gradient(uv: wp.vec2):
-    z = wp.vec2(0.0, 0.0)
-    for i in range(MAX_ITERATIONS):
-        z = wp.vec2(
-            z[0] * z[0] - z[1] * z[1],
-            z[0] * z[1] * 2.0,
-        )
-        z += uv
-        if wp.length_sq(z) > 4.0:
-            return float(i) / float(MAX_ITERATIONS)
-
-    return 1.0
-
-@wp.kernel
-def compute(inputs: Inputs, outputs: Outputs):
-    u, v = wp.tid()
-
-    uv = wp.vec2(
-        float(u) / float(inputs.dim) - 0.5,
-        float(v) / float(inputs.dim) - 0.5,
-    )
-    uv /= inputs.zoom
-    uv += wp.vec2(inputs.offsetU, inputs.offsetV)
-
-    gradient = float(compute_mandelbrot_gradient(uv))
-    color = bourke_color_map(0.0, 1.0, gradient)
-    outputs.texture[u, v] = wp.vec4(color[0], color[1], color[2], 1.0)
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+MAX_ITERATIONS = wp.constant(100)\r
+\r
+@wp.func\r
+def bourke_color_map(low: float, high: float, v: float):\r
+    r = 1.0\r
+    g = 1.0\r
+    b = 1.0\r
+\r
+    if v < low:\r
+        v = low\r
+    if v > high:\r
+        v = high\r
+\r
+    dv = high - low\r
+\r
+    if v < (low + 0.25 * dv):\r
+        r = 0.0\r
+        g = 4.0 * (v - low) / dv\r
+    elif v < (low + 0.5 * dv):\r
+        r = 0.0\r
+        b = 1.0 + 4.0 * (low + 0.25 * dv - v) / dv\r
+    elif v < (low + 0.75 * dv):\r
+        r = 4.0 * (v - low - 0.5 * dv) / dv\r
+        b = 0.0\r
+    else:\r
+        g = 1.0 + 4.0 * (low + 0.75 * dv - v) / dv\r
+        b = 0.0\r
+\r
+    return wp.vec3(r, g, b)\r
+\r
+@wp.func\r
+def compute_mandelbrot_gradient(uv: wp.vec2):\r
+    z = wp.vec2(0.0, 0.0)\r
+    for i in range(MAX_ITERATIONS):\r
+        z = wp.vec2(\r
+            z[0] * z[0] - z[1] * z[1],\r
+            z[0] * z[1] * 2.0,\r
+        )\r
+        z += uv\r
+        if wp.length_sq(z) > 4.0:\r
+            return float(i) / float(MAX_ITERATIONS)\r
+\r
+    return 1.0\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    u, v = wp.tid()\r
+\r
+    uv = wp.vec2(\r
+        float(u) / float(inputs.dim) - 0.5,\r
+        float(v) / float(inputs.dim) - 0.5,\r
+    )\r
+    uv /= inputs.zoom\r
+    uv += wp.vec2(inputs.offsetU, inputs.offsetV)\r
+\r
+    gradient = float(compute_mandelbrot_gradient(uv))\r
+    color = bourke_color_map(0.0, 1.0, gradient)\r
+    outputs.texture[u, v] = wp.vec4(color[0], color[1], color[2], 1.0)\r
 """
             custom token inputs:device = "cuda:0" (
                 allowedTokens = ["cpu", "cuda:0"]
@@ -183,10 +190,9 @@ def compute(inputs: Inputs, outputs: Outputs):
             custom int inputs:dimCount = 2
             custom token inputs:dimSource = "explicit"
             custom uint inputs:execIn
-            delete uint inputs:execIn.connect = </World/ActionGraph/on_playback_tick.outputs:tick>
             prepend uint inputs:execIn.connect = [
                 </World/ActionGraph/onloaded.outputs:execOut>,
-                </World/ActionGraph/on_playback_tick.outputs:tick>,
+                </World/ActionGraph/on_tick.outputs:tick>,
             ]
             custom float inputs:offsetU
             prepend float inputs:offsetU.connect = </World/ActionGraph/offset_u.inputs:value>

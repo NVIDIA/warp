@@ -24,7 +24,7 @@ def Xform "World"
         token evaluationMode = "Automatic"
         token evaluator:type = "execution"
         token fabricCacheBacking = "Shared"
-        int2 fileFormatVersion = (1, 6)
+        int2 fileFormatVersion = (1, 7)
         token pipelineStage = "pipelineStageSimulation"
 
         def OmniGraphNode "low_freq_noise_size" (
@@ -82,20 +82,27 @@ def Xform "World"
             uniform float2 ui:nodegraph:node:pos = (1092, -102)
         }
 
-        def OmniGraphNode "on_playback_tick" (
+        def OmniGraphNode "on_tick" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            token node:type = "omni.graph.action.OnPlaybackTick"
+            custom uint inputs:framePeriod = 0
+            custom bool inputs:onlyPlayback = 1
+            token node:type = "omni.graph.action.OnTick"
             int node:typeVersion = 1
+            custom double outputs:absoluteSimTime
             custom double outputs:deltaSeconds
             custom double outputs:frame
+            custom bool outputs:isPlaying
             custom uint outputs:tick (
                 customData = {
                     bool isExecution = 1
                 }
             )
             custom double outputs:time
+            custom double outputs:timeSinceStart
+            custom double state:accumulatedSeconds = 0
+            custom uint state:frameCount = 0
             uniform token ui:nodegraph:node:expansionState = "minimized"
             uniform float2 ui:nodegraph:node:pos = (-194, 94)
         }
@@ -117,6 +124,7 @@ def Xform "World"
             custom uint64 state:importPath
             custom uint64 state:srcAttrib
             custom uint64 state:srcPath
+            custom uint64 state:srcPathAsToken
             custom uint64 state:srcPathToken
             custom double state:time
             uniform token ui:nodegraph:node:expansionState = "minimized"
@@ -133,29 +141,29 @@ def Xform "World"
             custom token inputs:codeProvider = "embedded" (
                 allowedTokens = ["embedded", "file"]
             )
-            custom string inputs:codeStr = """import warp as wp
-
-@wp.kernel
-def compute(inputs: Inputs, outputs: Outputs):
-    tid = wp.tid()
-
-    seed = wp.rand_init(42)
-    pos = inputs.points[tid] / max(inputs.size, 1e-6)
-    noise = wp.noise(
-        seed,
-        wp.vec4(
-            pos[0] + float(inputs.time),
-            pos[1],
-            pos[2],
-            float(inputs.time),
-        ),
-    )
-
-    outputs.points[tid] = wp.vec3(
-        inputs.points[tid][0],
-        inputs.points[tid][1] + noise * inputs.amplitude,
-        inputs.points[tid][2],
-    )
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    tid = wp.tid()\r
+\r
+    seed = wp.rand_init(42)\r
+    pos = inputs.points[tid] / max(inputs.size, 1e-6)\r
+    noise = wp.noise(\r
+        seed,\r
+        wp.vec4(\r
+            pos[0] + float(inputs.time),\r
+            pos[1],\r
+            pos[2],\r
+            float(inputs.time),\r
+        ),\r
+    )\r
+\r
+    outputs.points[tid] = wp.vec3(\r
+        inputs.points[tid][0],\r
+        inputs.points[tid][1] + noise * inputs.amplitude,\r
+        inputs.points[tid][2],\r
+    )\r
 """
             custom token inputs:device = "cuda:0" (
                 allowedTokens = ["cpu", "cuda:0"]
@@ -167,14 +175,13 @@ def compute(inputs: Inputs, outputs: Outputs):
             custom int inputs:dimCount = 1
             custom token inputs:dimSource = "points"
             custom uint inputs:execIn
-            prepend uint inputs:execIn.connect = </World/ActionGraph/on_playback_tick.outputs:tick>
+            prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
             custom point3f[] inputs:points
             prepend point3f[] inputs:points.connect = </World/ActionGraph/in_ocean_points.outputs:value>
             custom float inputs:size
             prepend float inputs:size.connect = </World/ActionGraph/low_freq_noise_size.inputs:value>
             custom double inputs:time
-            delete double inputs:time.connect = </World/ActionGraph/read_time.outputs:timeSinceStart>
-            prepend double inputs:time.connect = </World/ActionGraph/on_playback_tick.outputs:time>
+            prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
             token node:type = "omni.warp.WarpKernel"
             int node:typeVersion = 2
             custom uint outputs:execOut (
@@ -199,29 +206,29 @@ def compute(inputs: Inputs, outputs: Outputs):
             custom token inputs:codeProvider = "embedded" (
                 allowedTokens = ["embedded", "file"]
             )
-            custom string inputs:codeStr = """import warp as wp
-
-@wp.kernel
-def compute(inputs: Inputs, outputs: Outputs):
-    tid = wp.tid()
-
-    seed = wp.rand_init(42)
-    pos = inputs.points[tid] / max(inputs.size, 1e-6)
-    noise = wp.noise(
-        seed,
-        wp.vec4(
-            pos[0] + float(inputs.time),
-            pos[1],
-            pos[2],
-            float(inputs.time) * 2.0,
-        ),
-    )
-
-    outputs.points[tid] = wp.vec3(
-        inputs.points[tid][0],
-        inputs.points[tid][1] + noise * inputs.amplitude,
-        inputs.points[tid][2],
-    )
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    tid = wp.tid()\r
+\r
+    seed = wp.rand_init(42)\r
+    pos = inputs.points[tid] / max(inputs.size, 1e-6)\r
+    noise = wp.noise(\r
+        seed,\r
+        wp.vec4(\r
+            pos[0] + float(inputs.time),\r
+            pos[1],\r
+            pos[2],\r
+            float(inputs.time) * 2.0,\r
+        ),\r
+    )\r
+\r
+    outputs.points[tid] = wp.vec3(\r
+        inputs.points[tid][0],\r
+        inputs.points[tid][1] + noise * inputs.amplitude,\r
+        inputs.points[tid][2],\r
+    )\r
 """
             custom token inputs:device = "cuda:0" (
                 allowedTokens = ["cpu", "cuda:0"]
@@ -239,8 +246,7 @@ def compute(inputs: Inputs, outputs: Outputs):
             custom float inputs:size
             prepend float inputs:size.connect = </World/ActionGraph/high_freq_noise_size.inputs:value>
             custom double inputs:time
-            delete double inputs:time.connect = </World/ActionGraph/read_time.outputs:timeSinceStart>
-            prepend double inputs:time.connect = </World/ActionGraph/on_playback_tick.outputs:time>
+            prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
             token node:type = "omni.warp.WarpKernel"
             int node:typeVersion = 2
             custom uint outputs:execOut (
@@ -360,37 +366,37 @@ def compute(inputs: Inputs, outputs: Outputs):
             custom token inputs:codeProvider = "embedded" (
                 allowedTokens = ["embedded", "file"]
             )
-            custom string inputs:codeStr = """import warp as wp
-
-@wp.kernel
-def compute(inputs: Inputs, outputs: Outputs):
-    tid = wp.tid()
-
-    angle = wp.max(inputs.angle, 0.0)
-    point = inputs.points[tid]
-    xform = wp.transpose(inputs.worldMatrix)
-    manipulator_xform = wp.transpose(inputs.manipulator)
-
-    # Move the point within the manipulator's transformation space.
-    point = wp.transform_point(wp.inverse(manipulator_xform) * xform, point)
-
-    # Compute the influence map.
-    influence = wp.exp(-wp.length(point))
-
-    # Compute the rotation to transform the point with.
-    rot = wp.quat_from_axis_angle(
-        wp.vec3(1.0, 0.0, 0.0),
-        wp.radians(influence * angle),
-    )
-
-    # Apply the rotation.
-    point = wp.quat_rotate(rot, point)
-
-    # Move the point back into its original transformation space.
-    point = wp.transform_point(wp.inverse(xform) * manipulator_xform, point)
-
-    # Store the result.
-    outputs.points[tid] = point
+            custom string inputs:codeStr = """import warp as wp\r
+\r
+@wp.kernel\r
+def compute(inputs: Inputs, outputs: Outputs):\r
+    tid = wp.tid()\r
+\r
+    angle = wp.max(inputs.angle, 0.0)\r
+    point = inputs.points[tid]\r
+    xform = wp.transpose(inputs.worldMatrix)\r
+    manipulator_xform = wp.transpose(inputs.manipulator)\r
+\r
+    # Move the point within the manipulator's transformation space.\r
+    point = wp.transform_point(wp.inverse(manipulator_xform) * xform, point)\r
+\r
+    # Compute the influence map.\r
+    influence = wp.exp(-wp.length(point))\r
+\r
+    # Compute the rotation to transform the point with.\r
+    rot = wp.quat_from_axis_angle(\r
+        wp.vec3(1.0, 0.0, 0.0),\r
+        wp.radians(influence * angle),\r
+    )\r
+\r
+    # Apply the rotation.\r
+    point = wp.quat_rotate(rot, point)\r
+\r
+    # Move the point back into its original transformation space.\r
+    point = wp.transform_point(wp.inverse(xform) * manipulator_xform, point)\r
+\r
+    # Store the result.\r
+    outputs.points[tid] = point\r
 """
             custom token inputs:device = "cuda:0" (
                 allowedTokens = ["cpu", "cuda:0"]
@@ -404,7 +410,6 @@ def compute(inputs: Inputs, outputs: Outputs):
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/high_freq_noise_kernel.outputs:execOut>
             custom matrix4d inputs:manipulator
-            delete matrix4d inputs:manipulator.connect = </World/ActionGraph/manipulator_xform.outputs:transform>
             prepend matrix4d inputs:manipulator.connect = </World/ActionGraph/read_manipulator_xform.outputs:worldMatrix>
             custom point3f[] inputs:points
             prepend point3f[] inputs:points.connect = </World/ActionGraph/high_freq_noise_kernel.outputs:points>
