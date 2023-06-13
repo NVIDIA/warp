@@ -20,7 +20,7 @@ def Xform "World"
         token evaluationMode = "Automatic"
         token evaluator:type = "execution"
         token fabricCacheBacking = "Shared"
-        int2 fileFormatVersion = (1, 6)
+        int2 fileFormatVersion = (1, 7)
         token pipelineStage = "pipelineStageSimulation"
 
         def OmniGraphNode "on_playback_tick" (
@@ -98,18 +98,37 @@ def Xform "World"
             custom string inputs:attrNamesToExport = "*"
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/sample_mesh_deform.outputs:execOut>
+            custom token inputs:layerIdentifier
             custom string inputs:pathPattern = "*"
+            custom rel inputs:prims = </World/Mesh> (
+                customData = {
+                    dictionary omni = {
+                        dictionary graph = {
+                            string relType = "target"
+                        }
+                    }
+                }
+            )
             custom rel inputs:primsBundle
             prepend rel inputs:primsBundle = </World/ActionGraph/sample_mesh_deform/outputs_mesh>
+            custom bool inputs:scatterUnderTargets = 0
             custom string inputs:typePattern = "*"
             custom bool inputs:usdWriteBack = 1
-            token node:type = "omni.graph.nodes.WritePrims"
+            token node:type = "omni.graph.nodes.WritePrimsV2"
             int node:typeVersion = 1
             custom uint outputs:execOut (
                 customData = {
                     bool isExecution = 1
                 }
             )
+            custom string state:attrNamesToExport = "*"
+            custom token state:layerIdentifier
+            custom string state:pathPattern = "*"
+            custom uint64 state:primBundleDirtyId
+            custom uint64[] state:prims = []
+            custom bool state:scatterUnderTargets = 0
+            custom string state:typePattern = "*"
+            custom bool state:usdWriteBack = 1
             uniform token ui:nodegraph:node:expansionState = "minimized"
             uniform float2 ui:nodegraph:node:pos = (745, 222)
         }
