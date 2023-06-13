@@ -942,56 +942,34 @@ class ModuleBuilder:
             # use dict to preserve import order
             self.functions[func] = None
 
-    def codegen_cpu(self):
-        cpp_source = ""
+    def codegen(self, device):
+        source = ""
 
         # code-gen structs
         for struct in self.structs.keys():
-            cpp_source += warp.codegen.codegen_struct(struct)
+            source += warp.codegen.codegen_struct(struct)
 
         # code-gen all imported functions
         for func in self.functions.keys():
-            cpp_source += warp.codegen.codegen_func(func.adj, name=func.key, device="cpu", options=self.options)
+            source += warp.codegen.codegen_func(func.adj, name=func.key, device=device, options=self.options)
 
         for kernel in self.module.kernels.values():
             # each kernel gets an entry point in the module
             if not kernel.is_generic:
-                cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu", options=self.options)
-                cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
+                source += warp.codegen.codegen_kernel(kernel, device=device, options=self.options)
+                source += warp.codegen.codegen_module(kernel, device=device)
             else:
                 for k in kernel.overloads.values():
-                    cpp_source += warp.codegen.codegen_kernel(k, device="cpu", options=self.options)
-                    cpp_source += warp.codegen.codegen_module(k, device="cpu")
+                    source += warp.codegen.codegen_kernel(k, device=device, options=self.options)
+                    source += warp.codegen.codegen_module(k, device=device)
 
         # add headers
-        cpp_source = warp.codegen.cpu_module_header + cpp_source
+        if device == "cpu":
+            source = warp.codegen.cpu_module_header + source
+        else:
+            source = warp.codegen.cuda_module_header + source
 
-        return cpp_source
-
-    def codegen_cuda(self):
-        cu_source = ""
-
-        # code-gen structs
-        for struct in self.structs.keys():
-            cu_source += warp.codegen.codegen_struct(struct)
-
-        # code-gen all imported functions
-        for func in self.functions.keys():
-            cu_source += warp.codegen.codegen_func(func.adj, name=func.key, device="cuda", options=self.options)
-
-        for kernel in self.module.kernels.values():
-            if not kernel.is_generic:
-                cu_source += warp.codegen.codegen_kernel(kernel, device="cuda", options=self.options)
-                cu_source += warp.codegen.codegen_module(kernel, device="cuda")
-            else:
-                for k in kernel.overloads.values():
-                    cu_source += warp.codegen.codegen_kernel(k, device="cuda", options=self.options)
-                    cu_source += warp.codegen.codegen_module(k, device="cuda")
-
-        # add headers
-        cu_source = warp.codegen.cuda_module_header + cu_source
-
-        return cu_source
+        return source
 
 
 # -----------------------------------------------------
@@ -1261,7 +1239,7 @@ class Module:
                     cpp_path = os.path.join(gen_path, module_name + ".cpp")
 
                     # write cpp sources
-                    cpp_source = builder.codegen_cpu()
+                    cpp_source = builder.codegen("cpu")
 
                     cpp_file = open(cpp_path, "w")
                     cpp_file.write(cpp_source)
@@ -1329,7 +1307,7 @@ class Module:
                     cu_path = os.path.join(gen_path, module_name + ".cu")
 
                     # write cuda sources
-                    cu_source = builder.codegen_cuda()
+                    cu_source = builder.codegen("cuda")
 
                     cu_file = open(cu_path, "w")
                     cu_file.write(cu_source)
