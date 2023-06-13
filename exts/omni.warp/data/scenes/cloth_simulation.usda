@@ -86,7 +86,7 @@ def Xform "World"
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/on_playback_tick.outputs:tick>
             custom float2 inputs:size = (100, 100)
-            custom token inputs:sourcePrimPath = "/World/Cloth"
+            custom token inputs:xformPrimPath = "/World/Cloth"
             token node:type = "omni.warp.WarpGridCreate"
             int node:typeVersion = 1
             custom uint outputs:execOut (

@@ -112,13 +112,14 @@ def from_omni_graph(
 # ------------------------------------------------------------------------------
 
 
-def get_world_xform_from_prim(prim_path: str) -> None:
+def get_world_xform_from_prim(prim_path: Optional[str]) -> None:
     """Retrieves the world transformation matrix from a USD primitive."""
-    stage = omni.usd.get_context().get_stage()
-    prim = stage.GetPrimAtPath(prim_path)
-    if prim.IsValid() and prim.IsA(UsdGeom.Xformable):
-        prim = UsdGeom.Xformable(prim)
-        return prim.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+    if prim_path is not None:
+        stage = omni.usd.get_context().get_stage()
+        prim = stage.GetPrimAtPath(prim_path)
+        if prim.IsValid() and prim.IsA(UsdGeom.Xformable):
+            prim = UsdGeom.Xformable(prim)
+            return prim.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
 
     return np.identity(4)
 
@@ -157,26 +158,15 @@ def get_world_xform(
 
 def define_prim_attrs(
     bundle: og.BundleContents,
-    source_prim_path: str,
-    source_prim_type: str,
+    prim_type: str,
+    xform_prim_path: Optional[str] = None,
     child_bundle_idx: int = 0,
 ) -> None:
     """Defines the primitive attributes."""
     child_bundle = _create_child_bundle(bundle, child_bundle_idx)
-    xform = get_world_xform_from_prim(source_prim_path)
+    xform = get_world_xform_from_prim(xform_prim_path)
 
-    source_prim_path_attr = child_bundle.create_attribute(
-        "sourcePrimPath",
-        og.Type(
-            og.BaseDataType.TOKEN,
-            tuple_count=1,
-            array_depth=0,
-            role=og.AttributeRole.NONE,
-        ),
-    )
-    _set_cpu_array(source_prim_path_attr, source_prim_path)
-
-    source_prim_type_attr = child_bundle.create_attribute(
+    prim_type_attr = child_bundle.create_attribute(
         "sourcePrimType",
         og.Type(
             og.BaseDataType.TOKEN,
@@ -185,7 +175,7 @@ def define_prim_attrs(
             role=og.AttributeRole.NONE,
         ),
     )
-    _set_cpu_array(source_prim_type_attr, source_prim_type)
+    _set_cpu_array(prim_type_attr, prim_type)
 
     world_matrix_attr = child_bundle.create_attribute(
         "worldMatrix",

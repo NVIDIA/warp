@@ -20,7 +20,7 @@ from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
 
 PROPS = (
-    "inputs:sourcePrimPath",
+    "inputs:xformPrimPath",
     "inputs:seed",
     "inputs:minSdf",
     "inputs:maxSdf",

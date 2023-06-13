@@ -118,7 +118,7 @@ class InternalState:
         self._xform = None
         self._extent = None
 
-        self.prim_path = None
+        self.xform_prim_path = None
         self.seed = None
         self.min_sdf = None
         self.max_sdf = None
@@ -199,7 +199,7 @@ class InternalState:
     def have_setting_attrs_changed(self, db: OgnParticlesFromMeshDatabase) -> bool:
         """Checks if the values of the attributes that set-up the node have changed."""
         return (
-            db.inputs.sourcePrimPath != self.prim_path
+            db.inputs.xformPrimPath != self.xform_prim_path
             or db.inputs.seed != self.seed
             or db.inputs.minSdf != self.min_sdf
             or db.inputs.maxSdf != self.max_sdf
@@ -214,7 +214,7 @@ class InternalState:
 
     def store_setting_attrs(self, db: OgnParticlesFromMeshDatabase) -> None:
         """Stores the values of the attributes that set-up the node."""
-        self.prim_path = db.inputs.sourcePrimPath
+        self.xform_prim_path = db.inputs.xformPrimPath
         self.seed = db.inputs.seed
         self.min_sdf = db.inputs.minSdf
         self.max_sdf = db.inputs.maxSdf
@@ -288,8 +288,8 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
     # Set the USD primitive path and type.
     omni.warp.define_prim_attrs(
         db.outputs.particles,
-        db.inputs.sourcePrimPath,
         "Points",
+        xform_prim_path=db.inputs.xformPrimPath,
     )
 
     # Initialize the internal state if it hasn't been already.

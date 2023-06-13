@@ -110,8 +110,8 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
     # Set the USD primitive path and type.
     omni.warp.define_prim_attrs(
         db.outputs.mesh,
-        db.inputs.sourcePrimPath,
         "Mesh",
+        xform_prim_path=db.inputs.xformPrimPath,
     )
 
     # Initialize the internal state if it hasn't been already.

@@ -330,8 +330,8 @@ def compute(db: OgnWaveSolveDatabase) -> None:
     # Set the USD primitive path and type.
     omni.warp.define_prim_attrs(
         db.outputs.mesh,
-        db.inputs.sourcePrimPath,
         "Mesh",
+        xform_prim_path=db.inputs.xformPrimPath,
     )
 
     # Compute the number of divisions.

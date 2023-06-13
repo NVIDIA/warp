@@ -95,8 +95,8 @@ def Xform "World"
             custom int inputs:maxPoints = 1000000
             custom int inputs:maxTriangles = 1000000
             custom float3 inputs:size = (100, 100, 100)
-            custom token inputs:sourcePrimPath = "/World/Mesh"
             custom float inputs:threshold = 0
+            custom token inputs:xformPrimPath = "/World/Mesh"
             token node:type = "omni.warp.WarpMeshFromVolume"
             int node:typeVersion = 1
             custom uint outputs:execOut (

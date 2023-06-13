@@ -12,10 +12,10 @@
                 "type": "execution",
                 "description": "Input execution."
             },
-            "sourcePrimPath": {
+            "xformPrimPath": {
                 "type": "token",
-                "uiName": "Source Prim Path",
-                "description": "Path of the primitive on the USD stage."
+                "uiName": "Xform Prim Path",
+                "description": "Path of a primitive on the USD stage to use as xform."
             },
             "seed": {
                 "type": "int",
