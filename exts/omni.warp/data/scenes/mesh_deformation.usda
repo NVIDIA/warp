@@ -45,7 +45,6 @@ def Xform "World"
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            custom float3 inputs:center = (0, 25, 0)
             custom int2 inputs:dims = (256, 256)
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/on_playback_tick.outputs:tick>
@@ -166,6 +165,10 @@ def Xform "World"
         rel material:binding = </World/Looks/ClothMaterial/ClothMaterial> (
             bindMaterialAs = "weakerThanDescendants"
         )
+        float3 xformOp:rotateXYZ = (0, 0, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 25, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
     }
 }
 

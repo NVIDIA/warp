@@ -30,7 +30,6 @@ class InternalState:
 
     def __init__(self) -> None:
         self.prim_path = None
-        self.center = None
         self.size = None
         self.dims = None
 
@@ -40,7 +39,6 @@ class InternalState:
         """Checks if the values of the attributes that set-up the node have changed."""
         return (
             db.inputs.sourcePrimPath != self.prim_path
-            or not np.array_equal(db.inputs.center, self.center)
             or not np.array_equal(db.inputs.size, self.size)
             or not np.array_equal(db.inputs.dims, self.dims)
         )
@@ -48,7 +46,6 @@ class InternalState:
     def store_setting_attrs(self, db: OgnGridCreateDatabase) -> None:
         """Stores the values of the attributes that set-up the node."""
         self.prim_path = db.inputs.sourcePrimPath
-        self.center = db.inputs.center.copy()
         self.size = db.inputs.size.copy()
         self.dims = db.inputs.dims.copy()
 
@@ -95,7 +92,6 @@ def compute(db: OgnGridCreateDatabase) -> None:
             omni.warp.mesh_get_face_vertex_indices(db.outputs.mesh),
             omni.warp.mesh_get_normals(db.outputs.mesh),
             omni.warp.mesh_get_uvs(db.outputs.mesh),
-            db.inputs.center.tolist(),
             db.inputs.size.tolist(),
             db.inputs.dims.tolist(),
         )

@@ -82,7 +82,6 @@ def Xform "World"
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            custom float3 inputs:center = (0, 0, 0)
             custom int2 inputs:dims = (64, 64)
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/on_playback_tick.outputs:tick>

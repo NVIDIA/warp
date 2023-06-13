@@ -192,7 +192,6 @@ class InternalState:
             omni.warp.mesh_get_face_vertex_indices(db.outputs.mesh),
             omni.warp.mesh_get_normals(db.outputs.mesh),
             omni.warp.mesh_get_uvs(db.outputs.mesh),
-            (0.0, 0.0, 0.0),
             db.inputs.size.tolist(),
             dims.tolist(),
             update_topology=True,

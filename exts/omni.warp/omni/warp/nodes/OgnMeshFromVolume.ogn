@@ -17,12 +17,6 @@
                 "uiName": "Source Prim Path",
                 "description": "Path of the primitive on the USD stage."
             },
-            "center": {
-                "type": "float[3]",
-                "uiName": "Center",
-                "description": "Geometry's center position.",
-                "default": [0.0, 0.0, 0.0]
-            },
             "size": {
                 "type": "float[3]",
                 "uiName": "Size",

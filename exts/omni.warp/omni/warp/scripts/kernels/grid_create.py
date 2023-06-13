@@ -62,7 +62,6 @@ def _set_face_uvs(
 
 @wp.kernel(enable_backward=False)
 def _kernel(
-    center: wp.vec3,
     half_size: wp.vec2,
     res: wp.vec2i,
     update_topology: int,
@@ -80,58 +79,34 @@ def _kernel(
     j = int(tid / res[0])
 
     if i == 0 and j == 0:
-        pos = wp.vec3(
+        point = 0
+        out_points[point] = wp.vec3(
             half_size[0],
             0.0,
             half_size[1],
         )
 
-        point = 0
-        out_points[point] = wp.vec3(
-            center[0] + pos[0],
-            center[1] + pos[1],
-            center[2] + pos[2],
-        )
-
     if i == 0:
-        pos = wp.vec3(
+        point = (j + 1) * (res[0] + 1)
+        out_points[point] = wp.vec3(
             half_size[0],
             0.0,
             half_size[1] - dt_pos[1] * float(j + 1),
         )
 
-        point = (j + 1) * (res[0] + 1)
-        out_points[point] = wp.vec3(
-            center[0] + pos[0],
-            center[1] + pos[1],
-            center[2] + pos[2],
-        )
-
     if j == 0:
-        pos = wp.vec3(
+        point = i + 1
+        out_points[point] = wp.vec3(
             half_size[0] - dt_pos[0] * float(i + 1),
             0.0,
             half_size[1],
         )
 
-        point = i + 1
-        out_points[point] = wp.vec3(
-            center[0] + pos[0],
-            center[1] + pos[1],
-            center[2] + pos[2],
-        )
-
-    pos = wp.vec3(
+    point = (j + 1) * (res[0] + 1) + i + 1
+    out_points[point] = wp.vec3(
         half_size[0] - dt_pos[0] * float(i + 1),
         0.0,
         half_size[1] - dt_pos[1] * float(j + 1),
-    )
-
-    point = (j + 1) * (res[0] + 1) + i + 1
-    out_points[point] = wp.vec3(
-        center[0] + pos[0],
-        center[1] + pos[1],
-        center[2] + pos[2],
     )
 
     if update_topology:
@@ -172,7 +147,6 @@ def grid_create_launch_kernel(
     out_face_vertex_indices: wp.array,
     out_normals: wp.array,
     out_uvs: wp.array,
-    center: Tuple[float, float, float],
     size: Tuple[float, float],
     dims: Tuple[int, int],
     update_topology: bool = True,
@@ -197,7 +171,6 @@ def grid_create_launch_kernel(
         kernel=_kernel,
         dim=face_count,
         inputs=[
-            center,
             half_size,
             dims,
             update_topology,

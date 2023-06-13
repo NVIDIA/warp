@@ -27,7 +27,6 @@ PROFILING = False
 def transform_points_kernel(
     points: wp.array(dtype=wp.vec3),
     center: wp.vec3,
-    offset: wp.vec3,
     scale: wp.vec3,
     out_points: wp.array(dtype=wp.vec3),
 ):
@@ -37,7 +36,6 @@ def transform_points_kernel(
     pos = points[tid]
     pos = pos - center
     pos = wp.cw_mul(pos, scale)
-    pos = pos + offset
     out_points[tid] = pos
 
 
@@ -182,7 +180,6 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
         dims[1] * 0.5,
         dims[2] * 0.5,
     )
-    offset = db.inputs.center
     scale = (
         db.inputs.size[0] / dims[0],
         db.inputs.size[1] / dims[1],
@@ -195,7 +192,6 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
             inputs=[
                 state.mc.verts,
                 center,
-                offset,
                 scale,
             ],
             outputs=[

@@ -21,7 +21,6 @@ from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
 
 PROPS = (
     "inputs:sourcePrimPath",
-    "inputs:center",
     "inputs:size",
     "inputs:dims",
 )

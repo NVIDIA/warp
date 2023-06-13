@@ -82,7 +82,6 @@ def Xform "World"
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
-            custom float3 inputs:center = (0, 50, 0)
             custom float[] inputs:data = []
             prepend float[] inputs:data.connect = </World/ActionGraph/sample_procedural_volume.outputs:data>
             custom int inputs:dim1 = 64
@@ -190,7 +189,7 @@ def Xform "World"
         )
         float3 xformOp:rotateXYZ = (0, 0, 0)
         float3 xformOp:scale = (1, 1, 1)
-        double3 xformOp:translate = (0, 8, 0)
+        double3 xformOp:translate = (0, 58, 0)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
     }
 }
