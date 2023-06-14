@@ -114,8 +114,6 @@ static std::unique_ptr<llvm::Module> cpp_to_llvm(const std::string& input_file, 
     std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
     compiler_invocation.getPreprocessorOpts().addRemappedFile(input_file.c_str(), buffer.get());
 
-    compiler_instance.getPreprocessorOpts().addMacroDef("WP_CPU");
-
     if(!debug)
     {
         compiler_instance.getPreprocessorOpts().addMacroDef("NDEBUG");
