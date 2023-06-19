@@ -2775,6 +2775,174 @@ def from_numpy(arr, dtype, device: Devicelike = None, requires_grad=False):
     return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
+# given a kernel destination argument type and a value convert
+#  to a c-type that can be passed to a kernel
+def pack_arg(arg_type, arg_name, value, device, adjoint=False):
+
+    if warp.types.is_array(arg_type):
+        if value is None:
+            # allow for NULL arrays
+            return arg_type.__ctype__()
+
+        else:
+            # check for array type
+            # - in forward passes, array types have to match
+            # - in backward passes, indexed array gradients are regular arrays
+            if adjoint:
+                array_matches = type(value) == warp.array
+            else:
+                array_matches = type(value) == type(arg_type)
+
+            if not array_matches:
+                adj = "adjoint " if adjoint else ""
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {type(arg_type)}, but passed value has type {type(value)}."
+                )
+
+            # check subtype
+            if not warp.types.types_equal(value.dtype, arg_type.dtype):
+                adj = "adjoint " if adjoint else ""
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={value.dtype}."
+                )
+
+            # check dimensions
+            if value.ndim != arg_type.ndim:
+                adj = "adjoint " if adjoint else ""
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {value.ndim} dimension(s)."
+                )
+
+            # check device
+            # if a.device != device and not device.can_access(a.device):
+            if value.device != device:
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={value.device}."
+                )
+
+            return value.__ctype__()
+
+    elif isinstance(arg_type, warp.codegen.Struct):
+        assert value is not None
+        return value.__ctype__()
+
+    # try to convert to a value type (vec3, mat33, etc)
+    elif issubclass(arg_type, ctypes.Array):
+        if warp.types.types_equal(type(value), arg_type):
+            return value
+        else:
+            # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
+            try:
+                return arg_type(value)
+            except:
+                raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
+
+    elif isinstance(value, bool):
+        return ctypes.c_bool(value)
+
+    elif isinstance(value, arg_type):
+        try:
+            # try to pack as a scalar type
+            return arg_type._type_(value.value)
+        except:
+            raise RuntimeError(
+                f"Error launching kernel, unable to pack kernel parameter type {type(value)} for param {arg_name}, expected {arg_type}"
+            )
+
+    else:
+        try:
+            # try to pack as a scalar type
+            return arg_type._type_(value)
+        except Exception as e:
+            print(e)
+            raise RuntimeError(
+                f"Error launching kernel, unable to pack kernel parameter type {type(value)} for param {arg_name}, expected {arg_type}"
+            )
+
+
+# represents all data required for a kernel launch
+# so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
+class Launch:
+
+    def __init__(self, kernel, hooks, params, params_addr, bounds, device):
+        self.kernel = kernel
+        self.hooks = hooks
+        self.params = params
+        self.params_addr = params_addr
+        self.device = device
+        self.bounds = bounds
+       
+    def set_dim(self, dim):
+        self.bounds = warp.types.launch_bounds_t(dim)
+       
+        # launch bounds always at index 0
+        self.params[0] = self.bounds
+
+        # for CUDA kernels we need to update the address to each arg
+        if self.params_addr:
+            self.params_addr[0] = ctypes.c_void_p(ctypes.addressof(self.bounds))
+    
+    # set kernel param at an index, will convert to ctype as necessary
+    def set_param_at_index(self, index, value):
+    
+        arg_type = self.kernel.adj.args[index].type
+        arg_name = self.kernel.adj.args[index].label
+
+        carg = pack_arg(arg_type, arg_name, value, self.device, False)
+
+        self.params[index + 1] = carg
+
+        # for CUDA kernels we need to update the address to each arg
+        if self.params_addr:
+            self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(carg))
+    
+    # set kernel param at an index without any type conversion
+    # args must be passed as ctypes or basic int / float types
+    def set_param_at_index_from_ctype(self, index, value):
+
+        if isinstance(value, ctypes.Structure):
+            # not sure how to directly assign struct->struct without reallocating using ctypes
+            self.params[index + 1] = value
+
+            # for CUDA kernels we need to update the address to each arg
+            if self.params_addr:
+                self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(value))
+        
+        else:
+            self.params[index + 1].__init__(value)
+
+    # set kernel param by argument name
+    def set_param_by_name(self, name, value):
+        for i, arg in enumerate(self.kernel.adj.args):
+            if arg.label == name:
+                self.set_param_at_index(i, value)
+
+    # set kernel param by argument name with no type conversions
+    def set_param_by_name_from_ctype(self, name, value):
+        # lookup argument index
+        for i, arg in enumerate(self.kernel.adj.args):
+            if arg.label == name:
+                self.set_ctype_at_index(i, value)
+
+    # set all params
+    def set_params(self, values):
+        for i, v in enumerate(values):
+            self.set_param_at_index(i, v)
+
+    # set all params without performing type-conversions
+    def set_param_from_ctypes(self, values):
+        for i, v in enumerate(values):
+            self.set_ctype_at_index(i, v)
+
+    def launch(self) -> Any:
+
+        if self.device.is_cpu:
+            self.hooks.forward(*self.params)
+        else:
+            runtime.core.cuda_launch_kernel(self.device.context, self.hooks.forward, self.bounds.size, self.params_addr)
+
+
+
 def launch(
     kernel,
     dim: Tuple[int],
@@ -2786,6 +2954,7 @@ def launch(
     stream: Stream = None,
     adjoint=False,
     record_tape=True,
+    record_cmd=False
 ):
     """Launch a Warp kernel on the target device
 
@@ -2801,6 +2970,8 @@ def launch(
         device: The device to launch on (optional)
         stream: The stream to launch on (optional)
         adjoint: Whether to run forward or backward pass (typically use False)
+        record_tape: When true the launch will be recorded the global wp.Tape() object when present
+        record_cmd: When True the launch will be returned as a ``Launch`` command object, the launch will not occur until the user calls ``cmd.launch()``
     """
 
     assert_initialized()
@@ -2833,85 +3004,8 @@ def launch(
                 arg_type = kernel.adj.args[i].type
                 arg_name = kernel.adj.args[i].label
 
-                if warp.types.is_array(arg_type):
-                    if a is None:
-                        # allow for NULL arrays
-                        params.append(arg_type.__ctype__())
-
-                    else:
-                        # check for array type
-                        # - in forward passes, array types have to match
-                        # - in backward passes, indexed array gradients are regular arrays
-                        if adjoint:
-                            array_matches = type(a) == warp.array
-                        else:
-                            array_matches = type(a) == type(arg_type)
-
-                        if not array_matches:
-                            adj = "adjoint " if adjoint else ""
-                            raise RuntimeError(
-                                f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {type(arg_type)}, but passed value has type {type(a)}."
-                            )
-
-                        # check subtype
-                        if not warp.types.types_equal(a.dtype, arg_type.dtype):
-                            adj = "adjoint " if adjoint else ""
-                            raise RuntimeError(
-                                f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={a.dtype}."
-                            )
-
-                        # check dimensions
-                        if a.ndim != arg_type.ndim:
-                            adj = "adjoint " if adjoint else ""
-                            raise RuntimeError(
-                                f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {a.ndim} dimension(s)."
-                            )
-
-                        # check device
-                        # if a.device != device and not device.can_access(a.device):
-                        if a.device != device:
-                            raise RuntimeError(
-                                f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={a.device}."
-                            )
-
-                        params.append(a.__ctype__())
-
-                elif isinstance(arg_type, warp.codegen.Struct):
-                    assert a is not None
-                    params.append(a.__ctype__())
-
-                # try to convert to a value type (vec3, mat33, etc)
-                elif issubclass(arg_type, ctypes.Array):
-                    if warp.types.types_equal(type(a), arg_type):
-                        params.append(a)
-                    else:
-                        # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
-                        try:
-                            params.append(arg_type(a))
-                        except:
-                            raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
-
-                elif isinstance(a, bool):
-                    params.append(ctypes.c_bool(a))
-
-                elif isinstance(a, arg_type):
-                    try:
-                        # try to pack as a scalar type
-                        params.append(arg_type._type_(a.value))
-                    except:
-                        raise RuntimeError(
-                            f"Error launching kernel, unable to pack kernel parameter type {type(a)} for param {arg_name}, expected {arg_type}"
-                        )
-
-                else:
-                    try:
-                        # try to pack as a scalar type
-                        params.append(arg_type._type_(a))
-                    except Exception as e:
-                        print(e)
-                        raise RuntimeError(
-                            f"Error launching kernel, unable to pack kernel parameter type {type(a)} for param {arg_name}, expected {arg_type}"
-                        )
+                params.append(pack_arg(arg_type, arg_name, a, device, adjoint))
+                
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
@@ -2952,8 +3046,12 @@ def launch(
                     raise RuntimeError(
                         f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                     )
-
-                hooks.forward(*params)
+                
+                if record_cmd:
+                    launch = Launch(kernel, hooks, params, None, bounds, device)
+                    return launch
+                else:
+                    hooks.forward(*params)
 
         else:
             kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
@@ -2974,7 +3072,16 @@ def launch(
                             f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                         )
 
-                    runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
+
+                    if record_cmd:
+
+                        launch = Launch(kernel, hooks, params, kernel_params, bounds, device)
+                        return launch
+                    
+                    else:
+                        # launch
+                        runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
+                        
 
                 try:
                     runtime.verify_cuda_device(device)
