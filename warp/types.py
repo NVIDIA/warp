@@ -3188,7 +3188,7 @@ def infer_argument_types(args, template_types, arg_names=None):
             arg_types.append(arg_type)
         elif issubclass(arg_type, warp.codegen.StructInstance):
             # a struct
-            arg_types.append(arg._struct_)
+            arg_types.append(arg._cls)
         # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
         #     arg_types.append(arg_type)
         # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.bvh_query_t]:
