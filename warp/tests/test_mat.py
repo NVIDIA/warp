@@ -2794,7 +2794,7 @@ def test_get_diag(test, device, dtype, register_kernels=False):
     }.get(dtype, 0)
 
     wptype = wp.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    mat55 = wp.types.vector(shape=(5,5), dtype=wptype)
+    mat55 = wp.types.vector(shape=(5, 5), dtype=wptype)
 
     output_select_kernel = get_select_kernel(wptype)
 
@@ -2831,7 +2831,7 @@ def test_get_diag(test, device, dtype, register_kernels=False):
                 wp.launch(kernel, dim=1, inputs=[m55], outputs=[outcomponents], device=device)
                 wp.launch(output_select_kernel, dim=1, inputs=[outcomponents, idx], outputs=[out], device=device)
             tape.backward(loss=out)
-            expectedresult = np.zeros((5,5), dtype=dtype)
+            expectedresult = np.zeros((5, 5), dtype=dtype)
             expectedresult[i, i] = 2
             assert_np_equal(tape.gradients[m55].numpy()[0], expectedresult, tol=10 * tol)
             tape.zero()

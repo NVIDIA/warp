@@ -62,11 +62,11 @@ extern "C"
 
     // create a user-accessible copy of the mesh, it is the 
     // users responsibility to keep-alive the points/tris data for the duration of the mesh lifetime
-	WP_API uint64_t mesh_create_host(wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris);
+	WP_API uint64_t mesh_create_host(wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number);
 	WP_API void mesh_destroy_host(uint64_t id);
     WP_API void mesh_refit_host(uint64_t id);
 
-	WP_API uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris);
+	WP_API uint64_t mesh_create_device(void* context, wp::array_t<wp::vec3> points, wp::array_t<wp::vec3> velocities, wp::array_t<int> tris, int num_points, int num_tris, int support_winding_number);
 	WP_API void mesh_destroy_device(uint64_t id);
     WP_API void mesh_refit_device(uint64_t id);
 

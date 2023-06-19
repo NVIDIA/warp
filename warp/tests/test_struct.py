@@ -327,8 +327,8 @@ class DefaultAttribStruct:
     s: DefaultAttribNested
 
 
-@wp.func
-def check_default_attributes_func(data: DefaultAttribStruct):
+@wp.kernel
+def check_default_attributes(data: DefaultAttribStruct):
     wp.expect_eq(data.i, wp.int32(0))
     wp.expect_eq(data.d, wp.float64(0))
     wp.expect_eq(data.v, wp.vec3(0.0, 0.0, 0.0))
@@ -377,15 +377,16 @@ def test_struct_mutate_attributes_kernel():
 class InnerStruct:
     i: int
 
+
 @wp.struct
 class ArrayStruct:
-    array : wp.array(dtype=InnerStruct)
+    array: wp.array(dtype=InnerStruct)
+
 
 @wp.kernel
-def struct2_reader(test : ArrayStruct):
-
+def struct2_reader(test: ArrayStruct):
     k = wp.tid()
-    wp.expect_eq(k+1, test.array[k].i)
+    wp.expect_eq(k + 1, test.array[k].i)
 
 
 def test_nested_array_struct(test, device):
@@ -399,7 +400,6 @@ def test_nested_array_struct(test, device):
     struct.array = wp.array([var1, var2], dtype=InnerStruct)
 
     wp.launch(struct2_reader, dim=2, inputs=[struct])
-
 
 
 def register(parent):

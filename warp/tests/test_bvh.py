@@ -86,17 +86,19 @@ def test_bvh(test, type, device):
     query_upper = wp.vec3(8.0, 8.0, 8.0)
 
     query_start = wp.vec3(0.0, 0.0, 0.0)
-    query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))    
+    query_dir = wp.normalize(wp.vec3(1.0, 1.0, 1.0))
 
     for test_case in range(2):
-
         if type == "AABB":
             wp.launch(
-                kernel=bvh_query_aabb, dim=1, inputs=[bvh.id, query_lower, query_upper, bounds_intersected], device=device
+                kernel=bvh_query_aabb,
+                dim=1,
+                inputs=[bvh.id, query_lower, query_upper, bounds_intersected],
+                device=device,
             )
         else:
             wp.launch(
-               kernel=bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, bounds_intersected], device=device
+                kernel=bvh_query_ray, dim=1, inputs=[bvh.id, query_start, query_dir, bounds_intersected], device=device
             )
 
         device_intersected = bounds_intersected.numpy()
@@ -108,7 +110,7 @@ def test_bvh(test, type, device):
                 host_intersected = aabb_overlap(lower, upper, query_lower, query_upper)
             else:
                 host_intersected = intersect_ray_aabb(query_start, query_dir, lower, upper)
-                
+
             test.assertEqual(host_intersected, device_intersected[i])
 
         if test_case == 0:
@@ -126,7 +128,7 @@ def test_bvh_query_aabb(test, device):
 
 def test_bvh_query_ray(test, device):
     test_bvh(test, "ray", device)
- 
+
 
 def register(parent):
     devices = get_test_devices()

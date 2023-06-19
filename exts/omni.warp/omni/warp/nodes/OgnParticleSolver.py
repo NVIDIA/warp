@@ -162,7 +162,10 @@ class OgnParticleSolver:
 
                             for i in range(points_count):
                                 builder.add_particle(
-                                    pos=particle_points[i], vel=particle_velocities[i], mass=db.inputs.mass, radius=db.inputs.radius
+                                    pos=particle_points[i],
+                                    vel=particle_velocities[i],
+                                    mass=db.inputs.mass,
+                                    radius=db.inputs.radius,
                                 )
 
                     # collision shape
