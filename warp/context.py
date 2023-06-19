@@ -902,6 +902,9 @@ class ModuleBuilder:
             for var in s.vars.values():
                 if isinstance(var.type, warp.codegen.Struct):
                     stack.append(var.type)
+                elif isinstance(var.type, warp.types.array) and isinstance(var.type.dtype, warp.codegen.Struct):
+                    stack.append(var.type.dtype)                   
+
 
         # Build them in reverse to generate a correct dependency order.
         for s in reversed(structs):
