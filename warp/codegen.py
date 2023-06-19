@@ -67,7 +67,6 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
     return getattr(obj, "__annotations__", {})
 
 
-
 def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
     indent = "\t"
 
@@ -93,9 +92,7 @@ def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
 
 
 class StructInstance:
-    
     def __init__(self, cls: Struct, ctype):
-
         super().__setattr__("_cls", cls)
 
         # maintain a c-types object for the top-level instance the struct
@@ -113,14 +110,12 @@ class StructInstance:
             else:
                 self.__dict__[field] = var.type()
 
-
     def __setattr__(self, name, value):
-
         if name not in self._cls.vars:
             raise RuntimeError(f"Trying to set Warp struct attribute that does not exist {name}")
 
         var = self._cls.vars[name]
-        
+
         # update our ctype flat copy
         if isinstance(var.type, array):
             if value is None:
@@ -136,19 +131,22 @@ class StructInstance:
                 )
                 setattr(self._ctype, name, value.__ctype__())
 
-
         elif isinstance(var.type, Struct):
             # assign structs by-value, otherwise we would have problematic cases transferring ownership
             # of the underlying ctypes data between shared Python struct instances
 
             if not isinstance(value, StructInstance):
-                raise RuntimeError(f"Trying to assign a non-structure value to a struct attribute with type: {self._cls.key}")
+                raise RuntimeError(
+                    f"Trying to assign a non-structure value to a struct attribute with type: {self._cls.key}"
+                )
 
             # destination attribution on self
             dest = getattr(self, name)
 
             if dest._cls.key is not value._cls.key:
-                raise RuntimeError(f"Trying to assign a structure of type {value._cls.key} to an attribute of {self._cls.key}")
+                raise RuntimeError(
+                    f"Trying to assign a structure of type {value._cls.key} to an attribute of {self._cls.key}"
+                )
 
             # update all nested ctype vars by deep copy
             for n in dest._cls.vars:
@@ -156,7 +154,6 @@ class StructInstance:
 
             # early return to avoid updating our Python StructInstance
             return
-
 
         elif issubclass(var.type, ctypes.Array):
             # vector/matrix type, e.g. vec3
@@ -180,10 +177,8 @@ class StructInstance:
                 # assigning Python type, e.g.: 1.5, convert to struct attribute type
                 setattr(self._ctype, name, var.type._type_(value))
 
-
         # update Python instance
         super().__setattr__(name, value)
-
 
     def __ctype__(self):
         return self._ctype

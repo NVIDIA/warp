@@ -394,7 +394,8 @@ def mesh_sdf(mesh: wp.uint64, point: wp.vec3, max_dist: float):
     face_u = float(0.0)
     face_v = float(0.0)
     sign = float(0.0)
-    res = wp.mesh_query_point(mesh, point, max_dist, sign, face_index, face_u, face_v)
+    res = wp.mesh_query_point_sign_normal(mesh, point, max_dist, sign, face_index, face_u, face_v)
+
     if res:
         closest = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
         return wp.length(point - closest) * sign
@@ -407,7 +408,8 @@ def closest_point_mesh(mesh: wp.uint64, point: wp.vec3, max_dist: float):
     face_u = float(0.0)
     face_v = float(0.0)
     sign = float(0.0)
-    res = wp.mesh_query_point(mesh, point, max_dist, sign, face_index, face_u, face_v)
+    res = wp.mesh_query_point_sign_normal(mesh, point, max_dist, sign, face_index, face_u, face_v)
+
     if res:
         return wp.mesh_eval_position(mesh, face_index, face_u, face_v)
     # return arbitrary point from mesh
@@ -549,7 +551,9 @@ def create_soft_contacts(
         face_v = float(0.0)
         sign = float(0.0)
 
-        if wp.mesh_query_point(mesh, wp.cw_div(x_local, geo_scale), margin, sign, face_index, face_u, face_v):
+        if wp.mesh_query_point_sign_normal(
+            mesh, wp.cw_div(x_local, geo_scale), margin, sign, face_index, face_u, face_v
+        ):
             shape_p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
             shape_v = wp.mesh_eval_velocity(mesh, face_index, face_u, face_v)
 
@@ -941,8 +945,8 @@ def handle_contact_pairs(
             face_u = float(0.0)
             face_v = float(0.0)
             sign = float(0.0)
-            max_dist = (thickness_a + thickness_b + rigid_contact_margin) / min_scale_b
-            res = wp.mesh_query_point(
+            max_dist = (thickness_a + thickness_b + rigid_contact_margin) / geo_scale_b[0]
+            res = wp.mesh_query_point_sign_normal(
                 mesh_b, wp.cw_div(query_b_local, geo_scale_b), max_dist, sign, face_index, face_u, face_v
             )
             if res:
@@ -1112,9 +1116,10 @@ def handle_contact_pairs(
         face_u = float(0.0)
         face_v = float(0.0)
         sign = float(0.0)
-        res = wp.mesh_query_point(
+        res = wp.mesh_query_point_sign_normal(
             mesh_b, wp.cw_div(query_b_local, geo_scale_b), max_dist, sign, face_index, face_u, face_v
         )
+
         if res:
             shape_p = wp.mesh_eval_position(mesh_b, face_index, face_u, face_v)
             shape_p = wp.cw_mul(shape_p, geo_scale_b)
@@ -1211,7 +1216,7 @@ def handle_contact_pairs(
         face_u = float(0.0)
         face_v = float(0.0)
         sign = float(0.0)
-        res = wp.mesh_query_point(
+        res = wp.mesh_query_point_sign_normal(
             mesh_b, wp.cw_div(query_b_local, geo_scale_b), max_dist, sign, face_index, face_u, face_v
         )
 
@@ -1244,7 +1249,7 @@ def handle_contact_pairs(
         min_scale = min(min_scale_a, min_scale_b)
         max_dist = (rigid_contact_margin + thickness_a + thickness_b) / min_scale
 
-        res = wp.mesh_query_point(
+        res = wp.mesh_query_point_sign_normal(
             mesh_b, wp.cw_div(query_b_local, geo_scale_b), max_dist, sign, face_index, face_u, face_v
         )
 

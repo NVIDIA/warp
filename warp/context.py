@@ -272,7 +272,8 @@ class Function:
 
             if len(kwargs):
                 raise RuntimeError(
-                    f"Error calling function '{self.key}', keyword arguments are not supported for user-defined overloads.")
+                    f"Error calling function '{self.key}', keyword arguments are not supported for user-defined overloads."
+                )
 
             # try and find a matching overload
             for f in self.user_overloads.values():
@@ -287,15 +288,13 @@ class Function:
                 except Exception:
                     continue
 
-            raise RuntimeError(
-                f"Error calling function '{self.key}', no overload found for arguments {args}")
+            raise RuntimeError(f"Error calling function '{self.key}', no overload found for arguments {args}")
 
         else:
             # user-defined function with no overloads
 
             if self.func is None:
-                raise RuntimeError(
-                    f"Error calling function '{self.key}', function is undefined")
+                raise RuntimeError(f"Error calling function '{self.key}', function is undefined")
 
             # this function has no overloads, call it like a plain Python function
             return self.func(*args, **kwargs)
@@ -457,7 +456,7 @@ class Kernel:
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
         arg_names = list(self.adj.arg_types.keys())
-        
+
         return warp.types.infer_argument_types(args, template_types, arg_names)
 
     def add_overload(self, arg_types):
@@ -903,8 +902,7 @@ class ModuleBuilder:
                 if isinstance(var.type, warp.codegen.Struct):
                     stack.append(var.type)
                 elif isinstance(var.type, warp.types.array) and isinstance(var.type.dtype, warp.codegen.Struct):
-                    stack.append(var.type.dtype)                   
-
+                    stack.append(var.type.dtype)
 
         # Build them in reverse to generate a correct dependency order.
         for s in reversed(structs):
@@ -1789,15 +1787,71 @@ class Runtime:
         ]
         self.core.array_copy_device.restype = ctypes.c_size_t
 
-        self.core.array_sum_double_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_sum_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_sum_double_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_sum_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_sum_double_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_float_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_double_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_float_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
 
-        self.core.array_inner_double_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_inner_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_inner_double_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.core.array_inner_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.core.array_inner_double_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_float_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_double_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_float_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
 
         self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
         self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
@@ -1841,6 +1895,7 @@ class Runtime:
             warp.types.array_t,
             ctypes.c_int,
             ctypes.c_int,
+            ctypes.c_int,
         ]
 
         self.core.mesh_create_device.restype = ctypes.c_uint64
@@ -1849,6 +1904,7 @@ class Runtime:
             warp.types.array_t,
             warp.types.array_t,
             warp.types.array_t,
+            ctypes.c_int,
             ctypes.c_int,
             ctypes.c_int,
         ]
@@ -2002,7 +2058,6 @@ class Runtime:
         self.core.bsr_transpose_double_host.argtypes = bsr_transpose_argtypes
         self.core.bsr_transpose_float_device.argtypes = bsr_transpose_argtypes
         self.core.bsr_transpose_double_device.argtypes = bsr_transpose_argtypes
-
 
         self.core.is_cuda_enabled.argtypes = None
         self.core.is_cuda_enabled.restype = ctypes.c_int
@@ -2759,7 +2814,6 @@ def from_numpy(arr, dtype, device: Devicelike = None, requires_grad=False):
 # given a kernel destination argument type and a value convert
 #  to a c-type that can be passed to a kernel
 def pack_arg(arg_type, arg_name, value, device, adjoint=False):
-
     if warp.types.is_array(arg_type):
         if value is None:
             # allow for NULL arrays
@@ -2844,7 +2898,6 @@ def pack_arg(arg_type, arg_name, value, device, adjoint=False):
 # represents all data required for a kernel launch
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
-
     def __init__(self, kernel, hooks, params, params_addr, bounds, device):
         self.kernel = kernel
         self.hooks = hooks
@@ -2852,20 +2905,19 @@ class Launch:
         self.params_addr = params_addr
         self.device = device
         self.bounds = bounds
-       
+
     def set_dim(self, dim):
         self.bounds = warp.types.launch_bounds_t(dim)
-       
+
         # launch bounds always at index 0
         self.params[0] = self.bounds
 
         # for CUDA kernels we need to update the address to each arg
         if self.params_addr:
             self.params_addr[0] = ctypes.c_void_p(ctypes.addressof(self.bounds))
-    
+
     # set kernel param at an index, will convert to ctype as necessary
     def set_param_at_index(self, index, value):
-    
         arg_type = self.kernel.adj.args[index].type
         arg_name = self.kernel.adj.args[index].label
 
@@ -2876,11 +2928,10 @@ class Launch:
         # for CUDA kernels we need to update the address to each arg
         if self.params_addr:
             self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(carg))
-    
+
     # set kernel param at an index without any type conversion
     # args must be passed as ctypes or basic int / float types
     def set_param_at_index_from_ctype(self, index, value):
-
         if isinstance(value, ctypes.Structure):
             # not sure how to directly assign struct->struct without reallocating using ctypes
             self.params[index + 1] = value
@@ -2888,7 +2939,7 @@ class Launch:
             # for CUDA kernels we need to update the address to each arg
             if self.params_addr:
                 self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(value))
-        
+
         else:
             self.params[index + 1].__init__(value)
 
@@ -2916,12 +2967,10 @@ class Launch:
             self.set_ctype_at_index(i, v)
 
     def launch(self) -> Any:
-
         if self.device.is_cpu:
             self.hooks.forward(*self.params)
         else:
             runtime.core.cuda_launch_kernel(self.device.context, self.hooks.forward, self.bounds.size, self.params_addr)
-
 
 
 def launch(
@@ -2935,7 +2984,7 @@ def launch(
     stream: Stream = None,
     adjoint=False,
     record_tape=True,
-    record_cmd=False
+    record_cmd=False,
 ):
     """Launch a Warp kernel on the target device
 
@@ -2986,7 +3035,6 @@ def launch(
                 arg_name = kernel.adj.args[i].label
 
                 params.append(pack_arg(arg_type, arg_name, a, device, adjoint))
-                
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
@@ -3027,7 +3075,7 @@ def launch(
                     raise RuntimeError(
                         f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                     )
-                
+
                 if record_cmd:
                     launch = Launch(kernel, hooks, params, None, bounds, device)
                     return launch
@@ -3053,16 +3101,13 @@ def launch(
                             f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                         )
 
-
                     if record_cmd:
-
                         launch = Launch(kernel, hooks, params, kernel_params, bounds, device)
                         return launch
-                    
+
                     else:
                         # launch
                         runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
-                        
 
                 try:
                     runtime.verify_cuda_device(device)

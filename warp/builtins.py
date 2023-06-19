@@ -540,7 +540,9 @@ def value_func_get_diag(args, kwds, _):
         return vector(length=(Any), dtype=Scalar)
     else:
         if args[0].type._shape_[0] != args[0].type._shape_[1]:
-            raise RuntimeError(f"Matrix shape is {args[0].type._shape_}; get_diag is only available for square matrices.")
+            raise RuntimeError(
+                f"Matrix shape is {args[0].type._shape_}; get_diag is only available for square matrices."
+            )
         return vector(length=args[0].type._shape_[0], dtype=args[0].type._wp_scalar_type_)
 
 
@@ -617,7 +619,9 @@ def vector_constructor_func(args, kwds, templates):
                 if getattr(vectype, "_wp_generic_type_str_", None) == "vec_t":
                     # constructor from another matrix
                     if vectype._length_ != veclen:
-                        raise RuntimeError(f"Incompatible vector lengths for casting copy constructor, {veclen} vs {vectype._length_}")
+                        raise RuntimeError(
+                            f"Incompatible vector lengths for casting copy constructor, {veclen} vs {vectype._length_}"
+                        )
                     vectype = vectype._wp_scalar_type_
             else:
                 raise RuntimeError(
@@ -659,7 +663,9 @@ def vector_constructor_func(args, kwds, templates):
         if len(args) == 1 and getattr(args[0].type, "_wp_generic_type_str_", None) == "vec_t":
             # constructor from another vector
             if args[0].type._length_ != veclen:
-                raise RuntimeError(f"Incompatible matrix sizes for casting copy constructor, {veclen} vs {args[0].type._length_}")
+                raise RuntimeError(
+                    f"Incompatible matrix sizes for casting copy constructor, {veclen} vs {args[0].type._length_}"
+                )
         elif not all(vectype == a.type for a in args):
             raise RuntimeError(
                 f"All numeric arguments to vec() constructor should have the same type, expected {veclen} args of type {vectype}, received { ','.join(map(lambda x : str(x.type), args)) }"
@@ -707,7 +713,9 @@ def matrix_constructor_func(args, kwds, templates):
             if len(args) == 1 and getattr(dtype, "_wp_generic_type_str_", None) == "mat_t":
                 # constructor from another matrix
                 if types[0]._shape_ != shape:
-                    raise RuntimeError(f"Incompatible matrix sizes for casting copy constructor, {shape} vs {types[0]._shape_}")
+                    raise RuntimeError(
+                        f"Incompatible matrix sizes for casting copy constructor, {shape} vs {types[0]._shape_}"
+                    )
                 dtype = dtype._wp_scalar_type_
             elif len(args) > 1 and len(args) != shape[0] * shape[1]:
                 raise RuntimeError(
@@ -724,12 +732,13 @@ def matrix_constructor_func(args, kwds, templates):
         dtype = templates[2]
 
         if len(args) > 0:
-
             types = [a.type for a in args]
             if len(args) == 1 and getattr(types[0], "_wp_generic_type_str_", None) == "mat_t":
                 # constructor from another matrix with same dimension but possibly different type
                 if types[0]._shape_ != shape:
-                    raise RuntimeError(f"Incompatible matrix sizes for casting copy constructor, {shape} vs {types[0]._shape_}")
+                    raise RuntimeError(
+                        f"Incompatible matrix sizes for casting copy constructor, {shape} vs {types[0]._shape_}"
+                    )
             else:
                 # check scalar arg type matches declared type
                 if infer_scalar_type(args) != dtype:
@@ -1449,6 +1458,9 @@ add_builtin(
     group="Geometry",
     doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
 
+   Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside. This method is relatively robust, but
+   does increase computational cost. See below for additional sign determination methods.
+
    :param id: The mesh identifier
    :param point: The point in space to query
    :param max_dist: Mesh faces above this distance will not be considered by the query
@@ -1456,6 +1468,95 @@ add_builtin(
    :param face: Returns the index of the closest face
    :param bary_u: Returns the barycentric u coordinate of the closest point
    :param bary_v: Returns the barycentric v coordinate of the closest point""",
+)
+
+add_builtin(
+    "mesh_query_point_no_sign",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "face": int,
+        "bary_u": float,
+        "bary_v": float,
+    },
+    value_type=bool,
+    group="Geometry",
+    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+   This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point""",
+)
+
+add_builtin(
+    "mesh_query_point_sign_normal",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "inside": float,
+        "face": int,
+        "bary_u": float,
+        "bary_v": float,
+        "epsilon": float,
+    },
+    defaults={"epsilon": 1.0e-3},
+    value_type=bool,
+    group="Geometry",
+    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found.
+    
+   Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal. This approach to sign determination is robust for well conditioned meshes
+   that are watertight and non-self intersecting, it is also comparatively fast to compute.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point
+   :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3""",
+)
+
+add_builtin(
+    "mesh_query_point_sign_winding_number",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "inside": float,
+        "face": int,
+        "bary_u": float,
+        "bary_v": float,
+        "accuracy": float,
+        "threshold": float,
+    },
+    defaults={"accuracy": 2.0, "threshold": 0.5},
+    value_type=bool,
+    group="Geometry",
+    doc="""Computes the closest point on the mesh with identifier `id` to the given point in space. Returns ``True`` if a point < ``max_dist`` is found. 
+    
+   Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
+   and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
+   but also the most expensive.
+     
+    Note that the Mesh object must be constructed with ``suport_winding_number=True`` for this method to return correct results.
+
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise. Note that mesh must be watertight for this to be robust
+   :param face: Returns the index of the closest face
+   :param bary_u: Returns the barycentric u coordinate of the closest point
+   :param bary_v: Returns the barycentric v coordinate of the closest point
+   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second order dipole approximation, default 2.0
+   :param threshold: The threshold of the winding number to be considered inside, default 0.5""",
 )
 
 add_builtin(
@@ -2583,7 +2684,7 @@ add_builtin(
 
 add_builtin(
     "lower_bound",
-    input_types={"arr": array(dtype=Scalar), "arr_begin": int, "arr_end" :int, "value": Scalar},
+    input_types={"arr": array(dtype=Scalar), "arr_begin": int, "arr_end": int, "value": Scalar},
     value_type=int,
     doc="Search a sorted array range [arr_begin, arr_end) for the closest element greater than or equal to value.",
 )

@@ -12,7 +12,7 @@ def test_runlength_encode_int(test, device):
 
     values_np = np.sort(np.random.randint(-10, 10, n, dtype=int))
 
-    unique_values_np, unique_counts_np = np.unique(values_np, return_counts=True) 
+    unique_values_np, unique_counts_np = np.unique(values_np, return_counts=True)
 
     values = wp.array(values_np, device=device, dtype=int)
 
@@ -24,7 +24,6 @@ def test_runlength_encode_int(test, device):
     assert run_count == len(unique_values_np)
     assert (unique_values.numpy()[:run_count] == unique_values_np[:run_count]).all()
     assert (unique_counts.numpy()[:run_count] == unique_counts_np[:run_count]).all()
-
 
 
 def register(parent):

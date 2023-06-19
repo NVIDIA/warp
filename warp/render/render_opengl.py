@@ -782,10 +782,10 @@ class OpenGLRenderer:
     ):
         try:
             import pyglet
-        
+
             # disable error checking for performance
-            pyglet.options['debug_gl'] = False
-            
+            pyglet.options["debug_gl"] = False
+
             from pyglet import gl
             from pyglet.math import Vec3 as PyVec3
             from pyglet.graphics.shader import Shader, ShaderProgram

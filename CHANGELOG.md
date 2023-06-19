@@ -33,6 +33,9 @@
 - Add support for logical boolean operators with `int` types
 - Fix for `wp.quat()` default constructor
 - Fix conditional reassignments
+- Add sign determination using angle weighted normal version of `wp.mesh_query_point()` as `wp.mesh_query_sign_normal()`
+- Add sign determination using winding number of `wp.mesh_query_point()` as `wp.mesh_query_sign_winding_number()`
+- Add query point without sign determination `wp.mesh_query_no_sign()`
 
 ## [0.8.1] - 2023-04-13
 

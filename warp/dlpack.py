@@ -196,7 +196,7 @@ def to_dlpack(wp_array: warp.array):
     # DLPack does not support structured arrays
     if isinstance(wp_array.dtype, warp.codegen.Struct):
         raise RuntimeError("Cannot convert structured Warp arrays to DLPack.")
-    
+
     holder = _Holder(wp_array)
 
     # allocate DLManagedTensor

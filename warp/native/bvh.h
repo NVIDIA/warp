@@ -103,7 +103,6 @@ CUDA_CALLABLE inline bounds3 bounds_intersection(const bounds3& a, const bounds3
 	return bounds3(max(a.lower, b.lower), min(a.upper, b.upper));
 }
 
-
 struct BVHPackedNodeHalf
 {
 	float x;
