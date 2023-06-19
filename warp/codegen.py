@@ -1774,31 +1774,6 @@ void {name}_cpu_kernel_backward(
 
 """
 
-cuda_module_template = """
-
-extern "C" {{
-
-// Python entry points
-WP_API void {name}_cuda_forward(
-    void* stream,
-    {forward_args})
-{{
-    {name}_cuda_kernel_forward<<<(dim.size + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(
-            {forward_params});
-}}
-
-WP_API void {name}_cuda_backward(
-    void* stream,
-    {reverse_args})
-{{
-    {name}_cuda_kernel_backward<<<(dim.size + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(
-            {reverse_params});
-}}
-
-}} // extern C
-
-"""
-
 cpu_module_template = """
 
 extern "C" {{
@@ -2183,6 +2158,9 @@ def codegen_kernel(kernel, device, options):
 
 
 def codegen_module(kernel, device="cpu"):
+    if device != "cpu":
+        return ""
+
     adj = kernel.adj
 
     # build forward signature
@@ -2216,14 +2194,7 @@ def codegen_module(kernel, device="cpu"):
             reverse_args.append(f"{arg.ctype()} adj_{arg.label}")
             reverse_params.append(f"adj_{arg.label}")
 
-    if device == "cpu":
-        template = cpu_module_template
-    elif device == "cuda":
-        template = cuda_module_template
-    else:
-        raise ValueError("Device {} is not supported".format(device))
-
-    s = template.format(
+    s = cpu_module_template.format(
         name=kernel.get_mangled_name(),
         forward_args=indent(forward_args),
         reverse_args=indent(reverse_args),

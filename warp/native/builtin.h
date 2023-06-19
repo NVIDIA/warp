@@ -1203,11 +1203,11 @@ inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l)
 template<typename T>
 inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 {
-#if defined(WP_CPU)
+#if !defined(__CUDA_ARCH__)
     T old = buf[0];
     buf[0] += value;
     return old;
-#elif defined(WP_CUDA)
+#else
     return atomicAdd(buf, value);
 #endif
 }
@@ -1215,11 +1215,11 @@ inline CUDA_CALLABLE T atomic_add(T* buf, T value)
 template<>
 inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 {
-#if defined(WP_CPU)
+#if !defined(__CUDA_ARCH__)
     float16 old = buf[0];
     buf[0] += value;
     return old;
-#elif defined(WP_CUDA)
+#else
     //return atomicAdd(buf, value);
     
     /* Define __PTR for atomicAdd prototypes below, undef after done */
@@ -1243,7 +1243,7 @@ inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 
     #undef __PTR
 
-#endif // defined(WP_CUDA)
+#endif // defined(__CUDA_ARCH__)
 
 }
 
