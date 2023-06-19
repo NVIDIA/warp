@@ -1,15 +1,21 @@
 #include "warp.h"
 #include "scan.h"
 
+#include "temp_buffer.h"
+
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 
-#include <cub/cub.cuh>
+#include <cub/device/device_scan.cuh>
 
 template<typename T>
 void scan_device(const T* values_in, T* values_out, int n, bool inclusive)
 {
-    static void* scan_temp_memory = NULL;
-    static size_t scan_temp_max_size = 0;
+    void *context = cuda_context_get_current();
+    TemporaryBuffer &cub_temp = g_temp_buffer_map[context];
+
+    ContextGuard guard(context);
+
+    cudaStream_t stream = static_cast<cudaStream_t>(cuda_stream_get_current());
 
     // compute temporary memory required
 	size_t scan_temp_size;
@@ -19,18 +25,13 @@ void scan_device(const T* values_in, T* values_out, int n, bool inclusive)
         cub::DeviceScan::ExclusiveSum(NULL, scan_temp_size, values_in, values_out, n);
     }
 
-    if (scan_temp_size > scan_temp_max_size)
-    {
-	    free_device(WP_CURRENT_CONTEXT, scan_temp_memory);
-        scan_temp_memory = alloc_device(WP_CURRENT_CONTEXT, scan_temp_size);
-        scan_temp_max_size = scan_temp_size;
-    }
+    cub_temp.ensure_fits(scan_temp_size);
 
     // scan
     if (inclusive) {
-        cub::DeviceScan::InclusiveSum(scan_temp_memory, scan_temp_size, values_in, values_out, n, (cudaStream_t)cuda_stream_get_current());
+        cub::DeviceScan::InclusiveSum(cub_temp.buffer, scan_temp_size, values_in, values_out, n, (cudaStream_t)cuda_stream_get_current());
     } else {
-        cub::DeviceScan::ExclusiveSum(scan_temp_memory, scan_temp_size, values_in, values_out, n, (cudaStream_t)cuda_stream_get_current());
+        cub::DeviceScan::ExclusiveSum(cub_temp.buffer, scan_temp_size, values_in, values_out, n, (cudaStream_t)cuda_stream_get_current());
     }
 }
 

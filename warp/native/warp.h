@@ -107,17 +107,104 @@ extern "C"
     WP_API size_t array_copy_host(void* dst, void* src, int dst_type, int src_type, int elem_size);
     WP_API size_t array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size);
 
-    WP_API void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len);
-    WP_API void array_sum_host(uint64_t a, uint64_t out, int len);
+    WP_API void array_inner_float_host(uint64_t a, uint64_t b, uint64_t out, int count, int stride_a, int stride_b, int type_len);
+    WP_API void array_inner_double_host(uint64_t a, uint64_t b, uint64_t out, int count, int stride_a, int stride_b, int type_len);
+    WP_API void array_inner_float_device(uint64_t a, uint64_t b, uint64_t out, int count, int stride_a, int stride_b, int type_len);
+    WP_API void array_inner_double_device(uint64_t a, uint64_t b, uint64_t out, int count, int stride_a, int stride_b, int type_len);
 
-    WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len);
-    WP_API void array_sum_device(uint64_t a, uint64_t out, int len);
+    WP_API void array_sum_float_device(uint64_t a, uint64_t out, int count, int stride, int type_len);
+    WP_API void array_sum_float_host(uint64_t a, uint64_t out, int count, int stride, int type_len);
+    WP_API void array_sum_double_host(uint64_t a, uint64_t out, int count, int stride, int type_len);
+    WP_API void array_sum_double_device(uint64_t a, uint64_t out, int count, int stride, int type_len);
 
     WP_API void array_scan_int_host(uint64_t in, uint64_t out, int len, bool inclusive);
     WP_API void array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive);
 
     WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive);
     WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive);
+
+    WP_API void radix_sort_pairs_int_host(uint64_t keys, uint64_t values, int n);
+    WP_API void radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n);
+
+    WP_API void runlength_encode_int_host(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
+    WP_API void runlength_encode_int_device(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
+
+    WP_API int bsr_matrix_from_triplets_float_host(
+        int rows_per_block,
+        int cols_per_block,
+        int row_count,
+        int nnz,
+        uint64_t tpl_rows,
+        uint64_t tpl_columns,
+        uint64_t tpl_values,
+        uint64_t bsr_offsets,
+        uint64_t bsr_columns,
+        uint64_t bsr_values);
+    WP_API int bsr_matrix_from_triplets_double_host(
+        int rows_per_block,
+        int cols_per_block,
+        int row_count,
+        int nnz,
+        uint64_t tpl_rows,
+        uint64_t tpl_columns,
+        uint64_t tpl_values,
+        uint64_t bsr_offsets,
+        uint64_t bsr_columns,
+        uint64_t bsr_values);
+
+    WP_API int bsr_matrix_from_triplets_float_device(
+        int rows_per_block,
+        int cols_per_block,
+        int row_count,
+        int nnz,
+        uint64_t tpl_rows,
+        uint64_t tpl_columns,
+        uint64_t tpl_values,
+        uint64_t bsr_offsets,
+        uint64_t bsr_columns,
+        uint64_t bsr_values);
+    WP_API int bsr_matrix_from_triplets_double_device(
+        int rows_per_block,
+        int cols_per_block,
+        int row_count,
+        int nnz,
+        uint64_t tpl_rows,
+        uint64_t tpl_columns,
+        uint64_t tpl_values,
+        uint64_t bsr_offsets,
+        uint64_t bsr_columns,
+        uint64_t bsr_values);
+
+    WP_API void bsr_transpose_float_host(int rows_per_block, int cols_per_block,
+        int row_count, int col_count, int nnz,
+        uint64_t bsr_offsets, uint64_t bsr_columns,
+        uint64_t bsr_values,
+        uint64_t transposed_bsr_offsets,
+        uint64_t transposed_bsr_columns,
+        uint64_t transposed_bsr_values);
+    WP_API void bsr_transpose_double_host(int rows_per_block, int cols_per_block,
+        int row_count, int col_count, int nnz,
+        uint64_t bsr_offsets, uint64_t bsr_columns,
+        uint64_t bsr_values,
+        uint64_t transposed_bsr_offsets,
+        uint64_t transposed_bsr_columns,
+        uint64_t transposed_bsr_values);
+
+    WP_API void bsr_transpose_float_device(int rows_per_block, int cols_per_block,
+        int row_count, int col_count, int nnz,
+        uint64_t bsr_offsets, uint64_t bsr_columns,
+        uint64_t bsr_values,
+        uint64_t transposed_bsr_offsets,
+        uint64_t transposed_bsr_columns,
+        uint64_t transposed_bsr_values);
+    WP_API void bsr_transpose_double_device(int rows_per_block, int cols_per_block,
+        int row_count, int col_count, int nnz,
+        uint64_t bsr_offsets, uint64_t bsr_columns,
+        uint64_t bsr_values,
+        uint64_t transposed_bsr_offsets,
+        uint64_t transposed_bsr_columns,
+        uint64_t transposed_bsr_values);
+
 
     WP_API int cuda_driver_version();   // CUDA driver version
     WP_API int cuda_toolkit_version();  // CUDA Toolkit version used to build Warp
