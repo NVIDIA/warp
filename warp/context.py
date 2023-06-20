@@ -46,6 +46,17 @@ def create_value_func(type):
     return value_func
 
 
+def get_function_args(func):
+    """Ensures that all function arguments are annotated and returns a dictionary mapping from argument name to its type."""
+    import inspect
+    argspec = inspect.getfullargspec(func)
+
+    # use source-level argument annotations
+    if len(argspec.annotations) < len(argspec.args):
+        raise RuntimeError(f"Incomplete argument annotations on function {func.__qualname__}")
+    return argspec.annotations
+
+
 class Function:
     def __init__(
         self,
@@ -75,6 +86,7 @@ class Function:
         custom_reverse_mode=False,
         overloaded_annotations=None,
         code_transformers=[],
+        skip_adding_overload=False,
     ):
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -160,11 +172,12 @@ class Function:
             else:
                 self.mangled_name = None
 
-        self.add_overload(self)
+        if not skip_adding_overload:
+            self.add_overload(self)
 
         # add to current module
         if module:
-            module.register_function(self)
+            module.register_function(self, skip_adding_overload)
 
     def __call__(self, *args, **kwargs):
         # handles calling a builtin (native) function
@@ -436,16 +449,27 @@ class Function:
     def replay(self, func):
         """Defines a custom function to be called in the forward call part of the backward pass (replay mode).
         The provided function has to match the signature of one of the original function overloads."""
-        self.custom_replay_func = Function(
+
+        args = get_function_args(func)
+        arg_types = list(args.values())
+
+        f = self.get_overload(arg_types)
+        if f is None:
+            inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in args.items()])
+            raise RuntimeError(
+                f"Could not find forward definition of function {self.key} that matches custom replay definition with arguments\n{inputs_str}"
+            )
+        f.custom_replay_func = Function(
             func,
-            key=f"replay_{self.key}",
-            namespace=self.namespace,
-            input_types=self.input_types,
-            value_func=self.value_func,
-            module=self.module,
-            template_func=self.template_func,
+            key=f"replay_{f.key}",
+            namespace=f.namespace,
+            input_types=f.input_types,
+            value_func=f.value_func,
+            module=f.module,
+            template_func=f.template_func,
             skip_reverse_codegen=True,
-            overwrite_func_name_by_key=True)
+            overwrite_func_name_by_key=True,
+            skip_adding_overload=True)
 
     def grad(self, func):
         """Defines a custom gradient function that replaces the default reverse-mode behavior for this function.
@@ -454,6 +478,7 @@ class Function:
         corresponding arguments in the original function, and the second part of the input arguments are the
         adjoint variables of the output variables (if available) of the original function with the same types as the
         output variables. The function must not return anything."""
+
         reverse_args = {}
         reverse_args.update(self.input_types)
         self.adj.skip_reverse_codegen = True
@@ -469,7 +494,8 @@ class Function:
             skip_forward_codegen=True,
             overwrite_func_name_by_key=True,
             custom_reverse_mode=True,
-            custom_reverse_num_input_args=len(self.input_types))
+            custom_reverse_num_input_args=len(self.input_types),
+            skip_adding_overload=True)
 
         # resolve return variables
         self.adj.build(None)
@@ -1132,7 +1158,7 @@ class Module:
         # for a reload of module on next launch
         self.unload()
 
-    def register_function(self, func):
+    def register_function(self, func, skip_adding_overload=False):
         if func.key not in self.functions:
             self.functions[func.key] = func
         else:
@@ -1152,7 +1178,7 @@ class Module:
             )
             if sig == sig_existing:
                 self.functions[func.key] = func
-            else:
+            elif not skip_adding_overload:
                 func_existing.add_overload(func)
 
         self.find_references(func.adj)
