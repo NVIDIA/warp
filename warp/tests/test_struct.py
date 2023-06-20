@@ -327,8 +327,8 @@ class DefaultAttribStruct:
     s: DefaultAttribNested
 
 
-@wp.kernel
-def check_default_attributes(data: DefaultAttribStruct):
+@wp.func
+def check_default_attributes_func(data: DefaultAttribStruct):
     wp.expect_eq(data.i, wp.int32(0))
     wp.expect_eq(data.d, wp.float64(0))
     wp.expect_eq(data.v, wp.vec3(0.0, 0.0, 0.0))
