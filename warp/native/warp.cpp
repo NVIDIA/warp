@@ -111,27 +111,6 @@ void memtile_host(void* dest, void *src, size_t srcsize, size_t n)
     }
 }
 
-void array_inner_host(uint64_t a, uint64_t b, uint64_t out, int len)
-{
-    const float* ptr_a = (const float*)(a);
-    const float* ptr_b = (const float*)(b);
-    float* ptr_out = (float*)(out);
-
-    *ptr_out = 0.0f;
-    for (int i=0; i < len; ++i)
-        *ptr_out += ptr_a[i]*ptr_b[i];
-}
-
-void array_sum_host(uint64_t a, uint64_t out, int len)
-{
-    const float* ptr_a = (const float*)(a);
-    float* ptr_out = (float*)(out);
-
-    *ptr_out = 0.0f;
-    for (int i=0; i < len; ++i)
-        *ptr_out += ptr_a[i];
-}
-
 void array_scan_int_host(uint64_t in, uint64_t out, int len, bool inclusive)
 {
     scan_host((const int*)in, (int*)out, len, inclusive);
@@ -397,8 +376,6 @@ WP_API size_t cuda_launch_kernel(void* context, void* kernel, size_t dim, void**
 WP_API void cuda_set_context_restore_policy(bool always_restore) {}
 WP_API int cuda_get_context_restore_policy() { return false; }
 
-WP_API void array_inner_device(uint64_t a, uint64_t b, uint64_t out, int len) {}
-WP_API void array_sum_device(uint64_t a, uint64_t out, int len) {}
 WP_API void array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive) {}
 WP_API void array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive) {}
 

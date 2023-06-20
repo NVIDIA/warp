@@ -87,3 +87,11 @@ void radix_sort_pairs_device(void* context, int* keys, int* values, int n)
 	if (d_values.Current() != values)
 		memcpy_d2d(WP_CURRENT_CONTEXT, values, d_values.Current(), sizeof(int)*n);
 }
+
+void radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n)
+{
+    radix_sort_pairs_device(
+        WP_CURRENT_CONTEXT,
+        reinterpret_cast<int *>(keys),
+        reinterpret_cast<int *>(values), n);
+}

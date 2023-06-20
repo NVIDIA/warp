@@ -71,9 +71,14 @@ Release Steps:
 
 2) Run `cd warp`
 
-2) Run `python -m build`
+3) Run
+    ```bash
+    python -m build --wheel -C--build-option=-Pwindows &&
+    python -m build --wheel -C--build-option=-Plinux &&
+    python -m build --wheel -C--build-option=-Pmacos
+    ```
 
-3) Run `python -m twine upload dist/*`
+4) Run `python -m twine upload dist/*`
 
     * user: `__token__`
     * pass: `(your token string from pypi)`

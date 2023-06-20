@@ -83,7 +83,7 @@ def test_override_func():
     wp.expect_eq(i, 3)
 
 
-def test_func_export(test, device):
+def test_native_func_export(test, device):
     # tests calling native functions from Python
 
     q = wp.quat(0.0, 0.0, 0.0, 1.0)
@@ -132,6 +132,17 @@ def test_func_export(test, device):
 
     f = wp.sin(math.pi * 0.5)
     test.assertAlmostEqual(f, 1.0, places=3)
+
+
+def test_user_func_export(test, device):
+    # tests calling overloaded user-defined functions from Python
+    i = custom(1)
+    f = custom(1.0)
+    v = custom(wp.vec3(1.0, 0.0, 0.0))
+
+    test.assertEqual(i, 2)
+    test.assertEqual(f, 2.0)
+    assert_np_equal(np.array([*v]), np.array([2.0, 0.0, 0.0]))
 
 
 def test_func_closure_capture(test, device):
@@ -209,7 +220,8 @@ def register(parent):
     add_kernel_test(TestFunc, kernel=test_overload_func, name="test_overload_func", dim=1, devices=devices)
     add_function_test(TestFunc, func=test_return_func, name="test_return_func", devices=devices)
     add_kernel_test(TestFunc, kernel=test_override_func, name="test_override_func", dim=1, devices=devices)
-    add_function_test(TestFunc, func=test_func_export, name="test_func_export", devices=["cpu"])
+    add_function_test(TestFunc, func=test_native_func_export, name="test_native_func_export", devices=["cpu"])
+    add_function_test(TestFunc, func=test_user_func_export, name="test_user_func_export", devices=["cpu"])
     add_function_test(TestFunc, func=test_func_closure_capture, name="test_func_closure_capture", devices=devices)
     add_function_test(TestFunc, func=test_multi_valued_func, name="test_multi_valued_func", devices=devices)
     add_kernel_test(TestFunc, kernel=test_func_defaults, name="test_func_defaults", dim=1, devices=devices)

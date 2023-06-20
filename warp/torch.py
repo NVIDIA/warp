@@ -11,7 +11,6 @@ import ctypes
 from typing import Union
 
 
-
 # return the warp device corresponding to a torch device
 def device_from_torch(torch_device):
     return warp.get_device(str(torch_device))

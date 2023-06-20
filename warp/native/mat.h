@@ -30,6 +30,14 @@ struct mat_t
                 data[i][j] = s;
     }
     
+    template <typename OtherType>
+    inline explicit CUDA_CALLABLE mat_t(const mat_t<Rows, Cols, OtherType>& other)
+    {
+        for (unsigned i=0; i < Rows; ++i)
+            for (unsigned j=0; j < Cols; ++j)
+                data[i][j] = other.data[i][j];
+    }
+    
     inline CUDA_CALLABLE mat_t(vec_t<2,Type> c0, vec_t<2,Type> c1)
     {
         data[0][0] = c0[0];
@@ -608,6 +616,17 @@ inline CUDA_CALLABLE Type trace(const mat_t<Rows,Rows,Type>& m)
     return ret;
 }
 
+template<unsigned Rows, typename Type>
+inline CUDA_CALLABLE vec_t<Rows, Type> get_diag(const mat_t<Rows,Rows,Type>& m)
+{
+    vec_t<Rows, Type> ret;
+    for( unsigned i=0; i < Rows; ++i )
+    {
+        ret[i] = m.data[i][i];
+    }
+    return ret;
+}
+
 // Only implementing inverses for 2x2, 3x3 and 4x4 matrices for now...
 template<typename Type>
 inline CUDA_CALLABLE mat_t<2,2,Type> inverse(const mat_t<2,2,Type>& m)
@@ -973,6 +992,13 @@ inline CUDA_CALLABLE void adj_diag(const vec_t<Rows,Type>& d, vec_t<Rows,Type>& 
         adj_d[i] += adj_ret.data[i][i];
 }
 
+template<unsigned Rows, typename Type>
+inline CUDA_CALLABLE void adj_get_diag(const mat_t<Rows,Rows,Type>& m, mat_t<Rows,Rows,Type>& adj_m, const vec_t<Rows,Type>& adj_ret)
+{
+    for (unsigned i=0; i < Rows; ++i)
+        adj_m.data[i][i] += adj_ret[i];
+}
+
 template<typename Type>
 inline CUDA_CALLABLE void adj_determinant(const mat_t<2,2,Type>& m, mat_t<2,2,Type>& adj_m, Type adj_ret)
 {
@@ -1139,6 +1165,19 @@ inline CUDA_CALLABLE void adj_mat_t(Type s, Type& adj_s, const mat_t<Rows, Cols,
         for (unsigned j=0; j < Cols; ++j)
         {
             adj_s += adj_ret.data[i][j];
+        }
+    }
+}
+
+// adjoint for the casting constructor:
+template<unsigned Rows, unsigned Cols, typename Type, typename OtherType>
+inline CUDA_CALLABLE void adj_mat_t(const mat_t<Rows, Cols, OtherType>& other, mat_t<Rows, Cols, OtherType>& adj_other, const mat_t<Rows, Cols, Type>& adj_ret)
+{
+    for (unsigned i=0; i < Rows; ++i)
+    {
+        for (unsigned j=0; j < Cols; ++j)
+        {
+            adj_other.data[i][j] += adj_ret.data[i][j];
         }
     }
 }

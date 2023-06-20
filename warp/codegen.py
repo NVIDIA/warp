@@ -67,77 +67,23 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
     return getattr(obj, "__annotations__", {})
 
 
-def _get_struct_instance_ctype(
-    inst: StructInstance,
-    parent_ctype: Union[StructInstance, None],
-    parent_field: Union[str, None],
-) -> ctypes.Structure:
-    if inst._struct_.ctype._fields_ == [("_dummy_", ctypes.c_int)]:
-        return inst._struct_.ctype()
-
-    if parent_ctype is None:
-        inst_ctype = inst._struct_.ctype()
-    else:
-        inst_ctype = getattr(parent_ctype, parent_field)
-
-    for field_name, _ in inst_ctype._fields_:
-        value = getattr(inst, field_name, None)
-
-        var_type = inst._struct_.vars[field_name].type
-        if isinstance(var_type, array):
-            if value is None:
-                # create array with null pointer
-                setattr(inst_ctype, field_name, array_t())
-            else:
-                # wp.array
-                assert isinstance(value, array)
-                assert (
-                    value.dtype == var_type.dtype
-                ), "assign to struct member variable {} failed, expected type {}, got type {}".format(
-                    field_name, var_type.dtype, value.dtype
-                )
-                setattr(inst_ctype, field_name, value.__ctype__())
-        elif isinstance(var_type, Struct):
-            if value is None:
-                _get_struct_instance_ctype(StructInstance(var_type), inst_ctype, field_name)
-            else:
-                _get_struct_instance_ctype(value, inst_ctype, field_name)
-        elif issubclass(var_type, ctypes.Array):
-            # vector/matrix type, e.g. vec3
-            if value is None:
-                setattr(inst_ctype, field_name, var_type())
-            elif types_equal(type(value), var_type):
-                setattr(inst_ctype, field_name, value)
-            else:
-                # conversion from list/tuple, ndarray, etc.
-                setattr(inst_ctype, field_name, var_type(value))
-        else:
-            # primitive type
-            if value is None:
-                setattr(inst_ctype, field_name, var_type._type_())
-            else:
-                setattr(inst_ctype, field_name, var_type._type_(value))
-
-    return inst_ctype
-
-
-def _fmt_struct_instance_repr(inst: StructInstance, depth: int) -> str:
+def struct_instance_repr_recursive(inst: StructInstance, depth: int) -> str:
     indent = "\t"
 
-    if inst._struct_.ctype._fields_ == [("_dummy_", ctypes.c_int)]:
-        return f"{inst._struct_.key}()"
+    if inst._cls.ctype._fields_ == [("_dummy_", ctypes.c_int)]:
+        return f"{inst._cls.key}()"
 
     lines = []
-    lines.append(f"{inst._struct_.key}(")
+    lines.append(f"{inst._cls.key}(")
 
-    for field_name, _ in inst._struct_.ctype._fields_:
+    for field_name, _ in inst._cls.ctype._fields_:
         if field_name == "_dummy_":
             continue
 
         field_value = getattr(inst, field_name, None)
 
         if isinstance(field_value, StructInstance):
-            field_value = _fmt_struct_instance_repr(field_value, depth + 1)
+            field_value = struct_instance_repr_recursive(field_value, depth + 1)
 
         lines.append(f"{indent * (depth + 1)}{field_name}={field_value},")
 
@@ -146,18 +92,99 @@ def _fmt_struct_instance_repr(inst: StructInstance, depth: int) -> str:
 
 
 class StructInstance:
-    def __init__(self, struct: Struct):
-        self.__dict__["_struct_"] = struct
+    def __init__(self, cls: Struct, ctype):
+        super().__setattr__("_cls", cls)
+
+        # maintain a c-types object for the top-level instance the struct
+        if not ctype:
+            super().__setattr__("_ctype", cls.ctype())
+        else:
+            super().__setattr__("_ctype", ctype)
+
+        # create Python attributes for each of the struct's variables
+        for field, var in cls.vars.items():
+            if isinstance(var.type, warp.codegen.Struct):
+                self.__dict__[field] = StructInstance(var.type, getattr(self._ctype, field))
+            elif isinstance(var.type, warp.types.array):
+                self.__dict__[field] = None
+            else:
+                self.__dict__[field] = var.type()
 
     def __setattr__(self, name, value):
-        assert name in self._struct_.vars, "invalid struct member variable {}".format(name)
+        if name not in self._cls.vars:
+            raise RuntimeError(f"Trying to set Warp struct attribute that does not exist {name}")
+
+        var = self._cls.vars[name]
+
+        # update our ctype flat copy
+        if isinstance(var.type, array):
+            if value is None:
+                # create array with null pointer
+                setattr(self._ctype, name, array_t())
+            else:
+                # wp.array
+                assert isinstance(value, array)
+                assert (
+                    value.dtype == var.type.dtype
+                ), "assign to struct member variable {} failed, expected type {}, got type {}".format(
+                    name, var.type.dtype, value.dtype
+                )
+                setattr(self._ctype, name, value.__ctype__())
+
+        elif isinstance(var.type, Struct):
+            # assign structs by-value, otherwise we would have problematic cases transferring ownership
+            # of the underlying ctypes data between shared Python struct instances
+
+            if not isinstance(value, StructInstance):
+                raise RuntimeError(
+                    f"Trying to assign a non-structure value to a struct attribute with type: {self._cls.key}"
+                )
+
+            # destination attribution on self
+            dest = getattr(self, name)
+
+            if dest._cls.key is not value._cls.key:
+                raise RuntimeError(
+                    f"Trying to assign a structure of type {value._cls.key} to an attribute of {self._cls.key}"
+                )
+
+            # update all nested ctype vars by deep copy
+            for n in dest._cls.vars:
+                setattr(dest, n, getattr(value, n))
+
+            # early return to avoid updating our Python StructInstance
+            return
+
+        elif issubclass(var.type, ctypes.Array):
+            # vector/matrix type, e.g. vec3
+            if value is None:
+                setattr(self._ctype, name, var.type())
+            elif types_equal(type(value), var.type):
+                setattr(self._ctype, name, value)
+            else:
+                # conversion from list/tuple, ndarray, etc.
+                setattr(self._ctype, name, var.type(value))
+
+        else:
+            # primitive type
+            if value is None:
+                # zero initialize
+                setattr(self._ctype, name, var.type._type_())
+            elif hasattr(value, "_type_"):
+                # assigning value warp type directly (e.g.: wp.float32)
+                setattr(self._ctype, name, value.value)
+            else:
+                # assigning Python type, e.g.: 1.5, convert to struct attribute type
+                setattr(self._ctype, name, var.type._type_(value))
+
+        # update Python instance
         super().__setattr__(name, value)
 
     def __ctype__(self):
-        return _get_struct_instance_ctype(self, None, None)
+        return self._ctype
 
     def __repr__(self):
-        return _fmt_struct_instance_repr(self, 0)
+        return struct_instance_repr_recursive(self, 0)
 
 
 class Struct:
@@ -235,7 +262,7 @@ class Struct:
 
         class NewStructInstance(self.cls, StructInstance):
             def __init__(inst):
-                StructInstance.__init__(inst, self)
+                StructInstance.__init__(inst, self, None)
 
         return NewStructInstance()
 
@@ -317,14 +344,15 @@ class Adjoint:
     # generates forward and backward SSA forms of the function instructions
 
     def __init__(
-            adj,
-            func,
-            overload_annotations=None,
-            skip_forward_codegen=False,
-            skip_reverse_codegen=False,
-            custom_reverse_mode=False,
-            custom_reverse_num_input_args=-1,
-            forced_func_name=None
+        adj,
+        func,
+        overload_annotations=None,
+        skip_forward_codegen=False,
+        skip_reverse_codegen=False,
+        custom_reverse_mode=False,
+        custom_reverse_num_input_args=-1,
+        forced_func_name=None,
+        transformers: List[ast.NodeTransformer]=[],
     ):
         adj.func = func
 
@@ -348,8 +376,10 @@ class Adjoint:
         # extract name of source file
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
 
-        # build AST
+        # build AST and apply node transformers
         adj.tree = ast.parse(adj.source)
+        for transformer in transformers:
+            adj.tree = transformer.visit(adj.tree)
 
         adj.fun_name = adj.tree.body[0].name
 
@@ -628,6 +658,7 @@ class Adjoint:
         else:
             # user-defined function
             arg_types = [a.type for a in args]
+
             resolved_func = func.get_overload(arg_types)
 
         if resolved_func is None:
@@ -1816,31 +1847,6 @@ void {name}_cpu_kernel_backward(
 
 """
 
-cuda_module_template = """
-
-extern "C" {{
-
-// Python entry points
-WP_API void {name}_cuda_forward(
-    void* stream,
-    {forward_args})
-{{
-    {name}_cuda_kernel_forward<<<(dim.size + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(
-            {forward_params});
-}}
-
-WP_API void {name}_cuda_backward(
-    void* stream,
-    {reverse_args})
-{{
-    {name}_cuda_kernel_backward<<<(dim.size + 256 - 1) / 256, 256, 0, (cudaStream_t)stream>>>(
-            {reverse_params});
-}}
-
-}} // extern C
-
-"""
-
 cpu_module_template = """
 
 extern "C" {{
@@ -1995,8 +2001,11 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
     # reverse args
     for label, var in struct.vars.items():
-        reverse_args.append(var.ctype() + " const& adj_" + label)
-        reverse_body.append(f"{indent_block}adj_ret.{label} = adj_{label};\n")
+        reverse_args.append(var.ctype() + " & adj_" + label)
+        if is_array(var.type):
+            reverse_body.append(f"adj_{label} = {indent_block}adj_ret.{label};\n")
+        else:
+            reverse_body.append(f"adj_{label} += {indent_block}adj_ret.{label};\n")
 
     reverse_args.append(name + " & adj_ret")
 
@@ -2109,7 +2118,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     return s
 
 
-def codegen_func(adj, device="cpu"):
+def codegen_func(adj, name, device="cpu", options={}):
     # forward header
     if adj.return_var is not None and len(adj.return_var) == 1:
         return_type = adj.return_var[0].ctype()
@@ -2246,6 +2255,9 @@ def codegen_kernel(kernel, device, options):
 
 
 def codegen_module(kernel, device="cpu"):
+    if device != "cpu":
+        return ""
+
     adj = kernel.adj
 
     # build forward signature
@@ -2279,14 +2291,7 @@ def codegen_module(kernel, device="cpu"):
             reverse_args.append(f"{arg.ctype()} adj_{arg.label}")
             reverse_params.append(f"adj_{arg.label}")
 
-    if device == "cpu":
-        template = cpu_module_template
-    elif device == "cuda":
-        template = cuda_module_template
-    else:
-        raise ValueError("Device {} is not supported".format(device))
-
-    s = template.format(
+    s = cpu_module_template.format(
         name=kernel.get_mangled_name(),
         forward_args=indent(forward_args),
         reverse_args=indent(reverse_args),

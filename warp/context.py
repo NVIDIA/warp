@@ -72,7 +72,9 @@ class Function:
         skip_reverse_codegen=False,
         overwrite_func_name_by_key=False,
         custom_reverse_num_input_args=-1,
-        custom_reverse_mode=False
+        custom_reverse_mode=False,
+        overloaded_annotations=None,
+        code_transformers=[],
     ):
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -127,7 +129,10 @@ class Function:
                 skip_reverse_codegen=skip_reverse_codegen,
                 forced_func_name=forced_func_name,
                 custom_reverse_num_input_args=custom_reverse_num_input_args,
-                custom_reverse_mode=custom_reverse_mode)
+                custom_reverse_mode=custom_reverse_mode,
+                overload_annotations=overloaded_annotations,
+                transformers=code_transformers
+            )
 
             # record input types
             for name, type in self.adj.arg_types.items():
@@ -176,7 +181,7 @@ class Function:
                     continue
 
                 # try and find builtin in the warp.dll
-                if hasattr(warp.context.runtime.core, f.mangled_name) == False:
+                if not hasattr(warp.context.runtime.core, f.mangled_name):
                     raise RuntimeError(
                         f"Couldn't find function {self.key} with mangled name {f.mangled_name} in the Warp native library"
                     )
@@ -282,10 +287,37 @@ class Function:
             else:
                 raise RuntimeError(f"Error calling function '{f.key}'.")
 
+        elif hasattr(self, "user_overloads") and len(self.user_overloads):
+            # user-defined function with overloads
+
+            if len(kwargs):
+                raise RuntimeError(
+                    f"Error calling function '{self.key}', keyword arguments are not supported for user-defined overloads."
+                )
+
+            # try and find a matching overload
+            for f in self.user_overloads.values():
+                if len(f.input_types) != len(args):
+                    continue
+                template_types = list(f.input_types.values())
+                arg_names = list(f.input_types.keys())
+                try:
+                    # attempt to unify argument types with function template types
+                    warp.types.infer_argument_types(args, template_types, arg_names)
+                    return f.func(*args)
+                except Exception:
+                    continue
+
+            raise RuntimeError(f"Error calling function '{self.key}', no overload found for arguments {args}")
+
         else:
-            raise RuntimeError(
-                f"Error, functions decorated with @wp.func can only be called from within Warp kernels (trying to call {self.key}())"
-            )
+            # user-defined function with no overloads
+
+            if self.func is None:
+                raise RuntimeError(f"Error calling function '{self.key}', function is undefined")
+
+            # this function has no overloads, call it like a plain Python function
+            return self.func(*args, **kwargs)
 
     def is_builtin(self):
         return self.func is None
@@ -465,13 +497,13 @@ class KernelHooks:
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
-    def __init__(self, func, key, module, options=None):
+    def __init__(self, func, key, module, options=None, code_transformers=[]):
         self.func = func
         self.module = module
         self.key = key
         self.options = {} if options is None else options
 
-        self.adj = warp.codegen.Adjoint(func)
+        self.adj = warp.codegen.Adjoint(func, transformers=code_transformers)
 
         # check if generic
         self.is_generic = False
@@ -499,44 +531,8 @@ class Kernel:
             raise RuntimeError(f"Invalid number of arguments for kernel {self.key}")
 
         arg_names = list(self.adj.arg_types.keys())
-        arg_types = []
 
-        for i in range(len(args)):
-            arg = args[i]
-            arg_type = type(arg)
-            if arg_type in warp.types.array_types:
-                arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
-            elif arg_type in warp.types.scalar_types:
-                arg_types.append(arg_type)
-            elif arg_type in [int, float]:
-                # canonicalize type
-                arg_types.append(warp.types.type_to_warp(arg_type))
-            elif hasattr(arg_type, "_wp_scalar_type_"):
-                # vector/matrix type
-                arg_types.append(arg_type)
-            elif issubclass(arg_type, warp.codegen.StructInstance):
-                # a struct
-                arg_types.append(arg._struct_)
-            # elif arg_type in [warp.types.launch_bounds_t, warp.types.shape_t, warp.types.range_t]:
-            #     arg_types.append(arg_type)
-            # elif arg_type in [warp.hash_grid_query_t, warp.mesh_query_aabb_t, warp.bvh_query_t]:
-            #     arg_types.append(arg_type)
-            elif arg is None:
-                # allow passing None for arrays
-                t = template_types[i]
-                if warp.types.is_array(t):
-                    arg_types.append(type(t)(dtype=t.dtype, ndim=t.ndim))
-                else:
-                    raise TypeError(
-                        f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got None"
-                    )
-            else:
-                # TODO: attempt to figure out if it's a vector/matrix type given as a numpy array, list, etc.
-                raise TypeError(
-                    f"Unable to infer the type of argument '{arg_names[i]}' for kernel {self.key}, got {arg_type}"
-                )
-
-        return arg_types
+        return warp.types.infer_argument_types(args, template_types, arg_names)
 
     def add_overload(self, arg_types):
         if len(arg_types) != len(self.adj.arg_types):
@@ -991,6 +987,8 @@ class ModuleBuilder:
             for var in s.vars.values():
                 if isinstance(var.type, warp.codegen.Struct):
                     stack.append(var.type)
+                elif isinstance(var.type, warp.types.array) and isinstance(var.type.dtype, warp.codegen.Struct):
+                    stack.append(var.type.dtype)
 
         # Build them in reverse to generate a correct dependency order.
         for s in reversed(structs):
@@ -1031,56 +1029,34 @@ class ModuleBuilder:
             # use dict to preserve import order
             self.functions[func] = None
 
-    def codegen_cpu(self):
-        cpp_source = ""
+    def codegen(self, device):
+        source = ""
 
         # code-gen structs
         for struct in self.structs.keys():
-            cpp_source += warp.codegen.codegen_struct(struct)
+            source += warp.codegen.codegen_struct(struct)
 
         # code-gen all imported functions
         for func in self.functions.keys():
-            cpp_source += warp.codegen.codegen_func(func.adj, device="cpu")
+            source += warp.codegen.codegen_func(func.adj, name=func.key, device=device, options=self.options)
 
         for kernel in self.module.kernels.values():
             # each kernel gets an entry point in the module
             if not kernel.is_generic:
-                cpp_source += warp.codegen.codegen_kernel(kernel, device="cpu", options=self.options)
-                cpp_source += warp.codegen.codegen_module(kernel, device="cpu")
+                source += warp.codegen.codegen_kernel(kernel, device=device, options=self.options)
+                source += warp.codegen.codegen_module(kernel, device=device)
             else:
                 for k in kernel.overloads.values():
-                    cpp_source += warp.codegen.codegen_kernel(k, device="cpu", options=self.options)
-                    cpp_source += warp.codegen.codegen_module(k, device="cpu")
+                    source += warp.codegen.codegen_kernel(k, device=device, options=self.options)
+                    source += warp.codegen.codegen_module(k, device=device)
 
         # add headers
-        cpp_source = warp.codegen.cpu_module_header + cpp_source
+        if device == "cpu":
+            source = warp.codegen.cpu_module_header + source
+        else:
+            source = warp.codegen.cuda_module_header + source
 
-        return cpp_source
-
-    def codegen_cuda(self):
-        cu_source = ""
-
-        # code-gen structs
-        for struct in self.structs.keys():
-            cu_source += warp.codegen.codegen_struct(struct)
-
-        # code-gen all imported functions
-        for func in self.functions.keys():
-            cu_source += warp.codegen.codegen_func(func.adj, device="cuda")
-
-        for kernel in self.module.kernels.values():
-            if not kernel.is_generic:
-                cu_source += warp.codegen.codegen_kernel(kernel, device="cuda", options=self.options)
-                cu_source += warp.codegen.codegen_module(kernel, device="cuda")
-            else:
-                for k in kernel.overloads.values():
-                    cu_source += warp.codegen.codegen_kernel(k, device="cuda", options=self.options)
-                    cu_source += warp.codegen.codegen_module(k, device="cuda")
-
-        # add headers
-        cu_source = warp.codegen.cuda_module_header + cu_source
-
-        return cu_source
+        return source
 
 
 # -----------------------------------------------------
@@ -1099,7 +1075,6 @@ class Module:
         self.constants = []
         self.structs = {}
 
-        self.dll = None
         self.cpu_module = None
         self.cuda_modules = {}  # module lookup by CUDA context
 
@@ -1224,6 +1199,11 @@ class Module:
 
             return getattr(obj, "__annotations__", {})
 
+        def get_type_name(type_hint):
+            if isinstance(type_hint, warp.codegen.Struct):
+                return get_type_name(type_hint.cls)
+            return type_hint
+
         def hash_recursive(module, visited):
             # Hash this module, including all referenced modules recursively.
             # The visited set tracks modules already visited to avoid circular references.
@@ -1236,7 +1216,8 @@ class Module:
                 # struct source
                 for struct in module.structs.values():
                     s = ",".join(
-                        "{}: {}".format(name, type_hint) for name, type_hint in get_annotations(struct.cls).items()
+                        "{}: {}".format(name, get_type_name(type_hint))
+                        for name, type_hint in get_annotations(struct.cls).items()
                     )
                     ch.update(bytes(s, "utf-8"))
 
@@ -1293,8 +1274,6 @@ class Module:
 
         if device.is_cpu:
             # check if already loaded
-            if self.dll:
-                return True
             if self.cpu_module:
                 return True
             # avoid repeated build attempts
@@ -1323,84 +1302,49 @@ class Module:
 
             module_name = "wp_" + self.name
             module_path = os.path.join(build_path, module_name)
-            obj_path = os.path.join(gen_path, module_name)
             module_hash = self.hash_module()
 
             builder = ModuleBuilder(self, self.options)
 
             if device.is_cpu:
-                if runtime.llvm:
-                    if os.name == "nt":
-                        dll_path = obj_path + ".cpp.obj"
-                    else:
-                        dll_path = obj_path + ".cpp.o"
-                else:
-                    if os.name == "nt":
-                        dll_path = module_path + ".dll"
-                    else:
-                        dll_path = module_path + ".so"
-
+                obj_path = os.path.join(build_path, module_name)
+                obj_path = obj_path + ".o"
                 cpu_hash_path = module_path + ".cpu.hash"
 
                 # check cache
-                if warp.config.cache_kernels and os.path.isfile(cpu_hash_path) and os.path.isfile(dll_path):
+                if warp.config.cache_kernels and os.path.isfile(cpu_hash_path) and os.path.isfile(obj_path):
                     with open(cpu_hash_path, "rb") as f:
                         cache_hash = f.read()
 
                     if cache_hash == module_hash:
-                        if runtime.llvm:
-                            runtime.llvm.load_obj(dll_path.encode("utf-8"), module_name.encode("utf-8"))
-                            self.cpu_module = module_name
-                            return True
-                        else:
-                            self.dll = warp.build.load_dll(dll_path)
-                            if self.dll is not None:
-                                return True
+                        runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
+                        self.cpu_module = module_name
+                        return True
 
                 # build
                 try:
                     cpp_path = os.path.join(gen_path, module_name + ".cpp")
 
                     # write cpp sources
-                    cpp_source = builder.codegen_cpu()
+                    cpp_source = builder.codegen("cpu")
 
                     cpp_file = open(cpp_path, "w")
                     cpp_file.write(cpp_source)
                     cpp_file.close()
 
-                    bin_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bin")
-                    if os.name == "nt":
-                        libs = ["warp.lib", f'/LIBPATH:"{bin_path}"']
-                        libs.append("/NOENTRY")
-                        libs.append("/NODEFAULTLIB")
-                    elif sys.platform == "darwin":
-                        libs = [f"-lwarp", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
-                    else:
-                        libs = ["-l:warp.so", f"-L{bin_path}", f"-Wl,-rpath,'{bin_path}'"]
-
-                    # build DLL or object code
+                    # build object code
                     with warp.utils.ScopedTimer("Compile x86", active=warp.config.verbose):
-                        warp.build.build_dll(
-                            dll_path,
-                            [cpp_path],
-                            None,
-                            libs,
+                        warp.build.build_cpu(
+                            obj_path,
+                            cpp_path,
                             mode=self.options["mode"],
                             fast_math=self.options["fast_math"],
                             verify_fp=warp.config.verify_fp,
                         )
 
-                    if runtime.llvm:
-                        # load the object code
-                        obj_ext = ".obj" if os.name == "nt" else ".o"
-                        obj_path = cpp_path + obj_ext
-                        runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
-                        self.cpu_module = module_name
-                    else:
-                        # load the DLL
-                        self.dll = warp.build.load_dll(dll_path)
-                        if self.dll is None:
-                            raise Exception("Failed to load CPU module")
+                    # load the object code
+                    runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
+                    self.cpu_module = module_name
 
                     # update cpu hash
                     with open(cpu_hash_path, "wb") as f:
@@ -1450,7 +1394,7 @@ class Module:
                     cu_path = os.path.join(gen_path, module_name + ".cu")
 
                     # write cuda sources
-                    cu_source = builder.codegen_cuda()
+                    cu_source = builder.codegen("cuda")
 
                     cu_file = open(cu_path, "w")
                     cu_file.write(cu_source)
@@ -1485,10 +1429,6 @@ class Module:
             return True
 
     def unload(self):
-        if self.dll:
-            warp.build.unload_dll(self.dll)
-            self.dll = None
-
         if self.cpu_module:
             runtime.llvm.unload_obj(self.cpu_module.encode("utf-8"))
             self.cpu_module = None
@@ -1523,17 +1463,13 @@ class Module:
         name = kernel.get_mangled_name()
 
         if device.is_cpu:
-            if self.cpu_module:
-                func = ctypes.CFUNCTYPE(None)
-                forward = func(
-                    runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))
-                )
-                backward = func(
-                    runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))
-                )
-            else:
-                forward = eval("self.dll." + name + "_cpu_forward")
-                backward = eval("self.dll." + name + "_cpu_backward")
+            func = ctypes.CFUNCTYPE(None)
+            forward = func(
+                runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_forward").encode("utf-8"))
+            )
+            backward = func(
+                runtime.llvm.lookup(self.cpu_module.encode("utf-8"), (name + "_cpu_backward").encode("utf-8"))
+            )
         else:
             cu_module = self.cuda_modules[device.context]
             forward = runtime.core.cuda_get_kernel(
@@ -1863,10 +1799,10 @@ class Runtime:
             warp_lib = os.path.join(bin_path, "warp.so")
             llvm_lib = os.path.join(bin_path, "warp-clang.so")
 
-        self.core = warp.build.load_dll(warp_lib)
+        self.core = self.load_dll(warp_lib)
 
         if llvm_lib and os.path.exists(llvm_lib):
-            self.llvm = warp.build.load_dll(llvm_lib)
+            self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
             self.llvm.lookup.restype = ctypes.c_uint64
         else:
@@ -1937,10 +1873,94 @@ class Runtime:
         ]
         self.core.array_copy_device.restype = ctypes.c_size_t
 
+        self.core.array_sum_double_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_float_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_double_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_sum_float_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+
+        self.core.array_inner_double_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_float_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_double_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        self.core.array_inner_float_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+
         self.core.array_scan_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
         self.core.array_scan_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
         self.core.array_scan_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
         self.core.array_scan_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int, ctypes.c_bool]
+
+        self.core.radix_sort_pairs_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+        self.core.radix_sort_pairs_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+
+        self.core.runlength_encode_int_host.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+        ]
+        self.core.runlength_encode_int_device.argtypes = [
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_int,
+        ]
 
         self.core.bvh_create_host.restype = ctypes.c_uint64
         self.core.bvh_create_host.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
@@ -1961,6 +1981,7 @@ class Runtime:
             warp.types.array_t,
             ctypes.c_int,
             ctypes.c_int,
+            ctypes.c_int,
         ]
 
         self.core.mesh_create_device.restype = ctypes.c_uint64
@@ -1969,6 +1990,7 @@ class Runtime:
             warp.types.array_t,
             warp.types.array_t,
             warp.types.array_t,
+            ctypes.c_int,
             ctypes.c_int,
             ctypes.c_int,
         ]
@@ -2082,6 +2104,46 @@ class Runtime:
             ctypes.POINTER(ctypes.c_float),
             ctypes.POINTER(ctypes.c_float),
         ]
+
+        bsr_matrix_from_triplets_argtypes = [
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+        ]
+        self.core.bsr_matrix_from_triplets_float_host.argtypes = bsr_matrix_from_triplets_argtypes
+        self.core.bsr_matrix_from_triplets_double_host.argtypes = bsr_matrix_from_triplets_argtypes
+        self.core.bsr_matrix_from_triplets_float_device.argtypes = bsr_matrix_from_triplets_argtypes
+        self.core.bsr_matrix_from_triplets_double_device.argtypes = bsr_matrix_from_triplets_argtypes
+
+        self.core.bsr_matrix_from_triplets_float_host.restype = ctypes.c_int
+        self.core.bsr_matrix_from_triplets_double_host.restype = ctypes.c_int
+        self.core.bsr_matrix_from_triplets_float_device.restype = ctypes.c_int
+        self.core.bsr_matrix_from_triplets_double_device.restype = ctypes.c_int
+
+        bsr_transpose_argtypes = [
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+            ctypes.c_uint64,
+        ]
+        self.core.bsr_transpose_float_host.argtypes = bsr_transpose_argtypes
+        self.core.bsr_transpose_double_host.argtypes = bsr_transpose_argtypes
+        self.core.bsr_transpose_float_device.argtypes = bsr_transpose_argtypes
+        self.core.bsr_transpose_double_device.argtypes = bsr_transpose_argtypes
 
         self.core.is_cuda_enabled.argtypes = None
         self.core.is_cuda_enabled.restype = ctypes.c_int
@@ -2315,6 +2377,16 @@ class Runtime:
         # global tape
         self.tape = None
 
+    def load_dll(self, dll_path):
+        try:
+            if sys.version_info[0] > 3 or sys.version_info[0] == 3 and sys.version_info[1] >= 8:
+                dll = ctypes.CDLL(dll_path, winmode=0)
+            else:
+                dll = ctypes.CDLL(dll_path)
+        except OSError:
+            raise RuntimeError(f"Failed to load the shared library '{dll_path}'")
+        return dll
+
     def get_device(self, ident: Devicelike = None) -> Device:
         if isinstance(ident, Device):
             return ident
@@ -2430,15 +2502,7 @@ def assert_initialized():
 
 # global entry points
 def is_cpu_available():
-    if runtime.llvm:
-        return True
-
-    # initialize host build env (do this lazily) since
-    # it takes 5secs to run all the batch files to locate MSVC
-    if warp.config.host_compiler is None:
-        warp.config.host_compiler = warp.build.find_host_compiler()
-
-    return warp.config.host_compiler != ""
+    return runtime.llvm
 
 
 def is_cuda_available():
@@ -2833,6 +2897,202 @@ def from_numpy(arr, dtype, device: Devicelike = None, requires_grad=False):
     return warp.array(data=arr, dtype=dtype, device=device, requires_grad=requires_grad)
 
 
+# given a kernel destination argument type and a value convert
+#  to a c-type that can be passed to a kernel
+def pack_arg(arg_type, arg_name, value, device, adjoint=False):
+    if warp.types.is_array(arg_type):
+        if value is None:
+            # allow for NULL arrays
+            return arg_type.__ctype__()
+
+        else:
+            # check for array type
+            # - in forward passes, array types have to match
+            # - in backward passes, indexed array gradients are regular arrays
+            if adjoint:
+                array_matches = type(value) == warp.array
+            else:
+                array_matches = type(value) == type(arg_type)
+
+            if not array_matches:
+                adj = "adjoint " if adjoint else ""
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {type(arg_type)}, but passed value has type {type(value)}."
+                )
+
+            # check subtype
+            if not warp.types.types_equal(value.dtype, arg_type.dtype):
+                adj = "adjoint " if adjoint else ""
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={value.dtype}."
+                )
+
+            # check dimensions
+            if value.ndim != arg_type.ndim:
+                adj = "adjoint " if adjoint else ""
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {value.ndim} dimension(s)."
+                )
+
+            # check device
+            # if a.device != device and not device.can_access(a.device):
+            if value.device != device:
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={value.device}."
+                )
+
+            return value.__ctype__()
+
+    elif isinstance(arg_type, warp.codegen.Struct):
+        assert value is not None
+        return value.__ctype__()
+
+    # try to convert to a value type (vec3, mat33, etc)
+    elif issubclass(arg_type, ctypes.Array):
+        if warp.types.types_equal(type(value), arg_type):
+            return value
+        else:
+            # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
+            try:
+                return arg_type(value)
+            except:
+                raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
+
+    elif isinstance(value, bool):
+        return ctypes.c_bool(value)
+
+    elif isinstance(value, arg_type):
+        try:
+            # try to pack as a scalar type
+            return arg_type._type_(value.value)
+        except:
+            raise RuntimeError(
+                f"Error launching kernel, unable to pack kernel parameter type {type(value)} for param {arg_name}, expected {arg_type}"
+            )
+
+    else:
+        try:
+            # try to pack as a scalar type
+            return arg_type._type_(value)
+        except Exception as e:
+            print(e)
+            raise RuntimeError(
+                f"Error launching kernel, unable to pack kernel parameter type {type(value)} for param {arg_name}, expected {arg_type}"
+            )
+
+
+# represents all data required for a kernel launch
+# so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
+class Launch:
+
+    def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None):
+
+        # if not specified look up hooks
+        if not hooks:
+            module = kernel.module
+            if not module.load(device):
+                return
+            
+            hooks = module.get_kernel_hooks(kernel, device)
+
+        # if not specified set a zero bound
+        if not bounds:
+            bounds = warp.types.launch_bounds_t(0)
+
+        # if not specified then build a list of default value params for args
+        if not params:
+            
+            params = []
+            params.append(bounds)
+            
+            for a in kernel.adj.args:
+                
+                if isinstance(a.type, warp.types.array):
+                    params.append(a.type.__ctype__())
+                elif isinstance(a.type, warp.codegen.Struct):
+                    params.append(a.type().__ctype__())
+                else:
+                    params.append(pack_arg(a.type, a.label, 0, device, False))
+
+            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
+            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+
+            params_addr = kernel_params
+
+        self.kernel = kernel
+        self.hooks = hooks
+        self.params = params
+        self.params_addr = params_addr
+        self.device = device
+        self.bounds = bounds
+
+    def set_dim(self, dim):
+        self.bounds = warp.types.launch_bounds_t(dim)
+
+        # launch bounds always at index 0
+        self.params[0] = self.bounds
+
+        # for CUDA kernels we need to update the address to each arg
+        if self.params_addr:
+            self.params_addr[0] = ctypes.c_void_p(ctypes.addressof(self.bounds))
+
+    # set kernel param at an index, will convert to ctype as necessary
+    def set_param_at_index(self, index, value):
+        arg_type = self.kernel.adj.args[index].type
+        arg_name = self.kernel.adj.args[index].label
+
+        carg = pack_arg(arg_type, arg_name, value, self.device, False)
+
+        self.params[index + 1] = carg
+
+        # for CUDA kernels we need to update the address to each arg
+        if self.params_addr:
+            self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(carg))
+
+    # set kernel param at an index without any type conversion
+    # args must be passed as ctypes or basic int / float types
+    def set_param_at_index_from_ctype(self, index, value):
+        if isinstance(value, ctypes.Structure):
+            # not sure how to directly assign struct->struct without reallocating using ctypes
+            self.params[index + 1] = value
+
+            # for CUDA kernels we need to update the address to each arg
+            if self.params_addr:
+                self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(value))
+
+        else:
+            self.params[index + 1].__init__(value)
+
+    # set kernel param by argument name
+    def set_param_by_name(self, name, value):
+        for i, arg in enumerate(self.kernel.adj.args):
+            if arg.label == name:
+                self.set_param_at_index(i, value)
+
+    # set kernel param by argument name with no type conversions
+    def set_param_by_name_from_ctype(self, name, value):
+        # lookup argument index
+        for i, arg in enumerate(self.kernel.adj.args):
+            if arg.label == name:
+                self.set_param_at_index_from_ctype(i, value)
+
+    # set all params
+    def set_params(self, values):
+        for i, v in enumerate(values):
+            self.set_param_at_index(i, v)
+
+    # set all params without performing type-conversions
+    def set_params_from_ctypes(self, values):
+        for i, v in enumerate(values):
+            self.set_param_at_index_from_ctype(i, v)
+
+    def launch(self) -> Any:
+        if self.device.is_cpu:
+            self.hooks.forward(*self.params)
+        else:
+            runtime.core.cuda_launch_kernel(self.device.context, self.hooks.forward, self.bounds.size, self.params_addr)
+
+
 def launch(
     kernel,
     dim: Tuple[int],
@@ -2844,6 +3104,7 @@ def launch(
     stream: Stream = None,
     adjoint=False,
     record_tape=True,
+    record_cmd=False,
 ):
     """Launch a Warp kernel on the target device
 
@@ -2859,6 +3120,8 @@ def launch(
         device: The device to launch on (optional)
         stream: The stream to launch on (optional)
         adjoint: Whether to run forward or backward pass (typically use False)
+        record_tape: When true the launch will be recorded the global wp.Tape() object when present
+        record_cmd: When True the launch will be returned as a ``Launch`` command object, the launch will not occur until the user calls ``cmd.launch()``
     """
 
     assert_initialized()
@@ -2891,85 +3154,7 @@ def launch(
                 arg_type = kernel.adj.args[i].type
                 arg_name = kernel.adj.args[i].label
 
-                if warp.types.is_array(arg_type):
-                    if a is None:
-                        # allow for NULL arrays
-                        params.append(arg_type.__ctype__())
-
-                    else:
-                        # check for array type
-                        # - in forward passes, array types have to match
-                        # - in backward passes, indexed array gradients are regular arrays
-                        if adjoint:
-                            array_matches = type(a) == warp.array
-                        else:
-                            array_matches = type(a) == type(arg_type)
-
-                        if not array_matches:
-                            adj = "adjoint " if adjoint else ""
-                            raise RuntimeError(
-                                f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {type(arg_type)}, but passed value has type {type(a)}."
-                            )
-
-                        # check subtype
-                        if not warp.types.types_equal(a.dtype, arg_type.dtype):
-                            adj = "adjoint " if adjoint else ""
-                            raise RuntimeError(
-                                f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with dtype={arg_type.dtype} but passed array has dtype={a.dtype}."
-                            )
-
-                        # check dimensions
-                        if a.ndim != arg_type.ndim:
-                            adj = "adjoint " if adjoint else ""
-                            raise RuntimeError(
-                                f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {a.ndim} dimension(s)."
-                            )
-
-                        # check device
-                        # if a.device != device and not device.can_access(a.device):
-                        if a.device != device:
-                            raise RuntimeError(
-                                f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={a.device}."
-                            )
-
-                        params.append(a.__ctype__())
-
-                elif isinstance(arg_type, warp.codegen.Struct):
-                    assert a is not None
-                    params.append(a.__ctype__())
-
-                # try to convert to a value type (vec3, mat33, etc)
-                elif issubclass(arg_type, ctypes.Array):
-                    if warp.types.types_equal(type(a), arg_type):
-                        params.append(a)
-                    else:
-                        # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
-                        try:
-                            params.append(arg_type(a))
-                        except:
-                            raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}")
-
-                elif isinstance(a, bool):
-                    params.append(ctypes.c_bool(a))
-
-                elif isinstance(a, arg_type):
-                    try:
-                        # try to pack as a scalar type
-                        params.append(arg_type._type_(a.value))
-                    except:
-                        raise RuntimeError(
-                            f"Error launching kernel, unable to pack kernel parameter type {type(a)} for param {arg_name}, expected {arg_type}"
-                        )
-
-                else:
-                    try:
-                        # try to pack as a scalar type
-                        params.append(arg_type._type_(a))
-                    except Exception as e:
-                        print(e)
-                        raise RuntimeError(
-                            f"Error launching kernel, unable to pack kernel parameter type {type(a)} for param {arg_name}, expected {arg_type}"
-                        )
+                params.append(pack_arg(arg_type, arg_name, a, device, adjoint))
 
         fwd_args = inputs + outputs
         adj_args = adj_inputs + adj_outputs
@@ -3011,7 +3196,16 @@ def launch(
                         f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                     )
 
-                hooks.forward(*params)
+                if record_cmd:
+                    launch = Launch(kernel=kernel,
+                                    hooks=hooks,
+                                    params=params,
+                                    params_addr=None,
+                                    bounds=bounds,
+                                    device=device)
+                    return launch
+                else:
+                    hooks.forward(*params)
 
         else:
             kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
@@ -3032,7 +3226,19 @@ def launch(
                             f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                         )
 
-                    runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
+                    if record_cmd:
+
+                        launch = Launch(kernel=kernel, 
+                                        hooks=hooks,
+                                        params=params, 
+                                        params_addr=kernel_params,
+                                        bounds=bounds,
+                                        device=device)
+                        return launch
+
+                    else:
+                        # launch
+                        runtime.core.cuda_launch_kernel(device.context, hooks.forward, bounds.size, kernel_params)
 
                 try:
                     runtime.verify_cuda_device(device)
