@@ -2845,14 +2845,49 @@ def pack_arg(arg_type, arg_name, value, device, adjoint=False):
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
 
-    def __init__(self, kernel, hooks, params, params_addr, bounds, device):
+    def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None):
+
+        # if not specified look up hooks
+        if not hooks:
+            module = kernel.module
+            if not module.load(device):
+                return
+            
+            hooks = module.get_kernel_hooks(kernel, device)
+
+        # if not specified set a zero bound
+        if not bounds:
+            bounds = warp.types.launch_bounds_t(0)
+
+        # if not specified then build a list of default value params for args
+        if not params:
+            
+            params = []
+            params.append(bounds)
+            
+            for a in kernel.adj.args:
+                
+                if isinstance(a.type, warp.types.array):
+                    params.append(a.type.__ctype__())
+                elif isinstance(a.type, warp.codegen.Struct):
+                    params.append(a.type().__ctype__())
+                else:
+                    params.append(pack_arg(a.type, a.label, 0, device, False))
+
+            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
+            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+
+            params_addr = kernel_params
+
         self.kernel = kernel
         self.hooks = hooks
         self.params = params
         self.params_addr = params_addr
         self.device = device
         self.bounds = bounds
-       
+
+
+
     def set_dim(self, dim):
         self.bounds = warp.types.launch_bounds_t(dim)
        
@@ -2903,7 +2938,7 @@ class Launch:
         # lookup argument index
         for i, arg in enumerate(self.kernel.adj.args):
             if arg.label == name:
-                self.set_ctype_at_index(i, value)
+                self.set_param_at_index_from_ctype(i, value)
 
     # set all params
     def set_params(self, values):
@@ -2911,9 +2946,9 @@ class Launch:
             self.set_param_at_index(i, v)
 
     # set all params without performing type-conversions
-    def set_param_from_ctypes(self, values):
+    def set_params_from_ctypes(self, values):
         for i, v in enumerate(values):
-            self.set_ctype_at_index(i, v)
+            self.set_param_at_index_from_ctype(i, v)
 
     def launch(self) -> Any:
 
@@ -3029,7 +3064,12 @@ def launch(
                     )
                 
                 if record_cmd:
-                    launch = Launch(kernel, hooks, params, None, bounds, device)
+                    launch = Launch(kernel=kernel,
+                                    hooks=hooks,
+                                    params=params,
+                                    params_addr=None,
+                                    bounds=bounds,
+                                    device=device)
                     return launch
                 else:
                     hooks.forward(*params)
@@ -3056,7 +3096,12 @@ def launch(
 
                     if record_cmd:
 
-                        launch = Launch(kernel, hooks, params, kernel_params, bounds, device)
+                        launch = Launch(kernel=kernel, 
+                                        hooks=hooks,
+                                        params=params, 
+                                        params_addr=kernel_params,
+                                        bounds=bounds,
+                                        device=device)
                         return launch
                     
                     else:

@@ -162,7 +162,7 @@ def test_launch_cmd_set_param(test, device):
     cmd.set_param_at_index(2, params.f)
     cmd.set_param_at_index(3, v)
     cmd.set_param_at_index(4, m)
-    cmd.set_param_at_index(5, out)
+    cmd.set_param_by_name("out", out)
 
     cmd.launch()
     
@@ -189,7 +189,7 @@ def test_launch_cmd_set_param(test, device):
     cmd.set_param_at_index(2, params.f)
     cmd.set_param_at_index(3, v)
     cmd.set_param_at_index(4, m)
-    cmd.set_param_at_index(5, out)
+    cmd.set_param_by_name("out", out)
 
     cmd.launch()
     
@@ -228,7 +228,7 @@ def test_launch_cmd_set_ctype(test, device):
     cmd.set_param_at_index_from_ctype(2, params.f)
     cmd.set_param_at_index_from_ctype(3, v)
     cmd.set_param_at_index_from_ctype(4, m)
-    cmd.set_param_at_index_from_ctype(5, out.__ctype__())
+    cmd.set_param_by_name_from_ctype("out", out.__ctype__())
 
     cmd.launch()
 
@@ -264,6 +264,31 @@ def test_launch_cmd_set_dim(test, device):
     assert_np_equal(out.numpy(), ref)
 
 
+def test_launch_cmd_empty(test, device):
+
+    n = 10
+
+    ref = np.arange(0, n, dtype=int)
+    out = wp.zeros(n, dtype=int, device=device)
+
+    cmd = wp.Launch(arange, device)
+    cmd.set_dim(5)
+    cmd.set_param_by_name("out", out)
+
+    cmd.launch()
+
+    # check first half the array is filled while rest is still zero
+    assert_np_equal(out.numpy()[0:5], ref[0:5])
+    assert_np_equal(out.numpy()[5:], np.zeros(5))
+
+    out.zero_()
+
+    cmd.set_dim(10)
+    cmd.launch()
+
+    # check the whole array was filled
+    assert_np_equal(out.numpy(), ref)
+
 def register(parent):
     devices = get_test_devices()
 
@@ -279,6 +304,7 @@ def register(parent):
     add_function_test(TestLaunch, "test_launch_cmd_set_param", test_launch_cmd_set_param, devices=devices)
     add_function_test(TestLaunch, "test_launch_cmd_set_ctype", test_launch_cmd_set_ctype, devices=devices)
     add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim, devices=devices)
+    add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
 
     return TestLaunch
 
