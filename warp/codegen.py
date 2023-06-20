@@ -2134,7 +2134,7 @@ def codegen_func(adj, name, device="cpu", options={}):
     for i, arg in enumerate(adj.args):
         s = f"{arg.ctype()} {arg.emit()}"
         forward_args.append(s)
-        if adj.custom_reverse_num_input_args < 0 or i < adj.custom_reverse_num_input_args:
+        if not adj.custom_reverse_mode or i < adj.custom_reverse_num_input_args:
             reverse_args.append(s)
     if has_multiple_outputs:
         for i, arg in enumerate(adj.return_var):
@@ -2143,7 +2143,7 @@ def codegen_func(adj, name, device="cpu", options={}):
 
     # reverse args
     for i, arg in enumerate(adj.args):
-        if adj.custom_reverse_num_input_args > 0 and i >= adj.custom_reverse_num_input_args:
+        if adj.custom_reverse_mode and i >= adj.custom_reverse_num_input_args:
             break
         # indexed array gradients are regular arrays
         if isinstance(arg.type, indexedarray):
@@ -2157,7 +2157,7 @@ def codegen_func(adj, name, device="cpu", options={}):
     elif return_type != "void":
         reverse_args.append(return_type + " & adj_ret")
     # custom output reverse args (user-declared)
-    if adj.custom_reverse_num_input_args:
+    if adj.custom_reverse_mode:
         for arg in adj.args[adj.custom_reverse_num_input_args:]:
             reverse_args.append(f"{arg.ctype()} & {arg.emit()}")
 
