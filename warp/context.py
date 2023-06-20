@@ -67,6 +67,12 @@ class Function:
         generic=False,
         native_func=None,
         defaults=None,
+        custom_replay_func=None,
+        skip_forward_codegen=False,
+        skip_reverse_codegen=False,
+        overwrite_func_name_by_key=False,
+        custom_reverse_num_input_args=-1,
+        custom_reverse_mode=False
     ):
         self.func = func  # points to Python function decorated with @wp.func, may be None for builtins
         self.key = key
@@ -80,6 +86,8 @@ class Function:
         self.module = module
         self.variadic = variadic  # function can take arbitrary number of inputs, e.g.: printf()
         self.defaults = defaults
+        # Function instance for a custom implementation of the replay pass
+        self.custom_replay_func = custom_replay_func
 
         if initializer_list_func is None:
             self.initializer_list_func = lambda x, y: False
@@ -107,8 +115,19 @@ class Function:
             self.user_templates = {}
             self.user_overloads = {}
 
+            # optionally use the provided key as function name
+            forced_func_name = None
+            if overwrite_func_name_by_key:
+                forced_func_name = key
+
             # user defined (Python) function
-            self.adj = warp.codegen.Adjoint(func)
+            self.adj = warp.codegen.Adjoint(
+                func,
+                skip_forward_codegen=skip_forward_codegen,
+                skip_reverse_codegen=skip_reverse_codegen,
+                forced_func_name=forced_func_name,
+                custom_reverse_num_input_args=custom_reverse_num_input_args,
+                custom_reverse_mode=custom_reverse_mode)
 
             # record input types
             for name, type in self.adj.arg_types.items():
@@ -382,6 +401,61 @@ class Function:
         inputs_str = ", ".join([f"{k}: {v.__name__}" for k, v in self.input_types.items()])
         return f"<Function {self.key}({inputs_str})>"
 
+    def replay(self, func):
+        """Defines a custom function to be called in the forward call part of the backward pass (replay mode).
+        The provided function has to match the signature of one of the original function overloads."""
+        self.custom_replay_func = Function(
+            func,
+            key=f"replay_{self.key}",
+            namespace=self.namespace,
+            input_types=self.input_types,
+            value_func=self.value_func,
+            module=self.module,
+            template_func=self.template_func,
+            skip_reverse_codegen=True,
+            overwrite_func_name_by_key=True)
+
+    def grad(self, func):
+        """Defines a custom gradient function that replaces the default reverse-mode behavior for this function.
+        The function signature must correspond to one of the function overloads in the following way:
+        the first part of the input arguments are the original input variables with the same types as their
+        corresponding arguments in the original function, and the second part of the input arguments are the
+        adjoint variables of the output variables (if available) of the original function with the same types as the
+        output variables. The function must not return anything."""
+        reverse_args = {}
+        reverse_args.update(self.input_types)
+        self.adj.skip_reverse_codegen = True
+
+        self.custom_grad_func = Function(
+            func,
+            key=self.key,
+            namespace=self.namespace,
+            input_types=reverse_args,
+            value_func=None,
+            module=self.module,
+            template_func=self.template_func,
+            skip_forward_codegen=True,
+            overwrite_func_name_by_key=True,
+            custom_reverse_mode=True,
+            custom_reverse_num_input_args=len(self.input_types))
+
+        # resolve return variables
+        self.adj.build(None)
+
+        expected_args = list(self.input_types.items())
+        if self.adj.return_var is not None:
+            expected_args += [(f"adj_ret_{var.label}", var.type) for var in self.adj.return_var]
+
+        from warp.types import types_equal
+
+        grad_args = self.custom_grad_func.adj.args
+        if len(grad_args) != len(expected_args) or any(not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args)):
+            raise RuntimeError(
+                f"Gradient function {func.__qualname__} for function {self.key} has an incorrect signature. The arguments must match the "
+                "forward function arguments plus the adjoint variables corresponding to the return variables:"
+                f"\n{', '.join(map(lambda nt: f'{nt[0]}: {nt[1].__name__}', expected_args))}"
+            )
+
 
 class KernelHooks:
     def __init__(self, forward, backward):
@@ -525,16 +599,25 @@ class Kernel:
 
 
 # decorator to register function, @func
-def func(f):
-    name = warp.codegen.make_full_qualified_name(f)
+def func(f=None, *, skip_reverse_codegen=False):
+    def wrapper(f, *args, **kwargs):
 
-    m = get_module(f.__module__)
-    func = Function(
-        func=f, key=name, namespace="", module=m, value_func=None
-    )  # value_type not known yet, will be inferred during Adjoint.build()
+        name = warp.codegen.make_full_qualified_name(f)
 
-    # return the top of the list of overloads for this key
-    return m.functions[name]
+        m = get_module(f.__module__)
+        func = Function(
+            func=f, key=name, namespace="", module=m, value_func=None,
+            skip_reverse_codegen=skip_reverse_codegen
+        )  # value_type not known yet, will be inferred during Adjoint.build()
+
+        # return the top of the list of overloads for this key
+        return m.functions[name]
+
+    if f is None:
+        # Arguments were passed to the decorator.
+        return wrapper
+
+    return wrapper(f)
 
 
 # decorator to register kernel, @kernel, custom_name may be a string
@@ -884,6 +967,8 @@ class ModuleBuilder:
         for func in module.functions.values():
             for f in func.user_overloads.values():
                 self.build_function(f)
+                if f.custom_replay_func is not None:
+                    self.build_function(f.custom_replay_func)
 
         # build all kernel entry points
         for kernel in module.kernels.values():
