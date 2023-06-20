@@ -22,11 +22,21 @@ if [ ! -f "$PACKMAN_CMD" ]; then
 fi
 source "$PACKMAN_CMD" init
 export PYTHONPATH="${PM_MODULE_DIR}:${PYTHONPATH}"
-export PYTHONNOUSERSITE=1
+
+if [ -z "${PYTHONNOUSERSITE:-}" ]; then
+    export PYTHONNOUSERSITE=1
+fi
+
+# For performance, default to unbuffered; however, allow overriding via
+# PYTHONUNBUFFERED=0 since PYTHONUNBUFFERED on windows can truncate output
+# when printing long strings
+if [ -z "${PYTHONUNBUFFERED:-}" ]; then
+    export PYTHONUNBUFFERED=1
+fi
 
 # workaround for our python not shipping with certs
 if [[ -z ${SSL_CERT_DIR:-} ]]; then
     export SSL_CERT_DIR=/etc/ssl/certs/
 fi
 
-"${PM_PYTHON}" -u "$@"
+"${PM_PYTHON}" "$@"
