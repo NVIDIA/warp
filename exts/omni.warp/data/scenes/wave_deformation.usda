@@ -5,7 +5,12 @@
             string boundCamera = "/CameraRoot/Camera"
         }
         dictionary renderSettings = {
-            double "rtx:sceneDb:ambientLightIntensity" = 4
+            bool "rtx:ambientOcclusion:enabled" = 0
+            bool "rtx:directLighting:domeLight:enabled" = 0
+            bool "rtx:indirectDiffuse:enabled" = 0
+            int "rtx:post:dlss:execMode" = 0
+            double "rtx:sceneDb:ambientLightIntensity" = 2
+            bool "rtx:shadows:enabled" = 0
             bool "rtx:translucency:reflectAtAllBounce" = 1
         }
     }
@@ -13,7 +18,7 @@
     endTimeCode = 36000
     metersPerUnit = 0.01
     startTimeCode = 0
-    timeCodesPerSecond = 60
+    timeCodesPerSecond = 120
     upAxis = "Y"
 )
 
@@ -499,12 +504,17 @@ def compute(inputs: Inputs, outputs: Outputs):\r
             {
                 over "Shader"
                 {
-                    color3f inputs:specular_transmission_color = (0.15, 0.4, 0.5) (
+                    color3f inputs:glass_color = (0.05, 0.175, 0.2) (
                         customData = {
                             float3 default = (1, 1, 1)
+                            dictionary range = {
+                                float3 max = (1, 1, 1)
+                                float3 min = (0, 0, 0)
+                            }
                         }
-                        displayGroup = "Transmission"
-                        displayName = "Color"
+                        displayGroup = "Color"
+                        displayName = "Glass Color"
+                        doc = "Sets the color of the glass"
                         hidden = false
                         renderType = "color"
                     )

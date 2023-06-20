@@ -15,65 +15,29 @@ def Xform "World"
         def Shader "Shader"
         {
             uniform token info:implementationSource = "sourceAsset"
-            uniform asset info:mdl:sourceAsset = @OmniSurface.mdl@
-            uniform token info:mdl:sourceAsset:subIdentifier = "OmniSurface"
+            uniform asset info:mdl:sourceAsset = @OmniGlass.mdl@
+            uniform token info:mdl:sourceAsset:subIdentifier = "OmniGlass"
 
-            float inputs:diffuse_reflection_weight = 0 (
+            float inputs:glass_ior = 1.325 (
                 customData = {
-                    float default = 0.8
-                    dictionary range = {
-                        float max = 1
-                        float min = 0
-                    }
-                }
-                displayGroup = "Base"
-                displayName = "Weight"
-                hidden = false
-            )
-            bool inputs:enable_specular_transmission = 1 (
-                customData = {
-                    bool default = 0
-                }
-                displayGroup = "Transmission"
-                displayName = "Enable Transmission"
-                doc = "Enables the use of transmission"
-                hidden = false
-            )
-            float inputs:specular_reflection_ior = 1.325 (
-                customData = {
-                    float default = 1.5
-                    dictionary range = {
-                        float max = 3.4028235e38
-                        float min = 0
-                    }
+                    float default = 1.491
                     dictionary soft_range = {
-                        float max = 5
+                        float max = 4
                         float min = 1
                     }
                 }
-                displayGroup = "Specular"
-                displayName = "IOR"
-                hidden = false
-            )
-            float inputs:specular_transmission_weight = 0.5 (
-                customData = {
-                    float default = 0
-                    dictionary range = {
-                        float max = 1
-                        float min = 0
-                    }
-                }
-                displayGroup = "Transmission"
-                displayName = "Weight"
+                displayGroup = "Refraction"
+                displayName = "Glass IOR"
+                doc = "Sets IOR of the glass material "
                 hidden = false
             )
             bool inputs:thin_walled = 1 (
                 customData = {
                     bool default = 0
                 }
-                displayGroup = "Geometry"
+                displayGroup = "Refraction"
                 displayName = "Thin Walled"
-                doc = "Thin surface with no interior."
+                doc = "When enabled, the material is considered thin-walled. Use this, when you have glass surfaces that are modeled with a single plane"
                 hidden = false
             )
             token outputs:out (

@@ -18,7 +18,7 @@ def Xform "World"
             uniform asset info:mdl:sourceAsset = @OmniPBRBase.mdl@
             uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBRBase"
 
-            float inputs:specular_level = 0.1 (
+            float inputs:specular_level = 0 (
                 customData = {
                     float default = 0.5
                     dictionary soft_range = {
