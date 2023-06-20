@@ -119,7 +119,7 @@ def sample_mesh(
 
     max_dist = 1000.0
 
-    if wp.mesh_query_point(mesh, grid_pos, max_dist, sign, face_index, face_u, face_v):
+    if wp.mesh_query_point_sign_normal(mesh, grid_pos, max_dist, sign, face_index, face_u, face_v):
         p = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
 
         delta = grid_pos - p

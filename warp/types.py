@@ -291,7 +291,6 @@ def matrix(shape, dtype):
                     return False
             return True
 
-
         def get_row(self, r):
             if r < 0 or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
@@ -905,7 +904,7 @@ def type_size_in_bytes(dtype):
         return 4
     elif hasattr(dtype, "_type_"):
         return getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
-    
+
     else:
         return 0
 
@@ -945,7 +944,7 @@ def type_typestr(dtype):
     elif dtype == uint64:
         return "<u8"
     elif isinstance(dtype, Struct):
-        return f"|V{ctypes.sizeof(dtype.ctype)}"        
+        return f"|V{ctypes.sizeof(dtype.ctype)}"
     elif issubclass(dtype, ctypes.Array):
         return type_typestr(dtype._wp_scalar_type_)
     else:
@@ -985,6 +984,7 @@ def type_is_struct(dtype):
         return True
     else:
         return False
+
 
 # returns True if the passed *type* is a vector
 def type_is_vector(t):
@@ -1180,12 +1180,13 @@ class array(Array):
                     ctype_arr = (dtype.ctype * len(ctype_list))(*ctype_list)
                     # convert to numpy
                     arr = np.frombuffer(ctype_arr, dtype=dtype.ctype)
-                    #arr = np.array(ctype_arr, copy=False)
-                
+                    # arr = np.array(ctype_arr, copy=False)
+
                 except Exception as e:
                     raise RuntimeError(
-                        "Error while trying to construct Warp array from a Python list of Warp structs." + str(e))
-                   
+                        "Error while trying to construct Warp array from a Python list of Warp structs." + str(e)
+                    )
+
             else:
                 try:
                     # convert tuples and lists of numeric types to ndarray
@@ -1693,7 +1694,7 @@ class array(Array):
     def cptr(self):
         if self.device != "cpu":
             raise RuntimeError("Accessing array memory through a ctypes ptr is only supported for CPU arrays.")
-        
+
         p = ctypes.cast(self.ptr, ctypes.POINTER(self.dtype.ctype))
 
         # store backref to the underlying array to avoid it being deallocated
@@ -1708,8 +1709,8 @@ class array(Array):
         # Note: cptr holds a backref to the source array to avoid it being deallocated
         p = a.cptr()
 
-        return p[:a.size]
-    
+        return p[: a.size]
+
     # convert data from one device to another, nop if already on device
     def to(self, device):
         device = warp.get_device(device)
@@ -2022,7 +2023,6 @@ class indexedarray(Generic[T]):
     def numpy(self):
         # use the CUDA default stream for synchronous behaviour with other streams
         with warp.ScopedStream(self.device.null_stream):
-
             a = self.contiguous().to("cpu")
 
             if isinstance(self.dtype, warp.codegen.Struct):
@@ -2036,7 +2036,7 @@ class indexedarray(Generic[T]):
     def list(self):
         a = self.flatten()
         p = ctypes.cast(a.ptr, ctypes.POINTER(a.dtype.ctype))
-        return p[:a.size]
+        return p[: a.size]
 
 
 # aliases for indexedarrays with small dimensions
@@ -2145,7 +2145,7 @@ class Mesh:
         "indices": Var("indices", array(dtype=int32)),
     }
 
-    def __init__(self, points=None, indices=None, velocities=None):
+    def __init__(self, points=None, indices=None, velocities=None, support_winding_number=False):
         """Class representing a triangle mesh.
 
         Attributes:
@@ -2156,6 +2156,7 @@ class Mesh:
             points (:class:`warp.array`): Array of vertex positions of type :class:`warp.vec3`
             indices (:class:`warp.array`): Array of triangle indices of type :class:`warp.int32`, should be a 1d array with shape (num_tris, 3)
             velocities (:class:`warp.array`): Array of vertex velocities of type :class:`warp.vec3` (optional)
+            support_winding_number (bool): If true the mesh will build additional datastructures to support `wp.mesh_query_point_sign_winding_number()` queries
         """
 
         if points.device != indices.device:
@@ -2187,6 +2188,7 @@ class Mesh:
                 indices.__ctype__(),
                 int(len(points)),
                 int(indices.size / 3),
+                int(support_winding_number),
             )
         else:
             self.id = runtime.core.mesh_create_device(
@@ -2196,6 +2198,7 @@ class Mesh:
                 indices.__ctype__(),
                 int(len(points)),
                 int(indices.size / 3),
+                int(support_winding_number),
             )
 
     def __del__(self):
@@ -3199,14 +3202,10 @@ def infer_argument_types(args, template_types, arg_names=None):
             if warp.types.is_array(t):
                 arg_types.append(type(t)(dtype=t.dtype, ndim=t.ndim))
             else:
-                raise TypeError(
-                    f"Unable to infer the type of argument '{arg_name}', got None"
-                )
+                raise TypeError(f"Unable to infer the type of argument '{arg_name}', got None")
         else:
             # TODO: attempt to figure out if it's a vector/matrix type given as a numpy array, list, etc.
-            raise TypeError(
-                f"Unable to infer the type of argument '{arg_name}', got {arg_type}"
-            )
+            raise TypeError(f"Unable to infer the type of argument '{arg_name}', got {arg_type}")
 
     return arg_types
 

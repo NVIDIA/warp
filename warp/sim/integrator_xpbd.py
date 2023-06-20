@@ -249,7 +249,7 @@ def solve_particle_particle_contacts(
     # particle contact
     query = wp.hash_grid_query(grid, x, radius + max_radius + k_cohesion)
     index = int(0)
-    
+
     delta = wp.vec3(0.0)
 
     while wp.hash_grid_query_next(query, index):
@@ -258,7 +258,7 @@ def solve_particle_particle_contacts(
             n = x - particle_x[index]
             d = wp.length(n)
             err = d - radius - particle_radius[index]
-            
+
             # compute inverse masses
             w2 = particle_invmass[index]
             denom = w1 + w2
@@ -2009,7 +2009,7 @@ class XPBDIntegrator:
                             outputs=[deltas, state_out.body_deltas],
                             device=model.device,
                         )
-                        
+
                     if model.particle_max_radius > 0.0:
                         wp.launch(
                             kernel=solve_particle_particle_contacts,

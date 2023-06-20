@@ -80,29 +80,28 @@ class Params:
     i: int
     f: float
 
+
 @wp.kernel
 def kernel_cmd(params: Params, i: int, f: float, v: wp.vec3, m: wp.mat33, out: wp.array(dtype=int)):
-
     tid = wp.tid()
 
     wp.expect_eq(params.i, i)
     wp.expect_eq(params.f, f)
-    
+
     wp.expect_eq(i, int(f))
-    
+
     wp.expect_eq(v[0], f)
     wp.expect_eq(v[1], f)
     wp.expect_eq(v[2], f)
-    
-    wp.expect_eq(m[0,0], f)
-    wp.expect_eq(m[1,1], f)
-    wp.expect_eq(m[2,2], f)
-    
+
+    wp.expect_eq(m[0, 0], f)
+    wp.expect_eq(m[1, 1], f)
+    wp.expect_eq(m[2, 2], f)
+
     out[tid] = tid + i
 
 
 def test_launch_cmd(test, device):
-
     n = 1
 
     ref = np.arange(0, n)
@@ -114,9 +113,7 @@ def test_launch_cmd(test, device):
 
     v = wp.vec3(params.f, params.f, params.f)
 
-    m = wp.mat33(params.f, 0.0, 0.0,
-                 0.0, params.f, 0.0,
-                 0.0, 0.0, params.f)
+    m = wp.mat33(params.f, 0.0, 0.0, 0.0, params.f, 0.0, 0.0, 0.0, params.f)
 
     # standard launch
     wp.launch(kernel_cmd, dim=n, inputs=[params, params.i, params.f, v, m, out], device=device)
@@ -125,37 +122,34 @@ def test_launch_cmd(test, device):
 
     # cmd launch
     out.zero_()
-    
+
     cmd = wp.launch(kernel_cmd, dim=n, inputs=[params, params.i, params.f, v, m, out], device=device, record_cmd=True)
-    
+
     cmd.launch()
-    
+
     assert_np_equal(out.numpy(), ref + params.i)
 
-    
-def test_launch_cmd_set_param(test, device):
 
+def test_launch_cmd_set_param(test, device):
     n = 1
 
     ref = np.arange(0, n)
 
-    params = Params()   
+    params = Params()
     v = wp.vec3()
     m = wp.mat33()
-  
+
     cmd = wp.launch(kernel_cmd, dim=n, inputs=[params, 0, 0.0, v, m, None], device=device, record_cmd=True)
 
     # cmd param modification
     out = wp.zeros(n, dtype=int, device=device)
-    
+
     params.i = 13
     params.f = 13.0
 
     v = wp.vec3(params.f, params.f, params.f)
 
-    m = wp.mat33(params.f, 0.0, 0.0,
-                 0.0, params.f, 0.0,
-                 0.0, 0.0, params.f)
+    m = wp.mat33(params.f, 0.0, 0.0, 0.0, params.f, 0.0, 0.0, 0.0, params.f)
 
     cmd.set_param_at_index(0, params)
     cmd.set_param_at_index(1, params.i)
@@ -165,9 +159,8 @@ def test_launch_cmd_set_param(test, device):
     cmd.set_param_by_name("out", out)
 
     cmd.launch()
-    
-    assert_np_equal(out.numpy(), ref + params.i)
 
+    assert_np_equal(out.numpy(), ref + params.i)
 
     # test changing params after launch directly
     # because we now cache the ctypes object inside the wp.struct
@@ -177,14 +170,12 @@ def test_launch_cmd_set_param(test, device):
 
     v = wp.vec3(params.f, params.f, params.f)
 
-    m = wp.mat33(params.f, 0.0, 0.0,
-                 0.0, params.f, 0.0,
-                 0.0, 0.0, params.f)
+    m = wp.mat33(params.f, 0.0, 0.0, 0.0, params.f, 0.0, 0.0, 0.0, params.f)
 
     # this is the line we explicitly leave out to
     # ensure that param changes are reflected in the launch
-    #launch.set_param_at_index(0, params)
-    
+    # launch.set_param_at_index(0, params)
+
     cmd.set_param_at_index(1, params.i)
     cmd.set_param_at_index(2, params.f)
     cmd.set_param_at_index(3, v)
@@ -192,25 +183,24 @@ def test_launch_cmd_set_param(test, device):
     cmd.set_param_by_name("out", out)
 
     cmd.launch()
-    
+
     assert_np_equal(out.numpy(), ref + params.i)
-    
+
 
 def test_launch_cmd_set_ctype(test, device):
-
     n = 1
 
     ref = np.arange(0, n)
 
-    params = Params()   
+    params = Params()
     v = wp.vec3()
     m = wp.mat33()
-  
+
     cmd = wp.launch(kernel_cmd, dim=n, inputs=[params, 0, 0.0, v, m, None], device=device, record_cmd=True)
 
     # cmd param modification
     out = wp.zeros(n, dtype=int, device=device)
-    
+
     # cmd param modification
     out.zero_()
 
@@ -219,9 +209,7 @@ def test_launch_cmd_set_ctype(test, device):
 
     v = wp.vec3(params.f, params.f, params.f)
 
-    m = wp.mat33(params.f, 0.0, 0.0,
-                 0.0, params.f, 0.0,
-                 0.0, 0.0, params.f)
+    m = wp.mat33(params.f, 0.0, 0.0, 0.0, params.f, 0.0, 0.0, 0.0, params.f)
 
     cmd.set_param_at_index_from_ctype(0, params.__ctype__())
     cmd.set_param_at_index_from_ctype(1, params.i)
@@ -234,13 +222,14 @@ def test_launch_cmd_set_ctype(test, device):
 
     assert_np_equal(out.numpy(), ref + params.i)
 
+
 @wp.kernel
 def arange(out: wp.array(dtype=int)):
     tid = wp.tid()
     out[tid] = tid
 
+
 def test_launch_cmd_set_dim(test, device):
-    
     n = 10
 
     ref = np.arange(0, n, dtype=int)
