@@ -61,13 +61,6 @@ def compute(db: OgnGridCreateDatabase) -> None:
 
     state = db.internal_state
 
-    # Set the USD primitive path and type.
-    omni.warp.define_prim_attrs(
-        db.outputs.mesh,
-        "Mesh",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
-
     if state.is_valid and not state.have_setting_attrs_changed(db):
         return
 
@@ -95,6 +88,13 @@ def compute(db: OgnGridCreateDatabase) -> None:
             db.inputs.size.tolist(),
             db.inputs.dims.tolist(),
         )
+
+    # Set the USD primitive path and type.
+    omni.warp.define_prim_attrs(
+        db.outputs.mesh,
+        "Mesh",
+        xform_prim_path=db.inputs.xformPrimPath,
+    )
 
     state.store_setting_attrs(db)
 

@@ -327,13 +327,6 @@ def compute(db: OgnWaveSolveDatabase) -> None:
 
     state = db.internal_state
 
-    # Set the USD primitive path and type.
-    omni.warp.define_prim_attrs(
-        db.outputs.mesh,
-        "Mesh",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
-
     # Compute the number of divisions.
     dims = (db.inputs.size / db.inputs.cellSize).astype(int)
 
@@ -378,6 +371,13 @@ def compute(db: OgnWaveSolveDatabase) -> None:
         # Update the mesh points with the height map resulting from
         # the displacement and simulation steps.
         update_mesh(db)
+
+    # Set the USD primitive path and type.
+    omni.warp.define_prim_attrs(
+        db.outputs.mesh,
+        "Mesh",
+        xform_prim_path=db.inputs.xformPrimPath,
+    )
 
     # Store the current time.
     state.time = db.inputs.time

@@ -107,12 +107,6 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
     """Evaluates the node."""
     state = db.internal_state
 
-    # Set the USD primitive path and type.
-    omni.warp.define_prim_attrs(
-        db.outputs.mesh,
-        "Mesh",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
 
     # Initialize the internal state if it hasn't been already.
     if state.needs_initialization(db):
@@ -146,6 +140,9 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
     vertex_count = len(state.mc.indices)
     point_count = len(state.mc.verts)
 
+    if not point_count or not vertex_count or not face_count:
+        return
+
     # Warp's marching cubes helper allocates its own arrays to store
     # the resulting mesh geometry but, eventually, we need to write that data
     # to OmniGraph, so we create a new geometry mesh within the output bundle.
@@ -155,9 +152,6 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
         vertex_count,
         face_count,
     )
-
-    if not point_count or not vertex_count or not face_count:
-        return
 
     out_points = omni.warp.mesh_get_points(db.outputs.mesh)
     out_face_vertex_counts = omni.warp.mesh_get_face_vertex_counts(
@@ -198,6 +192,13 @@ def compute(db: OgnMeshFromVolumeDatabase) -> None:
                 out_points,
             ],
         )
+
+    # Set the USD primitive path and type.
+    omni.warp.define_prim_attrs(
+        db.outputs.mesh,
+        "Mesh",
+        xform_prim_path=db.inputs.xformPrimPath,
+    )
 
 
 #   Node Entry Point

@@ -285,13 +285,6 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
 
     state = db.internal_state
 
-    # Set the USD primitive path and type.
-    omni.warp.define_prim_attrs(
-        db.outputs.particles,
-        "Points",
-        xform_prim_path=db.inputs.xformPrimPath,
-    )
-
     # Initialize the internal state if it hasn't been already.
     if state.needs_initialization(db):
         if not state.initialize(db):
@@ -342,6 +335,13 @@ def compute(db: OgnParticlesFromMeshDatabase) -> None:
         # Store the mass in the output bundle.
         masses = omni.warp.points_get_masses(db.outputs.particles)
         masses.fill_(db.inputs.mass)
+
+    # Set the USD primitive path and type.
+    omni.warp.define_prim_attrs(
+        db.outputs.particles,
+        "Points",
+        xform_prim_path=db.inputs.xformPrimPath,
+    )
 
     state.store_setting_attrs(db)
 
