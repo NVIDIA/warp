@@ -2898,15 +2898,13 @@ def pack_arg(arg_type, arg_name, value, device, adjoint=False):
 # represents all data required for a kernel launch
 # so that launches can be replayed quickly, use `wp.launch(..., record_cmd=True)`
 class Launch:
-
     def __init__(self, kernel, device, hooks=None, params=None, params_addr=None, bounds=None):
-
         # if not specified look up hooks
         if not hooks:
             module = kernel.module
             if not module.load(device):
                 return
-            
+
             hooks = module.get_kernel_hooks(kernel, device)
 
         # if not specified set a zero bound
@@ -2915,12 +2913,10 @@ class Launch:
 
         # if not specified then build a list of default value params for args
         if not params:
-            
             params = []
             params.append(bounds)
-            
+
             for a in kernel.adj.args:
-                
                 if isinstance(a.type, warp.types.array):
                     params.append(a.type.__ctype__())
                 elif isinstance(a.type, warp.codegen.Struct):
@@ -3111,12 +3107,9 @@ def launch(
                     )
 
                 if record_cmd:
-                    launch = Launch(kernel=kernel,
-                                    hooks=hooks,
-                                    params=params,
-                                    params_addr=None,
-                                    bounds=bounds,
-                                    device=device)
+                    launch = Launch(
+                        kernel=kernel, hooks=hooks, params=params, params_addr=None, bounds=bounds, device=device
+                    )
                     return launch
                 else:
                     hooks.forward(*params)
@@ -3141,13 +3134,14 @@ def launch(
                         )
 
                     if record_cmd:
-
-                        launch = Launch(kernel=kernel, 
-                                        hooks=hooks,
-                                        params=params, 
-                                        params_addr=kernel_params,
-                                        bounds=bounds,
-                                        device=device)
+                        launch = Launch(
+                            kernel=kernel,
+                            hooks=hooks,
+                            params=params,
+                            params_addr=kernel_params,
+                            bounds=bounds,
+                            device=device,
+                        )
                         return launch
 
                     else:
