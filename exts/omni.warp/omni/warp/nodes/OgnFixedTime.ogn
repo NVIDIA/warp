@@ -1,29 +1,29 @@
 {
     "FixedTime": {
         "version": 1,
-        "description": "",
+        "description": "Retrieves a time with a fixed time step.",
         "language": "Python",
         "inputs": {
             "fps": {
                 "type": "double",
-                "description": "",
+                "description": "Frames per second.",
                 "default": 60.0
             },
             "start": {
                 "type": "double",
-                "description": "",
+                "description": "Start time.",
                 "default": 0.0
             },
             "end": {
                 "type": "double",
-                "description": "",
+                "description": "End time.",
                 "default": 1000.0
             }
-        },       
+        },
         "outputs": {
             "time": {
                 "type": "double",
-                "description": "",
+                "description": "Fixed time.",
                 "default": 0.0
             }
         }
