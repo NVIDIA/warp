@@ -56,6 +56,8 @@ class InternalState:
 
 def compute(db: OgnGridCreateDatabase) -> None:
     """Evaluates the node."""
+    db.outputs.mesh.changes().activate()
+
     if not db.outputs.mesh.valid:
         return
 

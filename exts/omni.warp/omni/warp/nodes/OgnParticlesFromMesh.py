@@ -280,6 +280,8 @@ def spawn_particles(db: OgnParticlesFromMeshDatabase) -> Tuple[wp.array, int]:
 
 def compute(db: OgnParticlesFromMeshDatabase) -> None:
     """Evaluates the node."""
+    db.outputs.particles.changes().activate()
+
     if not db.inputs.mesh.valid or not db.outputs.particles.valid:
         return
 

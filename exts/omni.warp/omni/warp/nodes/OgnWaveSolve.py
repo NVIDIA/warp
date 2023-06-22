@@ -322,6 +322,8 @@ def update_mesh(db: OgnWaveSolveDatabase) -> None:
 
 def compute(db: OgnWaveSolveDatabase) -> None:
     """Evaluates the node."""
+    db.outputs.mesh.changes().activate()
+
     if not db.outputs.mesh.valid:
         return
 

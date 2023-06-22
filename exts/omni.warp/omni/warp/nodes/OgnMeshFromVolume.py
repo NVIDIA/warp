@@ -105,8 +105,9 @@ class InternalState:
 
 def compute(db: OgnMeshFromVolumeDatabase) -> None:
     """Evaluates the node."""
-    state = db.internal_state
+    db.outputs.mesh.changes().activate()
 
+    state = db.internal_state
 
     # Initialize the internal state if it hasn't been already.
     if state.needs_initialization(db):
