@@ -1181,7 +1181,7 @@ void* cuda_load_module(void* context, const char* path)
         size_t length = ftell(file);
         fseek(file, 0, SEEK_SET);
 
-        input.resize(length);
+        input.resize(length + 1);
         if (fread(input.data(), 1, length, file) != length)
         {
             fprintf(stderr, "Warp error: Failed to read input file '%s'\n", path);
@@ -1189,6 +1189,8 @@ void* cuda_load_module(void* context, const char* path)
             return NULL;
         }
         fclose(file);
+
+        input[length] = '\0';
     }
     else
     {
