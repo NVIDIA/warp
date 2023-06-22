@@ -56,9 +56,12 @@ def Xform "World"
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
+            custom int inputs:_debugStamp
             custom bool inputs:applySkelBinding = 0
             custom string inputs:attrNamesToImport = "*"
             custom bool inputs:computeBoundingBox = 0
+            custom bool inputs:enableBundleChangeTracking
+            custom bool inputs:enableChangeTracking
             custom string inputs:pathPattern = ""
             custom rel inputs:prims = </World/Emitter> (
                 customData = {
@@ -76,6 +79,8 @@ def Xform "World"
             custom bool state:applySkelBinding = 0
             custom string state:attrNamesToImport
             custom bool state:computeBoundingBox = 0
+            custom bool state:enableBundleChangeTracking
+            custom bool state:enableChangeTracking
             custom uint64[] state:inputPrimPaths = []
             custom string state:pathPattern
             custom uint64[] state:primPaths = []
@@ -93,9 +98,12 @@ def Xform "World"
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
+            custom int inputs:_debugStamp
             custom bool inputs:applySkelBinding = 0
             custom string inputs:attrNamesToImport = "*"
             custom bool inputs:computeBoundingBox = 0
+            custom bool inputs:enableBundleChangeTracking
+            custom bool inputs:enableChangeTracking
             custom string inputs:pathPattern = ""
             custom rel inputs:prims = </World/Collider> (
                 customData = {
@@ -113,6 +121,8 @@ def Xform "World"
             custom bool state:applySkelBinding = 0
             custom string state:attrNamesToImport
             custom bool state:computeBoundingBox = 0
+            custom bool state:enableBundleChangeTracking
+            custom bool state:enableChangeTracking
             custom uint64[] state:inputPrimPaths = []
             custom string state:pathPattern
             custom uint64[] state:primPaths = []
@@ -204,13 +214,39 @@ def Xform "World"
             }
         }
 
+        def OmniGraphNode "bundle_inspect_changes" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:bundle
+            prepend rel inputs:bundle = </World/ActionGraph/particles_simulate/outputs_particles>
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/particles_simulate.outputs:execOut>
+            token node:type = "omni.warp.WarpOgnBundleInspectChanges"
+            int node:typeVersion = 1
+            custom string outputs:attrsChanged
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom bool outputs:topologyChanged
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (910, -25)
+
+            def Output "outputs_bundle"
+            {
+            }
+        }
+
         def OmniGraphNode "write_prims" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
             custom string inputs:attrNamesToExport = "*"
+            prepend string inputs:attrNamesToExport.connect = </World/ActionGraph/bundle_inspect_changes.outputs:attrsChanged>
             custom uint inputs:execIn
-            prepend uint inputs:execIn.connect = </World/ActionGraph/particles_simulate.outputs:execOut>
+            prepend uint inputs:execIn.connect = </World/ActionGraph/bundle_inspect_changes.outputs:execOut>
             custom token inputs:layerIdentifier
             custom string inputs:pathPattern = "*"
             custom rel inputs:prims = </World/Points> (
@@ -223,10 +259,11 @@ def Xform "World"
                 }
             )
             custom rel inputs:primsBundle
-            prepend rel inputs:primsBundle = </World/ActionGraph/particles_simulate/outputs_particles>
+            prepend rel inputs:primsBundle = </World/ActionGraph/bundle_inspect_changes/outputs_bundle>
             custom bool inputs:scatterUnderTargets = 0
             custom string inputs:typePattern = "*"
             custom bool inputs:usdWriteBack = 1
+            prepend bool inputs:usdWriteBack.connect = </World/ActionGraph/bundle_inspect_changes.outputs:topologyChanged>
             token node:type = "omni.graph.nodes.WritePrimsV2"
             int node:typeVersion = 1
             custom uint outputs:execOut (
@@ -243,7 +280,7 @@ def Xform "World"
             custom string state:typePattern = "*"
             custom bool state:usdWriteBack = 1
             uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (930, 0)
+            uniform float2 ui:nodegraph:node:pos = (1180, 0)
         }
     }
 

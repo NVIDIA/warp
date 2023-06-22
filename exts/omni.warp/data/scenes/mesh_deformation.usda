@@ -101,13 +101,39 @@ def Xform "World"
             }
         }
 
+        def OmniGraphNode "bundle_inspect_changes" (
+            prepend apiSchemas = ["NodeGraphNodeAPI"]
+        )
+        {
+            custom rel inputs:bundle
+            prepend rel inputs:bundle = </World/ActionGraph/sample_mesh_deform/outputs_mesh>
+            custom uint inputs:execIn
+            prepend uint inputs:execIn.connect = </World/ActionGraph/sample_mesh_deform.outputs:execOut>
+            token node:type = "omni.warp.WarpOgnBundleInspectChanges"
+            int node:typeVersion = 1
+            custom string outputs:attrsChanged
+            custom uint outputs:execOut (
+                customData = {
+                    bool isExecution = 1
+                }
+            )
+            custom bool outputs:topologyChanged
+            uniform token ui:nodegraph:node:expansionState = "minimized"
+            uniform float2 ui:nodegraph:node:pos = (745, 190)
+
+            def Output "outputs_bundle"
+            {
+            }
+        }
+
         def OmniGraphNode "write_prims" (
             prepend apiSchemas = ["NodeGraphNodeAPI"]
         )
         {
             custom string inputs:attrNamesToExport = "*"
+            prepend string inputs:attrNamesToExport.connect = </World/ActionGraph/bundle_inspect_changes.outputs:attrsChanged>
             custom uint inputs:execIn
-            prepend uint inputs:execIn.connect = </World/ActionGraph/sample_mesh_deform.outputs:execOut>
+            prepend uint inputs:execIn.connect = </World/ActionGraph/bundle_inspect_changes.outputs:execOut>
             custom token inputs:layerIdentifier
             custom string inputs:pathPattern = "*"
             custom rel inputs:prims = </World/Mesh> (
@@ -120,10 +146,11 @@ def Xform "World"
                 }
             )
             custom rel inputs:primsBundle
-            prepend rel inputs:primsBundle = </World/ActionGraph/sample_mesh_deform/outputs_mesh>
+            prepend rel inputs:primsBundle = </World/ActionGraph/bundle_inspect_changes/outputs_bundle>
             custom bool inputs:scatterUnderTargets = 0
             custom string inputs:typePattern = "*"
             custom bool inputs:usdWriteBack = 1
+            prepend bool inputs:usdWriteBack.connect = </World/ActionGraph/bundle_inspect_changes.outputs:topologyChanged>
             token node:type = "omni.graph.nodes.WritePrimsV2"
             int node:typeVersion = 1
             custom uint outputs:execOut (
@@ -140,7 +167,7 @@ def Xform "World"
             custom string state:typePattern = "*"
             custom bool state:usdWriteBack = 1
             uniform token ui:nodegraph:node:expansionState = "minimized"
-            uniform float2 ui:nodegraph:node:pos = (745, 222)
+            uniform float2 ui:nodegraph:node:pos = (1025, 222)
         }
     }
 
