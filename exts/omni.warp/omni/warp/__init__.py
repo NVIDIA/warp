@@ -166,7 +166,8 @@ def define_prim_attrs(
     child_bundle = _create_child_bundle(bundle, child_bundle_idx)
     xform = get_world_xform_from_prim(xform_prim_path)
 
-    prim_type_attr = child_bundle.create_attribute(
+    prim_type_attr = _create_attr(
+        child_bundle,
         "sourcePrimType",
         og.Type(
             og.BaseDataType.TOKEN,
@@ -177,7 +178,8 @@ def define_prim_attrs(
     )
     _set_cpu_array(prim_type_attr, prim_type)
 
-    world_matrix_attr = child_bundle.create_attribute(
+    world_matrix_attr = _create_attr(
+        child_bundle,
         "worldMatrix",
         og.Type(
             og.BaseDataType.DOUBLE,
@@ -200,7 +202,8 @@ def points_create_bundle(
 ) -> None:
     """Creates and initializes point cloud attributes within a bundle."""
     child_bundle = _create_child_bundle(bundle, child_bundle_idx)
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "points",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -208,9 +211,10 @@ def points_create_bundle(
             array_depth=1,
             role=og.AttributeRole.POSITION,
         ),
-        element_count=point_count,
+        size=point_count,
     )
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "velocities",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -218,9 +222,10 @@ def points_create_bundle(
             array_depth=1,
             role=og.AttributeRole.VECTOR,
         ),
-        element_count=point_count,
+        size=point_count,
     )
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "widths",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -228,9 +233,10 @@ def points_create_bundle(
             array_depth=1,
             role=og.AttributeRole.NONE,
         ),
-        element_count=point_count,
+        size=point_count,
     )
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "masses",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -238,7 +244,7 @@ def points_create_bundle(
             array_depth=1,
             role=og.AttributeRole.NONE,
         ),
-        element_count=point_count,
+        size=point_count,
     )
 
 
@@ -372,7 +378,8 @@ def mesh_create_bundle(
 ) -> None:
     """Creates and initializes mesh attributes within a bundle."""
     child_bundle = _create_child_bundle(bundle, child_bundle_idx)
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "points",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -380,9 +387,10 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.POSITION,
         ),
-        element_count=point_count,
+        size=point_count,
     )
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "normals",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -390,9 +398,10 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.NORMAL,
         ),
-        element_count=vertex_count,
+        size=vertex_count,
     )
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "primvars:st",
         og.Type(
             og.BaseDataType.FLOAT,
@@ -400,9 +409,10 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.TEXCOORD,
         ),
-        element_count=vertex_count,
+        size=vertex_count,
     )
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "faceVertexCounts",
         og.Type(
             og.BaseDataType.INT,
@@ -410,9 +420,10 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.NONE,
         ),
-        element_count=face_count,
+        size=face_count,
     )
-    child_bundle.create_attribute(
+    _create_attr(
+        child_bundle,
         "faceVertexIndices",
         og.Type(
             og.BaseDataType.INT,
@@ -420,7 +431,7 @@ def mesh_create_bundle(
             array_depth=1,
             role=og.AttributeRole.NONE,
         ),
-        element_count=vertex_count,
+        size=vertex_count,
     )
 
 
@@ -591,6 +602,20 @@ def _get_bundle_attr_by_name(
         return None
 
     return attr
+
+
+def _create_attr(
+    bundle: og.IBundle2,
+    name: str,
+    og_type: og.Type,
+    size: int = 0,
+) -> og.AttributeData:
+    """Creates an attribute if it doesn't already exist."""
+    attr = bundle.get_attribute_by_name(name)
+    if attr is not None and attr.get_type() == og_type and attr.size() == size:
+        return attr
+
+    return bundle.create_attribute(name, og_type, element_count=size)
 
 
 def _get_gpu_array(
