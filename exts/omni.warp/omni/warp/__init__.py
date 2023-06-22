@@ -38,7 +38,6 @@ __all__ = [
     "points_get_world_extent",
 ]
 
-from enum import IntFlag
 from math import inf
 from typing import (
     Any,
