@@ -111,7 +111,7 @@ def Xform "World"
             custom uint inputs:execIn
             prepend uint inputs:execIn.connect = </World/ActionGraph/on_tick.outputs:tick>
             custom float2 inputs:size = (600, 300)
-            custom float inputs:speed = 100
+            custom float inputs:speed = 1000
             custom double inputs:time
             prepend double inputs:time.connect = </World/ActionGraph/on_tick.outputs:time>
             custom token inputs:xformPrimPath = "/World/Mesh"
