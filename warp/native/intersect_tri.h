@@ -32,9 +32,6 @@
  OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
-#define FABS(x) (float(fabs(x)))        /* implement as is fastest on your machine */
-
 /* if USE_EPSILON_TEST is true then we do a check:
          if |dv|<EPSILON then dv=0.0;
    else no check is done (which is less robust)
@@ -135,9 +132,9 @@ CUDA_CALLABLE inline int coplanar_tri_tri(float N[3],float V0[3],float V1[3],flo
    short i0,i1;
    /* first project onto an axis-aligned plane, that maximizes the area */
    /* of the triangles, compute indices: i0,i1. */
-   A[0]=FABS(N[0]);
-   A[1]=FABS(N[1]);
-   A[2]=FABS(N[2]);
+   A[0]=fabsf(N[0]);
+   A[1]=fabsf(N[1]);
+   A[2]=fabsf(N[2]);
    if(A[0]>A[1])
    {
       if(A[0]>A[2])
@@ -242,9 +239,9 @@ CUDA_CALLABLE inline int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
 
   /* coplanarity robustness check */
 #if USE_EPSILON_TEST==TRUE
-  if(FABS(du0)<EPSILON) du0=0.0;
-  if(FABS(du1)<EPSILON) du1=0.0;
-  if(FABS(du2)<EPSILON) du2=0.0;
+  if(fabsf(du0)<EPSILON) du0=0.0;
+  if(fabsf(du1)<EPSILON) du1=0.0;
+  if(fabsf(du2)<EPSILON) du2=0.0;
 #endif
   du0du1=du0*du1;
   du0du2=du0*du2;
@@ -265,9 +262,9 @@ CUDA_CALLABLE inline int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
   dv2=DOT(N2,V2)+d2;
 
 #if USE_EPSILON_TEST==TRUE
-  if(FABS(dv0)<EPSILON) dv0=0.0;
-  if(FABS(dv1)<EPSILON) dv1=0.0;
-  if(FABS(dv2)<EPSILON) dv2=0.0;
+  if(fabsf(dv0)<EPSILON) dv0=0.0;
+  if(fabsf(dv1)<EPSILON) dv1=0.0;
+  if(fabsf(dv2)<EPSILON) dv2=0.0;
 #endif
 
   dv0dv1=dv0*dv1;
@@ -280,10 +277,10 @@ CUDA_CALLABLE inline int NoDivTriTriIsect(float V0[3],float V1[3],float V2[3],
   CROSS(D,N1,N2);
 
   /* compute and index to the largest component of D */
-  max=(float)FABS(D[0]);
+  max=fabsf(D[0]);
   index=0;
-  bb=(float)FABS(D[1]);
-  cc=(float)FABS(D[2]);
+  bb=fabsf(D[1]);
+  cc=fabsf(D[2]);
   if(bb>max) max=bb,index=1;
   if(cc>max) max=cc,index=2;
 
