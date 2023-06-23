@@ -125,9 +125,9 @@ class StructInstance:
                 # wp.array
                 assert isinstance(value, array)
                 assert (
-                    value.dtype == var.type.dtype
+                    types_equal(value.dtype, var.type.dtype)
                 ), "assign to struct member variable {} failed, expected type {}, got type {}".format(
-                    name, var.type.dtype, value.dtype
+                    name, type_repr(var.type.dtype), type_repr(value.dtype)
                 )
                 setattr(self._ctype, name, value.__ctype__())
 
