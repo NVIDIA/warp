@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## [0.9.1] - 2023-06-21
+
+- Fix a number of array methods misbehaving with empty arrays
+- Fix element accessors for `float16` vectors and matrices in Python
+- Fix `float16` members in structs
+- Fix a number of bugs and memory leaks related to gradient arrays
+- Fix array construction when creating arrays in pinned memory from a data source in pageable memory
+- `wp.empty()` no longer zeroes-out memory and returns an uninitialized array, as intended
+- `array.zero_()` and `array.fill_()` work with non-contiguous arrays
+- Support wrapping non-contiguous NumPy arrays without a copy
+- Support preserving the outer dimensions of NumPy arrays when wrapping them as Warp arrays of vector or matrix types
+- Improve PyTorch and DLPack interop with Warp arrays of arbitrary vectors and matrices
+- `array.fill_()` can take lists or other sequences when filling arrays of vectors or matrices, e.g. `arr.fill_([[1, 2], [3, 4]])`
+- `array.fill_()` works with arrays of structs (pass a struct instance)
+- `wp.copy()` gracefully handles copying between non-contiguous arrays on different devices
+- Add `wp.full()` and `wp.full_like()`, e.g., `a = wp.full(shape, value)`
+- Add optional `device` argument to `wp.empty_like()`, `wp.zeros_like()`, `wp.full_like()`, and `wp.clone()`
+- Add `indexedarray` methods `.zero_()`, `.fill_()`, and `.assign()`
+- Fix `indexedarray` methods `.numpy()` and `.list()`
+- Fix `array.list()` to work with arrays of any Warp data type
+- Fix `array.list()` synchronization issue with CUDA arrays
+- `array.numpy()` called on an array of structs returns a structured NumPy array with named fields
+- Improve the performance of creating arrays
+
+
 ## [0.9.0] - 2023-06-01
 
 - Add support for in-place modifications to vector, matrix, and struct types inside kernels (will warn during backward pass with `wp.verbose` if using gradients)

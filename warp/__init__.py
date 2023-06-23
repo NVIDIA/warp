@@ -42,6 +42,8 @@ from warp.context import get_device, set_device, synchronize_device
 from warp.context import (
     zeros,
     zeros_like,
+    full,
+    full_like,
     clone,
     empty,
     empty_like,

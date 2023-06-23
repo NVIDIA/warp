@@ -170,12 +170,15 @@ class StructInstance:
             if value is None:
                 # zero initialize
                 setattr(self._ctype, name, var.type._type_())
-            elif hasattr(value, "_type_"):
-                # assigning value warp type directly (e.g.: wp.float32)
-                setattr(self._ctype, name, value.value)
             else:
-                # assigning Python type, e.g.: 1.5, convert to struct attribute type
-                setattr(self._ctype, name, var.type._type_(value))
+                if hasattr(value, "_type_"):
+                    # assigning warp type value (e.g.: wp.float32)
+                    value = value.value
+                # float16 needs conversion to uint16 bits
+                if var.type == warp.float16:
+                    setattr(self._ctype, name, float_to_half_bits(value))
+                else:
+                    setattr(self._ctype, name, value)
 
         # update Python instance
         super().__setattr__(name, value)
@@ -185,6 +188,39 @@ class StructInstance:
 
     def __repr__(self):
         return struct_instance_repr_recursive(self, 0)
+
+    # type description used in numpy structured arrays
+    def numpy_dtype(self):
+        return self._cls.numpy_dtype()
+
+    # value usable in numpy structured arrays of .numpy_dtype(), e.g. (42, 13.37, [1.0, 2.0, 3.0])
+    def numpy_value(self):
+        npvalue = []
+        for name, var in self._cls.vars.items():
+            # get the attribute value
+            value = getattr(self._ctype, name)
+
+            if isinstance(var.type, array):
+                # array_t
+                npvalue.append(value.numpy_value())
+            elif isinstance(var.type, Struct):
+                # nested struct
+                npvalue.append(value.numpy_value())
+            elif issubclass(var.type, ctypes.Array):
+                if len(var.type._shape_) == 1:
+                    # vector
+                    npvalue.append(list(value))
+                else:
+                    # matrix
+                    npvalue.append([list(row) for row in value])
+            else:
+                # scalar
+                if var.type == warp.float16:
+                    npvalue.append(half_bits_to_float(value))
+                else:
+                    npvalue.append(value)
+
+        return tuple(npvalue)
 
 
 class Struct:
@@ -268,6 +304,68 @@ class Struct:
 
     def initializer(self):
         return self.default_constructor
+
+    # return structured NumPy dtype, including field names, formats, and offsets
+    def numpy_dtype(self):
+        names = []
+        formats = []
+        offsets = []
+        for name, var in self.vars.items():
+            names.append(name)
+            offsets.append(getattr(self.ctype, name).offset)
+            if isinstance(var.type, array):
+                # array_t
+                formats.append(array_t.numpy_dtype())
+            elif isinstance(var.type, Struct):
+                # nested struct
+                formats.append(var.type.numpy_dtype())
+            elif issubclass(var.type, ctypes.Array):
+                scalar_typestr = type_typestr(var.type._wp_scalar_type_)
+                if len(var.type._shape_) == 1:
+                    # vector
+                    formats.append(f"{var.type._length_}{scalar_typestr}")
+                else:
+                    # matrix
+                    formats.append(f"{var.type._shape_}{scalar_typestr}")
+            else:
+                # scalar
+                formats.append(type_typestr(var.type))
+
+        return {"names": names, "formats": formats, "offsets": offsets, "itemsize": ctypes.sizeof(self.ctype)}
+
+    # constructs a Warp struct instance from a pointer to the ctype
+    def from_ptr(self, ptr):
+        if not ptr:
+            raise RuntimeError("NULL pointer exception")
+
+        # create a new struct instance
+        instance = self()
+
+        for name, var in self.vars.items():
+            offset = getattr(self.ctype, name).offset
+            if isinstance(var.type, array):
+                # We could reconstruct wp.array from array_t, but it's problematic.
+                # There's no guarantee that the original wp.array is still allocated and
+                # no easy way to make a backref.
+                # Instead, we just create a stub annotation, which is not a fully usable array object.
+                setattr(instance, name, array(dtype=var.type.dtype, ndim=var.type.ndim))
+            elif isinstance(var.type, Struct):
+                # nested struct
+                value = var.type.from_ptr(ptr + offset)
+                setattr(instance, name, value)
+            elif issubclass(var.type, ctypes.Array):
+                # vector/matrix
+                value = var.type.from_ptr(ptr + offset)
+                setattr(instance, name, value)
+            else:
+                # scalar
+                cvalue = ctypes.cast(ptr + offset, ctypes.POINTER(var.type._type_)).contents
+                if var.type == warp.float16:
+                    setattr(instance, name, half_bits_to_float(cvalue))
+                else:
+                    setattr(instance, name, cvalue.value)
+
+        return instance
 
 
 def compute_type_str(base_name, template_params):
