@@ -261,7 +261,7 @@ def Xform "CameraRoot"
         float focalLength = 25
         float focusDistance = 400
         float fStop = 0
-        bool omni:kit:cameraLock = 1
+        bool omni:kit:cameraLock = 0
         double3 xformOp:rotateYXZ = (0, 0, 0)
         double3 xformOp:scale = (1, 1, 1)
         double3 xformOp:translate = (0, 0, 400)
