@@ -1256,13 +1256,13 @@ class Module:
                             verify_fp=warp.config.verify_fp,
                         )
 
-                    # load the object code
-                    runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
-                    self.cpu_module = module_name
-
                     # update cpu hash
                     with open(cpu_hash_path, "wb") as f:
                         f.write(module_hash)
+
+                    # load the object code
+                    runtime.llvm.load_obj(obj_path.encode("utf-8"), module_name.encode("utf-8"))
+                    self.cpu_module = module_name
 
                 except Exception as e:
                     self.cpu_build_failed = True
@@ -1325,16 +1325,16 @@ class Module:
                             verify_fp=warp.config.verify_fp,
                         )
 
+                    # update cuda hash
+                    with open(cuda_hash_path, "wb") as f:
+                        f.write(module_hash)
+
                     # load the module
                     cuda_module = warp.build.load_cuda(output_path, device)
                     if cuda_module is not None:
                         self.cuda_modules[device.context] = cuda_module
                     else:
                         raise Exception("Failed to load CUDA module")
-
-                    # update cuda hash
-                    with open(cuda_hash_path, "wb") as f:
-                        f.write(module_hash)
 
                 except Exception as e:
                     self.cuda_build_failed = True
