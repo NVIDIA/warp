@@ -88,9 +88,6 @@ class InternalState:
         self._collider_contact_query_range = None
         self._ground_enabled = None
         self._ground_altitude = None
-        self._particles_point_count = None
-        self._particles_xform = None
-        self._particles_extent = None
 
         self.sim_dt = None
         self.model = None
@@ -135,20 +132,6 @@ class InternalState:
         ):
             return True
 
-        # To query whether the input particles have changed, we could hash their
-        # attributes but instead we do a cheap approximation.
-        particles_point_count = omni.warp.points_get_point_count(db.inputs.particles)
-        particles_xform = omni.warp.get_world_xform(db.inputs.particles)
-        particles_extent = omni.warp.points_get_local_extent(db.inputs.particles)
-        has_geometry_changed = (
-            particles_point_count != self._particles_point_count
-            or not np.array_equal(particles_xform, self._particles_xform)
-            or not np.array_equal(particles_extent, self._particles_extent)
-        )
-
-        if has_geometry_changed:
-            return True
-
         if db.inputs.time < self.time:
             # Reset the simulation when we're rewinding.
             return True
@@ -157,10 +140,6 @@ class InternalState:
 
     def initialize(self, db: OgnParticlesSimulateDatabase) -> bool:
         """Initializes the internal state."""
-        particles_point_count = omni.warp.points_get_point_count(db.inputs.particles)
-        particles_xform = omni.warp.get_world_xform(db.inputs.particles)
-        particles_extent = omni.warp.points_get_local_extent(db.inputs.particles)
-
         # Compute the simulation time step.
         timeline = omni.timeline.get_timeline_interface()
         sim_rate = timeline.get_ticks_per_second()
@@ -315,9 +294,6 @@ class InternalState:
         self._collider_contact_query_range = db.inputs.colliderContactQueryRange
         self._ground_enabled = db.inputs.groundEnabled
         self._ground_altitude = db.inputs.groundAltitude
-        self._particles_point_count = particles_point_count
-        self._particles_xform = particles_xform.copy()
-        self._particles_extent = particles_extent.copy()
 
         return True
 
@@ -414,7 +390,11 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
 
     if not db.inputs.enabled:
         # Pass through the data.
-        db.outputs.particles = db.inputs.particles
+        omni.warp.points_duplicate_bundle(
+            db.outputs.particles,
+            db.inputs.particles,
+            deep_copy=False,
+        )
 
         # Store whether the simulation was last enabled.
         state.enabled = False
@@ -424,7 +404,11 @@ def compute(db: OgnParticlesSimulateDatabase) -> None:
     if state.needs_initialization(db):
         # We want to use the input particles geometry as the initial state
         # of the simulation so we copy its bundle to the output one.
-        db.outputs.particles = db.inputs.particles
+        omni.warp.points_duplicate_bundle(
+            db.outputs.particles,
+            db.inputs.particles,
+            deep_copy=True,
+        )
 
         if not state.initialize(db):
             return

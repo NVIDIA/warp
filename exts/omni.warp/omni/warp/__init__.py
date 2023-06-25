@@ -16,6 +16,7 @@ __all__ = [
     "get_world_xform",
     "get_world_xform_from_prim",
     "mesh_create_bundle",
+    "mesh_duplicate_bundle",
     "mesh_get_face_count",
     "mesh_get_face_vertex_counts",
     "mesh_get_face_vertex_indices",
@@ -29,6 +30,7 @@ __all__ = [
     "mesh_get_vertex_count",
     "mesh_get_world_extent",
     "points_create_bundle",
+    "points_duplicate_bundle",
     "points_get_local_extent",
     "points_get_masses",
     "points_get_point_count",
@@ -247,6 +249,24 @@ def points_create_bundle(
     )
 
 
+def points_duplicate_bundle(
+    dst_bundle: og.BundleContents,
+    src_bundle: og.BundleContents,
+    deep_copy: bool = False,
+    child_bundle_idx: int = 0,
+) -> None:
+    """Creates and initializes points attributes from an existing bundle."""
+    dst_child_bundle = _create_child_bundle(dst_bundle, child_bundle_idx)
+    src_child_bundle = src_bundle.bundle.get_child_bundle(child_bundle_idx)
+    dst_child_bundle.copy_bundle(src_child_bundle)
+
+    if deep_copy:
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "points", wp.vec3)
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "velocities", wp.vec3)
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "widths", float)
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "masses", float)
+
+
 def points_get_point_count(
     bundle: og.BundleContents,
     child_bundle_idx: int = 0,
@@ -434,6 +454,25 @@ def mesh_create_bundle(
     )
 
 
+def mesh_duplicate_bundle(
+    dst_bundle: og.BundleContents,
+    src_bundle: og.BundleContents,
+    deep_copy: bool = False,
+    child_bundle_idx: int = 0,
+) -> None:
+    """Creates and initializes mesh attributes from an existing bundle."""
+    dst_child_bundle = _create_child_bundle(dst_bundle, child_bundle_idx)
+    src_child_bundle = src_bundle.bundle.get_child_bundle(child_bundle_idx)
+    dst_child_bundle.copy_bundle(src_child_bundle)
+
+    if deep_copy:
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "points", wp.vec3)
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "normals", wp.vec3)
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "primvars:st", wp.vec2)
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "faceVertexCounts", int)
+        _copy_attr_value(dst_child_bundle, src_child_bundle, "faceVertexIndices", int)
+
+
 def mesh_get_point_count(
     bundle: og.BundleContents,
     child_bundle_idx: int = 0,
@@ -615,6 +654,25 @@ def _create_attr(
         return attr
 
     return bundle.create_attribute(name, og_type, element_count=size)
+
+
+def _copy_attr_value(
+    dst_bundle: og.IBundle2,
+    src_bundle: og.IBundle2,
+    name: str,
+    dtype: og.Type,
+) -> None:
+    """Copyes an attribute value from one bundle to another."""
+    dst_attr = dst_bundle.get_attribute_by_name(name)
+    src_attr = src_bundle.get_attribute_by_name(name)
+
+    if not dst_attr.is_valid() or not src_attr.is_valid():
+        return
+
+    wp.copy(
+        _get_gpu_array(dst_attr, dtype, read_only=False),
+        _get_gpu_array(src_attr, dtype, read_only=True),
+    )
 
 
 def _get_gpu_array(

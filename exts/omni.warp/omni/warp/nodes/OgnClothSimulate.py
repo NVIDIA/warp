@@ -82,9 +82,6 @@ class InternalState:
         self._collider_contact_query_range = None
         self._ground_enabled = None
         self._ground_altitude = None
-        self._cloth_point_count = None
-        self._cloth_xform = None
-        self._cloth_extent = None
 
         self.sim_dt = None
         self.model = None
@@ -131,20 +128,6 @@ class InternalState:
         ):
             return True
 
-        # To query whether the input cloth has changed, we could hash its
-        # attributes but instead we do a cheap approximation.
-        cloth_point_count = omni.warp.mesh_get_point_count(db.inputs.cloth)
-        cloth_xform = omni.warp.get_world_xform(db.inputs.cloth)
-        cloth_extent = omni.warp.mesh_get_local_extent(db.inputs.cloth)
-        has_geometry_changed = (
-            cloth_point_count != self._cloth_point_count
-            or not np.array_equal(cloth_xform, self._cloth_xform)
-            or not np.array_equal(cloth_extent, self._cloth_extent)
-        )
-
-        if has_geometry_changed:
-            return True
-
         if db.inputs.time < self.time:
             # Reset the simulation when we're rewinding.
             return True
@@ -153,10 +136,6 @@ class InternalState:
 
     def initialize(self, db: OgnClothSimulateDatabase) -> bool:
         """Initializes the internal state."""
-        cloth_point_count = omni.warp.mesh_get_point_count(db.inputs.cloth)
-        cloth_xform = omni.warp.get_world_xform(db.inputs.cloth)
-        cloth_extent = omni.warp.mesh_get_local_extent(db.inputs.cloth)
-
         # Compute the simulation time step.
         timeline = omni.timeline.get_timeline_interface()
         sim_rate = timeline.get_ticks_per_second()
@@ -331,9 +310,6 @@ class InternalState:
         self._collider_contact_query_range = db.inputs.colliderContactQueryRange
         self._ground_enabled = db.inputs.groundEnabled
         self._ground_altitude = db.inputs.groundAltitude
-        self._cloth_point_count = cloth_point_count
-        self._cloth_xform = cloth_xform.copy()
-        self._cloth_extent = cloth_extent.copy()
 
         return True
 
@@ -435,7 +411,11 @@ def compute(db: OgnClothSimulateDatabase) -> None:
     if state.needs_initialization(db):
         # We want to use the input cloth geometry as the initial state
         # of the simulation so we copy its bundle to the output one.
-        db.outputs.cloth = db.inputs.cloth
+        omni.warp.mesh_duplicate_bundle(
+            db.outputs.cloth,
+            db.inputs.cloth,
+            deep_copy=True,
+        )
 
         if not state.initialize(db):
             return
