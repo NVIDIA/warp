@@ -611,7 +611,7 @@ def _create_attr(
 ) -> og.AttributeData:
     """Creates an attribute if it doesn't already exist."""
     attr = bundle.get_attribute_by_name(name)
-    if attr is not None and attr.get_type() == og_type and attr.size() == size:
+    if attr.is_valid() and attr.get_type() == og_type and attr.size() == size:
         return attr
 
     return bundle.create_attribute(name, og_type, element_count=size)
