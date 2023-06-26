@@ -13,6 +13,7 @@ from typing import Tuple
 import warp as wp
 
 import omni.graph.core as og
+import omni.graph.tools.ogn as ogn
 import omni.timeline
 
 from omni.warp.ogn.OgnKernelDatabase import OgnKernelDatabase
@@ -199,8 +200,8 @@ class OgnKernel:
     def initialize(graph_context: og.GraphContext, node: og.Node) -> None:
         # Populate the devices tokens.
         attr = og.Controller.attribute("inputs:device", node)
-        if attr.get_metadata(og.MetadataKeys.ALLOWED_TOKENS) is None:
-            attr.set_metadata(og.MetadataKeys.ALLOWED_TOKENS, ",".join(["cpu", "cuda:0"]))
+        if attr.get_metadata(ogn.MetadataKeys.ALLOWED_TOKENS) is None:
+            attr.set_metadata(ogn.MetadataKeys.ALLOWED_TOKENS, ",".join(["cpu", "cuda:0"]))
 
     @staticmethod
     def compute(db: OgnKernelDatabase) -> None:
