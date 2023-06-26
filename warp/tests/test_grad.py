@@ -115,75 +115,20 @@ def for_loop_nested_if_grad(n: int, x: wp.array(dtype=float), s: wp.array(dtype=
 def test_for_loop_nested_if_grad(test, device):
     n = 32
     val = np.ones(n, dtype=np.float32)
-
+    # fmt: off
     expected_val = [
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
+        2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+        4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+        6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0,
+        8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0,
     ]
     expected_grad = [
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        2.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        4.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        6.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
-        8.0,
+        2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+        4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+        6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0,
+        8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0,
     ]
+    # fmt: on
 
     x = wp.array(val, device=device, requires_grad=True)
     sum = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
@@ -545,6 +490,59 @@ def test_mesh_grad(test, device):
     assert np.allclose(ad_grad, fd_grad, atol=1e-3)
 
 
+# atomic add function that remembers which thread incremented the counter
+# so that the correct counter value can be used in the replay phase of the
+# backward pass
+@wp.func
+def differentiable_atomic_add(
+    counter: wp.array(dtype=int),
+    counter_index: int,
+    value: int,
+    thread_values: wp.array(dtype=int),
+    tid: int
+):
+    next_index = wp.atomic_add(counter, counter_index, value)
+    thread_values[tid] = next_index
+    return next_index
+
+
+@differentiable_atomic_add.replay
+def replay_differentiable_atomic_add(
+    counter: wp.array(dtype=int),
+    counter_index: int,
+    value: int,
+    thread_values: wp.array(dtype=int),
+    tid: int
+):
+    return thread_values[tid]
+
+
+def test_custom_replay_grad(test, device):
+    num_threads = 128
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    thread_ids = wp.zeros(num_threads, dtype=wp.int32, device=device)
+    inputs = wp.array(np.arange(num_threads, dtype=np.float32), device=device, requires_grad=True)
+    outputs = wp.zeros_like(inputs)
+
+    @wp.kernel
+    def run_atomic_add(
+        input: wp.array(dtype=float),
+        counter: wp.array(dtype=int),
+        thread_values: wp.array(dtype=int),
+        output: wp.array(dtype=float)
+    ):
+        tid = wp.tid()
+        idx = differentiable_atomic_add(counter, 0, 1, thread_values, tid)
+        output[idx] = input[idx] ** 2.0
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(run_atomic_add, dim=num_threads, inputs=[inputs, counter, thread_ids], outputs=[outputs], device=device)
+
+    tape.backward(grads={outputs: wp.array(np.ones(num_threads, dtype=np.float32), device=device)})
+    assert_np_equal(inputs.grad.numpy(), 2.0 * inputs.numpy(), tol=1e-4)
+
+
 def register(parent):
     devices = get_test_devices()
 
@@ -562,6 +560,7 @@ def register(parent):
     add_function_test(TestGrad, "test_matrix_math_grad", test_matrix_math_grad, devices=devices)
     add_function_test(TestGrad, "test_3d_math_grad", test_3d_math_grad, devices=devices)
     add_function_test(TestGrad, "test_mesh_grad", test_mesh_grad, devices=devices)
+    add_function_test(TestGrad, "test_custom_replay_grad", test_custom_replay_grad, devices=devices)
 
     return TestGrad
 
