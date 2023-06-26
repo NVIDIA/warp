@@ -1733,7 +1733,7 @@ class Adjoint:
 
 cpu_module_header = """
 #define WP_NO_CRT
-#include "../native/builtin.h"
+#include "builtin.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
@@ -1748,7 +1748,7 @@ using namespace wp;
 
 cuda_module_header = """
 #define WP_NO_CRT
-#include "../native/builtin.h"
+#include "builtin.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
