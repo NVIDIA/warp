@@ -197,12 +197,12 @@ def define_prim_attrs(
 
 
 def points_create_bundle(
-    bundle: og.BundleContents,
+    dst_bundle: og.BundleContents,
     point_count: int,
     child_bundle_idx: int = 0,
 ) -> None:
     """Creates and initializes point cloud attributes within a bundle."""
-    child_bundle = _create_child_bundle(bundle, child_bundle_idx)
+    child_bundle = _create_child_bundle(dst_bundle, child_bundle_idx)
     _create_attr(
         child_bundle,
         "points",
@@ -389,14 +389,14 @@ def points_get_world_extent(
 
 
 def mesh_create_bundle(
-    bundle: og.BundleContents,
+    dst_bundle: og.BundleContents,
     point_count: int,
     vertex_count: int,
     face_count: int,
     child_bundle_idx: int = 0,
 ) -> None:
     """Creates and initializes mesh attributes within a bundle."""
-    child_bundle = _create_child_bundle(bundle, child_bundle_idx)
+    child_bundle = _create_child_bundle(dst_bundle, child_bundle_idx)
     _create_attr(
         child_bundle,
         "points",
